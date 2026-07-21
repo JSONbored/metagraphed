@@ -644,6 +644,363 @@
       },
       "source_urls": ["https://api.verathos.ai/openapi.json"],
       "url": "https://api.verathos.ai/v1/price"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-auth-create-key",
+      "kind": "subnet-api",
+      "name": "Verathos api auth create key",
+      "notes": "Create Key operation on the Verathos API (POST /api/auth/create-key), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/auth/create-key"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-auth-login",
+      "kind": "subnet-api",
+      "name": "Verathos api auth login",
+      "notes": "Login operation on the Verathos API (POST /api/auth/login), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/auth/login"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but this route empirically rejects an unauthenticated request with HTTP 401 \"No API key provided\" (live-checked 2026-07-21). The header name is not documented in the spec, so only the location is asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-96-verathos-api-auth-me",
+      "kind": "subnet-api",
+      "name": "Verathos api auth me",
+      "notes": "Me operation on the Verathos API (GET /api/auth/me), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security for it, but live-verified 2026-07-21 an unauthenticated GET returns HTTP 401 {\"error\":\"No API key provided\"} -- so it is registered auth_required:true, correcting what the schema implies.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/auth/me"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-auth-register",
+      "kind": "subnet-api",
+      "name": "Verathos api auth register",
+      "notes": "Register operation on the Verathos API (POST /api/auth/register), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/auth/register"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-chat-conversation-id",
+      "kind": "subnet-api",
+      "name": "Verathos api chat conversation id",
+      "notes": "Chat Stream operation on the Verathos API (POST /api/chat/{conversation_id}), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. Path-parameterized on {conversation_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/chat/%7Bconversation_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-conversations",
+      "kind": "subnet-api",
+      "name": "Verathos api conversations",
+      "notes": "List Conversations operation on the Verathos API (GET, POST /api/conversations/), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. Live-verified 2026-07-21: GET -> HTTP 200 application/json (empty list for an anonymous caller). Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/conversations/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-conversations-claim",
+      "kind": "subnet-api",
+      "name": "Verathos api conversations claim",
+      "notes": "Claim Conversations operation on the Verathos API (POST /api/conversations/claim), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/conversations/claim"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-conversations-conversation-id",
+      "kind": "subnet-api",
+      "name": "Verathos api conversations conversation id",
+      "notes": "Delete Conversation operation on the Verathos API (DELETE, GET, PATCH /api/conversations/{conversation_id}), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. Path-parameterized on {conversation_id}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/conversations/%7Bconversation_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-deposits-address",
+      "kind": "subnet-api",
+      "name": "Verathos api deposits address",
+      "notes": "Deposit Address operation on the Verathos API (GET /api/deposits/address), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. Live-checked 2026-07-21: GET returns HTTP 503 {\"error\":{\"message\":\"API is in preview mode. Public access coming soon.\"}} -- documented but not yet publicly serving, so the probe is left disabled and the observation recorded rather than asserting a working surface.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/deposits/address"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-deposits-balance",
+      "kind": "subnet-api",
+      "name": "Verathos api deposits balance",
+      "notes": "Balance operation on the Verathos API (GET /api/deposits/balance), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. Live-checked 2026-07-21: GET returns HTTP 503 {\"error\":{\"message\":\"API is in preview mode. Public access coming soon.\"}} -- documented but not yet publicly serving, so the probe is left disabled and the observation recorded rather than asserting a working surface.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/deposits/balance"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-deposits-withdraw",
+      "kind": "subnet-api",
+      "name": "Verathos api deposits withdraw",
+      "notes": "Withdraw operation on the Verathos API (POST /api/deposits/withdraw), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/deposits/withdraw"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-docs-slug",
+      "kind": "subnet-api",
+      "name": "Verathos api docs slug",
+      "notes": "Get Doc operation on the Verathos API (GET /api/docs/{slug}), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. Path-parameterized on {slug}, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/docs/%7Bslug%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-models-load",
+      "kind": "subnet-api",
+      "name": "Verathos api models load",
+      "notes": "Load Model operation on the Verathos API (POST /api/models/load), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/models/load"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-models-refresh",
+      "kind": "subnet-api",
+      "name": "Verathos api models refresh",
+      "notes": "Refresh Miners operation on the Verathos API (POST /api/models/refresh), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/models/refresh"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-api-models-unload",
+      "kind": "subnet-api",
+      "name": "Verathos api models unload",
+      "notes": "Unload Model operation on the Verathos API (POST /api/models/unload), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. The spec declares no security on it; it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/api/models/unload"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-install-sh",
+      "kind": "data-artifact",
+      "name": "Verathos install sh",
+      "notes": "Install Script operation on the Verathos API (GET /install.sh), declared in the subnet's own OpenAPI spec at https://verathos.ai/openapi.json. Live-verified 2026-07-21: GET -> HTTP 200 text/plain (the published installer script). Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://verathos.ai/openapi.json"],
+      "url": "https://verathos.ai/install.sh"
     }
   ],
   "website_url": "https://verathos.ai/"
