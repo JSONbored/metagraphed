@@ -148,7 +148,7 @@
       "id": "sn-2-truthtensor-benchmark-dataset",
       "kind": "data-artifact",
       "name": "Inference Labs TruthTensor benchmark dataset",
-      "notes": "Public Inference Labs HuggingFace TruthTensor benchmark — ~88k text/parquet rows of per-run LLM decision-execution logs (model, latency/duration, token counts, action, reasoning columns) measuring instruction divergence; not gated. Published by inferencelabs, the HF-verified org of Inference Labs, the DSperse (SN2) operator (its site subnet2.inferencelabs.com and X @inference_labs are the subnet's registered surfaces).",
+      "notes": "Public Inference Labs HuggingFace TruthTensor benchmark \u2014 ~88k text/parquet rows of per-run LLM decision-execution logs (model, latency/duration, token counts, action, reasoning columns) measuring instruction divergence; not gated. Published by inferencelabs, the HF-verified org of Inference Labs, the DSperse (SN2) operator (its site subnet2.inferencelabs.com and X @inference_labs are the subnet's registered surfaces).",
       "provider": "inference-labs",
       "public_safe": true,
       "review": {
@@ -167,7 +167,13 @@
       "id": "sn-2-inference-labs-subnet-api",
       "kind": "subnet-api",
       "name": "DSperse network stats API",
-      "notes": "Public no-auth GET /stats on sn2-api.inferencelabs.com returning JSON network counters (observed: total_proofs, unique_miners, unique_validators). The official subnet-2 validator client sets DEFAULT_API_URL to https://sn2-api.inferencelabs.com on the same host.",
+      "notes": "Public no-auth GET /stats on sn2-api.inferencelabs.com returning JSON network counters (observed: total_proofs, unique_miners, unique_validators). The official subnet-2 validator client sets DEFAULT_API_URL to https://sn2-api.inferencelabs.com on the same host. Live-verified 2026-07-21: HTTP 200 JSON with total_proofs/unique_miners/unique_validators.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "inference-labs",
       "public_safe": true,
       "review": {
