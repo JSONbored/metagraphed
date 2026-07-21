@@ -212,6 +212,31 @@
         "https://subnet90.com/"
       ],
       "url": "https://api.subnet90.com/api/markets/btc-100k-2024/breakdown"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-test-next-chunk",
+      "kind": "subnet-api",
+      "name": "DegenBrain test next-chunk API",
+      "notes": "Public, unauthenticated GET /api/test/next-chunk on the SN90 DegenBrain Brain-API returning a batch of prediction statements for a validator to test (chunk_id, validator_id, chunk_size, statements[]). Declared with no security in the API's OpenAPI spec at /openapi.json. Takes a required validator_id query parameter (plus optional chunk_size) rather than a path parameter, so the base URL is fixed and the route is callable today via call_subnet_surface's query argument; probe.enabled is false because the bare URL (no validator_id) returns HTTP 422. Live-verified 2026-07-21: GET /api/test/next-chunk?validator_id=test&chunk_size=1 -> HTTP 200 application/json with a real chunk_id and statement list. No wallet/hotkey data.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://subnet90.com/",
+        "https://api.subnet90.com/openapi.json"
+      ],
+      "url": "https://api.subnet90.com/api/test/next-chunk"
     }
   ],
   "website_url": "https://subnet90.com/"
