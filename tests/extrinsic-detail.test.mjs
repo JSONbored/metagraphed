@@ -3,8 +3,10 @@ import { describe, test } from "vitest";
 import {
   dataApiFetchJson,
   loadBlockChainEvents,
+  loadChainActivity,
   loadChainEventsFeed,
   loadExtrinsicChainEvents,
+  optionalBlocksWindow,
 } from "../src/data-api-mcp.mjs";
 
 function dataApiCtx({ fetchImpl, rateLimit = null } = {}) {
@@ -444,5 +446,57 @@ describe("data-api-mcp", () => {
     assert.deepEqual(out.events, []);
     assert.equal(out.next_before, null);
     assert.equal(out.next_cursor, null);
+  });
+
+  test("optionalBlocksWindow defaults omitted or null blocks to 1000", () => {
+    assert.equal(optionalBlocksWindow({}), 1000);
+    assert.equal(optionalBlocksWindow({ blocks: null }), 1000);
+    assert.equal(optionalBlocksWindow({ blocks: undefined }), 1000);
+  });
+
+  test("optionalBlocksWindow clamps an over-cap blocks window to 5000", () => {
+    assert.equal(optionalBlocksWindow({ blocks: 99999 }), 5000);
+  });
+
+  test("optionalBlocksWindow rejects a non-positive / non-integer blocks argument", () => {
+    for (const blocks of [0, -5, 1.5]) {
+      assert.throws(
+        () => optionalBlocksWindow({ blocks }),
+        (err) =>
+          err.code === "invalid_params" &&
+          /blocks.*positive integer/.test(err.message),
+      );
+    }
+  });
+
+  test("loadChainActivity shapes the stats aggregate and forwards the window", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async (request) => {
+        const url = new URL(request.url);
+        assert.equal(url.pathname, "/api/v1/chain-events/stats");
+        assert.equal(url.searchParams.get("blocks"), "250");
+        return Response.json({
+          window_blocks: 250,
+          groups: 2,
+          activity: [
+            { pallet: "SubtensorModule", method: "set_weights", count: 42 },
+          ],
+        });
+      },
+    });
+    const out = await loadChainActivity(ctx, 250);
+    assert.equal(out.window_blocks, 250);
+    assert.equal(out.groups, 2);
+    assert.equal(out.activity[0].method, "set_weights");
+  });
+
+  test("loadChainActivity falls back when the upstream body omits optional fields", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async () => Response.json({}),
+    });
+    const out = await loadChainActivity(ctx, 1000);
+    assert.equal(out.window_blocks, 1000);
+    assert.equal(out.groups, 0);
+    assert.deepEqual(out.activity, []);
   });
 });
