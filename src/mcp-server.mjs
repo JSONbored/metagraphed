@@ -171,7 +171,7 @@ import {
   LIST_ENDPOINT_POOLS_MCP_TOOL,
   LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
   loadEndpointPoolsList,
-} from "./endpoint-pools-mcp.mjs";
+} from "./endpoint-pools-mcp.ts";
 import {
   LIST_RPC_POOLS_MCP_TOOL,
   LIST_RPC_POOLS_OUTPUT_SCHEMA,

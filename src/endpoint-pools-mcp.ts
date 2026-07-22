@@ -2,7 +2,8 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/endpoint-pools.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 
 export const ENDPOINT_POOLS_ARTIFACT = "/metagraph/endpoint-pools.json";
@@ -10,14 +11,25 @@ export const ENDPOINT_POOLS_ARTIFACT = "/metagraph/endpoint-pools.json";
 const POOL_SORT_FIELDS = API_QUERY_COLLECTIONS["endpoint-pools"].sort_fields;
 const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"];
 
-export function endpointPoolsMcpError(code, message) {
-  const error = new Error(message);
+export interface EndpointPoolsMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function endpointPoolsMcpError(
+  code: string,
+  message: string,
+): EndpointPoolsMcpError {
+  const error = new Error(message) as EndpointPoolsMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -29,7 +41,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -41,7 +57,10 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function optionalRangeBound(args, key) {
+function optionalRangeBound(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): number | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -53,7 +72,9 @@ function optionalRangeBound(args, key) {
   return value;
 }
 
-export function endpointPoolsQueryUrl(args) {
+export function endpointPoolsQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/endpoint-pools");
   const id = optionalString(args, "id");
   if (id) url.searchParams.set("id", id);
@@ -82,32 +103,64 @@ export function endpointPoolsQueryUrl(args) {
     url.searchParams.set("max_endpoint_count", String(maxEndpoint));
   }
   if (args?.limit !== undefined) {
-    if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100) {
+    const limit = args.limit;
+    if (
+      typeof limit !== "number" ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 100
+    ) {
       throw endpointPoolsMcpError(
         "invalid_params",
         "limit must be an integer between 1 and 100.",
       );
     }
-    url.searchParams.set("limit", String(args.limit));
+    url.searchParams.set("limit", String(limit));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw endpointPoolsMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
-export async function loadEndpointPoolsList(ctx, args, { readArtifact } = {}) {
+export interface EndpointPoolsListResult {
+  generated_at: unknown;
+  notes: unknown;
+  pools: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
+export async function loadEndpointPoolsList(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<EndpointPoolsListResult> {
   const queryUrl = endpointPoolsQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, ENDPOINT_POOLS_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw endpointPoolsMcpError(
         "not_found",
@@ -126,13 +179,19 @@ export async function loadEndpointPoolsList(ctx, args, { readArtifact } = {}) {
       "Endpoint pool snapshot unavailable.",
     );
   }
-  const transformed = applyQueryFilters(blob, queryUrl, "endpoint-pools", []);
+  const transformed = applyQueryFilters(
+    blob as Record<string, unknown>,
+    queryUrl,
+    "endpoint-pools",
+    [],
+  );
   if (transformed.error) {
     throw endpointPoolsMcpError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.pools) ? data.pools : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows = Array.isArray(data.pools) ? (data.pools as Row[]) : [];
   const rowLen = rows.length;
   return {
     generated_at: data.generated_at ?? null,

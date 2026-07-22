@@ -4,7 +4,7 @@
 // (overlayRpcPoolEligibility) — same order REST's liveHealthOverlay ->
 // applyQueryFilters pipeline uses, so a filter like min_eligible_count reads
 // live eligibility, not a stale baked value. Structurally mirrors
-// endpoint-pools-mcp.mjs (the generalized sibling collection), which has no
+// endpoint-pools-mcp.ts (the generalized sibling collection), which has no
 // live-overlay step of its own.
 
 import { applyQueryFilters } from "../workers/list-query.ts";

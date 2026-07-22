@@ -36,7 +36,7 @@ import { tryPostgresTier } from "../workers/postgres-tier.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
 // routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
 // list_endpoint_incidents already call for MCP parity -- not a reimplementation.
-import { loadEndpointPoolsList } from "./endpoint-pools-mcp.mjs";
+import { loadEndpointPoolsList } from "./endpoint-pools-mcp.ts";
 import { loadRpcPoolsList } from "./rpc-pools-mcp.mjs";
 import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.ts";
 // #7175: GraphQL parity for GET /api/v1/providers/{slug}/endpoints, reusing the
