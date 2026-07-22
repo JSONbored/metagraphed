@@ -14,7 +14,7 @@ import { loadSourceSnapshotsList } from "./source-snapshots-mcp.mjs";
 // #7171: GraphQL parity for GET /api/v1/gaps and /api/v1/evidence, reusing
 // list_gaps / list_evidence loaders unchanged (same artifact + list-query
 // transforms REST and MCP already use) -- not a reimplementation.
-import { loadGapsList } from "./gaps-mcp.mjs";
+import { loadGapsList } from "./gaps-mcp.ts";
 import { loadEvidenceList } from "./evidence-mcp.ts";
 // #7171: GraphQL parity for GET /api/v1/chain-events (paginated Query feed),
 // reusing loadChainEventsFeed that MCP list_chain_events already calls.

@@ -87,7 +87,7 @@ import {
   LIST_GAPS_MCP_TOOL,
   LIST_GAPS_OUTPUT_SCHEMA,
   loadGapsList,
-} from "./gaps-mcp.mjs";
+} from "./gaps-mcp.ts";
 import {
   LIST_ENRICHMENT_QUEUE_INSTRUCTIONS,
   LIST_ENRICHMENT_QUEUE_MCP_TOOL,
