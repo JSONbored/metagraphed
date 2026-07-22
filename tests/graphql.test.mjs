@@ -6796,6 +6796,46 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
   });
 });
 
+describe("graphql — global_incidents (#7643, get_global_incidents-aligned alias)", () => {
+  const emptyHealthDb = {
+    prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }),
+  };
+
+  test("serves the same ledger as incidents through the delegate, schema-stable on a cold store", async () => {
+    const { status, body } = await gql(
+      "{ global_incidents { schema_version window surfaces { id } } incidents { schema_version window } }",
+      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.global_incidents.schema_version, 1);
+    assert.equal(body.data.global_incidents.window, "7d");
+    assert.deepEqual(body.data.global_incidents.surfaces, []);
+    // Alias equivalence: identical envelope fields to incidents on the same env.
+    assert.equal(
+      body.data.global_incidents.window,
+      body.data.incidents.window,
+    );
+  });
+
+  test("an unsupported window is the same GraphQL error incidents raises", async () => {
+    const { body } = await gql(
+      '{ global_incidents(window: "99d") { schema_version } }',
+      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/window|7d/i.test(body.errors[0].message));
+    assert.equal(body.data?.global_incidents ?? null, null);
+  });
+
+  test("is priced identically to incidents", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.global_incidents,
+      FIELD_COMPLEXITY.incidents,
+    );
+  });
+});
+
 describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
