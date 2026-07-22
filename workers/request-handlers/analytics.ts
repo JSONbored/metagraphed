@@ -64,7 +64,7 @@ import {
 import {
   CHAIN_TRANSFER_PAIR_SORTS,
   buildChainTransferPairs,
-} from "../../src/chain-transfer-pairs.mjs";
+} from "../../src/chain-transfer-pairs.ts";
 import { buildChainTransfers } from "../../src/chain-transfers.mjs";
 import {
   buildChainServing,

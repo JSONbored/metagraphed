@@ -28,7 +28,7 @@ import { buildChainRegistrations } from "../src/chain-registrations.ts";
 import { buildChainStakeFlow } from "../src/chain-stake-flow.ts";
 import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
 import { buildChainWeights } from "../src/chain-weights.mjs";
-import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
+import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
 import { buildChainTransfers } from "../src/chain-transfers.mjs";
 import { buildChainCalls } from "../src/chain-analytics.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.mjs";

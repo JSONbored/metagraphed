@@ -333,7 +333,7 @@ import {
   CHAIN_TRANSFER_PAIR_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
   CHAIN_TRANSFER_PAIR_SORTS,
-} from "./chain-transfer-pairs.mjs";
+} from "./chain-transfer-pairs.ts";
 import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,

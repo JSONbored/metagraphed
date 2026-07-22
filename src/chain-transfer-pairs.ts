@@ -12,16 +12,16 @@ export const CHAIN_TRANSFER_PAIR_SORTS = ["volume", "count"];
 
 const RAO_PER_TAO = 1e9;
 
-function toNumber(value) {
+function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function toCount(value) {
+function toCount(value: unknown): number {
   return Math.max(0, Math.trunc(toNumber(value)));
 }
 
-function toBlockNumber(value) {
+function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -29,12 +29,12 @@ function toBlockNumber(value) {
   return Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
-function roundTao(value) {
+function roundTao(value: unknown): number {
   const n = toNumber(value);
   return Math.round(n * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
-function toNonNegativeTao(value) {
+function toNonNegativeTao(value: unknown): number {
   return Math.max(0, roundTao(value));
 }
 
@@ -46,13 +46,13 @@ function toNonNegativeTao(value) {
 // near-monopoly (e.g. 249990/250000 = 0.99996, with other pairs still present in
 // unique_pairs/pairs[]) must not surface as a flat 1 ("100% of volume"). A
 // genuine single-corridor window where top == total keeps a true 1.
-function roundShare(value, dp = 4) {
+function roundShare(value: number, dp = 4): number {
   const factor = 10 ** dp;
   const rounded = Math.round(value * factor) / factor;
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
-function toIso(value) {
+function toIso(value: unknown): string | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -60,11 +60,24 @@ function toIso(value) {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function normalizeSort(sort) {
-  return CHAIN_TRANSFER_PAIR_SORTS.includes(sort) ? sort : "volume";
+function normalizeSort(sort: unknown): "volume" | "count" {
+  return CHAIN_TRANSFER_PAIR_SORTS.includes(sort as string)
+    ? (sort as "volume" | "count")
+    : "volume";
 }
 
-function shapePairs(rows) {
+export interface ChainTransferPair {
+  from: string;
+  to: string;
+  volume_tao: number;
+  transfer_count: number;
+  last_block: number | null;
+  last_observed_at: string | null;
+}
+
+function shapePairs(
+  rows: Array<Record<string, unknown>> | null | undefined,
+): ChainTransferPair[] {
   return (Array.isArray(rows) ? rows : [])
     .map((row) => {
       const from = typeof row?.from === "string" ? row.from : row?.from_address;
@@ -72,12 +85,18 @@ function shapePairs(rows) {
       return { row, from, to };
     })
     .filter(
-      ({ from, to }) =>
-        typeof from === "string" &&
-        from.length > 0 &&
-        typeof to === "string" &&
-        to.length > 0 &&
-        from !== to,
+      (
+        entry,
+      ): entry is {
+        row: Record<string, unknown>;
+        from: string;
+        to: string;
+      } =>
+        typeof entry.from === "string" &&
+        entry.from.length > 0 &&
+        typeof entry.to === "string" &&
+        entry.to.length > 0 &&
+        entry.from !== entry.to,
     )
     .map(({ row, from, to }) => ({
       from,
@@ -89,13 +108,32 @@ function shapePairs(rows) {
     }));
 }
 
+export interface ChainTransferPairsResult {
+  schema_version: 1;
+  window: string | null;
+  sort: "volume" | "count";
+  observed_at: string | null;
+  total_volume_tao: number;
+  transfer_count: number;
+  unique_pairs: number;
+  pair_count: number;
+  top_pair_share: number | null;
+  pairs: ChainTransferPair[];
+}
+
 export function buildChainTransferPairs({
   window,
   sort = "volume",
   observedAt = null,
   totals = null,
   pairs = [],
-} = {}) {
+}: {
+  window?: string | null;
+  sort?: unknown;
+  observedAt?: string | null;
+  totals?: Record<string, unknown> | null;
+  pairs?: Array<Record<string, unknown>>;
+} = {}): ChainTransferPairsResult {
   const topPairs = shapePairs(pairs);
   const totalVolume = toNonNegativeTao(totals?.total_volume_tao);
   const hasFullWindowTopPairVolume = Object.prototype.hasOwnProperty.call(
@@ -107,7 +145,7 @@ export function buildChainTransferPairs({
     0,
   );
   const topPairVolume = hasFullWindowTopPairVolume
-    ? toNonNegativeTao(totals.top_pair_volume_tao)
+    ? toNonNegativeTao(totals?.top_pair_volume_tao)
     : returnedTopPairVolume;
   const topPairShare =
     totalVolume > 0 ? roundShare(topPairVolume / totalVolume) : null;

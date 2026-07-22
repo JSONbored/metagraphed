@@ -322,7 +322,7 @@ import {
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
 } from "../src/chain-alpha-volume.ts";
 import { buildChainTransfers } from "../src/chain-transfers.mjs";
-import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
+import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
 import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
   formatSubnetHyperparams,
@@ -6356,7 +6356,7 @@ export default {
 
         // GET /api/v1/chain/transfer-pairs (#4832 Tier 2): network-wide
         // sender->receiver corridor leaderboard, mirroring
-        // src/chain-transfer-pairs.mjs's loadChainTransferPairs -- the
+        // src/chain-transfer-pairs.ts's loadChainTransferPairs -- the
         // PAIR_FILTER predicate (event_kind/window/non-null/non-empty/
         // non-self/non-negative-amount) is inlined below since it's a
         // private, unexported constant there. observedAt: see chainTransfers
