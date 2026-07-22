@@ -213,7 +213,7 @@ import {
   AXON_REMOVAL_EVENT_KIND,
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
-} from "../src/account-axon-removals.mjs";
+} from "../src/account-axon-removals.ts";
 import {
   buildSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,

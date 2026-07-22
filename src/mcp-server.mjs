@@ -556,7 +556,7 @@ import {
   buildAccountAxonRemovals,
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
-} from "./account-axon-removals.mjs";
+} from "./account-axon-removals.ts";
 import {
   buildAccountPrometheus,
   PROMETHEUS_WINDOWS,

@@ -5,7 +5,7 @@ import {
   loadAccountAxonRemovals,
   AXON_REMOVAL_EVENT_KIND,
   DEFAULT_AXON_REMOVAL_WINDOW,
-} from "../src/account-axon-removals.mjs";
+} from "../src/account-axon-removals.ts";
 
 // One GROUP BY netuid row (removal count + first/last observed epoch ms).
 function row(netuid, removals, first, last) {
