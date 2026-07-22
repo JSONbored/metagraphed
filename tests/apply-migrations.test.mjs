@@ -1,4 +1,4 @@
-// Unit tests for scripts/apply-migrations.mjs's pure, DB-independent pieces
+// Unit tests for scripts/apply-migrations.ts's pure, DB-independent pieces
 // (#7230): CLI argument parsing, migration file loading/ordering, and the
 // idempotency guard that decides which migrations run on a given pass.
 // Importing the module must NOT open a DB connection (the CLI entrypoint is
@@ -12,7 +12,7 @@ import {
   loadMigrationFiles,
   parseArgs,
   pendingMigrations,
-} from "../scripts/apply-migrations.mjs";
+} from "../scripts/apply-migrations.ts";
 
 describe("parseArgs", () => {
   const savedDbUrl = process.env.DATABASE_URL;

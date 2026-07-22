@@ -20,8 +20,8 @@
 // depends on never re-executing a recorded version's SQL.
 //
 // Usage:
-//   node scripts/apply-migrations.mjs [--dry-run] [--database-url URL]
-//   node scripts/apply-migrations.mjs --bootstrap-through 0044 [--database-url URL]
+//   node scripts/apply-migrations.ts [--dry-run] [--database-url URL]
+//   node scripts/apply-migrations.ts --bootstrap-through 0044 [--database-url URL]
 //
 //   --dry-run              list what would be applied; touches nothing
 //   --database-url URL     Postgres connection string (default: $DATABASE_URL)
@@ -40,8 +40,23 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { repoRoot } from "./lib.mjs";
 
-export function parseArgs(argv) {
-  const opts = { dryRun: false, databaseUrl: process.env.DATABASE_URL };
+interface MigrationFile {
+  version: string;
+  name: string;
+  sql: string;
+}
+
+interface ApplyMigrationsOptions {
+  dryRun: boolean;
+  databaseUrl?: string;
+  bootstrapThrough?: string;
+}
+
+export function parseArgs(argv: string[]): ApplyMigrationsOptions {
+  const opts: ApplyMigrationsOptions = {
+    dryRun: false,
+    databaseUrl: process.env.DATABASE_URL,
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--dry-run") opts.dryRun = true;
@@ -53,8 +68,8 @@ export function parseArgs(argv) {
 }
 
 export async function loadMigrationFiles(
-  migrationsRoot = path.join(repoRoot, "migrations"),
-) {
+  migrationsRoot: string = path.join(repoRoot, "migrations"),
+): Promise<MigrationFile[]> {
   const names = (await fs.readdir(migrationsRoot))
     .filter((name) => name.endsWith(".sql"))
     .sort();
@@ -72,12 +87,15 @@ export async function loadMigrationFiles(
 // no-op because the second run sees every version already applied and returns
 // []. Pulled out of main() as a pure function so the "what runs on this pass"
 // decision is testable without a live database.
-export function pendingMigrations(migrations, appliedVersions) {
+export function pendingMigrations(
+  migrations: MigrationFile[],
+  appliedVersions: string[],
+): MigrationFile[] {
   const applied = new Set(appliedVersions);
   return migrations.filter((m) => !applied.has(m.version));
 }
 
-async function main() {
+async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   if (!opts.databaseUrl) {
     throw new Error(
@@ -117,7 +135,7 @@ async function main() {
         );
       }
       const toBootstrap = migrations.filter(
-        (m) => m.version <= opts.bootstrapThrough,
+        (m) => m.version <= (opts.bootstrapThrough as string),
       );
       if (opts.dryRun) {
         console.log(
@@ -181,7 +199,7 @@ async function main() {
   }
 }
 
-// Only run the apply when invoked as a CLI (node scripts/apply-migrations.mjs),
+// Only run the apply when invoked as a CLI (node scripts/apply-migrations.ts),
 // not when imported for unit testing — importing must not open a DB connection.
 if (
   process.argv[1] &&
