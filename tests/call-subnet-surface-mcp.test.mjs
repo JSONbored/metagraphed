@@ -2,7 +2,7 @@
 // execute Phase 1). Mirrors tests/surface-verify.test.mjs's
 // verify_integration MCP-tool describe block: same catalog fixture shape,
 // same fetch-mock-with-try/finally-restore pattern, same DNS-rebinding-mock
-// approach for the SSRF guard. src/call-subnet-surface.mjs's own unit tests
+// approach for the SSRF guard. src/call-subnet-surface.ts's own unit tests
 // (tests/call-subnet-surface.test.mjs) exhaustively cover the fetch/
 // redirect/body-capping logic in isolation; this file only proves the tool
 // wiring (surface resolution, auth_required/probe.enabled gating, arg

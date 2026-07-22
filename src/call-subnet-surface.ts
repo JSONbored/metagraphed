@@ -23,12 +23,14 @@ const MAX_REDIRECTS = 5;
 // misbehaving/adversarial upstream can't use this tool as a bandwidth sink.
 export const MAX_RESPONSE_BYTES = 262_144;
 
+type ContentTypeKind = "json" | "text" | "binary" | "unknown";
+
 // JSON-ish types are parsed and returned as structured data; other text
 // types are returned as a capped string. Anything else (images, video,
 // octet-stream, ...) is rejected outright per #7014's own scope ("reject/
 // truncate unexpected binary") -- there is no sane way to return binary
 // content through a JSON-RPC tool result body anyway.
-function classifyContentType(contentType) {
+function classifyContentType(contentType: string | null): ContentTypeKind {
   const type = (contentType || "").split(";")[0].trim().toLowerCase();
   if (!type) return "unknown";
   if (type === "application/json" || type.endsWith("+json")) return "json";
@@ -42,7 +44,10 @@ function classifyContentType(contentType) {
   return "binary";
 }
 
-function buildRequestUrl(baseUrl, query) {
+function buildRequestUrl(
+  baseUrl: string,
+  query: Record<string, string | number | boolean> | undefined,
+): string {
   const url = new URL(baseUrl);
   if (query && typeof query === "object") {
     for (const [key, value] of Object.entries(query)) {
@@ -53,30 +58,94 @@ function buildRequestUrl(baseUrl, query) {
   return url.toString();
 }
 
-/**
- * @typedef {object} CallSubnetSurfaceCredential
- * @property {"header" | "query" | "cookie"} location Where to place the credential -- mirrors the surface's own `auth.location`. The CALLER (call_subnet_surface's tool handler) is responsible for validating the surface's auth.scheme is generically supported (bearer/api-key) and auth.location/auth.name are both present BEFORE ever passing this; this function only places the value, it does not validate eligibility.
- * @property {string} name Header name, query-parameter name, or cookie name -- the surface's own `auth.name`.
- * @property {string} value The credential value exactly as supplied by the caller, inserted verbatim (never reformatted against `auth.value_format` -- the caller is expected to have already formatted it, e.g. "Bearer <token>").
- */
+export interface CallSubnetSurfaceCredential {
+  // Where to place the credential -- mirrors the surface's own
+  // `auth.location`. The CALLER (call_subnet_surface's tool handler) is
+  // responsible for validating the surface's auth.scheme is generically
+  // supported (bearer/api-key) and auth.location/auth.name are both present
+  // BEFORE ever passing this; this function only places the value, it does
+  // not validate eligibility.
+  location: "header" | "query" | "cookie";
+  // Header name, query-parameter name, or cookie name -- the surface's own
+  // `auth.name`.
+  name: string;
+  // The credential value exactly as supplied by the caller, inserted
+  // verbatim (never reformatted against `auth.value_format` -- the caller is
+  // expected to have already formatted it, e.g. "Bearer <token>").
+  value: string;
+}
 
-/**
- * @typedef {object} CallSubnetSurfaceOptions
- * @property {Record<string, string | number | boolean>} [query] Query params merged onto the effective base URL.
- * @property {string} [path] MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER (call_subnet_surface's tool handler) is responsible for confirming this path is declared in the surface's captured schema via matchSchemaOperation BEFORE ever passing it here; this function does not validate it. When present, the request URL is this surface's own origin (never the OpenAPI document's own `servers[]` host) joined with this path, not `surface.url`.
- * @property {string} [method] Overrides the surface's probe-derived method (Phase 1 default). Ignored unless `path` is also set.
- * @property {string} [body] MCP execute Phase 2c (#7675) request body, already serialized to a string by the caller -- this function never serializes or validates it, only sends it as-is. Ignored unless `path` is also set; GET/HEAD never send a body regardless.
- * @property {string} [contentType] The `content-type` header to send alongside `body`. Ignored when `body` is not set.
- * @property {CallSubnetSurfaceCredential} [credential] MCP execute Phase 3a (#7686) caller-supplied credential to attach to the request. Unlike `body`/`method`, this applies regardless of whether `path` is set -- it attaches to whichever URL is already being called (the surface's own curated `url`, Phase 1, or a schema-validated `path` override, Phase 2), it never changes URL/path resolution itself.
- * @property {typeof fetch} [fetchImpl] Injectable fetch (tests; also threaded into isUnsafeUrl's own DoH lookups).
- * @property {(url: string) => Promise<boolean>} isUnsafeUrl Required -- the same DNS-rebinding-aware guard verify_integration uses (workerResolvedUrlSafetyGuard).
- */
+export interface CallSubnetSurfaceOptions {
+  // Query params merged onto the effective base URL.
+  query?: Record<string, string | number | boolean>;
+  // MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER
+  // (call_subnet_surface's tool handler) is responsible for confirming this
+  // path is declared in the surface's captured schema via matchSchemaOperation
+  // BEFORE ever passing it here; this function does not validate it. When
+  // present, the request URL is this surface's own origin (never the OpenAPI
+  // document's own `servers[]` host) joined with this path, not `surface.url`.
+  path?: string;
+  // Overrides the surface's probe-derived method (Phase 1 default). Ignored
+  // unless `path` is also set.
+  method?: string;
+  // MCP execute Phase 2c (#7675) request body, already serialized to a string
+  // by the caller -- this function never serializes or validates it, only
+  // sends it as-is. Ignored unless `path` is also set; GET/HEAD never send a
+  // body regardless.
+  body?: string;
+  // The `content-type` header to send alongside `body`. Ignored when `body`
+  // is not set.
+  contentType?: string;
+  // MCP execute Phase 3a (#7686) caller-supplied credential to attach to the
+  // request. Unlike `body`/`method`, this applies regardless of whether
+  // `path` is set -- it attaches to whichever URL is already being called
+  // (the surface's own curated `url`, Phase 1, or a schema-validated `path`
+  // override, Phase 2), it never changes URL/path resolution itself.
+  credential?: CallSubnetSurfaceCredential;
+  // Injectable fetch (tests; also threaded into isUnsafeUrl's own DoH lookups).
+  fetchImpl?: typeof fetch;
+  // Required -- the same DNS-rebinding-aware guard verify_integration uses
+  // (workerResolvedUrlSafetyGuard).
+  isUnsafeUrl: (url: string) => Promise<boolean>;
+}
 
-/**
- * @param {{url: string, probe?: {method?: string, timeout_ms?: number}}} surface A catalog-resolved surface -- never a caller-supplied raw URL.
- * @param {CallSubnetSurfaceOptions} options
- */
-export async function callSubnetSurface(surface, options) {
+export interface SubnetSurfaceRef {
+  url: string;
+  probe?: { method?: string; timeout_ms?: number };
+}
+
+export interface CallSubnetSurfaceSuccess {
+  ok: true;
+  status_code: number;
+  content_type: string | null;
+  latency_ms: number;
+  url: string;
+  body: unknown;
+  truncated: boolean;
+  parse_error?: string;
+}
+
+export interface CallSubnetSurfaceFailure {
+  ok: false;
+  error: string;
+  status_code?: number;
+  content_type?: string | null;
+  latency_ms?: number;
+  unsafe_url?: boolean;
+  private_redirect_blocked?: boolean;
+  redirect_target?: string;
+  error_class?: string;
+  path_origin_mismatch?: boolean;
+}
+
+export type CallSubnetSurfaceResult =
+  CallSubnetSurfaceSuccess | CallSubnetSurfaceFailure;
+
+// A catalog-resolved surface -- never a caller-supplied raw URL.
+export async function callSubnetSurface(
+  surface: SubnetSurfaceRef,
+  options: CallSubnetSurfaceOptions,
+): Promise<CallSubnetSurfaceResult> {
   const {
     query,
     path,
@@ -94,7 +163,7 @@ export async function callSubnetSurface(surface, options) {
   // becomes part of the query object buildRequestUrl() merges below, and a
   // header/cookie-location credential is ready to hand to safetyCheckedFetch.
   let effectiveQuery = query;
-  const extraHeaders = {};
+  const extraHeaders: Record<string, string> = {};
   if (credential) {
     if (credential.location === "query") {
       effectiveQuery = {
@@ -117,7 +186,7 @@ export async function callSubnetSurface(surface, options) {
   // tool handler's own POST/PUT validation path ever sets requestBody.
   const canHaveBody = path && (method === "POST" || method === "PUT");
   const timeoutMs = Number.isFinite(surface?.probe?.timeout_ms)
-    ? surface.probe.timeout_ms
+    ? (surface.probe?.timeout_ms as number)
     : 10_000;
   let baseUrl = surface.url;
   if (path) {
@@ -172,13 +241,13 @@ export async function callSubnetSurface(surface, options) {
   }
 
   const raw = await readBodyCapped(response, MAX_RESPONSE_BYTES);
-  let body = raw.text;
-  let parseError = null;
+  let body: unknown = raw.text;
+  let parseError: string | null = null;
   if (kind === "json" && raw.text) {
     try {
       body = JSON.parse(raw.text);
     } catch (err) {
-      parseError = err.message;
+      parseError = (err as Error).message;
     }
   }
 
@@ -194,13 +263,14 @@ export async function callSubnetSurface(surface, options) {
   };
 }
 
-/**
- * Reads a Response body up to `maxBytes`, decoding as UTF-8 text. Returns
- * `{text, truncated}` rather than throwing on an oversized body -- a
- * truncated response is still useful to an agent, unlike an outright
- * failure.
- */
-async function readBodyCapped(response, maxBytes) {
+// Reads a Response body up to `maxBytes`, decoding as UTF-8 text. Returns
+// `{text, truncated}` rather than throwing on an oversized body -- a
+// truncated response is still useful to an agent, unlike an outright
+// failure.
+async function readBodyCapped(
+  response: Response,
+  maxBytes: number,
+): Promise<{ text: string; truncated: boolean }> {
   if (!response.body) {
     const text = await response.text();
     return { text, truncated: false };
@@ -232,35 +302,41 @@ async function readBodyCapped(response, maxBytes) {
   return { text, truncated };
 }
 
-/**
- * Decides whether a concrete request `path` + `method` is declared in a
- * surface's captured OpenAPI document (metagraphed#7673, MCP execute Phase
- * 2a). Pure and synchronous -- no fetch, no I/O -- the gate `call_subnet_surface`
- * Phase 2 (#7674) runs before it will ever construct a request URL from a
- * caller-supplied path, so a surface's schema is the only thing that can
- * make a path/method combination callable, never a guess.
- *
- * A declared path template's `{param}` segments (OpenAPI's own syntax, e.g.
- * "/users/{id}") each match exactly one non-empty concrete path segment, any
- * value; every other segment must match literally. The template and the
- * concrete path must have the same segment count -- no partial/prefix
- * matches. Method comparison is case-insensitive on the `method` argument;
- * OpenAPI's own path-item keys are always lowercase (get/post/put/...), so
- * the caller-supplied method is lowercased before lookup.
- *
- * Returns `null` (never throws) when: no declared path template matches the
- * concrete path's shape, a template matches but doesn't declare an operation
- * for the requested method, or `document.paths` is missing/empty/malformed
- * -- callers can treat `null` as "reject the request" uniformly. Only throws
- * for genuinely malformed input (`path` not starting with "/", or a missing
- * `method`), never for a legitimate "not found in this schema" outcome.
- *
- * @param {{paths?: Record<string, Record<string, object>>}} document The `document` field `get_api_schema` returns for this surface.
- * @param {string} path Concrete request path, e.g. "/users/123" -- never a template.
- * @param {string} method HTTP method, case-insensitive (e.g. "POST" or "post").
- * @returns {{operation: object, matchedTemplate: string} | null}
- */
-export function matchSchemaOperation(document, path, method) {
+export interface SchemaOperationMatch {
+  operation: Record<string, unknown>;
+  matchedTemplate: string;
+}
+
+// Decides whether a concrete request `path` + `method` is declared in a
+// surface's captured OpenAPI document (metagraphed#7673, MCP execute Phase
+// 2a). Pure and synchronous -- no fetch, no I/O -- the gate `call_subnet_surface`
+// Phase 2 (#7674) runs before it will ever construct a request URL from a
+// caller-supplied path, so a surface's schema is the only thing that can
+// make a path/method combination callable, never a guess.
+//
+// A declared path template's `{param}` segments (OpenAPI's own syntax, e.g.
+// "/users/{id}") each match exactly one non-empty concrete path segment, any
+// value; every other segment must match literally. The template and the
+// concrete path must have the same segment count -- no partial/prefix
+// matches. Method comparison is case-insensitive on the `method` argument;
+// OpenAPI's own path-item keys are always lowercase (get/post/put/...), so
+// the caller-supplied method is lowercased before lookup.
+//
+// Returns `null` (never throws) when: no declared path template matches the
+// concrete path's shape, a template matches but doesn't declare an operation
+// for the requested method, or `document.paths` is missing/empty/malformed
+// -- callers can treat `null` as "reject the request" uniformly. Only throws
+// for genuinely malformed input (`path` not starting with "/", or a missing
+// `method`), never for a legitimate "not found in this schema" outcome.
+//
+// `document` is the `document` field `get_api_schema` returns for this
+// surface; `path` is a concrete request path, e.g. "/users/123" -- never a
+// template; `method` is an HTTP method, case-insensitive (e.g. "POST" or "post").
+export function matchSchemaOperation(
+  document: unknown,
+  path: string,
+  method: string,
+): SchemaOperationMatch | null {
   if (typeof path !== "string" || !path.startsWith("/")) {
     throw new Error(
       'matchSchemaOperation: path must be a string starting with "/".',
@@ -269,20 +345,25 @@ export function matchSchemaOperation(document, path, method) {
   if (typeof method !== "string" || !method) {
     throw new Error("matchSchemaOperation: method must be a non-empty string.");
   }
-  const paths = document?.paths;
+  const paths = (document as { paths?: unknown } | null | undefined)?.paths;
   if (!paths || typeof paths !== "object") return null;
 
   const requestSegments = splitPathSegments(path);
   const normalizedMethod = method.toLowerCase();
 
-  for (const [template, pathItem] of Object.entries(paths)) {
+  for (const [template, pathItem] of Object.entries(
+    paths as Record<string, unknown>,
+  )) {
     if (!pathItem || typeof pathItem !== "object") continue;
     if (!segmentsMatch(splitPathSegments(template), requestSegments)) {
       continue;
     }
-    const operation = pathItem[normalizedMethod];
+    const operation = (pathItem as Record<string, unknown>)[normalizedMethod];
     if (!operation || typeof operation !== "object") continue;
-    return { operation, matchedTemplate: template };
+    return {
+      operation: operation as Record<string, unknown>,
+      matchedTemplate: template,
+    };
   }
   return null;
 }
@@ -291,7 +372,7 @@ export function matchSchemaOperation(document, path, method) {
 // bare path, but this keeps a stray "?x=1" from corrupting the last segment.
 // Empty segments (leading/trailing/doubled slashes) are dropped on both
 // sides before comparison, so "/a//b" and "/a/b" are treated the same way.
-function splitPathSegments(rawPath) {
+function splitPathSegments(rawPath: string): string[] {
   return rawPath
     .split("?")[0]
     .split("#")[0]
@@ -299,7 +380,10 @@ function splitPathSegments(rawPath) {
     .filter((segment) => segment.length > 0);
 }
 
-function segmentsMatch(templateSegments, requestSegments) {
+function segmentsMatch(
+  templateSegments: string[],
+  requestSegments: string[],
+): boolean {
   if (templateSegments.length !== requestSegments.length) return false;
   return templateSegments.every((templateSegment, index) => {
     if (templateSegment.startsWith("{") && templateSegment.endsWith("}")) {
@@ -309,15 +393,22 @@ function segmentsMatch(templateSegments, requestSegments) {
   });
 }
 
-/**
- * Mirrors src/health-probe-core.mjs's probeUrl redirect-revalidation loop
- * (manual redirect handling, isUnsafeUrl re-checked on every hop, 5-hop
- * cap) but returns the live Response on success instead of discarding the
- * body -- see this module's own header for why that isn't done by
- * refactoring probeUrl itself.
- */
+interface SafetyCheckedFetchOk {
+  ok: true;
+  response: Response;
+  latencyMs: number;
+  redirectTarget: string | null;
+}
+
+type SafetyCheckedFetchResult = SafetyCheckedFetchOk | CallSubnetSurfaceFailure;
+
+// Mirrors src/health-probe-core.mjs's probeUrl redirect-revalidation loop
+// (manual redirect handling, isUnsafeUrl re-checked on every hop, 5-hop
+// cap) but returns the live Response on success instead of discarding the
+// body -- see this module's own header for why that isn't done by
+// refactoring probeUrl itself.
 async function safetyCheckedFetch(
-  url,
+  url: string,
   {
     method,
     fetchImpl,
@@ -327,8 +418,17 @@ async function safetyCheckedFetch(
     contentType,
     extraHeaders,
     redirectCount = 0,
+  }: {
+    method: string;
+    fetchImpl: typeof fetch;
+    isUnsafeUrl: (url: string) => Promise<boolean>;
+    timeoutMs: number;
+    body?: string;
+    contentType?: string;
+    extraHeaders?: Record<string, string>;
+    redirectCount?: number;
   },
-) {
+): Promise<SafetyCheckedFetchResult> {
   if (await isUnsafeUrl(url)) {
     return { ok: false, error: "unsafe URL", unsafe_url: true };
   }
@@ -399,8 +499,8 @@ async function safetyCheckedFetch(
   } catch (error) {
     return {
       ok: false,
-      error: error.message,
-      error_class: error.name,
+      error: (error as Error).message,
+      error_class: (error as Error).name,
       latency_ms: Math.round(performance.now() - started),
     };
   } finally {

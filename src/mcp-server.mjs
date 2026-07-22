@@ -414,7 +414,7 @@ import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
 import {
   callSubnetSurface,
   matchSchemaOperation,
-} from "./call-subnet-surface.mjs";
+} from "./call-subnet-surface.ts";
 import {
   ECONOMIC_LEADERBOARD_BOARDS,
   formatLeaderboards,

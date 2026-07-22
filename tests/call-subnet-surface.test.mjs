@@ -4,7 +4,7 @@ import {
   callSubnetSurface,
   matchSchemaOperation,
   MAX_RESPONSE_BYTES,
-} from "../src/call-subnet-surface.mjs";
+} from "../src/call-subnet-surface.ts";
 
 const SAFE = () => false;
 const UNSAFE = () => true;
