@@ -327,7 +327,7 @@ import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
   formatSubnetHyperparams,
   buildSubnetHyperparams,
-} from "../src/subnet-hyperparams.mjs";
+} from "../src/subnet-hyperparams.ts";
 import {
   hyperparamsHash,
   buildSubnetHyperparamsHistory,
@@ -3304,7 +3304,7 @@ async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}) {
 // above: a subnet_hyperparams read failure degrades the immunity-window
 // fields to omitted (formatNeuron's immunityPeriod-undefined no-op) rather
 // than failing the neurons/metagraph response. Same null-guard as
-// subnet-hyperparams.mjs's own nonNegativeInt -- Number(null) is 0, not
+// subnet-hyperparams.ts's own nonNegativeInt -- Number(null) is 0, not
 // NaN -- written inline rather than imported since each domain file owns its
 // small D1/Postgres cell-coercion copies (see that file's own header).
 async function loadSubnetImmunityPeriod(sql, netuid) {
@@ -8163,7 +8163,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/hyperparameters (#4832 gap-closure,
         // Phase B): latest-only. Column list matches
-        // SUBNET_HYPERPARAMS_INSERT_COLUMNS in src/subnet-hyperparams.mjs
+        // SUBNET_HYPERPARAMS_INSERT_COLUMNS in src/subnet-hyperparams.ts
         // (every INSERT column except netuid, itself already known from the
         // WHERE clause) -- D1's own equivalent read (loadSubnetHyperparams)
         // is retired alongside D1's subnet_hyperparams write path.

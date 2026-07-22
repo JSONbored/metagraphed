@@ -6,6 +6,8 @@
 // Postgres write path (workers/data-api.mjs's handleSubnetHyperparamsSync)
 // and read by the serving route (#4307/1.4).
 
+type Row = Record<string, unknown>;
+
 export const SUBNET_HYPERPARAMS_INSERT_COLUMNS = [
   "netuid",
   "kappa_ratio",
@@ -48,7 +50,7 @@ export const SUBNET_HYPERPARAMS_INSERT_COLUMNS = [
 // Same D1-cell coercion helpers as src/metagraph-neurons.ts (each domain file
 // owns its own small copies rather than a shared util — see formatNeuron's
 // header comment for why the null-guards matter: Number(null) is 0, not NaN).
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -56,21 +58,21 @@ function toIso(ms) {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function nullableNumber(value) {
+function nullableNumber(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function nonNegativeInt(value) {
+function nonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function round(value, dp) {
+function round(value: number | null, dp: number): number | null {
   if (value == null || !Number.isFinite(value)) return null;
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
@@ -81,16 +83,18 @@ function round(value, dp) {
 // rounded to 9dp there
 // too) — round again here as defense-in-depth against a future writer that
 // skips that rounding, not because this path expects dirty data.
-function ratio(value) {
+function ratio(value: unknown): number | null {
   return round(nullableNumber(value), 9);
 }
 
 // D1 0/1 INTEGER -> real boolean, matching toD1Flag in metagraph-neurons.ts.
-function toD1Flag(value) {
+function toD1Flag(value: unknown): boolean {
   return Number(value) === 1;
 }
 
-export function formatSubnetHyperparams(row) {
+export function formatSubnetHyperparams(
+  row: Row | null | undefined,
+): Row | null {
   if (!row || typeof row !== "object") return null;
   return {
     kappa_ratio: ratio(row.kappa_ratio),
@@ -138,7 +142,10 @@ export function formatSubnetHyperparams(row) {
 // GET /api/v1/subnets/{netuid}/hyperparameters (#4307/1.4). Cold/absent
 // snapshot -> 200 with hyperparameters:null, consistent with handleNeuron and
 // the other live D1 tiers (never 404 on a cold store).
-export function buildSubnetHyperparams(row, netuid) {
+export function buildSubnetHyperparams(
+  row: Row | null | undefined,
+  netuid: unknown,
+): Row {
   return {
     schema_version: 1,
     netuid,

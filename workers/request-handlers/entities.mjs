@@ -66,7 +66,7 @@ import {
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
 } from "../../src/top-holders.mjs";
-import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
+import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.ts";
 import {
   buildSubnetYield,
@@ -4015,7 +4015,7 @@ export async function handleSubnetRecycled(request, env, netuid) {
 
 // GET /api/v1/subnets/{netuid}/burn (#6321): the live current registration/
 // burn cost — the dynamic price between min_burn_tao/max_burn_tao's static
-// bounds (subnet-hyperparams.mjs). Same live-RPC + KV-cache + rate-limit
+// bounds (subnet-hyperparams.ts). Same live-RPC + KV-cache + rate-limit
 // shape as handleSubnetRecycled just above (a sibling storage-map read, not
 // the same underlying value).
 export async function handleSubnetBurn(request, env, netuid) {

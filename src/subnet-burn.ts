@@ -1,7 +1,7 @@
 // Live current registration (recycle/burn) cost for one subnet (#6321), via
 // RPC. Shared by GET /api/v1/subnets/{netuid}/burn.
 //
-// min_burn_tao/max_burn_tao (src/subnet-hyperparams.mjs, from the
+// min_burn_tao/max_burn_tao (src/subnet-hyperparams.ts, from the
 // subnet_hyperparams D1/Postgres tier) are the static floor/ceiling — the
 // actual current price sits anywhere between the two, moving with recent
 // registration activity (an auction-like mechanism), and isn't derivable

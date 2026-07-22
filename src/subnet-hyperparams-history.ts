@@ -2,7 +2,7 @@
 // subnet_hyperparams changes against the last recorded hash per netuid and
 // store append-only rows, served as a paginated per-subnet timeline.
 // Forward-only for now — a full backfill needs archive-node state_call at
-// past block heights (#2111). Reuses subnet-hyperparams.mjs's field mapping
+// past block heights (#2111). Reuses subnet-hyperparams.ts's field mapping
 // (formatSubnetHyperparams) rather than re-deriving it, since a history
 // entry's hyperparameters are the same 33-field shape as the latest-only
 // route already formats.
@@ -19,7 +19,7 @@
 // retirement note (#4772) and workers/request-handlers/entities.mjs's
 // handleSubnetHyperparamsHistory.
 
-import { formatSubnetHyperparams } from "./subnet-hyperparams.mjs";
+import { formatSubnetHyperparams } from "./subnet-hyperparams.ts";
 
 type Row = Record<string, unknown>;
 
