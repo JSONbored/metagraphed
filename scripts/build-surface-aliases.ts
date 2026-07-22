@@ -16,9 +16,11 @@ import {
 } from "../src/surface-aliases.ts";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 
+type Row = Record<string, unknown>;
+
 const dryRun = process.argv.includes("--dry-run");
 
-function wranglerBin() {
+function wranglerBin(): string {
   return (
     process.env.METAGRAPH_WRANGLER_BIN ||
     path.join(
@@ -30,7 +32,7 @@ function wranglerBin() {
   );
 }
 
-function getRemoteR2Json(bucketName, key) {
+function getRemoteR2Json(bucketName: string, key: string): Row | null {
   const result = spawnSync(
     wranglerBin(),
     ["r2", "object", "get", `${bucketName}/${key}`, "--remote", "--pipe"],
@@ -44,7 +46,7 @@ function getRemoteR2Json(bucketName, key) {
   }
 }
 
-async function readStagedJson(relativePath) {
+async function readStagedJson(relativePath: string): Promise<Row | null> {
   try {
     return await readJson(artifactFilePath(relativePath));
   } catch {
@@ -52,14 +54,14 @@ async function readStagedJson(relativePath) {
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   const placeholder = await readStagedJson(SURFACE_ALIASES_RELATIVE_PATH);
   if (!placeholder) {
     console.log("build-surface-aliases: no staged placeholder; skipping.");
     return;
   }
 
-  let stagedManifest;
+  let stagedManifest: Row | null;
   try {
     stagedManifest = await readJson(
       path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
@@ -67,7 +69,7 @@ async function main() {
   } catch {
     stagedManifest = null;
   }
-  const bucket = stagedManifest?.bucket_name;
+  const bucket = stagedManifest?.bucket_name as string | undefined;
   if (!bucket) {
     console.log(
       "build-surface-aliases: no staged r2-manifest bucket; leaving placeholder.",
@@ -91,28 +93,29 @@ async function main() {
 
   const aliases = buildSurfaceAliasArtifact({
     contractVersion: placeholder.contract_version,
-    currentSurfaces: currentSurfaces?.surfaces || [],
+    currentSurfaces: (currentSurfaces?.surfaces as Row[]) || [],
     generatedAt: placeholder.generated_at,
     previousAliases,
-    previousSurfaces: previousSurfaces?.surfaces || [],
+    previousSurfaces: (previousSurfaces?.surfaces as Row[]) || [],
   });
+  const summary = aliases.summary as Row;
 
   if (dryRun) {
     console.log(
       "build-surface-aliases (dry-run):",
-      JSON.stringify(aliases.summary, null, 2),
+      JSON.stringify(summary, null, 2),
     );
     return;
   }
 
   await writeJson(artifactFilePath(SURFACE_ALIASES_RELATIVE_PATH), aliases);
   console.log(
-    `build-surface-aliases: wrote ${aliases.summary.alias_count} deprecated surface alias(es).`,
+    `build-surface-aliases: wrote ${summary.alias_count} deprecated surface alias(es).`,
   );
 }
 
 main().catch((error) => {
   console.warn(
-    `build-surface-aliases: failed, leaving the placeholder in place: ${error?.message ?? error}`,
+    `build-surface-aliases: failed, leaving the placeholder in place: ${(error as Error)?.message ?? error}`,
   );
 });
