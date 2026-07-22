@@ -6,7 +6,7 @@ import {
   REGISTRATION_EVENT_KIND,
   SUBNET_REGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
-} from "../src/subnet-registrations.mjs";
+} from "../src/subnet-registrations.ts";
 
 describe("buildSubnetRegistrations", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {
