@@ -1,5 +1,5 @@
 // Changelog-feed loader for MCP parity on GET /api/v1/feeds/* (#5592). Reuses
-// the exact item builders + filters the REST feed route uses (src/feeds.mjs)
+// the exact item builders + filters the REST feed route uses (src/feeds.ts)
 // so `get_feed` never diverges from what an RSS/Atom/JSON Feed reader would
 // see -- it just returns the items as plain JSON instead of a feed document,
 // since JSON is the natural shape for a tool response (RSS/Atom are XML feed-
@@ -22,7 +22,7 @@ import {
   parseSinceParam,
   registryItems,
   sortAndCap,
-} from "./feeds.mjs";
+} from "./feeds.ts";
 import { loadChangelog } from "./changelog-mcp.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 

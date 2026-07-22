@@ -280,7 +280,7 @@ import { McpSessionHub } from "./mcp-session-hub.ts";
 import { AlerterHub } from "./alerter-hub.ts";
 import { SubnetStatusHub } from "./subnet-status-hub.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
-import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
+import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.ts";
 import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.mjs";
 import { handleIconProxy } from "../src/icon-proxy.mjs";

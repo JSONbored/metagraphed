@@ -40,37 +40,59 @@ import {
   ifNoneMatchSatisfied,
   weakEtag,
 } from "../workers/http.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 
 const SITE_URL = "https://metagraph.sh";
 const API_URL = "https://api.metagraph.sh";
 export const FEED_MAX_ITEMS = 50;
 const FEED_CACHE_SECONDS = 600;
 
-const FEED_CONTENT_TYPES = {
+type FeedFormat = "json" | "rss" | "atom";
+
+const FEED_CONTENT_TYPES: Record<FeedFormat, string> = {
   json: "application/feed+json; charset=utf-8",
   rss: "application/rss+xml; charset=utf-8",
   atom: "application/atom+xml; charset=utf-8",
 };
+
+export interface FeedItem {
+  id: string;
+  url: string;
+  title: string;
+  summary: string;
+  timestamp: string;
+  tags: string[];
+}
+
+interface FeedMeta {
+  title: string;
+  description: string;
+  homeUrl: string;
+  feedUrl: string;
+  updated: string;
+}
 
 // ── text helpers ────────────────────────────────────────────────────────────
 
 // XML 1.0 doesn't allow most C0 control chars even when escaped; strip them. The
 // served artifacts are already build-sanitized (sanitizeChainText), so this is
 // defense-in-depth on the public surface, not the primary trust boundary.
-function stripControl(value) {
+function stripControl(value: unknown): string {
   // Drop XML-illegal C0 control chars (keep tab/newline/CR) without a
   // control-char regexp (eslint no-control-regex). Served data is already
   // build-sanitized; this is defense-in-depth on the public surface.
   let out = "";
   for (const ch of String(value ?? "")) {
     const code = ch.codePointAt(0);
-    if (code < 32 && code !== 9 && code !== 10 && code !== 13) continue;
+    if (code != null && code < 32 && code !== 9 && code !== 10 && code !== 13) {
+      continue;
+    }
     out += ch;
   }
   return out;
 }
 
-function escapeXml(value) {
+function escapeXml(value: unknown): string {
   return stripControl(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -79,7 +101,7 @@ function escapeXml(value) {
     .replace(/'/g, "&apos;");
 }
 
-function clamp(value, max = 500) {
+function clamp(value: unknown, max = 500): string {
   const s = stripControl(value).trim();
   // Measure (and truncate) by code points, not UTF-16 code units: a plain
   // slice() can sever a non-BMP character (e.g. an emoji) straddling the
@@ -93,7 +115,7 @@ function clamp(value, max = 500) {
 }
 
 // Accept an ISO string or epoch-ms; return a normalized ISO string or null.
-function toIso(value) {
+function toIso(value: unknown): string | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
     // toISOString() throw a RangeError, which would 500 the whole feed on a
@@ -118,7 +140,7 @@ function toIso(value) {
   return null;
 }
 
-function toRfc822(iso) {
+function toRfc822(iso: unknown): string | null {
   if (iso == null) return null;
   const ms = Date.parse(String(iso));
   if (!Number.isFinite(ms)) return null;
@@ -131,14 +153,18 @@ function toRfc822(iso) {
 // (the diffSubnets shape), so render the actual name change instead of dropping
 // it; added/removed entries carry `name`. Falls back to the bare verb when no
 // names are present (e.g. a legacy/bare `{ netuid }` entry).
-function subnetRenameSide(value) {
+function subnetRenameSide(value: unknown): string {
   return value == null ? "?" : clamp(String(value).trim(), 60) || "?";
 }
 
-function subnetChangeText(n, change, entry) {
+function subnetChangeText(
+  n: number,
+  change: string,
+  entry: Record<string, unknown> | null,
+): { title: string; summary: string } {
   if (change === "renamed" && (entry?.before != null || entry?.after != null)) {
-    const before = subnetRenameSide(entry.before);
-    const after = subnetRenameSide(entry.after);
+    const before = subnetRenameSide(entry?.before);
+    const after = subnetRenameSide(entry?.after);
     return {
       title: `Subnet ${n} renamed — ${before} → ${after}`,
       summary: `Subnet ${n} renamed from ${before} to ${after} in the registry.`,
@@ -153,20 +179,31 @@ function subnetChangeText(n, change, entry) {
 
 // Registry feed: the latest changelog window's subnet + artifact + coverage
 // changes. `netuid` (optional) filters to one subnet.
-export function registryItems(changelog, netuid) {
-  const at = toIso(changelog?.generated_at) || new Date().toISOString();
-  const items = [];
+export function registryItems(
+  changelog: unknown,
+  netuid?: number | null,
+): FeedItem[] {
+  const c = (changelog ?? {}) as Record<string, unknown>;
+  const at = toIso(c.generated_at) || new Date().toISOString();
+  const items: FeedItem[] = [];
 
   // changelog.subnets is { added: [...], removed: [...], renamed: [...] }.
   // added/removed entries are { netuid, name, slug }; renamed entries are
   // { netuid, before, after } (see scripts/changelog.mjs diffSubnets).
-  const subnets = changelog?.subnets || {};
+  const subnets = (c.subnets ?? {}) as Record<string, unknown>;
   for (const change of ["added", "removed", "renamed"]) {
-    for (const entry of subnets[change] || []) {
-      const n = typeof entry === "number" ? entry : entry?.netuid;
+    const entries = (subnets[change] as unknown[]) || [];
+    for (const entry of entries) {
+      const n =
+        typeof entry === "number"
+          ? entry
+          : (entry as Record<string, unknown> | undefined)?.netuid;
       if (typeof n !== "number") continue;
       if (netuid != null && n !== netuid) continue;
-      const entryObj = typeof entry === "object" && entry ? entry : null;
+      const entryObj =
+        typeof entry === "object" && entry
+          ? (entry as Record<string, unknown>)
+          : null;
       const { title, summary } = subnetChangeText(n, change, entryObj);
       items.push({
         id: `registry:subnet:${n}:${change}:${at}`,
@@ -182,11 +219,17 @@ export function registryItems(changelog, netuid) {
   // Per-subnet feeds are subnet-scoped only; the global registry feed also lists
   // artifact + coverage deltas. changelog.artifacts is { added, modified, removed }.
   if (netuid == null) {
-    const artifacts = changelog?.artifacts || {};
-    const verb = { added: "Added", modified: "Updated", removed: "Removed" };
+    const artifacts = (c.artifacts ?? {}) as Record<string, unknown>;
+    const verb: Record<string, string> = {
+      added: "Added",
+      modified: "Updated",
+      removed: "Removed",
+    };
     for (const change of ["added", "modified", "removed"]) {
-      for (const a of artifacts[change] || []) {
-        const path = a?.path || a?.artifact_path || a?.id;
+      const entries = (artifacts[change] as unknown[]) || [];
+      for (const a of entries) {
+        const aObj = (a ?? {}) as Record<string, unknown>;
+        const path = aObj.path || aObj.artifact_path || aObj.id;
         if (!path) continue;
         const cleanPath = String(path).replace(/^\/?(?:metagraph\/)?/, "");
         items.push({
@@ -199,26 +242,31 @@ export function registryItems(changelog, netuid) {
         });
       }
     }
-    const cov = changelog?.summary?.coverage_delta;
-    const surfaceDelta = cov?.surface_count?.delta || 0;
-    const candidateDelta = cov?.candidate_count?.delta || 0;
+    const summary = (c.summary ?? {}) as Record<string, unknown>;
+    const cov = summary.coverage_delta as Record<string, unknown> | undefined;
+    const surfaceCount = cov?.surface_count as
+      Record<string, unknown> | undefined;
+    const candidateCount = cov?.candidate_count as
+      Record<string, unknown> | undefined;
+    const surfaceDelta = (surfaceCount?.delta as number) || 0;
+    const candidateDelta = (candidateCount?.delta as number) || 0;
     if (surfaceDelta || candidateDelta) {
-      const sign = (n) => (n >= 0 ? `+${n}` : `${n}`);
+      const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
       // Only describe the side(s) actually present — a partial coverage_delta
       // (e.g. candidate_count only) must not emit "+0 surfaces" or interpolate
       // "Surfaces undefined→undefined" for the absent side.
-      const titleParts = [];
-      const summaryParts = [];
-      if (cov?.surface_count) {
+      const titleParts: string[] = [];
+      const summaryParts: string[] = [];
+      if (surfaceCount) {
         titleParts.push(`${sign(surfaceDelta)} surfaces`);
         summaryParts.push(
-          `Surfaces ${cov.surface_count.before}→${cov.surface_count.after}`,
+          `Surfaces ${surfaceCount.before}→${surfaceCount.after}`,
         );
       }
-      if (cov?.candidate_count) {
+      if (candidateCount) {
         titleParts.push(`${sign(candidateDelta)} candidates`);
         summaryParts.push(
-          `candidates ${cov.candidate_count.before}→${cov.candidate_count.after}`,
+          `candidates ${candidateCount.before}→${candidateCount.after}`,
         );
       }
       items.push({
@@ -236,27 +284,30 @@ export function registryItems(changelog, netuid) {
 }
 
 // Gaps feed: ranked enrichment targets from the served enrichment queue.
-export function gapsItems(enrichmentQueue) {
-  const at = toIso(enrichmentQueue?.generated_at) || new Date().toISOString();
-  const items = [];
-  for (const entry of enrichmentQueue?.queue || []) {
-    const netuid = entry?.netuid;
+export function gapsItems(enrichmentQueue: unknown): FeedItem[] {
+  const q = (enrichmentQueue ?? {}) as Record<string, unknown>;
+  const at = toIso(q.generated_at) || new Date().toISOString();
+  const items: FeedItem[] = [];
+  const queue = (q.queue as unknown[]) || [];
+  for (const rawEntry of queue) {
+    const entry = (rawEntry ?? {}) as Record<string, unknown>;
+    const netuid = entry.netuid;
     if (typeof netuid !== "number") continue;
-    const name = entry?.name ? clamp(entry.name, 80) : `Subnet ${netuid}`;
+    const name = entry.name ? clamp(entry.name, 80) : `Subnet ${netuid}`;
     const missing = Array.isArray(entry.missing_kinds)
-      ? entry.missing_kinds.filter(Boolean)
+      ? (entry.missing_kinds as unknown[]).filter(Boolean)
       : [];
     const targets = Array.isArray(entry.direct_submission_kinds)
-      ? entry.direct_submission_kinds.filter(Boolean)
+      ? (entry.direct_submission_kinds as unknown[]).filter(Boolean)
       : [];
-    const lane = entry?.lane || "unknown";
+    const lane = entry.lane || "unknown";
     const priority =
-      typeof entry?.priority_score === "number" ? entry.priority_score : null;
+      typeof entry.priority_score === "number" ? entry.priority_score : null;
     const completeness =
-      typeof entry?.completeness_score === "number"
+      typeof entry.completeness_score === "number"
         ? entry.completeness_score
         : null;
-    const action = entry?.recommended_action
+    const action = entry.recommended_action
       ? clamp(entry.recommended_action, 120)
       : "Review enrichment opportunities";
     const summaryParts = [`Lane: ${lane}.`];
@@ -278,10 +329,10 @@ export function gapsItems(enrichmentQueue) {
       timestamp: at,
       tags: [
         "gaps",
-        lane,
+        String(lane),
         `sn${netuid}`,
-        ...missing,
-        ...targets.filter((kind) => !missing.includes(kind)),
+        ...(missing as string[]),
+        ...(targets as string[]).filter((kind) => !missing.includes(kind)),
       ],
     });
   }
@@ -290,15 +341,23 @@ export function gapsItems(enrichmentQueue) {
 
 // Incidents feed: each reconstructed incident from the served incidents artifact.
 // `netuid` (optional) filters to one subnet.
-export function incidentItems(incidents, netuid) {
-  const items = [];
-  for (const surface of incidents?.surfaces || []) {
-    if (netuid != null && surface?.netuid !== netuid) continue;
-    for (const inc of surface?.incidents || []) {
+export function incidentItems(
+  incidents: unknown,
+  netuid?: number | null,
+): FeedItem[] {
+  const items: FeedItem[] = [];
+  const inc = (incidents ?? {}) as Record<string, unknown>;
+  const surfaces = (inc.surfaces as unknown[]) || [];
+  for (const rawSurface of surfaces) {
+    const surface = (rawSurface ?? {}) as Record<string, unknown>;
+    if (netuid != null && surface.netuid !== netuid) continue;
+    const surfaceIncidents = (surface.incidents as unknown[]) || [];
+    for (const rawInc of surfaceIncidents) {
+      const inc = (rawInc ?? {}) as Record<string, unknown>;
       const started = toIso(inc.started_at);
       const ended = toIso(inc.ended_at);
       const ongoing = !ended;
-      const minutes = Math.round((inc.duration_ms || 0) / 60000);
+      const minutes = Math.round(((inc.duration_ms as number) || 0) / 60000);
       items.push({
         id: `incident:${surface.surface_id}:${inc.started_at}`,
         url: `${SITE_URL}/subnets/${surface.netuid}`,
@@ -325,7 +384,10 @@ export function incidentItems(incidents, netuid) {
 
 // ── serializers ─────────────────────────────────────────────────────────────
 
-export function sortAndCap(items, max = FEED_MAX_ITEMS) {
+export function sortAndCap(
+  items: FeedItem[],
+  max = FEED_MAX_ITEMS,
+): FeedItem[] {
   return [...items]
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
     .slice(0, max);
@@ -335,7 +397,7 @@ export function sortAndCap(items, max = FEED_MAX_ITEMS) {
 // clamped to the FEED_MAX_ITEMS hard cap (so `?limit=100` yields at most 50).
 // Returns NaN for a non-integer or < 1 value (→ 400), mirroring the strict
 // `?since=`/`?until=` parsing.
-function parseFeedLimit(raw) {
+function parseFeedLimit(raw: string): number {
   const value = raw.trim();
   if (!/^\d+$/.test(value)) return Number.NaN;
   const n = Number(value);
@@ -346,15 +408,18 @@ function parseFeedLimit(raw) {
 // Optional `?tag=` filter: keep only items whose tags array includes the value.
 // A falsy/absent tag is a no-op (the whole feed). The tag is only ever compared,
 // never rendered into the feed body, so it needs no escaping.
-export function filterByTag(items, tag) {
+export function filterByTag(items: FeedItem[], tag: unknown): FeedItem[] {
   if (!tag) return items;
-  return items.filter((item) => (item.tags || []).includes(tag));
+  return items.filter((item) => (item.tags || []).includes(tag as string));
 }
 
 // Optional `?since=` filter: keep only items at or after `sinceMs` (epoch ms).
 // A null bound (absent param) is a no-op; items whose timestamp can't be parsed
 // are dropped, so a malformed feed entry never leaks past an explicit `since`.
-export function filterSince(items, sinceMs) {
+export function filterSince(
+  items: FeedItem[],
+  sinceMs: number | null,
+): FeedItem[] {
   if (sinceMs == null) return items;
   return items.filter((item) => {
     const t = Date.parse(item.timestamp);
@@ -365,7 +430,10 @@ export function filterSince(items, sinceMs) {
 // Optional `?until=` filter: keep only items at or before `untilMs` (epoch ms).
 // A null bound (absent param) is a no-op; items whose timestamp can't be parsed
 // are dropped, so a malformed feed entry never leaks past an explicit `until`.
-export function filterUntil(items, untilMs) {
+export function filterUntil(
+  items: FeedItem[],
+  untilMs: number | null,
+): FeedItem[] {
   if (untilMs == null) return items;
   return items.filter((item) => {
     const t = Date.parse(item.timestamp);
@@ -373,7 +441,7 @@ export function filterUntil(items, untilMs) {
   });
 }
 
-function jsonFeed(meta, items) {
+function jsonFeed(meta: FeedMeta, items: FeedItem[]): string {
   return `${JSON.stringify(
     {
       version: "https://jsonfeed.org/version/1.1",
@@ -401,7 +469,7 @@ function jsonFeed(meta, items) {
   )}\n`;
 }
 
-function rssFeed(meta, items) {
+function rssFeed(meta: FeedMeta, items: FeedItem[]): string {
   const body = items
     .map((it) => {
       const pubDate = toRfc822(it.timestamp);
@@ -441,7 +509,7 @@ function rssFeed(meta, items) {
     .join("\n");
 }
 
-function atomFeed(meta, items) {
+function atomFeed(meta: FeedMeta, items: FeedItem[]): string {
   const feedUpdated = toIso(meta.updated);
   const body = items
     .map((it) => {
@@ -475,11 +543,17 @@ function atomFeed(meta, items) {
     .join("\n");
 }
 
-const SERIALIZERS = { json: jsonFeed, rss: rssFeed, atom: atomFeed };
+const SERIALIZERS: Record<
+  FeedFormat,
+  (meta: FeedMeta, items: FeedItem[]) => string
+> = { json: jsonFeed, rss: rssFeed, atom: atomFeed };
 
 // ── request handling ────────────────────────────────────────────────────────
 
-export function resolveFeedFormat(pathname, accept) {
+export function resolveFeedFormat(
+  pathname: string,
+  accept: unknown,
+): FeedFormat {
   if (pathname.endsWith(".rss")) return "rss";
   if (pathname.endsWith(".atom")) return "atom";
   if (pathname.endsWith(".json")) return "json";
@@ -489,8 +563,14 @@ export function resolveFeedFormat(pathname, accept) {
   return "json";
 }
 
+export type FeedTarget =
+  | { kind: "registry" }
+  | { kind: "incidents" }
+  | { kind: "gaps" }
+  | { kind: "subnet"; netuid: number };
+
 // Parse `/api/v1/feeds/...` into { kind, netuid } or null for an unknown feed.
-export function parseFeedPath(pathname) {
+export function parseFeedPath(pathname: string): FeedTarget | null {
   const rest = pathname
     .replace(/^\/api\/v1\/feeds\/?/, "")
     .replace(/\.(rss|atom|json)$/, "")
@@ -514,7 +594,10 @@ export function parseFeedPath(pathname) {
 // (23:59:59.999Z) so the bound stays inclusive of the named day — `?until=DATE`
 // keeps every item from that day rather than dropping all but the midnight tick.
 // A date-time (with an explicit time) is an exact instant, unaffected by the flag.
-export function parseSinceParam(value, { endOfDay = false } = {}) {
+export function parseSinceParam(
+  value: unknown,
+  { endOfDay = false }: { endOfDay?: boolean } = {},
+): number {
   const raw = String(value);
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
   if (dateOnly) {
@@ -565,7 +648,7 @@ export function parseSinceParam(value, { endOfDay = false } = {}) {
   return utcMs - offsetMs;
 }
 
-function feedError(code, message, status) {
+function feedError(code: string, message: string, status: number): Response {
   return new Response(JSON.stringify({ ok: false, error: { code, message } }), {
     status,
     headers: {
@@ -577,8 +660,14 @@ function feedError(code, message, status) {
   });
 }
 
-async function readData(readArtifact, env, path) {
+async function readData(
+  readArtifact:
+    ((env: Env, path: string) => Promise<StorageReadResult>) | undefined,
+  env: Env,
+  path: string,
+): Promise<unknown> {
   try {
+    if (!readArtifact) return null;
     const result = await readArtifact(env, path);
     return result?.ok ? result.data : null;
   } catch {
@@ -586,7 +675,16 @@ async function readData(readArtifact, env, path) {
   }
 }
 
-async function loadIncidentsData(deps, env) {
+interface FeedRequestDeps {
+  readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  errorResponse?: (code: string, message: string, status: number) => Response;
+  loadLiveIncidents?: (env: Env) => Promise<unknown>;
+}
+
+async function loadIncidentsData(
+  deps: FeedRequestDeps,
+  env: Env,
+): Promise<unknown> {
   if (typeof deps.loadLiveIncidents === "function") {
     try {
       return await deps.loadLiveIncidents(env);
@@ -597,14 +695,18 @@ async function loadIncidentsData(deps, env) {
   return readData(deps.readArtifact, env, "/metagraph/incidents.json");
 }
 
-export async function handleFeedRequest(request, env, url, deps = {}) {
+export async function handleFeedRequest(
+  request: Request,
+  env: Env,
+  url: URL,
+  deps: FeedRequestDeps = {},
+): Promise<Response> {
   const readArtifact = deps.readArtifact;
   // Feed errors go through the shared canonical envelope (workers/http.mjs
   // errorResponse), injected by the Worker so they match every other API
   // error — schema_version, data: null, meta.contract_version, and the
   // standard headers. feedError is the bare fallback when none is injected.
-  const fail =
-    typeof deps.errorResponse === "function" ? deps.errorResponse : feedError;
+  const fail = deps.errorResponse ?? feedError;
   const target = parseFeedPath(url.pathname);
   if (!target || typeof readArtifact !== "function") {
     return fail(
@@ -617,7 +719,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
 
   // Optional `?since=` lower bound (parsed once, here, so a malformed value is
   // rejected before any artifact work). null when the param is absent.
-  let sinceMs = null;
+  let sinceMs: number | null = null;
   const sinceParam = url.searchParams.get("since");
   if (sinceParam != null) {
     sinceMs = parseSinceParam(sinceParam);
@@ -632,7 +734,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
 
   // Optional `?until=` upper bound (same strict ISO-8601 contract as `since`),
   // parsed up front so a malformed value is rejected before any artifact work.
-  let untilMs = null;
+  let untilMs: number | null = null;
   const untilParam = url.searchParams.get("until");
   if (untilParam != null) {
     // A bare-date `until` is inclusive of the whole named day (end-of-day),
@@ -662,11 +764,11 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     }
   }
 
-  let items;
-  let title;
-  let description;
+  let items: FeedItem[];
+  let title: string;
+  let description: string;
   let homeUrl = SITE_URL;
-  let updatedSource;
+  let updatedSource: unknown;
 
   if (target.kind === "registry") {
     const changelog = await readData(
@@ -678,14 +780,14 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     title = "metagraphed — registry changes";
     description =
       "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry.";
-    updatedSource = changelog?.generated_at;
+    updatedSource = (changelog as Record<string, unknown> | null)?.generated_at;
   } else if (target.kind === "incidents") {
     const incidents = await loadIncidentsData(deps, env);
     items = incidentItems(incidents);
     title = "metagraphed — surface incidents";
     description =
       "Operational incidents across Bittensor subnet surfaces (probe-detected downtime).";
-    updatedSource = incidents?.observed_at;
+    updatedSource = (incidents as Record<string, unknown> | null)?.observed_at;
   } else if (target.kind === "gaps") {
     const enrichmentQueue = await readData(
       readArtifact,
@@ -697,7 +799,8 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     description =
       "Ranked Bittensor subnet enrichment targets: missing surfaces, contributor lanes, and recommended next actions from the metagraphed registry.";
     homeUrl = `${SITE_URL}/gaps`;
-    updatedSource = enrichmentQueue?.generated_at;
+    updatedSource = (enrichmentQueue as Record<string, unknown> | null)
+      ?.generated_at;
   } else {
     const [changelog, incidents] = await Promise.all([
       readData(readArtifact, env, "/metagraph/changelog.json"),
@@ -710,14 +813,14 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     title = `metagraphed — subnet ${target.netuid} feed`;
     description = `Registry changes and incidents for Bittensor subnet ${target.netuid}.`;
     homeUrl = `${SITE_URL}/subnets/${target.netuid}`;
-    updatedSource = changelog?.generated_at;
+    updatedSource = (changelog as Record<string, unknown> | null)?.generated_at;
   }
 
   items = filterByTag(items, url.searchParams.get("tag"));
   items = filterSince(items, sinceMs);
   items = filterUntil(items, untilMs);
   items = sortAndCap(items, limit);
-  const meta = {
+  const meta: FeedMeta = {
     title,
     description,
     homeUrl,
@@ -754,7 +857,10 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
 
 // RFC 8288 Link header value advertising the feeds for an entity endpoint, so a
 // crawler/agent on /api/v1/subnets or a subnet profile discovers them.
-export function feedLinkHeader(originUrl, netuid) {
+export function feedLinkHeader(
+  originUrl: string,
+  netuid?: number | null,
+): string {
   const base =
     netuid != null
       ? `${originUrl}/api/v1/feeds/subnets/${netuid}`

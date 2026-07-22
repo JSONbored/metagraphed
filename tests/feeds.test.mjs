@@ -6,7 +6,7 @@ import {
   resolveFeedFormat,
   feedLinkHeader,
   __test,
-} from "../src/feeds.mjs";
+} from "../src/feeds.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

@@ -14,7 +14,7 @@ import {
   MCP_REGISTRY_META,
   MCP_RESOURCE_TEMPLATES,
 } from "../../src/mcp-server.mjs";
-import { feedLinkHeader } from "../../src/feeds.mjs";
+import { feedLinkHeader } from "../../src/feeds.ts";
 import {
   buildAgentToolsIndex,
   buildAnthropicToolSpecs,
