@@ -229,7 +229,7 @@ export function buildSubnetConviction(
 //
 // Both are plain StorageValues -- twox128("SubtensorModule") ++
 // twox128(<item name>), no further hashing, hardcoded below (mirrors
-// sudo-key.mjs/network-parameters.ts's own precedent, since twox128 needs
+// sudo-key.ts/network-parameters.ts's own precedent, since twox128 needs
 // XXHash64, not in Node's built-in crypto). Both declared `ValueQuery` with
 // a compiled-in default (`StorageValue<_, u64, ValueQuery, DefaultXxxRate<T>>`
 // in lib.rs) -- IMPORTANT, confirmed live 2026-07-18: a raw state_getStorage

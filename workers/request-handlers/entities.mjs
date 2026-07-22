@@ -108,7 +108,7 @@ import {
   loadAccountChildren,
   loadAccountParents,
 } from "../../src/child-hotkey-delegation.ts";
-import { loadSudoKey } from "../../src/sudo-key.mjs";
+import { loadSudoKey } from "../../src/sudo-key.ts";
 import { H160_PATTERN, loadAddressMapping } from "../../src/address-mapping.ts";
 import { loadNetworkParameters } from "../../src/network-parameters.ts";
 import { loadRandomnessStatus } from "../../src/randomness.ts";

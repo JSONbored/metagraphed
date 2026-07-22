@@ -18,7 +18,7 @@
 // Storage key = twox128("SubtensorModule") ++ twox128("Burn") ++ <netuid as
 // u16, little-endian, Identity hasher — no hash on the map key itself>. The
 // twox128 prefix pair is fixed (hardcoded below, matching subnet-
-// recycled.mjs's/sudo-key.mjs's own precedent) since twox128 needs XXHash64,
+// recycled.mjs's/sudo-key.ts's own precedent) since twox128 needs XXHash64,
 // not in Node's built-in crypto and not worth implementing for two constant
 // strings; only the trailing 2-byte netuid suffix is computed per request.
 // Verified live against finney (bittensor 10.5.0,
@@ -41,7 +41,7 @@ const BURN_STORAGE_KEY_PREFIX =
 // map-key suffix appended to the fixed prefix above. Same shape as subnet-
 // recycled.mjs's own helper, duplicated rather than imported (self-contained
 // file convention this codebase already uses for account-balance.mjs/
-// sudo-key.mjs's own decode helpers).
+// sudo-key.ts's own decode helpers).
 function netuidStorageKeySuffix(netuid: number): string {
   const lo = (netuid % 256).toString(16).padStart(2, "0");
   const hi = Math.floor(netuid / 256)

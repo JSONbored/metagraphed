@@ -1,5 +1,5 @@
 // Substrate Twox64/Twox128 storage-key derivation (#6719). Every hardcoded
-// storage key elsewhere in this codebase (sudo-key.mjs, network-parameters.ts,
+// storage key elsewhere in this codebase (sudo-key.ts, network-parameters.ts,
 // subnet-burn.ts, subnet-recycled.ts) is a FIXED string precomputed offline
 // specifically because those pallet/item name prefixes never change and
 // twox128 needs XXHash64, not in Node's built-in crypto -- this module exists
@@ -12,7 +12,7 @@
 // built-in createHash: same reasoning, different primitive).
 //
 // Verified against BOTH the official xxHash reference test vectors AND this
-// codebase's own already-proven-correct sudo-key.mjs storage key (twox128("Sudo")
+// codebase's own already-proven-correct sudo-key.ts storage key (twox128("Sudo")
 // ++ twox128("Key") = 0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b) --
 // see tests/twox-storage-key.test.mjs.
 
@@ -166,7 +166,7 @@ export function twox64(input: Uint8Array | string): Uint8Array {
 }
 
 // twox128(input) -- the fixed pallet-name/item-name prefix hash: two XXH64
-// hashes (seeds 0 and 1) concatenated, little-endian. Matches sudo-key.mjs's
+// hashes (seeds 0 and 1) concatenated, little-endian. Matches sudo-key.ts's
 // own already-verified reference value exactly (see this module's header).
 export function twox128(input: Uint8Array | string): Uint8Array {
   return concatBytes(

@@ -32,7 +32,7 @@ const WORD_BYTES = 32;
 // "0x"-prefixed hex string (dataHex comes from decodeEthereumTransactArgs'
 // own "0x" + ... construction, or a test fixture built the same way), so this
 // only ever strips that guaranteed prefix -- not a general hex-or-0x-hex
-// parser, same scoping note src/sudo-key.mjs's own hexToBytes carries.
+// parser, same scoping note src/sudo-key.ts's own hexToBytes carries.
 function hexToBytes(hex: string): Uint8Array {
   const clean = hex.slice(2);
   const out = new Uint8Array(clean.length / 2);

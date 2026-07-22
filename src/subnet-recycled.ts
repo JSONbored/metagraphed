@@ -21,12 +21,12 @@
 // RAORecycledForRegistrationSet event carries. A single state_getStorage
 // query returns it directly — the same live-RPC + KV-cache shape this
 // codebase already uses for /accounts/{ss58}/balance and /sudo/key
-// (src/account-balance.mjs, src/sudo-key.mjs), not a new capture pipeline.
+// (src/account-balance.mjs, src/sudo-key.ts), not a new capture pipeline.
 //
 // Storage key = twox128("SubtensorModule") ++ twox128(
 // "RAORecycledForRegistration") ++ <netuid as u16, little-endian, Identity
 // hasher — no hash on the map key itself>. The twox128 prefix pair is fixed
-// (hardcoded below, like sudo-key.mjs hardcodes its own fixed key) since
+// (hardcoded below, like sudo-key.ts hardcodes its own fixed key) since
 // twox128 needs XXHash64, which isn't in Node's built-in crypto and isn't
 // worth implementing for two constant strings; only the trailing 2-byte
 // netuid suffix is computed per request. Verified live against finney

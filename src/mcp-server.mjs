@@ -651,7 +651,7 @@ import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
-import { loadSudoKey } from "./sudo-key.mjs";
+import { loadSudoKey } from "./sudo-key.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadRandomnessStatus } from "./randomness.ts";
 import {

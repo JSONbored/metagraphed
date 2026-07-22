@@ -55,7 +55,7 @@ describe("xxh64 4-lane path (inputs >= 32 bytes)", () => {
 });
 
 describe("twox128 against the codebase's own proven-correct reference", () => {
-  test('twox128("Sudo") ++ twox128("Key") matches sudo-key.mjs\'s hardcoded SUDO_KEY_STORAGE_KEY', () => {
+  test('twox128("Sudo") ++ twox128("Key") matches sudo-key.ts\'s hardcoded SUDO_KEY_STORAGE_KEY', () => {
     const key = bytesToHex(
       new Uint8Array([...twox128("Sudo"), ...twox128("Key")]),
     );

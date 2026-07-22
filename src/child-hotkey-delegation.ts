@@ -60,7 +60,7 @@ const MAX_NETUID_KEYS = 250;
 // the caller already verified, matching this codebase's "don't validate
 // twice" convention. Duplicates account-balance.mjs's base58 decode rather
 // than importing it (self-contained-module convention already established
-// by subnet-burn.ts/sudo-key.mjs for small codec helpers).
+// by subnet-burn.ts/sudo-key.ts for small codec helpers).
 function accountIdFromSs58(ss58: string): Uint8Array {
   const BASE58_ALPHABET =
     "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";

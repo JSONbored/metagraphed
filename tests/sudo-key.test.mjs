@@ -5,7 +5,7 @@ import {
   SUDO_KEY_NEGATIVE_KV_TTL,
   SUDO_KEY_RPC_TIMEOUT_MS,
   loadSudoKey,
-} from "../src/sudo-key.mjs";
+} from "../src/sudo-key.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 function req(path) {

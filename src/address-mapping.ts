@@ -8,9 +8,9 @@
 // sibling issue's own alternative; state_getStorage has no key for a value
 // that was never stored). Frontier serves standard Ethereum JSON-RPC methods
 // over the SAME endpoint every other live-RPC module here already calls
-// (sudo-key.mjs/network-parameters.ts/etc use FINNEY_RPC_URL for
+// (sudo-key.ts/network-parameters.ts/etc use FINNEY_RPC_URL for
 // Substrate-native methods; eth_call is the Ethereum-native sibling on that
-// identical endpoint). Mirrors src/sudo-key.mjs's live-RPC + KV-cache shape.
+// identical endpoint). Mirrors src/sudo-key.ts's live-RPC + KV-cache shape.
 import { encodeAccountId32 } from "./ss58.ts";
 import { functionSelector } from "./evm-precompiles.ts";
 
@@ -30,7 +30,7 @@ export const H160_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 
 // The one call site already validated a "0x"-prefixed 64-hex-char string via
 // regex, so this only ever strips that guaranteed prefix -- not a general
-// hex-or-0x-hex parser, same scoping note src/sudo-key.mjs's own hexToBytes
+// hex-or-0x-hex parser, same scoping note src/sudo-key.ts's own hexToBytes
 // carries.
 function hexToBytes(hex: string): Uint8Array {
   const clean = hex.slice(2);

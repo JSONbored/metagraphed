@@ -16176,7 +16176,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
   });
 });
 
-describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.mjs)", () => {
+describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/sudo-key.test.mjs.
   function withFetchStub(stub, fn) {

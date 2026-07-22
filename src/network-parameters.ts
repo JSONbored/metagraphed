@@ -3,7 +3,7 @@
 //
 // TaoWeight/StakeThreshold/PendingChildKeyCooldown are real, governance-
 // adjustable, network-wide values with no per-subnet dimension -- plain
-// StorageValues, same shape as Sudo::Key (src/sudo-key.mjs), just three of
+// StorageValues, same shape as Sudo::Key (src/sudo-key.ts), just three of
 // them instead of one. Batched into ONE cached response rather than three
 // separate routes: callers doing capital/validator-ops planning need all
 // three together, and they share the same freshness profile (governance-
@@ -12,7 +12,7 @@
 //
 // Storage keys = twox128("SubtensorModule") ++ twox128(<item name>), no
 // further hashing (each is a StorageValue, not a map) -- hardcoded below,
-// matching sudo-key.mjs's own precedent, since twox128 needs XXHash64, not
+// matching sudo-key.ts's own precedent, since twox128 needs XXHash64, not
 // in Node's built-in crypto. Verified live against finney (bittensor 10.5.0,
 // substrate.create_storage_key("SubtensorModule", <item>)) and via raw
 // state_getStorage RPC calls, 2026-07-17:

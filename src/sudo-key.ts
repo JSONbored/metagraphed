@@ -12,6 +12,8 @@
 // node:crypto's createHash("blake2b512") (unsupported in workerd).
 import { encodeAccountId32 } from "./ss58.ts";
 
+type Row = Record<string, unknown>;
+
 const SUDO_KEY_STORAGE_KEY =
   "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b";
 export const SUDO_KEY_KV_TTL = 3600; // seconds — the sudo key changes extremely rarely
@@ -23,7 +25,7 @@ const FINNEY_SS58_PREFIX = 42;
 // The one call site already validated a "0x"-prefixed 64-hex-char string via
 // regex, so this only ever strips that guaranteed prefix — not a general
 // hex-or-0x-hex parser.
-function hexToBytes(hex) {
+function hexToBytes(hex: string): Uint8Array {
   const clean = hex.slice(2);
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i += 1) {
@@ -35,21 +37,21 @@ function hexToBytes(hex) {
 // Query the live Sudo::Key holder. Uses METAGRAPH_CONTROL KV (1h TTL, same
 // binding as loadAccountBalance) when present; hotkey is null on RPC failure
 // or an unset sudo key (Optional<AccountId>) — schema-stable, never throws.
-export async function loadSudoKey(env) {
+export async function loadSudoKey(env: Env): Promise<Row> {
   const cacheKey = "sudo:key";
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as Row;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
   }
 
   const queriedAt = new Date().toISOString();
-  let hotkey = null;
+  let hotkey: string | null = null;
   let rpcOk = false;
 
   try {
@@ -65,7 +67,7 @@ export async function loadSudoKey(env) {
       }),
     });
     if (rpcResp.ok) {
-      const rpcBody = await rpcResp.json();
+      const rpcBody = (await rpcResp.json()) as Row;
       const raw = rpcBody?.result;
       if (typeof raw === "string" && /^0x[0-9a-fA-F]{64}$/.test(raw)) {
         hotkey = encodeAccountId32(hexToBytes(raw), FINNEY_SS58_PREFIX);
@@ -79,7 +81,7 @@ export async function loadSudoKey(env) {
     // RPC fetch failed — hotkey stays null.
   }
 
-  const payload = {
+  const payload: Row = {
     schema_version: 1,
     hotkey,
     queried_at: queriedAt,
