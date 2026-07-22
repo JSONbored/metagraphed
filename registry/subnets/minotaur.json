@@ -116,9 +116,7 @@
       },
       "provider": "minotaur",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/subnet112/minotaur_subnet"
-      ],
+      "source_urls": ["https://github.com/subnet112/minotaur_subnet"],
       "url": "https://minotaursubnet.com/"
     },
     {
@@ -136,9 +134,7 @@
       },
       "provider": "minotaur",
       "public_safe": true,
-      "source_urls": [
-        "https://github.com/subnet112/minotaur_subnet"
-      ],
+      "source_urls": ["https://github.com/subnet112/minotaur_subnet"],
       "url": "https://github.com/subnet112/minotaur_subnet"
     },
     {
