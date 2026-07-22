@@ -99,7 +99,7 @@ import {
   LIST_ADAPTER_CANDIDATES_MCP_TOOL,
   LIST_ADAPTER_CANDIDATES_OUTPUT_SCHEMA,
   loadAdapterCandidatesList,
-} from "./adapter-candidates-mcp.mjs";
+} from "./adapter-candidates-mcp.ts";
 import {
   LIST_ENRICHMENT_EVIDENCE_INSTRUCTIONS,
   LIST_ENRICHMENT_EVIDENCE_MCP_TOOL,

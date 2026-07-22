@@ -2,7 +2,8 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/review/adapter-candidates.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const ADAPTER_CANDIDATES_ARTIFACT =
@@ -14,14 +15,25 @@ const CURATION_LEVELS = QUERY_ENUMS.curationLevel;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
 const RECOMMENDED_ADAPTER_KINDS = QUERY_ENUMS.recommendedAdapterKind;
 
-export function adapterCandidatesMcpError(code, message) {
-  const error = new Error(message);
+export interface AdapterCandidatesMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function adapterCandidatesMcpError(
+  code: string,
+  message: string,
+): AdapterCandidatesMcpError {
+  const error = new Error(message) as AdapterCandidatesMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -33,7 +45,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -45,22 +61,25 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function clampLimit(value, fallback, max) {
+function clampLimit(value: unknown, fallback: number, max: number): number {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
 }
 
-export function adapterCandidatesQueryUrl(args) {
+export function adapterCandidatesQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/review/adapter-candidates");
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
       throw adapterCandidatesMcpError(
         "invalid_params",
         "netuid must be a non-negative integer.",
       );
     }
-    url.searchParams.set("netuid", String(args.netuid));
+    url.searchParams.set("netuid", String(netuid));
   }
   const curationLevel = optionalEnum(args, "curation_level", CURATION_LEVELS);
   if (curationLevel) url.searchParams.set("curation_level", curationLevel);
@@ -100,27 +119,49 @@ export function adapterCandidatesQueryUrl(args) {
     url.searchParams.set("limit", String(clampLimit(args.limit, 50, 100)));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw adapterCandidatesMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
+export interface AdapterCandidatesListResult {
+  generated_at: unknown;
+  notes: unknown;
+  candidates: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
 export async function loadAdapterCandidatesList(
-  ctx,
-  args,
-  { readArtifact } = {},
-) {
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<AdapterCandidatesListResult> {
   const queryUrl = adapterCandidatesQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, ADAPTER_CANDIDATES_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw adapterCandidatesMcpError(
         "not_found",
@@ -140,7 +181,7 @@ export async function loadAdapterCandidatesList(
     );
   }
   const transformed = applyQueryFilters(
-    blob,
+    blob as Record<string, unknown>,
     queryUrl,
     "adapter-candidates",
     [],
@@ -151,13 +192,16 @@ export async function loadAdapterCandidatesList(
       transformed.error.message,
     );
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.candidates) ? data.candidates : [];
+  const data = transformed.data as Record<string, unknown> | undefined;
+  const meta = (transformed.meta ?? {}) as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows: Row[] = Array.isArray(data?.candidates)
+    ? (data.candidates as Row[])
+    : [];
   const rowLen = rows.length;
   return {
-    generated_at: data.generated_at ?? null,
-    notes: data.notes ?? null,
+    generated_at: data?.generated_at ?? null,
+    notes: data?.notes ?? null,
     candidates: rows,
     total: page.total ?? rowLen,
     returned: page.returned ?? rowLen,
