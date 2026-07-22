@@ -657,6 +657,8 @@ export const SDL = `
     compare(netuids: [Int!]!, dimensions: [String!]): Compare!
     "Global endpoint-incident ledger over a 7d/30d window; degrades to a schema-stable empty ledger (never a GraphQL error) on a cold/retired health tier. Mirrors GET /api/v1/incidents."
     incidents(window: String): GlobalIncidents!
+    "The get_global_incidents-aligned name for the same global downtime-incident ledger (#7643): identical 7d/30d window validation, tier fallback, and cold-tier degradation as incidents — a thin alias so MCP tool names and GraphQL fields line up. Distinct from endpoint_incidents (the active endpoint failure/degradation feed, GET /api/v1/endpoint-incidents): this is the historical incident ledger. Returns the typed GlobalIncidents envelope rather than the issue's literal JSON suggestion, matching incidents. Mirrors GET /api/v1/incidents."
+    global_incidents(window: String): GlobalIncidents!
     "Recent-extrinsic feed (newest first), optionally filtered. Mirrors GET /api/v1/extrinsics."
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Distinct from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events."
@@ -4305,6 +4307,7 @@ export const FIELD_COMPLEXITY = {
   subnet_profile: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
   incidents: RELATIONSHIP_FIELD_COMPLEXITY,
+  global_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   blocks_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   runtime: RELATIONSHIP_FIELD_COMPLEXITY,
   block: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6440,6 +6443,15 @@ const rootValue = {
       summary: data.summary ?? null,
       surfaces: data.surfaces ?? [],
     };
+  },
+
+  // #7643: the get_global_incidents-aligned name for the same downtime-incident
+  // ledger -- a thin delegate so MCP tool names and GraphQL fields line up.
+  // Identical window validation (7d/30d -> BAD_USER_INPUT), Postgres-tier ->
+  // retired-D1 fallback, and schema-stable cold-tier degradation; nothing
+  // re-derived. Distinct from endpoint_incidents (the active endpoint feed).
+  async global_incidents({ window }, context) {
+    return rootValue.incidents({ window }, context);
   },
 
   search({ limit, cursor }, context) {

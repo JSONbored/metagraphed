@@ -6796,6 +6796,118 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
   });
 });
 
+describe("graphql — global_incidents (#7643, get_global_incidents-aligned alias)", () => {
+  // Fresh Response per fetch so incidents + global_incidents can each consume
+  // their own Postgres-tier body when queried side by side.
+  function dataApi(payload) {
+    return { fetch: async () => Response.json(payload) };
+  }
+  const emptyHealthDb = {
+    prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }),
+  };
+
+  test("serves the same ledger as incidents through the delegate, incident rows included", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi({
+        schema_version: 1,
+        window: "30d",
+        observed_at: "2026-07-01T00:00:00.000Z",
+        source: "postgres",
+        summary: {
+          incident_count: 1,
+          active_count: 1,
+          by_status: { down: 1 },
+        },
+        surfaces: [
+          {
+            id: "inc-1",
+            endpoint_id: "ep-1",
+            state: "down",
+            severity: "high",
+            status: "down",
+            netuid: 5,
+            provider: "acme",
+          },
+        ],
+      }),
+    };
+    // Two sequential queries against the same env (side by side would exceed
+    // the complexity budget -- both fields carry the fan-out weight); dataApi
+    // serves each resolver a fresh Response, so the envelopes must be identical.
+    const selection = `{
+        schema_version window observed_at source summary
+        surfaces { id endpoint_id state severity status netuid provider }
+      }`;
+    const { status, body } = await gql(
+      `{ global_incidents(window: "30d") ${selection} }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const alias = body.data.global_incidents;
+    assert.equal(alias.window, "30d");
+    assert.equal(alias.observed_at, "2026-07-01T00:00:00.000Z");
+    assert.equal(alias.summary.incident_count, 1);
+    assert.equal(alias.surfaces.length, 1);
+    assert.equal(alias.surfaces[0].id, "inc-1");
+    assert.equal(alias.surfaces[0].netuid, 5);
+    const canonical = await gql(
+      `{ incidents(window: "30d") ${selection} }`,
+      env,
+    );
+    assert.equal(canonical.status, 200);
+    assert.equal(canonical.body.errors, undefined);
+    // Alias equivalence: the identical envelope from the same env.
+    assert.deepEqual(alias, canonical.body.data.incidents);
+  });
+
+  test("cold store: falls back to the D1 ledger, schema-stable empty, never null", async () => {
+    const { status, body } = await gql(
+      "{ global_incidents { schema_version window surfaces { id } } }",
+      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.global_incidents.schema_version, 1);
+    assert.equal(body.data.global_incidents.window, "7d");
+    assert.deepEqual(body.data.global_incidents.surfaces, []);
+  });
+
+  test("an unsupported window is the same BAD_USER_INPUT error incidents raises", async () => {
+    const { body } = await gql(
+      '{ global_incidents(window: "99d") { schema_version } }',
+      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.equal(body.errors[0].extensions?.code, "BAD_USER_INPUT");
+    assert.ok(/window|7d/i.test(body.errors[0].message));
+    assert.equal(body.data?.global_incidents ?? null, null);
+  });
+
+  test("is priced identically to incidents", () => {
+    assert.equal(FIELD_COMPLEXITY.global_incidents, FIELD_COMPLEXITY.incidents);
+  });
+
+  test("has the identical GraphQL signature as incidents (args + return type)", async () => {
+    const { status, body } = await gql(
+      `{ __type(name: "Query") { fields {
+          name
+          args { name type { kind name ofType { kind name } } }
+          type { kind name ofType { kind name } }
+        } } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const fields = body.data.__type.fields;
+    const canonical = fields.find((f) => f.name === "incidents");
+    const alias = fields.find((f) => f.name === "global_incidents");
+    assert.ok(canonical && alias, "both fields present in the schema");
+    assert.deepEqual(alias.args, canonical.args);
+    assert.deepEqual(alias.type, canonical.type);
+  });
+});
+
 describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card fallback)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

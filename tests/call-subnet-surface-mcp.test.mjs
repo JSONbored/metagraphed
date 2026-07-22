@@ -168,6 +168,19 @@ const DISABLED_PROBE_BEARER_SURFACE = {
   probe: { method: "GET", enabled: false },
 };
 
+// A generically-supported scheme with `name` documented but `location`
+// missing -- distinct from INCOMPLETE_AUTH_SURFACE above (which is missing
+// `name` too, short-circuiting before location is ever checked).
+const MISSING_LOCATION_SURFACE = {
+  surface_id: "x:api:11",
+  netuid: 15,
+  kind: "subnet-api",
+  url: "https://x.example/no-location",
+  auth_required: true,
+  auth: { scheme: "bearer", name: "Authorization" },
+  probe: { method: "GET", enabled: true },
+};
+
 const CATALOG = {
   surfaces: [
     NO_AUTH_SURFACE,
@@ -181,6 +194,7 @@ const CATALOG = {
     CUSTOM_AUTH_SURFACE,
     INCOMPLETE_AUTH_SURFACE,
     DISABLED_PROBE_BEARER_SURFACE,
+    MISSING_LOCATION_SURFACE,
   ],
 };
 
@@ -745,6 +759,28 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       });
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /credential_not_supported/);
+    });
+
+    test("a credential on a bearer surface with name but no location is credential_not_supported", async () => {
+      // Distinct from the missing-name case above: name present, only
+      // location absent -- exercises the `location !== ...` half of the
+      // eligibility check, not just the `!name` short-circuit.
+      const result = await callTool({
+        surface_id: "x:api:11",
+        credential: "whatever",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
+    });
+
+    test("a credential on a surface with auth_required but no auth object at all names the scheme as undocumented", async () => {
+      const result = await callTool({
+        surface_id: "x:api:2",
+        credential: "whatever",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
+      assert.match(result.content[0].text, /"undocumented"/);
     });
 
     test("a credential on a surface that doesn't require auth is invalid_params", async () => {
