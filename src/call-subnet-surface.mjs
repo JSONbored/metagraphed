@@ -58,6 +58,8 @@ function buildRequestUrl(baseUrl, query) {
  * @property {Record<string, string | number | boolean>} [query] Query params merged onto the effective base URL.
  * @property {string} [path] MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER (call_subnet_surface's tool handler) is responsible for confirming this path is declared in the surface's captured schema via matchSchemaOperation BEFORE ever passing it here; this function does not validate it. When present, the request URL is this surface's own origin (never the OpenAPI document's own `servers[]` host) joined with this path, not `surface.url`.
  * @property {string} [method] Overrides the surface's probe-derived method (Phase 1 default). Ignored unless `path` is also set.
+ * @property {string} [body] MCP execute Phase 2c (#7675) request body, already serialized to a string by the caller -- this function never serializes or validates it, only sends it as-is. Ignored unless `path` is also set; GET/HEAD never send a body regardless.
+ * @property {string} [contentType] The `content-type` header to send alongside `body`. Ignored when `body` is not set.
  * @property {typeof fetch} [fetchImpl] Injectable fetch (tests; also threaded into isUnsafeUrl's own DoH lookups).
  * @property {(url: string) => Promise<boolean>} isUnsafeUrl Required -- the same DNS-rebinding-aware guard verify_integration uses (workerResolvedUrlSafetyGuard).
  */
@@ -71,6 +73,8 @@ export async function callSubnetSurface(surface, options) {
     query,
     path,
     method: methodOverride,
+    body: requestBody,
+    contentType: requestContentType,
     fetchImpl = fetch,
     isUnsafeUrl,
   } = options ?? {};
@@ -83,6 +87,9 @@ export async function callSubnetSurface(surface, options) {
       : surface?.probe?.method === "HEAD"
         ? "HEAD"
         : "GET";
+  // GET/HEAD never carry a body even if one was somehow supplied -- only the
+  // tool handler's own POST/PUT validation path ever sets requestBody.
+  const canHaveBody = path && (method === "POST" || method === "PUT");
   const timeoutMs = Number.isFinite(surface?.probe?.timeout_ms)
     ? surface.probe.timeout_ms
     : 10_000;
@@ -93,6 +100,9 @@ export async function callSubnetSurface(surface, options) {
 
   const fetched = await safetyCheckedFetch(requestUrl, {
     method,
+    ...(canHaveBody && requestBody !== undefined
+      ? { body: requestBody, contentType: requestContentType }
+      : {}),
     fetchImpl,
     isUnsafeUrl,
     timeoutMs,
@@ -262,7 +272,15 @@ function segmentsMatch(templateSegments, requestSegments) {
  */
 async function safetyCheckedFetch(
   url,
-  { method, fetchImpl, isUnsafeUrl, timeoutMs, redirectCount = 0 },
+  {
+    method,
+    fetchImpl,
+    isUnsafeUrl,
+    timeoutMs,
+    body,
+    contentType,
+    redirectCount = 0,
+  },
 ) {
   if (await isUnsafeUrl(url)) {
     return { ok: false, error: "unsafe URL", unsafe_url: true };
@@ -277,7 +295,11 @@ async function safetyCheckedFetch(
       headers: {
         accept: "application/json, text/*;q=0.8, */*;q=0.5",
         "user-agent": "metagraphed-mcp-call-subnet-surface/0.0",
+        ...(body !== undefined && contentType
+          ? { "content-type": contentType }
+          : {}),
       },
+      ...(body !== undefined ? { body } : {}),
       redirect: "manual",
       signal: controller.signal,
     });
@@ -304,6 +326,8 @@ async function safetyCheckedFetch(
         fetchImpl,
         isUnsafeUrl,
         timeoutMs,
+        body,
+        contentType,
         redirectCount: redirectCount + 1,
       });
     }

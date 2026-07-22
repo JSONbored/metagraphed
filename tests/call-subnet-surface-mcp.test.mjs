@@ -79,6 +79,36 @@ const SCHEMA_DOCUMENT = {
   document: {
     paths: {
       "/users/{id}": { get: { summary: "get user" } },
+      "/users": {
+        post: {
+          summary: "create user",
+          requestBody: {
+            content: { "application/json": { schema: { type: "object" } } },
+          },
+        },
+      },
+      "/users/{id}/notes": {
+        put: {
+          summary: "replace note",
+          requestBody: {
+            content: { "text/plain": { schema: { type: "string" } } },
+          },
+        },
+      },
+      "/ping": {
+        post: { summary: "ping, no request body declared" },
+      },
+      "/multi": {
+        post: {
+          summary: "ambiguous media type",
+          requestBody: {
+            content: {
+              "application/xml": { schema: { type: "object" } },
+              "text/csv": { schema: { type: "string" } },
+            },
+          },
+        },
+      },
     },
   },
 };
@@ -329,11 +359,11 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /invalid_params/);
     });
 
-    test("a method other than GET/HEAD is invalid_params", async () => {
+    test("a method outside GET/HEAD/POST/PUT is invalid_params", async () => {
       const result = await callTool({
         surface_id: "x:api:4",
         path: "/users/123",
-        method: "POST",
+        method: "DELETE",
       });
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /invalid_params/);
@@ -390,6 +420,187 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       });
       assert.equal(result.isError, false);
       assert.equal(requestedUrl, "https://x.example/anything");
+    });
+  });
+
+  // #7675 (MCP execute Phase 2c): POST/PUT + request bodies.
+  describe("POST/PUT request bodies (#7675)", () => {
+    test("a JSON object body is serialized and sent with application/json", async () => {
+      let sentBody;
+      let sentContentType;
+      const result = await callTool(
+        {
+          surface_id: "x:api:4",
+          path: "/users",
+          method: "POST",
+          body: { name: "ada" },
+        },
+        async (url, init) => {
+          sentBody = init.body;
+          sentContentType = init.headers["content-type"];
+          return new Response(JSON.stringify({ id: 1 }), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(sentBody, JSON.stringify({ name: "ada" }));
+      assert.equal(sentContentType, "application/json");
+    });
+
+    test("a pre-serialized JSON string body is sent as-is", async () => {
+      let sentBody;
+      const result = await callTool(
+        {
+          surface_id: "x:api:4",
+          path: "/users",
+          method: "POST",
+          body: '{"name":"ada"}',
+        },
+        async (url, init) => {
+          sentBody = init.body;
+          return new Response("{}", {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(sentBody, '{"name":"ada"}');
+    });
+
+    test("a non-JSON declared media type requires a string body and is sent as-is", async () => {
+      let sentBody;
+      let sentContentType;
+      const result = await callTool(
+        {
+          surface_id: "x:api:4",
+          path: "/users/123/notes",
+          method: "PUT",
+          body: "plain note text",
+        },
+        async (url, init) => {
+          sentBody = init.body;
+          sentContentType = init.headers["content-type"];
+          return new Response("ok", { status: 200 });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(sentBody, "plain note text");
+      assert.equal(sentContentType, "text/plain");
+    });
+
+    test("an object body against a non-JSON-only media type is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123/notes",
+        method: "PUT",
+        body: { not: "a string" },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("a body against an operation with no declared request body is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/ping",
+        method: "POST",
+        body: { x: 1 },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("POST/PUT with no body arg at all is allowed (body is optional)", async () => {
+      const result = await callTool(
+        { surface_id: "x:api:4", path: "/ping", method: "POST" },
+        async () => new Response("pong", { status: 200 }),
+      );
+      assert.equal(result.isError, false);
+    });
+
+    test("an explicit content_type not declared for the operation is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users",
+        method: "POST",
+        body: { name: "ada" },
+        content_type: "application/xml",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("an explicit content_type matching a declared media type is honored", async () => {
+      let sentContentType;
+      const result = await callTool(
+        {
+          surface_id: "x:api:4",
+          path: "/multi",
+          method: "POST",
+          body: "a,b,c",
+          content_type: "text/csv",
+        },
+        async (url, init) => {
+          sentContentType = init.headers["content-type"];
+          return new Response("ok", { status: 200 });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(sentContentType, "text/csv");
+    });
+
+    test("an ambiguous multi-media-type operation with no content_type override is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/multi",
+        method: "POST",
+        body: "a,b,c",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("content_type without a body is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        content_type: "application/json",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("body without path/method is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        body: { x: 1 },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("body with method GET is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123",
+        method: "GET",
+        body: { x: 1 },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("an array body is rejected as an invalid type", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users",
+        method: "POST",
+        body: [1, 2, 3],
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
     });
   });
 });

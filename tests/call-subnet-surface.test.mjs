@@ -415,6 +415,112 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
+  test("POST with a body sends it with the given content-type", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/users",
+        method: "POST",
+        body: JSON.stringify({ name: "x" }),
+        contentType: "application/json",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(url, "https://example.com/users");
+          assert.equal(init.method, "POST");
+          assert.equal(init.body, JSON.stringify({ name: "x" }));
+          assert.equal(init.headers["content-type"], "application/json");
+          return jsonResponse({ id: 1 });
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("PUT with a body behaves the same way as POST", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/users/1",
+        method: "PUT",
+        body: JSON.stringify({ name: "y" }),
+        contentType: "application/json",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.method, "PUT");
+          assert.equal(init.body, JSON.stringify({ name: "y" }));
+          return jsonResponse({ id: 1 });
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("a POST/PUT with no body sends no body and no content-type header", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/ping",
+        method: "POST",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.body, undefined);
+          assert.equal(init.headers["content-type"], undefined);
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("a GET/HEAD request never sends a body even if one was somehow supplied", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/users",
+        method: "GET",
+        body: JSON.stringify({ name: "x" }),
+        contentType: "application/json",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.method, "GET");
+          assert.equal(init.body, undefined);
+          assert.equal(init.headers["content-type"], undefined);
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("a body is preserved across a followed redirect", async () => {
+    let calls = 0;
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/users",
+        method: "POST",
+        body: "raw-body",
+        contentType: "text/plain",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          calls += 1;
+          if (url === "https://example.com/users") {
+            assert.equal(init.body, "raw-body");
+            return new Response(null, {
+              status: 307,
+              headers: { location: "https://example.com/users/v2" },
+            });
+          }
+          assert.equal(init.method, "POST");
+          assert.equal(init.body, "raw-body");
+          return jsonResponse({ ok: true });
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(calls, 2);
+  });
+
   test("without a path override, method falls back to Phase 1's probe-derived default even if a method option is set alone", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api", probe: { method: "HEAD" } },

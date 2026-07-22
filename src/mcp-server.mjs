@@ -11027,7 +11027,7 @@ export const MCP_TOOLS = [
     name: "call_subnet_surface",
     title: "Call a subnet's live API and return its response",
     description:
-      "Actually call a catalogued no-auth surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. Restricted to surfaces with auth_required:false; an authenticated surface is rejected outright (Phase 3, not yet built). The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET or HEAD only for now) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2b (#7674). POST/PUT + request bodies are Phase 2c, not yet built.",
+      "Actually call a catalogued no-auth surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. Restricted to surfaces with auth_required:false; an authenticated surface is rejected outright (Phase 3, not yet built). The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). For POST/PUT, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type).",
     inputSchema: {
       type: "object",
       properties: {
@@ -11049,9 +11049,19 @@ export const MCP_TOOLS = [
         },
         method: {
           type: "string",
-          enum: ["GET", "HEAD"],
+          enum: ["GET", "HEAD", "POST", "PUT"],
           description:
-            "HTTP method for `path` above (POST/PUT not yet supported). Requires `path` to also be set; ignored otherwise.",
+            "HTTP method for `path` above. Requires `path` to also be set; ignored otherwise.",
+        },
+        body: {
+          type: ["object", "string"],
+          description:
+            "Request body for a POST/PUT `path` call, when the matched operation declares one. A JSON object is serialized for a JSON content type; use a string body for any other declared content type. Ignored for GET/HEAD.",
+        },
+        content_type: {
+          type: "string",
+          description:
+            'Media type for `body`, e.g. "application/json". Must be one the matched operation declares. Optional when the operation declares application/json or exactly one media type.',
         },
       },
       required: ["surface_id"],
@@ -11073,13 +11083,46 @@ export const MCP_TOOLS = [
           "`path` and `method` must be supplied together, or both omitted.",
         );
       }
+      const hasBodyArg = args?.body !== undefined && args?.body !== null;
+      const hasContentTypeArg =
+        typeof args?.content_type === "string" && args.content_type.length > 0;
+      if (
+        hasBodyArg &&
+        !(
+          typeof args.body === "string" ||
+          (typeof args.body === "object" && !Array.isArray(args.body))
+        )
+      ) {
+        throw toolError("invalid_params", "`body` must be a string or object.");
+      }
+      if (hasContentTypeArg && !hasBodyArg) {
+        throw toolError(
+          "invalid_params",
+          "`content_type` requires `body` to also be set.",
+        );
+      }
+      if (hasBodyArg && !hasPath) {
+        throw toolError(
+          "invalid_params",
+          "`body` requires `path` and `method` to also be set.",
+        );
+      }
       let normalizedMethod;
       if (hasMethod) {
         normalizedMethod = args.method.toUpperCase();
-        if (normalizedMethod !== "GET" && normalizedMethod !== "HEAD") {
+        if (!["GET", "HEAD", "POST", "PUT"].includes(normalizedMethod)) {
           throw toolError(
             "invalid_params",
-            "`method` must be GET or HEAD (POST/PUT support lands in MCP execute Phase 2c, #7675).",
+            "`method` must be GET, HEAD, POST, or PUT.",
+          );
+        }
+        if (
+          hasBodyArg &&
+          (normalizedMethod === "GET" || normalizedMethod === "HEAD")
+        ) {
+          throw toolError(
+            "invalid_params",
+            "`body` is only valid with method POST or PUT.",
           );
         }
       }
@@ -11102,6 +11145,8 @@ export const MCP_TOOLS = [
           "This surface is flagged as not safe to call automatically (probe.enabled:false).",
         );
       }
+      let requestBody;
+      let requestContentType;
       if (hasPath) {
         const schemaArtifactId =
           surface.schema_source?.surface_id || surface.surface_id;
@@ -11126,12 +11171,71 @@ export const MCP_TOOLS = [
             `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
           );
         }
+        if (
+          hasBodyArg &&
+          (normalizedMethod === "POST" || normalizedMethod === "PUT")
+        ) {
+          const declaredMediaTypes =
+            match.operation?.requestBody?.content &&
+            typeof match.operation.requestBody.content === "object"
+              ? Object.keys(match.operation.requestBody.content)
+              : [];
+          if (declaredMediaTypes.length === 0) {
+            throw toolError(
+              "invalid_params",
+              `"${normalizedMethod} ${args.path}" does not declare a request body in its schema.`,
+            );
+          }
+          if (hasContentTypeArg) {
+            if (!declaredMediaTypes.includes(args.content_type)) {
+              throw toolError(
+                "invalid_params",
+                `content_type "${args.content_type}" is not declared for this operation. Declared: ${declaredMediaTypes.join(", ")}.`,
+              );
+            }
+            requestContentType = args.content_type;
+          } else if (declaredMediaTypes.includes("application/json")) {
+            requestContentType = "application/json";
+          } else if (declaredMediaTypes.length === 1) {
+            requestContentType = declaredMediaTypes[0];
+          } else {
+            throw toolError(
+              "invalid_params",
+              `This operation declares multiple request body media types (${declaredMediaTypes.join(", ")}) and none is application/json -- supply content_type explicitly.`,
+            );
+          }
+          const isJsonContentType =
+            requestContentType === "application/json" ||
+            requestContentType.endsWith("+json");
+          if (isJsonContentType) {
+            requestBody =
+              typeof args.body === "string"
+                ? args.body
+                : JSON.stringify(args.body);
+          } else {
+            if (typeof args.body !== "string") {
+              throw toolError(
+                "invalid_params",
+                `body must be a string for content type "${requestContentType}".`,
+              );
+            }
+            requestBody = args.body;
+          }
+          // No separate size ceiling here: MAX_MCP_BODY_BYTES (64 KiB) already
+          // caps the ENTIRE inbound JSON-RPC request at the transport layer,
+          // before this handler ever runs -- requestBody, as one field within
+          // that request, can never exceed it. A second, larger bound (e.g.
+          // reusing MAX_RESPONSE_BYTES's 256 KiB) would be strictly weaker
+          // than the transport cap and could never fire.
+        }
       }
       const result = await callSubnetSurface(surface, {
         query:
           args.query && typeof args.query === "object" ? args.query : undefined,
         path: hasPath ? args.path : undefined,
         method: hasPath ? normalizedMethod : undefined,
+        body: requestBody,
+        contentType: requestContentType,
         fetchImpl: globalThis.fetch,
         isUnsafeUrl: workerResolvedUrlSafetyGuard({
           fetchImpl: globalThis.fetch,
