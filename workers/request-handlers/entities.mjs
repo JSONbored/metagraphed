@@ -256,7 +256,7 @@ import {
   buildAccountServing,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
-} from "../../src/account-serving.mjs";
+} from "../../src/account-serving.ts";
 import {
   buildAccountAxonRemovals,
   AXON_REMOVAL_WINDOWS,

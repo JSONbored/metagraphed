@@ -576,7 +576,7 @@ import {
   buildAccountServing,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
-} from "./account-serving.mjs";
+} from "./account-serving.ts";
 import {
   buildAccountDeregistrations,
   DEREGISTRATION_WINDOWS as ACCOUNT_DEREGISTRATION_WINDOWS,

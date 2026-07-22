@@ -202,7 +202,7 @@ import {
   SERVING_EVENT_KIND,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
-} from "../src/account-serving.mjs";
+} from "../src/account-serving.ts";
 import {
   buildSubnetServing,
   SUBNET_SERVING_WINDOWS,
