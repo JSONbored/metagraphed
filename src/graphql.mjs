@@ -128,7 +128,7 @@ import {
   buildSubnetStakeTransfers,
   SUBNET_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
-} from "./subnet-stake-transfers.mjs";
+} from "./subnet-stake-transfers.ts";
 import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
