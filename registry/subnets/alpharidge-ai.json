@@ -278,8 +278,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -305,8 +311,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -332,8 +344,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -359,8 +377,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -386,8 +410,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -413,8 +443,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -440,8 +476,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -467,8 +509,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -494,8 +542,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -521,8 +575,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -548,8 +608,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -575,8 +641,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -602,8 +674,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -629,8 +707,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -656,8 +740,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -683,8 +773,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -710,8 +806,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -737,8 +839,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -764,8 +872,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
@@ -791,8 +905,14 @@
     {
       "auth": {
         "location": "header",
-        "scheme": "custom",
-        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
+        "names": [
+          "X-Auth-SS58Address",
+          "X-Auth-Signature",
+          "X-Auth-Message",
+          "X-Auth-Timestamp"
+        ],
+        "scheme": "signature",
+        "scopes_note": "Requires a signed request: supply the X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted -- each request must be signed fresh."
       },
       "auth_required": true,
       "authority": "community",
