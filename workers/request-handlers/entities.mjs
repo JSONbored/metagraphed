@@ -188,7 +188,7 @@ import {
   buildSubnetStakeMoves,
   SUBNET_STAKE_MOVES_WINDOWS,
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
-} from "../../src/subnet-stake-moves.mjs";
+} from "../../src/subnet-stake-moves.ts";
 import {
   buildSubnetStakeTransfers,
   SUBNET_STAKE_TRANSFERS_WINDOWS,
