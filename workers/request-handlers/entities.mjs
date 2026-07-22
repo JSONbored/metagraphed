@@ -121,7 +121,7 @@ import {
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
 import { loadSubnetLease } from "../../src/subnet-lease.mjs";
-import { computeStakeQuote } from "../../src/stake-quote.mjs";
+import { computeStakeQuote } from "../../src/stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
@@ -2593,7 +2593,7 @@ async function resolveSubnetEconomicsRow(env, netuid) {
 // GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake
 // (#5235): a read-only constant-product slippage/price-impact estimate against
 // the subnet's live AMM pool reserves — no chain write, no custody. Pure math in
-// src/stake-quote.mjs; this handler just resolves the reserves and maps its
+// src/stake-quote.ts; this handler just resolves the reserves and maps its
 // typed result onto the API envelope (400 for a bad request, 422 when the pool
 // can't fill the requested swap).
 export async function handleSubnetStakeQuote(request, env, netuid, url) {

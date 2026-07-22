@@ -17,7 +17,7 @@
 // matching the sibling live tiers (alpha-volume, stake-flow).
 //
 // Root subnet (netuid 0) has no AMM pool -- staking there is 1:1 TAO<->TAO with
-// no price impact (mirrors src/stake-quote.mjs's own root short-circuit) -- so
+// no price impact (mirrors src/stake-quote.ts's own root short-circuit) -- so
 // an OHLC series for it would just be a flat line at 1.0 and isn't a
 // meaningful market. buildSubnetOhlc returns an explicit root_excluded shape
 // (candles: [], root_excluded: true) instead of computing a degenerate series.
@@ -129,7 +129,7 @@ export function buildSubnetOhlc(
 
   // Root subnet (netuid 0) has no AMM pool -- 1:1 TAO, no price impact.
   // Short-circuit with an explicit degenerate shape rather than computing a
-  // meaningless flat-line series, mirroring stake-quote.mjs's is_root
+  // meaningless flat-line series, mirroring stake-quote.ts's is_root
   // short-circuit (which similarly never runs its pool math against
   // nonexistent reserves). `candles` stays an empty array (not omitted) and
   // `root_excluded` is always present as a boolean -- one schema-stable shape

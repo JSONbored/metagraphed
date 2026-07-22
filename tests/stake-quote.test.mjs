@@ -3,7 +3,7 @@ import {
   computeStakeQuote,
   STAKE_QUOTE_DIRECTIONS,
   MAX_INPUT_RESERVE_MULTIPLE,
-} from "../src/stake-quote.mjs";
+} from "../src/stake-quote.ts";
 
 // Realistic reserves (SN64 from the live economics.json artifact).
 const POOL = {

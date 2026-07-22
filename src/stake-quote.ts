@@ -15,9 +15,37 @@ export const STAKE_QUOTE_DIRECTIONS = ["stake", "unstake"];
 // insufficient-liquidity error instead of a degenerate ~100%-impact quote.
 export const MAX_INPUT_RESERVE_MULTIPLE = 1000;
 
-function isFinitePositive(n) {
+function isFinitePositive(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n) && n > 0;
 }
+
+export interface StakeQuote {
+  netuid: number;
+  direction: string;
+  amount: number;
+  expected_out: number;
+  expected_out_unit: "alpha" | "tao";
+  spot_price_tao: number;
+  effective_price_tao: number;
+  price_impact_pct: number;
+  tao_in_pool_tao: number | null;
+  alpha_in_pool: number | null;
+  is_root: boolean;
+}
+
+export interface StakeQuoteSuccess {
+  ok: true;
+  quote: StakeQuote;
+}
+
+export interface StakeQuoteFailure {
+  ok: false;
+  status: number;
+  code: string;
+  error: string;
+}
+
+export type StakeQuoteResult = StakeQuoteSuccess | StakeQuoteFailure;
 
 /**
  * Compute a stake/unstake quote against one subnet's AMM pool reserves.
@@ -32,7 +60,13 @@ export function computeStakeQuote({
   alphaInPool,
   amount,
   direction,
-}) {
+}: {
+  netuid: number;
+  taoInPool: unknown;
+  alphaInPool: unknown;
+  amount: unknown;
+  direction: string;
+}): StakeQuoteResult {
   if (!STAKE_QUOTE_DIRECTIONS.includes(direction)) {
     return {
       ok: false,
@@ -85,9 +119,9 @@ export function computeStakeQuote({
   // constant-product swap (k = tao_in · alpha_in preserved) in its stable form.
   const spotPrice = taoInPool / alphaInPool; // TAO per alpha at rest
 
-  let expectedOut;
-  let expectedOutUnit;
-  let effectivePrice;
+  let expectedOut: number;
+  let expectedOutUnit: "alpha" | "tao";
+  let effectivePrice: number;
 
   if (direction === "stake") {
     // Add `amount` TAO, receive alpha. Algebraically alpha_out = alpha_in -
