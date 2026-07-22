@@ -38,9 +38,7 @@
       "provider": "vocence",
       "public_safe": true,
       "source_urls": ["https://www.vocence.ai/"],
-      "source_urls": [
-        "https://www.vocence.ai/"
-      ],
+      "source_urls": ["https://www.vocence.ai/"],
       "url": "https://www.vocence.ai/"
     },
     {
@@ -59,9 +57,7 @@
       "provider": "vocence",
       "public_safe": true,
       "source_urls": ["https://github.com/vocence-78/vocence"],
-      "source_urls": [
-        "https://github.com/vocence-78/vocence"
-      ],
+      "source_urls": ["https://github.com/vocence-78/vocence"],
       "url": "https://github.com/vocence-78/vocence"
     },
     {
@@ -167,9 +163,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/account"
     },
     {
@@ -198,9 +192,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/account/keys"
     },
     {
@@ -229,9 +221,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/account/keys/%7Bkey_id%7D/revoke"
     },
     {
@@ -260,9 +250,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/account/usage"
     },
     {
@@ -291,9 +279,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agent-tools"
     },
     {
@@ -322,9 +308,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agent-tools/%7Btool_id%7D"
     },
     {
@@ -353,9 +337,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents"
     },
     {
@@ -384,9 +366,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/architect/chat"
     },
     {
@@ -415,9 +395,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/draft"
     },
     {
@@ -446,9 +424,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/models"
     },
     {
@@ -477,9 +453,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/templates"
     },
     {
@@ -508,9 +482,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/templates/%7Btemplate_id%7D"
     },
     {
@@ -539,9 +511,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/tools/builtin"
     },
     {
@@ -570,9 +540,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D"
     },
     {
@@ -601,9 +569,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/calls"
     },
     {
@@ -632,9 +598,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/calls/%7Bsession_id%7D/recording"
     },
     {
@@ -663,9 +627,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/calls/%7Bsession_id%7D/transcript"
     },
     {
@@ -694,9 +656,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/embed-tokens"
     },
     {
@@ -725,9 +685,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/embed-tokens/%7Btoken_id%7D"
     },
     {
@@ -756,9 +714,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/knowledge/ingest/markdown"
     },
     {
@@ -787,9 +743,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/knowledge/ingest/pdf"
     },
     {
@@ -818,9 +772,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/knowledge/ingest/sitemap"
     },
     {
@@ -849,9 +801,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/knowledge/ingest/text"
     },
     {
@@ -880,9 +830,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/knowledge/ingest/url"
     },
     {
@@ -911,9 +859,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/knowledge/jobs/%7Bjob_id%7D"
     },
     {
@@ -942,9 +888,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/knowledge/sources"
     },
     {
@@ -973,9 +917,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/knowledge/sources/%7Bsource_id%7D"
     },
     {
@@ -1004,9 +946,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/runs"
     },
     {
@@ -1035,9 +975,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/runs/%7Brun_id%7D"
     },
     {
@@ -1066,9 +1004,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/runs/%7Brun_id%7D/cancel"
     },
     {
@@ -1097,9 +1033,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/tools"
     },
     {
@@ -1128,9 +1062,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/agents/%7Bagent_id%7D/tools/%7Btool_id%7D"
     },
     {
@@ -1159,9 +1091,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/audio/noise-remover"
     },
     {
@@ -1190,9 +1120,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/feedback"
     },
     {
@@ -1221,9 +1149,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/stt/transcribe"
     },
     {
@@ -1252,9 +1178,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/tts/generate"
     },
     {
@@ -1283,9 +1207,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/tts/speak"
     },
     {
@@ -1314,9 +1236,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/voice/clone"
     },
     {
@@ -1345,9 +1265,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/voice/clone/save"
     },
     {
@@ -1376,9 +1294,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/voice/design/preview"
     },
     {
@@ -1407,9 +1323,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/voice/design/save"
     },
     {
@@ -1438,9 +1352,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/voices"
     },
     {
@@ -1469,9 +1381,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/voices/builtin"
     },
     {
@@ -1500,9 +1410,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/voices/%7Bvoice_id%7D"
     },
     {
@@ -1531,9 +1439,7 @@
         "state": "community-submitted",
         "submitted_by": "joaovictor91123"
       },
-      "source_urls": [
-        "https://api.vocence.ai/openapi.json"
-      ],
+      "source_urls": ["https://api.vocence.ai/openapi.json"],
       "url": "https://api.vocence.ai/v1/voices/%7Bvoice_id%7D/speak"
     }
   ],
