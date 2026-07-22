@@ -681,6 +681,52 @@ describe("captured-fixture body scan", () => {
       );
     }
   });
+
+  test("does not flag a real X-Role-Hotkey HTTP header name", async () => {
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "X-Validator-Hotkey",
+        "X-Miner-Hotkey",
+        "Requires the X-Validator-Hotkey and X-Validator-Signature headers.",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `a real X-Role-Hotkey header name must not trip sensitive hotkey wording; got:\n${output}`,
+    );
+  });
+
+  test("still flags validator/miner hotkey prose alongside a real header name on other lines", async () => {
+    // The allowlist strips only the exact "X-Role-Hotkey" shape -- lowercase
+    // or space-joined wording using the same words, even on an adjacent line
+    // in the same file, must still trip the rule untouched.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "X-Validator-Hotkey",
+        "share your validator hotkey with us",
+        "x-validator-hotkey",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.ok(
+      !output.includes(`${TEST_PUBLIC_FILE}:1: sensitive hotkey wording`),
+      `line 1 (real header name) must not be flagged; got:\n${output}`,
+    );
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:2: sensitive hotkey wording`),
+      `line 2 (space-joined prose) should still be flagged; got:\n${output}`,
+    );
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:3: sensitive hotkey wording`),
+      `line 3 (lowercase header-shaped text) should still be flagged; got:\n${output}`,
+    );
+  });
 });
 
 // scripts/, deploy/, and apps/indexer-rs/ joined targetRoots in the same PR
