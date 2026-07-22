@@ -16377,6 +16377,83 @@ describe("graphql — network_randomness (#6990, live chain RPC via randomness.t
   });
 });
 
+describe("graphql — randomness_status (#7649, get_randomness_status-aligned alias)", () => {
+  function kvEnv(payload) {
+    return { METAGRAPH_CONTROL: { get: async () => payload } };
+  }
+
+  test("a successful live read serves the same beacon snapshot as network_randomness", async () => {
+    const env = kvEnv({
+      schema_version: 1,
+      last_stored_round: 1200,
+      oldest_stored_round: 900,
+      stored_round_span: 301,
+      queried_at: "2026-07-20T00:00:00.000Z",
+    });
+    const { status, body } = await gql(
+      `{ randomness_status { schema_version last_stored_round oldest_stored_round stored_round_span queried_at }
+         network_randomness { schema_version last_stored_round oldest_stored_round stored_round_span queried_at } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const alias = body.data.randomness_status;
+    assert.equal(alias.schema_version, 1);
+    assert.equal(alias.last_stored_round, 1200);
+    assert.equal(alias.oldest_stored_round, 900);
+    assert.equal(alias.stored_round_span, 301);
+    assert.equal(alias.queried_at, "2026-07-20T00:00:00.000Z");
+    // Alias equivalence: the identical envelope from the same env.
+    assert.deepEqual(alias, body.data.network_randomness);
+  });
+
+  test("RPC failure: null rounds resolve as the same schema-stable card, never a GraphQL error", async () => {
+    const env = kvEnv({
+      schema_version: 1,
+      last_stored_round: null,
+      oldest_stored_round: null,
+      stored_round_span: null,
+      queried_at: "2026-07-20T00:00:00.000Z",
+    });
+    const { status, body } = await gql(
+      "{ randomness_status { last_stored_round oldest_stored_round stored_round_span queried_at } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.randomness_status;
+    assert.equal(r.last_stored_round, null);
+    assert.equal(r.oldest_stored_round, null);
+    assert.equal(r.stored_round_span, null);
+    assert.ok(r.queried_at);
+  });
+
+  test("is priced identically to network_randomness", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.randomness_status,
+      FIELD_COMPLEXITY.network_randomness,
+    );
+  });
+
+  test("has the identical GraphQL signature as network_randomness (args + return type)", async () => {
+    const { status, body } = await gql(
+      `{ __type(name: "Query") { fields {
+          name
+          args { name type { kind name ofType { kind name } } }
+          type { kind name ofType { kind name } }
+        } } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const fields = body.data.__type.fields;
+    const canonical = fields.find((f) => f.name === "network_randomness");
+    const alias = fields.find((f) => f.name === "randomness_status");
+    assert.ok(canonical && alias, "both fields present in the schema");
+    assert.deepEqual(alias.args, canonical.args);
+    assert.deepEqual(alias.type, canonical.type);
+  });
+});
+
 describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs)", () => {
   function kvEnv(payload) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };
@@ -16432,6 +16509,82 @@ describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs
     assert.equal(
       FIELD_COMPLEXITY.evm_address,
       FIELD_COMPLEXITY.network_parameters,
+    );
+  });
+});
+
+describe("graphql — evm_address_mapping (#7648, get_evm_address_mapping name parity)", () => {
+  function kvEnv(payload) {
+    return { METAGRAPH_CONTROL: { get: async () => payload } };
+  }
+  const H160 = "0x1234567890abcdef1234567890abcdef12345678";
+
+  test("resolves the h160 -> ss58 mapping under the MCP tool name", async () => {
+    const env = kvEnv({
+      schema_version: 1,
+      h160: H160,
+      ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      queried_at: "2026-07-22T00:00:00.000Z",
+    });
+    const { status, body } = await gql(
+      `{ evm_address_mapping(h160: "${H160}") { schema_version h160 ss58 queried_at } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.evm_address_mapping;
+    assert.equal(r.schema_version, 1);
+    assert.equal(r.h160, H160);
+    assert.equal(r.ss58, "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+    assert.ok(r.queried_at);
+  });
+
+  test("an unresolved mapping resolves with null ss58, never a GraphQL error", async () => {
+    const env = kvEnv({
+      schema_version: 1,
+      h160: H160,
+      ss58: null,
+      queried_at: "2026-07-22T00:00:00.000Z",
+    });
+    const { status, body } = await gql(
+      `{ evm_address_mapping(h160: "${H160}") { h160 ss58 } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.evm_address_mapping.ss58, null);
+  });
+
+  test("a malformed h160 is a GraphQL BAD_USER_INPUT error, not a card", async () => {
+    const { body } = await gql(
+      '{ evm_address_mapping(h160: "not-an-address") { ss58 } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/h160/i.test(body.errors[0].message));
+    assert.equal(body.errors[0].extensions?.code, "BAD_USER_INPUT");
+    assert.equal(body.data?.evm_address_mapping ?? null, null);
+  });
+
+  test("returns the same payload as evm_address for the same address", async () => {
+    const payload = {
+      schema_version: 1,
+      h160: H160,
+      ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      queried_at: "2026-07-22T00:00:00.000Z",
+    };
+    const { body } = await gql(
+      `{ a: evm_address(h160: "${H160}") { schema_version h160 ss58 queried_at }
+         b: evm_address_mapping(h160: "${H160}") { schema_version h160 ss58 queried_at } }`,
+      kvEnv(payload),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.b, body.data.a);
+  });
+
+  test("evm_address_mapping is weighted exactly like evm_address", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.evm_address_mapping,
+      FIELD_COMPLEXITY.evm_address,
     );
   });
 });

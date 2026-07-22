@@ -10,6 +10,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 
 const NO_AUTH_SURFACE = {
   surface_id: "x:api:1",
@@ -167,6 +168,19 @@ const DISABLED_PROBE_BEARER_SURFACE = {
   probe: { method: "GET", enabled: false },
 };
 
+// A generically-supported scheme with `name` documented but `location`
+// missing -- distinct from INCOMPLETE_AUTH_SURFACE above (which is missing
+// `name` too, short-circuiting before location is ever checked).
+const MISSING_LOCATION_SURFACE = {
+  surface_id: "x:api:11",
+  netuid: 15,
+  kind: "subnet-api",
+  url: "https://x.example/no-location",
+  auth_required: true,
+  auth: { scheme: "bearer", name: "Authorization" },
+  probe: { method: "GET", enabled: true },
+};
+
 const CATALOG = {
   surfaces: [
     NO_AUTH_SURFACE,
@@ -180,6 +194,7 @@ const CATALOG = {
     CUSTOM_AUTH_SURFACE,
     INCOMPLETE_AUTH_SURFACE,
     DISABLED_PROBE_BEARER_SURFACE,
+    MISSING_LOCATION_SURFACE,
   ],
 };
 
@@ -746,6 +761,28 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /credential_not_supported/);
     });
 
+    test("a credential on a bearer surface with name but no location is credential_not_supported", async () => {
+      // Distinct from the missing-name case above: name present, only
+      // location absent -- exercises the `location !== ...` half of the
+      // eligibility check, not just the `!name` short-circuit.
+      const result = await callTool({
+        surface_id: "x:api:11",
+        credential: "whatever",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
+    });
+
+    test("a credential on a surface with auth_required but no auth object at all names the scheme as undocumented", async () => {
+      const result = await callTool({
+        surface_id: "x:api:2",
+        credential: "whatever",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
+      assert.match(result.content[0].text, /"undocumented"/);
+    });
+
     test("a credential on a surface that doesn't require auth is invalid_params", async () => {
       const result = await callTool({
         surface_id: "x:api:1",
@@ -794,6 +831,63 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /no_schema/);
       assert.equal(sentHeader, undefined);
       assert.equal(requestedUrl, undefined);
+    });
+  });
+
+  // #7687 (MCP execute Phase 3b): a credential must never appear in usage
+  // telemetry. usageEventProperties (src/usage-telemetry.mjs) is already a
+  // strict allowlist that never receives raw tool args -- this proves that
+  // holds for a real credentialed call, not just by reading the allowlist.
+  describe("credential never reaches usage telemetry (#7687)", () => {
+    test("a credentialed call_subnet_surface records only the allowlisted fields", async () => {
+      const of = globalThis.fetch;
+      globalThis.fetch = async () =>
+        new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      const recorded = [];
+      try {
+        const response = await handleMcpRequest(
+          new Request("https://metagraph.sh/mcp", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "tools/call",
+              params: {
+                name: "call_subnet_surface",
+                arguments: {
+                  surface_id: "x:api:6",
+                  credential: "Bearer super-secret-abc123",
+                },
+              },
+            }),
+          }),
+          { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+          {
+            ...deps,
+            executionCtx: { waitUntil: (p) => p },
+            recordUsageEvent: async (_env, event) => {
+              recorded.push(event);
+              return true;
+            },
+          },
+        );
+        await response.json();
+      } finally {
+        globalThis.fetch = of;
+      }
+      assert.equal(recorded.length, 1);
+      const serialized = JSON.stringify(recorded[0]);
+      assert.ok(!serialized.includes("super-secret-abc123"));
+      assert.deepEqual(Object.keys(recorded[0]).sort(), [
+        "durationMs",
+        "mcpTool",
+        "ok",
+      ]);
+      assert.equal(recorded[0].mcpTool, "call_subnet_surface");
     });
   });
 });

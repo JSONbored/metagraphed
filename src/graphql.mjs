@@ -819,8 +819,12 @@ export const SDL = `
     network_parameters: NetworkParameters
     "Live drand randomness-beacon status read directly from chain via RPC (not the Postgres tier): the newest and oldest stored beacon rounds and the span between them. Each field is independently null on its own RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/network/randomness."
     network_randomness: NetworkRandomness
+    "The get_randomness_status-aligned name for the same live drand beacon snapshot (#7649): identical loader, KV cache, and independently-null RPC-failure behavior as network_randomness — a thin alias so MCP tool names and GraphQL fields line up. Returns the typed NetworkRandomness envelope rather than the issue's literal JSON suggestion, matching network_randomness. Mirrors GET /api/v1/network/randomness."
+    randomness_status: NetworkRandomness
     "Live EVM (H160) -> Substrate (SS58) account-address mapping for a 20-byte 0x-prefixed hex address, resolved directly from chain via RPC (not the Postgres tier). ss58 is null when the address has no association or the RPC lookup fails, schema-stable, never a GraphQL error. Mirrors GET /api/v1/evm/address/{h160}."
     evm_address(h160: String!): EvmAddressMapping
+    "The get_evm_address_mapping-aligned name for evm_address, so the MCP tool name and this Query field line up. Structurally identical to evm_address -- same live RPC read, same validation, same schema-stable null on an unresolved mapping -- not a second lookup. Mirrors GET /api/v1/evm/address/{h160}."
+    evm_address_mapping(h160: String!): EvmAddressMapping
     "Recent Sudo-pallet extrinsic feed (newest first): the chain's superuser governance calls, the same shape as the extrinsics feed with call_module fixed to Sudo (so no signer/call_module args). Mirrors GET /api/v1/sudo."
     sudo(limit: Int, offset: Int, cursor: String, block: Int, call_function: String, success: Boolean): ExtrinsicList!
   }
@@ -4363,7 +4367,9 @@ export const FIELD_COMPLEXITY = {
   sudo_key: LIVE_RPC_FIELD_COMPLEXITY,
   network_parameters: LIVE_RPC_FIELD_COMPLEXITY,
   network_randomness: LIVE_RPC_FIELD_COMPLEXITY,
+  randomness_status: LIVE_RPC_FIELD_COMPLEXITY,
   evm_address: LIVE_RPC_FIELD_COMPLEXITY,
+  evm_address_mapping: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -4909,6 +4915,22 @@ async function listPage(
 // namespace. Constrain it to the safe slug charset the other id-bearing artifact
 // paths use; subnet(netuid) is Int-typed and needs no guard.
 const VALID_PROVIDER_ID = /^[A-Za-z0-9._:-]+$/;
+
+// Backs both evm_address and its get_evm_address_mapping-aligned alias
+// evm_address_mapping (#7648), so the two fields cannot drift apart. Same
+// H160_PATTERN validation the REST route + MCP get_evm_address_mapping use --
+// a malformed address is a GraphQL BAD_USER_INPUT error, not a card. The read
+// itself is live chain RPC, not the Postgres tier, reusing loadAddressMapping's
+// own KV cache/TTL, matching REST's /evm/address/{h160} handler exactly; ss58 is
+// null on an unresolved mapping (schema-stable), never a GraphQL error.
+function resolveEvmAddressMapping(h160, context) {
+  if (typeof h160 !== "string" || !H160_PATTERN.test(h160)) {
+    throw new GraphQLError("h160 must be a 20-byte 0x-prefixed hex address.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  return loadAddressMapping(context.env, h160);
+}
 
 const rootValue = {
   subnets(
@@ -10078,21 +10100,21 @@ const rootValue = {
     // never a GraphQL error; schema_version/queried_at are always set.
     return loadRandomnessStatus(context.env);
   },
+  // #7649: the get_randomness_status-aligned name for the same beacon snapshot
+  // -- a thin delegate so MCP tool names and GraphQL fields line up. Identical
+  // loader, KV cache/TTL, and independently-null RPC-failure behavior; nothing
+  // re-implemented.
+  async randomness_status(_args, context) {
+    return rootValue.network_randomness(_args, context);
+  },
   async evm_address({ h160 }, context) {
-    // Same H160_PATTERN validation the REST route + MCP get_evm_address_mapping
-    // use -- a malformed address is a GraphQL BAD_USER_INPUT error, not a card.
-    if (typeof h160 !== "string" || !H160_PATTERN.test(h160)) {
-      throw new GraphQLError(
-        "h160 must be a 20-byte 0x-prefixed hex address.",
-        {
-          extensions: { code: "BAD_USER_INPUT" },
-        },
-      );
-    }
-    // Live chain RPC, not the Postgres tier -- reuses loadAddressMapping's own
-    // KV cache/TTL, matching REST's /evm/address/{h160} handler exactly. ss58 is
-    // null on an unresolved mapping (schema-stable), never a GraphQL error.
-    return loadAddressMapping(context.env, h160);
+    return resolveEvmAddressMapping(h160, context);
+  },
+  // Same resolver as evm_address, under the get_evm_address_mapping tool name so
+  // MCP and GraphQL agree; delegating rather than duplicating keeps the two
+  // fields from ever drifting apart.
+  async evm_address_mapping({ h160 }, context) {
+    return resolveEvmAddressMapping(h160, context);
   },
 };
 

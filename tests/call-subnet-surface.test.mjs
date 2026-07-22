@@ -636,6 +636,174 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
+  // #7687 (MCP execute Phase 3b): a query-location credential is part of the
+  // request URL itself, so it's the one placement that can leak back out
+  // through this function's own return value -- these confirm it's redacted
+  // everywhere a URL/error could carry it, while header/cookie placement
+  // (never echoed anywhere by this module) needs no equivalent redaction.
+  test("credential: query-location value is redacted in the successful response's url", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "query", name: "api_key", value: "abc123" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => jsonResponse({}),
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+    assert.ok(!result.url.includes("abc123"));
+  });
+
+  test("credential: query-location value is redacted in the url after a followed redirect", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "query", name: "api_key", value: "abc123" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          if (new URL(url).pathname === "/api") {
+            return new Response(null, {
+              status: 302,
+              // The surface's own redirect happens to echo the query string
+              // back -- exactly the case that would leak the credential if
+              // redirectTarget weren't redacted too.
+              headers: {
+                location: `https://example.com/api/v2?api_key=abc123`,
+              },
+            });
+          }
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.ok(!result.url.includes("abc123"));
+    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+  });
+
+  test("credential: a redirect target with no credential-named param is returned unchanged (nothing to redact)", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "query", name: "api_key", value: "abc123" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          if (new URL(url).pathname === "/api") {
+            // The surface's redirect drops the query string entirely --
+            // nothing named "api_key" ends up in the target.
+            return new Response(null, {
+              status: 302,
+              headers: { location: "https://example.com/api/v2" },
+            });
+          }
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.url, "https://example.com/api/v2");
+  });
+
+  test("credential: query-location value is redacted in a blocked-redirect's redirect_target", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "query", name: "api_key", value: "abc123" },
+        isUnsafeUrl: async (url) => url.includes("internal"),
+        fetchImpl: async (url) => {
+          if (new URL(url).pathname === "/api") {
+            return new Response(null, {
+              status: 302,
+              headers: {
+                location: "https://internal.example/secret?api_key=abc123",
+              },
+            });
+          }
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.private_redirect_blocked, true);
+    assert.ok(!result.redirect_target.includes("abc123"));
+    assert.equal(
+      new URL(result.redirect_target).searchParams.get("api_key"),
+      "<redacted>",
+    );
+  });
+
+  test("credential: query-location value is not present when the surface has no query param matching auth.name", async () => {
+    // The redaction only touches a param actually named after the
+    // credential -- an unrelated same-named-looking query value some OTHER
+    // param happens to carry is left alone (nothing to redact there).
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        query: { other: "abc123" },
+        credential: { location: "query", name: "api_key", value: "abc123" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => jsonResponse({}),
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(new URL(result.url).searchParams.get("other"), "abc123");
+    assert.equal(new URL(result.url).searchParams.get("api_key"), "<redacted>");
+  });
+
+  test("credential: header/cookie-location values never appear in the response url (nothing to redact there)", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          name: "Authorization",
+          value: "Bearer abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => jsonResponse({}),
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.url, "https://example.com/api");
+  });
+
+  test("credential: any placement's value is scrubbed from a network-error message", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          name: "Authorization",
+          value: "Bearer abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => {
+          throw new Error(
+            "fetch failed: https://example.com/api (header Authorization: Bearer abc123)",
+          );
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.ok(!result.error.includes("Bearer abc123"));
+    assert.ok(result.error.includes("<redacted>"));
+  });
+
+  test("credential: no credential supplied leaves error messages untouched", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => {
+          throw new Error("connection refused");
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.error, "connection refused");
+  });
+
   test("credential: cookie location sets a Cookie header formatted name=value", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
