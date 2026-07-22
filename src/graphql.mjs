@@ -4772,6 +4772,24 @@ function validatorNode(validator) {
   };
 }
 
+// buildValidatorDetail always returns a full-shaped object (rows=[] yields a
+// zeroed aggregate), but a malformed Postgres-tier response body degrades to
+// `{}` -- merged here with the cold-safe base the same way accountSummaryNode
+// normalizes a bad upstream body into the schema-stable zero card.
+function validatorDetailNode(data, hotkey) {
+  const base = buildValidatorDetail([], hotkey);
+  const raw = data && typeof data === "object" ? data : {};
+  return validatorNode({
+    ...base,
+    ...raw,
+    hotkey:
+      typeof raw.hotkey === "string" && raw.hotkey.length > 0
+        ? raw.hotkey
+        : hotkey,
+    subnets: Array.isArray(raw.subnets) ? raw.subnets : base.subnets,
+  });
+}
+
 // buildAccountSummary always returns a full-shaped object (a cold/absent store
 // still yields a zeroed summary, never a partial one), but a malformed
 // Postgres-tier response body degrades to `{}` -- normalized here the same way
@@ -7398,16 +7416,15 @@ const rootValue = {
   },
 
   async validator({ hotkey }, context) {
-    const data =
-      (await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/validators/${encodeURIComponent(hotkey)}`,
-        ),
-        "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildValidatorDetail([], hotkey);
-    return validatorNode(data);
+    const data = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+      ),
+      "METAGRAPH_NEURONS_SOURCE",
+    );
+    return validatorDetailNode(data, hotkey);
   },
 
   async validator_history({ hotkey, window }, context) {

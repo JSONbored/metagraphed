@@ -3964,6 +3964,28 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     ]);
   });
 
+  test("validator: a malformed Postgres-tier body degrades to a schema-stable zeroed aggregate", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      '{ validator(hotkey: "5NoRows") { hotkey featured subnet_count total_stake_tao captured_at block_number subnets { netuid } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.validator, {
+      hotkey: "5NoRows",
+      featured: false,
+      subnet_count: 0,
+      total_stake_tao: 0,
+      captured_at: null,
+      block_number: null,
+      subnets: [],
+    });
+  });
+
   test("validators / validator are weighted as fan-out fields", () => {
     assert.equal(FIELD_COMPLEXITY.validators, 5);
     assert.equal(FIELD_COMPLEXITY.validator, 5);
