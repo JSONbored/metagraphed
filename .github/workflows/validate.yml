@@ -490,7 +490,7 @@ jobs:
 
       - name: Verify submitted public artifacts are reproducible
         if: env.DOCS_ONLY != 'true' && github.event_name == 'pull_request'
-        run: node scripts/ci-verify-submitted-artifacts.mjs --changed-files submitted-artifact-files.txt
+        run: node scripts/ci-verify-submitted-artifacts.ts --changed-files submitted-artifact-files.txt
 
       - name: Validate registry
         if: env.DOCS_ONLY != 'true'

@@ -10,7 +10,7 @@ import {
   canonicalJson,
   isSubmittedPublicArtifactPath,
   partitionMismatches,
-} from "../scripts/ci-verify-submitted-artifacts.mjs";
+} from "../scripts/ci-verify-submitted-artifacts.ts";
 
 test("submitted artifact verifier includes force-added public datasets", () => {
   assert.equal(

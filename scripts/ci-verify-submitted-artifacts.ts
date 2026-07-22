@@ -12,12 +12,14 @@ import {
   resolveBaseRemote,
 } from "./lib.mjs";
 
+type Row = Record<string, unknown>;
+
 // Generated artifacts like openapi.json now exceed Node's default 1 MB
 // execFileSync buffer, so git reads must allow plenty of headroom or the
 // output overflows and throws ENOBUFS.
 const GIT_OUTPUT_MAX_BUFFER = 64 * 1024 * 1024;
 
-function main() {
+function main(): void {
   const changedFilesPath = valueAfter("--changed-files") || "changed-files.txt";
   const artifactRoot = valueAfter("--artifact-root") || "public/metagraph";
 
@@ -80,7 +82,7 @@ function main() {
   // cross-platform JSON-formatting differences (object key order and number rendering).
   // We normalize both sides by recursively sorting object keys while preserving array order,
   // because JSON array order is semantic for public artifacts and API responses.
-  const mismatches = [];
+  const mismatches: string[] = [];
   for (const artifact of submittedArtifacts) {
     if (!artifact.endsWith(".json")) {
       // Non-JSON generated files (e.g. types.d.ts) keep the strict byte check.
@@ -89,8 +91,8 @@ function main() {
       }
       continue;
     }
-    let committed;
-    let rebuilt;
+    let committed: unknown;
+    let rebuilt: unknown;
     try {
       committed = JSON.parse(gitShow(`HEAD:${artifact}`));
     } catch {
@@ -141,7 +143,7 @@ if (
   main();
 }
 
-export function isSubmittedPublicArtifactPath(file) {
+export function isSubmittedPublicArtifactPath(file: string): boolean {
   return (
     file.startsWith("public/metagraph/") || file.startsWith("public/datasets/")
   );
@@ -153,14 +155,19 @@ export function isSubmittedPublicArtifactPath(file) {
  * a distinct "revert, don't rebuild" message, versus everything else, which
  * keeps the generic "run npm run build and commit" message.
  */
-export function partitionMismatches(mismatches) {
+export function partitionMismatches(mismatches: string[]): {
+  deployOwned: string[];
+  other: string[];
+} {
   // Match the exact "<path> (<reason>)" format this script's own mismatch
   // entries use, not a bare path-prefix `startsWith`, so a differently-named
   // file that happens to share a prefix (e.g. an unrelated
   // "public/metagraph/r2-manifest.json.bak (...)") can't be misclassified if
   // this helper is ever reused against a different string shape.
   const deployOwned = mismatches.filter((entry) =>
-    DEPLOY_OWNED_ARTIFACTS.some((file) => entry.startsWith(`${file} (`)),
+    (DEPLOY_OWNED_ARTIFACTS as string[]).some((file) =>
+      entry.startsWith(`${file} (`),
+    ),
   );
   const other = mismatches.filter((entry) => !deployOwned.includes(entry));
   return { deployOwned, other };
@@ -173,7 +180,10 @@ export function partitionMismatches(mismatches) {
  * `upstream/main`, matching the same recommendation as build.mjs's local
  * warning -- never a hardcoded `origin/main`, which is wrong on a fork.
  */
-export function buildDeployOwnedMismatchMessage(deployOwnedMismatches, cwd) {
+export function buildDeployOwnedMismatchMessage(
+  deployOwnedMismatches: string[],
+  cwd?: string,
+): string {
   return [
     "Deploy/publish-pipeline-owned artifact(s) in your diff don't match a fresh build --",
     "this is EXPECTED and not something to fix by rebuilding again. These files are not",
@@ -188,58 +198,63 @@ export function buildDeployOwnedMismatchMessage(deployOwnedMismatches, cwd) {
 }
 
 /** Stable JSON: recursively sort object keys while preserving semantic array order. */
-export function canonicalJson(value) {
+export function canonicalJson(value: unknown): string {
   return JSON.stringify(normalizeForComparison(value));
 }
 
-export function canonicalArtifactJson(artifactPath, value) {
-  const normalized = normalizeForComparison(value);
+export function canonicalArtifactJson(
+  artifactPath: string,
+  value: unknown,
+): string {
+  const normalized = normalizeForComparison(value) as Row | unknown;
   if (
     artifactPath === "public/metagraph/r2-manifest.json" &&
     normalized &&
     typeof normalized === "object" &&
     !Array.isArray(normalized)
   ) {
+    const row = normalized as Row;
     // The committed compact manifest is a publish lockfile, but its full/R2-only
     // byte totals can vary slightly across otherwise-equivalent rebuilds. Keep
     // the dual artifact entries strict while ignoring the known unstable R2
     // aggregate byte counters only when they are valid byte totals; otherwise
     // committed public manifest tampering must remain visible to the verifier.
-    if (isValidByteTotal(normalized.full_artifact_size_bytes)) {
-      delete normalized.full_artifact_size_bytes;
+    if (isValidByteTotal(row.full_artifact_size_bytes)) {
+      delete row.full_artifact_size_bytes;
     }
     if (
-      normalized.storage_tier_size_bytes &&
-      typeof normalized.storage_tier_size_bytes === "object" &&
-      !Array.isArray(normalized.storage_tier_size_bytes)
+      row.storage_tier_size_bytes &&
+      typeof row.storage_tier_size_bytes === "object" &&
+      !Array.isArray(row.storage_tier_size_bytes)
     ) {
-      if (isValidByteTotal(normalized.storage_tier_size_bytes.r2)) {
-        delete normalized.storage_tier_size_bytes.r2;
+      const storageTier = row.storage_tier_size_bytes as Row;
+      if (isValidByteTotal(storageTier.r2)) {
+        delete storageTier.r2;
       }
     }
   }
   return JSON.stringify(normalized);
 }
 
-function isValidByteTotal(value) {
-  return Number.isSafeInteger(value) && value >= 0;
+function isValidByteTotal(value: unknown): boolean {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
 }
 
-function normalizeForComparison(value) {
+function normalizeForComparison(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(normalizeForComparison);
   }
   if (value && typeof value === "object") {
-    const out = Object.create(null);
+    const out: Row = Object.create(null);
     for (const key of Object.keys(value).sort()) {
-      out[key] = normalizeForComparison(value[key]);
+      out[key] = normalizeForComparison((value as Row)[key]);
     }
     return out;
   }
   return value;
 }
 
-function gitShow(ref) {
+function gitShow(ref: string): string {
   return execFileSync("git", ["show", ref], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
@@ -247,7 +262,7 @@ function gitShow(ref) {
   });
 }
 
-function gitDiffsFromHead(file) {
+function gitDiffsFromHead(file: string): boolean {
   try {
     execFileSync("git", ["diff", "--exit-code", "--", file], {
       encoding: "utf8",
@@ -256,28 +271,28 @@ function gitDiffsFromHead(file) {
     });
     return false;
   } catch (error) {
-    if (error.code === "ENOBUFS") {
+    if ((error as NodeJS.ErrnoException).code === "ENOBUFS") {
       throw error;
     }
     return true;
   }
 }
 
-function loadIndexedArtifacts(rootPath) {
-  const artifactPaths = new Set();
+function loadIndexedArtifacts(rootPath: string): Set<string> {
+  const artifactPaths = new Set<string>();
   // build-summary.json is R2-only (#1003) — read its index from the staging tier.
-  for (const artifact of readJsonArtifact(
+  for (const artifact of (readJsonArtifact(
     artifactFilePath("build-summary.json"),
-  ).artifacts || []) {
-    const relativePath = artifactRelativePath(artifact.path || "");
+  ).artifacts || []) as Row[]) {
+    const relativePath = artifactRelativePath((artifact.path as string) || "");
     if (relativePath) {
       artifactPaths.add(relativePath);
     }
   }
-  for (const artifact of readJsonArtifact(
+  for (const artifact of (readJsonArtifact(
     path.join(rootPath, "r2-manifest.json"),
-  ).artifacts || []) {
-    const relativePath = artifactRelativePath(artifact.path || "");
+  ).artifacts || []) as Row[]) {
+    const relativePath = artifactRelativePath((artifact.path as string) || "");
     if (relativePath) {
       artifactPaths.add(relativePath);
     }
@@ -285,11 +300,11 @@ function loadIndexedArtifacts(rootPath) {
   return artifactPaths;
 }
 
-function readJsonArtifact(filePath) {
+function readJsonArtifact(filePath: string): Row {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-function valueAfter(flag) {
+function valueAfter(flag: string): string | null {
   const index = process.argv.indexOf(flag);
   if (index === -1) {
     return null;

@@ -29,7 +29,7 @@ export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");
 // reflect the last real publish, not a local/CI build, so they are EXPECTED
 // to drift on every `npm run build` for reasons unrelated to any given PR.
 // Single source of truth, consumed by build.mjs (post-build local warning)
-// and ci-verify-submitted-artifacts.mjs (submitted-artifact mismatch
+// and ci-verify-submitted-artifacts.ts (submitted-artifact mismatch
 // messaging) so both stay in sync.
 export const DEPLOY_OWNED_ARTIFACTS = [
   "public/metagraph/r2-manifest.json",
@@ -41,7 +41,7 @@ export const DEPLOY_OWNED_ARTIFACTS = [
 // stale relative to it. A direct clone of the canonical repo has no
 // `upstream` remote at all, so `origin` there IS canonical. Prefer `upstream`
 // when present. Single source of truth for build.mjs's local warning and
-// ci-verify-submitted-artifacts.mjs's remediation message, so both always
+// ci-verify-submitted-artifacts.ts's remediation message, so both always
 // recommend the same, correct remote.
 export function resolveBaseRemote(cwd = process.cwd()) {
   const result = spawnSync("git", ["remote"], { cwd, encoding: "utf8" });
