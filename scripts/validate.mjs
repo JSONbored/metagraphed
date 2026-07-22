@@ -35,10 +35,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.ts";
-import {
-  githubSignalsForSubnet,
-  loadGithubSignals,
-} from "./github-signals.mjs";
+import { githubSignalsForSubnet, loadGithubSignals } from "./github-signals.ts";
 
 const providerKinds = new Set([
   "subnet-team",

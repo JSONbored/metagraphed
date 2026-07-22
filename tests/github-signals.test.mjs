@@ -4,7 +4,7 @@ import {
   githubRepoMapKey,
   githubSignalsForSubnet,
   parseGithubRepoUrl,
-} from "../scripts/github-signals.mjs";
+} from "../scripts/github-signals.ts";
 
 describe("parseGithubRepoUrl", () => {
   test("parses a well-formed github.com repo URL", () => {

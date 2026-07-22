@@ -8,10 +8,7 @@ import {
   rollupSubnetStatus,
 } from "../src/health-probe-core.ts";
 import { generateServiceSnippets } from "../src/integration-snippets.ts";
-import {
-  githubSignalsForSubnet,
-  loadGithubSignals,
-} from "./github-signals.mjs";
+import { githubSignalsForSubnet, loadGithubSignals } from "./github-signals.ts";
 import {
   backfilledIdentityUrl,
   socialAccounts,
@@ -173,7 +170,7 @@ const reviewDecisions = await loadReviewDecisions();
 const nativeSnapshot = await loadNativeSnapshot();
 // #6639: per-subnet GitHub language + last-push signal, from the committed
 // registry/generated/github-signals.json (periodically maintainer-refreshed
-// via `node scripts/github-signals.mjs --write`, mirrors how verification/
+// via `node scripts/github-signals.ts --write`, mirrors how verification/
 // candidates are loaded above -- a cold/absent file degrades every subnet's
 // github_languages/github_last_push_at to null, never throws).
 const githubSignals = await loadGithubSignals();

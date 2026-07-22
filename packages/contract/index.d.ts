@@ -7190,7 +7190,7 @@ export interface components {
             docs_url?: string | null;
             gap_count?: number;
             gaps: components["schemas"]["Gaps"];
-            /** @description Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.mjs --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live. */
+            /** @description Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.ts --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live. */
             github_languages?: {
                 [key: string]: number;
             } | null;
@@ -7533,7 +7533,7 @@ export interface components {
             /** @description True when the subnet has at least one operator-official (first-party) surface (issue #348). Reporting-only — never feeds completeness. */
             first_party?: boolean;
             gap_count?: number;
-            /** @description Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.mjs --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live. */
+            /** @description Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.ts --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live. */
             github_languages?: {
                 [key: string]: number;
             } | null;
