@@ -300,9 +300,7 @@ export function normalizeFilters(filters: unknown): Filters | null {
   return out;
 }
 
-export function validateSubscriptionInput(
-  input: unknown,
-):
+export function validateSubscriptionInput(input: unknown):
   | {
       ok: true;
       value: { url: string; filters: Filters; secret: string | null };
