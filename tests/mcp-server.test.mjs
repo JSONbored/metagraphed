@@ -20,7 +20,7 @@ import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 import { buildChainStakeMoves } from "../src/chain-stake-moves.mjs";
 import { buildChainStakeTransfers } from "../src/chain-stake-transfers.mjs";
 import { buildChainWeightSetters } from "../src/chain-weight-setters.mjs";
-import { buildChainAxonRemovals } from "../src/chain-axon-removals.mjs";
+import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
 import { buildChainDeregistrations } from "../src/chain-deregistrations.mjs";
 import { buildChainServing } from "../src/chain-serving.mjs";
 import { buildChainPrometheus } from "../src/chain-prometheus.mjs";

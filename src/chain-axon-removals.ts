@@ -23,14 +23,14 @@ export const DEFAULT_CHAIN_AXON_REMOVALS_WINDOW = "7d";
 
 // Round a removals-per-remover ratio to a stable precision (2dp). Always finite and
 // non-negative here (events / distinct hotkeys, with the divisor guarded below).
-function round(value, dp = 2) {
+function round(value: number, dp = 2): number {
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
 }
 
 // A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
-function toCount(value) {
+function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
@@ -39,7 +39,7 @@ function toCount(value) {
 // blank/whitespace-only string explicitly so neither is silently coerced to subnet 0
 // (Number(null), Number(""), and Number("  ") all === 0); a malformed row must be skipped,
 // never counted as netuid 0.
-function normalizedNetuid(value) {
+function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
@@ -48,7 +48,7 @@ function normalizedNetuid(value) {
 
 // Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
 // envelope's generated_at, the same way account-events does.
-function coerceEpochMs(value) {
+function coerceEpochMs(value: unknown): number | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -59,7 +59,7 @@ function coerceEpochMs(value) {
   return Number.isFinite(new Date(n).getTime()) ? n : null;
 }
 
-function toIso(value) {
+function toIso(value: unknown): string | null {
   const n = coerceEpochMs(value);
   return n == null ? null : new Date(n).toISOString();
 }
@@ -67,7 +67,7 @@ function toIso(value) {
 // Average AxonInfoRemoved events per distinct hotkey — the subnet's re-teardown intensity (1.0
 // means each remover removed once; higher means hotkeys removed an axon repeatedly after
 // re-announcing). A subnet with no removers has no defined intensity (null), not a divide-by-zero.
-function removalsPerRemover(removals, removers) {
+function removalsPerRemover(removals: number, removers: number): number | null {
   if (removers <= 0) return null;
   return round(removals / removers);
 }
@@ -75,7 +75,7 @@ function removalsPerRemover(removals, removers) {
 // Nearest-rank percentile of a NON-EMPTY ascending numeric array (deterministic, no
 // interpolation). Only called from intensityDistribution, which short-circuits an empty set to
 // null before reaching here.
-function percentile(ascending, p) {
+function percentile(ascending: number[], p: number): number {
   const rank = Math.ceil((p / 100) * ascending.length);
   return ascending[Math.min(rank, ascending.length) - 1];
 }
@@ -86,14 +86,25 @@ function percentile(ascending, p) {
 // branch — for an odd count the two indices coincide and it returns that middle value unchanged.
 // Matches median() in chain-yield.mjs / subnet-yield.mjs so a `median` field is the same statistic
 // across the API. Reached only after intensityDistribution's empty short-circuit.
-function median(ascending) {
+function median(ascending: number[]): number {
   const mid = (ascending.length - 1) / 2;
   return round((ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2);
 }
 
+export interface IntensityDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
 // Spread of the per-subnet re-teardown intensity across every subnet with removal activity:
 // count, mean, and min / p25 / median / p75 / p90 / max. Null when no subnet saw a removal.
-function intensityDistribution(values) {
+function intensityDistribution(values: number[]): IntensityDistribution | null {
   /* v8 ignore next -- defensive: only called with one value per subnet, and the builder returns
      the empty block (distribution null) before this runs when there are no subnets */
   if (values.length === 0) return null;
@@ -111,11 +122,34 @@ function intensityDistribution(values) {
   };
 }
 
-const EMPTY_NETWORK = {
+export interface ChainAxonRemovalsNetwork {
+  distinct_removers: number;
+  removals: number;
+  removals_per_remover: number | null;
+}
+
+const EMPTY_NETWORK: ChainAxonRemovalsNetwork = {
   distinct_removers: 0,
   removals: 0,
   removals_per_remover: null,
 };
+
+export interface ChainAxonRemovalsSubnet {
+  netuid: number;
+  distinct_removers: number;
+  removals: number;
+  removals_per_remover: number;
+}
+
+export interface ChainAxonRemovalsResult {
+  schema_version: 1;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainAxonRemovalsNetwork;
+  intensity_distribution: IntensityDistribution | null;
+  subnets: ChainAxonRemovalsSubnet[];
+}
 
 // Shape the network-wide axon-removal scorecard from the per-subnet account_events aggregate.
 // `subnetRows` carries one row per netuid (COUNT(*) removals, COUNT(DISTINCT hotkey)
@@ -125,9 +159,20 @@ const EMPTY_NETWORK = {
 // the distribution span every subnet with observed removal activity (subnets with no
 // AxonInfoRemoved events in the window are absent). Null-safe: no rows yields the empty block.
 export function buildChainAxonRemovals(
-  subnetRows,
-  { window, limit = CHAIN_AXON_REMOVALS_LIMIT_DEFAULT, networkDistinct } = {},
-) {
+  subnetRows: Array<Record<string, unknown>> | null | undefined,
+  {
+    window,
+    limit = CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+    networkDistinct,
+  }: {
+    window?: string | null;
+    limit?: number;
+    networkDistinct?: {
+      distinct_removers?: unknown;
+      newest_observed?: unknown;
+    };
+  } = {},
+): ChainAxonRemovalsResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
   const flooredLimit = Math.floor(Number(limit));
   const normalizedLimit = Number.isFinite(flooredLimit)
@@ -135,7 +180,7 @@ export function buildChainAxonRemovals(
     : CHAIN_AXON_REMOVALS_LIMIT_DEFAULT;
   const observedAt = toIso(networkDistinct?.newest_observed);
 
-  const empty = {
+  const empty: ChainAxonRemovalsResult = {
     schema_version: 1,
     window: window ?? null,
     observed_at: observedAt,
@@ -149,7 +194,7 @@ export function buildChainAxonRemovals(
   // Merge by netuid so a malformed direct caller passing duplicate rows for a subnet sums rather
   // than double-counting (the SQL loader GROUPs BY netuid, so production rows are unique per
   // subnet; this keeps the pure builder correct outside that path).
-  const perNetuid = new Map();
+  const perNetuid = new Map<number, { removers: number; removals: number }>();
   for (const row of list) {
     const netuid = normalizedNetuid(row?.netuid);
     if (netuid == null) continue;
@@ -162,17 +207,19 @@ export function buildChainAxonRemovals(
   }
   if (perNetuid.size === 0) return empty;
 
-  const subnets = [];
+  const subnets: ChainAxonRemovalsSubnet[] = [];
   let totalRemovals = 0;
   for (const [netuid, bucket] of perNetuid) {
     subnets.push({
       netuid,
       distinct_removers: bucket.removers,
       removals: bucket.removals,
+      // removalsPerRemover only returns null when removers <= 0, and every bucket here has
+      // removers > 0 (the `removers === 0` guard above skips it before it's ever created).
       removals_per_remover: removalsPerRemover(
         bucket.removals,
         bucket.removers,
-      ),
+      ) as number,
     });
     totalRemovals += bucket.removals;
   }
@@ -180,7 +227,7 @@ export function buildChainAxonRemovals(
   subnets.sort((a, b) => b.removals - a.removals || a.netuid - b.netuid);
 
   const networkRemovers = toCount(networkDistinct?.distinct_removers);
-  const network = {
+  const network: ChainAxonRemovalsNetwork = {
     distinct_removers: networkRemovers,
     removals: totalRemovals,
     removals_per_remover: removalsPerRemover(totalRemovals, networkRemovers),

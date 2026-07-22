@@ -376,7 +376,7 @@ import {
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
   CHAIN_AXON_REMOVALS_WINDOWS,
   DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
-} from "./chain-axon-removals.mjs";
+} from "./chain-axon-removals.ts";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,

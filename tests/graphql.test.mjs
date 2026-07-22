@@ -26,7 +26,7 @@ import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.mjs";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
 import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs";
 import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";
-import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
+import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp, DAY_MS } from "../workers/config.ts";
 import {

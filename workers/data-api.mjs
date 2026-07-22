@@ -296,7 +296,7 @@ import {
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
-} from "../src/chain-axon-removals.mjs";
+} from "../src/chain-axon-removals.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
@@ -6048,7 +6048,7 @@ export default {
 
         // GET /api/v1/chain/axon-removals (#4832 Tier 2): network-wide
         // AxonInfoRemoved leaderboard, mirroring
-        // src/chain-axon-removals.mjs's loadChainAxonRemovals.
+        // src/chain-axon-removals.ts's loadChainAxonRemovals.
         const chainAxonRemovals = url.pathname.match(
           /^\/api\/v1\/chain\/axon-removals$/,
         );

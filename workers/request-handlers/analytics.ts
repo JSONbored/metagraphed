@@ -80,7 +80,7 @@ import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
-} from "../../src/chain-axon-removals.mjs";
+} from "../../src/chain-axon-removals.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,

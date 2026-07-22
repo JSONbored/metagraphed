@@ -70,7 +70,7 @@ import {
   DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
-} from "./chain-axon-removals.mjs";
+} from "./chain-axon-removals.ts";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_WINDOWS,
