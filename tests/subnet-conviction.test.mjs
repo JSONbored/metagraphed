@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { buildSubnetConviction } from "../src/subnet-conviction.mjs";
+import { buildSubnetConviction } from "../src/subnet-conviction.ts";
 
 // Real-shaped subnet_locks row (post-sync shape: conviction_bits is a
 // decimal-string u128, matching what the Postgres NUMERIC column and

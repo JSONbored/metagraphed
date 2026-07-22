@@ -12,13 +12,15 @@
 // captured lock rows yields an empty leaderboard (never throws), matching
 // the sibling live tiers.
 
+type Row = Record<string, unknown>;
+
 // exp(-dt/tau), matching the pallet's own I64F64::exp with its -40 exponent
 // floor (prevents underflow past a threshold; anything below floors to 0).
 // dt=0 -> 1 (no time has passed, nothing decayed); tau=0 -> 0 (an
 // instantaneous/zero-width decay window, i.e. maximally decayed already).
 const EXP_MIN_EXPONENT = -40;
 
-function expDecay(dt, tau) {
+function expDecay(dt: number, tau: number): number {
   if (dt === 0) return 1;
   if (tau === 0) return 0;
   const exponent = Math.max(-dt / tau, EXP_MIN_EXPONENT);
@@ -34,13 +36,13 @@ function expDecay(dt, tau) {
 // have already been observed live to differ (confirmed 2026-07-18:
 // MaturityRate=311622 vs UnlockRate=934866 on mainnet).
 function decayMassAndConviction(
-  lockedMass,
-  conviction,
-  dt,
-  unlockRate,
-  maturityRate,
-  isPerpetual,
-) {
+  lockedMass: number,
+  conviction: number,
+  dt: number,
+  unlockRate: number,
+  maturityRate: number,
+  isPerpetual: unknown,
+): { lockedMass: number; conviction: number } {
   const unlockDecay = expDecay(dt, unlockRate);
   const maturityDecay = expDecay(dt, maturityRate);
 
@@ -50,7 +52,7 @@ function decayMassAndConviction(
 
   const convictionFromExisting = maturityDecay * conviction;
 
-  let convictionFromMass;
+  let convictionFromMass: number;
   if (isPerpetual) {
     convictionFromMass = lockedMass * (1 - maturityDecay);
   } else if (unlockRate === maturityRate) {
@@ -76,10 +78,15 @@ function decayMassAndConviction(
 // verified live 2026-07-18: a real OwnerLock row's conviction.bits / 2**64
 // matched its own locked_mass almost exactly, modulo the sub-block rounding
 // the pallet's own roll-forward introduces between reads).
-function rollForwardLock(row, now, unlockRate, maturityRate) {
-  const lastUpdate = row.last_update ?? now;
-  let lockedMass = row.locked_mass;
-  let conviction = row.conviction;
+function rollForwardLock(
+  row: Row,
+  now: number,
+  unlockRate: number,
+  maturityRate: number,
+): { lockedMass: number; conviction: number } {
+  const lastUpdate = (row.last_update as number) ?? now;
+  let lockedMass = row.locked_mass as number;
+  let conviction = row.conviction as number;
 
   if (now > lastUpdate) {
     const dt = now - lastUpdate;
@@ -115,10 +122,10 @@ function rollForwardLock(row, now, unlockRate, maturityRate) {
 // numerator through double rounding before dividing at all).
 const U64F64_SCALE = 2n ** 64n;
 
-function u64f64BitsToFloat(bitsStr) {
-  let bits;
+function u64f64BitsToFloat(bitsStr: unknown): number {
+  let bits: bigint;
   try {
-    bits = BigInt(bitsStr ?? "0");
+    bits = BigInt((bitsStr as string) ?? "0");
   } catch {
     return 0;
   }
@@ -127,7 +134,7 @@ function u64f64BitsToFloat(bitsStr) {
   return Number(whole) + Number(remainder) / Number(U64F64_SCALE);
 }
 
-function toNumbers(row) {
+function toNumbers(row: Row): Row {
   return {
     ...row,
     locked_mass: Number(row.locked_mass) || 0,
@@ -139,8 +146,20 @@ function toNumbers(row) {
 // (netuid, hotkey, is_owner) identity, rolls EACH forward independently
 // (they decay -- or don't -- on their own rule; summing raw before rolling
 // would be wrong), then sums the rolled results into one leaderboard entry.
-function combineSubAggregates(rows, now, unlockRate, maturityRate) {
-  const byIdentity = new Map();
+function combineSubAggregates(
+  rows: Row[],
+  now: number,
+  unlockRate: number,
+  maturityRate: number,
+): Row[] {
+  const byIdentity = new Map<
+    string,
+    {
+      hotkey: unknown;
+      is_owner: unknown;
+      rolled: { lockedMass: number; conviction: number }[];
+    }
+  >();
   for (const row of rows) {
     const key = `${row.hotkey}:${row.is_owner}`;
     if (!byIdentity.has(key)) {
@@ -151,7 +170,7 @@ function combineSubAggregates(rows, now, unlockRate, maturityRate) {
       });
     }
     byIdentity
-      .get(key)
+      .get(key)!
       .rolled.push(
         rollForwardLock(toNumbers(row), now, unlockRate, maturityRate),
       );
@@ -174,18 +193,25 @@ function combineSubAggregates(rows, now, unlockRate, maturityRate) {
 // current block height. Empty/absent rows -> the schema-stable empty-
 // leaderboard shape, never a 404 -- most subnets have no active challengers.
 export function buildSubnetConviction(
-  rows,
-  netuid,
-  { now, unlockRate, maturityRate } = {},
-) {
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+  {
+    now,
+    unlockRate,
+    maturityRate,
+  }: { now?: number; unlockRate?: number; maturityRate?: number } = {},
+): Row {
   const combined = combineSubAggregates(
     rows ?? [],
     now ?? 0,
     unlockRate ?? 0,
     maturityRate ?? 0,
   )
-    .filter((entry) => entry.locked_mass > 0 || entry.conviction > 0)
-    .sort((a, b) => b.conviction - a.conviction);
+    .filter(
+      (entry) =>
+        (entry.locked_mass as number) > 0 || (entry.conviction as number) > 0,
+    )
+    .sort((a, b) => (b.conviction as number) - (a.conviction as number));
 
   return {
     schema_version: 1,
@@ -234,7 +260,7 @@ const MATURITY_RATE_STORAGE_KEY =
 // Decode a "0x"-prefixed, 16-hex-char (8-byte) little-endian u64 into a
 // plain Number (both rates are small block-count integers, well under
 // Number.MAX_SAFE_INTEGER -- no BigInt needed for these two specifically).
-function decodeLeU64Number(hex) {
+function decodeLeU64Number(hex: unknown): number | null {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{16}$/.test(hex)) {
     return null;
   }
@@ -245,7 +271,11 @@ function decodeLeU64Number(hex) {
   return Number(value);
 }
 
-async function rpcCall(method, params, timeoutMs) {
+async function rpcCall(
+  method: string,
+  params: unknown[],
+  timeoutMs: number,
+): Promise<unknown> {
   try {
     const res = await fetch(FINNEY_RPC_URL, {
       method: "POST",
@@ -254,7 +284,7 @@ async function rpcCall(method, params, timeoutMs) {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
     if (!res.ok) return null;
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     return body?.result ?? null;
   } catch {
     return null;
@@ -268,7 +298,10 @@ async function rpcCall(method, params, timeoutMs) {
 // A zero decay-rate constant would be a serious correctness bug here: it
 // would make exp_decay(dt, 0) evaluate to 0 for every roll-forward, treating
 // every lock as already fully decayed to nothing on every single call.
-async function fetchStorageU64Number(storageKey, timeoutMs) {
+async function fetchStorageU64Number(
+  storageKey: string,
+  timeoutMs: number,
+): Promise<number | null> {
   const raw = await rpcCall("state_getStorage", [storageKey], timeoutMs);
   const value = decodeLeU64Number(raw);
   if (value != null) return value;
@@ -282,8 +315,12 @@ async function fetchStorageU64Number(storageKey, timeoutMs) {
 // live tip within the last few seconds is comfortably fresh enough given
 // UnlockRate/MaturityRate's decay time constants are on the order of
 // hundreds of thousands of blocks.
-async function fetchCurrentBlock(timeoutMs) {
-  const header = await rpcCall("chain_getHeader", [], timeoutMs);
+async function fetchCurrentBlock(timeoutMs: number): Promise<number | null> {
+  const header = (await rpcCall(
+    "chain_getHeader",
+    [],
+    timeoutMs,
+  )) as Row | null;
   const hex = header?.number;
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]+$/.test(hex)) return null;
   const n = parseInt(hex, 16);
@@ -295,8 +332,12 @@ async function fetchCurrentBlock(timeoutMs) {
 // null on its own RPC failure (schema-stable, never throws) -- mirrors
 // network-parameters.ts's own loadNetworkParameters shape.
 export async function fetchConvictionRates(
-  timeoutMs = CONVICTION_RATES_RPC_TIMEOUT_MS,
-) {
+  timeoutMs: number = CONVICTION_RATES_RPC_TIMEOUT_MS,
+): Promise<{
+  unlockRate: number | null;
+  maturityRate: number | null;
+  now: number | null;
+}> {
   const [unlockRate, maturityRate, now] = await Promise.all([
     fetchStorageU64Number(UNLOCK_RATE_STORAGE_KEY, timeoutMs),
     fetchStorageU64Number(MATURITY_RATE_STORAGE_KEY, timeoutMs),

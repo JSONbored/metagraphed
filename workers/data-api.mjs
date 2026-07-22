@@ -66,7 +66,7 @@ import {
 import {
   buildSubnetConviction,
   fetchConvictionRates,
-} from "../src/subnet-conviction.mjs";
+} from "../src/subnet-conviction.ts";
 import {
   buildBlocksSummary,
   BLOCKS_SUMMARY_SCAN_CAP,
