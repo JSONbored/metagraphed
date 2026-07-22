@@ -5,7 +5,7 @@ import {
   loadBlockChainEvents,
   loadChainEventsFeed,
   loadExtrinsicChainEvents,
-} from "../src/data-api-mcp.mjs";
+} from "../src/data-api-mcp.ts";
 
 function dataApiCtx({ fetchImpl, rateLimit = null } = {}) {
   return {

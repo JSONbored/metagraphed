@@ -610,7 +610,7 @@ import {
   loadChainEventsFeed,
   loadExtrinsicChainEvents,
   optionalBlocksWindow,
-} from "./data-api-mcp.mjs";
+} from "./data-api-mcp.ts";
 import {
   aiEnabled,
   askQuestion,
@@ -1116,7 +1116,7 @@ function mcpContractVersion(ctx) {
 // does, so this reconstructs the identical query-string shape
 // workers/data-api.mjs's extrinsics routes parse. The host in the URL is
 // never dispatched to (DATA_API.fetch resolves the binding directly, the
-// same convention src/data-api-mcp.mjs's dataApiFetchJson already uses).
+// same convention src/data-api-mcp.ts's dataApiFetchJson already uses).
 function mcpExtrinsicsListRequest(args) {
   const params = new URLSearchParams();
   const block = optionalNonNegativeInt(args, "block");
@@ -1300,7 +1300,7 @@ async function loadSubnetEconomics(ctx, netuid) {
 }
 
 // Chain-activity aggregate (pallet.method event distribution) over the most
-// recent N blocks lives in src/data-api-mcp.mjs (exported loadChainActivity,
+// recent N blocks lives in src/data-api-mcp.ts (exported loadChainActivity,
 // #7432) alongside its raw-feed sibling loadChainEventsFeed — same shared
 // DATA_API path, now reused by GraphQL's chain_events_stats field too.
 
@@ -1309,7 +1309,7 @@ async function loadSubnetEconomics(ctx, netuid) {
 // loadChainActivity uses for the stats aggregate. Optional pallet/method/block/
 // extrinsic filters + an opaque keyset cursor; the data Worker validates the
 // filter combo and returns 400, surfaced here as a clean invalid_params error.
-// Implemented in src/data-api-mcp.mjs (shared with GraphQL Query.chain_events).
+// Implemented in src/data-api-mcp.ts (shared with GraphQL Query.chain_events).
 
 // Mirrors loadChainEventsFeed's own DATA_API-direct call (#6637): the
 // all-events tier has no per-table tryPostgresTier flag (unlike
@@ -1915,7 +1915,7 @@ function requireHotkey(args) {
 // compare_subnets/GET /api/v1/compare.
 
 // The optional `blocks` window for get_chain_activity lives in
-// src/data-api-mcp.mjs (exported optionalBlocksWindow, #7432) beside its
+// src/data-api-mcp.ts (exported optionalBlocksWindow, #7432) beside its
 // loadChainActivity loader — shared with GraphQL's chain_events_stats field.
 
 function clampLimit(value, fallback, max) {

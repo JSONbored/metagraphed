@@ -2,8 +2,13 @@
 // the DATA_API service binding — the same path REST proxy routes use. Keeps the
 // postgres.js driver out of the main Worker bundle.
 
-function throwToolError(code, message) {
-  const error = new Error(message);
+interface DataApiToolError extends Error {
+  toolError: true;
+  code: string;
+}
+
+function throwToolError(code: string, message: string): never {
+  const error = new Error(message) as DataApiToolError;
   error.toolError = true;
   error.code = code;
   throw error;
@@ -12,7 +17,7 @@ function throwToolError(code, message) {
 const CHAIN_EVENTS_LIMIT_DEFAULT = 50;
 const CHAIN_EVENTS_LIMIT_MAX = 200;
 
-function clampChainEventsLimit(value) {
+function clampChainEventsLimit(value: unknown): number {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return CHAIN_EVENTS_LIMIT_DEFAULT;
   return Math.min(Math.max(Math.floor(n), 1), CHAIN_EVENTS_LIMIT_MAX);
@@ -20,22 +25,38 @@ function clampChainEventsLimit(value) {
 
 // The data Worker returns `{ error: "..." }` on 400; some envelopes use
 // `{ error: { message } }` or a top-level `message` instead.
-function dataApiErrorMessage(body) {
-  if (typeof body?.error === "string" && body.error) return body.error;
-  if (typeof body?.error?.message === "string" && body.error.message)
-    return body.error.message;
-  if (typeof body?.message === "string" && body.message) return body.message;
+function dataApiErrorMessage(body: unknown): string | null {
+  const record = body as
+    { error?: unknown; message?: unknown } | null | undefined;
+  if (typeof record?.error === "string" && record.error) return record.error;
+  const errorMessage = (record?.error as { message?: unknown } | undefined)
+    ?.message;
+  if (typeof errorMessage === "string" && errorMessage) return errorMessage;
+  if (typeof record?.message === "string" && record.message)
+    return record.message;
   return null;
 }
 
 // REST all-events routes use `count`; tolerate legacy/alternate `event_count`.
-function eventCountFromDataApi(data) {
-  if (data?.count != null) return data.count;
-  if (data?.event_count != null) return data.event_count;
-  return Array.isArray(data?.events) ? data.events.length : 0;
+function eventCountFromDataApi(data: unknown): unknown {
+  const record = data as
+    | { count?: unknown; event_count?: unknown; events?: unknown }
+    | null
+    | undefined;
+  if (record?.count != null) return record.count;
+  if (record?.event_count != null) return record.event_count;
+  return Array.isArray(record?.events) ? record.events.length : 0;
 }
 
-export async function dataApiFetchJson(ctx, pathAndQuery) {
+export interface DataApiMcpContext {
+  env: Env;
+  clientIp?: string;
+}
+
+export async function dataApiFetchJson(
+  ctx: DataApiMcpContext,
+  pathAndQuery: string,
+): Promise<unknown> {
   if (ctx.env?.DATA_RATE_LIMITER?.limit) {
     const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
       key: `data:${ctx.clientIp}`,
@@ -57,7 +78,7 @@ export async function dataApiFetchJson(ctx, pathAndQuery) {
     );
   }
 
-  let response;
+  let response: Response;
   try {
     response = await dataApi.fetch(new Request(`https://d${pathAndQuery}`));
   } catch {
@@ -96,17 +117,25 @@ export async function dataApiFetchJson(ctx, pathAndQuery) {
   }
 }
 
-export async function loadBlockChainEvents(ctx, blockNumber) {
+export async function loadBlockChainEvents(
+  ctx: DataApiMcpContext,
+  blockNumber: number,
+): Promise<{
+  schema_version: 1;
+  block_number: unknown;
+  event_count: unknown;
+  events: unknown[];
+}> {
   if (!Number.isSafeInteger(blockNumber) || blockNumber < 0) {
     throwToolError(
       "invalid_params",
       "block_number must be a non-negative integer.",
     );
   }
-  const data = await dataApiFetchJson(
+  const data = (await dataApiFetchJson(
     ctx,
     `/api/v1/blocks/${blockNumber}/chain-events`,
-  );
+  )) as { block_number?: unknown; events?: unknown } | null | undefined;
   return {
     schema_version: 1,
     block_number: data?.block_number ?? blockNumber,
@@ -118,10 +147,19 @@ export async function loadBlockChainEvents(ctx, blockNumber) {
 const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
 
 export async function loadExtrinsicChainEvents(
-  ctx,
-  ref,
-  { limit, cursor } = {},
-) {
+  ctx: DataApiMcpContext,
+  ref: unknown,
+  { limit, cursor }: { limit?: unknown; cursor?: unknown } = {},
+): Promise<{
+  schema_version: 1;
+  ref: unknown;
+  block_number: number;
+  extrinsic_index: number;
+  limit: number;
+  event_count: unknown;
+  next_cursor: unknown;
+  events: unknown[];
+}> {
   const composite = COMPOSITE_REF_RE.exec(String(ref));
   const blockNumber = composite ? Number(composite[1]) : NaN;
   const extrinsicIndex = composite ? Number(composite[2]) : NaN;
@@ -140,7 +178,8 @@ export async function loadExtrinsicChainEvents(
     `/api/v1/chain-events?block=${blockNumber}` +
     `&extrinsic=${extrinsicIndex}&limit=${lim}`;
   if (cursor) path += `&cursor=${encodeURIComponent(String(cursor))}`;
-  const data = await dataApiFetchJson(ctx, path);
+  const data = (await dataApiFetchJson(ctx, path)) as
+    { next_cursor?: unknown; events?: unknown } | null | undefined;
   return {
     schema_version: 1,
     ref,
@@ -159,20 +198,53 @@ export async function loadExtrinsicChainEvents(
 // legacy before=block_number); the data Worker validates the filter combo and
 // returns 400, surfaced here as invalid_params.
 export async function loadChainEventsFeed(
-  ctx,
-  { pallet, method, block, extrinsic, cursor, before, limit } = {},
-) {
-  const parts = [];
-  if (pallet != null) parts.push(`pallet=${encodeURIComponent(pallet)}`);
-  if (method != null) parts.push(`method=${encodeURIComponent(method)}`);
-  if (block != null) parts.push(`block=${encodeURIComponent(block)}`);
+  ctx: DataApiMcpContext,
+  {
+    pallet,
+    method,
+    block,
+    extrinsic,
+    cursor,
+    before,
+    limit,
+  }: {
+    pallet?: unknown;
+    method?: unknown;
+    block?: unknown;
+    extrinsic?: unknown;
+    cursor?: unknown;
+    before?: unknown;
+    limit?: unknown;
+  } = {},
+): Promise<{
+  count: unknown;
+  next_before: unknown;
+  next_cursor: unknown;
+  events: unknown[];
+}> {
+  const parts: string[] = [];
+  if (pallet != null)
+    parts.push(`pallet=${encodeURIComponent(String(pallet))}`);
+  if (method != null)
+    parts.push(`method=${encodeURIComponent(String(method))}`);
+  if (block != null) parts.push(`block=${encodeURIComponent(String(block))}`);
   if (extrinsic != null)
-    parts.push(`extrinsic=${encodeURIComponent(extrinsic)}`);
-  if (cursor != null) parts.push(`cursor=${encodeURIComponent(cursor)}`);
-  else if (before != null) parts.push(`before=${encodeURIComponent(before)}`);
-  if (limit != null) parts.push(`limit=${encodeURIComponent(limit)}`);
+    parts.push(`extrinsic=${encodeURIComponent(String(extrinsic))}`);
+  if (cursor != null)
+    parts.push(`cursor=${encodeURIComponent(String(cursor))}`);
+  else if (before != null)
+    parts.push(`before=${encodeURIComponent(String(before))}`);
+  if (limit != null) parts.push(`limit=${encodeURIComponent(String(limit))}`);
   const qs = parts.length ? `?${parts.join("&")}` : "";
-  const data = await dataApiFetchJson(ctx, `/api/v1/chain-events${qs}`);
+  const data = (await dataApiFetchJson(ctx, `/api/v1/chain-events${qs}`)) as
+    | {
+        count?: unknown;
+        next_before?: unknown;
+        next_cursor?: unknown;
+        events?: unknown;
+      }
+    | null
+    | undefined;
   return {
     count: data?.count ?? 0,
     next_before: data?.next_before ?? null,
@@ -186,10 +258,12 @@ export async function loadChainEventsFeed(
 // clamped to the data Worker's 1-5000 bound so a stray large value is silently
 // capped (the data Worker clamps too, but capping here keeps the request URL
 // honest). Shared by MCP's get_chain_activity and GraphQL's chain_events_stats.
-export function optionalBlocksWindow(args) {
+export function optionalBlocksWindow(
+  args: Record<string, unknown> | null | undefined,
+): number {
   const value = args?.blocks;
   if (value === undefined || value === null) return 1000;
-  if (!Number.isInteger(value) || value < 1) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
     throwToolError(
       "invalid_params",
       "Argument `blocks` must be a positive integer.",
@@ -203,11 +277,17 @@ export function optionalBlocksWindow(args) {
 // binding — the same path REST's /api/v1/chain-events/stats proxy uses, and the
 // stats sibling of loadChainEventsFeed's raw feed above. Shared by MCP's
 // get_chain_activity and GraphQL's chain_events_stats.
-export async function loadChainActivity(ctx, blocks) {
-  const data = await dataApiFetchJson(
+export async function loadChainActivity(
+  ctx: DataApiMcpContext,
+  blocks: number,
+): Promise<{ window_blocks: unknown; groups: unknown; activity: unknown[] }> {
+  const data = (await dataApiFetchJson(
     ctx,
     `/api/v1/chain-events/stats?blocks=${blocks}`,
-  );
+  )) as
+    | { window_blocks?: unknown; groups?: unknown; activity?: unknown }
+    | null
+    | undefined;
   return {
     window_blocks: data?.window_blocks ?? blocks,
     groups: data?.groups ?? 0,

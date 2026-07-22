@@ -3728,7 +3728,7 @@ export async function readEconomicsCurrentKv(env, now = Date.now()) {
 // fully dropped by #4772 (D1 chain-data write-path retirement) — the live
 // chain_events tier now lives in Postgres, reached through the DATA_API
 // service binding, the same way handleChainEventsProxy (above) and
-// dataApiFetchJson (src/data-api-mcp.mjs) already read it (#5357).
+// dataApiFetchJson (src/data-api-mcp.ts) already read it (#5357).
 export const CHAIN_EVENTS_DB_TTL_MS = 30_000;
 let chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
 

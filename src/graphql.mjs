@@ -26,7 +26,7 @@ import {
   loadChainActivity,
   loadChainEventsFeed,
   optionalBlocksWindow,
-} from "./data-api-mcp.mjs";
+} from "./data-api-mcp.ts";
 // #6992: GraphQL parity for profiles, reusing list_profiles' own loader
 // unchanged (same artifact read, filter, sort, and page logic REST and MCP
 // already use) -- not a reimplementation.
@@ -210,7 +210,7 @@ import {
   buildBlockExtrinsics,
 } from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
-import { loadBlockChainEvents } from "./data-api-mcp.mjs";
+import { loadBlockChainEvents } from "./data-api-mcp.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import { buildChainYield } from "./chain-yield.ts";
@@ -7000,7 +7000,7 @@ const rootValue = {
   // #7432: the aggregate sibling of chain_events. Reuses optionalBlocksWindow
   // (the same 1000-default/positive-integer/1-5000-cap validation MCP's
   // get_chain_activity applies) then loadChainActivity — both relocated to
-  // data-api-mcp.mjs beside loadChainEventsFeed.
+  // data-api-mcp.ts beside loadChainEventsFeed.
   async chain_events_stats({ blocks }, context) {
     let window;
     try {

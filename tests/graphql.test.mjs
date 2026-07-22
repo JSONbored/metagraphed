@@ -19432,7 +19432,7 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
 
 // #7432: GraphQL parity for GET /api/v1/chain-events/stats (the aggregate
 // sibling of chain_events), reusing the loadChainActivity + optionalBlocksWindow
-// that MCP get_chain_activity already calls, both relocated to data-api-mcp.mjs.
+// that MCP get_chain_activity already calls, both relocated to data-api-mcp.ts.
 describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
