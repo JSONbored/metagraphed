@@ -8,7 +8,7 @@ import {
   GET_BUILD_OUTPUT_SCHEMA,
   buildToolError,
   loadBuildSummary,
-} from "../src/build-mcp.mjs";
+} from "../src/build-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BUILD = {

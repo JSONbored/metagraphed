@@ -233,7 +233,7 @@ import {
   GET_BUILD_MCP_TOOL,
   GET_BUILD_OUTPUT_SCHEMA,
   loadBuildSummary,
-} from "./build-mcp.mjs";
+} from "./build-mcp.ts";
 import {
   GET_ADAPTER_INSTRUCTIONS,
   GET_ADAPTER_MCP_TOOL,

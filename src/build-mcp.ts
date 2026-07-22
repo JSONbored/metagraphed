@@ -2,20 +2,38 @@
 // Serves the baked /metagraph/build-summary.json artifact (artifact inventory,
 // counts, and publish metadata).
 
+import type { StorageReadResult } from "../workers/storage.ts";
+
 export const BUILD_SUMMARY_ARTIFACT = "/metagraph/build-summary.json";
 
-export function buildToolError(code, message) {
-  const error = new Error(message);
+export interface BuildToolError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function buildToolError(code: string, message: string): BuildToolError {
+  const error = new Error(message) as BuildToolError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-export async function loadBuildSummary(ctx, { readArtifact } = {}) {
+export async function loadBuildSummary(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<unknown> {
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, BUILD_SUMMARY_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw buildToolError(
         "not_found",
