@@ -5,7 +5,23 @@
 
 import { buildGlobalHealth, resolveLiveHealth } from "./health-serving.mjs";
 
-export function unknownGlobalHealth(contractVersionValue) {
+export interface UnknownGlobalHealth {
+  schema_version: 1;
+  contract_version: unknown;
+  source: "unavailable";
+  scope: "operational";
+  operational_observed_at: null;
+  health_source: "unavailable";
+  global: {
+    surface_count: 0;
+    status_counts: { ok: 0; degraded: 0; failed: 0; unknown: 0 };
+  };
+  subnets: [];
+}
+
+export function unknownGlobalHealth(
+  contractVersionValue: unknown,
+): UnknownGlobalHealth {
   return {
     schema_version: 1,
     contract_version: contractVersionValue,
@@ -22,12 +38,22 @@ export function unknownGlobalHealth(contractVersionValue) {
 }
 
 export async function loadGlobalOperationalHealth(
-  { env, readHealthKv },
-  { contractVersion } = {},
-) {
+  {
+    env,
+    readHealthKv,
+  }: {
+    env: Env;
+    readHealthKv?: unknown;
+  },
+  {
+    contractVersion,
+  }: {
+    contractVersion?: ((env: Env) => unknown) | unknown;
+  } = {},
+): Promise<unknown> {
   const contractVersionValue =
     typeof contractVersion === "function"
-      ? contractVersion(env)
+      ? (contractVersion as (env: Env) => unknown)(env)
       : contractVersion;
   const liveSnapshot = await resolveLiveHealth({ readHealthKv, env });
   const liveData = liveSnapshot

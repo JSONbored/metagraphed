@@ -7,7 +7,7 @@ import {
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   loadGlobalOperationalHealth,
   unknownGlobalHealth,
-} from "../src/global-operational-health.mjs";
+} from "../src/global-operational-health.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();

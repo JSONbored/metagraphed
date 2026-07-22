@@ -200,7 +200,7 @@ import {
   GET_NETWORK_HEALTH_MCP_TOOL,
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   loadGlobalOperationalHealth,
-} from "./global-operational-health.mjs";
+} from "./global-operational-health.ts";
 import {
   GET_COVERAGE_INSTRUCTIONS,
   GET_COVERAGE_MCP_TOOL,

@@ -271,7 +271,7 @@ import {
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.mjs";
 import { tryPostgresTier } from "./postgres-tier.ts";
-import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
+import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   ChainFirehoseHub,
