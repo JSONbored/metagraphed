@@ -7,7 +7,7 @@
 // thin D1 loader (loadSubnetWeightSetters); the Worker adds the envelope. Null-safe: a cold
 // store or a subnet with no WeightsSet events yields a schema-stable empty leaderboard.
 
-import { WEIGHTS_EVENT_KIND } from "./subnet-weights.mjs";
+import { WEIGHTS_EVENT_KIND } from "./subnet-weights.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

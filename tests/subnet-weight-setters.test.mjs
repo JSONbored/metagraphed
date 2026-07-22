@@ -7,7 +7,7 @@ import {
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
   SUBNET_WEIGHT_SETTERS_LIMIT,
 } from "../src/subnet-weight-setters.mjs";
-import { WEIGHTS_EVENT_KIND } from "../src/subnet-weights.mjs";
+import { WEIGHTS_EVENT_KIND } from "../src/subnet-weights.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

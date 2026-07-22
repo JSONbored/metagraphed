@@ -7,23 +7,28 @@
 // shaping (buildSubnetWeights); the Worker reads the account_events aggregate and adds the
 // envelope. Null-safe: a cold store or a subnet with no WeightsSet events yields the zeroed card.
 
+type Row = Record<string, unknown>;
+
 // The account_events kind emitted when a validator sets weights on a subnet.
 export const WEIGHTS_EVENT_KIND = "WeightsSet";
 
 // Supported windows (label -> days) + default, matching the sibling /chain/weights route.
-export const SUBNET_WEIGHTS_WINDOWS = { "7d": 7, "30d": 30 };
+export const SUBNET_WEIGHTS_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+};
 export const DEFAULT_SUBNET_WEIGHTS_WINDOW = "7d";
 
 // Round an updates-per-validator ratio to a stable 2dp precision. Always finite and
 // non-negative here (events / distinct setters, with the divisor guarded below).
-function round(value, dp = 2) {
+function round(value: number, dp = 2): number {
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
 }
 
 // A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
-function toCount(value) {
+function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
@@ -31,7 +36,7 @@ function toCount(value) {
 // Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
 // envelope's generated_at, the same way account-events does. Guards the JS Date range so a
 // finite but out-of-range epoch cannot throw a RangeError on the response.
-function toIso(value) {
+function toIso(value: unknown): string | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -41,7 +46,7 @@ function toIso(value) {
 
 // Average WeightsSet events per distinct validator — the subnet's update intensity. A subnet
 // with no setters has no defined intensity (null) rather than a divide-by-zero.
-function setsPerSetter(sets, setters) {
+function setsPerSetter(sets: number, setters: number): number | null {
   if (setters <= 0) return null;
   return round(sets / setters);
 }
@@ -49,7 +54,11 @@ function setsPerSetter(sets, setters) {
 // Shape one subnet's weight-setting scorecard from the single-row account_events aggregate.
 // `row` carries weight_sets (COUNT(*)), distinct_setters (COUNT(DISTINCT setter identity)),
 // and newest_observed (MAX(observed_at)). Null-safe: a null/absent row yields the zeroed card.
-export function buildSubnetWeights(row, netuid, { window } = {}) {
+export function buildSubnetWeights(
+  row: Row | null | undefined,
+  netuid: unknown,
+  { window }: { window?: unknown } = {},
+): Row {
   const distinctSetters = toCount(row?.distinct_setters);
   const weightSets = toCount(row?.weight_sets);
   return {

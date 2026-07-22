@@ -118,7 +118,7 @@ import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
-} from "./subnet-weights.mjs";
+} from "./subnet-weights.ts";
 import {
   buildSubnetStakeMoves,
   SUBNET_STAKE_MOVES_WINDOWS,

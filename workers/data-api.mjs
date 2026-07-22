@@ -162,7 +162,7 @@ import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
-} from "../src/subnet-weights.mjs";
+} from "../src/subnet-weights.ts";
 import {
   buildAccountStakeFlow,
   STAKE_FLOW_WINDOWS,
@@ -5637,7 +5637,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/weights (#4832 Tier 1b): the aggregate
         // WeightsSet activity for this subnet, mirroring the former
-        // src/subnet-weights.mjs D1 loader (removed in #4772). Distinct from /weights/setters below (the per-setter
+        // src/subnet-weights.ts D1 loader (removed in #4772). Distinct from /weights/setters below (the per-setter
         // leaderboard) -- this is the single-row summary.
         const subnetWeights = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/weights$/,
