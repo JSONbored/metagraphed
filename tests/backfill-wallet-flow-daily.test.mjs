@@ -1,4 +1,4 @@
-// Unit tests for scripts/backfill-wallet-flow-daily.mjs's pure helpers
+// Unit tests for scripts/backfill-wallet-flow-daily.ts's pure helpers
 // (arg parsing, option validation). Not part of the codecov coverage.include
 // scope (see vitest.config.mjs's own comment on why only a named subset of
 // scripts/ is instrumented) -- these tests exist for correctness confidence
@@ -10,7 +10,7 @@ import { test } from "vitest";
 import {
   assertValidOptions,
   parseArgs,
-} from "../scripts/backfill-wallet-flow-daily.mjs";
+} from "../scripts/backfill-wallet-flow-daily.ts";
 
 test("parseArgs returns defaults with no arguments", () => {
   const opts = parseArgs([]);

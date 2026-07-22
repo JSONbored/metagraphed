@@ -15,7 +15,7 @@
 // handleRollupAccountEventsDaily) has already covered.
 //
 // Usage:
-//   node scripts/backfill-wallet-flow-daily.mjs --from YYYY-MM-DD --to YYYY-MM-DD [options]
+//   node scripts/backfill-wallet-flow-daily.ts --from YYYY-MM-DD --to YYYY-MM-DD [options]
 //
 //   --from YYYY-MM-DD    first UTC day to backfill, inclusive (required)
 //   --to YYYY-MM-DD      last UTC day to backfill, exclusive upper bound is
@@ -30,8 +30,15 @@ import {
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-export function parseArgs(argv) {
-  const opts = {
+interface BackfillOptions {
+  from: string | null;
+  to: string | null;
+  databaseUrl: string;
+  dryRun: boolean;
+}
+
+export function parseArgs(argv: string[]): BackfillOptions {
+  const opts: BackfillOptions = {
     from: null,
     to: null,
     databaseUrl: process.env.DATABASE_URL || "",
@@ -48,7 +55,7 @@ export function parseArgs(argv) {
   return opts;
 }
 
-export function assertValidOptions(opts) {
+export function assertValidOptions(opts: BackfillOptions): void {
   if (!opts.from || !opts.to) {
     throw new Error("--from and --to are required (YYYY-MM-DD)");
   }
@@ -67,7 +74,7 @@ export function assertValidOptions(opts) {
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   assertValidOptions(opts);
 
