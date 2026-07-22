@@ -34,7 +34,17 @@ const TEST_FIXTURE = "__public_safety_test__.json";
 const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);
 const TEST_PUBLIC_FILE = "__public_safety_test__.txt";
 const TEST_PUBLIC_PATH = path.join(repoRoot, "public", TEST_PUBLIC_FILE);
-const SCANNER_TEST_TIMEOUT_MS = 15000;
+// Each of the 38 tests that call runScanOutput() spawns a real `node
+// scripts/scan-public-safety.mjs` subprocess that walks the entire repo tree
+// -- unlike this file's other (in-process) tests, its cost scales with repo
+// size and is subject to real process-spawn/scheduler variance, not just
+// this file's own logic. 15000ms (set when the registry was a fraction of
+// today's size) left too thin a margin: a solo run now measures ~4.3s, but
+// under any contention (CI runner load, other parallel test files/
+// processes) that 3.5x margin evaporates, intermittently timing out tests
+// that aren't actually hung. 45000ms keeps a genuine hang catchable while
+// giving this subprocess-per-test pattern room to keep growing with the repo.
+const SCANNER_TEST_TIMEOUT_MS = 45000;
 
 vi.setConfig({ testTimeout: SCANNER_TEST_TIMEOUT_MS });
 
