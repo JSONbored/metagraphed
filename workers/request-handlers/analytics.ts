@@ -120,7 +120,7 @@ import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
-} from "../../src/chain-alpha-volume.mjs";
+} from "../../src/chain-alpha-volume.ts";
 
 // The shape of the api.mjs-local in-isolate memoized KV read (see
 // configureAnalytics below) -- loose on the return value beyond `last_run_at`

@@ -26,7 +26,7 @@ import { buildChainServing } from "../src/chain-serving.mjs";
 import { buildChainPrometheus } from "../src/chain-prometheus.mjs";
 import { buildChainRegistrations } from "../src/chain-registrations.mjs";
 import { buildChainStakeFlow } from "../src/chain-stake-flow.mjs";
-import { buildChainAlphaVolume } from "../src/chain-alpha-volume.mjs";
+import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
 import { buildChainWeights } from "../src/chain-weights.mjs";
 import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
 import { buildChainTransfers } from "../src/chain-transfers.mjs";

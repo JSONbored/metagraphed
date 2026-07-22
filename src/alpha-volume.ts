@@ -57,7 +57,7 @@ const SENTIMENT_NEUTRAL_BAND = 0.2;
 // a sub-perfect ratio (real counter-volume exists) must never round to an
 // exact +/-1, which this card's own contract would misread as "no sell/buy
 // volume at all" (#2997's clamp, extended to this sibling ratio). Exported so
-// chain-alpha-volume.mjs can derive the SAME sentiment reading at the
+// chain-alpha-volume.ts can derive the SAME sentiment reading at the
 // network-wide rollup level instead of re-deriving this math.
 export function sentimentRatio(
   netAlpha: number,
@@ -78,7 +78,7 @@ export type AlphaVolumeSentiment = "bullish" | "bearish" | "neutral";
 // flow, relabeled for a subnet-wide volume reading — "bullish"/"bearish" past
 // the neutral band, "neutral" both for balanced two-way volume AND a
 // zero-volume window (no data is no signal either way). Exported for
-// chain-alpha-volume.mjs's network-wide rollup (see sentimentRatio above).
+// chain-alpha-volume.ts's network-wide rollup (see sentimentRatio above).
 export function classifySentiment(
   netAlpha: number,
   grossAlpha: number,

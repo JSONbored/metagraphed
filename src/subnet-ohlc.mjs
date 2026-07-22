@@ -8,7 +8,7 @@
 // range) -- see #5304's scoping comment for the full data-source analysis.
 //
 // Pure shaping (buildSubnetOhlc) over RAW, unaggregated rows -- deliberately
-// mirrors chain-alpha-volume.mjs's own pure-shaping convention rather than
+// mirrors chain-alpha-volume.ts's own pure-shaping convention rather than
 // computing open/close with SQL array_agg/window-function tricks: the hard
 // bucketing/OHLC math happens in JS, so it's unit-testable without a database,
 // and the SQL stays a plain filtered `SELECT ... ORDER BY observed_at ASC`
@@ -38,7 +38,7 @@ const DAY_MS = 24 * HOUR_MS;
 // Supported candle widths, in epoch-ms. Any other/malformed ?interval= value
 // normalizes to OHLC_INTERVAL_DEFAULT rather than throwing -- this codebase's
 // convention for a malformed param is to clamp/normalize the pure shaper's
-// input defensively (mirrors chain-alpha-volume.mjs's own `limit` clamp),
+// input defensively (mirrors chain-alpha-volume.ts's own `limit` clamp),
 // while the HTTP/MCP layers additionally validate the enum up front for a
 // clear 400/invalid_params instead of a silent substitution (mirrors how
 // handleSubnetStakeFlow validates `direction` AND buildStakeFlow-adjacent
@@ -58,7 +58,7 @@ export const MAX_OHLC_WINDOW_DAYS = 365;
 // Defensive cap on the number of candles a single response can carry -- a
 // pathological interval/window combination (e.g. 1h buckets over the full
 // MAX_OHLC_WINDOW_DAYS = up to 8,760 possible buckets) must never produce an
-// unbounded body. Mirrors chain-alpha-volume.mjs's CHAIN_ALPHA_VOLUME_LIMIT_MAX
+// unbounded body. Mirrors chain-alpha-volume.ts's CHAIN_ALPHA_VOLUME_LIMIT_MAX
 // guard on its own leaderboard length. When a series exceeds the cap, the
 // MOST RECENT candles are kept (the oldest tail is dropped) -- a live
 // price/volume chart's most useful data is its recent history, unlike
@@ -67,7 +67,7 @@ export const MAX_OHLC_WINDOW_DAYS = 365;
 export const MAX_CANDLES = 2000;
 
 // 1 TAO/alpha = 1e9 rao. Copied verbatim from alpha-volume.mjs's/
-// chain-alpha-volume.mjs's own roundUnit -- every rao-precision rounding
+// chain-alpha-volume.ts's own roundUnit -- every rao-precision rounding
 // helper in this codebase is a deliberate byte-for-byte copy, not a shared
 // import, so each module stays independently reviewable (see those modules'
 // own header comments for the same note).
@@ -114,7 +114,7 @@ function normalizeInterval(interval) {
 // last trade's price, high/low = max/min trade price, volume_alpha/volume_tao
 // = summed alpha_amount/amount_tao, event_count = trade count. Every numeric
 // output is rounded to rao precision (roundUnit) to avoid IEEE-754 dust,
-// mirroring alpha-volume.mjs/chain-alpha-volume.mjs's own volume rounding.
+// mirroring alpha-volume.mjs/chain-alpha-volume.ts's own volume rounding.
 //
 // Empty buckets (no trades in that time slot) are a genuine GAP -- they never
 // appear in the output array, never synthesized as a flat candle (standard

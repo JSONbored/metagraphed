@@ -19,6 +19,8 @@ import {
   STAKE_REMOVED_KIND,
   sentimentRatio,
   classifySentiment,
+  type AlphaVolumeResult,
+  type AlphaVolumeSentiment,
 } from "./alpha-volume.ts";
 
 export const CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT = 20;
@@ -28,7 +30,7 @@ export const CHAIN_ALPHA_VOLUME_LIMIT_MAX = 100;
 // IEEE-754 noise below the rao floor; round every network-rollup output to rao precision,
 // mirroring alpha-volume.mjs's own roundUnit / chain-stake-flow.mjs's roundTao.
 const RAO_PER_UNIT = 1e9;
-function roundUnit(value) {
+function roundUnit(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * RAO_PER_UNIT) / RAO_PER_UNIT;
@@ -38,7 +40,7 @@ function roundUnit(value) {
 // blank/whitespace-only string explicitly so neither is silently coerced to subnet 0
 // (Number(null), Number(""), and Number("  ") all === 0); a malformed direct row must be
 // skipped, never counted as netuid 0. Mirrors chain-stake-flow.mjs's normalizedNetuid.
-function normalizedNetuid(value) {
+function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
@@ -47,21 +49,21 @@ function normalizedNetuid(value) {
 
 // Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
 // envelope's observed_at, mirroring chain-stake-flow.mjs's coerceEpochMs.
-function coerceEpochMs(value) {
+function coerceEpochMs(value: unknown): number | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   return Number.isFinite(new Date(n).getTime()) ? n : null;
 }
 
-function toIso(value) {
+function toIso(value: unknown): string | null {
   const n = coerceEpochMs(value);
   return n == null ? null : new Date(n).toISOString();
 }
 
 // Nearest-rank percentile of a NON-EMPTY ascending numeric array. Mirrors
 // chain-stake-flow.mjs's percentile, applied here to total_volume_tao instead of net flow.
-function percentile(ascending, p) {
+function percentile(ascending: number[], p: number): number {
   const rank = Math.ceil((p / 100) * ascending.length);
   return ascending[Math.min(rank, ascending.length) - 1];
 }
@@ -69,18 +71,29 @@ function percentile(ascending, p) {
 // Conventional median of a NON-EMPTY ascending numeric array: the middle value for an odd
 // count, the mean of the two middle values for an even count. Mirrors chain-stake-flow.mjs's
 // median (itself matching subnet-yield.mjs / chain-yield.mjs), applied to total_volume_tao.
-function median(ascending) {
+function median(ascending: number[]): number {
   const mid = (ascending.length - 1) / 2;
   return roundUnit(
     (ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2,
   );
 }
 
+export interface VolumeDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
+}
+
 // Spread of per-subnet total_volume_tao across every subnet with volume in the window: count,
 // mean, and min / p25 / median / p75 / p90 / max (TAO). Null when no subnet had volume — lets a
 // caller read how concentrated (or spread out) the network's market activity is. Mirrors
 // chain-stake-flow.mjs's netFlowDistribution, applied to total_volume_tao instead of net flow.
-function volumeDistribution(values) {
+function volumeDistribution(values: number[]): VolumeDistribution | null {
   if (values.length === 0) return null;
   const ascending = [...values].sort((a, b) => a - b);
   const sum = ascending.reduce((total, value) => total + value, 0);
@@ -109,18 +122,42 @@ function volumeDistribution(values) {
 // StakeAdded/StakeRemoved events are absent from account_events and so are not represented, the
 // same "active" contract chain-stake-flow.mjs advertises. Null-safe: no rows yields the empty
 // block, never throws.
+export interface ChainAlphaVolumeNetwork {
+  buy_volume_alpha: number;
+  sell_volume_alpha: number;
+  total_volume_alpha: number;
+  buy_volume_tao: number;
+  sell_volume_tao: number;
+  total_volume_tao: number;
+  buy_count: number;
+  sell_count: number;
+  net_volume_alpha: number;
+  sentiment_ratio: number | null;
+  sentiment: AlphaVolumeSentiment;
+}
+
+export interface ChainAlphaVolumeResult {
+  schema_version: 1;
+  window: "24h";
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainAlphaVolumeNetwork;
+  volume_distribution: VolumeDistribution | null;
+  subnets: AlphaVolumeResult[];
+}
+
 export function buildChainAlphaVolume(
-  rows,
-  { limit = CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT } = {},
-) {
+  rows: Array<Record<string, unknown>> | null | undefined,
+  { limit = CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT }: { limit?: number } = {},
+): ChainAlphaVolumeResult {
   const list = Array.isArray(rows) ? rows : [];
   const flooredLimit = Math.floor(Number(limit));
   const normalizedLimit = Number.isFinite(flooredLimit)
     ? Math.max(0, Math.min(flooredLimit, CHAIN_ALPHA_VOLUME_LIMIT_MAX))
     : CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT;
 
-  const perNetuid = new Map();
-  let newestObserved = null;
+  const perNetuid = new Map<number, Array<Record<string, unknown>>>();
+  let newestObserved: number | null = null;
   for (const row of list) {
     const netuid = normalizedNetuid(row?.netuid);
     if (netuid == null) continue;
@@ -142,7 +179,7 @@ export function buildChainAlphaVolume(
     }
   }
 
-  const subnets = [];
+  const subnets: AlphaVolumeResult[] = [];
   for (const [netuid, subnetRows] of perNetuid) {
     subnets.push(buildAlphaVolume(subnetRows, netuid));
   }
@@ -167,7 +204,7 @@ export function buildChainAlphaVolume(
   }
   const netAlpha = buyAlpha - sellAlpha;
   const grossAlpha = buyAlpha + sellAlpha;
-  const network = {
+  const network: ChainAlphaVolumeNetwork = {
     buy_volume_alpha: roundUnit(buyAlpha),
     sell_volume_alpha: roundUnit(sellAlpha),
     total_volume_alpha: roundUnit(grossAlpha),

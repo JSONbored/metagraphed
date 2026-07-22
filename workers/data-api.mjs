@@ -320,7 +320,7 @@ import {
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
-} from "../src/chain-alpha-volume.mjs";
+} from "../src/chain-alpha-volume.ts";
 import { buildChainTransfers } from "../src/chain-transfers.mjs";
 import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
 import {
@@ -6262,7 +6262,7 @@ export default {
         }
 
         // GET /api/v1/chain/alpha-volume (#5598): network-wide rolling 24h
-        // buy/sell alpha-volume leaderboard, mirroring src/chain-alpha-volume.mjs's
+        // buy/sell alpha-volume leaderboard, mirroring src/chain-alpha-volume.ts's
         // loadChainAlphaVolume. Fixed 24h window (no ?window= param, unlike the
         // sibling chain-stake-flow above) -- same ANALYTICS_DAY_MS cutoff the
         // subnet-level /api/v1/subnets/:netuid/volume branch above uses.
@@ -8130,7 +8130,7 @@ export default {
         }
 
         // GET /api/v1/chain/idle-stake (#6789): network-wide idle-stake
-        // rollup, mirroring src/chain-alpha-volume.mjs's own per-subnet-
+        // rollup, mirroring src/chain-alpha-volume.ts's own per-subnet-
         // groupby-then-rollup shape over the per-subnet scorecard above.
         if (url.pathname === "/api/v1/chain/idle-stake") {
           const rows = await sql`
