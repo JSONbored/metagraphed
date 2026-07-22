@@ -18,11 +18,22 @@ const MCP_ENDPOINT = `${ORIGIN}/mcp`;
 const OPENAI_SPEC_URL = `${ORIGIN}/.well-known/agent-tools/openai.json`;
 const ANTHROPIC_SPEC_URL = `${ORIGIN}/.well-known/agent-tools/anthropic.json`;
 
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: unknown;
+}
+
 // OpenAI Chat Completions / Responses `tools[]` entries: a bare, paste-ready
 // array of `{ type: "function", function: { name, description, parameters } }`.
-export function buildOpenAIToolSpecs(tools = listToolDefinitions()) {
+export function buildOpenAIToolSpecs(
+  tools: ToolDefinition[] = listToolDefinitions(),
+): Array<{
+  type: "function";
+  function: { name: string; description: string; parameters: unknown };
+}> {
   return tools.map((tool) => ({
-    type: "function",
+    type: "function" as const,
     function: {
       name: tool.name,
       description: tool.description,
@@ -32,7 +43,9 @@ export function buildOpenAIToolSpecs(tools = listToolDefinitions()) {
 }
 
 // Anthropic Messages `tools[]` entries: `{ name, description, input_schema }`.
-export function buildAnthropicToolSpecs(tools = listToolDefinitions()) {
+export function buildAnthropicToolSpecs(
+  tools: ToolDefinition[] = listToolDefinitions(),
+): Array<{ name: string; description: string; input_schema: unknown }> {
   return tools.map((tool) => ({
     name: tool.name,
     description: tool.description,
@@ -44,9 +57,21 @@ export function buildAnthropicToolSpecs(tools = listToolDefinitions()) {
 // single uniform executor (the MCP endpoint). Keeps the executor mapping out of
 // the spec arrays themselves (which must stay valid for their target SDK).
 export function buildAgentToolsIndex(
-  tools = listToolDefinitions(),
-  { contractVersion = CONTRACT_VERSION } = {},
-) {
+  tools: ToolDefinition[] = listToolDefinitions(),
+  { contractVersion = CONTRACT_VERSION }: { contractVersion?: string } = {},
+): {
+  schema_version: 1;
+  title: string;
+  description: string;
+  contract_version: string;
+  executor: {
+    transport: string;
+    endpoint: string;
+    jsonrpc_method: string;
+  };
+  specs: { openai: string; anthropic: string };
+  tools: string[];
+} {
   return {
     schema_version: 1,
     title: `${MCP_SERVER_INFO.title} — agent tool specs`,

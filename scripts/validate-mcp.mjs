@@ -17,7 +17,7 @@ import {
 import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
-} from "../src/agent-tool-specs.mjs";
+} from "../src/agent-tool-specs.ts";
 import { ChainFirehoseHub } from "../workers/chain-firehose-hub.ts";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,

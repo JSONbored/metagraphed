@@ -19,7 +19,7 @@ import {
   buildAgentToolsIndex,
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
-} from "../../src/agent-tool-specs.mjs";
+} from "../../src/agent-tool-specs.ts";
 
 // Self-hosted SVG health badges for subnet READMEs, e.g.
 // ![](https://api.metagraph.sh/metagraph/health/badges/7.svg) — no shields.io
