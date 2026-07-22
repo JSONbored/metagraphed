@@ -18,7 +18,7 @@ import {
   DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
-} from "./chain-registrations.mjs";
+} from "./chain-registrations.ts";
 
 export function savedQueryError(code, message) {
   const error = new Error(message);
@@ -91,7 +91,7 @@ export const SAVED_QUERY_TEMPLATES = [
       },
     ],
     notes:
-      "Wraps buildChainRegistrations (src/chain-registrations.mjs) behind the " +
+      "Wraps buildChainRegistrations (src/chain-registrations.ts) behind the " +
       "same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) cutover the REST " +
       "route, GraphQL resolver, and MCP tool already share.",
   },

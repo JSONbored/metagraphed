@@ -24,7 +24,7 @@ import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
 import { buildChainDeregistrations } from "../src/chain-deregistrations.ts";
 import { buildChainServing } from "../src/chain-serving.mjs";
 import { buildChainPrometheus } from "../src/chain-prometheus.ts";
-import { buildChainRegistrations } from "../src/chain-registrations.mjs";
+import { buildChainRegistrations } from "../src/chain-registrations.ts";
 import { buildChainStakeFlow } from "../src/chain-stake-flow.mjs";
 import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
 import { buildChainWeights } from "../src/chain-weights.mjs";

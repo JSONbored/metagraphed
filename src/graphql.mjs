@@ -84,7 +84,7 @@ import {
   DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
-} from "./chain-registrations.mjs";
+} from "./chain-registrations.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_WINDOWS,

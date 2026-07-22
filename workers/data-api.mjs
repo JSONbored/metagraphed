@@ -300,7 +300,7 @@ import {
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
-} from "../src/chain-registrations.mjs";
+} from "../src/chain-registrations.ts";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
@@ -6084,7 +6084,7 @@ export default {
 
         // GET /api/v1/chain/registrations (#4832 Tier 2): network-wide
         // NeuronRegistered leaderboard, mirroring
-        // src/chain-registrations.mjs's loadChainRegistrations.
+        // src/chain-registrations.ts's loadChainRegistrations.
         const chainRegistrations = url.pathname.match(
           /^\/api\/v1\/chain\/registrations$/,
         );
