@@ -134,6 +134,30 @@
       "public_safe": true,
       "source_urls": ["https://github.com/astridintelligence/sn-127"],
       "url": "https://github.com/astridintelligence/sn-127"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-127-astrid-execution-presence",
+      "kind": "subnet-api",
+      "name": "Astrid Arena execution presence",
+      "notes": "Public no-auth GET returning execution presence records (participantId plus executionTime, with total/limit/offset pagination fields) for an SN127 Astrid Arena competition, per the official validator client (src/core/arena/api.ts, fetchExecutionPresence) — a plain fetch like the sibling completed-competitions call. Requires a participantIds query parameter (comma-joined list; optional limit/offset/after for pagination) in addition to the competitionId path parameter. Live-verified 2026-07-22: without the query parameter the route returns HTTP 400 JSON naming participantIds as required (confirms live validation, not auth); with participant ids taken from the completed-competitions surface already in this manifest it returns HTTP 200 JSON presence records. probe.enabled:false since the probe pipeline has no per-surface injection for the required query parameter.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "astrid",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://github.com/astridintelligence/sn-127/blob/master/src/core/arena/api.ts"
+      ],
+      "url": "https://arena-api.astrid.global/public/competitions/%7BcompetitionId%7D/executions/presence"
     }
   ],
   "source_repo": "https://github.com/astridintelligence/sn-127",
