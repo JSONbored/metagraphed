@@ -411,7 +411,10 @@ import {
   SURFACE_ID_PATTERN,
 } from "./surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
-import { callSubnetSurface } from "./call-subnet-surface.mjs";
+import {
+  callSubnetSurface,
+  matchSchemaOperation,
+} from "./call-subnet-surface.mjs";
 import {
   ECONOMIC_LEADERBOARD_BOARDS,
   formatLeaderboards,
@@ -11024,7 +11027,7 @@ export const MCP_TOOLS = [
     name: "call_subnet_surface",
     title: "Call a subnet's live API and return its response",
     description:
-      "Actually call a catalogued no-auth surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. Only the curated catalogued URL is ever fetched (never an arbitrary URL), using the surface's own declared probe method (GET/HEAD). Restricted to surfaces with auth_required:false; an authenticated surface is rejected outright (Phase 3, not yet built). The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. This is MCP execute Phase 1 (#7014) -- path/method beyond the surface's own declared url is Phase 2, not yet built.",
+      "Actually call a catalogued no-auth surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. Restricted to surfaces with auth_required:false; an authenticated surface is rejected outright (Phase 3, not yet built). The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET or HEAD only for now) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2b (#7674). POST/PUT + request bodies are Phase 2c, not yet built.",
     inputSchema: {
       type: "object",
       properties: {
@@ -11036,8 +11039,19 @@ export const MCP_TOOLS = [
         query: {
           type: "object",
           description:
-            "Optional query parameters merged onto the surface's curated URL, for surfaces whose notes/schema indicate they accept them.",
+            "Optional query parameters merged onto the effective URL (the surface's curated url, or `path` below when given), for surfaces whose notes/schema indicate they accept them.",
           additionalProperties: { type: ["string", "number", "boolean"] },
+        },
+        path: {
+          type: "string",
+          description:
+            "Optional concrete path to call on this surface's host instead of its single curated url, e.g. \"/users/123\". Must be declared in the surface's captured schema (see get_api_schema) -- an undeclared path is rejected. Requires `method` to also be set.",
+        },
+        method: {
+          type: "string",
+          enum: ["GET", "HEAD"],
+          description:
+            "HTTP method for `path` above (POST/PUT not yet supported). Requires `path` to also be set; ignored otherwise.",
         },
       },
       required: ["surface_id"],
@@ -11049,6 +11063,25 @@ export const MCP_TOOLS = [
       }
       if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
         throw toolError("invalid_params", "Invalid surface_id format.");
+      }
+      const hasPath = typeof args?.path === "string" && args.path.length > 0;
+      const hasMethod =
+        typeof args?.method === "string" && args.method.length > 0;
+      if (hasPath !== hasMethod) {
+        throw toolError(
+          "invalid_params",
+          "`path` and `method` must be supplied together, or both omitted.",
+        );
+      }
+      let normalizedMethod;
+      if (hasMethod) {
+        normalizedMethod = args.method.toUpperCase();
+        if (normalizedMethod !== "GET" && normalizedMethod !== "HEAD") {
+          throw toolError(
+            "invalid_params",
+            "`method` must be GET or HEAD (POST/PUT support lands in MCP execute Phase 2c, #7675).",
+          );
+        }
       }
       const surface = await findCataloguedSurface(ctx, args.surface_id);
       if (!surface) {
@@ -11069,9 +11102,36 @@ export const MCP_TOOLS = [
           "This surface is flagged as not safe to call automatically (probe.enabled:false).",
         );
       }
+      if (hasPath) {
+        const schemaArtifactId =
+          surface.schema_source?.surface_id || surface.surface_id;
+        const schema = await loadOptionalArtifact(
+          ctx,
+          `/metagraph/schemas/${schemaArtifactId}.json`,
+        );
+        if (!schema) {
+          throw toolError(
+            "no_schema",
+            "This surface has no captured schema, so path/method execution is not available for it -- omit path/method to call its single declared url instead.",
+          );
+        }
+        const match = matchSchemaOperation(
+          schema.document,
+          args.path,
+          normalizedMethod,
+        );
+        if (!match) {
+          throw toolError(
+            "path_not_declared",
+            `"${normalizedMethod} ${args.path}" is not declared in this surface's captured schema. Fetch the schema with get_api_schema to see valid paths/methods.`,
+          );
+        }
+      }
       const result = await callSubnetSurface(surface, {
         query:
           args.query && typeof args.query === "object" ? args.query : undefined,
+        path: hasPath ? args.path : undefined,
+        method: hasPath ? normalizedMethod : undefined,
         fetchImpl: globalThis.fetch,
         isUnsafeUrl: workerResolvedUrlSafetyGuard({
           fetchImpl: globalThis.fetch,

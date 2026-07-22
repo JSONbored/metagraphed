@@ -55,7 +55,9 @@ function buildRequestUrl(baseUrl, query) {
 
 /**
  * @typedef {object} CallSubnetSurfaceOptions
- * @property {Record<string, string | number | boolean>} [query] Query params merged onto the surface's curated URL.
+ * @property {Record<string, string | number | boolean>} [query] Query params merged onto the effective base URL.
+ * @property {string} [path] MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER (call_subnet_surface's tool handler) is responsible for confirming this path is declared in the surface's captured schema via matchSchemaOperation BEFORE ever passing it here; this function does not validate it. When present, the request URL is this surface's own origin (never the OpenAPI document's own `servers[]` host) joined with this path, not `surface.url`.
+ * @property {string} [method] Overrides the surface's probe-derived method (Phase 1 default). Ignored unless `path` is also set.
  * @property {typeof fetch} [fetchImpl] Injectable fetch (tests; also threaded into isUnsafeUrl's own DoH lookups).
  * @property {(url: string) => Promise<boolean>} isUnsafeUrl Required -- the same DNS-rebinding-aware guard verify_integration uses (workerResolvedUrlSafetyGuard).
  */
@@ -65,15 +67,29 @@ function buildRequestUrl(baseUrl, query) {
  * @param {CallSubnetSurfaceOptions} options
  */
 export async function callSubnetSurface(surface, options) {
-  const { query, fetchImpl = fetch, isUnsafeUrl } = options ?? {};
+  const {
+    query,
+    path,
+    method: methodOverride,
+    fetchImpl = fetch,
+    isUnsafeUrl,
+  } = options ?? {};
   if (typeof isUnsafeUrl !== "function") {
     throw new Error("callSubnetSurface requires options.isUnsafeUrl");
   }
-  const method = surface?.probe?.method === "HEAD" ? "HEAD" : "GET";
+  const method =
+    path && methodOverride
+      ? methodOverride
+      : surface?.probe?.method === "HEAD"
+        ? "HEAD"
+        : "GET";
   const timeoutMs = Number.isFinite(surface?.probe?.timeout_ms)
     ? surface.probe.timeout_ms
     : 10_000;
-  const requestUrl = buildRequestUrl(surface.url, query);
+  const baseUrl = path
+    ? new URL(path, new URL(surface.url).origin).toString()
+    : surface.url;
+  const requestUrl = buildRequestUrl(baseUrl, query);
 
   const fetched = await safetyCheckedFetch(requestUrl, {
     method,

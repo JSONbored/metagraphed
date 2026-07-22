@@ -40,14 +40,67 @@ const DISABLED_PROBE_SURFACE = {
   probe: { method: "GET", enabled: false },
 };
 
+// #7674 (MCP execute Phase 2b) fixtures: a surface whose captured schema
+// lives under a DIFFERENT surface_id (schema_source cross-reference, the
+// normal case for a subnet-api surface backed by a sibling openapi surface),
+// a surface with no schema at all, and a surface with no schema_source but
+// whose own surface_id happens to resolve (the self-describing fallback).
+const SCHEMA_SURFACE = {
+  surface_id: "x:api:4",
+  netuid: 8,
+  kind: "subnet-api",
+  url: "https://x.example/anything",
+  provider: "p",
+  auth_required: false,
+  probe: { method: "GET", expect: "json", timeout_ms: 8000, enabled: true },
+  schema_source: { surface_id: "x:openapi:1" },
+};
+
+const NO_SCHEMA_SURFACE = {
+  surface_id: "x:api:5",
+  netuid: 9,
+  kind: "subnet-api",
+  url: "https://x.example/bare",
+  auth_required: false,
+  probe: { method: "GET", enabled: true },
+  schema_source: null,
+};
+
+const SELF_SCHEMA_SURFACE = {
+  surface_id: "x:openapi:1",
+  netuid: 8,
+  kind: "openapi",
+  url: "https://x.example/openapi.json",
+  auth_required: false,
+  probe: { method: "HEAD", enabled: true },
+};
+
+const SCHEMA_DOCUMENT = {
+  document: {
+    paths: {
+      "/users/{id}": { get: { summary: "get user" } },
+    },
+  },
+};
+
 const CATALOG = {
-  surfaces: [NO_AUTH_SURFACE, AUTH_SURFACE, DISABLED_PROBE_SURFACE],
+  surfaces: [
+    NO_AUTH_SURFACE,
+    AUTH_SURFACE,
+    DISABLED_PROBE_SURFACE,
+    SCHEMA_SURFACE,
+    NO_SCHEMA_SURFACE,
+    SELF_SCHEMA_SURFACE,
+  ],
 };
 
 const deps = {
   readArtifact: async (_e, path) => {
     if (path === "/metagraph/operational-surfaces.json") {
       return { ok: true, data: CATALOG };
+    }
+    if (path === "/metagraph/schemas/x:openapi:1.json") {
+      return { ok: true, data: SCHEMA_DOCUMENT };
     }
     return { ok: false, status: 404 };
   },
@@ -209,5 +262,134 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     assert.equal(result.isError, true);
     assert.match(result.content[0].text, /forbidden/);
     assert.equal(surfaceFetches, 0);
+  });
+
+  // #7674 (MCP execute Phase 2b): path/method schema-validated execution.
+  describe("path/method execution (#7674)", () => {
+    test("valid path/method fetches the surface's origin + path, not its curated url", async () => {
+      let requestedUrl;
+      const result = await callTool(
+        {
+          surface_id: "x:api:4",
+          path: "/users/123",
+          method: "GET",
+        },
+        async (url) => {
+          requestedUrl = String(url);
+          return new Response(JSON.stringify({ id: 123 }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(requestedUrl, "https://x.example/users/123");
+      assert.deepEqual(result.structuredContent.body, { id: 123 });
+    });
+
+    test("resolves the schema via schema_source.surface_id, not the calling surface's own id", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123",
+        method: "GET",
+      });
+      assert.equal(result.isError, false);
+    });
+
+    test("falls back to the surface's own surface_id when schema_source is absent", async () => {
+      const result = await callTool({
+        surface_id: "x:openapi:1",
+        path: "/users/123",
+        method: "GET",
+      });
+      assert.equal(result.isError, false);
+    });
+
+    test("method is case-insensitive and normalized before schema matching", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123",
+        method: "get",
+      });
+      assert.equal(result.isError, false);
+    });
+
+    test("path without method is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("method without path is invalid_params", async () => {
+      const result = await callTool({ surface_id: "x:api:4", method: "GET" });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("a method other than GET/HEAD is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123",
+        method: "POST",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("a surface with no captured schema at all is rejected with no_schema", async () => {
+      const result = await callTool({
+        surface_id: "x:api:5",
+        path: "/anything",
+        method: "GET",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /no_schema/);
+    });
+
+    test("an undeclared path is rejected with path_not_declared", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/not/in/the/schema",
+        method: "GET",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /path_not_declared/);
+    });
+
+    test("a declared path with an undeclared method is rejected with path_not_declared", async () => {
+      const result = await callTool({
+        surface_id: "x:api:4",
+        path: "/users/123",
+        method: "HEAD",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /path_not_declared/);
+    });
+
+    test("an auth_required surface is still rejected before schema resolution ever runs", async () => {
+      const result = await callTool({
+        surface_id: "x:api:2",
+        path: "/anything",
+        method: "GET",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /auth_required/);
+    });
+
+    test("without path/method, a schema-bearing surface still uses its own curated url (Phase 1 unchanged)", async () => {
+      let requestedUrl;
+      const result = await callTool({ surface_id: "x:api:4" }, async (url) => {
+        requestedUrl = String(url);
+        return new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      });
+      assert.equal(result.isError, false);
+      assert.equal(requestedUrl, "https://x.example/anything");
+    });
   });
 });

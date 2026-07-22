@@ -2613,6 +2613,14 @@ const operationalSurfaces = surfaces
         ? surface.probe.timeout_ms
         : null,
     },
+    // metagraphed#7674 (MCP execute Phase 2b): call_subnet_surface resolves a
+    // surface's captured schema via this same field the agent-catalog build
+    // already computes (resolveAgentServiceSchema/serviceSchemaSource) --
+    // reused here, not reimplemented, so both consumers agree on which
+    // schema a surface owns. null when the surface has no captured schema
+    // (direct surface-id match, exact schema_url match, or same-netuid
+    // same-origin openapi projection for a subnet-api surface).
+    schema_source: serviceSchemaSource(resolveAgentServiceSchema(surface)),
   }))
   .sort(
     (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),

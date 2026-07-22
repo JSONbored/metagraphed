@@ -343,6 +343,99 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
+  test("path override: fetches the surface's origin + path, not surface.url", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/v1/users/123",
+        method: "GET",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(url, "https://example.com/v1/users/123");
+          assert.equal(init.method, "GET");
+          return jsonResponse({ id: 123 });
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.body, { id: 123 });
+  });
+
+  test("path override: HEAD method is honored over the surface's own probe method", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json", probe: { method: "GET" } },
+      {
+        path: "/status",
+        method: "HEAD",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.method, "HEAD");
+          return new Response(null, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("path override: query params still merge onto the path-derived URL", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/search",
+        method: "GET",
+        query: { q: "x" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          const parsed = new URL(url);
+          assert.equal(parsed.pathname, "/search");
+          assert.equal(parsed.searchParams.get("q"), "x");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("path override: ignores any path/query the surface's own url happened to have", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/some/nested/openapi.json?x=1" },
+      {
+        path: "/other",
+        method: "GET",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          assert.equal(url, "https://example.com/other");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("without a path override, method falls back to Phase 1's probe-derived default even if a method option is set alone", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api", probe: { method: "HEAD" } },
+      {
+        // method with no path is a caller misuse; callSubnetSurface itself
+        // ignores it and stays on Phase 1 behavior -- the tool handler is
+        // responsible for requiring path+method together.
+        method: "GET",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.method, "HEAD");
+          return new Response(null, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
   test("truncates exactly at a chunk boundary where zero bytes of the final chunk are allowed", async () => {
     let pulls = 0;
     const stream = new ReadableStream({
