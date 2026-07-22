@@ -55,7 +55,7 @@ import {
 } from "../../src/health-prober.mjs";
 import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.ts";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.ts";
-import { loadRpcUsage } from "../../src/rpc-usage-loader.mjs";
+import { loadRpcUsage } from "../../src/rpc-usage-loader.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import {
   DENIED_RPC_PREFIXES,

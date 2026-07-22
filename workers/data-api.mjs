@@ -7197,7 +7197,7 @@ export default {
         // reverse-proxy usage analytics -- request volume, latency p50/p95,
         // failover + error rate, cache-hit rate, per-endpoint/network
         // breakdown, and bounded time buckets. Mirrors
-        // src/rpc-usage-loader.mjs's loadRpcUsage exactly (same 5 parallel
+        // src/rpc-usage-loader.ts's loadRpcUsage exactly (same 5 parallel
         // queries feeding formatRpcUsage): the D1 rank-CTE p50/p95 becomes
         // PERCENTILE_CONT (live-verified via psql 2026-07-11, same
         // precedent as the health-trends/percentiles routes above), and D1's

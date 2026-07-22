@@ -345,7 +345,7 @@ import {
   DEFAULT_ANALYTICS_WINDOW,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.ts";
-import { loadRpcUsage } from "./rpc-usage-loader.mjs";
+import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import {
   CHAIN_SIGNERS_SORTS,
   CHAIN_SIGNERS_LIMIT_DEFAULT,

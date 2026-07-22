@@ -271,7 +271,7 @@ import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
-import { loadRpcUsage } from "./rpc-usage-loader.mjs";
+import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import {
   buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,

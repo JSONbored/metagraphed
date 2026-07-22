@@ -7,9 +7,16 @@
 import { ANALYTICS_WINDOWS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
 import { formatRpcUsage } from "./health-serving.ts";
 
-export async function loadRpcUsage({ window = "7d", observedAt = null } = {}) {
+export async function loadRpcUsage({
+  window = "7d",
+  observedAt = null,
+}: { window?: string; observedAt?: unknown } = {}): Promise<
+  Record<string, unknown>
+> {
   const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
-  const bucketConfig = RPC_USAGE_BUCKETS[windowLabel];
+  const bucketConfig = (
+    RPC_USAGE_BUCKETS as Record<string, { granularity: string }>
+  )[windowLabel];
   return formatRpcUsage({
     window: windowLabel,
     observedAt,

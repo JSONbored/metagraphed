@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { loadRpcUsage } from "../src/rpc-usage-loader.mjs";
+import { loadRpcUsage } from "../src/rpc-usage-loader.ts";
 
 // D1 fully eliminated (2026-07-17): loadRpcUsage no longer takes a `d1`
 // argument and never queries rpc_proxy_events -- it always returns the
