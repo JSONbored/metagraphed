@@ -5,15 +5,25 @@
 // re-probes the exact URLs the 15-minute health cron already probes, just on
 // demand. The worker layer adds the rate limiter + a 60s per-surface cache so
 // repeated calls can't fan out into real outbound probes.
-import { probeSurface } from "./health-probe-core.ts";
+import { probeSurface, type ProbeSurface } from "./health-probe-core.ts";
 import { resolveSurfaceAlias } from "./surface-aliases.ts";
+
+type Row = Record<string, unknown>;
+type Prober = (
+  surface: ProbeSurface,
+  options?: Record<string, unknown>,
+) => Promise<Row>;
 
 // Surface ids look like "7:subnet-api:x" or "nodies-finney-rpc"; stable
 // surface keys look like "srf-4d92fe6304cbb843". Both are catalog-resolved
 // identifiers, never URLs.
 export const SURFACE_ID_PATTERN = /^[a-z0-9][a-z0-9:._-]*$/i;
 
-export function findSurface(surfaces, surfaceId, aliasArtifact = null) {
+export function findSurface(
+  surfaces: Row[] | null | undefined,
+  surfaceId: unknown,
+  aliasArtifact: Row | null = null,
+): Row | null {
   if (!Array.isArray(surfaces) || typeof surfaceId !== "string") return null;
   const direct =
     surfaces.find(
@@ -35,25 +45,32 @@ export function findSurface(surfaces, surfaceId, aliasArtifact = null) {
 
 // Resolve the surface to verify for a subnet: its primary callable surface, else
 // the first catalogued one (mirrors the agent-catalog's "primary" pick).
-export function primarySurfaceForNetuid(surfaces, netuid) {
+export function primarySurfaceForNetuid(
+  surfaces: Row[] | null | undefined,
+  netuid: unknown,
+): Row | null {
   if (!Array.isArray(surfaces)) return null;
   const forNetuid = surfaces.filter((surface) => surface?.netuid === netuid);
   if (forNetuid.length === 0) return null;
   return (
-    forNetuid.find((surface) => surface.probe?.enabled !== false) ||
-    forNetuid[0]
+    forNetuid.find(
+      (surface) => (surface.probe as Row | undefined)?.enabled !== false,
+    ) || forNetuid[0]
   );
 }
 
 // Probe one surface and shape the verify result. `prober` is injectable for
 // tests (defaults to the real network probe).
 export async function verifySurface(
-  surface,
-  options = {},
-  prober = probeSurface,
-) {
+  surface: Row,
+  options: Record<string, unknown> = {},
+  prober: Prober = probeSurface,
+): Promise<Row> {
   // probeSurface reads `surface.id`; the catalog uses `surface_id` — bridge it.
-  const probe = await prober({ ...surface, id: surface.surface_id }, options);
+  const probe = await prober(
+    { ...surface, id: surface.surface_id } as ProbeSurface,
+    options,
+  );
   const callable =
     probe.status !== "failed" &&
     probe.classification !== "dead" &&
@@ -80,25 +97,36 @@ export async function verifySurface(
 
 export const VERIFY_CACHE_TTL_SECONDS = 60;
 
-export function verifyCacheRequest(surface) {
+export function verifyCacheRequest(surface: Row): Request {
   const canonicalSurfaceId = surface.surface_key || surface.surface_id;
   return new Request(
-    `https://verify.metagraph.sh/${encodeURIComponent(canonicalSurfaceId)}`,
+    `https://verify.metagraph.sh/${encodeURIComponent(canonicalSurfaceId as string)}`,
   );
 }
 
-const verifyInFlight = new Map();
+const verifyInFlight = new Map<string, Promise<Row>>();
 
-function verifyInFlightKey(cacheKey, probeOptions) {
+function verifyInFlightKey(
+  cacheKey: Request,
+  probeOptions: Record<string, unknown> | undefined,
+): string {
   return `${cacheKey.url}:${JSON.stringify(probeOptions ?? {})}`;
 }
 
 // Shared 60s Cache-API layer for REST verify and MCP verify_integration (#358).
 export async function verifySurfaceWithCache(
-  surface,
-  probeOptions = {},
-  { cache = globalThis.caches?.default ?? null, waitUntil = null, prober } = {},
-) {
+  surface: Row,
+  probeOptions: Record<string, unknown> = {},
+  {
+    cache = typeof caches === "undefined" ? null : (caches.default ?? null),
+    waitUntil = null,
+    prober,
+  }: {
+    cache?: Cache | null;
+    waitUntil?: ((promise: Promise<unknown>) => void) | null;
+    prober?: Prober;
+  } = {},
+): Promise<Row> {
   const cacheKey = cache ? verifyCacheRequest(surface) : null;
   const inFlightKey = cacheKey
     ? verifyInFlightKey(cacheKey, probeOptions)
@@ -106,7 +134,7 @@ export async function verifySurfaceWithCache(
   if (cache && cacheKey) {
     const hit = await cache.match(cacheKey);
     if (hit) {
-      const cached = await hit.json();
+      const cached = (await hit.json()) as Row;
       return { ...cached, from_cache: true };
     }
   }
@@ -118,8 +146,8 @@ export async function verifySurfaceWithCache(
     }
   }
 
-  let put = null;
-  const verification = (async () => {
+  let put: Promise<void> | null = null;
+  const verification = (async (): Promise<Row> => {
     const result = await verifySurface(surface, probeOptions, prober);
     if (cache && cacheKey) {
       const stored = new Response(JSON.stringify(result), {
@@ -147,7 +175,7 @@ export async function verifySurfaceWithCache(
   } finally {
     if (inFlightKey && verifyInFlight.get(inFlightKey) === verification) {
       if (put && typeof waitUntil === "function") {
-        put
+        (put as Promise<void>)
           .catch(() => {})
           .finally(() => {
             if (verifyInFlight.get(inFlightKey) === verification) {

@@ -409,7 +409,7 @@ import {
   primarySurfaceForNetuid,
   verifySurfaceWithCache,
   SURFACE_ID_PATTERN,
-} from "./surface-verify.mjs";
+} from "./surface-verify.ts";
 import { SURFACE_ALIASES_PATH } from "./surface-aliases.ts";
 import {
   callSubnetSurface,

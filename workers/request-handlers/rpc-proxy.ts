@@ -46,7 +46,7 @@ import {
 import {
   findSurface,
   verifySurfaceWithCache,
-} from "../../src/surface-verify.mjs";
+} from "../../src/surface-verify.ts";
 import { SURFACE_ALIASES_PATH } from "../../src/surface-aliases.ts";
 import {
   KV_HEALTH_RPC_POOL,
@@ -312,7 +312,9 @@ export async function handleSurfaceVerify(
       503,
     );
   }
-  const catalogSurfaces = (catalog.data as { surfaces?: unknown[] })?.surfaces;
+  const catalogSurfaces = (
+    catalog.data as { surfaces?: Record<string, unknown>[] }
+  )?.surfaces;
   let surface = findSurface(catalogSurfaces, surfaceId);
   if (!surface) {
     const aliases = await readArtifact(env, SURFACE_ALIASES_PATH);
