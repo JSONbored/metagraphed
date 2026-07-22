@@ -151,7 +151,7 @@
       "id": "sn-21-adtao-epoch-verification",
       "kind": "subnet-api",
       "name": "AdTAO epoch verification",
-      "notes": "Public no-auth chain-derived scoring-commitment read for one epoch, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 409 {\"detail\":\"9.C.2 post-scoring artifact for epoch_id=1 is not yet visible in RevealedCommitments for this validator ...\"} — a real epoch-state explanation, not an auth error. Path parameter in percent-encoded brace form; probe disabled (needs a real epoch id).",
+      "notes": "Public no-auth chain-derived scoring-commitment read for one epoch, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 409 {\"detail\":\"9.C.2 post-scoring artifact for epoch_id=1 is not yet visible in RevealedCommitments for this validator ...\"} \u2014 a real epoch-state explanation, not an auth error. Path parameter in percent-encoded brace form; probe disabled (needs a real epoch id).",
       "probe": {
         "enabled": false,
         "method": "GET",
@@ -176,7 +176,7 @@
       "id": "sn-21-adtao-epoch-commitment",
       "kind": "subnet-api",
       "name": "AdTAO epoch commitment",
-      "notes": "Public no-auth per-epoch commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} — a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id).",
+      "notes": "Public no-auth per-epoch commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} \u2014 a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id).",
       "probe": {
         "enabled": false,
         "method": "GET",
@@ -201,7 +201,7 @@
       "id": "sn-21-adtao-epoch-episode-commitment",
       "kind": "subnet-api",
       "name": "AdTAO epoch episode-commitment",
-      "notes": "Public no-auth per-epoch episode-commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} — a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id).",
+      "notes": "Public no-auth per-epoch episode-commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} \u2014 a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id).",
       "probe": {
         "enabled": false,
         "method": "GET",
@@ -250,7 +250,7 @@
       "authority": "community",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
       },
       "id": "sn-21-adtao-episodes",
       "kind": "subnet-api",
@@ -279,7 +279,7 @@
       "authority": "community",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
       },
       "id": "sn-21-adtao-episode-detail",
       "kind": "subnet-api",
@@ -308,7 +308,7 @@
       "authority": "community",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
       },
       "id": "sn-21-adtao-episodes-batch",
       "kind": "subnet-api",
@@ -337,7 +337,7 @@
       "authority": "community",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
       },
       "id": "sn-21-adtao-my-predictions",
       "kind": "subnet-api",
@@ -366,7 +366,7 @@
       "authority": "community",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
       },
       "id": "sn-21-adtao-training-episodes-api",
       "kind": "subnet-api",
@@ -395,7 +395,7 @@
       "authority": "community",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
       },
       "id": "sn-21-adtao-training-summary",
       "kind": "subnet-api",
@@ -424,7 +424,7 @@
       "authority": "community",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
       },
       "id": "sn-21-adtao-registration-status",
       "kind": "subnet-api",

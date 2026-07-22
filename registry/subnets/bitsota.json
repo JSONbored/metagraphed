@@ -70,7 +70,7 @@
       "id": "sn-94-alveus-labs-subnet-api",
       "kind": "subnet-api",
       "name": "Bitsota AutoResearch coordinator API",
-      "notes": "Public no-auth endpoint of the SN94 Bitsota AutoResearch coordinator — live research task list served by the production coordinator at autoresearch.bitsota.com (documented in the official bitsota.ai backend-routes docs).",
+      "notes": "Public no-auth endpoint of the SN94 Bitsota AutoResearch coordinator \u2014 live research task list served by the production coordinator at autoresearch.bitsota.com (documented in the official bitsota.ai backend-routes docs).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -511,7 +511,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but this route empirically rejects an unauthenticated request (live-checked 2026-07-21). The header name and credential format are not documented in the spec, so only the location is asserted."
+        "scopes_note": "Requires a hotkey-signed request (X-Hotkey, X-Timestamp, X-Signature headers); administrative routes additionally accept an X-Admin-Token. No static API key or bearer token is accepted for standard use."
       },
       "auth_required": true,
       "authority": "community",
@@ -538,7 +538,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but this route empirically rejects an unauthenticated request (live-checked 2026-07-21). The header name and credential format are not documented in the spec, so only the location is asserted."
+        "scopes_note": "Requires a hotkey-signed request (X-Hotkey, X-Timestamp, X-Signature headers); administrative routes additionally accept an X-Admin-Token. No static API key or bearer token is accepted for standard use."
       },
       "auth_required": true,
       "authority": "community",

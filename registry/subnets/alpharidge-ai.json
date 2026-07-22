@@ -126,7 +126,7 @@
       "id": "sn-45-talisman-dashboard-stats",
       "kind": "data-artifact",
       "name": "AlphaRidge.ai dashboard stats",
-      "notes": "Public no-auth GET /dashboard/stats on api.alpharidge.ai returning live SN45 content-analysis totals (tweets/telegram/articles analyzed, latest_analysis_at, sentiment distribution) — counts advance between successive requests, confirming a genuinely live feed. Documented in the subnet's own OpenAPI spec (already the registered schema_url on the sibling openapi surface) as \"Dashboard Stats\" / \"Public dashboard overview statistics\".",
+      "notes": "Public no-auth GET /dashboard/stats on api.alpharidge.ai returning live SN45 content-analysis totals (tweets/telegram/articles analyzed, latest_analysis_at, sentiment distribution) \u2014 counts advance between successive requests, confirming a genuinely live feed. Documented in the subnet's own OpenAPI spec (already the registered schema_url on the sibling openapi surface) as \"Dashboard Stats\" / \"Public dashboard overview statistics\".",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -279,7 +279,7 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -306,14 +306,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-validators-versions",
       "kind": "subnet-api",
       "name": "AlphaRidge GET validators versions",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /validators/versions on api.alpharidge.ai. Live-verified 2026-07-21: HTTP 403 {\"detail\":\"Access restricted.\"} — same gated tier as the SS58-signature group, different message. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /validators/versions on api.alpharidge.ai. Live-verified 2026-07-21: HTTP 403 {\"detail\":\"Access restricted.\"} \u2014 same gated tier as the SS58-signature group, different message. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -333,7 +333,7 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -360,14 +360,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-reputation-snapshot",
       "kind": "subnet-api",
       "name": "AlphaRidge POST reputation snapshot",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /reputation/snapshot on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /reputation/snapshot on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -387,7 +387,7 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -414,14 +414,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-tweets-completed",
       "kind": "subnet-api",
       "name": "AlphaRidge POST tweets completed",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /tweets/completed on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /tweets/completed on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -441,14 +441,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-telegram-messages-unscored",
       "kind": "subnet-api",
       "name": "AlphaRidge GET telegram messages unscored",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /telegram/messages/unscored on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /telegram/messages/unscored on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -468,14 +468,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-telegram-messages-completed",
       "kind": "subnet-api",
       "name": "AlphaRidge POST telegram messages completed",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /telegram/messages/completed on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /telegram/messages/completed on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -495,14 +495,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-articles-unscored",
       "kind": "subnet-api",
       "name": "AlphaRidge GET articles unscored",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /articles/unscored on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /articles/unscored on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -522,14 +522,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-articles-completed",
       "kind": "subnet-api",
       "name": "AlphaRidge POST articles completed",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /articles/completed on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /articles/completed on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -549,14 +549,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-rewards",
       "kind": "subnet-api",
       "name": "AlphaRidge GET rewards",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /rewards on api.alpharidge.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Missing authentication headers. Required: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, X-Auth-Timestamp\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /rewards on api.alpharidge.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Missing authentication headers. Required: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, X-Auth-Timestamp\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -576,14 +576,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-penalties",
       "kind": "subnet-api",
       "name": "AlphaRidge GET penalties",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /penalties on api.alpharidge.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /penalties on api.alpharidge.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -603,14 +603,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-blacklist",
       "kind": "subnet-api",
       "name": "AlphaRidge GET blacklist",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /blacklist on api.alpharidge.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Missing authentication headers. Required: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, X-Auth-Timestamp\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /blacklist on api.alpharidge.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Missing authentication headers. Required: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, X-Auth-Timestamp\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -630,14 +630,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-blacklist-hotkey",
       "kind": "subnet-api",
       "name": "AlphaRidge DELETE blacklist by hotkey",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) DELETE /blacklist/{hotkey} on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) DELETE /blacklist/{hotkey} on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -657,14 +657,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-attestation",
       "kind": "subnet-api",
       "name": "AlphaRidge GET attestation",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /attestation on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /attestation on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -684,14 +684,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-reports",
       "kind": "subnet-api",
       "name": "AlphaRidge POST reports",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /reports on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /reports on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -711,14 +711,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-verdicts",
       "kind": "subnet-api",
       "name": "AlphaRidge GET verdicts",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /verdicts on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) GET /verdicts on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -738,14 +738,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-diagnostics-penalty-detail",
       "kind": "subnet-api",
       "name": "AlphaRidge POST diagnostics penalty detail",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /diagnostics/penalty-detail on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /diagnostics/penalty-detail on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -765,14 +765,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-diagnostics-dispatch-status",
       "kind": "subnet-api",
       "name": "AlphaRidge POST diagnostics dispatch status",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /diagnostics/dispatch-status on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /diagnostics/dispatch-status on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -792,14 +792,14 @@
       "auth": {
         "location": "header",
         "scheme": "custom",
-        "scopes_note": "Not declared in the OpenAPI schema (no security block anywhere) — a custom SS58-signature scheme confirmed live: requires X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers (proving control of a registered validator's coldkey/hotkey via a chain-native signature, not a bearer token)."
+        "scopes_note": "Requires a custom SS58-signature scheme: X-Auth-SS58Address, X-Auth-Signature, X-Auth-Message, and X-Auth-Timestamp headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-45-alpharidge-diagnostics-miner-event",
       "kind": "subnet-api",
       "name": "AlphaRidge POST diagnostics miner event",
-      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /diagnostics/miner-event on api.alpharidge.ai. Not individually curled — same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (SS58 signature headers, Phase 3 credential passthrough, not built yet) POST /diagnostics/miner-event on api.alpharidge.ai. Not individually curled \u2014 same SS58-signature gating as the verified `sn-45-alpharidge-config-subnet` (401, same message). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7059) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -821,7 +821,7 @@
       "id": "sn-45-alpharidge-dashboard-miner-dispatch",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard miner dispatch",
-      "notes": "GET /dashboard/miner-dispatch on api.alpharidge.ai — part of the public /dashboard/* tree architecturally, but live-verified 2026-07-21 to consistently return HTTP 403 {\"detail\":\"Access restricted.\"} regardless of the optional `hotkey` query param (tested both with and without a real hotkey). This is NOT the same shape as the SS58-signature 401s on the auth-gated group elsewhere in this subnet, so it isn't registered as auth_required:true either -- the restriction's real cause (feature flag, business rule, something else) isn't identifiable from the outside. Registered accurately reflecting the current observed state rather than the issue's \"public, works\" characterization. Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/miner-dispatch on api.alpharidge.ai \u2014 part of the public /dashboard/* tree architecturally, but live-verified 2026-07-21 to consistently return HTTP 403 {\"detail\":\"Access restricted.\"} regardless of the optional `hotkey` query param (tested both with and without a real hotkey). This is NOT the same shape as the SS58-signature 401s on the auth-gated group elsewhere in this subnet, so it isn't registered as auth_required:true either -- the restriction's real cause (feature flag, business rule, something else) isn't identifiable from the outside. Registered accurately reflecting the current observed state rather than the issue's \"public, works\" characterization. Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -843,7 +843,7 @@
       "id": "sn-45-alpharidge-dashboard-miners-hotkey",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard miners by hotkey",
-      "notes": "GET /dashboard/miners/{hotkey} on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21 with a dummy value: HTTP 404 {\"detail\":\"Miner not found\"} — no real miners currently registered on this subnet to test with a genuine match, but the 404 (not 401/403/500) confirms the route itself is real and reachable. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/miners/{hotkey} on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21 with a dummy value: HTTP 404 {\"detail\":\"Miner not found\"} \u2014 no real miners currently registered on this subnet to test with a genuine match, but the 404 (not 401/403/500) confirms the route itself is real and reachable. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -865,7 +865,7 @@
       "id": "sn-45-alpharidge-dashboard-miners-hotkey-batches",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard miners by hotkey batches",
-      "notes": "GET /dashboard/miners/{hotkey}/batches on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled — same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/miners/{hotkey}/batches on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled \u2014 same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -887,7 +887,7 @@
       "id": "sn-45-alpharidge-dashboard-miners-hotkey-batches-epoch-items",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard miners by hotkey batches by epoch items",
-      "notes": "GET /dashboard/miners/{hotkey}/batches/{epoch}/items on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled — same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/miners/{hotkey}/batches/{epoch}/items on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled \u2014 same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -909,7 +909,7 @@
       "id": "sn-45-alpharidge-dashboard-miners-hotkey-reputation",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard miners by hotkey reputation",
-      "notes": "GET /dashboard/miners/{hotkey}/reputation on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled — same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/miners/{hotkey}/reputation on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled \u2014 same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -931,7 +931,7 @@
       "id": "sn-45-alpharidge-dashboard-miners-hotkey-events",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard miners by hotkey events",
-      "notes": "GET /dashboard/miners/{hotkey}/events on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled — same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/miners/{hotkey}/events on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled \u2014 same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -953,7 +953,7 @@
       "id": "sn-45-alpharidge-dashboard-events",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard events",
-      "notes": "GET /dashboard/events on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21: currently HTTP 500 (Internal Server Error) with no request params — registered anyway so probe monitoring reflects the real current state, matching the precedent at registry/subnets/targon.json's sn-4-targon-healthz-api (a live-500ing endpoint registered probe.enabled:true rather than left out). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/events on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21: currently HTTP 500 (Internal Server Error) with no request params \u2014 registered anyway so probe monitoring reflects the real current state, matching the precedent at registry/subnets/targon.json's sn-4-targon-healthz-api (a live-500ing endpoint registered probe.enabled:true rather than left out). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -975,7 +975,7 @@
       "id": "sn-45-alpharidge-dashboard-events-trending",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard events trending",
-      "notes": "GET /dashboard/events/trending on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21: currently HTTP 500 (Internal Server Error) with no request params — registered anyway so probe monitoring reflects the real current state, matching the precedent at registry/subnets/targon.json's sn-4-targon-healthz-api (a live-500ing endpoint registered probe.enabled:true rather than left out). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/events/trending on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21: currently HTTP 500 (Internal Server Error) with no request params \u2014 registered anyway so probe monitoring reflects the real current state, matching the precedent at registry/subnets/targon.json's sn-4-targon-healthz-api (a live-500ing endpoint registered probe.enabled:true rather than left out). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -997,7 +997,7 @@
       "id": "sn-45-alpharidge-dashboard-events-event-id",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard events by event id",
-      "notes": "GET /dashboard/events/{event_id} on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled — same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/events/{event_id} on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Not individually curled \u2014 same no-declared-auth shape as the verified `sn-45-alpharidge-dashboard-miners-hotkey` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1019,7 +1019,7 @@
       "id": "sn-45-alpharidge-dashboard-narratives",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard narratives",
-      "notes": "GET /dashboard/narratives on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21: currently HTTP 500 (Internal Server Error) with no request params — registered anyway so probe monitoring reflects the real current state, matching the precedent at registry/subnets/targon.json's sn-4-targon-healthz-api (a live-500ing endpoint registered probe.enabled:true rather than left out). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/narratives on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21: currently HTTP 500 (Internal Server Error) with no request params \u2014 registered anyway so probe monitoring reflects the real current state, matching the precedent at registry/subnets/targon.json's sn-4-targon-healthz-api (a live-500ing endpoint registered probe.enabled:true rather than left out). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -1041,7 +1041,7 @@
       "id": "sn-45-alpharidge-dashboard-narratives-trending",
       "kind": "subnet-api",
       "name": "AlphaRidge GET dashboard narratives trending",
-      "notes": "GET /dashboard/narratives/trending on api.alpharidge.ai — public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21: currently HTTP 500 (Internal Server Error) with no request params — registered anyway so probe monitoring reflects the real current state, matching the precedent at registry/subnets/targon.json's sn-4-targon-healthz-api (a live-500ing endpoint registered probe.enabled:true rather than left out). Registered per the registry's full-API-parity policy (metagraphed#7059).",
+      "notes": "GET /dashboard/narratives/trending on api.alpharidge.ai \u2014 public, no auth declared or observed, part of the /dashboard/* tree (same pattern as the already-registered dashboard/stats, dashboard/sentiment, etc). Live-verified 2026-07-21: currently HTTP 500 (Internal Server Error) with no request params \u2014 registered anyway so probe monitoring reflects the real current state, matching the precedent at registry/subnets/targon.json's sn-4-targon-healthz-api (a live-500ing endpoint registered probe.enabled:true rather than left out). Registered per the registry's full-API-parity policy (metagraphed#7059).",
       "probe": {
         "enabled": true,
         "expect": "json",

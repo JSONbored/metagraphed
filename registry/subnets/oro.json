@@ -362,7 +362,7 @@
       "id": "sn-15-oro-public-top-history",
       "kind": "subnet-api",
       "name": "ORO public leaderboard history API",
-      "notes": "Public no-auth GET /v1/public/top/history on api.oroagents.com returning JSON time-series leaderboard history for the SN15 ORO ShoppingBench subnet (per evaluation suite: agent_version_id, agent_name, and score entries over time). Documented as GET /v1/public/top/history in the subnet's own registered OpenAPI spec; same host as the existing /v1/public/top and /v1/public/leaderboard surfaces. Distinct from those current-state endpoints — this returns historical ranking data. Verified 200 application/json, no auth, SS58-clean.",
+      "notes": "Public no-auth GET /v1/public/top/history on api.oroagents.com returning JSON time-series leaderboard history for the SN15 ORO ShoppingBench subnet (per evaluation suite: agent_version_id, agent_name, and score entries over time). Documented as GET /v1/public/top/history in the subnet's own registered OpenAPI spec; same host as the existing /v1/public/top and /v1/public/leaderboard surfaces. Distinct from those current-state endpoints \u2014 this returns historical ranking data. Verified 200 application/json, no auth, SS58-clean.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -502,7 +502,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -529,7 +529,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -556,7 +556,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -583,7 +583,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -610,7 +610,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -637,7 +637,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -664,7 +664,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -691,7 +691,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -718,7 +718,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -745,7 +745,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -772,7 +772,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -799,7 +799,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -826,7 +826,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -853,7 +853,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -880,7 +880,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -907,7 +907,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -934,7 +934,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -961,7 +961,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -988,7 +988,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1015,7 +1015,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1042,7 +1042,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1069,7 +1069,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1096,7 +1096,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1123,7 +1123,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1150,7 +1150,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1177,7 +1177,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1204,7 +1204,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1231,7 +1231,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1258,7 +1258,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1285,7 +1285,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1312,7 +1312,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1339,7 +1339,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1366,7 +1366,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1393,7 +1393,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1420,7 +1420,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1447,7 +1447,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1474,7 +1474,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1501,7 +1501,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1528,14 +1528,14 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-15-oro-v1-miner-chutes-auth",
       "kind": "subnet-api",
       "name": "ORO v1 miner chutes auth",
-      "notes": "Store Chutes OAuth refresh token (legacy — use /inference-auth/chutes) operation on the ORO agents API (POST /v1/miner/chutes-auth), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
+      "notes": "Store Chutes OAuth refresh token (legacy \u2014 use /inference-auth/chutes) operation on the ORO agents API (POST /v1/miner/chutes-auth), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1555,14 +1555,14 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-15-oro-v1-miner-chutes-auth-status",
       "kind": "subnet-api",
       "name": "ORO v1 miner chutes auth status",
-      "notes": "Check Chutes auth status (legacy — use /inference-auth/chutes) operation on the ORO agents API (GET /v1/miner/chutes-auth/status), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 naming the required signed-request header set.",
+      "notes": "Check Chutes auth status (legacy \u2014 use /inference-auth/chutes) operation on the ORO agents API (GET /v1/miner/chutes-auth/status), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 naming the required signed-request header set.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1582,7 +1582,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1609,7 +1609,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1636,7 +1636,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1663,7 +1663,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1690,7 +1690,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1717,7 +1717,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1744,7 +1744,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1771,7 +1771,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1798,7 +1798,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1825,7 +1825,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1852,7 +1852,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1879,7 +1879,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1906,7 +1906,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1933,7 +1933,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1960,7 +1960,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1987,7 +1987,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -2014,7 +2014,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -2041,7 +2041,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -2068,7 +2068,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -2095,7 +2095,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -2122,7 +2122,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -2149,7 +2149,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
@@ -2176,7 +2176,7 @@
       "auth": {
         "scheme": "custom",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but the API applies a global signed-request middleware: every sampled route rejects an unauthenticated call with HTTP 401 naming a required header set (operator-account identifier, timestamp, nonce and request signature). Verified live 2026-07-21 across the miner, validator and admin route families. Only the location is asserted; the exact header names and signing scheme are not documented in the spec."
+        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",

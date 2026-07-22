@@ -136,7 +136,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",
@@ -164,7 +164,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",
@@ -192,7 +192,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",
@@ -220,7 +220,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",
@@ -248,7 +248,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",
@@ -276,7 +276,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",
@@ -304,7 +304,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",
@@ -332,7 +332,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",
@@ -360,7 +360,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Documented in the official minos_subnet README as requiring hotkey-signed requests: the POST body must carry the caller's registered subnet identity plus timestamp and signature fields (no static API token exists). Enforced in practice: an unsigned empty-body POST returns HTTP 422 listing those exact required fields, live-verified 2026-07-21. No credential format or placeholder value is asserted here."
+        "scopes_note": "Requires a hotkey-signed request body (registered subnet identity, timestamp, and signature); no static API key exists. See the subnet's own documentation for the signing format."
       },
       "auth_required": true,
       "authority": "community",

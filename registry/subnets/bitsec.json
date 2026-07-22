@@ -120,7 +120,7 @@
       "id": "sn-60-bitsec-ai-known-solutions",
       "kind": "data-artifact",
       "name": "Bitsec.ai known-solutions dataset",
-      "notes": "Public no-auth JSON dataset of known-vulnerability benchmark projects (GET /projects/known-solutions) used to evaluate SN60 miner agents — each entry has real codebases (repo/commit/tarball) and vulnerability findings (severity, title, description). Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"Get Current Project Set Known Solutions\". Served on the official bitsec.ai domain.",
+      "notes": "Public no-auth JSON dataset of known-vulnerability benchmark projects (GET /projects/known-solutions) used to evaluate SN60 miner agents \u2014 each entry has real codebases (repo/commit/tarball) and vulnerability findings (severity, title, description). Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"Get Current Project Set Known Solutions\". Served on the official bitsec.ai domain.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -347,7 +347,7 @@
       "id": "sn-60-bitsec-jobs-leaderboard-old",
       "kind": "subnet-api",
       "name": "Bitsec.ai legacy jobs leaderboard",
-      "notes": "GET /api/jobs/leaderboard_old on bitsec.ai — legacy sibling of the already-registered /api/jobs/leaderboard, documented in the subnet's own OpenAPI schema with no security scheme. Live-verified 2026-07-21 (~22:05 UTC): HTTP 500 text/plain (currently erroring in production). Registered anyway, matching the registry's existing precedent of cataloguing real documented endpoints in their actual live state (e.g. Targon SN4's /tha/v2/healthz); probe expect:any since the current error body is not JSON.",
+      "notes": "GET /api/jobs/leaderboard_old on bitsec.ai \u2014 legacy sibling of the already-registered /api/jobs/leaderboard, documented in the subnet's own OpenAPI schema with no security scheme. Live-verified 2026-07-21 (~22:05 UTC): HTTP 500 text/plain (currently erroring in production). Registered anyway, matching the registry's existing precedent of cataloguing real documented endpoints in their actual live state (e.g. Targon SN4's /tha/v2/healthz); probe expect:any since the current error body is not JSON.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -369,7 +369,7 @@
       "id": "sn-60-bitsec-agent-detail",
       "kind": "subnet-api",
       "name": "Bitsec.ai agent detail",
-      "notes": "GET /api/agents/{agent_id}/detail on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21 (~22:05 UTC): a placeholder agent_id returns HTTP 422 int_parsing validation error (\"Input should be a valid integer\") — a clean parameter-validation rejection, not an auth gate, confirming the route is live and unauthenticated. Path-parameterized (integer id; no stable canonical value to probe against), so probe.enabled:false; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw braces fail the url format:\"uri\" schema check).",
+      "notes": "GET /api/agents/{agent_id}/detail on bitsec.ai, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21 (~22:05 UTC): a placeholder agent_id returns HTTP 422 int_parsing validation error (\"Input should be a valid integer\") \u2014 a clean parameter-validation rejection, not an auth gate, confirming the route is live and unauthenticated. Path-parameterized (integer id; no stable canonical value to probe against), so probe.enabled:false; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw braces fail the url format:\"uri\" schema check).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -435,7 +435,7 @@
       "id": "sn-60-bitsec-agent-known-solutions",
       "kind": "subnet-api",
       "name": "Bitsec.ai per-agent known-solutions",
-      "notes": "GET /api/agents/{agent_id}/known-solutions on bitsec.ai — per-agent sibling of the already-registered project-set-wide /api/projects/known-solutions, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21 (~22:05 UTC): a placeholder agent_id returns HTTP 422 int_parsing validation error, not an auth rejection. Path-parameterized (integer id; no stable canonical value to probe against), so probe.enabled:false; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw braces fail the url format:\"uri\" schema check).",
+      "notes": "GET /api/agents/{agent_id}/known-solutions on bitsec.ai \u2014 per-agent sibling of the already-registered project-set-wide /api/projects/known-solutions, documented in the subnet's own OpenAPI schema with no security scheme and no header parameters. Live-verified 2026-07-21 (~22:05 UTC): a placeholder agent_id returns HTTP 422 int_parsing validation error, not an auth rejection. Path-parameterized (integer id; no stable canonical value to probe against), so probe.enabled:false; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw braces fail the url format:\"uri\" schema check).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -498,14 +498,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-agent-cancel",
       "kind": "subnet-api",
       "name": "Bitsec.ai agent job cancel",
-      "notes": "POST /api/agents/{agent_id}/cancel on bitsec.ai — write endpoint cancelling an agent's active job. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
+      "notes": "POST /api/agents/{agent_id}/cancel on bitsec.ai \u2014 write endpoint cancelling an agent's active job. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -524,14 +524,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-agents-execution",
       "kind": "subnet-api",
       "name": "Bitsec.ai agent execution trigger",
-      "notes": "POST /api/agents/execution/ on bitsec.ai — write endpoint recording an agent execution. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
+      "notes": "POST /api/agents/execution/ on bitsec.ai \u2014 write endpoint recording an agent execution. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -550,14 +550,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-agents-evaluation",
       "kind": "subnet-api",
       "name": "Bitsec.ai agent evaluation trigger",
-      "notes": "POST /api/agents/evaluation/ on bitsec.ai — write endpoint recording an agent evaluation. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
+      "notes": "POST /api/agents/evaluation/ on bitsec.ai \u2014 write endpoint recording an agent evaluation. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -576,14 +576,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-agents-submit",
       "kind": "subnet-api",
       "name": "Bitsec.ai agent submit",
-      "notes": "POST /api/agents/submit/ on bitsec.ai — write endpoint for miner agent submission. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
+      "notes": "POST /api/agents/submit/ on bitsec.ai \u2014 write endpoint for miner agent submission. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -602,14 +602,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-jobs-run-agent",
       "kind": "subnet-api",
       "name": "Bitsec.ai job-run agent lookup",
-      "notes": "GET /api/jobs/runs/{job_run_id}/agent on bitsec.ai — gated read endpoint resolving the agent for a job run. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
+      "notes": "GET /api/jobs/runs/{job_run_id}/agent on bitsec.ai \u2014 gated read endpoint resolving the agent for a job run. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -628,14 +628,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-jobs-run-start",
       "kind": "subnet-api",
       "name": "Bitsec.ai job run start",
-      "notes": "POST /api/jobs/runs/{job_run_id}/start on bitsec.ai — write endpoint marking a job run started. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
+      "notes": "POST /api/jobs/runs/{job_run_id}/start on bitsec.ai \u2014 write endpoint marking a job run started. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -654,14 +654,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-jobs-run-complete",
       "kind": "subnet-api",
       "name": "Bitsec.ai job run complete",
-      "notes": "POST /api/jobs/runs/{job_run_id}/complete on bitsec.ai — write endpoint marking a job run complete. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
+      "notes": "POST /api/jobs/runs/{job_run_id}/complete on bitsec.ai \u2014 write endpoint marking a job run complete. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -680,14 +680,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-jobs-run-proxy-summary",
       "kind": "subnet-api",
       "name": "Bitsec.ai job run proxy summary",
-      "notes": "POST /api/jobs/runs/{job_run_id}/proxy-summary on bitsec.ai — write endpoint submitting a job run's proxy summary. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
+      "notes": "POST /api/jobs/runs/{job_run_id}/proxy-summary on bitsec.ai \u2014 write endpoint submitting a job run's proxy summary. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false. Path-parameterized; the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -706,14 +706,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-users-create",
       "kind": "subnet-api",
       "name": "Bitsec.ai user create",
-      "notes": "POST /api/users/ on bitsec.ai — write endpoint creating a user record. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
+      "notes": "POST /api/users/ on bitsec.ai \u2014 write endpoint creating a user record. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -732,14 +732,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-users-validators-me",
       "kind": "subnet-api",
       "name": "Bitsec.ai validator self-lookup",
-      "notes": "GET /api/users/validators/me on bitsec.ai — gated read endpoint resolving the calling validator's own record. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
+      "notes": "GET /api/users/validators/me on bitsec.ai \u2014 gated read endpoint resolving the calling validator's own record. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -758,14 +758,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema: this API declares no formal security scheme anywhere; instead each gated operation declares a required credential header parameter on the operation itself. Exact credential format is not documented beyond the schema."
+        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-60-bitsec-users-validators-heartbeat",
       "kind": "subnet-api",
       "name": "Bitsec.ai validator heartbeat",
-      "notes": "POST /api/users/validators/heartbeat on bitsec.ai — write endpoint recording a validator heartbeat. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
+      "notes": "POST /api/users/validators/heartbeat on bitsec.ai \u2014 write endpoint recording a validator heartbeat. The subnet's own OpenAPI schema declares a required credential header parameter on this operation (this API declares no formal security scheme anywhere). Live-verified 2026-07-21 (~22:05 UTC): unauthenticated request returns HTTP 422 with a missing-required-header validation error on that exact parameter, consistent with the gate being enforced at the framework layer. Not callable by the anonymous Phase-1 call_subnet_surface tool, so probe.enabled:false.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -785,6 +785,5 @@
   "social": {
     "x": "https://x.com/bitsecai"
   },
-  "source_repo": "https://github.com/Bitsec-AI/sandbox",
   "website_url": "https://bitsec.ai/"
 }

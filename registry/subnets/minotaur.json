@@ -82,7 +82,7 @@
       "id": "sn-112-minotaur-app-dashboard",
       "kind": "dashboard",
       "name": "Minotaur App dashboard",
-      "notes": "Public no-auth Minotaur App web dashboard for SN112 (intent signing + quorum settlement), served on the official minotaursubnet.com domain (same host as the registered api.minotaursubnet.com health surface) and linked from the official docs at docs.minotaursubnet.com. Document title 'Minotaur App — Sign intents. Settle through quorum.'; wallet actions require signing but the dashboard itself loads without auth (verified HTTP 200).",
+      "notes": "Public no-auth Minotaur App web dashboard for SN112 (intent signing + quorum settlement), served on the official minotaursubnet.com domain (same host as the registered api.minotaursubnet.com health surface) and linked from the official docs at docs.minotaursubnet.com. Document title 'Minotaur App \u2014 Sign intents. Settle through quorum.'; wallet actions require signing but the dashboard itself loads without auth (verified HTTP 200).",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -236,7 +236,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Grouped under the signature-gated App-management auth class in the official app-management API doc's auth-model table (a publicly documented scheme, verifiable without holding any credential); live-verified rejected unauthenticated (HTTP 403) 2026-07-22 (~08:25 UTC)."
+        "scopes_note": "Requires a signed request per the subnet's documented App-management auth model; not a static API key or bearer token."
       },
       "auth_required": true,
       "authority": "community",
@@ -264,7 +264,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Grouped under the signature-gated App-management auth class in the official app-management API doc's auth-model table (a publicly documented scheme, verifiable without holding any credential); live-verified rejected unauthenticated (HTTP 403) 2026-07-22 (~08:25 UTC)."
+        "scopes_note": "Requires a signed request per the subnet's documented App-management auth model; not a static API key or bearer token."
       },
       "auth_required": true,
       "authority": "community",
