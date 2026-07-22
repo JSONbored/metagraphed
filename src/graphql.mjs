@@ -367,7 +367,7 @@ import {
   MOVERS_SORTS,
   MOVERS_WINDOWS,
   buildMovers,
-} from "./movers.mjs";
+} from "./movers.ts";
 import {
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,

@@ -126,7 +126,7 @@ import {
   DEFAULT_MOVERS_WINDOW,
   DEFAULT_MOVERS_SORT,
   MOVERS_LIMIT_DEFAULT,
-} from "../src/movers.mjs";
+} from "../src/movers.ts";
 import {
   buildAccountsList,
   DEFAULT_ACCOUNTS_LIST_SORT,
@@ -8693,7 +8693,7 @@ export default {
 
         // GET /api/v1/subnets/movers?window=&sort=&limit= (#4832 Tier 2b):
         // every subnet ranked by its stake/emission/validator change over the
-        // window, mirroring src/movers.mjs's loadSubnetMovers.
+        // window, mirroring src/movers.ts's loadSubnetMovers.
         if (url.pathname === "/api/v1/subnets/movers") {
           const windowParam =
             url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;

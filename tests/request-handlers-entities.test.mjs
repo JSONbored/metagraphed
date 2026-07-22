@@ -9,7 +9,7 @@ import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import { MOVERS_WINDOWS } from "../src/movers.mjs";
+import { MOVERS_WINDOWS } from "../src/movers.ts";
 import { unsupportedWindowMessage } from "../src/neuron-history.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 import {

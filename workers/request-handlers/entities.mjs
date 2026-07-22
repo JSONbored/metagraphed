@@ -277,7 +277,7 @@ import {
   DEFAULT_MOVERS_SORT,
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
-} from "../../src/movers.mjs";
+} from "../../src/movers.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_WINDOWS,

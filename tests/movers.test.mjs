@@ -6,7 +6,7 @@ import {
   loadSubnetMovers,
   DEFAULT_MOVERS_WINDOW,
   DEFAULT_MOVERS_SORT,
-} from "../src/movers.mjs";
+} from "../src/movers.ts";
 
 // Aggregate row helper: one neuron_daily GROUP BY netuid,snapshot_date row.
 function agg(

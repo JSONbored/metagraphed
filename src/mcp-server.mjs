@@ -590,7 +590,7 @@ import {
   DEFAULT_MOVERS_SORT,
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
-} from "./movers.mjs";
+} from "./movers.ts";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.ts";
 import { loadAccountRootClaim } from "./account-root-claim.ts";
 import {
