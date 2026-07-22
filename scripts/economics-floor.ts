@@ -9,27 +9,33 @@
 // the ratio the blob publishes (the check is strictly "below").
 export const ECONOMICS_FLOOR_RATIO = 0.5;
 
+interface PublishDecision {
+  publish: boolean;
+  reason: string;
+}
+
 // Decide whether an economics blob clears the content floor.
 //   summary: { with_economics_count, captured_at }
 //   expectedCount: subnet count the run was built from (0 ⇒ skip the ratio gate)
 // Returns { publish: boolean, reason: string }.
 export function shouldPublishEconomics(
-  { with_economics_count, captured_at } = {},
+  {
+    with_economics_count,
+    captured_at,
+  }: { with_economics_count?: unknown; captured_at?: unknown } = {},
   expectedCount = 0,
-) {
+): PublishDecision {
   if (!Number.isFinite(with_economics_count) || with_economics_count === 0) {
     return { publish: false, reason: "no-economics-rows" };
   }
   if (!captured_at) {
     return { publish: false, reason: "missing-captured-at" };
   }
-  if (
-    expectedCount > 0 &&
-    with_economics_count < expectedCount * ECONOMICS_FLOOR_RATIO
-  ) {
+  const count = with_economics_count as number;
+  if (expectedCount > 0 && count < expectedCount * ECONOMICS_FLOOR_RATIO) {
     return {
       publish: false,
-      reason: `below-floor (${with_economics_count} of ~${expectedCount})`,
+      reason: `below-floor (${count} of ~${expectedCount})`,
     };
   }
   return { publish: true, reason: "ok" };

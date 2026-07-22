@@ -26,7 +26,7 @@ import {
 import { loadAlphaPriceHistoryByNetuid } from "./lib/load-alpha-price-history.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
-import { shouldPublishEconomics } from "./economics-floor.mjs";
+import { shouldPublishEconomics } from "./economics-floor.ts";
 import { initSentry, endSessionAndFlush } from "./observability.mjs";
 
 initSentry("refresh-economics");

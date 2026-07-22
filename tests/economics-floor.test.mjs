@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   ECONOMICS_FLOOR_RATIO,
   shouldPublishEconomics,
-} from "../scripts/economics-floor.mjs";
+} from "../scripts/economics-floor.ts";
 
 const CAPTURED = "2026-06-20T00:00:00.000Z";
 

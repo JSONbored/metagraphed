@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 // a staging object `{ rows, refreshed_netuids, captured_at }` (signs the full
 // object). Returns `{ schema_version, hmac_sha256, rows, ... }`. Pure +
 // side-effect-free so the CLI stays a thin wrapper and the branching/signing is
-// unit-tested directly (mirrors shouldPublishEconomics in economics-floor.mjs).
+// unit-tested directly (mirrors shouldPublishEconomics in economics-floor.ts).
 export function buildSignedEnvelope(parsed, key) {
   let rows;
   let refreshed_netuids;
