@@ -48,7 +48,7 @@ import { loadProviderEndpointsList } from "./provider-endpoints-mcp.mjs";
 // and page logic REST and MCP already use) -- not a reimplementation.
 import { loadAdapterCandidatesList } from "./adapter-candidates-mcp.ts";
 import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.ts";
-import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.mjs";
+import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.ts";
 import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.mjs";
 import { loadReviewGapsList } from "./review-gaps-mcp.mjs";
 import { loadProfileCompletenessList } from "./profile-completeness-mcp.mjs";

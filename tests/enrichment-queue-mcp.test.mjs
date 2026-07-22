@@ -10,7 +10,7 @@ import {
   enrichmentQueueMcpError,
   enrichmentQueueQueryUrl,
   loadEnrichmentQueueList,
-} from "../src/enrichment-queue-mcp.mjs";
+} from "../src/enrichment-queue-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

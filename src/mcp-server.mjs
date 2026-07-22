@@ -93,7 +93,7 @@ import {
   LIST_ENRICHMENT_QUEUE_MCP_TOOL,
   LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA,
   loadEnrichmentQueueList,
-} from "./enrichment-queue-mcp.mjs";
+} from "./enrichment-queue-mcp.ts";
 import {
   LIST_ADAPTER_CANDIDATES_INSTRUCTIONS,
   LIST_ADAPTER_CANDIDATES_MCP_TOOL,

@@ -2,7 +2,8 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/review/enrichment-queue.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const ENRICHMENT_QUEUE_ARTIFACT =
@@ -30,14 +31,25 @@ const LANES = [
 ];
 const BOOLEAN_STRINGS = ["true", "false"];
 
-export function enrichmentQueueMcpError(code, message) {
-  const error = new Error(message);
+export interface EnrichmentQueueMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function enrichmentQueueMcpError(
+  code: string,
+  message: string,
+): EnrichmentQueueMcpError {
+  const error = new Error(message) as EnrichmentQueueMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -49,7 +61,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -61,24 +77,27 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function clampLimit(value, fallback, max) {
+function clampLimit(value: unknown, fallback: number, max: number): number {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
 }
 
-export function enrichmentQueueQueryUrl(args) {
+export function enrichmentQueueQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/review/enrichment-queue");
   const q = optionalString(args, "q");
   if (q) url.searchParams.set("q", q);
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
       throw enrichmentQueueMcpError(
         "invalid_params",
         "netuid must be a non-negative integer.",
       );
     }
-    url.searchParams.set("netuid", String(args.netuid));
+    url.searchParams.set("netuid", String(netuid));
   }
   const lane = optionalEnum(args, "lane", LANES);
   if (lane) url.searchParams.set("lane", lane);
@@ -126,27 +145,49 @@ export function enrichmentQueueQueryUrl(args) {
     url.searchParams.set("limit", String(clampLimit(args.limit, 50, 100)));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw enrichmentQueueMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
+export interface EnrichmentQueueListResult {
+  generated_at: unknown;
+  notes: unknown;
+  queue: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
 export async function loadEnrichmentQueueList(
-  ctx,
-  args,
-  { readArtifact } = {},
-) {
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<EnrichmentQueueListResult> {
   const queryUrl = enrichmentQueueQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, ENRICHMENT_QUEUE_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw enrichmentQueueMcpError(
         "not_found",
@@ -165,13 +206,19 @@ export async function loadEnrichmentQueueList(
       "Enrichment queue snapshot unavailable.",
     );
   }
-  const transformed = applyQueryFilters(blob, queryUrl, "enrichment-queue", []);
+  const transformed = applyQueryFilters(
+    blob as Record<string, unknown>,
+    queryUrl,
+    "enrichment-queue",
+    [],
+  );
   if (transformed.error) {
     throw enrichmentQueueMcpError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.queue) ? data.queue : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows = Array.isArray(data.queue) ? (data.queue as Row[]) : [];
   const rowLen = rows.length;
   return {
     generated_at: data.generated_at ?? null,
