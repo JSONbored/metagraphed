@@ -648,7 +648,7 @@ import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
-import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
+import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 import { loadSudoKey } from "./sudo-key.mjs";

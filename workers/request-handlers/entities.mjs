@@ -118,7 +118,7 @@ import {
   entityLabelsIndex,
   labelsForSs58,
 } from "../../src/entity-labels.ts";
-import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
+import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadSubnetLease } from "../../src/subnet-lease.ts";
 import { computeStakeQuote } from "../../src/stake-quote.ts";
@@ -3971,7 +3971,7 @@ export async function handleAccountParents(request, env, ss58) {
 // GET /api/v1/subnets/{netuid}/recycled (#4339/8.4): the live cumulative TAO
 // recycled for registration on one subnet, queried from the chain's own
 // RAORecycledForRegistration storage map at request time (600s KV cache via
-// METAGRAPH_CONTROL) — see src/subnet-recycled.mjs's header for why this
+// METAGRAPH_CONTROL) — see src/subnet-recycled.ts's header for why this
 // isn't a log-layer/account_events aggregation. netuid is a per-request-
 // controllable cache-busting parameter (like /accounts/{ss58}/balance's
 // ss58), so it shares that route's rate limiter rather than sudo-key's

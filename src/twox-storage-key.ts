@@ -1,6 +1,6 @@
 // Substrate Twox64/Twox128 storage-key derivation (#6719). Every hardcoded
 // storage key elsewhere in this codebase (sudo-key.mjs, network-parameters.ts,
-// subnet-burn.ts, subnet-recycled.mjs) is a FIXED string precomputed offline
+// subnet-burn.ts, subnet-recycled.ts) is a FIXED string precomputed offline
 // specifically because those pallet/item name prefixes never change and
 // twox128 needs XXHash64, not in Node's built-in crypto -- this module exists
 // because subnet leasing's storage maps (#6719) are Twox64Concat-hashed on

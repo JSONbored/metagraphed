@@ -55,7 +55,7 @@ function decodeLeU64(hex: unknown): bigint | null {
 }
 
 // BigInt rao -> Number TAO, split in BigInt space first to avoid float
-// precision loss (mirrors subnet-burn.ts's / subnet-recycled.mjs's
+// precision loss (mirrors subnet-burn.ts's / subnet-recycled.ts's
 // identical conversion).
 function raoToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;

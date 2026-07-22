@@ -35,7 +35,7 @@
 // they're computed via that shared module rather than each hardcoded here.
 
 import { encodeAccountId32 } from "./ss58.ts";
-import { isU16Netuid } from "./subnet-recycled.mjs";
+import { isU16Netuid } from "./subnet-recycled.ts";
 import {
   twox64ConcatU16StorageKey,
   twox64ConcatU32StorageKey,

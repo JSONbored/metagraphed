@@ -33,6 +33,8 @@
 // (bittensor 10.4.0, substrate.create_storage_key("SubtensorModule",
 // "RAORecycledForRegistration", [netuid])) across netuid 0/1/4/101/65535.
 
+type Row = Record<string, unknown>;
+
 export const RECYCLED_KV_TTL = 600; // seconds — a registration-count counter, not a live price
 export const RECYCLED_NEGATIVE_KV_TTL = 10; // seconds
 export const RECYCLED_RPC_TIMEOUT_MS = 5000;
@@ -45,13 +47,18 @@ const RECYCLED_STORAGE_KEY_PREFIX =
 
 // netuid (0..65535) as a u16, little-endian, 2 hex bytes — the Identity-hashed
 // map-key suffix appended to the fixed prefix above.
-export function isU16Netuid(netuid) {
-  return Number.isInteger(netuid) && netuid >= 0 && netuid <= MAX_U16_NETUID;
+export function isU16Netuid(netuid: unknown): netuid is number {
+  return (
+    typeof netuid === "number" &&
+    Number.isInteger(netuid) &&
+    netuid >= 0 &&
+    netuid <= MAX_U16_NETUID
+  );
 }
 
 // Callers (loadSubnetRecycled) validate netuid via isU16Netuid before
 // reaching here, so no redundant guard.
-function netuidStorageKeySuffix(netuid) {
+function netuidStorageKeySuffix(netuid: number): string {
   const lo = (netuid % 256).toString(16).padStart(2, "0");
   const hi = Math.floor(netuid / 256)
     .toString(16)
@@ -61,7 +68,7 @@ function netuidStorageKeySuffix(netuid) {
 
 // Decode a "0x"-prefixed, 16-hex-char (8-byte) little-endian u64 into a
 // BigInt. Returns null for anything else (malformed/short/absent result).
-function decodeLeU64(hex) {
+function decodeLeU64(hex: unknown): bigint | null {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{16}$/.test(hex)) {
     return null;
   }
@@ -75,7 +82,7 @@ function decodeLeU64(hex) {
 // BigInt rao -> Number TAO, split in BigInt space first to avoid float
 // precision loss on large cumulative totals (mirrors account-balance.mjs's
 // same-shaped conversion).
-function raoToTao(rao) {
+function raoToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
@@ -85,7 +92,10 @@ function raoToTao(rao) {
 // malformed result (schema-stable, never throws). A subnet with zero
 // registrations reads back the chain's own 0x00...0 ValueQuery default,
 // decoding to a real 0, not null.
-export async function loadSubnetRecycled(env, netuid) {
+export async function loadSubnetRecycled(
+  env: Env,
+  netuid: number,
+): Promise<Row> {
   if (!isU16Netuid(netuid)) {
     throw new RangeError("netuid must be an integer in the u16 range 0..65535");
   }
@@ -96,14 +106,14 @@ export async function loadSubnetRecycled(env, netuid) {
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as Row;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
   }
 
   const queriedAt = new Date().toISOString();
-  let recycledTao = null;
+  let recycledTao: number | null = null;
   let rpcOk = false;
 
   try {
@@ -121,7 +131,7 @@ export async function loadSubnetRecycled(env, netuid) {
       }),
     });
     if (rpcResp.ok) {
-      const rpcBody = await rpcResp.json();
+      const rpcBody = (await rpcResp.json()) as Row;
       const raw = rpcBody?.result;
       const rao = decodeLeU64(raw);
       if (rao != null) {
@@ -139,7 +149,7 @@ export async function loadSubnetRecycled(env, netuid) {
     // RPC fetch failed — recycled_tao stays null.
   }
 
-  const payload = {
+  const payload: Row = {
     schema_version: 1,
     netuid,
     recycled_tao: recycledTao,

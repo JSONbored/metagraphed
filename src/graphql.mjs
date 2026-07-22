@@ -214,7 +214,7 @@ import { loadBlockChainEvents } from "./data-api-mcp.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
 import { buildChainYield } from "./chain-yield.ts";
-import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
+import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.ts";

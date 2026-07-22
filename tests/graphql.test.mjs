@@ -16436,7 +16436,7 @@ describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs
   });
 });
 
-describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.mjs)", () => {
+describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-recycled.test.mjs.
   function withFetchStub(stub, fn) {

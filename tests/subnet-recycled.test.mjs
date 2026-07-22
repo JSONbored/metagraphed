@@ -5,7 +5,7 @@ import {
   RECYCLED_NEGATIVE_KV_TTL,
   RECYCLED_RPC_TIMEOUT_MS,
   loadSubnetRecycled,
-} from "../src/subnet-recycled.mjs";
+} from "../src/subnet-recycled.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 function req(path) {

@@ -10,7 +10,7 @@
 // Bittensor SDK's own `Subtensor.recycle(netuid)` helper returns
 // (`get_hyperparameter(param_name="Burn", netuid=netuid)`, then
 // `Balance.from_rao`) — same u64-rao StorageMap<NetUid, u64> shape as
-// SubtensorModule::RAORecycledForRegistration (src/subnet-recycled.mjs),
+// SubtensorModule::RAORecycledForRegistration (src/subnet-recycled.ts),
 // so this mirrors that file's live-RPC + KV-cache approach rather than
 // adding a new capture pipeline. Cached for a much shorter TTL than
 // recycled_tao's 600s: registration bursts can move this within minutes.
@@ -26,7 +26,7 @@
 // a raw state_getStorage RPC call for netuid 1 (result 0x20a1070000000000 =
 // 500000 rao, matching Subtensor.recycle(1) exactly).
 
-import { isU16Netuid } from "./subnet-recycled.mjs";
+import { isU16Netuid } from "./subnet-recycled.ts";
 
 export const BURN_KV_TTL = 120; // seconds — moves within minutes during registration bursts
 export const BURN_NEGATIVE_KV_TTL = 10; // seconds
@@ -64,7 +64,7 @@ function decodeLeU64(hex: unknown): bigint | null {
 }
 
 // BigInt rao -> Number TAO, split in BigInt space first to avoid float
-// precision loss (mirrors subnet-recycled.mjs's identical conversion).
+// precision loss (mirrors subnet-recycled.ts's identical conversion).
 function raoToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
