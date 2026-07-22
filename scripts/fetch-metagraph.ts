@@ -17,37 +17,64 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+type Row = Record<string, unknown>;
+
 const TAOSTATS_BASE = "https://api.taostats.io/api/metagraph/latest/v1";
 const RAO = 1e9;
 const PAGE_LIMIT = 256; // max UIDs per subnet → single page per subnet
 const OUT_PATH =
   process.env.METAGRAPH_NEURONS_JSON || "dist/metagraph-neurons.json";
 
-const num = (v) => {
+const num = (v: unknown): number | null => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
-const tao = (v) => {
+const tao = (v: unknown): number | null => {
   const n = Number(v);
   return Number.isFinite(n) ? n / RAO : null;
 };
-const bool = (v) => (v ? 1 : 0);
+const bool = (v: unknown): 0 | 1 => (v ? 1 : 0);
 
-function formatAxon(axon) {
+function formatAxon(axon: unknown): string | null {
   if (!axon || typeof axon !== "object") return null;
-  const ip = axon.ip ?? axon.host ?? null;
+  const a = axon as Row;
+  const ip = a.ip ?? a.host ?? null;
   if (!ip) return null;
-  return axon.port ? `${ip}:${axon.port}` : String(ip);
+  return a.port ? `${ip}:${a.port}` : String(ip);
+}
+
+interface NeuronRow {
+  netuid: number | null;
+  uid: number | null;
+  hotkey: string | null;
+  coldkey: string | null;
+  active: 0 | 1;
+  validator_permit: 0 | 1;
+  rank: number | null;
+  trust: number | null;
+  validator_trust: number | null;
+  consensus: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  emission_tao: number | null;
+  stake_tao: number | null;
+  registered_at_block: number | null;
+  is_immunity_period: 0 | 1;
+  axon: string | null;
+  block_number: number | null;
+  captured_at: number;
 }
 
 // Map one raw Taostats neuron to the D1 `neurons` row shape. Pure + exported for
 // tests. Defensive: any missing/odd field becomes null rather than failing.
-export function normalizeNeuron(raw, capturedAt) {
+export function normalizeNeuron(raw: Row, capturedAt: number): NeuronRow {
+  const hotkey = raw?.hotkey as Row | undefined;
+  const coldkey = raw?.coldkey as Row | undefined;
   return {
     netuid: num(raw?.netuid),
     uid: num(raw?.uid),
-    hotkey: raw?.hotkey?.ss58 ?? null,
-    coldkey: raw?.coldkey?.ss58 ?? null,
+    hotkey: (hotkey?.ss58 as string | undefined) ?? null,
+    coldkey: (coldkey?.ss58 as string | undefined) ?? null,
     active: bool(raw?.active),
     validator_permit: bool(raw?.validator_permit),
     rank: num(raw?.rank),
@@ -66,25 +93,26 @@ export function normalizeNeuron(raw, capturedAt) {
   };
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number): Promise<void> =>
+  new Promise((r) => setTimeout(r, ms));
 
 // Taostats exposes no rate-limit headers and a tight per-key burst limit, so a
 // 429 is expected under load. Respect Retry-After when present, else back off
 // exponentially, and retry. The daily cron can afford the wait; coverage matters
 // more than speed.
 async function fetchSubnet(
-  netuid,
-  key,
+  netuid: number,
+  key: string,
   { maxRetries = 5, baseBackoffMs = 12000 } = {},
-) {
+): Promise<Row[]> {
   const url = `${TAOSTATS_BASE}?netuid=${netuid}&limit=${PAGE_LIMIT}`;
   for (let attempt = 0; ; attempt += 1) {
     const res = await fetch(url, {
       headers: { Authorization: key, accept: "application/json" },
     });
     if (res.ok) {
-      const json = await res.json();
-      return Array.isArray(json?.data) ? json.data : [];
+      const json = (await res.json()) as Row;
+      return Array.isArray(json?.data) ? (json.data as Row[]) : [];
     }
     if (res.status === 429 && attempt < maxRetries) {
       const retryAfter = Number(res.headers.get("retry-after"));
@@ -105,7 +133,7 @@ async function fetchSubnet(
 // Parse the optional METAGRAPH_FETCH_NETUIDS subset (testing). Exported + careful
 // about the Number("") === 0 trap: an empty/unset value must yield [] (→ full
 // network), NOT [0] (which would silently fetch only subnet 0, incl. in the cron).
-export function parseNetuidSubset(raw) {
+export function parseNetuidSubset(raw: unknown): number[] {
   return String(raw ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -114,22 +142,22 @@ export function parseNetuidSubset(raw) {
     .filter((n) => Number.isInteger(n));
 }
 
-function readNetuids() {
+function readNetuids(): number[] {
   const subset = parseNetuidSubset(process.env.METAGRAPH_FETCH_NETUIDS);
   if (subset.length) return subset.sort((a, b) => a - b);
   const native = JSON.parse(
     readFileSync("registry/native/finney-subnets.json", "utf8"),
   );
-  const subnets = Array.isArray(native)
+  const subnets: Row[] = Array.isArray(native)
     ? native
     : native.subnets || native.data || [];
   return subnets
-    .map((s) => s.netuid)
+    .map((s) => s.netuid as number)
     .filter((n) => Number.isInteger(n))
     .sort((a, b) => a - b);
 }
 
-async function main() {
+async function main(): Promise<void> {
   const key = process.env.TAOSTATS_API_KEY;
   if (!key) {
     console.error("TAOSTATS_API_KEY is required");
@@ -138,8 +166,8 @@ async function main() {
   const netuids = readNetuids();
   const delayMs = Number(process.env.METAGRAPH_FETCH_DELAY_MS) || 1200;
   const capturedAt = Date.now();
-  const rows = [];
-  const refreshedNetuids = [];
+  const rows: NeuronRow[] = [];
+  const refreshedNetuids: number[] = [];
   let failures = 0;
   for (const netuid of netuids) {
     try {
@@ -149,7 +177,9 @@ async function main() {
       process.stderr.write(`netuid ${netuid}: ${neurons.length} neurons\n`);
     } catch (error) {
       failures += 1;
-      process.stderr.write(`netuid ${netuid}: FAIL ${error.message}\n`);
+      process.stderr.write(
+        `netuid ${netuid}: FAIL ${(error as Error).message}\n`,
+      );
     }
     await sleep(delayMs); // gentle throttle; fetchSubnet handles 429 backoff
   }

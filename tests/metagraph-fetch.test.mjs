@@ -3,7 +3,7 @@ import { test } from "vitest";
 import {
   normalizeNeuron,
   parseNetuidSubset,
-} from "../scripts/fetch-metagraph.mjs";
+} from "../scripts/fetch-metagraph.ts";
 
 // A realistic raw Taostats neuron (shape verified against the live API 2026-06-21).
 const raw = {
