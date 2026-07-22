@@ -3,6 +3,8 @@ import { access } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { artifactFilePath, readJson, stableStringify } from "./lib.mjs";
 
+type Row = Record<string, unknown>;
+
 const args = new Set(process.argv.slice(2));
 const jsonMode = args.has("--json");
 const limit = positiveInt(valueAfter("--limit"), 10);
@@ -15,8 +17,15 @@ const REQUIRED_ENDPOINT_ARTIFACTS = [
   "rpc-endpoints.json",
 ];
 
+interface MissingArtifact {
+  relativePath: string;
+  filePath: string;
+}
+
 export class MissingEndpointArtifactsError extends Error {
-  constructor(missing) {
+  missing: MissingArtifact[];
+
+  constructor(missing: MissingArtifact[]) {
     const formattedPaths = missing
       .map(({ relativePath, filePath }) => `- ${relativePath} (${filePath})`)
       .join("\n");
@@ -52,11 +61,18 @@ if (isCliEntrypoint()) {
   }
 }
 
-export async function loadEndpointOpsSnapshot({ limit = 10 } = {}) {
+export async function loadEndpointOpsSnapshot({
+  limit = 10,
+}: { limit?: number } = {}): Promise<Row> {
   await assertEndpointArtifactsAvailable(REQUIRED_ENDPOINT_ARTIFACTS);
 
   const [endpoints, endpointPools, rpcPools, incidents, rpcEndpoints] =
     await Promise.all(REQUIRED_ENDPOINT_ARTIFACTS.map(readArtifact));
+
+  const rpcEndpointsSummary = rpcEndpoints.summary as Row | undefined;
+  const disabledProxyContract = endpointPools.disabled_proxy_contract as
+    Row | undefined;
+  const eligibilityPolicy = endpointPools.eligibility_policy as Row | undefined;
 
   return {
     schema_version: 1,
@@ -70,49 +86,55 @@ export async function loadEndpointOpsSnapshot({ limit = 10 } = {}) {
       endpointPools.contract_version ||
       endpoints.contract_version ||
       rpcPools.contract_version,
-    endpoint_summary: normalizeEndpointSummary(endpoints.summary || {}),
+    endpoint_summary: normalizeEndpointSummary(
+      (endpoints.summary as Row) || {},
+    ),
     rpc_summary: {
-      endpoint_count: rpcEndpoints.summary?.endpoint_count ?? 0,
-      ok_count: rpcEndpoints.summary?.by_status?.ok ?? 0,
+      endpoint_count: rpcEndpointsSummary?.endpoint_count ?? 0,
+      ok_count: (rpcEndpointsSummary?.by_status as Row | undefined)?.ok ?? 0,
       archive_supported_count:
-        rpcEndpoints.summary?.archive_supported_count ?? 0,
-      providers: Object.keys(rpcEndpoints.summary?.by_provider || {}).sort(),
+        rpcEndpointsSummary?.archive_supported_count ?? 0,
+      providers: Object.keys(
+        (rpcEndpointsSummary?.by_provider as Row) || {},
+      ).sort(),
     },
-    pools: (endpointPools.pools || []).slice(0, limit).map(poolBriefRow),
-    rpc_pools: (rpcPools.pools || []).slice(0, limit).map(poolBriefRow),
-    provider_scores: (endpointPools.provider_scores || [])
+    pools: ((endpointPools.pools as Row[]) || [])
+      .slice(0, limit)
+      .map(poolBriefRow),
+    rpc_pools: ((rpcPools.pools as Row[]) || [])
+      .slice(0, limit)
+      .map(poolBriefRow),
+    provider_scores: ((endpointPools.provider_scores as Row[]) || [])
       .slice(0, limit)
       .map(providerScoreBriefRow),
-    active_incidents: (incidents.incidents || [])
+    active_incidents: ((incidents.incidents as Row[]) || [])
       .filter((incident) => incident.state === "active")
       .slice(0, limit)
       .map(incidentBriefRow),
     incident_summary: incidents.summary || {},
     disabled_proxy_contract: {
-      enabled: endpointPools.disabled_proxy_contract?.enabled === true,
-      feature_flag: endpointPools.disabled_proxy_contract?.feature_flag || null,
-      allowed_methods:
-        endpointPools.disabled_proxy_contract?.allowed_methods || [],
+      enabled: disabledProxyContract?.enabled === true,
+      feature_flag: disabledProxyContract?.feature_flag || null,
+      allowed_methods: disabledProxyContract?.allowed_methods || [],
       denied_method_patterns:
-        endpointPools.disabled_proxy_contract?.denied_method_patterns || [],
-      rate_limit_required:
-        endpointPools.disabled_proxy_contract?.rate_limit_required === true,
-      waf_required:
-        endpointPools.disabled_proxy_contract?.waf_required === true,
+        disabledProxyContract?.denied_method_patterns || [],
+      rate_limit_required: disabledProxyContract?.rate_limit_required === true,
+      waf_required: disabledProxyContract?.waf_required === true,
     },
     policy: {
-      eligibility_source:
-        endpointPools.eligibility_policy?.source || "probe-derived",
-      eligible_layers: endpointPools.eligibility_policy?.eligible_layers || [],
+      eligibility_source: eligibilityPolicy?.source || "probe-derived",
+      eligible_layers: eligibilityPolicy?.eligible_layers || [],
       health_is_user_mutable:
-        endpointPools.eligibility_policy?.user_reports_can_change_health ===
-        true,
-      notes: endpointPools.eligibility_policy?.notes || null,
+        eligibilityPolicy?.user_reports_can_change_health === true,
+      notes: eligibilityPolicy?.notes || null,
     },
   };
 }
 
-export function renderEndpointOpsBrief(snapshot) {
+export function renderEndpointOpsBrief(snapshot: Row): string {
+  const endpointSummary = snapshot.endpoint_summary as Row;
+  const rpcSummary = snapshot.rpc_summary as Row;
+  const disabledProxyContract = snapshot.disabled_proxy_contract as Row;
   const lines = [
     "# Metagraphed Endpoint Operations Brief",
     "",
@@ -120,34 +142,34 @@ export function renderEndpointOpsBrief(snapshot) {
     "",
     "## Coverage",
     "",
-    `- Endpoint resources: ${snapshot.endpoint_summary.endpoint_count}`,
-    `- Monitored endpoints: ${snapshot.endpoint_summary.monitored_count}`,
-    `- Pool-eligible endpoints: ${snapshot.endpoint_summary.pool_eligible_count}`,
-    `- Statuses: ${formatCounts(snapshot.endpoint_summary.by_status)}`,
-    `- Layers: ${formatCounts(snapshot.endpoint_summary.by_layer)}`,
-    `- Publication states: ${formatCounts(snapshot.endpoint_summary.by_publication_state)}`,
+    `- Endpoint resources: ${endpointSummary.endpoint_count}`,
+    `- Monitored endpoints: ${endpointSummary.monitored_count}`,
+    `- Pool-eligible endpoints: ${endpointSummary.pool_eligible_count}`,
+    `- Statuses: ${formatCounts(endpointSummary.by_status as Row)}`,
+    `- Layers: ${formatCounts(endpointSummary.by_layer as Row)}`,
+    `- Publication states: ${formatCounts(endpointSummary.by_publication_state as Row)}`,
     "",
     "## Root RPC/WSS/Archive",
     "",
-    `- Base-layer RPC/WSS endpoints: ${snapshot.rpc_summary.endpoint_count}`,
-    `- OK endpoints: ${snapshot.rpc_summary.ok_count}`,
-    `- Archive-capable endpoints: ${snapshot.rpc_summary.archive_supported_count}`,
-    `- Providers: ${snapshot.rpc_summary.providers.join(", ") || "none"}`,
+    `- Base-layer RPC/WSS endpoints: ${rpcSummary.endpoint_count}`,
+    `- OK endpoints: ${rpcSummary.ok_count}`,
+    `- Archive-capable endpoints: ${rpcSummary.archive_supported_count}`,
+    `- Providers: ${(rpcSummary.providers as string[]).join(", ") || "none"}`,
     "",
     "## Advisory Endpoint Pools",
     "",
     "Pools are sorted by current operational score. They are advisory only; the public RPC proxy remains disabled in v1.",
     "",
     ...numberedRows(
-      snapshot.pools,
+      snapshot.pools as Row[],
       (pool) =>
-        `${pool.id} (${pool.kind}) - ${pool.eligible_count}/${pool.endpoint_count} eligible; best ${pool.best_endpoint_id || "none"}; top: ${pool.top_endpoints.join(", ") || "none"}`,
+        `${pool.id} (${pool.kind}) - ${pool.eligible_count}/${pool.endpoint_count} eligible; best ${pool.best_endpoint_id || "none"}; top: ${(pool.top_endpoints as string[]).join(", ") || "none"}`,
     ),
     "",
     "## Provider Scores",
     "",
     ...numberedRows(
-      snapshot.provider_scores,
+      snapshot.provider_scores as Row[],
       (provider) =>
         `${provider.provider} - score ${provider.average_score}; ok ${provider.ok_count}/${provider.endpoint_count}; pool eligible ${provider.pool_eligible_count}`,
     ),
@@ -155,19 +177,19 @@ export function renderEndpointOpsBrief(snapshot) {
     "## Active Incidents",
     "",
     ...numberedRows(
-      snapshot.active_incidents,
+      snapshot.active_incidents as Row[],
       (incident) =>
         `SN${incident.netuid} ${incident.subnet_name} ${incident.kind} - ${incident.status}/${incident.reason}; provider ${incident.provider}; endpoint ${incident.endpoint_id}`,
     ),
     "",
     "## Proxy Contract",
     "",
-    `- Enabled: ${snapshot.disabled_proxy_contract.enabled}`,
-    `- Feature flag: ${snapshot.disabled_proxy_contract.feature_flag || "none"}`,
-    `- Allowed methods: ${snapshot.disabled_proxy_contract.allowed_methods.join(", ") || "none"}`,
-    `- Denied method patterns: ${snapshot.disabled_proxy_contract.denied_method_patterns.join(", ") || "none"}`,
-    `- WAF required: ${snapshot.disabled_proxy_contract.waf_required}`,
-    `- Rate limit required: ${snapshot.disabled_proxy_contract.rate_limit_required}`,
+    `- Enabled: ${disabledProxyContract.enabled}`,
+    `- Feature flag: ${disabledProxyContract.feature_flag || "none"}`,
+    `- Allowed methods: ${(disabledProxyContract.allowed_methods as string[]).join(", ") || "none"}`,
+    `- Denied method patterns: ${(disabledProxyContract.denied_method_patterns as string[]).join(", ") || "none"}`,
+    `- WAF required: ${disabledProxyContract.waf_required}`,
+    `- Rate limit required: ${disabledProxyContract.rate_limit_required}`,
     "",
     "Health, latency, latest block, incidents, and pool eligibility are probe-derived only. Contributor reports can trigger review or re-probes, but they cannot set observed health.",
   ];
@@ -175,21 +197,23 @@ export function renderEndpointOpsBrief(snapshot) {
   return `${lines.join("\n")}\n`;
 }
 
-function normalizeEndpointSummary(summary) {
+function normalizeEndpointSummary(summary: Row): Row {
   return {
     endpoint_count: summary.endpoint_count ?? 0,
     monitored_count: summary.monitored_count ?? 0,
     pool_eligible_count: summary.pool_eligible_count ?? 0,
-    by_status: sortedRecord(summary.by_status || {}),
-    by_layer: sortedRecord(summary.by_layer || {}),
-    by_publication_state: sortedRecord(summary.by_publication_state || {}),
-    by_kind: sortedRecord(summary.by_kind || {}),
-    by_provider: sortedRecord(summary.by_provider || {}),
+    by_status: sortedRecord((summary.by_status as Row) || {}),
+    by_layer: sortedRecord((summary.by_layer as Row) || {}),
+    by_publication_state: sortedRecord(
+      (summary.by_publication_state as Row) || {},
+    ),
+    by_kind: sortedRecord((summary.by_kind as Row) || {}),
+    by_provider: sortedRecord((summary.by_provider as Row) || {}),
   };
 }
 
-function poolBriefRow(pool) {
-  const endpoints = pool.endpoints || [];
+function poolBriefRow(pool: Row): Row {
+  const endpoints = (pool.endpoints as Row[]) || [];
   return {
     id: pool.id,
     kind: pool.kind,
@@ -208,7 +232,7 @@ function poolBriefRow(pool) {
   };
 }
 
-function providerScoreBriefRow(provider) {
+function providerScoreBriefRow(provider: Row): Row {
   return {
     provider: provider.provider,
     average_score: provider.average_score ?? provider.operational_score ?? 0,
@@ -222,7 +246,7 @@ function providerScoreBriefRow(provider) {
   };
 }
 
-function incidentBriefRow(incident) {
+function incidentBriefRow(incident: Row): Row {
   return {
     id: incident.id,
     endpoint_id: incident.endpoint_id,
@@ -237,7 +261,7 @@ function incidentBriefRow(incident) {
   };
 }
 
-function formatCounts(counts) {
+function formatCounts(counts: Row | null | undefined): string {
   const entries = Object.entries(counts || {});
   if (entries.length === 0) {
     return "none";
@@ -245,37 +269,39 @@ function formatCounts(counts) {
   return entries.map(([key, value]) => `${key} ${value}`).join(", ");
 }
 
-function numberedRows(rows, formatter) {
+function numberedRows(rows: Row[], formatter: (row: Row) => string): string[] {
   if (rows.length === 0) {
     return ["No rows available."];
   }
   return rows.map((row, index) => `${index + 1}. ${formatter(row)}`);
 }
 
-function sortedRecord(record) {
+function sortedRecord(record: Row): Row {
   return Object.fromEntries(
     Object.entries(record).sort(([left], [right]) => left.localeCompare(right)),
   );
 }
 
-function firstRealTimestamp(values) {
+function firstRealTimestamp(values: unknown[]): string | undefined {
   return values.find(
-    (value) =>
+    (value): value is string =>
       typeof value === "string" &&
       value.length > 0 &&
       value !== "1970-01-01T00:00:00.000Z",
   );
 }
 
-export async function missingEndpointArtifactDetails(relativePaths) {
-  const missing = [];
+export async function missingEndpointArtifactDetails(
+  relativePaths: string[],
+): Promise<MissingArtifact[]> {
+  const missing: MissingArtifact[] = [];
 
   for (const relativePath of relativePaths) {
     const filePath = artifactFilePath(relativePath);
     try {
       await access(filePath, fsConstants.R_OK);
     } catch (error) {
-      if (error?.code !== "ENOENT") {
+      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
         throw error;
       }
       missing.push({ relativePath, filePath });
@@ -285,29 +311,31 @@ export async function missingEndpointArtifactDetails(relativePaths) {
   return missing;
 }
 
-async function assertEndpointArtifactsAvailable(relativePaths) {
+async function assertEndpointArtifactsAvailable(
+  relativePaths: string[],
+): Promise<void> {
   const missing = await missingEndpointArtifactDetails(relativePaths);
   if (missing.length > 0) {
     throw new MissingEndpointArtifactsError(missing);
   }
 }
 
-async function readArtifact(relativePath) {
+async function readArtifact(relativePath: string): Promise<Row> {
   return readJson(artifactFilePath(relativePath));
 }
 
-function valueAfter(flag) {
+function valueAfter(flag: string): string | null {
   const values = process.argv.slice(2);
   const index = values.indexOf(flag);
   return index === -1 ? null : values[index + 1];
 }
 
-function positiveInt(value, fallback) {
+function positiveInt(value: unknown, fallback: number): number {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function isCliEntrypoint() {
+function isCliEntrypoint(): boolean {
   return process.argv[1]
     ? import.meta.url === pathToFileURL(process.argv[1]).href
     : false;

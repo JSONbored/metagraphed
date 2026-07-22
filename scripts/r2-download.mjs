@@ -20,7 +20,7 @@ const manifest = await readJson(
 );
 // Both `--prefix=latest/` and `--prefix latest/` are accepted: the equals-only
 // parser this used to have silently dropped the space-separated form and fell
-// back to manifest.latest_prefix, which is how endpoint-ops-brief.mjs's
+// back to manifest.latest_prefix, which is how endpoint-ops-brief.ts's
 // remediation command came to be wrong for over a release (#6365).
 const prefixArg = flagValue(process.argv, "--prefix");
 const prefix = prefixArg

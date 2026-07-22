@@ -125,7 +125,7 @@
     "curation:brief": "node scripts/curation-brief.ts",
     "curation:stale-notes": "node scripts/stale-gap-notes.mjs",
     "curation:identity-divergence": "node scripts/identity-field-divergence.mjs",
-    "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
+    "endpoint:brief": "node scripts/endpoint-ops-brief.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.8.2",

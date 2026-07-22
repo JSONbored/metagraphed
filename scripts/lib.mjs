@@ -197,10 +197,10 @@ export function netuidFromEvidenceSubject(subject) {
  *
  * `scripts/` grew both conventions independently: some parsers match `--flag=`
  * only (r2-download.mjs), while others take the next argv entry (subnet-new.mjs,
- * curation-brief.ts, and endpoint-ops-brief.mjs's own `valueAfter`). A parser
+ * curation-brief.ts, and endpoint-ops-brief.ts's own `valueAfter`). A parser
  * that accepts only one form silently ignores the other -- no error, no warning,
  * the flag is simply dropped and the default applies instead. That is exactly
- * how endpoint-ops-brief.mjs came to document `--prefix latest/` for a script
+ * how endpoint-ops-brief.ts came to document `--prefix latest/` for a script
  * that only reads `--prefix=` (#6365).
  *
  * Accepting both is what enrichment-issues.mjs's `getOpt` already does; this is

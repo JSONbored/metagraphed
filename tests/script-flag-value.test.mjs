@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import { flagValue } from "../scripts/lib.mjs";
 
 // #6365: scripts/ grew two flag conventions independently. r2-download.mjs read
-// `--prefix=` only, while endpoint-ops-brief.mjs -- which has its own
+// `--prefix=` only, while endpoint-ops-brief.ts -- which has its own
 // space-separated `valueAfter` parser -- printed `npm run r2:download --
 // --prefix latest/` as its remediation command. Following that printed command
 // dropped the flag silently: no token started with "--prefix=", so prefixArg was

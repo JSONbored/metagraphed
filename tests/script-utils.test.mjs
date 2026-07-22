@@ -83,7 +83,7 @@ import {
   MissingEndpointArtifactsError,
   missingEndpointArtifactDetails,
   renderEndpointOpsBrief,
-} from "../scripts/endpoint-ops-brief.mjs";
+} from "../scripts/endpoint-ops-brief.ts";
 import { generateBaselineOverlaySet } from "../scripts/generated-overlays.mjs";
 import { classifyHttpProbe } from "../scripts/http-probe-classification.mjs";
 import {
