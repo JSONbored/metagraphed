@@ -42,7 +42,7 @@
 // Registry already matched reality -- no registry edit needed.
 //
 // Note on sn-60-bitsec-ai-openapi: kind "openapi" is not in
-// OPERATIONAL_SURFACE_KINDS (src/health-probe-core.mjs), so that surface is
+// OPERATIONAL_SURFACE_KINDS (src/health-probe-core.ts), so that surface is
 // absent from public/metagraph/operational-surfaces.json and cannot be
 // resolved through the call_subnet_surface tool in production. Per #7073, a
 // direct request to the URL is equally valid verification for a no-auth GET
@@ -52,7 +52,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
-import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
+import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 const NETUID = 60;

@@ -5,7 +5,7 @@
 // the published URI / maxLength contract.
 
 import { sanitizeChainText } from "../scripts/lib/formatting.mjs";
-import { isUnsafePublicUrl } from "./health-probe-core.mjs";
+import { isUnsafePublicUrl } from "./health-probe-core.ts";
 
 const CREDENTIALED_URL_PARAMS = new Set([
   "access_key",

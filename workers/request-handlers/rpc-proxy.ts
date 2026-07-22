@@ -1065,7 +1065,7 @@ export async function proxyWithFailover(
         // re-POST the caller's body to an unvetted host. A 3xx/opaqueredirect is
         // classified transient (see classifyUpstreamAttempt) → failed attempt.
         // Mirrors the redirect:"manual" invariant in webhooks.mjs /
-        // health-probe-core.mjs.
+        // health-probe-core.ts.
         redirect: "manual",
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -1354,7 +1354,7 @@ function isPrivateIpv4Octets([first, second]: number[]): boolean {
 // of registered domains, so no currently-configured origin can ever reach the
 // private-IP branches below through isSafeRpcEndpointUrl alone — this is
 // defense in depth against a future origin entry resolving privately, the same
-// posture health-probe-core.mjs's isUnsafePublicUrl documents for its guard.
+// posture health-probe-core.ts's isUnsafePublicUrl documents for its guard.
 export function isPrivateOrLocalHostname(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".localhost")) {
@@ -1381,7 +1381,7 @@ export function isPrivateOrLocalHostname(hostname: string): boolean {
   // ::ffff:100.64.0.1 becomes ::ffff:6440:1 in `new URL(...).hostname`), so a
   // dotted-quad string-prefix match against that value never fires on the real
   // request path. Parse the embedded v4 the same way src/webhooks.mjs and
-  // src/health-probe-core.mjs already do (via the shared src/ip-safety.mjs
+  // src/health-probe-core.ts already do (via the shared src/ip-safety.mjs
   // leaf) and re-check it against the same private-range policy.
   const embedded = ipv6EmbeddedIpv4(host);
   return embedded ? isPrivateIpv4Octets(embedded) : false;

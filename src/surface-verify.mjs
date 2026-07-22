@@ -5,7 +5,7 @@
 // re-probes the exact URLs the 15-minute health cron already probes, just on
 // demand. The worker layer adds the rate limiter + a 60s per-surface cache so
 // repeated calls can't fan out into real outbound probes.
-import { probeSurface } from "./health-probe-core.mjs";
+import { probeSurface } from "./health-probe-core.ts";
 import { resolveSurfaceAlias } from "./surface-aliases.mjs";
 
 // Surface ids look like "7:subnet-api:x" or "nodies-finney-rpc"; stable

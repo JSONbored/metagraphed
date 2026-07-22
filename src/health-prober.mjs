@@ -2,7 +2,7 @@
 //
 // Runs in the Worker on a 15-minute Cron Trigger (workers/api.mjs `scheduled()`):
 // loads the committed operational-surfaces.json list, probes each surface with
-// the shared isomorphic core (src/health-probe-core.mjs) under bounded
+// the shared isomorphic core (src/health-probe-core.ts) under bounded
 // concurrency, then writes:
 //   - Postgres surface_checks (append-only time-series → /health/trends)
 //   - Postgres surface_status (upserted latest row + circuit-breaker counter,
@@ -23,7 +23,7 @@ import {
   okLatencyMs,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
-} from "./health-probe-core.mjs";
+} from "./health-probe-core.ts";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {

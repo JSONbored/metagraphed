@@ -6,7 +6,7 @@ import {
   OPERATIONAL_SURFACE_KINDS,
   mapLimit,
   rollupSubnetStatus,
-} from "../src/health-probe-core.mjs";
+} from "../src/health-probe-core.ts";
 import { generateServiceSnippets } from "../src/integration-snippets.mjs";
 import {
   githubSignalsForSubnet,

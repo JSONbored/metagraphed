@@ -3,11 +3,11 @@
 // performs a live outbound fetch to a curated third-party surface URL and
 // returns its response content to the caller -- every existing tool either
 // serves a pre-published artifact or, in verify_integration's case, probes
-// a surface via src/health-probe-core.mjs's probeSurface() and returns only
+// a surface via src/health-probe-core.ts's probeSurface() and returns only
 // health/status metadata, never the body (probeUrl explicitly cancels the
-// response body on every branch -- src/health-probe-core.mjs:216,228,245).
+// response body on every branch -- src/health-probe-core.ts:216,228,245).
 //
-// Deliberately NOT built by refactoring health-probe-core.mjs's probeUrl to
+// Deliberately NOT built by refactoring health-probe-core.ts's probeUrl to
 // also expose the body: that file backs the live 15-minute health cron and
 // verify_integration, both already in production, and reshaping its return
 // contract is a materially higher blast radius than adding this isolated
@@ -402,7 +402,7 @@ interface SafetyCheckedFetchOk {
 
 type SafetyCheckedFetchResult = SafetyCheckedFetchOk | CallSubnetSurfaceFailure;
 
-// Mirrors src/health-probe-core.mjs's probeUrl redirect-revalidation loop
+// Mirrors src/health-probe-core.ts's probeUrl redirect-revalidation loop
 // (manual redirect handling, isUnsafeUrl re-checked on every hop, 5-hop
 // cap) but returns the live Response on success instead of discarding the
 // body -- see this module's own header for why that isn't done by

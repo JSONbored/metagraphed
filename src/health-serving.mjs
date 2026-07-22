@@ -16,7 +16,7 @@ import {
   rollupSubnetStatus,
   normalizeProbeStatus,
   okLatencyMs,
-} from "./health-probe-core.mjs";
+} from "./health-probe-core.ts";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 

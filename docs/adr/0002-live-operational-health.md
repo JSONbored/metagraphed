@@ -31,7 +31,7 @@ Split the two data classes. Keep slow/structural data on the 6h build. Move the
 ```
 EVERY 15 MIN (Cloudflare Cron Trigger, workers/api.mjs scheduled())
   load operational-surfaces.json (committed) → probe with the shared isomorphic
-  core (src/health-probe-core.mjs) under bounded concurrency →
+  core (src/health-probe-core.ts) under bounded concurrency →
     D1 surface_checks  (append-only time-series → /health/trends)
     D1 surface_status  (latest row + circuit-breaker counter)
     KV health:current / health:rpc-pool / health:meta  (hot snapshots)
@@ -44,7 +44,7 @@ SERVING (workers/api.mjs): /api/v1/health, /subnets/{n}/health, badges,
 
 Key properties:
 
-- **Isomorphic probe core.** `src/health-probe-core.mjs` holds the probe +
+- **Isomorphic probe core.** `src/health-probe-core.ts` holds the probe +
   classification logic, shared verbatim by the Node 6h build and the Worker cron
   (fetch / SSRF guard / WebSocket connector injected). WSS is probed from the
   Worker via `fetch(Upgrade: websocket)` (Workers have no `new WebSocket()` for

@@ -11,15 +11,23 @@
 import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
 
 export const SUBTENSOR_PROBE_CALLS = [
-  { key: "chain_getHeader", method: "chain_getHeader", params: [] },
-  { key: "system_health", method: "system_health", params: [] },
-  { key: "rpc_methods", method: "rpc_methods", params: [] },
-  { key: "archive_probe", method: "chain_getBlockHash", params: [1] },
+  {
+    key: "chain_getHeader",
+    method: "chain_getHeader",
+    params: [] as unknown[],
+  },
+  { key: "system_health", method: "system_health", params: [] as unknown[] },
+  { key: "rpc_methods", method: "rpc_methods", params: [] as unknown[] },
+  {
+    key: "archive_probe",
+    method: "chain_getBlockHash",
+    params: [1] as unknown[],
+  },
   // Genesis (block 0) hash — uniquely identifies the network. Lets us reject an
   // RPC endpoint that answers but is on the WRONG chain (cosmos.directory checks
   // chain_id the same way). A wrong/misconfigured submitted endpoint returns a
   // different genesis and is excluded before it can pollute the proxy pool.
-  { key: "genesis", method: "chain_getBlockHash", params: [0] },
+  { key: "genesis", method: "chain_getBlockHash", params: [0] as unknown[] },
 ];
 
 // Finney (Bittensor mainnet) genesis hash — verified live against
@@ -28,7 +36,7 @@ export const SUBTENSOR_PROBE_CALLS = [
 export const FINNEY_GENESIS_HASH =
   "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03";
 
-function normalizeHash(value) {
+function normalizeHash(value: unknown): string | null {
   return typeof value === "string" ? value.trim().toLowerCase() : null;
 }
 
@@ -92,7 +100,7 @@ const UNSAFE_HOST_PATTERNS = [
 // hextet and let other ULAs (fc12::1, fdab::1) through (#2375). The ff__ multicast
 // prefix was missing here while the webhook guard already blocked it, so the probe
 // literal guard let ff02::1 (all-routers) and other multicast targets through.
-function isUnsafeIpv6Literal(host) {
+function isUnsafeIpv6Literal(host: string): boolean {
   return (
     host === "::1" ||
     host === "::" ||
@@ -103,9 +111,9 @@ function isUnsafeIpv6Literal(host) {
   );
 }
 
-export function isUnsafePublicUrl(value) {
+export function isUnsafePublicUrl(value: unknown): boolean {
   try {
-    const url = new URL(value);
+    const url = new URL(value as string);
     if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
       return true;
     }
@@ -148,13 +156,13 @@ export function isUnsafePublicUrl(value) {
   }
 }
 
-export function isJsonContentType(value) {
+export function isJsonContentType(value: unknown): boolean {
   return String(value || "")
     .toLowerCase()
     .includes("json");
 }
 
-export function acceptHeader(expect) {
+export function acceptHeader(expect: unknown): string {
   switch (expect) {
     case "json":
       return "application/json";
@@ -167,15 +175,40 @@ export function acceptHeader(expect) {
   }
 }
 
+interface ProbeOptions {
+  isUnsafeUrl?: (url: unknown) => boolean | Promise<boolean>;
+  fetchImpl?: typeof fetch;
+  connect?: (
+    url: string,
+    calls: typeof SUBTENSOR_PROBE_CALLS,
+    timeoutMs: number,
+  ) => Promise<Map<string, JsonRpcCallResult>>;
+  expectedGenesis?: string;
+}
+
+export interface HttpProbeResult {
+  ok?: boolean;
+  error?: string | null;
+  error_class?: string | null;
+  content_type?: string | null;
+  latency_ms: number;
+  method_tested?: string;
+  status_code?: number | null;
+  redirect_target?: string | null;
+  unsafe_url?: boolean;
+  private_redirect_blocked?: boolean;
+  verified_at?: string;
+}
+
 // --- HTTP(S) probe ------------------------------------------------------------
 export async function probeUrl(
-  url,
-  method,
-  accept,
-  timeoutMs,
-  options = {},
+  url: string,
+  method: string,
+  accept: string,
+  timeoutMs: number,
+  options: ProbeOptions = {},
   redirectCount = 0,
-) {
+): Promise<HttpProbeResult> {
   const { isUnsafeUrl = isUnsafePublicUrl, fetchImpl = fetch } = options;
 
   if (await isUnsafeUrl(url)) {
@@ -254,8 +287,8 @@ export async function probeUrl(
   } catch (error) {
     return {
       ok: false,
-      error: error.message,
-      error_class: error.name,
+      error: (error as Error).message,
+      error_class: (error as Error).name,
       latency_ms: Math.round(performance.now() - started),
       method_tested: method,
       verified_at: new Date().toISOString(),
@@ -265,7 +298,30 @@ export async function probeUrl(
   }
 }
 
-export function classifyProbe(probe, surface) {
+interface ProbeSurfaceProbeConfig {
+  method: string;
+  expect?: string;
+  timeout_ms?: number;
+}
+
+export interface ProbeSurface {
+  id: unknown;
+  kind: string;
+  url: string;
+  netuid: unknown;
+  provider: unknown;
+  public_safe: unknown;
+  auth_required: unknown;
+  subnet_name: unknown;
+  subnet_slug: unknown;
+  authority?: unknown;
+  probe: ProbeSurfaceProbeConfig;
+}
+
+export function classifyProbe(
+  probe: HttpProbeResult,
+  surface: ProbeSurface,
+): string {
   if (probe.unsafe_url || probe.private_redirect_blocked) {
     return "unsafe";
   }
@@ -275,13 +331,13 @@ export function classifyProbe(probe, surface) {
   if (probe.status_code === 429) {
     return "rate-limited";
   }
-  if ([401, 403].includes(probe.status_code)) {
+  if (probe.status_code != null && [401, 403].includes(probe.status_code)) {
     return "auth-required";
   }
-  if ([404, 410].includes(probe.status_code)) {
+  if (probe.status_code != null && [404, 410].includes(probe.status_code)) {
     return "dead";
   }
-  if (probe.status_code >= 500) {
+  if (probe.status_code != null && probe.status_code >= 500) {
     return "transient";
   }
   if (probe.ok && contentMismatch(probe, surface)) {
@@ -296,7 +352,7 @@ export function classifyProbe(probe, surface) {
   return "unsupported";
 }
 
-export function classifyRpcProbe(probe) {
+export function classifyRpcProbe(probe: RpcProbeResult): string {
   if (probe.unsafe_url || probe.private_redirect_blocked) {
     return "unsafe";
   }
@@ -309,10 +365,10 @@ export function classifyRpcProbe(probe) {
   if (probe.status_code === 429) {
     return "rate-limited";
   }
-  if ([401, 403].includes(probe.status_code)) {
+  if (probe.status_code != null && [401, 403].includes(probe.status_code)) {
     return "auth-required";
   }
-  if (probe.status_code >= 500) {
+  if (probe.status_code != null && probe.status_code >= 500) {
     return "transient";
   }
   // Wrong network: the node answered but its genesis hash didn't match. Only
@@ -336,7 +392,10 @@ export function classifyRpcProbe(probe) {
   return "transient";
 }
 
-export function contentMismatch(probe, surface) {
+export function contentMismatch(
+  probe: HttpProbeResult,
+  surface: ProbeSurface,
+): boolean {
   if (surface.probe.expect === "json") {
     if (
       String(probe.content_type || "")
@@ -373,8 +432,10 @@ export const PROBE_STATUS_VALUES = Object.freeze([
   "unknown",
 ]);
 
-export function normalizeProbeStatus(status) {
-  return PROBE_STATUS_VALUES.includes(status) ? status : "unknown";
+export function normalizeProbeStatus(status: unknown): string {
+  return PROBE_STATUS_VALUES.includes(status as string)
+    ? (status as string)
+    : "unknown";
 }
 
 // Canonical subnet operational-status rollup — the SINGLE source of the
@@ -390,7 +451,13 @@ export function rollupSubnetStatus({
   failed = 0,
   unknown = 0,
   total,
-}) {
+}: {
+  ok?: number;
+  degraded?: number;
+  failed?: number;
+  unknown?: number;
+  total: number;
+}): string {
   if (total === 0 || unknown === total) return "unknown";
   if (failed === 0 && degraded === 0) return "ok";
   if (ok > 0 || degraded > 0) return "degraded";
@@ -400,11 +467,19 @@ export function rollupSubnetStatus({
 // Latency is a success-only signal: keep a probe's latency only when it resolved
 // `ok`. Every failure (timeout, 5xx, unsafe, thrown) collapses to null, so it
 // counts toward uptime but never toward the latency mean or percentiles.
-export function okLatencyMs(status, latencyMs) {
-  return status === "ok" && Number.isFinite(latencyMs) ? latencyMs : null;
+export function okLatencyMs(
+  status: unknown,
+  latencyMs: unknown,
+): number | null {
+  return status === "ok" && Number.isFinite(latencyMs)
+    ? (latencyMs as number)
+    : null;
 }
 
-export function statusForClassification(classification, surface = null) {
+export function statusForClassification(
+  classification: string,
+  surface: ProbeSurface | null = null,
+): string {
   if (["live", "redirected"].includes(classification)) {
     return "ok";
   }
@@ -421,15 +496,66 @@ export function statusForClassification(classification, surface = null) {
   }
   if (
     ["unsupported", "dead", "content-mismatch"].includes(classification) &&
-    ["registry-observed", "community"].includes(surface?.authority)
+    ["registry-observed", "community"].includes(surface?.authority as string)
   ) {
     return "degraded";
   }
   return "failed";
 }
 
+export interface NormalizedJsonRpcResult {
+  ok: boolean;
+  error: string | null;
+  code: unknown;
+  result_type: string;
+  result_present: boolean;
+  raw_header?: { number: unknown };
+  rpc_method_count?: number;
+  raw_hex_result_present?: boolean;
+}
+
+export interface JsonRpcCallResult {
+  transport_error?: boolean;
+  unsafe_url?: boolean;
+  private_redirect_blocked?: boolean;
+  redirect_target?: string;
+  status_code?: number;
+  content_type?: string | null;
+  error?: string;
+  error_class?: string;
+  ok?: boolean;
+  result?: unknown;
+  rpc_error?: { message?: string; code?: unknown } | null;
+}
+
+export interface RpcProbeResult {
+  unsafe_url?: boolean;
+  private_redirect_blocked?: boolean;
+  error?: string | null;
+  error_class?: string | null;
+  latency_ms: number;
+  content_type?: string | null;
+  status_code?: number | null;
+  method_results?: Record<string, NormalizedJsonRpcResult>;
+  chain_verified?: boolean | null;
+  verified_at?: string;
+  archive_support?: boolean;
+  latest_block?: number | null;
+  methods_supported?: {
+    chain_getHeader: boolean;
+    system_health: boolean;
+    rpc_methods: boolean;
+    chain_getBlockHash: boolean;
+  };
+  rpc_method_count?: number | null;
+}
+
 // --- Subtensor JSON-RPC probes (HTTP + WSS) -----------------------------------
-export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
+export async function probeSubtensorHttp(
+  url: string,
+  timeoutMs: number,
+  options: ProbeOptions = {},
+): Promise<RpcProbeResult> {
   const {
     isUnsafeUrl = isUnsafePublicUrl,
     fetchImpl = fetch,
@@ -445,10 +571,10 @@ export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
   }
 
   const started = performance.now();
-  const methodResults = {};
-  let statusCode = null;
-  let contentType = null;
-  let genesisHash = null;
+  const methodResults: Record<string, NormalizedJsonRpcResult> = {};
+  let statusCode: number | null = null;
+  let contentType: string | null = null;
+  let genesisHash: string | null = null;
 
   for (const [index, call] of SUBTENSOR_PROBE_CALLS.entries()) {
     const response = await jsonRpcHttp(
@@ -500,7 +626,14 @@ export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
   });
 }
 
-async function jsonRpcHttp(url, method, params, id, timeoutMs, options = {}) {
+async function jsonRpcHttp(
+  url: string,
+  method: string,
+  params: unknown[],
+  id: number,
+  timeoutMs: number,
+  options: ProbeOptions = {},
+): Promise<JsonRpcCallResult> {
   const { isUnsafeUrl = isUnsafePublicUrl, fetchImpl = fetch } = options;
   if (await isUnsafeUrl(url)) {
     return {
@@ -542,7 +675,7 @@ async function jsonRpcHttp(url, method, params, id, timeoutMs, options = {}) {
 
     const contentType = response.headers.get("content-type") || "";
     const text = await response.text();
-    let body = null;
+    let body: Record<string, unknown> | null = null;
     try {
       body = text ? JSON.parse(text) : null;
     } catch {
@@ -558,14 +691,16 @@ async function jsonRpcHttp(url, method, params, id, timeoutMs, options = {}) {
       content_type: contentType || null,
       ok: response.ok && !body?.error,
       result: body?.result,
-      rpc_error: body?.error || null,
+      rpc_error:
+        (body?.error as { message?: string; code?: unknown } | undefined) ||
+        null,
       status_code: response.status,
     };
   } catch (error) {
     return {
       transport_error: true,
-      error: error.message,
-      error_class: error.name,
+      error: (error as Error).message,
+      error_class: (error as Error).name,
     };
   } finally {
     clearTimeout(timer);
@@ -576,7 +711,11 @@ async function jsonRpcHttp(url, method, params, id, timeoutMs, options = {}) {
 // the global `WebSocket` constructor; the Worker opens an outbound socket via
 // `fetch(url, { headers: { Upgrade: "websocket" } })` → `response.webSocket`.
 // `connect(url, calls, timeoutMs)` resolves a Map<callKey, {ok, result, rpc_error}>.
-export async function probeSubtensorWss(url, timeoutMs, options = {}) {
+export async function probeSubtensorWss(
+  url: string,
+  timeoutMs: number,
+  options: ProbeOptions = {},
+): Promise<RpcProbeResult> {
   const {
     isUnsafeUrl = isUnsafePublicUrl,
     connect,
@@ -601,10 +740,10 @@ export async function probeSubtensorWss(url, timeoutMs, options = {}) {
   }
 
   const started = performance.now();
-  const methodResults = {};
+  const methodResults: Record<string, NormalizedJsonRpcResult> = {};
   try {
     const rawResults = await connect(url, SUBTENSOR_PROBE_CALLS, timeoutMs);
-    let genesisHash = null;
+    let genesisHash: string | null = null;
     for (const call of SUBTENSOR_PROBE_CALLS) {
       const response = rawResults.get(call.key) || {
         error: "missing response",
@@ -626,8 +765,8 @@ export async function probeSubtensorWss(url, timeoutMs, options = {}) {
     });
   } catch (error) {
     return {
-      error: error.message,
-      error_class: error.name,
+      error: (error as Error).message,
+      error_class: (error as Error).name,
       latency_ms: Math.round(performance.now() - started),
       method_results: methodResults,
       verified_at: new Date().toISOString(),
@@ -637,7 +776,13 @@ export async function probeSubtensorWss(url, timeoutMs, options = {}) {
 
 // Node WebSocket connector (uses the global `WebSocket`, Node 22+). The Worker
 // supplies its own fetch-upgrade connector in src/health-prober.mjs.
-export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
+export function nodeWebSocketConnector(
+  WebSocketImpl: typeof WebSocket | undefined = globalThis.WebSocket,
+): (
+  url: string,
+  calls: typeof SUBTENSOR_PROBE_CALLS,
+  timeoutMs: number,
+) => Promise<Map<string, JsonRpcCallResult>> {
   return (url, calls, timeoutMs) =>
     new Promise((resolve, reject) => {
       if (typeof WebSocketImpl !== "function") {
@@ -646,7 +791,7 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
       }
       const socket = new WebSocketImpl(url);
       const byId = new Map(calls.map((call, index) => [index + 1, call.key]));
-      const results = new Map();
+      const results = new Map<string, JsonRpcCallResult>();
       let settled = false;
       const timer = setTimeout(
         () =>
@@ -661,7 +806,7 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
       // error path cleared the timer but never closed the socket (leaking a
       // half-open fd), and there was no close handler, so a server that closed
       // before all responses arrived hung the probe until the full timeout.
-      function finish(error, name) {
+      function finish(error?: Error | null, name?: string): void {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
@@ -693,7 +838,7 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
 
       socket.addEventListener("message", (event) => {
         try {
-          const body = JSON.parse(String(event.data));
+          const body = JSON.parse(String((event as MessageEvent).data));
           const key = byId.get(body.id);
           if (!key) {
             return;
@@ -707,7 +852,7 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
             finish(null);
           }
         } catch (error) {
-          finish(error);
+          finish(error as Error);
         }
       });
 
@@ -725,8 +870,10 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
     });
 }
 
-export function normalizeJsonRpcResult(response) {
-  const normalized = {
+export function normalizeJsonRpcResult(
+  response: JsonRpcCallResult,
+): NormalizedJsonRpcResult {
+  const normalized: NormalizedJsonRpcResult = {
     ok: Boolean(response.ok),
     error: response.error || response.rpc_error?.message || null,
     code: response.rpc_error?.code || null,
@@ -742,12 +889,19 @@ export function normalizeJsonRpcResult(response) {
     response.result &&
     typeof response.result === "object" &&
     !Array.isArray(response.result) &&
-    response.result.number
+    (response.result as Record<string, unknown>).number
   ) {
-    normalized.raw_header = { number: response.result.number };
+    normalized.raw_header = {
+      number: (response.result as Record<string, unknown>).number,
+    };
   }
-  if (response.result && Array.isArray(response.result.methods)) {
-    normalized.rpc_method_count = response.result.methods.length;
+  if (
+    response.result &&
+    Array.isArray((response.result as Record<string, unknown>).methods)
+  ) {
+    normalized.rpc_method_count = (
+      (response.result as Record<string, unknown>).methods as unknown[]
+    ).length;
   }
   if (typeof response.result === "string" && response.result.startsWith("0x")) {
     normalized.raw_hex_result_present = true;
@@ -755,10 +909,11 @@ export function normalizeJsonRpcResult(response) {
   return normalized;
 }
 
-export function summarizeRpcProbe(probe) {
-  const header = probe.method_results.chain_getHeader;
-  const methods = probe.method_results.rpc_methods;
-  const archiveProbe = probe.method_results.archive_probe;
+export function summarizeRpcProbe(probe: RpcProbeResult): RpcProbeResult {
+  const methodResults = probe.method_results || {};
+  const header = methodResults.chain_getHeader;
+  const methods = methodResults.rpc_methods;
+  const archiveProbe = methodResults.archive_probe;
   const latestBlock = parseBlockNumber(header?.raw_header);
   return {
     ...probe,
@@ -767,21 +922,23 @@ export function summarizeRpcProbe(probe) {
     ),
     latest_block: latestBlock,
     methods_supported: {
-      chain_getHeader: Boolean(probe.method_results.chain_getHeader?.ok),
-      system_health: Boolean(probe.method_results.system_health?.ok),
-      rpc_methods: Boolean(probe.method_results.rpc_methods?.ok),
-      chain_getBlockHash: Boolean(probe.method_results.archive_probe?.ok),
+      chain_getHeader: Boolean(methodResults.chain_getHeader?.ok),
+      system_health: Boolean(methodResults.system_health?.ok),
+      rpc_methods: Boolean(methodResults.rpc_methods?.ok),
+      chain_getBlockHash: Boolean(methodResults.archive_probe?.ok),
     },
     rpc_method_count: methods?.rpc_method_count ?? null,
   };
 }
 
-export function parseBlockNumber(header) {
+export function parseBlockNumber(
+  header: { number?: unknown } | null | undefined,
+): number | null {
   if (!header || typeof header !== "object") {
     return null;
   }
   const value = header.number;
-  let block;
+  let block: number;
   if (typeof value === "number") {
     block = value;
   } else if (typeof value === "string") {
@@ -801,8 +958,12 @@ export function parseBlockNumber(header) {
 // Bounded-concurrency map. Preserves INPUT order in the returned array (callers
 // that need a different order sort afterwards). Used by both the Node build and
 // the Worker cron prober to respect the runtime's simultaneous-connection cap.
-export async function mapLimit(items, limit, mapper) {
-  const results = new Array(items.length);
+export async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
   let cursor = 0;
   const workerCount = Math.max(1, Math.min(limit, items.length));
   const workers = Array.from({ length: workerCount }, async () => {
@@ -820,7 +981,10 @@ export async function mapLimit(items, limit, mapper) {
 // Returns the fields both callers share. It does NOT compute `last_ok` or
 // `uptime_sample_ratio` (history/store-derived): the Node build computes those
 // from its daily history files; the Worker computes them from D1 `surface_status`.
-export async function probeSurface(surface, options = {}) {
+export async function probeSurface(
+  surface: ProbeSurface,
+  options: ProbeOptions = {},
+): Promise<Record<string, unknown>> {
   const isRpc = ["subtensor-rpc", "subtensor-wss"].includes(surface.kind);
   if (isRpc) {
     const timeoutMs = surface.probe.timeout_ms || 12000;
@@ -855,7 +1019,7 @@ export async function probeSurface(surface, options = {}) {
       private_redirect_blocked: probe.private_redirect_blocked || false,
       provider: surface.provider,
       public_safe: surface.public_safe,
-      redirect_target: probe.redirect_target || null,
+      redirect_target: null,
       rpc_method_count: probe.rpc_method_count,
       status,
       status_code: probe.status_code || null,
@@ -878,6 +1042,7 @@ export async function probeSurface(surface, options = {}) {
   if (
     !probe.ok &&
     surface.probe.method === "HEAD" &&
+    probe.status_code != null &&
     [400, 403, 405].includes(probe.status_code)
   ) {
     probe = await probeUrl(

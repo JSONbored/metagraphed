@@ -21,7 +21,7 @@ import {
   nodeWebSocketConnector,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
-} from "../src/health-probe-core.mjs";
+} from "../src/health-probe-core.ts";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 
 const contractVersion = CONTRACT_VERSION;
@@ -34,7 +34,7 @@ const surfaces = allSurfaces.filter(
 const startedAt = Date.now();
 const priorHistory = await loadPriorHistory();
 
-// Probe primitives now live in the isomorphic core (src/health-probe-core.mjs),
+// Probe primitives now live in the isomorphic core (src/health-probe-core.ts),
 // shared with the Worker cron prober. The Node build injects the DNS-aware SSRF
 // guard + the global-WebSocket connector; this thin wrapper layers the daily
 // history-derived fields (last_ok, uptime_sample_ratio) the build artifacts need.

@@ -88,10 +88,10 @@ composite score readers may want to reproduce, just from a different kind of raw
 log, not an RPC call).
 
 Every probe result is classified first (`classifyProbe`/`classifyRpcProbe`,
-[`src/health-probe-core.mjs:268`](../src/health-probe-core.mjs)) into a fine-grained reason
+[`src/health-probe-core.ts:268`](../src/health-probe-core.ts)) into a fine-grained reason
 (`live`, `redirected`, `timeout`, `rate-limited`, `dead`, `wrong-chain`, …), then rolled up to one
 of four statuses (`statusForClassification`,
-[`src/health-probe-core.mjs:407`](../src/health-probe-core.mjs)): `ok` (live/redirected),
+[`src/health-probe-core.ts:407`](../src/health-probe-core.ts)): `ok` (live/redirected),
 `degraded` (rate-limited/auth-required/transient/timeout, or a registry-observed/community surface
 that's merely unsupported/dead/content-mismatched), or `failed` (everything else, including any
 wrong-chain answer regardless of authority).

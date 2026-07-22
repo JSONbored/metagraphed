@@ -19,7 +19,7 @@ import {
   normalizeProbeStatus,
   statusForClassification,
   summarizeRpcProbe,
-} from "../src/health-probe-core.mjs";
+} from "../src/health-probe-core.ts";
 
 describe("normalizeProbeStatus", () => {
   test("passes through canonical values", () => {
