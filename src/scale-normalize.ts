@@ -51,7 +51,7 @@
 // This is scoped to the `{name, type, value}` shape ONLY -- it does not
 // change behavior for Postgres's untyped dump (which has no `type` field to
 // consult and remains exactly as ambiguous as before; see
-// postgres-collection-normalize.mjs's narrow per-field allowlist for how
+// postgres-collection-normalize.ts's narrow per-field allowlist for how
 // that side is handled instead).
 
 function isPlainScalar(

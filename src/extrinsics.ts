@@ -15,7 +15,7 @@ import { normalizePostgresValue } from "./scale-normalize.ts";
 import { decodePostgresCallArgs } from "./postgres-call-args.mjs";
 import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.ts";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
-import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
+import { decodeBTreeSetFields } from "./postgres-collection-normalize.ts";
 
 type D1Runner = (
   sql: string,
@@ -112,7 +112,7 @@ export function formatExtrinsic(
       // neither earlier pass touches the shapes they target (verified: the
       // newtype-scalar rule only partially/coincidentally collapses a
       // SINGLE-element BTreeSet as an unrelated side effect -- see
-      // postgres-collection-normalize.mjs's header for why that doesn't
+      // postgres-collection-normalize.ts's header for why that doesn't
       // conflict with running this pass afterward). All four are no-ops on
       // D1's own call_args shape (an array of {name,type,value} descriptors)
       // -- safe to apply unconditionally regardless of which serving tier

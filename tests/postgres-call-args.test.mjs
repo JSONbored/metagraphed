@@ -654,7 +654,7 @@ describe("decodePostgresCallArgs", () => {
       const out = decodePostgresCallArgs(raw);
       // Without the exclusion, unwrapByteArray/decodeBytesField would have
       // hex-encoded this into "0x0102030405" -- the array must survive
-      // intact so decodeBTreeSetFields (postgres-collection-normalize.mjs)
+      // intact so decodeBTreeSetFields (postgres-collection-normalize.ts)
       // can still correctly unwrap it afterward.
       assert.deepEqual(out.call.call_args.subnets, [[1, 2, 3, 4, 5]]);
     });

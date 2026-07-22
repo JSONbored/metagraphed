@@ -54,10 +54,16 @@ export const BTREESET_FIELDS = new Set([
   "Commitments.set_commitment.fields",
 ]);
 
-function unwrapBTreeSetLayer(value) {
+function unwrapBTreeSetLayer(value: unknown): unknown {
   return Array.isArray(value) && value.length === 1 && Array.isArray(value[0])
     ? value[0]
     : value;
+}
+
+interface ReconstructedCall {
+  call_module: string;
+  call_function: string;
+  call_args: unknown;
 }
 
 // True for postgres-call-args.mjs's tryReconstructNestedCall output --
@@ -65,15 +71,21 @@ function unwrapBTreeSetLayer(value) {
 // that nested call's own module/function when descending into its args,
 // the same context-tracking pattern postgres-call-args.mjs's own walk()
 // uses for AccountId32/byte-blob decoding.
-function isReconstructedCall(value) {
-  return (
+function isReconstructedCall(value: unknown): value is ReconstructedCall {
+  return Boolean(
     value &&
     typeof value === "object" &&
     !Array.isArray(value) &&
-    typeof value.call_module === "string" &&
-    typeof value.call_function === "string" &&
-    "call_args" in value
+    typeof (value as Record<string, unknown>).call_module === "string" &&
+    typeof (value as Record<string, unknown>).call_function === "string" &&
+    "call_args" in value,
   );
+}
+
+interface TypedFieldDescriptor {
+  name: string;
+  type: string;
+  value: unknown;
 }
 
 // True for a typed field descriptor ({name, type, value}) -- the shape
@@ -86,19 +98,24 @@ function isReconstructedCall(value) {
 // of descriptors) -- walk() below handles both shapes, since the field name
 // that matters for the BTREESET_FIELDS lookup is the descriptor's own
 // `.name` in one case and the plain object key in the other.
-function isTypedFieldDescriptor(value) {
-  return (
+function isTypedFieldDescriptor(value: unknown): value is TypedFieldDescriptor {
+  return Boolean(
     value &&
     typeof value === "object" &&
     !Array.isArray(value) &&
-    typeof value.name === "string" &&
-    typeof value.type === "string" &&
+    typeof (value as Record<string, unknown>).name === "string" &&
+    typeof (value as Record<string, unknown>).type === "string" &&
     Object.keys(value).length === 3 &&
-    "value" in value
+    "value" in value,
   );
 }
 
-function walk(value, call) {
+interface CallContext {
+  call_module: string;
+  call_function: string;
+}
+
+function walk(value: unknown, call: CallContext | null): unknown {
   if (isReconstructedCall(value)) {
     return {
       ...value,
@@ -122,7 +139,7 @@ function walk(value, call) {
   }
   if (Array.isArray(value)) return value.map((item) => walk(item, call));
   if (value && typeof value === "object") {
-    const out = {};
+    const out: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
       let processed = walk(val, call);
       if (
@@ -146,9 +163,13 @@ function walk(value, call) {
  * touched) for every other call -- safe to apply unconditionally in
  * formatExtrinsic regardless of which tier produced the row, same contract
  * as normalizePostgresValue (#4690) and decodePostgresCallArgs (#4691). */
-export function decodeBTreeSetFields(callModule, callFunction, callArgs) {
+export function decodeBTreeSetFields(
+  callModule: unknown,
+  callFunction: unknown,
+  callArgs: unknown,
+): unknown {
   return walk(callArgs, {
-    call_module: callModule,
-    call_function: callFunction,
+    call_module: String(callModule),
+    call_function: String(callFunction),
   });
 }

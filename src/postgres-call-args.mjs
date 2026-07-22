@@ -25,7 +25,7 @@
 import { isEnumTreeNode } from "./scale-normalize.ts";
 import { normalizeAccountId32Field } from "./ss58.ts";
 import { unwrapByteArray, decodeBytesField, bytesToHex } from "./bytes.ts";
-import { BTREESET_FIELDS } from "./postgres-collection-normalize.mjs";
+import { BTREESET_FIELDS } from "./postgres-collection-normalize.ts";
 
 // True when `value` is D1/indexer-rs's typed call_args field descriptor
 // `{name, type, value}` -- duplicated from scale-normalize.mjs's identical
@@ -498,7 +498,7 @@ function walk(value, keyHint, nestedCall, topCall) {
       ),
     };
   }
-  // BTREESET_FIELDS-allowlisted fields (postgres-collection-normalize.mjs)
+  // BTREESET_FIELDS-allowlisted fields (postgres-collection-normalize.ts)
   // are excluded from the generic byte-blob heuristic below -- confirmed
   // live 2026-07-12: a nested SubtensorModule.claim_root's `subnets` (inside
   // Utility.batch) is shape-identical to a genuine byte blob (a handful of
