@@ -101,7 +101,7 @@
         "https://github.com/swarm-subnet/swarm/blob/main/swarm/validator/backend_api.py"
       ],
       "url": "https://api.swarm124.com/leaderboard",
-      "notes": "Public no-auth GET /leaderboard \u2014 ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
+      "notes": "Public no-auth GET /leaderboard — ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
     },
     {
       "auth_required": false,
@@ -215,7 +215,7 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Auth-gated GET /validators/next-task on api.swarm124.com \u2014 long-poll for the next authorized evaluation task. Called via _get_signed in swarm/validator/backend_api.py (HMAC signed-request headers). Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 426 {\"detail\":\"validator_code_version_below_minimum\"} (non-2xx gate; matches the issue's own live-verified 426 observation)."
+      "notes": "Auth-gated GET /validators/next-task on api.swarm124.com — long-poll for the next authorized evaluation task. Called via _get_signed in swarm/validator/backend_api.py (HMAC signed-request headers). Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 426 {\"detail\":\"validator_code_version_below_minimum\"} (non-2xx gate; matches the issue's own live-verified 426 observation)."
     },
     {
       "auth": {
@@ -244,7 +244,7 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Auth-gated GET /validators/sync on api.swarm124.com \u2014 current weights + re-eval queue + authoritative benchmark epoch. Called via _get_signed in swarm/validator/backend_api.py. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 422 listing missing X-Validator-* signature headers (Hotkey/Signature/Nonce/Timestamp; matches the issue's own live-verified 422 observation)."
+      "notes": "Auth-gated GET /validators/sync on api.swarm124.com — current weights + re-eval queue + authoritative benchmark epoch. Called via _get_signed in swarm/validator/backend_api.py. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 422 listing missing X-Validator-* signature headers (Hotkey/Signature/Nonce/Timestamp; matches the issue's own live-verified 422 observation)."
     },
     {
       "auth": {
@@ -273,7 +273,7 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Auth-gated GET /validators/events SSE stream on api.swarm124.com \u2014 server-sent events for validator runtime updates. Called via signed stream in swarm/validator/backend_api.py events() (Accept: text/event-stream + signed-request headers). Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false, kind:sse. Live-verified 2026-07-22: unsigned GET returns HTTP 422 requiring the X-Validator-* signature headers (same signed-header gate as sync; SSE body not exercised without credentials)."
+      "notes": "Auth-gated GET /validators/events SSE stream on api.swarm124.com — server-sent events for validator runtime updates. Called via signed stream in swarm/validator/backend_api.py events() (Accept: text/event-stream + signed-request headers). Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false, kind:sse. Live-verified 2026-07-22: unsigned GET returns HTTP 422 requiring the X-Validator-* signature headers (same signed-header gate as sync; SSE body not exercised without credentials)."
     },
     {
       "auth": {
@@ -302,7 +302,7 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Auth-gated POST /validators/seed-scores on api.swarm124.com \u2014 stream/submit per-seed scores for the active task. Called via _post_signed in swarm/validator/backend_api.py. probe.method stays GET (schema enum GET/HEAD/JSON-RPC/WSS-RPC only) with probe.enabled:false so the probe never fires; the real method is POST, documented here and in the surface id/name. Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 426 {\"detail\":\"validator_code_version_below_minimum\"}."
+      "notes": "Auth-gated POST /validators/seed-scores on api.swarm124.com — stream/submit per-seed scores for the active task. Called via _post_signed in swarm/validator/backend_api.py. probe.method stays GET (schema enum GET/HEAD/JSON-RPC/WSS-RPC only) with probe.enabled:false so the probe never fires; the real method is POST, documented here and in the surface id/name. Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 426 {\"detail\":\"validator_code_version_below_minimum\"}."
     },
     {
       "auth": {
@@ -360,7 +360,7 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Auth-gated POST /validators/epoch/publish on api.swarm124.com \u2014 publish epoch seeds. Called via _post_signed in swarm/validator/backend_api.py publish_epoch_seeds(). probe.method stays GET (schema enum) with probe.enabled:false; real method is POST. Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 422 requiring X-Validator-* signature headers."
+      "notes": "Auth-gated POST /validators/epoch/publish on api.swarm124.com — publish epoch seeds. Called via _post_signed in swarm/validator/backend_api.py publish_epoch_seeds(). probe.method stays GET (schema enum) with probe.enabled:false; real method is POST. Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 422 requiring X-Validator-* signature headers."
     },
     {
       "auth": {
@@ -389,7 +389,7 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Auth-gated POST /validators/tasks/{id}/result on api.swarm124.com \u2014 submit the aggregated task result. Called via _post_signed in swarm/validator/backend_api.py submit_task_result(). Path-param URL uses percent-encoded braces (%7Bid%7D) so the url format:uri schema check passes. probe.method stays GET (schema enum) with probe.enabled:false; real method is POST. Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22 with placeholder id: unsigned POST returns HTTP 426 {\"detail\":\"validator_code_version_below_minimum\"}."
+      "notes": "Auth-gated POST /validators/tasks/{id}/result on api.swarm124.com — submit the aggregated task result. Called via _post_signed in swarm/validator/backend_api.py submit_task_result(). Path-param URL uses percent-encoded braces (%7Bid%7D) so the url format:uri schema check passes. probe.method stays GET (schema enum) with probe.enabled:false; real method is POST. Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22 with placeholder id: unsigned POST returns HTTP 426 {\"detail\":\"validator_code_version_below_minimum\"}."
     },
     {
       "auth": {
@@ -418,7 +418,7 @@
         "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Auth-gated GET /validators/models/{model_hash}/private-artifact on api.swarm124.com \u2014 fetch a miner's private model artifact for evaluation. Called via signed GET in swarm/validator/backend_api.py fetch_private_artifact(). Path-param URL uses percent-encoded braces (%7Bmodel_hash%7D) so the url format:uri schema check passes. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22 with placeholder hash: unsigned GET returns HTTP 426 {\"detail\":\"validator_code_version_below_private_minimum\"}."
+      "notes": "Auth-gated GET /validators/models/{model_hash}/private-artifact on api.swarm124.com — fetch a miner's private model artifact for evaluation. Called via signed GET in swarm/validator/backend_api.py fetch_private_artifact(). Path-param URL uses percent-encoded braces (%7Bmodel_hash%7D) so the url format:uri schema check passes. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22 with placeholder hash: unsigned GET returns HTTP 426 {\"detail\":\"validator_code_version_below_private_minimum\"}."
     }
   ],
   "website_url": "https://swarm124.com/"
