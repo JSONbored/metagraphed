@@ -4,7 +4,7 @@
 // lease's terms and accumulated-but-undistributed alpha dividends.
 // Live-RPC + KV-cache route, same shape as subnet-burn.ts/network-
 // parameters.mjs -- current chain state, not a historical event stream (see
-// subnet-lease-history.mjs for that).
+// subnet-lease-history.ts for that).
 //
 // Storage items (pallets/subtensor/src/subnets/leasing.rs, fetched from
 // opentensor/subtensor's own GitHub source 2026-07-18 to get the

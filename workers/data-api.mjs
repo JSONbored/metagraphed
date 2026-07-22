@@ -62,7 +62,7 @@ import {
   buildSubnetLeaseHistory,
   SUBNET_LEASE_CREATED_KIND,
   SUBNET_LEASE_TERMINATED_KIND,
-} from "../src/subnet-lease-history.mjs";
+} from "../src/subnet-lease-history.ts";
 import {
   buildSubnetConviction,
   fetchConvictionRates,
@@ -5794,7 +5794,7 @@ export default {
         // (a plain `netuid` column) rather than chain_events (a JSONB
         // args->>'netuid' cast), since #6718's indexer-rs extract() already
         // curates netuid for both these kinds into that column. See
-        // src/subnet-lease-history.mjs's own header for why dividend-
+        // src/subnet-lease-history.ts's own header for why dividend-
         // distribution/crowdloan events are excluded. Cold/absent store ->
         // the schema-stable empty-list shape (never a 404): most subnets
         // have never been leased.

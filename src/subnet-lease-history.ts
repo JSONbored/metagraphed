@@ -21,16 +21,18 @@
 // tagged; SubnetLeaseDividendsDistributed carries {lease_id, contributor,
 // alpha} -- no netuid).
 
+type Row = Record<string, unknown>;
+
 const EVENT_PALLET = "SubtensorModule";
 export const SUBNET_LEASE_CREATED_KIND = "SubnetLeaseCreated";
 export const SUBNET_LEASE_TERMINATED_KIND = "SubnetLeaseTerminated";
 
-function numberOrNull(value) {
+function numberOrNull(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
-function isoOrNull(value) {
+function isoOrNull(value: unknown): string | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   const date = new Date(n);
@@ -41,7 +43,7 @@ function isoOrNull(value) {
 // extract() stores the lease's beneficiary account under the generic
 // coldkey column for both event kinds (the semantically-closest existing
 // column, matching how other event kinds repurpose the same shared columns).
-function shapeLeaseEvent(row) {
+function shapeLeaseEvent(row: Row): Row {
   return {
     event_kind: row.event_kind,
     beneficiary: row.coldkey ?? null,
@@ -54,7 +56,10 @@ function shapeLeaseEvent(row) {
 // event_kind IN (SubnetLeaseCreated, SubnetLeaseTerminated), ordered ASC by
 // block_number. Empty/absent rows -> the schema-stable empty-list shape,
 // never a 404 -- most subnets have never been leased.
-export function buildSubnetLeaseHistory(rows, netuid) {
+export function buildSubnetLeaseHistory(
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+): Row {
   const events = (rows ?? []).map(shapeLeaseEvent);
   return {
     schema_version: 1,

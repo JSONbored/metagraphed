@@ -4,7 +4,7 @@ import {
   buildSubnetLeaseHistory,
   SUBNET_LEASE_CREATED_KIND,
   SUBNET_LEASE_TERMINATED_KIND,
-} from "../src/subnet-lease-history.mjs";
+} from "../src/subnet-lease-history.ts";
 
 const BENEFICIARY_SS58 = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
 
