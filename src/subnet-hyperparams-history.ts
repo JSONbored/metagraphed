@@ -21,18 +21,21 @@
 
 import { formatSubnetHyperparams } from "./subnet-hyperparams.mjs";
 
-function stableStringify(value) {
+type Row = Record<string, unknown>;
+
+function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(",")}]`;
   }
-  const keys = Object.keys(value).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  const record = value as Row;
+  const keys = Object.keys(record).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }
 
-async function sha256Hex(text) {
+async function sha256Hex(text: unknown): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(String(text)),
@@ -44,19 +47,21 @@ async function sha256Hex(text) {
 
 /** Hash of the formatted (type-coerced) hyperparameters object — stable
  * regardless of the raw staged row's string-vs-number/0-1-vs-boolean shape. */
-export async function hyperparamsHash(hyperparameters) {
+export async function hyperparamsHash(
+  hyperparameters: unknown,
+): Promise<string | null> {
   if (!hyperparameters) return null;
   return sha256Hex(stableStringify(hyperparameters));
 }
 
-function toBlockNumber(value) {
+function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -64,21 +69,26 @@ function toIso(ms) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-export function formatHyperparamsHistoryEntry(row) {
+export function formatHyperparamsHistoryEntry(row: unknown): Row | null {
   if (!row || typeof row !== "object") return null;
+  const record = row as Row;
   return {
-    block_number: toBlockNumber(row.block_number),
-    observed_at: toIso(row.observed_at),
-    hyperparameters: formatSubnetHyperparams(row),
-    hyperparams_hash: row.hyperparams_hash ?? null,
+    block_number: toBlockNumber(record.block_number),
+    observed_at: toIso(record.observed_at),
+    hyperparameters: formatSubnetHyperparams(record),
+    hyperparams_hash: record.hyperparams_hash ?? null,
   };
 }
 
 export function buildSubnetHyperparamsHistory(
-  rows,
-  netuid,
-  { limit, offset, nextCursor } = {},
-) {
+  rows: unknown[] | null | undefined,
+  netuid: unknown,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: { limit?: unknown; offset?: unknown; nextCursor?: unknown } = {},
+): Row {
   const entries = (rows || [])
     .map(formatHyperparamsHistoryEntry)
     .filter(Boolean);

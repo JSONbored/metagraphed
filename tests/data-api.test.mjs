@@ -5,7 +5,7 @@ import { beforeEach, test, expect, vi } from "vitest";
 import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
-import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";
+import { hyperparamsHash } from "../src/subnet-hyperparams-history.ts";
 import { IDENTITY_FIELDS } from "../src/account-identity.ts";
 import { identityHash } from "../src/account-identity-history.ts";
 import {

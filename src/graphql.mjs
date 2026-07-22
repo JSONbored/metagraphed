@@ -93,7 +93,7 @@ import {
   CHAIN_PROMETHEUS_LIMIT_MAX,
 } from "./chain-prometheus.ts";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
-import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
+import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import {
   buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,

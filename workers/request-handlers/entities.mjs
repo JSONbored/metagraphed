@@ -67,7 +67,7 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
 } from "../../src/top-holders.mjs";
 import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
-import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.mjs";
+import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.ts";
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,
@@ -459,7 +459,7 @@ const SUBNET_PERFORMANCE_HISTORY_CSV_COLUMNS = [
   "validator_trust_mean",
   "validator_trust_median",
 ];
-// formatHyperparamsHistoryEntry's row shape (src/subnet-hyperparams-history.mjs);
+// formatHyperparamsHistoryEntry's row shape (src/subnet-hyperparams-history.ts);
 // `hyperparameters` is the nested 33-field object, serialized as one JSON cell
 // like the `axon` column on NEURON_CSV_COLUMNS.
 const SUBNET_HYPERPARAMS_HISTORY_CSV_COLUMNS = [

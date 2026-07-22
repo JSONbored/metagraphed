@@ -635,7 +635,7 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
 } from "./top-holders.mjs";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
-import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
+import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
 import {
   buildSubnetOhlc,

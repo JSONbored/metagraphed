@@ -331,7 +331,7 @@ import {
 import {
   hyperparamsHash,
   buildSubnetHyperparamsHistory,
-} from "../src/subnet-hyperparams-history.mjs";
+} from "../src/subnet-hyperparams-history.ts";
 import {
   ACCOUNT_IDENTITY_INSERT_COLUMNS,
   IDENTITY_FIELDS,
