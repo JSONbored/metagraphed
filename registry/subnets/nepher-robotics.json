@@ -481,6 +481,302 @@
       "public_safe": true,
       "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
       "url": "https://tournament-api.nepher.ai/api/v1/tournaments/pricing?subnet_uid=49"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-weight-commits-latest",
+      "kind": "subnet-api",
+      "name": "Nepher weight-commits latest API",
+      "notes": "GET /api/v1/weight-commits/latest on the tournament backend. The OpenAPI schema carries no security block for it, but live-verified 2026-07-22: unauthenticated GET returns 401 'X-API-Key header required' -- auth required in practice despite the schema omission, so auth_required:true and probe.enabled:false. Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/weight-commits/latest",
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "value_format": "<api-key>",
+        "scopes_note": "Live-observed 401 'X-API-Key header required' -- an API-key scheme distinct from the HTTPBearer the admin routes use. No credential format asserted beyond the header name."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-scores-bulk",
+      "kind": "subnet-api",
+      "name": "Nepher scores bulk-write API",
+      "notes": "POST /api/v1/scores/bulk (bulk score ingestion). Schema shows no security block, but live-verified 2026-07-22: unauthenticated POST returns 401 'X-API-Key header required'. auth_required:true; probe disabled (auth-gated mutating POST -- the probe method field is a placeholder, the real method is POST). Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/scores/bulk",
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "value_format": "<api-key>",
+        "scopes_note": "Live-observed 401 'X-API-Key header required' -- an API-key scheme distinct from the HTTPBearer the admin routes use. No credential format asserted beyond the header name."
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-weight-commits-submit",
+      "kind": "subnet-api",
+      "name": "Nepher weight-commits submit API",
+      "notes": "POST /api/v1/weight-commits (weight-commit submission). The #7062 reopen flagged this sibling as unverified; live-verified 2026-07-22: unauthenticated POST returns 401 'X-API-Key header required', confirming the same in-practice API-key auth as its GET /latest sibling. auth_required:true; probe disabled (auth-gated mutating POST -- real method is POST). Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/weight-commits",
+      "auth": {
+        "scheme": "api-key",
+        "location": "header",
+        "name": "X-API-Key",
+        "value_format": "<api-key>",
+        "scopes_note": "Live-observed 401 'X-API-Key header required' -- an API-key scheme distinct from the HTTPBearer the admin routes use. No credential format asserted beyond the header name."
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-submit",
+      "kind": "subnet-api",
+      "name": "Nepher evaluation submit API",
+      "notes": "POST /api/v1/evaluations/submit. Live-verified 2026-07-22: an unauthenticated empty POST returns 422 validation_error (missing body fields), not 401 -- genuinely no-auth. probe.enabled:false because a mutating POST with a required request body is not health-probeable with a fixed empty call (the probe method field is a placeholder, the real method is POST). Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations/submit"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-notifications-unsubscribe",
+      "kind": "subnet-api",
+      "name": "Nepher notifications unsubscribe API",
+      "notes": "GET /api/v1/notifications/unsubscribe. Live-verified 2026-07-22: without the required user_id query parameter it returns 422 validation_error, not 401 -- no-auth. user_id is a per-user token with no stable canonical value (unlike the pricing surface's permanent subnet_uid=49), so the bare base URL is registered with no baked query and probe.enabled:false. Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/notifications/unsubscribe"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournament-detail",
+      "kind": "subnet-api",
+      "name": "Nepher tournament detail API",
+      "notes": "GET /api/v1/tournaments/{tournament_id} -- one tournament's full record. Live-verified 2026-07-22 with a real id from the public list endpoint: 200 application/json (an unknown id returns 404, not 401), publicly readable unlike its PATCH/DELETE/status/auto-start siblings on the same path which are bearer-auth. Path-param template ({tournament_id} is not a fixed callable URL), so probe.enabled:false -- same convention as SN14's path-param surfaces (metagraphed#7543). Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournament-gallery",
+      "kind": "subnet-api",
+      "name": "Nepher tournament gallery media API",
+      "notes": "GET /api/v1/tournaments/{tournament_id}/gallery/{media_type}/{index} -- per-tournament gallery media. Live-probed 2026-07-22 with a real tournament id: returns 422 validation_error for an unaccepted media_type value, not 401 -- confirming no-auth. Path-param template, so probe.enabled:false. Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/gallery/%7Bmedia_type%7D/%7Bindex%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournament-subnet-config",
+      "kind": "subnet-api",
+      "name": "Nepher tournament subnet config API",
+      "notes": "GET /api/v1/tournaments/{tournament_id}/config/subnet_config -- the per-tournament subnet config document. Live-verified 2026-07-22 with a real id from the public list endpoint: 200 application/x-yaml, no auth. Path-param template, so probe.enabled:false. Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/config/subnet_config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournament-eval-config",
+      "kind": "subnet-api",
+      "name": "Nepher tournament eval config API",
+      "notes": "GET /api/v1/tournaments/{tournament_id}/config/eval_config -- the per-tournament eval config document. Live-verified 2026-07-22 with a real id from the public list endpoint: 200 application/x-yaml, no auth. Path-param template, so probe.enabled:false. Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/config/eval_config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournament-active-eval-config",
+      "kind": "subnet-api",
+      "name": "Nepher tournament active eval config API",
+      "notes": "GET /api/v1/tournaments/{tournament_id}/config/active_eval_config -- the per-tournament active eval config document. Live-verified 2026-07-22 with a real id from the public list endpoint: 200 application/x-yaml, no auth. Path-param template, so probe.enabled:false. Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/config/active_eval_config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournament-public-eval-config",
+      "kind": "subnet-api",
+      "name": "Nepher tournament public eval config API",
+      "notes": "GET /api/v1/tournaments/{tournament_id}/config/public_eval_config -- the per-tournament public eval config document. Live-verified 2026-07-22 with a real id from the public list endpoint: 200 application/x-yaml, no auth. Path-param template, so probe.enabled:false. Registered per the metagraphed#7062 reopen.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "RealDiligent"
+      },
+      "source_urls": [
+        "https://tournament-api.nepher.ai/openapi.json",
+        "https://tournament-api.nepher.ai/docs"
+      ],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/config/public_eval_config"
     }
   ],
   "website_url": "https://nepher.ai"
