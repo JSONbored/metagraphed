@@ -8,7 +8,7 @@ const EVENTS_CSV_EXAMPLE = [
   "8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,,2026-07-03T00:00:00.000Z,2",
 ].join("\r\n");
 
-export const ROUTE_CSV_EXAMPLES = {
+export const ROUTE_CSV_EXAMPLES: Record<string, string> = {
   "subnet-concentration-history": [
     "snapshot_date,neuron_count,stake_gini,stake_nakamoto_coefficient,stake_top_10pct_share,emission_gini,emission_nakamoto_coefficient,emission_top_10pct_share",
     "2026-06-27,2,0.490099,1,0.990099,0.409091,1,0.909091",
