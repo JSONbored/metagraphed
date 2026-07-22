@@ -223,6 +223,138 @@
         "https://github.com/one-covenant/templar"
       ],
       "url": "https://raw.githubusercontent.com/one-covenant/templar/main/min_compute.yml"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-grafana-org",
+      "kind": "subnet-api",
+      "name": "Templar Grafana current org",
+      "notes": "Public no-auth GET /api/org on grafana.tplr.ai returning the current organization record. Declared in the already-registered Grafana OpenAPI 3 schema on this host. The instance serves viewer-level reads without sign-in (admin-scoped reads such as /api/admin/settings correctly return HTTP 403), matching the already-tracked no-auth /api/health surface on the same host. Live-verified 2026-07-22: HTTP 200 application/json (org name 'Templar AI').",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://grafana.tplr.ai/public/openapi3.json"],
+      "url": "https://grafana.tplr.ai/api/org"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-grafana-search",
+      "kind": "subnet-api",
+      "name": "Templar Grafana dashboard search",
+      "notes": "Public no-auth GET /api/search on grafana.tplr.ai returning the dashboard/folder search listing (includes the Crusades folder and the eval-metrics dashboard already tracked as a dashboard surface). Declared in the already-registered Grafana OpenAPI 3 schema on this host. The instance serves viewer-level reads without sign-in (admin-scoped reads such as /api/admin/settings correctly return HTTP 403), matching the already-tracked no-auth /api/health surface on the same host. Live-verified 2026-07-22: HTTP 200 application/json array of dashboard/folder entries.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://grafana.tplr.ai/public/openapi3.json"],
+      "url": "https://grafana.tplr.ai/api/search"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-grafana-datasources",
+      "kind": "subnet-api",
+      "name": "Templar Grafana datasource list",
+      "notes": "Public no-auth GET /api/datasources on grafana.tplr.ai returning the configured datasource list (names/types, e.g. InfluxDB). Declared in the already-registered Grafana OpenAPI 3 schema on this host. The instance serves viewer-level reads without sign-in (admin-scoped reads such as /api/admin/settings correctly return HTTP 403), matching the already-tracked no-auth /api/health surface on the same host. Live-verified 2026-07-22: HTTP 200 application/json array of datasource records.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://grafana.tplr.ai/public/openapi3.json"],
+      "url": "https://grafana.tplr.ai/api/datasources"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-grafana-plugins",
+      "kind": "subnet-api",
+      "name": "Templar Grafana plugin list",
+      "notes": "Public no-auth GET /api/plugins on grafana.tplr.ai returning the installed plugin list. Declared in the already-registered Grafana OpenAPI 3 schema on this host. The instance serves viewer-level reads without sign-in (admin-scoped reads such as /api/admin/settings correctly return HTTP 403), matching the already-tracked no-auth /api/health surface on the same host. Live-verified 2026-07-22: HTTP 200 application/json array of plugin records.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://grafana.tplr.ai/public/openapi3.json"],
+      "url": "https://grafana.tplr.ai/api/plugins"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-grafana-frontend-settings",
+      "kind": "subnet-api",
+      "name": "Templar Grafana frontend settings",
+      "notes": "Public no-auth GET /api/frontend/settings on grafana.tplr.ai returning the frontend bootstrap configuration (default datasource, feature flags, panel metadata). Declared in the already-registered Grafana OpenAPI 3 schema on this host. The instance serves viewer-level reads without sign-in (admin-scoped reads such as /api/admin/settings correctly return HTTP 403), matching the already-tracked no-auth /api/health surface on the same host. Live-verified 2026-07-22: HTTP 200 application/json.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://grafana.tplr.ai/public/openapi3.json"],
+      "url": "https://grafana.tplr.ai/api/frontend/settings"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-3-templar-grafana-dashboard-by-uid",
+      "kind": "subnet-api",
+      "name": "Templar Grafana eval-metrics dashboard model",
+      "notes": "Public no-auth GET returning the JSON model of the eval-metrics dashboard (uid taken from the already-registered sn-3-templar-grafana dashboard surface's URL on this host), the same dashboard that doubles as the Crusades tournament leaderboard. Declared in the already-registered Grafana OpenAPI 3 schema (path /api/dashboards/uid/{uid}). The instance serves viewer-level reads without sign-in (admin-scoped reads such as /api/admin/settings correctly return HTTP 403), matching the already-tracked no-auth /api/health surface on the same host. Live-verified 2026-07-22: HTTP 200 application/json with the dashboard model and read-only meta flags. probe.enabled:false per the issue's instruction, matching the registry's path-param-lookup convention even though this uid is fixed and known.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://grafana.tplr.ai/public/openapi3.json"],
+      "url": "https://grafana.tplr.ai/api/dashboards/uid/ceia6bwlwn8qof"
     }
   ],
   "website_url": "https://www.tplr.ai/"
