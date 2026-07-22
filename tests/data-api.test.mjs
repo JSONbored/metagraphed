@@ -3774,7 +3774,7 @@ test("GET /api/v1/subnets/:netuid/ohlc shapes raw account_events rows into candl
   expect(body.data.candles[0].open).toBe(2); // 20/10
   expect(body.data.candles[0].close).toBe(3); // 15/5
   expect(body.data.candles[0].event_count).toBe(2);
-  // Raw-row query, not a GROUP BY/array_agg aggregation (src/subnet-ohlc.mjs
+  // Raw-row query, not a GROUP BY/array_agg aggregation (src/subnet-ohlc.ts
   // does the bucketing in JS) -- the SQL itself stays a plain filtered
   // SELECT ordered by observed_at.
   expect(queryText()).toContain("event_kind IN (");

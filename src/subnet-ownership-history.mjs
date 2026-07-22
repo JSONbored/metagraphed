@@ -6,7 +6,7 @@
 // locking alpha to a hotkey; once a challenger's conviction overtakes the
 // incumbent owner's, ownership transfers automatically -- no vote required).
 // Pure shaping (buildSubnetOwnershipHistory) over RAW chain_events rows --
-// mirrors src/subnet-ohlc.mjs's own "unaggregated rows, shaped in JS"
+// mirrors src/subnet-ohlc.ts's own "unaggregated rows, shaped in JS"
 // convention rather than a SQL aggregate, since there's nothing to aggregate
 // here (one row in, one record out). Null-safe: a subnet with no recorded
 // ownership changes yields an empty list (never throws), matching the

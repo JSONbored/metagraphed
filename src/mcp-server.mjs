@@ -643,7 +643,7 @@ import {
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
-} from "./subnet-ohlc.mjs";
+} from "./subnet-ohlc.ts";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";

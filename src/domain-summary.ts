@@ -23,7 +23,7 @@ import {
 // error across the accumulation even when each individual value is itself exact
 // (mirrors src/concentration.ts's own toRaoBig/raoBigToTao, a deliberate
 // byte-for-byte copy per this codebase's per-module rounding-helper convention --
-// see src/subnet-ohlc.mjs's header comment for why these aren't shared imports).
+// see src/subnet-ohlc.ts's header comment for why these aren't shared imports).
 function toRaoBig(taoValue: unknown): bigint {
   /* v8 ignore next -- defensive: the only call site already passes a number. */
   const n = typeof taoValue === "number" ? taoValue : Number(taoValue);

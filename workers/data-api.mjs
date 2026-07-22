@@ -52,7 +52,7 @@ import {
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
-} from "../src/subnet-ohlc.mjs";
+} from "../src/subnet-ohlc.ts";
 import {
   buildSubnetOwnershipHistory,
   OWNERSHIP_CHANGE_EVENT_METHOD,
@@ -5696,7 +5696,7 @@ export default {
         // GET /api/v1/subnets/:netuid/ohlc?interval=1h|1d&days=1-365 (#5655,
         // Phase 1 of #5304): OHLCV candles, bucketed in pure JS by
         // buildSubnetOhlc -- deliberately NOT a SQL GROUP BY/array_agg
-        // aggregation (see src/subnet-ohlc.mjs's header), so this query stays
+        // aggregation (see src/subnet-ohlc.ts's header), so this query stays
         // a plain filtered raw-row SELECT ordered by observed_at ASC, the
         // exact shape buildSubnetOhlc expects (it sorts defensively anyway,
         // but ORDER BY here avoids trusting Postgres's unspecified default

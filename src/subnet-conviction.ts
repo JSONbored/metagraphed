@@ -7,7 +7,7 @@
 // chain-state samples 2026-07-18 -- see docs/conviction-lock-mechanism.md
 // and this module's own tests for the specific reconciliation numbers).
 // Pure shaping (buildSubnetConviction) over raw subnet_locks rows + a live
-// {unlock_rate, maturity_rate} pair -- mirrors src/subnet-ohlc.mjs's own
+// {unlock_rate, maturity_rate} pair -- mirrors src/subnet-ohlc.ts's own
 // "unaggregated rows, shaped in JS" convention. Null-safe: a subnet with no
 // captured lock rows yields an empty leaderboard (never throws), matching
 // the sibling live tiers.

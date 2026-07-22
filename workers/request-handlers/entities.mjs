@@ -222,7 +222,7 @@ import {
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
-} from "../../src/subnet-ohlc.mjs";
+} from "../../src/subnet-ohlc.ts";
 import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";

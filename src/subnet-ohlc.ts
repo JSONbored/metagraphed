@@ -32,6 +32,8 @@ import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./alpha-volume.ts";
 
 export { STAKE_ADDED_KIND, STAKE_REMOVED_KIND };
 
+type Row = Record<string, unknown>;
+
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
@@ -43,7 +45,10 @@ const DAY_MS = 24 * HOUR_MS;
 // clear 400/invalid_params instead of a silent substitution (mirrors how
 // handleSubnetStakeFlow validates `direction` AND buildStakeFlow-adjacent
 // callers still guard defensively).
-export const OHLC_INTERVALS = { "1h": HOUR_MS, "1d": DAY_MS };
+export const OHLC_INTERVALS: Record<string, number> = {
+  "1h": HOUR_MS,
+  "1d": DAY_MS,
+};
 export const OHLC_INTERVAL_DEFAULT = "1h";
 
 // Default account_events lookback window for the Postgres loader (#5304's
@@ -72,7 +77,7 @@ export const MAX_CANDLES = 2000;
 // import, so each module stays independently reviewable (see those modules'
 // own header comments for the same note).
 const RAO_PER_UNIT = 1e9;
-function roundUnit(value) {
+function roundUnit(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite accumulator sums */
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * RAO_PER_UNIT) / RAO_PER_UNIT;
@@ -81,7 +86,7 @@ function roundUnit(value) {
 // A finite, strictly positive number, or null otherwise. Guards alpha_amount:
 // it's the price denominator, so zero/negative/non-finite must never reach a
 // division (that path produces Infinity/NaN/a nonsensical negative price).
-function positiveFinite(value) {
+function positiveFinite(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
@@ -91,17 +96,27 @@ function positiveFinite(value) {
 // (which shouldn't occur for StakeAdded/StakeRemoved in practice, but a
 // malformed row must never be trusted) is still safe to carry through --
 // only non-finite (NaN/Infinity/unparseable) values are rejected.
-function finiteAmount(value) {
+function finiteAmount(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
 // interval, normalized to a supported key -- never throws, mirrors the
 // module-level clamp/normalize convention documented on OHLC_INTERVALS above.
-function normalizeInterval(interval) {
-  return Object.hasOwn(OHLC_INTERVALS, interval)
+function normalizeInterval(interval: unknown): string {
+  return typeof interval === "string" && Object.hasOwn(OHLC_INTERVALS, interval)
     ? interval
     : OHLC_INTERVAL_DEFAULT;
+}
+
+interface OhlcBucket {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volumeAlpha: number;
+  volumeTao: number;
+  eventCount: number;
 }
 
 // Shape a subnet's raw StakeAdded/StakeRemoved account_events rows into
@@ -121,10 +136,10 @@ function normalizeInterval(interval) {
 // candlestick-charting convention, and honest given how sparse an illiquid
 // subnet's trading can be).
 export function buildSubnetOhlc(
-  rows,
-  netuid,
-  { interval = OHLC_INTERVAL_DEFAULT } = {},
-) {
+  rows: Row[] | null | undefined,
+  netuid: number,
+  { interval = OHLC_INTERVAL_DEFAULT }: { interval?: unknown } = {},
+): Row {
   const normalizedInterval = normalizeInterval(interval);
 
   // Root subnet (netuid 0) has no AMM pool -- 1:1 TAO, no price impact.
@@ -151,7 +166,7 @@ export function buildSubnetOhlc(
     (a, b) => Number(a?.observed_at) - Number(b?.observed_at),
   );
 
-  const buckets = new Map(); // bucket_start (epoch ms) -> accumulator
+  const buckets = new Map<number, OhlcBucket>();
   for (const row of sorted) {
     const kind = row?.event_kind;
     if (kind !== STAKE_ADDED_KIND && kind !== STAKE_REMOVED_KIND) continue;
@@ -198,7 +213,7 @@ export function buildSubnetOhlc(
       : bucketStarts;
 
   const candles = cappedStarts.map((bucketStart) => {
-    const b = buckets.get(bucketStart);
+    const b = buckets.get(bucketStart) as OhlcBucket;
     return {
       bucket_start: bucketStart,
       bucket_start_iso: new Date(bucketStart).toISOString(),
