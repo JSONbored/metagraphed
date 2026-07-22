@@ -15,7 +15,7 @@
 // SHAPE (manual redirect handling, re-checking isUnsafeUrl on every hop, up
 // to the same 5-hop cap) while reusing the actual security-critical piece
 // unchanged: the isUnsafeUrl callback itself (workerResolvedUrlSafetyGuard,
-// src/health-prober.mjs), which callers are required to supply -- this
+// src/health-prober.ts), which callers are required to supply -- this
 // module never chooses or weakens the safety policy, only structurally
 // mirrors the loop that applies it.
 const MAX_REDIRECTS = 5;

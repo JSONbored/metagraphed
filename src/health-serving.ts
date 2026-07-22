@@ -1,7 +1,7 @@
 // Live operational-health serving helpers.
 //
 // Pure functions that overlay the 15-minute cron snapshot (KV health:current /
-// health:rpc-pool / health:meta, written by src/health-prober.mjs) onto the 6h
+// health:rpc-pool / health:meta, written by src/health-prober.ts) onto the 6h
 // static artifacts. Every helper returns null when the live store is cold/absent
 // so the caller (workers/api.mjs) falls back to the static artifact — keeping
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
@@ -1522,7 +1522,7 @@ export async function loadReliabilityAggregate(): Promise<null> {
 // synthesize one" shape workers/request-handlers/analytics-routes.mjs's
 // handleCompare already uses for this exact table. D1 is fully eliminated
 // here (no write, no read fallback) -- surface_status's D1 write retired the
-// same day (see health-prober.mjs's runHealthProber header comment); a
+// same day (see health-prober.ts's runHealthProber header comment); a
 // Postgres miss/outage now returns null and the caller serves `unknown`,
 // same degrade every other route in this file already tolerates.
 

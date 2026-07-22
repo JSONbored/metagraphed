@@ -1371,7 +1371,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
   // tryPostgresTier(METAGRAPH_HEALTH_SOURCE) against
   // /api/v1/internal/health-status-live -- no D1 fallback remains (surface_
   // status's own D1 write is retired too, see runHealthProber's own header
-  // comment in src/health-prober.mjs).
+  // comment in src/health-prober.ts).
   describe("Postgres tier (item 5)", () => {
     test("serves Postgres surface_status rows when the flag is on", async () => {
       let requestedUrl;

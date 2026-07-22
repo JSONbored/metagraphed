@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // One-time D1 -> Postgres BACKFILL for `subnet_snapshots` (D1-to-Postgres
 // retirement effort, sibling to #4772's chain-data retirement). D1 has been
-// the PRIMARY store for this table since AI-4 (src/health-prober.mjs's
+// the PRIMARY store for this table since AI-4 (src/health-prober.ts's
 // writeSubnetSnapshot, fired every hour): 47k+ rows back to 2025-06-23.
 // Postgres only started receiving rows via syncSubnetSnapshotToPostgres's
 // best-effort dual-write mirror once #4832 landed

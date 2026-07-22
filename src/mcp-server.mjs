@@ -403,7 +403,7 @@ import {
   KV_HEALTH_RPC_POOL,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
-} from "./health-prober.mjs";
+} from "./health-prober.ts";
 import {
   findSurface,
   primarySurfaceForNetuid,

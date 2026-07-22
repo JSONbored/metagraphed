@@ -6398,7 +6398,7 @@ test("subnet-identity-sync maps a DB failure to a clean 502 instead of throwing"
 });
 
 // #4832 gap-closure: health-checks-sync -- best-effort Postgres mirror of
-// src/health-prober.mjs's D1+KV write, called from the main Worker's own
+// src/health-prober.ts's D1+KV write, called from the main Worker's own
 // 15-minute cron (syncHealthChecksToPostgres), not an external workflow.
 function probedRow(overrides = {}) {
   return {

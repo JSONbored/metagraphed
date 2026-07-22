@@ -14,7 +14,7 @@ import {
   syncRpcProxyEventsPruneToPostgres,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
-} from "../src/health-prober.mjs";
+} from "../src/health-prober.ts";
 import { handleScheduled } from "../workers/api.mjs";
 
 describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {

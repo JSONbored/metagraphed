@@ -2310,7 +2310,7 @@ async function handleAccountBalancesSync(request, env) {
 // The write path into subnet_identity_history -- architecturally different
 // from the three internal sync routes above: this one is triggered from
 // WITHIN the main Worker's own hourly cron (writeSubnetSnapshot,
-// src/health-prober.mjs), not an external GitHub Actions workflow, so it's
+// src/health-prober.ts), not an external GitHub Actions workflow, so it's
 // called via a direct env.DATA_API.fetch() service-binding call rather than
 // crossing the public internet through workers/api.mjs's proxy layer (see
 // that function's own comment). No latest-only sibling table exists here
@@ -2472,7 +2472,7 @@ async function handleSubnetIdentitySync(request, env) {
 // --- POST /api/v1/internal/health-checks-sync (#4832 gap-closure) --------
 //
 // Best-effort Postgres mirror of the D1+KV probe write in
-// src/health-prober.mjs's runHealthProber -- same "own hourly/15-min cron,
+// src/health-prober.ts's runHealthProber -- same "own hourly/15-min cron,
 // direct env.DATA_API.fetch() service-binding call" shape as
 // subnet-identity-sync above, not an external GitHub Actions workflow. D1+KV
 // stay the sole authoritative write target (live serving reads them
@@ -2652,7 +2652,7 @@ async function handleHealthChecksSync(request, env) {
 
 // --- POST /api/v1/internal/health-uptime-rollup-sync (#4832 gap-closure) --
 //
-// Best-effort Postgres mirror of src/health-prober.mjs's rollupDailyUptime,
+// Best-effort Postgres mirror of src/health-prober.ts's rollupDailyUptime,
 // same shape/isolation as health-checks-sync above (reuses
 // HEALTH_CHECKS_SYNC_SECRET -- see that route's own header comment). Unlike
 // health-checks-sync, the request body carries only UTC day *boundaries*,
@@ -2794,7 +2794,7 @@ async function handleHealthUptimeRollupSync(request, env) {
 // --- POST /api/v1/internal/subnet-snapshot-sync (#4832 gap-closure) ------
 //
 // Best-effort Postgres mirror of writeSubnetSnapshot's D1 upsert
-// (src/health-prober.mjs) -- same "own hourly cron, direct
+// (src/health-prober.ts) -- same "own hourly cron, direct
 // env.DATA_API.fetch() service-binding call" shape as subnet-identity-sync
 // above, not an external GitHub Actions workflow. Rows arrive precomputed
 // (one per active subnet, already joined against economics.json), mirroring
@@ -3056,7 +3056,7 @@ async function handleRpcUsageEventSync(request, env) {
 // The Postgres mirror of rpc_proxy_events written by handleRpcUsageEventSync
 // above has no retention of its own (D1's copy is pruned to a 30-day hot
 // window on the hourly maintenance cron; Postgres just grew unbounded).
-// Called from src/health-prober.mjs's pruneHealthHistory
+// Called from src/health-prober.ts's pruneHealthHistory
 // (syncRpcProxyEventsPruneToPostgres), on the same cron, right after the D1
 // prune -- reuses the rpc-usage-sync token/secret (same trust boundary: both
 // routes write to the same table, no reason for a second secret).

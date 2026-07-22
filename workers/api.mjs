@@ -250,7 +250,7 @@ import {
   rollupDailyUptime,
   runHealthProber,
   writeSubnetSnapshot,
-} from "../src/health-prober.mjs";
+} from "../src/health-prober.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import {
   mergeFreshness,

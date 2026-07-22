@@ -23,6 +23,7 @@ import {
   okLatencyMs,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
+  type ProbeSurface,
 } from "./health-probe-core.ts";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
@@ -45,6 +46,8 @@ import {
 export { KV_HEALTH_CURRENT, KV_HEALTH_META, KV_HEALTH_RPC_POOL };
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
+type Row = Record<string, unknown>;
+
 const PROBE_CONCURRENCY = 8;
 // Warn when a sweep nears the 15-minute Cron Trigger ceiling (~8 min = generous
 // headroom). Early signal to raise concurrency or shard before runs overlap.
@@ -61,8 +64,8 @@ const RPC_BLOCK_PLAUSIBILITY_TOLERANCE = 10;
 // last_ok for a surface that has never probed OK. Treat any falsy/zero ms as
 // null at the source so consumers don't each need a pre-2000 sentinel guard. A
 // real timestamp (run time, last OK) is always a large positive ms.
-const iso = (ms) => {
-  if (!Number.isFinite(ms) || ms <= 0) return null;
+const iso = (ms: unknown): string | null => {
+  if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) return null;
   // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
   // new Date(ms).toISOString() throw a RangeError, which would tear down the whole
   // prober run on a single corrupt checked_at_ms/last_ok_ms cell. Drop it to null,
@@ -71,23 +74,23 @@ const iso = (ms) => {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 };
 
-function safeRpcBlockNumber(value) {
+function safeRpcBlockNumber(value: unknown): number | null {
   if (value == null) return null;
   const block = Number(value);
   return Number.isSafeInteger(block) && block > 0 ? block : null;
 }
 
-function rpcBlockMedianFloor(blocks) {
+function rpcBlockMedianFloor(blocks: number[]): number | null {
   if (!blocks.length) return null;
   const sorted = [...blocks].sort((a, b) => a - b);
   return sorted[Math.floor((sorted.length - 1) / 2)];
 }
 
-function sanitizeRpcLatestBlocks(rows) {
-  const rpcRows = rows.filter((row) => RPC_KINDS.has(row.kind));
+function sanitizeRpcLatestBlocks(rows: Row[]): void {
+  const rpcRows = rows.filter((row) => RPC_KINDS.has(row.kind as string));
   const blocks = rpcRows
     .map((row) => safeRpcBlockNumber(row.latest_block))
-    .filter((block) => block != null);
+    .filter((block): block is number => block != null);
   const median = rpcBlockMedianFloor(blocks);
   for (const row of rpcRows) {
     const block = safeRpcBlockNumber(row.latest_block);
@@ -107,7 +110,7 @@ function sanitizeRpcLatestBlocks(rows) {
 // timeout/error/no-answer — operational surfaces are a curated, public_safe,
 // PR-reviewed allowlist that already passed the literal guard, so a DoH blip must
 // never falsely mark all health unsafe.
-function normalizedHostname(value) {
+function normalizedHostname(value: unknown): string {
   return String(value || "")
     .trim()
     .toLowerCase()
@@ -115,7 +118,7 @@ function normalizedHostname(value) {
     .replace(/\.$/, "");
 }
 
-function ipv4Octets(value) {
+function ipv4Octets(value: unknown): number[] | null {
   const parts = String(value || "").split(".");
   if (parts.length !== 4) return null;
   const octets = parts.map((part) => {
@@ -123,10 +126,10 @@ function ipv4Octets(value) {
     const n = Number(part);
     return Number.isInteger(n) && n >= 0 && n <= 255 ? n : null;
   });
-  return octets.every((n) => n !== null) ? octets : null;
+  return octets.every((n) => n !== null) ? (octets as number[]) : null;
 }
 
-function isUnsafeIpv4(octets) {
+function isUnsafeIpv4(octets: number[]): boolean {
   const [a, b, c, d] = octets;
   return (
     a === 0 ||
@@ -143,7 +146,7 @@ function isUnsafeIpv4(octets) {
   );
 }
 
-function isUnsafeIpAddress(value) {
+function isUnsafeIpAddress(value: unknown): boolean {
   const host = normalizedHostname(value);
   const v4 = ipv4Octets(host);
   if (v4) return isUnsafeIpv4(v4);
@@ -166,16 +169,27 @@ function isUnsafeIpAddress(value) {
   );
 }
 
-function dnsAddressAnswers(body) {
-  if (!body || typeof body !== "object" || !Array.isArray(body.Answer)) {
+function dnsAddressAnswers(body: unknown): string[] {
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !Array.isArray((body as Row).Answer)
+  ) {
     return [];
   }
-  return body.Answer.map((answer) => String(answer?.data || "").trim()).filter(
-    (data) => ipv4Octets(data) || normalizedHostname(data).includes(":"),
-  );
+  return ((body as Row).Answer as Row[])
+    .map((answer) => String(answer?.data || "").trim())
+    .filter(
+      (data) => ipv4Octets(data) || normalizedHostname(data).includes(":"),
+    );
 }
 
-async function resolveDnsJson(host, recordType, fetchImpl, endpoint) {
+async function resolveDnsJson(
+  host: string,
+  recordType: string,
+  fetchImpl: typeof fetch,
+  endpoint: string,
+): Promise<string[]> {
   const query = new URL(endpoint);
   query.searchParams.set("name", host);
   query.searchParams.set("type", recordType);
@@ -192,12 +206,14 @@ async function resolveDnsJson(host, recordType, fetchImpl, endpoint) {
 export function workerResolvedUrlSafetyGuard({
   fetchImpl = fetch,
   dnsJsonEndpoint = DNS_JSON_ENDPOINT,
-} = {}) {
-  return async function isUnsafeWorkerResolvedUrl(value) {
+}: { fetchImpl?: typeof fetch; dnsJsonEndpoint?: string } = {}): (
+  value: string,
+) => Promise<boolean> {
+  return async function isUnsafeWorkerResolvedUrl(value: string) {
     if (isUnsafePublicUrl(value)) {
       return true;
     }
-    let host;
+    let host: string;
     try {
       host = normalizedHostname(new URL(value).hostname);
     } catch {
@@ -220,24 +236,42 @@ export function workerResolvedUrlSafetyGuard({
   };
 }
 
+interface WsCall {
+  key: string;
+  method: string;
+  params: unknown;
+}
+
+interface WsCallResult {
+  ok: boolean;
+  result: unknown;
+  rpc_error: unknown;
+}
+
 // Worker outbound-WebSocket connector for the WSS subtensor probe. Workers open
 // client sockets via fetch(Upgrade: websocket) → response.webSocket, NOT the
 // `new WebSocket()` constructor (which the Node build uses). Resolves a
 // Map<callKey, {ok, result, rpc_error}> matching the core's expectation.
-export function workerWebSocketConnector(fetchImpl = fetch) {
+export function workerWebSocketConnector(
+  fetchImpl: typeof fetch = fetch,
+): (
+  url: string,
+  calls: WsCall[],
+  timeoutMs: number,
+) => Promise<Map<string, WsCallResult>> {
   return (url, calls, timeoutMs) =>
     new Promise((resolve, reject) => {
       const httpUrl = url.replace(/^ws/i, "http");
       let settled = false;
-      let socket = null;
+      let socket: WebSocket | null = null;
       const byId = new Map(calls.map((call, index) => [index + 1, call.key]));
-      const results = new Map();
+      const results = new Map<string, WsCallResult>();
       const timer = setTimeout(
         () => finish(new Error("WSS RPC probe timed out"), "TimeoutError"),
         timeoutMs,
       );
 
-      function finish(error, name) {
+      function finish(error: Error | null, name?: string) {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
@@ -256,18 +290,19 @@ export function workerWebSocketConnector(fetchImpl = fetch) {
 
       fetchImpl(httpUrl, { headers: { Upgrade: "websocket" } })
         .then((response) => {
-          socket = response.webSocket;
+          socket = (response as Response & { webSocket: WebSocket | null })
+            .webSocket;
           if (!socket) {
             finish(new Error("server did not accept the WebSocket upgrade"));
             return;
           }
           socket.accept();
-          socket.addEventListener("message", (event) => {
+          socket.addEventListener("message", (event: MessageEvent) => {
             try {
               const raw =
                 typeof event.data === "string"
                   ? event.data
-                  : new TextDecoder().decode(event.data);
+                  : new TextDecoder().decode(event.data as ArrayBuffer);
               const body = JSON.parse(raw);
               const key = byId.get(body.id);
               if (!key) return;
@@ -278,7 +313,7 @@ export function workerWebSocketConnector(fetchImpl = fetch) {
               });
               if (results.size === calls.length) finish(null);
             } catch (error) {
-              finish(error);
+              finish(error as Error);
             }
           });
           socket.addEventListener("error", () =>
@@ -309,7 +344,7 @@ export function workerWebSocketConnector(fetchImpl = fetch) {
 // never depends on the data publish (see artifact-storage.mjs): a publish outage
 // must not freeze the live health prober. Returns the surfaces array (empty on
 // failure — the run then no-ops rather than throwing).
-export async function loadOperationalSurfaces(env) {
+export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
   // ASSETS first (committed, always present in the deployed Worker).
   try {
     if (env.ASSETS?.fetch) {
@@ -317,8 +352,8 @@ export async function loadOperationalSurfaces(env) {
         new Request(`https://assets.local${OPERATIONAL_SURFACES_PATH}`),
       );
       if (response.ok) {
-        const body = await response.json();
-        if (Array.isArray(body?.surfaces)) return body.surfaces;
+        const body = (await response.json()) as Row;
+        if (Array.isArray(body?.surfaces)) return body.surfaces as Row[];
       }
     }
   } catch {
@@ -336,8 +371,8 @@ export async function loadOperationalSurfaces(env) {
       const key = `${prefix}operational-surfaces.json`;
       const object = await env.METAGRAPH_ARCHIVE.get(key);
       if (object) {
-        const body = JSON.parse(await object.text());
-        if (Array.isArray(body?.surfaces)) return body.surfaces;
+        const body = JSON.parse(await object.text()) as Row;
+        if (Array.isArray(body?.surfaces)) return body.surfaces as Row[];
       }
     }
   } catch {
@@ -346,16 +381,19 @@ export async function loadOperationalSurfaces(env) {
   return [];
 }
 
-function summarizeGroup(rows) {
+function summarizeGroup(rows: Row[]): Row {
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   let lastChecked = 0;
   let lastOk = 0;
-  const latencies = [];
+  const latencies: number[] = [];
   for (const row of rows) {
-    counts[normalizeProbeStatus(row.status)] += 1;
-    if (row.checked_at_ms > lastChecked) lastChecked = row.checked_at_ms;
-    if (row.last_ok_ms && row.last_ok_ms > lastOk) lastOk = row.last_ok_ms;
-    if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
+    counts[normalizeProbeStatus(row.status) as keyof typeof counts] += 1;
+    const checkedAtMs = row.checked_at_ms as number;
+    if (checkedAtMs > lastChecked) lastChecked = checkedAtMs;
+    const lastOkMs = row.last_ok_ms as number;
+    if (lastOkMs && lastOkMs > lastOk) lastOk = lastOkMs;
+    if (Number.isFinite(row.latency_ms))
+      latencies.push(row.latency_ms as number);
   }
   return {
     status: rollupSubnetStatus({ ...counts, total: rows.length }),
@@ -378,21 +416,39 @@ function summarizeGroup(rows) {
   };
 }
 
+interface RunHealthProberOverrides {
+  now?: () => number;
+  kv?: KVNamespace;
+  loadSurfaces?: () => Promise<Row[]>;
+  probeSurface?: (surface: ProbeSurface, options: Row) => Promise<Row>;
+  probeOptions?: Row;
+  isUnsafeUrl?: (url: string) => boolean | Promise<boolean>;
+  safetyFetch?: typeof fetch;
+  connect?: ReturnType<typeof workerWebSocketConnector>;
+  concurrency?: number;
+}
+
 // Run one full probe sweep and persist results. Returns a small summary object.
-export async function runHealthProber(env, ctx, overrides = {}) {
+export async function runHealthProber(
+  env: Env,
+  _ctx: ExecutionContext,
+  overrides: RunHealthProberOverrides = {},
+): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const kv = overrides.kv || env.METAGRAPH_CONTROL;
   const loadSurfaces =
     overrides.loadSurfaces || (() => loadOperationalSurfaces(env));
   const probe = overrides.probeSurface || coreProbeSurface;
-  const probeOptions = overrides.probeOptions || {
-    // DNS-aware SSRF guard (resolves via DoH; fail-open on DoH error). Falls back
-    // to the isomorphic literal guard when an override is supplied (tests).
-    isUnsafeUrl:
-      overrides.isUnsafeUrl ||
-      workerResolvedUrlSafetyGuard({ fetchImpl: overrides.safetyFetch }),
-    connect: overrides.connect || workerWebSocketConnector(),
-  };
+  const probeOptions =
+    overrides.probeOptions ||
+    ({
+      // DNS-aware SSRF guard (resolves via DoH; fail-open on DoH error). Falls back
+      // to the isomorphic literal guard when an override is supplied (tests).
+      isUnsafeUrl:
+        overrides.isUnsafeUrl ||
+        workerResolvedUrlSafetyGuard({ fetchImpl: overrides.safetyFetch }),
+      connect: overrides.connect || workerWebSocketConnector(),
+    } as Row);
   const concurrency = overrides.concurrency || PROBE_CONCURRENCY;
 
   const runAt = now();
@@ -409,7 +465,7 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   // tracked surface regardless of freshness — this read needs the LAST known
   // row per surface for continuity even if it's stale, unlike the serving
   // fallback which deliberately filters to fresh rows only.
-  const priorStatus = new Map();
+  const priorStatus = new Map<unknown, Row>();
   const priorRows = await tryPostgresTier(
     env,
     new Request(
@@ -418,26 +474,29 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     "METAGRAPH_HEALTH_SOURCE",
   );
   if (Array.isArray(priorRows?.rows)) {
-    for (const row of priorRows.rows) {
+    for (const row of priorRows.rows as Row[]) {
       priorStatus.set(row.surface_key || row.surface_id, row);
     }
   }
 
   const probed = await mapLimit(surfaces, concurrency, async (surface) => {
-    const input = {
+    const input: ProbeSurface = {
       id: surface.surface_id,
       netuid: surface.netuid,
-      kind: surface.kind,
-      url: surface.url,
+      kind: surface.kind as string,
+      url: surface.url as string,
       provider: surface.provider,
       authority: surface.authority,
       auth_required: surface.auth_required,
       public_safe: surface.public_safe,
       subnet_slug: surface.subnet_slug,
       subnet_name: surface.subnet_name,
-      probe: surface.probe || { method: "GET", expect: "any" },
+      probe: (surface.probe as ProbeSurface["probe"]) || {
+        method: "GET",
+        expect: "any",
+      },
     };
-    let base;
+    let base: Row;
     try {
       base = await probe(input, probeOptions);
     } catch (error) {
@@ -446,13 +505,13 @@ export async function runHealthProber(env, ctx, overrides = {}) {
         classification: "unsupported",
         latency_ms: null,
         status_code: null,
-        error: error?.message || "probe threw",
+        error: (error as Error)?.message || "probe threw",
       };
     }
     const ok = base.status === "ok";
     const stableLookupKey = surface.surface_key || surface.surface_id;
     const prior = priorStatus.get(stableLookupKey);
-    const lastOkMs = ok ? runAt : (prior?.last_ok ?? null);
+    const lastOkMs = ok ? runAt : ((prior?.last_ok as number) ?? null);
     // The sustained-down breaker protects the public RPC pool from repeatedly
     // routing to unusable endpoints. For base-layer RPC surfaces, any non-ok
     // prober run counts toward that eviction threshold because `degraded`
@@ -468,7 +527,7 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     const countsTowardBreaker =
       base.status === "failed" || (isBaseLayerRpc && base.status !== "ok");
     const consecutiveFailures = countsTowardBreaker
-      ? (prior?.consecutive_failures ?? 0) + 1
+      ? ((prior?.consecutive_failures as number) ?? 0) + 1
       : 0;
     return {
       surface_id: surface.surface_id,
@@ -504,7 +563,8 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   await syncHealthChecksToPostgres(env, probed);
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
-  for (const row of probed) counts[normalizeProbeStatus(row.status)] += 1;
+  for (const row of probed)
+    counts[normalizeProbeStatus(row.status) as keyof typeof counts] += 1;
   const durationMs = now() - runAt;
   // Wall-time guard: the prober runs on a 15-minute Cron Trigger, a hard CF
   // ceiling. As the autonomous flywheel grows surfaces, a sweep that creeps past
@@ -524,7 +584,9 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   };
 }
 
-async function readHealthCurrentSnapshot(kv) {
+async function readHealthCurrentSnapshot(
+  kv: KVNamespace | undefined,
+): Promise<Row | null> {
   if (!kv?.get) return null;
   try {
     const raw = await kv.get(KV_HEALTH_CURRENT);
@@ -535,10 +597,15 @@ async function readHealthCurrentSnapshot(kv) {
   }
 }
 
-async function persistToKv(kv, probed, runAt) {
+async function persistToKv(
+  kv: KVNamespace | undefined,
+  probed: Row[],
+  runAt: number,
+): Promise<Row | null> {
   if (!kv?.put) return null;
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
-  for (const row of probed) counts[normalizeProbeStatus(row.status)] += 1;
+  for (const row of probed)
+    counts[normalizeProbeStatus(row.status) as keyof typeof counts] += 1;
 
   const surfaceRows = probed.map((row) => ({
     surface_id: row.surface_id,
@@ -555,7 +622,7 @@ async function persistToKv(kv, probed, runAt) {
     last_ok: iso(row.last_ok_ms),
   }));
 
-  const byNetuid = new Map();
+  const byNetuid = new Map<unknown, Row[]>();
   for (const row of probed) {
     const group = byNetuid.get(row.netuid) || [];
     group.push(row);
@@ -563,9 +630,9 @@ async function persistToKv(kv, probed, runAt) {
   }
   const subnets = [...byNetuid.entries()]
     .map(([netuid, rows]) => ({ netuid, ...summarizeGroup(rows) }))
-    .sort((a, b) => a.netuid - b.netuid);
+    .sort((a, b) => (a.netuid as number) - (b.netuid as number));
 
-  const current = {
+  const current: Row = {
     schema_version: 1,
     generated_at: iso(runAt),
     last_run_at: iso(runAt),
@@ -576,7 +643,7 @@ async function persistToKv(kv, probed, runAt) {
   };
 
   const rpcRows = probed
-    .filter((row) => RPC_KINDS.has(row.kind))
+    .filter((row) => RPC_KINDS.has(row.kind as string))
     .map((row) => ({
       id: row.surface_id,
       url: row.url,
@@ -593,8 +660,8 @@ async function persistToKv(kv, probed, runAt) {
       consecutive_failures: row.consecutive_failures,
       pool_eligible: row.status === "ok",
     }))
-    .sort((a, b) => a.id.localeCompare(b.id));
-  const rpcPool = {
+    .sort((a, b) => (a.id as string).localeCompare(b.id as string));
+  const rpcPool: Row = {
     schema_version: 1,
     generated_at: iso(runAt),
     last_run_at: iso(runAt),
@@ -604,7 +671,7 @@ async function persistToKv(kv, probed, runAt) {
     endpoints: rpcRows,
   };
 
-  const meta = {
+  const meta: Row = {
     schema_version: 1,
     last_run_at: iso(runAt),
     probed_count: probed.length,
@@ -627,7 +694,10 @@ async function persistToKv(kv, probed, runAt) {
 // for why this is a direct service-binding call rather than routing through
 // the public proxy layer. D1+KV remain the sole authoritative write target;
 // a Postgres failure here never affects live serving.
-export async function syncHealthChecksToPostgres(env, probed) {
+export async function syncHealthChecksToPostgres(
+  env: Env,
+  probed: Row[],
+): Promise<Row> {
   if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {
     return { synced: false, reason: "unavailable" };
   }
@@ -667,7 +737,11 @@ export async function syncHealthChecksToPostgres(env, probed) {
 // PERCENTILE_CONT for the p50/p95/p99 tail instead of D1/SQLite's
 // rank-based CTE (see src/health-sql.ts's rankedChecksCte/
 // latencyStatColumns, which this mirrors semantically, not textually).
-export async function syncHealthUptimeRollupToPostgres(env, days, updatedAt) {
+export async function syncHealthUptimeRollupToPostgres(
+  env: Env,
+  days: Row[],
+  updatedAt: number,
+): Promise<Row> {
   if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {
     return { synced: false, reason: "unavailable" };
   }
@@ -698,7 +772,11 @@ export async function syncHealthUptimeRollupToPostgres(env, days, updatedAt) {
 }
 
 // UTC day bounds for a given epoch-ms instant: { date: "YYYY-MM-DD", start, end }.
-function utcDayBounds(ms) {
+function utcDayBounds(ms: number): {
+  date: string;
+  start: number;
+  end: number;
+} {
   const d = new Date(ms);
   const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   return {
@@ -726,7 +804,10 @@ function utcDayBounds(ms) {
 // Postgres sync itself succeeded -- rolls up today + yesterday each hour
 // (the post-midnight fire finalizes the prior day; Postgres's own upsert,
 // data-api.mjs's handleHealthUptimeRollupSync, keeps this idempotent).
-export async function rollupDailyUptime(env, overrides = {}) {
+export async function rollupDailyUptime(
+  env: Env,
+  overrides: { now?: () => number } = {},
+): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const runAt = now();
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
@@ -745,7 +826,10 @@ export async function rollupDailyUptime(env, overrides = {}) {
 // comments), so D1's copies are frozen and nothing reads them anymore --
 // pruning a table nobody reads is pointless upkeep on a store being retired
 // wholesale. Only the Postgres-side prune remains.
-export async function pruneHealthHistory(env, overrides = {}) {
+export async function pruneHealthHistory(
+  env: Env,
+  overrides: { now?: () => number; retentionMs?: number } = {},
+): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const cutoff = now() - (overrides.retentionMs || HISTORY_RETENTION_MS);
   await syncRpcProxyEventsPruneToPostgres(env, cutoff);
@@ -757,7 +841,10 @@ export async function pruneHealthHistory(env, overrides = {}) {
 // service binding -- same shape as syncSubnetSnapshotToPostgres below.
 // Best-effort: never throws, and a failure here must never block the D1
 // prune above (the primary contract).
-export async function syncRpcProxyEventsPruneToPostgres(env, cutoff) {
+export async function syncRpcProxyEventsPruneToPostgres(
+  env: Env,
+  cutoff: number,
+): Promise<Row> {
   if (!env?.DATA_API || !env?.RPC_USAGE_SYNC_SECRET) {
     return { synced: false, reason: "unavailable" };
   }
@@ -789,9 +876,19 @@ export async function syncRpcProxyEventsPruneToPostgres(env, cutoff) {
 // same function already calls. Best-effort: never throws, and a failure here
 // must never block the D1 write above (the primary contract).
 export async function syncSubnetSnapshotToPostgres(
-  env,
-  { profiles, economicsByNetuid, date, capturedAt } = {},
-) {
+  env: Env,
+  {
+    profiles,
+    economicsByNetuid,
+    date,
+    capturedAt,
+  }: {
+    profiles?: Row[];
+    economicsByNetuid?: Map<unknown, Row>;
+    date?: string;
+    capturedAt?: number;
+  } = {},
+): Promise<Row> {
   if (!env?.DATA_API || !env?.SUBNET_SNAPSHOT_SYNC_SECRET) {
     return { synced: false, reason: "unavailable" };
   }
@@ -846,6 +943,11 @@ export async function syncSubnetSnapshotToPostgres(
   }
 }
 
+interface WriteSubnetSnapshotOverrides {
+  now?: () => number;
+  readArtifact?: (env: Env, path: string) => Promise<Row>;
+}
+
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
 // subnet_snapshots, keyed on (netuid, UTC date). Fired from the hourly cron.
 // `overrides.readArtifact` is injected from the Worker. No D1 binding needed
@@ -853,7 +955,10 @@ export async function syncSubnetSnapshotToPostgres(
 // syncSubnetSnapshotToPostgres below) and recordSubnetIdentityChanges reads
 // its own latest-hash baseline from Postgres too now (see that function's own
 // header comment in src/subnet-identity-history.mjs).
-export async function writeSubnetSnapshot(env, overrides = {}) {
+export async function writeSubnetSnapshot(
+  env: Env,
+  overrides: WriteSubnetSnapshotOverrides = {},
+): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const readArtifact = overrides.readArtifact;
   if (typeof readArtifact !== "function") {
@@ -861,16 +966,14 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   }
   const profilesResult = await readArtifact(env, "/metagraph/profiles.json");
   if (!profilesResult?.ok) return { ok: false, reason: "profiles_unavailable" };
-  const profiles = Array.isArray(profilesResult.data?.profiles)
-    ? profilesResult.data.profiles
+  const profiles: Row[] = Array.isArray((profilesResult.data as Row)?.profiles)
+    ? ((profilesResult.data as Row).profiles as Row[])
     : [];
   if (!profiles.length) return { ok: false, reason: "no_profiles" };
 
   const capturedAt = now();
-  const identityHistory = await recordSubnetIdentityChanges(env, {
-    profiles,
-    now: capturedAt,
-  });
+  const identityArgs = { profiles, now: capturedAt };
+  const identityHistory = await recordSubnetIdentityChanges(env, identityArgs);
   // #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
   // never awaited-and-thrown into the caller, see syncSubnetIdentityToPostgres's
   // own header comment for why this is a direct service-binding call rather
@@ -880,15 +983,15 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory
   // still records).
-  let economicsResult;
+  let economicsResult: Row | null;
   try {
     economicsResult = await readArtifact(env, "/metagraph/economics.json");
   } catch {
     economicsResult = null;
   }
-  const economicsByNetuid = new Map(
-    (Array.isArray(economicsResult?.data?.subnets)
-      ? economicsResult.data.subnets
+  const economicsByNetuid = new Map<unknown, Row>(
+    (Array.isArray((economicsResult?.data as Row)?.subnets)
+      ? ((economicsResult?.data as Row).subnets as Row[])
       : []
     ).map((row) => [row.netuid, row]),
   );

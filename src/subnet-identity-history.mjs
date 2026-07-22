@@ -207,7 +207,7 @@ async function latestBlockNumber(env) {
 /**
  * #4832 gap-closure: mirror recordSubnetIdentityChanges' D1 write into
  * Postgres via the DATA_API service binding, called directly from
- * writeSubnetSnapshot (src/health-prober.mjs) rather than through
+ * writeSubnetSnapshot (src/health-prober.ts) rather than through
  * workers/api.mjs's public proxy layer -- this runs from WITHIN the main
  * Worker's own hourly cron tick, a pure internal RPC hop, not a public-
  * internet crossing (unlike the other three #4832 sync routes, which are

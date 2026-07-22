@@ -52,7 +52,7 @@ import {
   KV_HEALTH_RPC_POOL,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
-} from "../../src/health-prober.mjs";
+} from "../../src/health-prober.ts";
 import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.ts";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.ts";
 import { loadRpcUsage } from "../../src/rpc-usage-loader.ts";

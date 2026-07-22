@@ -1,5 +1,5 @@
 // Pure, isomorphic surface-probing primitives shared by the Node data build
-// (scripts/probes-smoke.mjs) and the Cloudflare cron prober (src/health-prober.mjs,
+// (scripts/probes-smoke.mjs) and the Cloudflare cron prober (src/health-prober.ts,
 // wired through workers/api.mjs `scheduled()`).
 //
 // NO module-level I/O: `fetch`, the SSRF guard, and the WebSocket connector are
@@ -775,7 +775,7 @@ export async function probeSubtensorWss(
 }
 
 // Node WebSocket connector (uses the global `WebSocket`, Node 22+). The Worker
-// supplies its own fetch-upgrade connector in src/health-prober.mjs.
+// supplies its own fetch-upgrade connector in src/health-prober.ts.
 export function nodeWebSocketConnector(
   WebSocketImpl: typeof WebSocket | undefined = globalThis.WebSocket,
 ): (
@@ -802,7 +802,7 @@ export function nodeWebSocketConnector(
       // Every terminal path (success, timeout, error, parse-error, premature
       // close) funnels through finish() so the first event wins, the timer is
       // always cleared, and the socket is ALWAYS closed — mirroring the Worker
-      // connector's finish() in src/health-prober.mjs (#2074). Before this, the
+      // connector's finish() in src/health-prober.ts (#2074). Before this, the
       // error path cleared the timer but never closed the socket (leaking a
       // half-open fd), and there was no close handler, so a server that closed
       // before all responses arrived hung the probe until the full timeout.

@@ -10,7 +10,7 @@
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
-import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
+import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
 import { overlayRpcPoolEligibility } from "./health-serving.ts";
 
 export const RPC_POOLS_ARTIFACT = "/metagraph/rpc/pools.json";
