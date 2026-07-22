@@ -5,26 +5,28 @@
 // SUM(emission_tao) across every subnet the hotkey validates in that day
 // (idx_neuron_daily_hotkey_date already indexes exactly this access path).
 
-function toFiniteOrNull(v) {
+type Row = Record<string, unknown>;
+
+function toFiniteOrNull(v: unknown): number | null {
   if (v == null) return null;
   if (typeof v === "string" && v.trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-function toNonNegativeInt(v) {
+function toNonNegativeInt(v: unknown): number | null {
   const n = toFiniteOrNull(v);
   return n != null && Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
-function roundTao(v) {
+function roundTao(v: number): number {
   return Math.round(v * 1e6) / 1e6;
 }
 
 // Round a TAO sum, preserving null -- mirrors neuron-history.ts's
 // roundTaoOrNull so an unrounded D1 SUM() never leaks float noise while a
 // null/cold-day SUM stays null rather than collapsing to 0.
-function roundTaoOrNull(v) {
+function roundTaoOrNull(v: unknown): number | null {
   const n = toFiniteOrNull(v);
   return n == null ? null : roundTao(n);
 }
@@ -32,8 +34,11 @@ function roundTaoOrNull(v) {
 // emission / stake scaled to a per-1000-TAO reward rate for that day -- null
 // when stake is zero/absent (the rate is undefined with nothing staked),
 // mirroring the yield-metric null convention in src/subnet-yield.mjs.
-function rewardsPer1000Tao(stakeTao, emissionTao) {
-  if (!(stakeTao > 0) || emissionTao == null) return null;
+function rewardsPer1000Tao(
+  stakeTao: number | null,
+  emissionTao: number | null,
+): number | null {
+  if (!(stakeTao != null && stakeTao > 0) || emissionTao == null) return null;
   return Math.round((emissionTao / stakeTao) * 1000 * 1e6) / 1e6;
 }
 
@@ -41,7 +46,11 @@ function rewardsPer1000Tao(stakeTao, emissionTao) {
 // DESC LIMIT MAX_HISTORY_POINTS`), one point per snapshot_date. Null-safe:
 // no rows (cold store / empty window) yields a zeroed, empty-point card,
 // matching the sibling history routes.
-export function buildValidatorHistory(rows, hotkey, { window } = {}) {
+export function buildValidatorHistory(
+  rows: Row[] | null | undefined,
+  hotkey: unknown,
+  { window }: { window?: unknown } = {},
+): Row {
   const points = (Array.isArray(rows) ? rows : [])
     .filter((r) => r && typeof r === "object")
     .map((r) => {

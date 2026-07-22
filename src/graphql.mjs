@@ -357,7 +357,7 @@ import {
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "./neuron-history.ts";
-import { buildValidatorHistory } from "./validator-history.mjs";
+import { buildValidatorHistory } from "./validator-history.ts";
 import { loadEconomicsTrends } from "./economics-trends.ts";
 import {
   DEFAULT_MOVERS_SORT,

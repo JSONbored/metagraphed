@@ -108,7 +108,7 @@ import {
   DEFAULT_HISTORY_WINDOW,
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.ts";
-import { buildValidatorHistory } from "../src/validator-history.mjs";
+import { buildValidatorHistory } from "../src/validator-history.ts";
 import {
   buildTurnover,
   buildTurnoverChanges,
@@ -8398,7 +8398,7 @@ export default {
 
         // GET /api/v1/validators/:hotkey/history?window= (#4832 Tier 2b): one
         // validator's staked-subnet-count + stake/emission totals over time,
-        // mirroring src/validator-history.mjs's buildValidatorHistory.
+        // mirroring src/validator-history.ts's buildValidatorHistory.
         const validatorHistoryMatch = url.pathname.match(
           /^\/api\/v1\/validators\/([^/]+)\/history$/,
         );

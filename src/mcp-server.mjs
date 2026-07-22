@@ -670,7 +670,7 @@ import {
   NOMINATOR_LIMIT_DEFAULT,
   NOMINATOR_LIMIT_MAX,
 } from "./validator-nominators.mjs";
-import { buildValidatorHistory } from "./validator-history.mjs";
+import { buildValidatorHistory } from "./validator-history.ts";
 
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet

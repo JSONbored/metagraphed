@@ -1,7 +1,7 @@
 /**
  * Client-side delegator APY estimates (#5245) until server-side modelling lands
  * in #2551. Uses the same emission÷stake annualization as rewards_per_1000_tao
- * (see src/validator-history.mjs) and applies take when known.
+ * (see src/validator-history.ts) and applies take when known.
  */
 
 export type ValidatorApyWindow = "7d" | "30d" | "90d" | "snapshot";
