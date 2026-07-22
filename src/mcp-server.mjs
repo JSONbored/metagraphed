@@ -129,7 +129,7 @@ import {
   LIST_SUBNET_ENDPOINTS_MCP_TOOL,
   LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA,
   loadSubnetEndpointsList,
-} from "./subnet-endpoints-mcp.mjs";
+} from "./subnet-endpoints-mcp.ts";
 import {
   LIST_SUBNET_EVIDENCE_INSTRUCTIONS,
   LIST_SUBNET_EVIDENCE_MCP_TOOL,

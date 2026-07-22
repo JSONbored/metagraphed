@@ -3,7 +3,8 @@
 // transforms as the REST route over the baked
 // /metagraph/endpoints/{netuid}.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 const ENDPOINT_SORT_FIELDS = API_QUERY_COLLECTIONS.endpoints.sort_fields;
@@ -21,20 +22,30 @@ const SUBNET_ENDPOINTS_QUERY_FILTER_NAMES = [
   "status",
 ];
 
-export function subnetEndpointsArtifactPath(netuid) {
+export function subnetEndpointsArtifactPath(netuid: unknown): string {
   return `/metagraph/endpoints/${netuid}.json`;
 }
 
-export function subnetEndpointsMcpError(code, message) {
-  const error = new Error(message);
+export interface SubnetEndpointsMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function subnetEndpointsMcpError(
+  code: string,
+  message: string,
+): SubnetEndpointsMcpError {
+  const error = new Error(message) as SubnetEndpointsMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function requireNetuid(args) {
+function requireNetuid(
+  args: Record<string, unknown> | null | undefined,
+): number {
   const netuid = args?.netuid;
-  if (!Number.isInteger(netuid) || netuid < 0) {
+  if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
     throw subnetEndpointsMcpError(
       "invalid_params",
       "netuid must be a non-negative integer.",
@@ -43,7 +54,10 @@ function requireNetuid(args) {
   return netuid;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -55,7 +69,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -67,7 +85,10 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function optionalNumber(args, key) {
+function optionalNumber(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): number | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -79,13 +100,15 @@ function optionalNumber(args, key) {
   return value;
 }
 
-function clampLimit(value, fallback, max) {
+function clampLimit(value: unknown, fallback: number, max: number): number {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
 }
 
-export function subnetEndpointsQueryUrl(args) {
+export function subnetEndpointsQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/subnets/endpoints");
   requireNetuid(args);
   const kind = optionalEnum(args, "kind", SURFACE_KINDS);
@@ -128,29 +151,51 @@ export function subnetEndpointsQueryUrl(args) {
     url.searchParams.set("limit", String(clampLimit(args.limit, 50, 100)));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw subnetEndpointsMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
+export interface SubnetEndpointsListResult {
+  generated_at: unknown;
+  netuid: unknown;
+  endpoints: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
 export async function loadSubnetEndpointsList(
-  ctx,
-  args,
-  { readArtifact } = {},
-) {
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<SubnetEndpointsListResult> {
   const netuid = requireNetuid(args);
   const queryUrl = subnetEndpointsQueryUrl(args);
   const artifactPath = subnetEndpointsArtifactPath(netuid);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, artifactPath);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw subnetEndpointsMcpError(
         "not_found",
@@ -170,7 +215,7 @@ export async function loadSubnetEndpointsList(
     );
   }
   const transformed = applyQueryFilters(
-    blob,
+    blob as Record<string, unknown>,
     queryUrl,
     "endpoints",
     SUBNET_ENDPOINTS_QUERY_FILTER_NAMES,
@@ -178,9 +223,10 @@ export async function loadSubnetEndpointsList(
   if (transformed.error) {
     throw subnetEndpointsMcpError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.endpoints) ? data.endpoints : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows = Array.isArray(data.endpoints) ? (data.endpoints as Row[]) : [];
   const rowLen = rows.length;
   return {
     generated_at: data.generated_at ?? null,

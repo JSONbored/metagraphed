@@ -10,7 +10,7 @@ import {
   subnetEndpointsArtifactPath,
   subnetEndpointsMcpError,
   subnetEndpointsQueryUrl,
-} from "../src/subnet-endpoints-mcp.mjs";
+} from "../src/subnet-endpoints-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const NETUID = 7;
