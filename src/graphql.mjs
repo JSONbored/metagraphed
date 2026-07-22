@@ -241,7 +241,7 @@ import { loadSudoKey } from "./sudo-key.mjs";
 // GET /api/v1/queries/{id} route and run_saved_query MCP tool already share.
 import { runSavedQuery } from "./saved-queries.mjs";
 import { loadNetworkParameters } from "./network-parameters.ts";
-import { loadRandomnessStatus } from "./randomness.mjs";
+import { loadRandomnessStatus } from "./randomness.ts";
 import { loadAddressMapping, H160_PATTERN } from "./address-mapping.ts";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,

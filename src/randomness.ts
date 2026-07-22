@@ -33,7 +33,7 @@ const OLDEST_STORED_ROUND_STORAGE_KEY =
 // BigInt. Returns null for anything else (malformed/short/absent result).
 // Byte-for-byte copy of network-parameters.ts's own decodeLeU64, per this
 // codebase's per-module small-codec-helper convention.
-function decodeLeU64(hex) {
+function decodeLeU64(hex: unknown): bigint | null {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{16}$/.test(hex)) {
     return null;
   }
@@ -48,7 +48,10 @@ function decodeLeU64(hex) {
 // (non-ok response, timeout, malformed result); a genuinely unset storage
 // result (raw null) reads as a real 0n, not a failure -- mirrors
 // network-parameters.ts's own unset-storage handling.
-async function fetchStorageU64(storageKey, timeoutMs) {
+async function fetchStorageU64(
+  storageKey: string,
+  timeoutMs: number,
+): Promise<bigint | null> {
   try {
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
@@ -62,7 +65,7 @@ async function fetchStorageU64(storageKey, timeoutMs) {
       }),
     });
     if (!rpcResp.ok) return null;
-    const rpcBody = await rpcResp.json();
+    const rpcBody = (await rpcResp.json()) as Record<string, unknown>;
     const raw = rpcBody?.result;
     const bits = decodeLeU64(raw);
     if (bits != null) return bits;
@@ -73,19 +76,31 @@ async function fetchStorageU64(storageKey, timeoutMs) {
   }
 }
 
+export interface RandomnessStatus {
+  schema_version: 1;
+  last_stored_round: number | null;
+  oldest_stored_round: number | null;
+  stored_round_span: number | null;
+  queried_at: string;
+}
+
 // Query the live randomness-beacon status. Uses METAGRAPH_CONTROL KV (30s
 // TTL) when present; each field is independently null on its own RPC
 // failure (schema-stable, never throws) -- two parallel reads against the
 // same endpoint, matching network-parameters.ts's own batched-but-
 // independent-failure shape. Positive-caches only when both succeed, so a
 // partial failure doesn't cache a stale-looking result for the full TTL.
-export async function loadRandomnessStatus(env) {
+export async function loadRandomnessStatus(
+  env: Env,
+): Promise<RandomnessStatus> {
   const cacheKey = "network:randomness";
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await kv.get<RandomnessStatus>(cacheKey, {
+        type: "json",
+      });
       if (cached) return cached;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -107,10 +122,10 @@ export async function loadRandomnessStatus(env) {
   // ends -- null unless both bounds resolved (never a misleading partial
   // span from mixing one live value with a stale/absent other).
   const storedRoundSpan = rpcOk
-    ? lastStoredRound - oldestStoredRound + 1
+    ? (lastStoredRound as number) - (oldestStoredRound as number) + 1
     : null;
 
-  const payload = {
+  const payload: RandomnessStatus = {
     schema_version: 1,
     last_stored_round: lastStoredRound,
     oldest_stored_round: oldestStoredRound,

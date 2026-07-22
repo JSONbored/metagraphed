@@ -16322,7 +16322,7 @@ describe("graphql — network_parameters (#6343, live chain RPC via network-para
   });
 });
 
-describe("graphql — network_randomness (#6990, live chain RPC via randomness.mjs)", () => {
+describe("graphql — network_randomness (#6990, live chain RPC via randomness.ts)", () => {
   function kvEnv(payload) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };
   }

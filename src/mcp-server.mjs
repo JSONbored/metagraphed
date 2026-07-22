@@ -653,7 +653,7 @@ import { loadSubnetBurn } from "./subnet-burn.mjs";
 import { loadSubnetLease } from "./subnet-lease.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
 import { loadNetworkParameters } from "./network-parameters.ts";
-import { loadRandomnessStatus } from "./randomness.mjs";
+import { loadRandomnessStatus } from "./randomness.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
   buildAccountEntities,
