@@ -546,7 +546,7 @@ import {
   STAKE_FLOW_DIRECTIONS,
   DEFAULT_STAKE_FLOW_DIRECTION,
 } from "./stake-flow.mjs";
-import { buildAccountStakeFlow } from "./account-stake-flow.mjs";
+import { buildAccountStakeFlow } from "./account-stake-flow.ts";
 import {
   buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,

@@ -22,7 +22,11 @@ export const STAKE_REMOVED_KIND = "StakeRemoved";
 
 // Supported flow windows (label -> days), the same set the per-subnet stake-flow and
 // concentration/history routes expose. An unsupported label is rejected by the handler.
-export const STAKE_FLOW_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const STAKE_FLOW_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 export const DEFAULT_STAKE_FLOW_WINDOW = "30d";
 
 // |net| / gross at or above this share reads as a directional move rather than churn;
@@ -32,7 +36,7 @@ const DIRECTIONAL_RATIO = 0.2;
 // 1 TAO = 1e9 rao. Round every TAO output to rao precision to shed IEEE-754 noise
 // below the rao floor (the same rounding the per-subnet stake-flow scorecard applies).
 const RAO_PER_TAO = 1e9;
-function roundTao(value) {
+function roundTao(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
@@ -43,13 +47,13 @@ function roundTao(value) {
 // concentration/turnover/reliability ratios enforce (roundRatio in concentration.mjs,
 // #2327). A wallet spread across two or more subnets (HHI < 1) must never render as
 // 1, which this card's own contract defines as "all flow in one subnet".
-function roundConcentration(value) {
+function roundConcentration(value: number): number {
   const rounded = Math.round(value * 10000) / 10000;
   return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 
 // Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
-function toNumber(value) {
+function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -57,7 +61,7 @@ function toNumber(value) {
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric. Blank D1 cells
 // coerce via Number("") → 0; skip those rows rather than counting phantom zero-TAO
 // stake events (mirrors buildCounterparties #3059).
-function nullableTao(value) {
+function nullableTao(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
@@ -66,7 +70,7 @@ function nullableTao(value) {
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null
 // explicitly so a null netuid is skipped rather than coerced to subnet 0 (Number(null) === 0).
-function normalizedNetuid(value) {
+function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -74,10 +78,12 @@ function normalizedNetuid(value) {
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
 }
 
+type FlowDirection = "idle" | "accumulating" | "exiting" | "churning";
+
 // Net vs gross share -> a coarse direction label. gross 0 (no flow at all) reads as
 // "idle"; a net lean past DIRECTIONAL_RATIO is accumulating/exiting, otherwise churning
 // (capital cycling both ways without a clear direction).
-function classifyDirection(netTao, grossTao) {
+function classifyDirection(netTao: number, grossTao: number): FlowDirection {
   if (grossTao <= 0) return "idle";
   const ratio = netTao / grossTao;
   if (ratio >= DIRECTIONAL_RATIO) return "accumulating";
@@ -86,7 +92,7 @@ function classifyDirection(netTao, grossTao) {
 }
 
 // net / gross, rounded to 4dp; null when gross is 0 (ratio undefined with no flow).
-function flowRatio(netTao, grossTao) {
+function flowRatio(netTao: number, grossTao: number): number | null {
   if (grossTao <= 0) return null;
   const raw = netTao / grossTao;
   const rounded = Math.round(raw * 10000) / 10000;
@@ -100,13 +106,55 @@ function flowRatio(netTao, grossTao) {
   return rounded;
 }
 
+export interface AccountStakeFlowSubnet {
+  netuid: number;
+  staked_tao: number;
+  unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  flow_ratio: number | null;
+  direction: FlowDirection;
+  stake_events: number;
+  unstake_events: number;
+}
+
+export interface AccountStakeFlowResult {
+  schema_version: 1;
+  address: string;
+  window: string | null;
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  flow_ratio: number | null;
+  direction: FlowDirection;
+  stake_events: number;
+  unstake_events: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountStakeFlowSubnet[];
+}
+
 // Shape an account's per-(netuid, kind) StakeAdded/StakeRemoved aggregate into a
 // staking-behavior scorecard. `rows` is the GROUP BY netuid, event_kind result.
 // Null-safe: no rows (cold store / empty window) yields a zeroed, empty-subnet card.
-export function buildAccountStakeFlow(rows, address, { window } = {}) {
+export function buildAccountStakeFlow(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  address: string,
+  { window }: { window?: string | null } = {},
+): AccountStakeFlowResult {
   const list = Array.isArray(rows) ? rows : [];
   // Fold the per-kind rows into one record per subnet.
-  const perSubnet = new Map();
+  const perSubnet = new Map<
+    number,
+    {
+      staked: number;
+      unstaked: number;
+      stakeEvents: number;
+      unstakeEvents: number;
+    }
+  >();
   for (const row of list) {
     const netuid = normalizedNetuid(row?.netuid);
     if (netuid == null) continue;
@@ -138,7 +186,7 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
   let totalStakeEvents = 0;
   let totalUnstakeEvents = 0;
   let grossSquares = 0;
-  const subnets = [];
+  const subnets: AccountStakeFlowSubnet[] = [];
   for (const [netuid, b] of perSubnet) {
     const net = b.staked - b.unstaked;
     const gross = b.staked + b.unstaked;

@@ -299,7 +299,7 @@ import {
   DEFAULT_STAKE_FLOW_WINDOW,
   STAKE_FLOW_WINDOWS,
   buildAccountStakeFlow,
-} from "./account-stake-flow.mjs";
+} from "./account-stake-flow.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import {
   DEFAULT_STAKE_FLOW_DIRECTION,

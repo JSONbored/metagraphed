@@ -4,7 +4,7 @@ import {
   buildAccountStakeFlow,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-} from "../src/account-stake-flow.mjs";
+} from "../src/account-stake-flow.ts";
 
 // One GROUP BY netuid, event_kind row.
 function row(netuid, kind, tao, count) {

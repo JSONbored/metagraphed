@@ -229,7 +229,7 @@ import {
 import { resolveLiveEconomics } from "../../src/health-serving.mjs";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
-import { buildAccountStakeFlow } from "../../src/account-stake-flow.mjs";
+import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,
