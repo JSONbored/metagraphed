@@ -660,7 +660,7 @@ import {
   entityLabelsIndex,
   labelsForSs58,
 } from "./entity-labels.ts";
-import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
+import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,

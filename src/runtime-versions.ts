@@ -14,7 +14,10 @@
 // active before this block is invisible here" instead of reading a short
 // transitions list as the network's whole runtime-upgrade history.
 
-function toIso(ms) {
+type Row = Record<string, unknown>;
+type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -27,7 +30,7 @@ function toIso(ms) {
 // string, so a bare `row.spec_version ?? null` would silently leak the string
 // into the API payload. Mirrors the `toBlockNumber` helper duplicated per
 // module across src/blocks.mjs, src/subnet-identity-history.mjs, etc.
-function toNonNegativeInt(value) {
+function toNonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -35,11 +38,19 @@ function toNonNegativeInt(value) {
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
+export interface RuntimeTransition {
+  spec_version: number;
+  block_number: number;
+  observed_at: string | null;
+}
+
 // One row -> one transition entry. A row whose spec_version/block_number
 // can't be coerced is dropped rather than surfaced malformed — the aggregate
 // query already filters `WHERE spec_version IS NOT NULL`, so this only guards
 // against a D1 cell type surprise, not the expected null case.
-export function formatRuntimeTransition(row) {
+export function formatRuntimeTransition(
+  row: Row | null | undefined,
+): RuntimeTransition | null {
   const specVersion = toNonNegativeInt(row?.spec_version);
   const blockNumber = toNonNegativeInt(row?.block_number);
   if (specVersion == null || blockNumber == null) return null;
@@ -62,11 +73,14 @@ export function formatRuntimeTransition(row) {
 // as current. current_spec_version can itself still lag/mislead if the most
 // recent blocks failed to capture a reading (best-effort, see the module
 // docstring) — it is the latest KNOWN reading, not a live guarantee.
-export function buildRuntimeVersionHistory(rows, latestRow = null) {
+export function buildRuntimeVersionHistory(
+  rows: Row[] | null | undefined,
+  latestRow: Row | null = null,
+): Row {
   const list = Array.isArray(rows) ? rows : [];
   const transitions = list
     .map(formatRuntimeTransition)
-    .filter((entry) => entry != null);
+    .filter((entry): entry is RuntimeTransition => entry != null);
   const earliest = transitions[0] ?? null;
   return {
     schema_version: 1,
@@ -100,7 +114,7 @@ const RUNTIME_LATEST_SQL =
 // Site-wide spec-version transition timeline — shared by the REST route.
 // Cold/empty D1 (or a store with no spec_version reading yet) yields the
 // schema-stable empty shape, never throws.
-export async function loadRuntimeVersionHistory(d1) {
+export async function loadRuntimeVersionHistory(d1: D1Runner): Promise<Row> {
   const rows = await d1(RUNTIME_TRANSITIONS_SQL, []);
   const latestRows = await d1(RUNTIME_LATEST_SQL, []);
   return buildRuntimeVersionHistory(rows, latestRows[0] ?? null);

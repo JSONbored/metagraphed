@@ -106,7 +106,7 @@ function computeYieldValue(emission: number, stake: number): number | null {
 // `positions[]` entries (minus netuid — see the read-path header comment).
 // Exported (unlike account-portfolio.mjs's inline per-row mapping) so its
 // field coercion can be unit-tested directly, matching formatRuntimeTransition
-// (src/runtime-versions.mjs)'s precedent for a history route's row formatter.
+// (src/runtime-versions.ts)'s precedent for a history route's row formatter.
 export interface AccountPositionEntry {
   uid: number | null;
   coldkey: unknown;

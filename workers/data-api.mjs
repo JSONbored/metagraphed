@@ -71,7 +71,7 @@ import {
   buildBlocksSummary,
   BLOCKS_SUMMARY_SCAN_CAP,
 } from "../src/blocks-summary.ts";
-import { buildRuntimeVersionHistory } from "../src/runtime-versions.mjs";
+import { buildRuntimeVersionHistory } from "../src/runtime-versions.ts";
 import {
   buildConcentration,
   buildChainConcentration,
@@ -4994,7 +4994,7 @@ export default {
         }
 
         // GET /api/v1/runtime — the spec-version transition timeline, mirroring
-        // src/runtime-versions.mjs's loadRuntimeVersionHistory. Two small
+        // src/runtime-versions.ts's loadRuntimeVersionHistory. Two small
         // aggregate reads (GROUP BY's earliest-block-per-version, then the
         // truly-latest reading), no filters/pagination.
         if (url.pathname === "/api/v1/runtime") {

@@ -5,7 +5,7 @@ import {
   buildRuntimeVersionHistory,
   formatRuntimeTransition,
   loadRuntimeVersionHistory,
-} from "../src/runtime-versions.mjs";
+} from "../src/runtime-versions.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

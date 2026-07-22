@@ -122,7 +122,7 @@ import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
 import { loadSubnetLease } from "../../src/subnet-lease.mjs";
 import { computeStakeQuote } from "../../src/stake-quote.mjs";
-import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
+import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
@@ -4539,7 +4539,7 @@ const RUNTIME_VERSIONS_CSV_COLUMNS = [
 // earliest known block at each distinct spec_version the blocks D1 tier has
 // observed, ascending by block_number. A single-row aggregate over the whole
 // retained window, nothing to filter or paginate (?format=csv is the one
-// accepted param, #6392). See src/runtime-versions.mjs for the coverage caveat
+// accepted param, #6392). See src/runtime-versions.ts for the coverage caveat
 // (spec_version wasn't tracked before 2026-06-25 and can't be back-filled for
 // rows written before then).
 export async function handleRuntime(request, env, url) {
