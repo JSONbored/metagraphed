@@ -31,6 +31,8 @@ import {
   WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
 } from "../src/webhooks.ts";
 
+type Row = Record<string, unknown>;
+
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
 const dryRun = args.has("--dry-run") || !write;
@@ -38,9 +40,11 @@ const MAX_DISPATCH_SUBSCRIPTIONS = 128;
 
 // changelog.json is R2-only (#1003) — resolve via the tier-aware path so this
 // reads the freshly-built dist/ copy in the publish flow (was public/).
-const changelog = await readJson(artifactFilePath("changelog.json"));
+const changelog: Row = await readJson(artifactFilePath("changelog.json"));
 // build-summary.json is R2-only (#1003) — tier-aware read (dist/).
-const buildSummary = await readJson(artifactFilePath("build-summary.json"));
+const buildSummary: Row = await readJson(
+  artifactFilePath("build-summary.json"),
+);
 const pointer = {
   published_at: buildSummary.published_at || null,
   contract_version:
@@ -89,13 +93,13 @@ if (allKeys.length > MAX_DISPATCH_SUBSCRIPTIONS) {
 const keys = selectDispatchKeys(allKeys, {
   max: MAX_DISPATCH_SUBSCRIPTIONS,
   seed: Date.now(),
-});
+}) as string[];
 if (keys.length === 0) {
   console.log("No webhook subscriptions registered; nothing to dispatch.");
   process.exit(0);
 }
 
-const subscriptions = [];
+const subscriptions: Row[] = [];
 for (const key of keys) {
   const raw = getKvValue(namespaceId, key);
   if (!raw) continue;
@@ -123,8 +127,9 @@ const { delivered, redelivered } = await dispatchWithRedelivery({
   maxRedeliveriesPerSubscription: WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
 });
 
-const tally = delivered.reduce((acc, result) => {
-  acc[result.status] = (acc[result.status] || 0) + 1;
+const tally = delivered.reduce((acc: Record<string, number>, result) => {
+  const status = result.status as string;
+  acc[status] = (acc[status] || 0) + 1;
   return acc;
 }, {});
 for (const failure of delivered.filter(
@@ -135,10 +140,14 @@ for (const failure of delivered.filter(
     `::warning::webhook ${failure.id} failed after ${failure.attempts} attempt(s): ${failure.reason} (status ${failure.status_code ?? "-"}) — ${fate}`,
   );
 }
-const redeliveryTally = redelivered.reduce((acc, result) => {
-  acc[result.status] = (acc[result.status] || 0) + 1;
-  return acc;
-}, {});
+const redeliveryTally = redelivered.reduce(
+  (acc: Record<string, number>, result) => {
+    const status = result.status as string;
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  },
+  {},
+);
 console.log(
   stableStringify({
     mode: "dispatch",
@@ -150,7 +159,11 @@ console.log(
 // Exit 0 regardless of per-subscriber failures: the data publish already
 // succeeded, and one broken endpoint must not fail the run.
 
-function listKvKeys(nsId, prefix, { limit } = {}) {
+function listKvKeys(
+  nsId: string,
+  prefix: string,
+  { limit }: { limit?: number } = {},
+): string[] {
   const stdout = runWrangler([
     "kv",
     "key",
@@ -164,16 +177,18 @@ function listKvKeys(nsId, prefix, { limit } = {}) {
   if (!stdout) return [];
   try {
     const entries = JSON.parse(stdout);
-    const keys = Array.isArray(entries)
-      ? entries.map((entry) => entry.name).filter(Boolean)
+    const keys: string[] = Array.isArray(entries)
+      ? entries.map((entry: Row) => entry.name as string).filter(Boolean)
       : [];
-    return Number.isFinite(limit) && limit >= 0 ? keys.slice(0, limit) : keys;
+    return Number.isFinite(limit) && (limit as number) >= 0
+      ? keys.slice(0, limit)
+      : keys;
   } catch {
     return [];
   }
 }
 
-function getKvValue(nsId, key) {
+function getKvValue(nsId: string, key: string): string | null {
   return runWrangler([
     "kv",
     "key",
@@ -185,7 +200,12 @@ function getKvValue(nsId, key) {
   ]);
 }
 
-function putKvValue(nsId, key, value, ttlSeconds) {
+function putKvValue(
+  nsId: string,
+  key: string,
+  value: string,
+  ttlSeconds: number | undefined,
+): void {
   const wranglerArgs = [
     "kv",
     "key",
@@ -196,19 +216,28 @@ function putKvValue(nsId, key, value, ttlSeconds) {
     nsId,
     "--remote",
   ];
-  if (Number.isFinite(ttlSeconds) && ttlSeconds > 0) {
-    wranglerArgs.push("--ttl", String(Math.floor(ttlSeconds)));
+  if (Number.isFinite(ttlSeconds) && (ttlSeconds as number) > 0) {
+    wranglerArgs.push("--ttl", String(Math.floor(ttlSeconds as number)));
   }
   runWrangler(wranglerArgs);
 }
 
-function deleteKvValue(nsId, key) {
+function deleteKvValue(nsId: string, key: string): void {
   runWrangler(["kv", "key", "delete", key, "--namespace-id", nsId, "--remote"]);
 }
 
 // KV-backed delivery store for dispatchWithRedelivery. Best-effort: runWrangler
 // logs + returns null on failure, so a KV hiccup never fails the publish.
-function makeDeliveryStore(nsId) {
+function makeDeliveryStore(nsId: string): {
+  listKeys: (prefix: string, options: { limit?: number }) => Promise<string[]>;
+  get: (key: string) => Promise<Row | null>;
+  put: (
+    key: string,
+    value: Row,
+    options: { ttlSeconds: number },
+  ) => Promise<void>;
+  delete: (key: string) => Promise<void>;
+} {
   return {
     async listKeys(prefix, options = {}) {
       return listKvKeys(nsId, prefix, options);
@@ -222,7 +251,7 @@ function makeDeliveryStore(nsId) {
         return null;
       }
     },
-    async put(key, value, { ttlSeconds } = {}) {
+    async put(key, value, { ttlSeconds } = { ttlSeconds: undefined as never }) {
       putKvValue(nsId, key, JSON.stringify(value), ttlSeconds);
     },
     async delete(key) {
@@ -231,18 +260,25 @@ function makeDeliveryStore(nsId) {
   };
 }
 
-async function resolvePublicHostnames(hostname) {
+async function resolvePublicHostnames(hostname: string): Promise<string[]> {
   return (await resolvePublicAddressRecords(hostname)).map(
     (record) => record.address,
   );
 }
 
-async function resolvePublicAddressRecords(hostname) {
+interface AddressRecord {
+  address: string;
+  family: number;
+}
+
+async function resolvePublicAddressRecords(
+  hostname: string,
+): Promise<AddressRecord[]> {
   const [v4, v6] = await Promise.allSettled([
     resolve4(hostname),
     resolve6(hostname),
   ]);
-  const records = [
+  const records: AddressRecord[] = [
     ...(v4.status === "fulfilled"
       ? v4.value.map((address) => ({ address, family: 4 }))
       : []),
@@ -251,13 +287,18 @@ async function resolvePublicAddressRecords(hostname) {
       : []),
   ];
   if (records.some((record) => !isPublicWebhookAddress(record.address))) {
-    const error = new Error("unsafe webhook DNS result");
+    const error = new Error("unsafe webhook DNS result") as Error & {
+      code?: string;
+    };
     error.code = "UNSAFE_WEBHOOK_DNS_RESULT";
     throw error;
   }
   if (records.length === 0) {
     const rejected = [v4, v6]
-      .filter((result) => result.status === "rejected")
+      .filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === "rejected",
+      )
       .map((result) => result.reason);
     if (rejected.length > 0) {
       throw new AggregateError(rejected, "webhook DNS resolution failed");
@@ -267,9 +308,12 @@ async function resolvePublicAddressRecords(hostname) {
   return records;
 }
 
-function safeWebhookFetch(requestUrl, init = {}) {
+function safeWebhookFetch(
+  requestUrl: string | URL | Request,
+  init: RequestInit = {},
+): Promise<Response> {
   return new Promise((resolve, reject) => {
-    let url;
+    let url: URL;
     try {
       url = new URL(String(requestUrl));
     } catch (error) {
@@ -281,9 +325,17 @@ function safeWebhookFetch(requestUrl, init = {}) {
       url,
       {
         method: init.method || "GET",
-        headers: init.headers,
-        signal: init.signal,
-        lookup(hostname, options, callback) {
+        headers: init.headers as Record<string, string>,
+        signal: init.signal as AbortSignal,
+        lookup(
+          hostname: string,
+          options: { family?: number } | undefined,
+          callback: (
+            err: NodeJS.ErrnoException | null,
+            address: string,
+            family: number,
+          ) => void,
+        ) {
           resolvePublicAddressRecords(hostname)
             .then((records) => {
               const family = options?.family;
@@ -291,14 +343,14 @@ function safeWebhookFetch(requestUrl, init = {}) {
                 ? records.find((record) => record.family === family)
                 : records[0];
               if (!match) {
-                callback(new Error("no public webhook DNS result"));
+                callback(new Error("no public webhook DNS result"), "", 0);
                 return;
               }
               callback(null, match.address, match.family);
             })
-            .catch((error) => callback(error));
+            .catch((error) => callback(error, "", 0));
         },
-      },
+      } as never,
       (response) => {
         response.resume();
         response.on("end", () => {
@@ -307,7 +359,7 @@ function safeWebhookFetch(requestUrl, init = {}) {
       },
     );
     req.on("error", reject);
-    if (init.body) req.write(init.body);
+    if (init.body) req.write(init.body as string);
     req.end();
   });
 }
@@ -315,7 +367,7 @@ function safeWebhookFetch(requestUrl, init = {}) {
 // Best-effort: a KV/wrangler hiccup here must NOT fail the publish run (the data
 // is already live and the smoke step still needs to run). Log a warning and
 // return null so the caller degrades to "no subscriptions / skip".
-function runWrangler(wranglerArgs) {
+function runWrangler(wranglerArgs: string[]): string | null {
   const bin = path.join(
     repoRoot,
     "node_modules",

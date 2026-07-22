@@ -4424,7 +4424,7 @@ async function handleHealthRequest(request, env) {
 // --- Change-feed webhooks -----------------------------------------------------
 // Subscription management for the data publish change feed. Subscriptions live in
 // the METAGRAPH_CONTROL KV namespace under the `webhooks:sub:<id>` prefix; the
-// publish-time dispatcher (scripts/dispatch-webhooks.mjs) reads them and fires
+// publish-time dispatcher (scripts/dispatch-webhooks.ts) reads them and fires
 // HMAC-signed POSTs. Routes degrade to 503 when KV is unbound (local dev).
 async function handleWebhookRequest(request, env, url) {
   if (!env.METAGRAPH_CONTROL?.get || !env.METAGRAPH_CONTROL?.put) {
