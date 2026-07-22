@@ -2,7 +2,8 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/curation.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const CURATION_ARTIFACT = "/metagraph/curation.json";
@@ -10,14 +11,25 @@ export const CURATION_ARTIFACT = "/metagraph/curation.json";
 const CURATION_SORT_FIELDS = API_QUERY_COLLECTIONS.curation.sort_fields;
 const COVERAGE_LEVELS = QUERY_ENUMS.coverageLevel;
 
-export function curationMcpError(code, message) {
-  const error = new Error(message);
+export interface CurationMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function curationMcpError(
+  code: string,
+  message: string,
+): CurationMcpError {
+  const error = new Error(message) as CurationMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -29,7 +41,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -41,16 +57,19 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-export function curationQueryUrl(args) {
+export function curationQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/curation");
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
       throw curationMcpError(
         "invalid_params",
         "netuid must be a non-negative integer.",
       );
     }
-    url.searchParams.set("netuid", String(args.netuid));
+    url.searchParams.set("netuid", String(netuid));
   }
   const coverageLevel = optionalEnum(args, "coverage_level", COVERAGE_LEVELS);
   if (coverageLevel) {
@@ -63,32 +82,64 @@ export function curationQueryUrl(args) {
   const fields = optionalString(args, "fields");
   if (fields) url.searchParams.set("fields", fields);
   if (args?.limit !== undefined) {
-    if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100) {
+    const limit = args.limit;
+    if (
+      typeof limit !== "number" ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 100
+    ) {
       throw curationMcpError(
         "invalid_params",
         "limit must be an integer between 1 and 100.",
       );
     }
-    url.searchParams.set("limit", String(args.limit));
+    url.searchParams.set("limit", String(limit));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw curationMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
-export async function loadCurationList(ctx, args, { readArtifact } = {}) {
+export interface CurationListResult {
+  generated_at: unknown;
+  notes: unknown;
+  curation: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
+export async function loadCurationList(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<CurationListResult> {
   const queryUrl = curationQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, CURATION_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw curationMcpError("not_found", "Curation snapshot unavailable.");
     }
@@ -101,13 +152,19 @@ export async function loadCurationList(ctx, args, { readArtifact } = {}) {
   if (!blob || typeof blob !== "object") {
     throw curationMcpError("not_found", "Curation snapshot unavailable.");
   }
-  const transformed = applyQueryFilters(blob, queryUrl, "curation", []);
+  const transformed = applyQueryFilters(
+    blob as Record<string, unknown>,
+    queryUrl,
+    "curation",
+    [],
+  );
   if (transformed.error) {
     throw curationMcpError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.curation) ? data.curation : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows = Array.isArray(data.curation) ? (data.curation as Row[]) : [];
   const rowLen = rows.length;
   return {
     generated_at: data.generated_at ?? null,

@@ -81,7 +81,7 @@ import {
   LIST_CURATION_MCP_TOOL,
   LIST_CURATION_OUTPUT_SCHEMA,
   loadCurationList,
-} from "./curation-mcp.mjs";
+} from "./curation-mcp.ts";
 import {
   LIST_GAPS_INSTRUCTIONS,
   LIST_GAPS_MCP_TOOL,
