@@ -19510,6 +19510,91 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     assert.equal(event.observed_at, 1_720_000_000_000);
   });
 
+  test("a block+extrinsic lookup resolves that extrinsic's emitted events", async () => {
+    // The get_extrinsic_chain_events use case (#7647): the raw pallet.method
+    // events one specific extrinsic emitted, scoped by ?block=&extrinsic=.
+    let capturedUrl;
+    const env = {
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            count: 2,
+            next_before: null,
+            next_cursor: null,
+            events: [
+              {
+                block_number: 9,
+                event_index: 4,
+                pallet: "SubtensorModule",
+                method: "StakeAdded",
+                args: { netuid: 3 },
+                phase: "ApplyExtrinsic",
+                extrinsic_index: 1,
+                observed_at: 1_720_000_000_000,
+              },
+              {
+                block_number: 9,
+                event_index: 5,
+                pallet: "System",
+                method: "ExtrinsicSuccess",
+                args: {},
+                phase: "ApplyExtrinsic",
+                extrinsic_index: 1,
+                observed_at: 1_720_000_000_000,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ chain_events(block: 9, extrinsic: 1) {
+          count
+          events { block_number event_index pallet method extrinsic_index }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.searchParams.get("block"), "9");
+    assert.equal(capturedUrl.searchParams.get("extrinsic"), "1");
+    assert.equal(body.data.chain_events.count, 2);
+    const events = body.data.chain_events.events;
+    assert.equal(events.length, 2);
+    assert.ok(events.every((e) => e.block_number === 9));
+    assert.ok(events.every((e) => e.extrinsic_index === 1));
+    assert.deepEqual(
+      events.map((e) => `${e.pallet}.${e.method}`),
+      ["SubtensorModule.StakeAdded", "System.ExtrinsicSuccess"],
+    );
+  });
+
+  test("a block+extrinsic pair that emitted nothing resolves the schema-stable empty feed, never an error", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          count: 0,
+          next_before: null,
+          next_cursor: null,
+          events: [],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ chain_events(block: 9, extrinsic: 3) { count next_cursor next_before events { pallet } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_events, {
+      count: 0,
+      next_cursor: null,
+      next_before: null,
+      events: [],
+    });
+  });
+
   test("forwards filter args as query params, including legacy before", async () => {
     let capturedUrl;
     const env = {
