@@ -182,7 +182,7 @@ import {
   LIST_ENDPOINT_INCIDENTS_MCP_TOOL,
   LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   loadEndpointIncidentsList,
-} from "./endpoint-incidents-mcp.mjs";
+} from "./endpoint-incidents-mcp.ts";
 import {
   LIST_PROVIDER_ENDPOINTS_INSTRUCTIONS,
   LIST_PROVIDER_ENDPOINTS_MCP_TOOL,

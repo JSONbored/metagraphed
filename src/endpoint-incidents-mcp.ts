@@ -2,7 +2,8 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/endpoint-incidents.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const ENDPOINT_INCIDENTS_ARTIFACT = "/metagraph/endpoint-incidents.json";
@@ -14,14 +15,25 @@ const HEALTH_STATUSES = QUERY_ENUMS.healthStatus;
 const INCIDENT_SEVERITIES = QUERY_ENUMS.endpointIncidentSeverity;
 const INCIDENT_STATES = QUERY_ENUMS.endpointIncidentState;
 
-export function endpointIncidentsMcpError(code, message) {
-  const error = new Error(message);
+export interface EndpointIncidentsMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function endpointIncidentsMcpError(
+  code: string,
+  message: string,
+): EndpointIncidentsMcpError {
+  const error = new Error(message) as EndpointIncidentsMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -33,7 +45,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -45,16 +61,19 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-export function endpointIncidentsQueryUrl(args) {
+export function endpointIncidentsQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/endpoint-incidents");
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
       throw endpointIncidentsMcpError(
         "invalid_params",
         "netuid must be a non-negative integer.",
       );
     }
-    url.searchParams.set("netuid", String(args.netuid));
+    url.searchParams.set("netuid", String(netuid));
   }
   const kind = optionalEnum(args, "kind", SURFACE_KINDS);
   if (kind) url.searchParams.set("kind", kind);
@@ -73,36 +92,65 @@ export function endpointIncidentsQueryUrl(args) {
   const fields = optionalString(args, "fields");
   if (fields) url.searchParams.set("fields", fields);
   if (args?.limit !== undefined) {
-    if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100) {
+    const limit = args.limit;
+    if (
+      typeof limit !== "number" ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 100
+    ) {
       throw endpointIncidentsMcpError(
         "invalid_params",
         "limit must be an integer between 1 and 100.",
       );
     }
-    url.searchParams.set("limit", String(args.limit));
+    url.searchParams.set("limit", String(limit));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw endpointIncidentsMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
+export interface EndpointIncidentsListResult {
+  generated_at: unknown;
+  notes: unknown;
+  summary: unknown;
+  incidents: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
 export async function loadEndpointIncidentsList(
-  ctx,
-  args,
-  { readArtifact } = {},
-) {
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<EndpointIncidentsListResult> {
   const queryUrl = endpointIncidentsQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, ENDPOINT_INCIDENTS_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw endpointIncidentsMcpError(
         "not_found",
@@ -122,7 +170,7 @@ export async function loadEndpointIncidentsList(
     );
   }
   const transformed = applyQueryFilters(
-    blob,
+    blob as Record<string, unknown>,
     queryUrl,
     "endpoint-incidents",
     [],
@@ -133,9 +181,10 @@ export async function loadEndpointIncidentsList(
       transformed.error.message,
     );
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.incidents) ? data.incidents : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows = Array.isArray(data.incidents) ? (data.incidents as Row[]) : [];
   const rowLen = rows.length;
   return {
     generated_at: data.generated_at ?? null,
