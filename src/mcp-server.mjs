@@ -493,7 +493,7 @@ import {
   buildSubnetServing,
   SUBNET_SERVING_WINDOWS,
   DEFAULT_SUBNET_SERVING_WINDOW,
-} from "./subnet-serving.mjs";
+} from "./subnet-serving.ts";
 import {
   buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,

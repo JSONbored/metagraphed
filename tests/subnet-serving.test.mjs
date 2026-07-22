@@ -6,7 +6,7 @@ import {
   SERVING_EVENT_KIND,
   SUBNET_SERVING_WINDOWS,
   DEFAULT_SUBNET_SERVING_WINDOW,
-} from "../src/subnet-serving.mjs";
+} from "../src/subnet-serving.ts";
 
 describe("buildSubnetServing", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {
