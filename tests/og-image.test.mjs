@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import { buildStatParts, handleOgImage } from "../src/og-image.mjs";
+import { buildStatParts, handleOgImage } from "../src/og-image.ts";
 
 // A fake readR2Object dep: records the artifact path it was called with and
 // returns a configurable result, mirroring workers/storage.ts's readR2Object

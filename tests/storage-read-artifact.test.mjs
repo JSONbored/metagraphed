@@ -101,7 +101,7 @@ test("readR2 returns r2_binding_missing when no archive binding is configured", 
 });
 
 // ---- readR2Object: the binary-safe sibling of readR2, used by the og-image
-// live route (src/og-image.mjs) so a PNG body never gets run through .json().
+// live route (src/og-image.ts) so a PNG body never gets run through .json().
 
 test("readR2Object returns r2_binding_missing when no archive binding is configured", async () => {
   const result = await readR2Object({}, "/metagraph/og-image.png", "r2");

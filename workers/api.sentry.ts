@@ -26,7 +26,7 @@
 // by moving that render out of the request path entirely: it now runs at
 // publish time in Node (scripts/refresh-og-image.mjs) and the result is
 // stored in R2 like every other artifact, so api.mjs never imports
-// workers-og at all -- see src/og-image.mjs's own header. That freed
+// workers-og at all -- see src/og-image.ts's own header. That freed
 // comfortable headroom for Sentry here without a second Worker.
 //
 // withSentry() instruments BOTH the fetch AND scheduled handlers on the

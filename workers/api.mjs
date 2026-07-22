@@ -282,7 +282,7 @@ import { SubnetStatusHub } from "./subnet-status-hub.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.ts";
 import { handleBadgeRequest } from "../src/badge.ts";
-import { handleOgImage } from "../src/og-image.mjs";
+import { handleOgImage } from "../src/og-image.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
@@ -1797,7 +1797,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // bundle over Cloudflare's deploy ceiling once @sentry/cloudflare was
   // added; the fix was to stop shipping workers-og in any live Worker at
   // all, not to relocate the render into a second Worker). See
-  // src/og-image.mjs's own header for the full rationale.
+  // src/og-image.ts's own header for the full rationale.
   if (url.pathname === "/og.png" || url.pathname === "/og") {
     return handleOgImage(request, env, url, { readR2Object });
   }
