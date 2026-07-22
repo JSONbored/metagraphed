@@ -14,7 +14,6 @@ import {
   HealthPill,
   PageHero,
   DensityToggle,
-  ViewModeToggle,
   ShareButton,
   DownloadCsvButton,
   ActionBar,
@@ -25,7 +24,6 @@ import {
   MiniStack,
   Sparkline,
   type Density,
-  type ViewMode,
 } from "@jsonbored/ui-kit";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -43,6 +41,11 @@ import {
   SubnetsCompareDrawer,
   CompareToggle,
 } from "@/components/metagraphed/subnets-compare-drawer";
+import { SubnetViewToggle, type SubnetView } from "@/components/metagraphed/subnet-view-toggle";
+import {
+  SubnetBubbleChart,
+  type SubnetBubblePoint,
+} from "@/components/metagraphed/charts/subnet-bubble-chart";
 import {
   subnetsInfiniteQuery,
   coverageQuery,
@@ -157,7 +160,7 @@ function SubnetsPage() {
       search: { limit: search.limit, view: search.view } as never,
       replace: true,
     });
-  const setView = (v: ViewMode) =>
+  const setView = (v: SubnetView) =>
     navigate({
       search: (prev: Record<string, unknown>) => ({ ...prev, view: v }) as never,
       replace: true,
@@ -184,7 +187,7 @@ function SubnetsPage() {
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
         actions={
           <>
-            <ViewModeToggle value={search.view} onChange={setView} />
+            <SubnetViewToggle value={search.view} onChange={setView} />
             {search.view === "table" ? (
               <DensityToggle value={effectiveDensity} onChange={setDensity} />
             ) : null}
@@ -346,7 +349,7 @@ function ExcludeToggle({
   );
 }
 
-function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; density?: Density }) {
+function SubnetsTable({ view, density = "comfortable" }: { view: SubnetView; density?: Density }) {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
@@ -518,6 +521,24 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     [filtered, search.sort, search.order],
   );
 
+  // #6884: bubble/scatter points, mapped from the SAME filtered+sorted rows the
+  // table renders (so every filter carries over, no second filter surface). The
+  // one dimension not already on the row is total stake — read off the shared
+  // economicsMap (already fetched for the Registration/Emission columns), so no
+  // new fetch. Memoized on its real inputs; only recomputed for the bubble view.
+  const bubblePoints = useMemo<SubnetBubblePoint[]>(
+    () =>
+      rows.map((s) => ({
+        netuid: s.netuid,
+        name: s.name ?? `Subnet ${s.netuid}`,
+        surfaces: s.surfaces_count ?? 0,
+        stakeTao: economicsMap[s.netuid]?.total_stake_tao,
+        participants: s.participants ?? 0,
+        health: s.health ?? "unknown",
+      })),
+    [rows, economicsMap],
+  );
+
   // Warm the favicon cache for visible rows during idle time so scrolling
   // feels instant. The browser dedupes the eventual <img> request. `rows` is
   // memoized above, so this effect only re-runs when the visible row set
@@ -642,10 +663,11 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
     />
   );
 
-  // Grid / matrix views skip ListShell so they're not boxed in a table card.
-  if (view === "grid" || view === "matrix") {
+  // Grid / matrix / bubble views skip ListShell so they're not boxed in a table
+  // card. All three read the same filtered `rows`, so the filter bar carries over.
+  if (view === "grid" || view === "matrix" || view === "bubble") {
     return (
-      <div>
+      <div id="subnets-alt-view">
         <div className="sticky top-14 z-20 -mx-4 md:mx-0 mb-3 bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 border-b border-border md:border md:rounded md:bg-card px-3 py-2 md:p-2.5">
           <div className="flex flex-wrap items-center gap-2">{filters}</div>
         </div>
@@ -653,8 +675,13 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           emptyNode
         ) : view === "grid" ? (
           <SubnetGrid rows={rows} />
-        ) : (
+        ) : view === "matrix" ? (
           <SubnetMatrix rows={rows} />
+        ) : (
+          <SubnetBubbleChart
+            points={bubblePoints}
+            onSelect={(netuid) => navigate({ to: "/subnets/$netuid", params: { netuid } })}
+          />
         )}
         <div className="mt-3">{footerNode}</div>
       </div>
