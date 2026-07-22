@@ -183,6 +183,26 @@
         "https://github.com/TensorUSD/subnet/blob/main/README.md"
       ],
       "url": "https://agent-api.tensorusd.com/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Not publicly documented — unauthenticated GET returns HTTP 401 with an empty body (live-verified 2026-07-22), so the credential type is unknown; #7124 flags it for re-probing with a maintainer/contributor API key."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-113-tensorusd-openapi",
+      "kind": "openapi",
+      "name": "TensorUSD backend OpenAPI schema (auth-gated)",
+      "notes": "Live-verified 2026-07-22: GET returns HTTP 401 with an empty body unauthenticated — a real, credential-gated schema endpoint, unlike the bare /openapi.json, /swagger.json, /docs and /redoc paths on this host, which all return clean 404s (re-confirmed the same day). Registered per #7124; re-probe with a credential would unlock full endpoint discovery.",
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://github.com/TensorUSD/subnet"],
+      "url": "https://api.tensorusd.com/api/openapi.json"
     }
   ],
   "website_url": "https://tensorusd.com/"
