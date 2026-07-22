@@ -6,7 +6,7 @@ import {
   SUBNET_LEASE_RPC_TIMEOUT_MS,
   decodeSubnetLease,
   loadSubnetLease,
-} from "../src/subnet-lease.mjs";
+} from "../src/subnet-lease.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.mjs";
 

@@ -41,15 +41,25 @@ import {
   twox64ConcatU32StorageKey,
 } from "./twox-storage-key.ts";
 
+type Row = Record<string, unknown>;
+
 export const SUBNET_LEASE_KV_TTL = 120; // seconds -- same freshness profile as subnet-burn.ts
 export const SUBNET_LEASE_NEGATIVE_KV_TTL = 10; // seconds
 export const SUBNET_LEASE_RPC_TIMEOUT_MS = 5000;
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
+interface StorageFetchResult {
+  ok: boolean;
+  raw: unknown;
+}
+
 // One raw state_getStorage read. `ok` is false only on a genuine RPC
 // failure (non-2xx / timeout / network error); `raw` is the JSON-RPC
 // result on success, which is itself `null` for a genuinely-absent key.
-async function fetchStorageRaw(storageKey, timeoutMs) {
+async function fetchStorageRaw(
+  storageKey: string,
+  timeoutMs: number,
+): Promise<StorageFetchResult> {
   try {
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
@@ -63,7 +73,7 @@ async function fetchStorageRaw(storageKey, timeoutMs) {
       }),
     });
     if (!rpcResp.ok) return { ok: false, raw: undefined };
-    const rpcBody = await rpcResp.json();
+    const rpcBody = (await rpcResp.json()) as Row;
     return { ok: true, raw: rpcBody?.result };
   } catch {
     return { ok: false, raw: undefined };
@@ -71,7 +81,7 @@ async function fetchStorageRaw(storageKey, timeoutMs) {
 }
 
 // "0x"-prefixed even-length hex -> raw bytes. null on anything else.
-function hexToBytes(hex) {
+function hexToBytes(hex: unknown): Uint8Array | null {
   if (typeof hex !== "string" || !/^0x([0-9a-fA-F]{2})*$/.test(hex)) {
     return null;
   }
@@ -83,11 +93,11 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-function readU16LE(bytes, offset) {
+function readU16LE(bytes: Uint8Array, offset: number): number {
   return bytes[offset] | (bytes[offset + 1] << 8);
 }
 
-function readU32LE(bytes, offset) {
+function readU32LE(bytes: Uint8Array, offset: number): number {
   return (
     (bytes[offset] |
       (bytes[offset + 1] << 8) |
@@ -97,7 +107,7 @@ function readU32LE(bytes, offset) {
   );
 }
 
-function readU64LEBigInt(bytes, offset) {
+function readU64LEBigInt(bytes: Uint8Array, offset: number): bigint {
   let value = 0n;
   for (let i = 7; i >= 0; i -= 1) {
     value = (value << 8n) | BigInt(bytes[offset + i]);
@@ -108,7 +118,7 @@ function readU64LEBigInt(bytes, offset) {
 // BigInt rao/alpha (both u64 @ 1e9 precision) -> Number display units, split
 // in BigInt space first to avoid float precision loss (mirrors subnet-
 // burn.mjs's / network-parameters.ts's identical conversion).
-function rawToDisplay(raw) {
+function rawToDisplay(raw: bigint): number {
   return Number(raw / 1_000_000_000n) + Number(raw % 1_000_000_000n) / 1e9;
 }
 
@@ -119,7 +129,7 @@ const SUBNET_LEASE_BYTES_WITH_END_BLOCK = SUBNET_LEASE_BYTES_NO_END_BLOCK + 4;
 // (see this module's header for the field-order source). Returns null on
 // any malformed/wrong-length input rather than throwing -- a live-RPC route
 // must stay schema-stable even against an unexpected chain-side shape.
-export function decodeSubnetLease(hex) {
+export function decodeSubnetLease(hex: unknown): Row | null {
   const bytes = hexToBytes(hex);
   if (
     !bytes ||
@@ -142,7 +152,7 @@ export function decodeSubnetLease(hex) {
 
   const endBlockTag = bytes[offset];
   offset += 1;
-  let endBlock = null;
+  let endBlock: number | null = null;
   if (endBlockTag === 1) {
     if (bytes.length !== SUBNET_LEASE_BYTES_WITH_END_BLOCK) return null;
     endBlock = readU32LE(bytes, offset);
@@ -178,7 +188,7 @@ export function decodeSubnetLease(hex) {
 // decoded this request (transient RPC failure, or a race between the two
 // sequential reads if the lease was terminated in between) -- callers
 // should treat that as "retry", not "no lease".
-export async function loadSubnetLease(env, netuid) {
+export async function loadSubnetLease(env: Env, netuid: number): Promise<Row> {
   if (!isU16Netuid(netuid)) {
     throw new RangeError("netuid must be an integer in the u16 range 0..65535");
   }
@@ -189,7 +199,7 @@ export async function loadSubnetLease(env, netuid) {
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as Row;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
@@ -198,8 +208,8 @@ export async function loadSubnetLease(env, netuid) {
   const queriedAt = new Date().toISOString();
   const timeout = SUBNET_LEASE_RPC_TIMEOUT_MS;
 
-  let leased = null;
-  let lease = null;
+  let leased: boolean | null = null;
+  let lease: Row | null = null;
   let rpcOk = false;
 
   const leaseIdKey = twox64ConcatU16StorageKey(
@@ -209,7 +219,7 @@ export async function loadSubnetLease(env, netuid) {
   );
   const leaseIdResult = await fetchStorageRaw(leaseIdKey, timeout);
 
-  let leaseId = null;
+  let leaseId: number | null = null;
   if (leaseIdResult.ok) {
     if (leaseIdResult.raw === null) {
       leased = false;
@@ -245,15 +255,18 @@ export async function loadSubnetLease(env, netuid) {
         : null;
 
     if (decoded) {
-      let accumulatedDividendsAlpha = null;
+      let accumulatedDividendsAlpha: number | null = null;
       let dividendsOk = false;
       if (dividendsResult.ok) {
         if (dividendsResult.raw === null) {
           accumulatedDividendsAlpha = 0; // ValueQuery default
           dividendsOk = true;
-        } else if (/^0x[0-9a-fA-F]{16}$/.test(dividendsResult.raw)) {
+        } else if (
+          typeof dividendsResult.raw === "string" &&
+          /^0x[0-9a-fA-F]{16}$/.test(dividendsResult.raw)
+        ) {
           accumulatedDividendsAlpha = rawToDisplay(
-            readU64LEBigInt(hexToBytes(dividendsResult.raw), 0),
+            readU64LEBigInt(hexToBytes(dividendsResult.raw) as Uint8Array, 0),
           );
           dividendsOk = true;
         }
@@ -270,7 +283,7 @@ export async function loadSubnetLease(env, netuid) {
     }
   }
 
-  const payload = {
+  const payload: Row = {
     schema_version: 1,
     netuid,
     leased,

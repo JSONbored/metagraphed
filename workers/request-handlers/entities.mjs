@@ -120,7 +120,7 @@ import {
 } from "../../src/entity-labels.ts";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
-import { loadSubnetLease } from "../../src/subnet-lease.mjs";
+import { loadSubnetLease } from "../../src/subnet-lease.ts";
 import { computeStakeQuote } from "../../src/stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
@@ -4060,7 +4060,7 @@ export async function handleSubnetBurn(request, env, netuid) {
 // lease and, if so, its terms + accumulated-but-undistributed alpha
 // dividends. Same live-RPC + KV-cache + rate-limit shape as handleSubnetBurn
 // just above (a different set of storage items, same pattern). See
-// src/subnet-lease.mjs's header for the on-chain storage-key/struct-layout
+// src/subnet-lease.ts's header for the on-chain storage-key/struct-layout
 // details. The companion /lease/history route (event log) is a Postgres-
 // tier route in workers/data-api.mjs, not here.
 export async function handleSubnetLease(request, env, netuid) {

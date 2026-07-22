@@ -4494,7 +4494,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
 // #6978: subnet_lease is the live-RPC counterpart (current state, not the
 // event log) -- same schema-stable-null-on-RPC-failure shape as
 // subnet_recycled/subnet_burn above, reusing loadSubnetLease unchanged.
-describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.mjs)", () => {
+describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.ts)", () => {
   function withFetchStub(stub, fn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;

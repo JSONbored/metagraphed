@@ -41,7 +41,7 @@ import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
 
-export const CHILD_HOTKEY_KV_TTL = 120; // seconds -- live chain state, same profile as subnet-lease.mjs
+export const CHILD_HOTKEY_KV_TTL = 120; // seconds -- live chain state, same profile as subnet-lease.ts
 export const CHILD_HOTKEY_NEGATIVE_KV_TTL = 10; // seconds
 export const CHILD_HOTKEY_RPC_TIMEOUT_MS = 5000;
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
