@@ -419,7 +419,7 @@ test("artifact build does not preserve forged endpoint index health", () => {
       env: process.env,
       stdio: "pipe",
     });
-    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
+    execFileSync(process.execPath, ["scripts/generate-client.ts", "--write"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,
@@ -522,7 +522,7 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       env: process.env,
       stdio: "pipe",
     });
-    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
+    execFileSync(process.execPath, ["scripts/generate-client.ts", "--write"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,

@@ -17,7 +17,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 }
 
-export function generateClientSource() {
+export function generateClientSource(): string {
   return `/**
  * This file was auto-generated from public/metagraph/openapi.json.
  * Do not make direct changes to the file.

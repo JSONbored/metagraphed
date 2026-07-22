@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { generateClientSource } from "./generate-client.mjs";
+import { generateClientSource } from "./generate-client.ts";
 import { repoRoot } from "./lib.mjs";
 
 const outputPath = path.join(repoRoot, "generated/metagraphed-client.ts");

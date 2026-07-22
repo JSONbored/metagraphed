@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { buildApiComponentBundle } from "./bundle-schemas.ts";
-import { generateClientSource } from "./generate-client.mjs";
+import { generateClientSource } from "./generate-client.ts";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
 import { readJson, repoRoot, stableStringify } from "./lib.mjs";
 import { promises as fs } from "node:fs";
