@@ -77,7 +77,7 @@ function stringToHexBytes(message: string): string {
 /**
  * Signs an opaque login-challenge string via the extension's
  * signRaw({ type: "bytes" }) -- never an extrinsic, never broadcast. This is
- * the exact message/signature shape src/wallet-auth.mjs's
+ * the exact message/signature shape src/wallet-auth.ts's
  * walletChallengeMessage()/verifyWalletChallenge() expect server-side (see
  * that file's own header comment). A deliberate, narrow evolution of this
  * file's previously extrinsic-only signing surface -- docs/adr/0018 §4.
@@ -100,6 +100,6 @@ export async function signMessage(
     data: stringToHexBytes(message),
     type: "bytes",
   });
-  // src/wallet-auth.mjs expects a bare 128-char hex sr25519 signature, no 0x prefix.
+  // src/wallet-auth.ts expects a bare 128-char hex sr25519 signature, no 0x prefix.
   return signature.startsWith("0x") ? signature.slice(2) : signature;
 }

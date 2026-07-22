@@ -15,7 +15,7 @@ import {
   sign as sr25519Sign,
 } from "@scure/sr25519";
 import { encodeAccountId32 } from "../src/ss58.ts";
-import { createSessionToken } from "../src/wallet-auth.mjs";
+import { createSessionToken } from "../src/wallet-auth.ts";
 
 const mockQueue = vi.hoisted(() => ({ current: [] }));
 const sqlCalls = vi.hoisted(() => []);

@@ -977,7 +977,7 @@ function walletAuthErrorCode(status) {
 // Proxies POST /api/v1/auth/wallet/challenge and /verify (ADR 0021, #6835) to
 // the DATA_API service binding -- all challenge issuance, sr25519
 // verification, and session issuance live in workers/data-api.mjs (via
-// src/wallet-auth.mjs); this is only the forwarding + envelope-translation
+// src/wallet-auth.ts); this is only the forwarding + envelope-translation
 // boundary, same shape as handleAlertTriggersProxy above.
 async function handleWalletAuthProxy(request, env) {
   if (!env.DATA_API) {

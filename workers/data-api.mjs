@@ -520,7 +520,7 @@ import {
   SESSION_TTL_SECONDS,
   verifySessionToken,
   verifyWalletChallenge,
-} from "../src/wallet-auth.mjs";
+} from "../src/wallet-auth.ts";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -3955,12 +3955,12 @@ async function handleAlertTriggersRoute(request, env, url) {
 //     THIS account's own mg_... API key, now minted/verified/revoked via
 //     Unkey (src/unkey-client.ts) rather than locally generated/hashed --
 //     every /api/v1/keys route requires a session (Authorization: Bearer
-//     <session_token>, src/wallet-auth.mjs). No invite-code gate anymore:
+//     <session_token>, src/wallet-auth.ts). No invite-code gate anymore:
 //     any wallet-connected account can self-serve a key immediately, at its
 //     account's current tier (rpc_accounts.tier, default 'free'); promoting
 //     an account to a higher tier afterward is the internal tier-promotion
 //     route below, not a mint-time credential. All crypto/no-I/O logic
-//     lives in src/wallet-auth.mjs; everything here is Postgres plumbing +
+//     lives in src/wallet-auth.ts; everything here is Postgres plumbing +
 //     the Unkey calls.
 //   POST /api/v1/internal/keys/verify   -- internal-only, see
 //     handleApiKeyVerify's own header comment.
@@ -4018,7 +4018,7 @@ async function readAccountRouteBody(request) {
   }
 }
 
-// No default/fallback case: src/wallet-auth.mjs's issueWalletChallenge and
+// No default/fallback case: src/wallet-auth.ts's issueWalletChallenge and
 // verifyWalletChallenge are the only callers of this map, and both are a
 // closed set of exactly these four codes -- a fifth is not reachable from
 // this codebase's own contract, so a catch-all here would be untestable

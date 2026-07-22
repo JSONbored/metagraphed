@@ -11,7 +11,7 @@
 // Flow: an MCP client (or, later, the website login button) redirects the
 // user's browser to GET /authorize with standard OAuth 2.1 + PKCE params.
 // We parse that via OAuthHelpers.parseAuthRequest, stash it in OAUTH_KV
-// under a short-lived single-use nonce (mirrors wallet-auth.mjs's
+// under a short-lived single-use nonce (mirrors wallet-auth.ts's
 // issueWalletChallenge KV-challenge pattern -- proven shape, not
 // reinvented), then redirect the browser to GitHub's own OAuth authorize
 // endpoint with that nonce as `state`. GitHub redirects back to
@@ -60,7 +60,7 @@ const GITHUB_USER_API_URL = "https://api.github.com/user";
 // two can never drift apart.
 const MCP_API_ROUTE = "/mcp";
 
-// Mirrors wallet-auth.mjs's WALLET_CHALLENGE_TTL_SECONDS: long enough for a
+// Mirrors wallet-auth.ts's WALLET_CHALLENGE_TTL_SECONDS: long enough for a
 // human to complete a GitHub login popup, short enough that an intercepted
 // nonce is worthless soon after.
 export const OAUTH_PENDING_TTL_SECONDS = 300;

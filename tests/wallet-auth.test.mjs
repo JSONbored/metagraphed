@@ -15,7 +15,7 @@ import {
   verifyWalletChallenge,
   WALLET_CHALLENGE_TTL_SECONDS,
   walletChallengeMessage,
-} from "../src/wallet-auth.mjs";
+} from "../src/wallet-auth.ts";
 
 function createFakeKv() {
   const store = new Map();

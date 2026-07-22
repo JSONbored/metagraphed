@@ -24,13 +24,15 @@ export const WALLET_CHALLENGE_TTL_SECONDS = 300;
 // simplest correct thing" decision -- see createSessionToken below).
 export const SESSION_TTL_SECONDS = 3600;
 
-function randomHex(byteLength) {
+type FailureResult = { ok: false; code: string };
+
+function randomHex(byteLength: number): string {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
   return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function hexToBytes(hex) {
+function hexToBytes(hex: string): Uint8Array {
   const out = new Uint8Array(hex.length / 2);
   for (let i = 0; i < out.length; i += 1) {
     out[i] = parseInt(hex.substr(i * 2, 2), 16);
@@ -42,7 +44,7 @@ function hexToBytes(hex) {
  * signRaw({ type: "bytes" })) -- deterministic from ss58 + nonce, so the
  * server reconstructs it for verification instead of storing the message
  * itself (only the nonce is persisted). */
-export function walletChallengeMessage(ss58, nonce) {
+export function walletChallengeMessage(ss58: string, nonce: string): string {
   return `metagraphed wallet login\nss58: ${ss58}\nnonce: ${nonce}`;
 }
 
@@ -50,7 +52,12 @@ export function walletChallengeMessage(ss58, nonce) {
  * result rather than null/throw so the caller (workers/data-api.mjs) can
  * distinguish a client error (bad ss58 -> 400) from an infra gap (KV
  * unbound -> 503) instead of collapsing both into one generic failure. */
-export async function issueWalletChallenge(env, ss58) {
+export async function issueWalletChallenge(
+  env: Env,
+  ss58: string,
+): Promise<
+  FailureResult | { ok: true; message: string; expiresInSeconds: number }
+> {
   const decoded = decodeSs58(ss58);
   if (!decoded || decoded.prefix !== DEFAULT_SS58_PREFIX) {
     return { ok: false, code: "invalid_ss58" };
@@ -77,7 +84,11 @@ export async function issueWalletChallenge(env, ss58) {
  * missing Schnorrkel marker all reach @scure/sr25519's own `abytes`/marker
  * assertions, which throw -- caught here and folded into `invalid_signature`
  * rather than a 500). */
-export async function verifyWalletChallenge(env, ss58, signatureHex) {
+export async function verifyWalletChallenge(
+  env: Env,
+  ss58: string,
+  signatureHex: unknown,
+): Promise<FailureResult | { ok: true }> {
   const decoded = decodeSs58(ss58);
   if (!decoded || decoded.prefix !== DEFAULT_SS58_PREFIX) {
     return { ok: false, code: "invalid_ss58" };
@@ -100,7 +111,7 @@ export async function verifyWalletChallenge(env, ss58, signatureHex) {
     return { ok: false, code: "invalid_signature" };
   }
   const message = new TextEncoder().encode(walletChallengeMessage(ss58, nonce));
-  let verified;
+  let verified: boolean;
   try {
     verified = sr25519Verify(
       message,
@@ -124,7 +135,7 @@ export async function verifyWalletChallenge(env, ss58, signatureHex) {
 // there's nothing to look up, and nothing to revoke early -- a leaked
 // session's damage is bounded to its short TTL and to key-management actions
 // on the one account it names.
-function base64UrlEncodeBytes(bytes) {
+function base64UrlEncodeBytes(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary)
@@ -133,7 +144,7 @@ function base64UrlEncodeBytes(bytes) {
     .replace(/=+$/, "");
 }
 
-function base64UrlDecodeToBytes(encoded) {
+function base64UrlDecodeToBytes(encoded: string): Uint8Array {
   const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
   const pad =
     padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
@@ -143,7 +154,10 @@ function base64UrlDecodeToBytes(encoded) {
   return bytes;
 }
 
-export async function createSessionToken(secret, { accountId, ss58 }) {
+export async function createSessionToken(
+  secret: string,
+  { accountId, ss58 }: { accountId: number; ss58: string },
+): Promise<string> {
   const payload = {
     account_id: accountId,
     ss58,
@@ -159,7 +173,10 @@ export async function createSessionToken(secret, { accountId, ss58 }) {
 /** Verifies a session token's signature, expiry, and shape. Returns
  * { accountId, ss58 } on success, null on anything else -- expired, forged,
  * malformed, or truncated. */
-export async function verifySessionToken(secret, token) {
+export async function verifySessionToken(
+  secret: string,
+  token: unknown,
+): Promise<{ accountId: number; ss58: string } | null> {
   if (typeof token !== "string") return null;
   const dot = token.lastIndexOf(".");
   if (dot === -1) return null;
@@ -170,7 +187,7 @@ export async function verifySessionToken(secret, token) {
   const expected = await signPayload(secret, encoded);
   if (!timingSafeEqual(signature, expected)) return null;
 
-  let payload;
+  let payload: Record<string, unknown>;
   try {
     payload = JSON.parse(
       new TextDecoder().decode(base64UrlDecodeToBytes(encoded)),
