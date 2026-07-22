@@ -5,7 +5,7 @@
 // container runtime -- see those entrypoints' own headers), plus a couple of
 // Cloudflare-publish-side build steps that fit the same "short-lived batch
 // script" shape. Used by refresh-economics.mjs, refresh-native-snapshot.mjs,
-// backfill-registry-postgres.mjs, discover-testnet-surfaces.mjs,
+// backfill-registry-postgres.ts, discover-testnet-surfaces.mjs,
 // export-parquet.mjs, reconcile-neurons.mjs, sync-registry-to-postgres.mjs,
 // and refresh-og-image.mjs so all eight report to the same consolidated
 // `metagraphed` Sentry project with a consistent `component` tag --

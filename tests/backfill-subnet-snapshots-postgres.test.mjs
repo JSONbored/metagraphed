@@ -5,7 +5,7 @@
 // named subset of scripts/ is instrumented) -- these tests exist for
 // correctness confidence before running the script against production, the
 // same convention tests/registry-sync-client.test.mjs already follows for
-// scripts/backfill-registry-postgres.mjs's sibling helpers.
+// scripts/backfill-registry-postgres.ts's sibling helpers.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {

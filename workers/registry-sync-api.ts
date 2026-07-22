@@ -12,7 +12,7 @@
 // check below is the only auth gate in the whole path.
 //
 // This is the write path scripts/sync-registry-to-postgres.mjs (merge-
-// triggered) and scripts/backfill-registry-postgres.mjs (scheduled full
+// triggered) and scripts/backfill-registry-postgres.ts (scheduled full
 // resync) call over HTTPS from GitHub Actions -- there is no Tailscale, SSH,
 // or direct network path from CI to the database at all. GitHub Actions
 // only ever needs a REGISTRY_SYNC_SECRET value and the public HTTPS
@@ -267,7 +267,7 @@ export default {
           // surfaces (authority: "registry-observed") the same subnet may also
           // carry, so without this scope it would delete those rows on every
           // merge that touches the file. The scheduled full resync
-          // (scripts/backfill-registry-postgres.mjs) computes current_surfaces
+          // (scripts/backfill-registry-postgres.ts) computes current_surfaces
           // from the complete baseline-augmented view and omits authority_scope,
           // so it keeps pruning across every authority as before.
           const scopeToCommunity = prune.authority_scope === "community";

@@ -28,7 +28,7 @@
 // row-count-bounded chunks (see workers/registry-sync-api.mjs), never opens
 // a DB connection itself.
 //
-// Usage: REGISTRY_SYNC_SECRET=... node scripts/backfill-registry-postgres.mjs [--dry-run]
+// Usage: REGISTRY_SYNC_SECRET=... node scripts/backfill-registry-postgres.ts [--dry-run]
 import path from "node:path";
 import {
   chunkRows,
@@ -43,13 +43,15 @@ import { generateBaselineOverlaySet } from "./generated-overlays.mjs";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { initSentry, endSessionAndFlush } from "./observability.mjs";
 
+type Row = Record<string, unknown>;
+
 initSentry("backfill-registry-postgres");
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 const operationalKindSet = new Set(OPERATIONAL_SURFACE_KINDS);
 
-async function main() {
+async function main(): Promise<void> {
   // Graceful no-op (not a failure) when unset -- this same script backs the
   // indexer-box registry-sync systemd timer (data-refresh-node role,
   // JSONbored/metagraphed-infra -- moved off the former GitHub Actions
@@ -66,13 +68,13 @@ async function main() {
   }
 
   const sourceCommit = await currentCommitSha();
-  const providerFiles = await listJsonFiles(
+  const providerFiles: string[] = await listJsonFiles(
     path.join(repoRoot, "registry/providers"),
   );
 
-  const providers = [];
+  const providers: Row[] = [];
   for (const filePath of providerFiles) {
-    const overlay = await readJson(filePath);
+    const overlay = (await readJson(filePath)) as Row;
     if (!overlay.id) {
       console.error(`skipping ${filePath}: missing required "id" field`);
       continue;
@@ -85,10 +87,13 @@ async function main() {
   // via baseline_excluded_surface_ids/_urls) -- exactly what the live build
   // serves today, not a re-derivation of it.
   const { manualOverlays, generatedOverlays } =
-    await generateBaselineOverlaySet();
+    (await generateBaselineOverlaySet()) as {
+      manualOverlays: Row[];
+      generatedOverlays: Row[];
+    };
 
-  const subnets = [];
-  const surfaces = [];
+  const subnets: Row[] = [];
+  const surfaces: Row[] = [];
   collectOverlays(manualOverlays, "community", sourceCommit, subnets, surfaces);
   collectOverlays(
     generatedOverlays,
@@ -126,32 +131,37 @@ async function main() {
   // under the Worker's rows-per-kind cap regardless of how large the
   // registry grows.
   if (providers.length || subnets.length) {
-    const result = await postRegistrySync({ providers, subnets });
-    summary.providers_written += result?.providers_written ?? 0;
-    summary.subnets_written += result?.subnets_written ?? 0;
+    const result = (await postRegistrySync({ providers, subnets })) as
+      Row | undefined;
+    summary.providers_written += (result?.providers_written as number) ?? 0;
+    summary.subnets_written += (result?.subnets_written as number) ?? 0;
   }
-  for (const chunk of chunkRows(surfaces)) {
+  for (const chunk of chunkRows(surfaces) as Row[][]) {
     if (!chunk.length) continue;
-    const result = await postRegistrySync({ surfaces: chunk });
-    summary.surfaces_written += result?.surfaces_written ?? 0;
+    const result = (await postRegistrySync({ surfaces: chunk })) as
+      Row | undefined;
+    summary.surfaces_written += (result?.surfaces_written as number) ?? 0;
   }
 
-  for (const chunk of chunkRows(buildSurfacePruneRows(subnets, surfaces))) {
+  for (const chunk of chunkRows(
+    buildSurfacePruneRows(subnets, surfaces),
+  ) as Row[][]) {
     if (!chunk.length) continue;
-    const result = await postRegistrySync({ prune_surfaces: chunk });
-    summary.surfaces_deleted += result?.surfaces_deleted ?? 0;
+    const result = (await postRegistrySync({ prune_surfaces: chunk })) as
+      Row | undefined;
+    summary.surfaces_deleted += (result?.surfaces_deleted as number) ?? 0;
   }
 
   console.log(stableStringify(summary));
 }
 
 function collectOverlays(
-  overlays,
-  source,
-  sourceCommit,
-  subnetsOut,
-  surfacesOut,
-) {
+  overlays: Row[],
+  source: string,
+  sourceCommit: string,
+  subnetsOut: Row[],
+  surfacesOut: Row[],
+): void {
   for (const overlay of overlays) {
     if (!Number.isInteger(overlay.netuid) || !overlay.slug || !overlay.name) {
       console.error(
@@ -168,7 +178,7 @@ function collectOverlays(
       overlay: subnetOverlay,
       source_commit: sourceCommit,
     });
-    for (const surface of subnetSurfaces) {
+    for (const surface of subnetSurfaces as Row[]) {
       surfacesOut.push({
         subnet_netuid: overlay.netuid,
         surface_key: subnetSurfaceKey(surface, overlay.netuid),
@@ -176,11 +186,12 @@ function collectOverlays(
         url: surface.url,
         provider_id: surface.provider || null,
         authority: surface.authority || "community",
-        review_state: surface.review?.state || "community-submitted",
+        review_state:
+          (surface.review as Row | undefined)?.state || "community-submitted",
         probe_eligible: Boolean(
-          surface.probe?.enabled &&
+          (surface.probe as Row | undefined)?.enabled &&
           surface.public_safe &&
-          operationalKindSet.has(surface.kind),
+          operationalKindSet.has(surface.kind as string),
         ),
         public_safe: surface.public_safe !== false,
         overlay: surface,
@@ -190,13 +201,13 @@ function collectOverlays(
   }
 }
 
-function buildSurfacePruneRows(subnets, surfaces) {
+function buildSurfacePruneRows(subnets: Row[], surfaces: Row[]): Row[] {
   const bySubnet = new Map(
     subnets.map((subnet) => [
       subnet.netuid,
       {
         subnet_netuid: subnet.netuid,
-        current_surfaces: [],
+        current_surfaces: [] as Row[],
         source_commit: subnet.source_commit,
       },
     ]),
@@ -210,7 +221,7 @@ function buildSurfacePruneRows(subnets, surfaces) {
   return [...bySubnet.values()];
 }
 
-async function currentCommitSha() {
+async function currentCommitSha(): Promise<string> {
   const { spawnSync } = await import("node:child_process");
   const result = spawnSync("git", ["rev-parse", "HEAD"], {
     cwd: repoRoot,

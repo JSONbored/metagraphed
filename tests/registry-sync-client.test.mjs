@@ -1,6 +1,6 @@
 // Unit tests for scripts/lib.mjs's registry-sync HTTP client helpers
 // (postRegistrySync, chunkRows) -- the shared POST client
-// scripts/sync-registry-to-postgres.mjs and scripts/backfill-registry-postgres.mjs
+// scripts/sync-registry-to-postgres.mjs and scripts/backfill-registry-postgres.ts
 // both call instead of touching Postgres directly.
 import assert from "node:assert/strict";
 import { afterEach, test } from "vitest";

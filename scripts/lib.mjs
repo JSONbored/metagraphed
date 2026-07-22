@@ -885,7 +885,7 @@ export const REGISTRY_SYNC_MAX_BODY_BYTES = 3_500_000;
 export const REGISTRY_SYNC_MAX_ROWS_PER_KIND = 2_000;
 
 // Shared POST client for scripts/sync-registry-to-postgres.mjs (merge-
-// triggered) and scripts/backfill-registry-postgres.mjs (scheduled full
+// triggered) and scripts/backfill-registry-postgres.ts (scheduled full
 // resync) -- both send {providers, subnets, surfaces} row arrays to the
 // registry-sync Worker over HTTPS instead of touching Postgres directly (see
 // workers/registry-sync-api.mjs). Returns null when REGISTRY_SYNC_SECRET
