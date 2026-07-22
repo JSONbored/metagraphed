@@ -80,8 +80,16 @@ export interface CallSubnetSurfaceCredential {
   // key) -- this module never computes or validates a signature, only
   // relays the bundle as given. For `location: "body"`, every entry is
   // merged into the outgoing JSON request body alongside whatever `body`
-  // option is separately supplied.
+  // option is separately supplied -- unless `bodyEnvelope` is also set.
   values?: Record<string, string>;
+  // `location: "body"` only (metagraphed#7716, auth.body_envelope): when the
+  // target API wraps the credential in its own nested object alongside the
+  // semantic payload (e.g. `{"payload": {...}, "sig": {...}}`) instead of
+  // flat-merging, this describes that wrapper shape. When set, the outgoing
+  // body becomes `{[payloadKey]: <body arg, or {} when absent>,
+  // [credentialKey]: <every values entry, as its own nested object>}`
+  // instead of a flat merge.
+  bodyEnvelope?: { payloadKey: string; credentialKey: string };
 }
 
 // metagraphed#7687 (MCP execute Phase 3b): a query-location credential is,
@@ -308,11 +316,22 @@ export async function callSubnetSurface(
   // body BEFORE calling this function; this function trusts that and merges
   // unconditionally (matches this module's existing "caller validates
   // eligibility, this module only places" contract for every other location).
+  // metagraphed#7716: when the target API wraps the credential in its own
+  // nested object alongside the semantic payload (auth.body_envelope) rather
+  // than flat-merging, build that shape instead of spreading bodyCredentialFields
+  // across the top level.
   const effectiveBody = bodyCredentialFields
-    ? JSON.stringify({
-        ...(requestBody ? JSON.parse(requestBody) : {}),
-        ...bodyCredentialFields,
-      })
+    ? credential?.bodyEnvelope
+      ? JSON.stringify({
+          [credential.bodyEnvelope.payloadKey]: requestBody
+            ? JSON.parse(requestBody)
+            : {},
+          [credential.bodyEnvelope.credentialKey]: bodyCredentialFields,
+        })
+      : JSON.stringify({
+          ...(requestBody ? JSON.parse(requestBody) : {}),
+          ...bodyCredentialFields,
+        })
     : requestBody;
 
   const fetched = await safetyCheckedFetch(requestUrl, {

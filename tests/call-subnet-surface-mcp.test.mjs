@@ -241,6 +241,44 @@ const SIGNATURE_BODY_SURFACE = {
   schema_source: { surface_id: "x:openapi:1" },
 };
 
+// metagraphed#7716: body-envelope credential placement -- the credential
+// nests under its own key alongside the semantic payload, instead of a flat
+// top-level merge.
+const SIGNATURE_BODY_ENVELOPE_SURFACE = {
+  surface_id: "x:api:19",
+  netuid: 23,
+  kind: "subnet-api",
+  url: "https://x.example/signed-envelope",
+  auth_required: true,
+  auth: {
+    scheme: "signature",
+    location: "body",
+    names: ["signer_ss58", "nonce", "signature"],
+    body_envelope: { payload_key: "payload", credential_key: "sig" },
+  },
+  probe: { method: "GET", enabled: true },
+  schema_source: { surface_id: "x:openapi:1" },
+};
+
+// A malformed body_envelope (missing credential_key) -- must fall back to
+// the existing flat-merge behavior rather than crash or silently drop the
+// credential.
+const SIGNATURE_MALFORMED_ENVELOPE_SURFACE = {
+  surface_id: "x:api:20",
+  netuid: 24,
+  kind: "subnet-api",
+  url: "https://x.example/signed-malformed-envelope",
+  auth_required: true,
+  auth: {
+    scheme: "signature",
+    location: "body",
+    names: ["identity", "timestamp", "signature"],
+    body_envelope: { payload_key: "payload" },
+  },
+  probe: { method: "GET", enabled: true },
+  schema_source: { surface_id: "x:openapi:1" },
+};
+
 const SIGNATURE_NO_NAMES_SURFACE = {
   surface_id: "x:api:16",
   netuid: 20,
@@ -289,6 +327,8 @@ const CATALOG = {
     SIGNATURE_QUERY_SURFACE,
     SIGNATURE_COOKIE_SURFACE,
     SIGNATURE_BODY_SURFACE,
+    SIGNATURE_BODY_ENVELOPE_SURFACE,
+    SIGNATURE_MALFORMED_ENVELOPE_SURFACE,
     SIGNATURE_NO_NAMES_SURFACE,
     SIGNATURE_EMPTY_NAMES_SURFACE,
     SIGNATURE_NO_LOCATION_SURFACE,
@@ -1183,6 +1223,86 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /invalid_params/);
       assert.match(result.content[0].text, /POST or PUT/);
+    });
+
+    test("location:body with auth.body_envelope nests the credential under its own key", async () => {
+      let sentBody;
+      const result = await callTool(
+        {
+          surface_id: "x:api:19",
+          path: "/users",
+          method: "POST",
+          body: { name: "ada" },
+          credential: {
+            signer_ss58: "5F...",
+            nonce: "abc123",
+            signature: "0xabc",
+          },
+        },
+        async (url, init) => {
+          sentBody = init.body;
+          return new Response(JSON.stringify({ id: 1 }), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.deepEqual(JSON.parse(sentBody), {
+        payload: { name: "ada" },
+        sig: { signer_ss58: "5F...", nonce: "abc123", signature: "0xabc" },
+      });
+    });
+
+    test("location:body with auth.body_envelope defaults the payload key to {} with no separately-supplied body", async () => {
+      let sentBody;
+      const result = await callTool(
+        {
+          surface_id: "x:api:19",
+          path: "/ping",
+          method: "POST",
+          credential: {
+            signer_ss58: "5F...",
+            nonce: "abc123",
+            signature: "0xabc",
+          },
+        },
+        async (url, init) => {
+          sentBody = init.body;
+          return new Response("pong", { status: 200 });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.deepEqual(JSON.parse(sentBody), {
+        payload: {},
+        sig: { signer_ss58: "5F...", nonce: "abc123", signature: "0xabc" },
+      });
+    });
+
+    test("a malformed auth.body_envelope (missing credential_key) falls back to a flat top-level merge", async () => {
+      let sentBody;
+      const result = await callTool(
+        {
+          surface_id: "x:api:20",
+          path: "/ping",
+          method: "POST",
+          credential: {
+            identity: "5F...",
+            timestamp: "1700000000",
+            signature: "0xabc",
+          },
+        },
+        async (url, init) => {
+          sentBody = init.body;
+          return new Response("pong", { status: 200 });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.deepEqual(JSON.parse(sentBody), {
+        identity: "5F...",
+        timestamp: "1700000000",
+        signature: "0xabc",
+      });
     });
 
     test("a surface with no auth.names documented is credential_not_supported", async () => {

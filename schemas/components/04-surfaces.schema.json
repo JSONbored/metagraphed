@@ -335,6 +335,24 @@
                 "minItems": 1,
                 "description": "For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. [\"X-Hotkey\", \"X-Timestamp\", \"X-Signature\"]. Mutually exclusive with `name`."
               },
+              "body_envelope": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["payload_key", "credential_key"],
+                "description": "For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {\"payload\": {...}, \"sig\": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default).",
+                "properties": {
+                  "payload_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Top-level body key the caller-supplied semantic payload (the `body` argument, or {} when absent) is wrapped under, e.g. \"payload\"."
+                  },
+                  "credential_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Top-level body key the credential bundle (every name/value pair from `names`) is nested under, e.g. \"sig\"."
+                  }
+                }
+              },
               "value_format": {
                 "type": "string",
                 "description": "Placeholder showing the value shape, e.g. \"Bearer <token>\". Never a real secret."
@@ -601,6 +619,24 @@
                 "items": { "type": "string" },
                 "minItems": 1,
                 "description": "For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. [\"X-Hotkey\", \"X-Timestamp\", \"X-Signature\"]. Mutually exclusive with `name`."
+              },
+              "body_envelope": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["payload_key", "credential_key"],
+                "description": "For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {\"payload\": {...}, \"sig\": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default).",
+                "properties": {
+                  "payload_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Top-level body key the caller-supplied semantic payload (the `body` argument, or {} when absent) is wrapped under, e.g. \"payload\"."
+                  },
+                  "credential_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Top-level body key the credential bundle (every name/value pair from `names`) is nested under, e.g. \"sig\"."
+                  }
+                }
               },
               "value_format": {
                 "type": "string",

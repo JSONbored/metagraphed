@@ -4015,6 +4015,13 @@ export interface components {
         CandidateSurface: {
             /** @description Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness. */
             auth?: {
+                /** @description For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {"payload": {...}, "sig": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default). */
+                body_envelope?: {
+                    /** @description Top-level body key the credential bundle (every name/value pair from `names`) is nested under, e.g. "sig". */
+                    credential_key: string;
+                    /** @description Top-level body key the caller-supplied semantic payload (the `body` argument, or {} when absent) is wrapped under, e.g. "payload". */
+                    payload_key: string;
+                };
                 /**
                  * @description Where the credential is sent. "body" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie).
                  * @enum {unknown}
@@ -8307,6 +8314,13 @@ export interface components {
         Surface: {
             /** @description Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness. */
             auth?: {
+                /** @description For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {"payload": {...}, "sig": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default). */
+                body_envelope?: {
+                    /** @description Top-level body key the credential bundle (every name/value pair from `names`) is nested under, e.g. "sig". */
+                    credential_key: string;
+                    /** @description Top-level body key the caller-supplied semantic payload (the `body` argument, or {} when absent) is wrapped under, e.g. "payload". */
+                    payload_key: string;
+                };
                 /**
                  * @description Where the credential is sent. "body" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie).
                  * @enum {unknown}
