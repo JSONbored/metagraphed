@@ -2,7 +2,8 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/providers.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const PROVIDERS_ARTIFACT = "/metagraph/providers.json";
@@ -11,14 +12,25 @@ const PROVIDER_SORT_FIELDS = API_QUERY_COLLECTIONS.providers.sort_fields;
 const PROVIDER_KINDS = QUERY_ENUMS.providerKind;
 const PROVIDER_AUTHORITIES = QUERY_ENUMS.providerAuthority;
 
-export function providersMcpError(code, message) {
-  const error = new Error(message);
+export interface ProvidersMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function providersMcpError(
+  code: string,
+  message: string,
+): ProvidersMcpError {
+  const error = new Error(message) as ProvidersMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -30,7 +42,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -42,7 +58,9 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-export function providersQueryUrl(args) {
+export function providersQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/providers");
   const id = optionalString(args, "id");
   if (id) url.searchParams.set("id", id);
@@ -57,32 +75,64 @@ export function providersQueryUrl(args) {
   const fields = optionalString(args, "fields");
   if (fields) url.searchParams.set("fields", fields);
   if (args?.limit !== undefined) {
-    if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100) {
+    const limit = args.limit;
+    if (
+      typeof limit !== "number" ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 100
+    ) {
       throw providersMcpError(
         "invalid_params",
         "limit must be an integer between 1 and 100.",
       );
     }
-    url.searchParams.set("limit", String(args.limit));
+    url.searchParams.set("limit", String(limit));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw providersMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
-export async function loadProvidersList(ctx, args, { readArtifact } = {}) {
+export interface ProvidersListResult {
+  generated_at: unknown;
+  schema_version: unknown;
+  providers: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
+export async function loadProvidersList(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<ProvidersListResult> {
   const queryUrl = providersQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, PROVIDERS_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw providersMcpError("not_found", "Providers index unavailable.");
     }
@@ -95,13 +145,19 @@ export async function loadProvidersList(ctx, args, { readArtifact } = {}) {
   if (!blob || typeof blob !== "object") {
     throw providersMcpError("not_found", "Providers index unavailable.");
   }
-  const transformed = applyQueryFilters(blob, queryUrl, "providers", []);
+  const transformed = applyQueryFilters(
+    blob as Record<string, unknown>,
+    queryUrl,
+    "providers",
+    [],
+  );
   if (transformed.error) {
     throw providersMcpError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.providers) ? data.providers : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows = Array.isArray(data.providers) ? (data.providers as Row[]) : [];
   const rowLen = rows.length;
   return {
     generated_at: data.generated_at ?? null,

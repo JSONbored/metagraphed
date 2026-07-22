@@ -194,7 +194,7 @@ import {
   LIST_PROVIDERS_MCP_TOOL,
   LIST_PROVIDERS_OUTPUT_SCHEMA,
   loadProvidersList,
-} from "./providers-mcp.mjs";
+} from "./providers-mcp.ts";
 import {
   GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
