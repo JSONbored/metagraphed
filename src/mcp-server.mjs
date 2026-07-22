@@ -11239,7 +11239,30 @@ export const MCP_TOOLS = [
               "This surface's credential is sent in the request body, which requires `path` and `method` (POST or PUT) to also be set.",
             );
           }
-          credentialPlacement = { location, values: args.credential };
+          // metagraphed#7716: some APIs wrap the credential in its own
+          // nested object alongside the semantic payload (e.g.
+          // {"payload": {...}, "sig": {...}}) rather than a flat top-level
+          // merge -- auth.body_envelope, curated registry data, describes
+          // that shape. Only meaningful for location:"body"; malformed or
+          // absent falls back to the existing flat-merge behavior.
+          const envelope = surface.auth?.body_envelope;
+          const bodyEnvelope =
+            location === "body" &&
+            envelope &&
+            typeof envelope.payload_key === "string" &&
+            envelope.payload_key.length > 0 &&
+            typeof envelope.credential_key === "string" &&
+            envelope.credential_key.length > 0
+              ? {
+                  payloadKey: envelope.payload_key,
+                  credentialKey: envelope.credential_key,
+                }
+              : undefined;
+          credentialPlacement = {
+            location,
+            values: args.credential,
+            ...(bodyEnvelope ? { bodyEnvelope } : {}),
+          };
         } else {
           throw toolError(
             "credential_not_supported",

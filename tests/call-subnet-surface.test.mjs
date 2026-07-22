@@ -926,6 +926,68 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
+  // metagraphed#7716: body-envelope credential placement -- some APIs wrap
+  // the credential in its own nested object alongside the semantic payload
+  // (e.g. soma's {"payload": {...}, "sig": {...}}) instead of a flat merge.
+  test("credential bundle: body envelope nests the credential under its own key, alongside the supplied payload", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/miner/openrouter-key/add",
+        method: "POST",
+        body: JSON.stringify({ api_key: "sk-..." }),
+        contentType: "application/json",
+        credential: {
+          location: "body",
+          values: {
+            signer_ss58: "5F...",
+            nonce: "abc123",
+            signature: "0xabc",
+          },
+          bodyEnvelope: { payloadKey: "payload", credentialKey: "sig" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.deepEqual(JSON.parse(init.body), {
+            payload: { api_key: "sk-..." },
+            sig: {
+              signer_ss58: "5F...",
+              nonce: "abc123",
+              signature: "0xabc",
+            },
+          });
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential bundle: body envelope defaults the payload key to {} with no separately-supplied body", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/miner/openrouter-key/delete",
+        method: "POST",
+        contentType: "application/json",
+        credential: {
+          location: "body",
+          values: { signer_ss58: "5F...", nonce: "abc", signature: "0xabc" },
+          bodyEnvelope: { payloadKey: "payload", credentialKey: "sig" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.deepEqual(JSON.parse(init.body), {
+            payload: {},
+            sig: { signer_ss58: "5F...", nonce: "abc", signature: "0xabc" },
+          });
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
   test("credential bundle: query values are all redacted in the returned url", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
