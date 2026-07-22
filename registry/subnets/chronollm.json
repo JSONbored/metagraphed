@@ -191,6 +191,176 @@
         "https://taomarketcap.com/subnets/38"
       ],
       "url": "https://api.taomarketcap.com/public/v1/subnets/38/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-openapi",
+      "kind": "openapi",
+      "name": "ChronoLLM ChronoGPT backend OpenAPI",
+      "notes": "Live-verified 2026-07-22: GET 200 application/json, OpenAPI 3.1 spec titled 'SN38 ChronoGPT Backend' (13 paths). First-party backend for SN38.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.chronollm.com/openapi.json",
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api",
+      "kind": "subnet-api",
+      "name": "ChronoLLM health",
+      "notes": "Live-verified 2026-07-22: GET 200 application/json {\"status\":\"ok\"}.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com",
+      "kind": "subnet-api",
+      "name": "ChronoLLM current round",
+      "notes": "Live-verified 2026-07-22: GET 200 application/json {\"current_round\":4,\"eval_round\":3}.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/rounds/current"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-2",
+      "kind": "subnet-api",
+      "name": "ChronoLLM evaluation years",
+      "notes": "Live-verified 2026-07-22: GET 200 application/json {\"years\":[2013..2024]}.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/years"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-3",
+      "kind": "subnet-api",
+      "name": "ChronoLLM evaluation config",
+      "notes": "Live-verified 2026-07-22: GET 200 application/json (max_parameters, max_model_bytes, max_eval_seconds, ...).",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-4",
+      "kind": "subnet-api",
+      "name": "ChronoLLM round submissions",
+      "notes": "Path-param template (round_num). Live-verified 2026-07-22: GET /submissions/4 → 200 application/json (round + per-uid submissions).",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/submissions/%7Bround_num%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-5",
+      "kind": "subnet-api",
+      "name": "ChronoLLM submission by uid",
+      "notes": "Path-param template (round_num, uid). Live-verified 2026-07-22: GET /submissions/4/113 → 200 application/json (single submission).",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/submissions/%7Bround_num%7D/%7Buid%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-6",
+      "kind": "subnet-api",
+      "name": "ChronoLLM evaluation results",
+      "notes": "Path-param template (round_num). Live-verified 2026-07-22: GET /eval/results/3 → 200 application/json (array).",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/eval/results/%7Bround_num%7D"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "mTLS client certificate. The OpenAPI schema declares no security scheme, but live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Client certificate required\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-7",
+      "kind": "subnet-api",
+      "name": "ChronoLLM quality questions",
+      "notes": "Live-verified 2026-07-22: unauthenticated GET → 401 {\"detail\":\"Client certificate required\"} — mTLS client-cert gated (the schema declares no security).",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/quality/questions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "mTLS client certificate. The OpenAPI schema declares no security scheme, but live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Client certificate required\"}."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-38-tao-colosseum-subnet-api-api-chronollm-com-8",
+      "kind": "subnet-api",
+      "name": "ChronoLLM leak-detection benchmark",
+      "notes": "Path-param template (cutoff_year). Live-verified 2026-07-22: GET /benchmark/2020 → 401 {\"detail\":\"Client certificate required\"} — mTLS client-cert gated.",
+      "provider": "tao-colosseum",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.chronollm.com/openapi.json"],
+      "url": "https://api.chronollm.com/benchmark/%7Bcutoff_year%7D"
     }
   ],
   "source_repo": "https://github.com/chronollm/sn38",
