@@ -4,7 +4,7 @@ import {
   computeReliability,
   displayUptimeRatio,
   scoreFromStats,
-} from "../src/reliability.mjs";
+} from "../src/reliability.ts";
 
 describe("displayUptimeRatio", () => {
   test("passes an exact-1 ratio through unchanged", () => {

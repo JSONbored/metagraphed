@@ -11,7 +11,7 @@ import {
   computeReliability,
   scoreFromStats,
   displayUptimeRatio,
-} from "./reliability.mjs";
+} from "./reliability.ts";
 import {
   rollupSubnetStatus,
   normalizeProbeStatus,
@@ -1400,13 +1400,10 @@ export function formatUptime({
   // computeReliability keys per-surface aggregation on the stable surface_key
   // itself (falling back to surface_id), so renamed rows already collapse into
   // one bucket — no need to pre-rewrite surface_id here.
-  // reliability.mjs isn't converted yet (Phase 3) -- its untyped
-  // `{ window = null, now = null }` defaults infer as exactly `null`, so the
-  // real values need a cast here.
   const reliability = computeReliability(rows || [], {
     window: window || null,
     now,
-  } as Parameters<typeof computeReliability>[1]);
+  });
   const bySurface = new Map<
     unknown,
     { surface_id: unknown; surface_id_day: string | null; days: Row[] }

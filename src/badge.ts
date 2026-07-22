@@ -57,7 +57,7 @@ const CALLABLE_SURFACE_KINDS = new Set([
   "sse",
   "data-artifact",
 ]);
-// A–F grade → color band (gray for unknown); bands match reliability.mjs.
+// A–F grade → color band (gray for unknown); bands match reliability.ts.
 const GRADE_COLOR: Record<string, string> = {
   A: "#2ea44f",
   B: "#97ca00",

@@ -97,7 +97,7 @@ that's merely unsupported/dead/content-mismatched), or `failed` (everything else
 wrong-chain answer regardless of authority).
 
 The reliability score itself is documented directly in its own source header
-([`src/reliability.mjs:1-13`](../src/reliability.mjs)):
+([`src/reliability.ts:1-13`](../src/reliability.ts)):
 
 ```
 uptimeScore    = uptime_ratio * 100                     (sample-weighted, exact)
@@ -109,7 +109,7 @@ score          = round(max(0, uptimeScore - latencyPenalty))
 `uptime_ratio = ok_count / samples` over the requested window. Grades: `A` at `score >= 99`, `B`
 at `>= 95`, `C` at `>= 90`, `D` at `>= 75`, else `F`. A sub-perfect uptime ratio is clamped so it
 can never round up to a flawless `score: 100`/grade `A`
-([`scoreFromStats`, `src/reliability.mjs:42`](../src/reliability.mjs)). `null` (not a fabricated
+([`scoreFromStats`, `src/reliability.ts:42`](../src/reliability.ts)). `null` (not a fabricated
 `0`) whenever there is no probe data for the window — this score is only ever computed from real
 history.
 

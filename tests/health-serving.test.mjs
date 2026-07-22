@@ -21,7 +21,7 @@ import {
   subnetBadgeStatus,
   summarizeRows,
 } from "../src/health-serving.ts";
-import { computeReliability, scoreFromStats } from "../src/reliability.mjs";
+import { computeReliability, scoreFromStats } from "../src/reliability.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 

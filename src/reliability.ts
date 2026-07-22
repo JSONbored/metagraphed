@@ -12,11 +12,13 @@
 // Uptime dominates; latency is a mild secondary penalty. Grades: A>=99, B>=95,
 // C>=90, D>=75, else F.
 
+type Row = Record<string, unknown>;
+
 const LATENCY_FREE_MS = 500;
 const LATENCY_PENALTY_PER_MS = 1 / 100;
 const MAX_LATENCY_PENALTY = 15;
 
-function gradeFor(score) {
+function gradeFor(score: number): string {
   if (score >= 99) return "A";
   if (score >= 95) return "B";
   if (score >= 90) return "C";
@@ -31,9 +33,18 @@ function gradeFor(score) {
 // is already collapsed to 1 upstream). Only a genuine okCount === samples ratio
 // (exactly 1) keeps the perfect value; any sub-1 ratio clamps to the largest
 // 4-decimal value below 1.
-export function displayUptimeRatio(ratio) {
+export function displayUptimeRatio(ratio: number): number {
   const rounded = Number(ratio.toFixed(4));
   return rounded >= 1 && ratio < 1 ? 0.9999 : rounded;
+}
+
+export interface ReliabilityScore {
+  score: number;
+  grade: string;
+  uptime_ratio: number;
+  avg_latency_ms: number | null;
+  sample_count: number;
+  latency_sample_count: number;
 }
 
 // Score a single rolled-up window of stats. Returns null when there are no
@@ -44,7 +55,12 @@ export function scoreFromStats({
   okCount,
   avgLatencyMs,
   latencySamples = 0,
-}) {
+}: {
+  samples: number;
+  okCount: number;
+  avgLatencyMs: number | null;
+  latencySamples?: number;
+}): ReliabilityScore | null {
   if (!samples) {
     return null;
   }
@@ -79,6 +95,18 @@ export function scoreFromStats({
   };
 }
 
+export interface ReliabilityResult {
+  subnet:
+    | (ReliabilityScore & {
+        window: unknown;
+        surface_count: number;
+        day_count: number;
+        computed_at: unknown;
+      })
+    | null;
+  surfaces: Record<string, ReliabilityScore | null>;
+}
+
 // Aggregate surface_uptime_daily rows into a subnet-level score + a per-surface
 // score map. `rows`: [{ surface_id, surface_key?, day, samples, ok_count,
 // avg_latency_ms, latency_samples }]. Per-surface aggregation keys on the stable
@@ -88,13 +116,24 @@ export function scoreFromStats({
 // surface_count and fragment its score). The window mean is weighted by
 // latency_samples (healthy readings per day), not total samples; legacy rows
 // fall back to total samples. `subnet` is null when there are no samples.
-export function computeReliability(rows, { window = null, now = null } = {}) {
-  const bySurface = new Map();
+export function computeReliability(
+  rows: Row[] | null | undefined,
+  { window = null, now = null }: { window?: unknown; now?: unknown } = {},
+): ReliabilityResult {
+  const bySurface = new Map<
+    unknown,
+    {
+      samples: number;
+      okCount: number;
+      latencyWeighted: number;
+      latencySamples: number;
+    }
+  >();
   let totalSamples = 0;
   let totalOk = 0;
   let latencyWeighted = 0;
   let latencySamples = 0;
-  const days = new Set();
+  const days = new Set<unknown>();
 
   for (const row of rows || []) {
     const samples = Number(row.samples) || 0;
@@ -129,9 +168,9 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
     }
   }
 
-  const surfaces = {};
+  const surfaces: Record<string, ReliabilityScore | null> = {};
   for (const [surfaceKey, surface] of bySurface) {
-    surfaces[surfaceKey] = scoreFromStats({
+    surfaces[surfaceKey as string] = scoreFromStats({
       samples: surface.samples,
       okCount: surface.okCount,
       avgLatencyMs: surface.latencySamples
