@@ -1,6 +1,6 @@
 // Renders the live Open Graph card (api.metagraph.sh's /og.png) in plain Node
 // at publish time and stores it in R2 like every other artifact -- see
-// src/og-image.mjs's own header for why this moved out of the live Worker
+// src/og-image.ts's own header for why this moved out of the live Worker
 // request path (#6502).
 //
 // workers-og itself (satori + resvg-wasm) can't load in plain Node: its wasm
@@ -34,8 +34,8 @@ import path from "node:path";
 import { Resvg } from "@resvg/resvg-js";
 import satori from "satori";
 import { html } from "satori-html";
-import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
-import { buildStatParts, renderMarkup } from "../src/og-image.mjs";
+import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
+import { buildStatParts, renderMarkup } from "../src/og-image.ts";
 import { repoRoot, stableStringify } from "./lib.mjs";
 import { initSentry, endSessionAndFlush } from "./observability.mjs";
 import * as Sentry from "@sentry/node";

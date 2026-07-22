@@ -13,7 +13,7 @@ import {
   findSavedQueryTemplate,
   runSavedQuery,
   savedQueryError,
-} from "../src/saved-queries.mjs";
+} from "../src/saved-queries.ts";
 
 const SCHEMA = JSON.parse(
   readFileSync(

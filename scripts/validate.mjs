@@ -34,7 +34,7 @@ import {
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 import {
   githubSignalsForSubnet,
   loadGithubSignals,

@@ -40,8 +40,8 @@ import {
   currentPostgresTierFallbackGeneration,
   tryPostgresTier,
 } from "../postgres-tier.ts";
-import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
-import { formatGlobalIncidents } from "../../src/health-serving.mjs";
+import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
+import { formatGlobalIncidents } from "../../src/health-serving.ts";
 import {
   applyQueryFilters,
   listQueryParamNames,
@@ -53,74 +53,74 @@ import {
   loadSubnetHealthTrends,
   loadSubnetIncidents,
   loadSubnetPercentiles,
-} from "../../src/analytics-live.mjs";
-import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.mjs";
+} from "../../src/analytics-live.ts";
+import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.ts";
 import {
   buildChainActivity,
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "../../src/chain-analytics.mjs";
+} from "../../src/chain-analytics.ts";
 import {
   CHAIN_TRANSFER_PAIR_SORTS,
   buildChainTransferPairs,
-} from "../../src/chain-transfer-pairs.mjs";
-import { buildChainTransfers } from "../../src/chain-transfers.mjs";
+} from "../../src/chain-transfer-pairs.ts";
+import { buildChainTransfers } from "../../src/chain-transfers.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
   CHAIN_SERVING_LIMIT_MAX,
-} from "../../src/chain-serving.mjs";
+} from "../../src/chain-serving.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
   CHAIN_PROMETHEUS_LIMIT_MAX,
-} from "../../src/chain-prometheus.mjs";
+} from "../../src/chain-prometheus.ts";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
-} from "../../src/chain-axon-removals.mjs";
+} from "../../src/chain-axon-removals.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
-} from "../../src/chain-registrations.mjs";
+} from "../../src/chain-registrations.ts";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
-} from "../../src/chain-deregistrations.mjs";
+} from "../../src/chain-deregistrations.ts";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
-} from "../../src/chain-stake-moves.mjs";
+} from "../../src/chain-stake-moves.ts";
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
-} from "../../src/chain-stake-transfers.mjs";
+} from "../../src/chain-stake-transfers.ts";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,
-} from "../../src/chain-weights.mjs";
+} from "../../src/chain-weights.ts";
 import {
   buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
-} from "../../src/chain-weight-setters.mjs";
+} from "../../src/chain-weight-setters.ts";
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
-} from "../../src/chain-stake-flow.mjs";
+} from "../../src/chain-stake-flow.ts";
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
-} from "../../src/chain-alpha-volume.mjs";
+} from "../../src/chain-alpha-volume.ts";
 
 // The shape of the api.mjs-local in-isolate memoized KV read (see
 // configureAnalytics below) -- loose on the return value beyond `last_run_at`
@@ -495,13 +495,9 @@ export async function handleBulkHealthTrends(
       )) as Awaited<ReturnType<typeof loadBulkHealthTrends>>["data"] | null;
       if (!data) {
         isFallback = true;
-        // loadBulkHealthTrends is still .mjs (checkJs off): its destructured
-        // `{ observedAt = null } = {}` param infers as `{observedAt?: null}`,
-        // narrower than the real `string | null` runtime value -- cast past
-        // that inference gap rather than the (nonexistent) real constraint.
         const result = await loadBulkHealthTrends({
           observedAt: meta?.last_run_at || null,
-        } as unknown as Parameters<typeof loadBulkHealthTrends>[0]);
+        });
         data = result.data;
       }
       const response = await envelopeResponse(
@@ -1246,15 +1242,15 @@ export async function handleChainTransfers(
         buildChainTransfers({
           window: label,
           observedAt: meta?.last_run_at || null,
-        } as unknown as Parameters<typeof buildChainTransfers>[0]);
+        });
       if (csv) {
         return csvResponse(
           [
-            ...data.top_senders.map((row: Record<string, unknown>) => ({
+            ...data.top_senders.map((row) => ({
               direction: "sender",
               ...row,
             })),
-            ...data.top_receivers.map((row: Record<string, unknown>) => ({
+            ...data.top_receivers.map((row) => ({
               direction: "receiver",
               ...row,
             })),

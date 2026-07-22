@@ -52,7 +52,7 @@
 // unlike ChainFirehoseHub, nothing here needs WebSocketPair, so there is no
 // v8-ignored branch in this file.
 
-import { parseSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
+import { parseSubnetStatusResourceUri } from "../src/subnet-status-subscribe.ts";
 
 export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 

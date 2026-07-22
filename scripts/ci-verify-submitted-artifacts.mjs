@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   artifactRelativePath,
   isGeneratedPublicArtifactRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 import {
   artifactFilePath,
   DEPLOY_OWNED_ARTIFACTS,

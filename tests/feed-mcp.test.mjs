@@ -12,8 +12,8 @@ import {
   requireKind,
   resolveLimit,
   resolveNetuid,
-} from "../src/feed-mcp.mjs";
-import { FEED_MAX_ITEMS } from "../src/feeds.mjs";
+} from "../src/feed-mcp.ts";
+import { FEED_MAX_ITEMS } from "../src/feeds.ts";
 
 // A thrown value is a clean invalid_params toolError.
 const isInvalidParams = (e) =>

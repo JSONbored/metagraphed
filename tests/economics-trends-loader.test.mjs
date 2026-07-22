@@ -4,7 +4,7 @@ import {
   ECONOMICS_TRENDS_ROW_CAP,
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
-} from "../src/economics-trends.mjs";
+} from "../src/economics-trends.ts";
 
 describe("parseEconomicsTrendsWindow", () => {
   test("defaults to 30d when window is omitted", () => {

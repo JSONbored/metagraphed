@@ -7,7 +7,7 @@ import {
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   loadGlobalOperationalHealth,
   unknownGlobalHealth,
-} from "../src/global-operational-health.mjs";
+} from "../src/global-operational-health.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
@@ -90,7 +90,7 @@ describe("global-operational-health", () => {
   // eliminated now: loadGlobalOperationalHealth({env, readHealthKv}, ...)
   // destructures only env/readHealthKv (no `db`), and calls
   // resolveLiveHealth({readHealthKv, env}) with no db forwarded at all --
-  // src/health-serving.mjs's resolveLiveHealth no longer takes a `db` param
+  // src/health-serving.ts's resolveLiveHealth no longer takes a `db` param
   // either. There is no db-forwarding behavior left to test, so the test was
   // deleted rather than converted.
 

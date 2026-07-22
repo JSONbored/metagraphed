@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
-} from "../src/chain-alpha-volume.mjs";
+} from "../src/chain-alpha-volume.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

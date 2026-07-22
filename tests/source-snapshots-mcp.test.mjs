@@ -10,7 +10,7 @@ import {
   loadSourceSnapshotsList,
   sourceSnapshotsMcpError,
   sourceSnapshotsQueryUrl,
-} from "../src/source-snapshots-mcp.mjs";
+} from "../src/source-snapshots-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

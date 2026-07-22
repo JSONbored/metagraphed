@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { buildValidatorHistory } from "../src/validator-history.mjs";
+import { buildValidatorHistory } from "../src/validator-history.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

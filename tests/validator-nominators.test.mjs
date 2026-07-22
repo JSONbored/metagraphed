@@ -6,7 +6,7 @@ import {
   STAKE_REMOVED_KIND,
   DEFAULT_NOMINATOR_SORT,
   NOMINATOR_LIMIT_MAX,
-} from "../src/validator-nominators.mjs";
+} from "../src/validator-nominators.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

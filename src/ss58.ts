@@ -3,7 +3,7 @@
 // createHash("blake2b512") -- that throws "Digest method not supported" in
 // workerd (confirmed live: account-balance.mjs's GET
 // /api/v1/accounts/{ss58}/balance 500'd on every request for exactly this
-// reason before the switch to @noble/hashes). Extracted from src/sudo-key.mjs
+// reason before the switch to @noble/hashes). Extracted from src/sudo-key.ts
 // (#4310) so #4669/#4685/#4688's Postgres AccountId32 decoding reuses the one
 // implementation already verified working in production, instead of a second
 // hand-rolled copy.

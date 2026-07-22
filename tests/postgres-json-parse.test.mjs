@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.mjs";
+import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.ts";
 
 describe("parseJsonPreservingBigIntegers", () => {
   test("parses ordinary JSON identically to JSON.parse", () => {

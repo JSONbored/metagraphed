@@ -76,7 +76,7 @@ import {
   isR2OnlyArtifactPath,
   isR2PreferredDualArtifactPath,
   schemaDetailArtifactRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
 import {

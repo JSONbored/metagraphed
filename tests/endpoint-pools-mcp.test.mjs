@@ -10,7 +10,7 @@ import {
   endpointPoolsMcpError,
   endpointPoolsQueryUrl,
   loadEndpointPoolsList,
-} from "../src/endpoint-pools-mcp.mjs";
+} from "../src/endpoint-pools-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

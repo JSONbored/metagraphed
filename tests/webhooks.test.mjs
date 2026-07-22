@@ -17,7 +17,7 @@ import {
   timingSafeEqual,
   validateSubscriptionInput,
   WEBHOOK_SIGNATURE_HEADER,
-} from "../src/webhooks.mjs";
+} from "../src/webhooks.ts";
 
 describe("isPublicWebhookUrl", () => {
   test("accepts a normal public https URL", () => {

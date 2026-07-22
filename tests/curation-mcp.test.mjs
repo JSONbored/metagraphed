@@ -10,7 +10,7 @@ import {
   curationMcpError,
   curationQueryUrl,
   loadCurationList,
-} from "../src/curation-mcp.mjs";
+} from "../src/curation-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

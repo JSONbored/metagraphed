@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { loadBulkHealthTrends } from "../src/bulk-health-trends.mjs";
+import { loadBulkHealthTrends } from "../src/bulk-health-trends.ts";
 
 describe("loadBulkHealthTrends", () => {
   // D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only

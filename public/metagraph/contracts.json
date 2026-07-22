@@ -1841,7 +1841,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.mjs), each with its member subnet count, total stake, total emission share, and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy.",
+      "description": "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.ts), each with its member subnet count, total stake, total emission share, and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy.",
       "id": "domains",
       "path": "/metagraph/domains.json",
       "retirement": null,

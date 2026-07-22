@@ -5,7 +5,7 @@
 // 7500+-line tests/data-api.test.mjs), mirroring
 // tests/alert-triggers-route.test.mjs's shape: its OWN postgres mock (a
 // simple per-test queue), scoped only to this file (vi.mock is
-// per-test-file). Unkey's own HTTP calls (src/unkey-client.mjs) are stubbed
+// per-test-file). Unkey's own HTTP calls (src/unkey-client.ts) are stubbed
 // via global fetch, same per-test-queue shape as the postgres mock.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
@@ -15,7 +15,7 @@ import {
   sign as sr25519Sign,
 } from "@scure/sr25519";
 import { encodeAccountId32 } from "../src/ss58.ts";
-import { createSessionToken } from "../src/wallet-auth.mjs";
+import { createSessionToken } from "../src/wallet-auth.ts";
 
 const mockQueue = vi.hoisted(() => ({ current: [] }));
 const sqlCalls = vi.hoisted(() => []);

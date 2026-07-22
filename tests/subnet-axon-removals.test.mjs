@@ -6,7 +6,7 @@ import {
   AXON_REMOVAL_EVENT_KIND,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
-} from "../src/subnet-axon-removals.mjs";
+} from "../src/subnet-axon-removals.ts";
 
 describe("buildSubnetAxonRemovals", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {

@@ -7,11 +7,11 @@ import {
   formatTrajectory,
   loadSubnetTrajectory,
   LEADERBOARD_BOARDS,
-} from "../src/health-serving.mjs";
+} from "../src/health-serving.ts";
 import {
   syncSubnetSnapshotToPostgres,
   writeSubnetSnapshot,
-} from "../src/health-prober.mjs";
+} from "../src/health-prober.ts";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -1085,7 +1085,7 @@ describe("writeSubnetSnapshot", () => {
   });
 });
 
-// #4832 gap-closure: mirrors src/subnet-identity-history.mjs's
+// #4832 gap-closure: mirrors src/subnet-identity-history.ts's
 // syncSubnetIdentityToPostgres tests -- same shape, own dedicated secret
 // (SUBNET_SNAPSHOT_SYNC_SECRET) and own internal route.
 describe("syncSubnetSnapshotToPostgres", () => {

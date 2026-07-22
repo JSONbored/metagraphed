@@ -5,7 +5,7 @@ import { repoRoot, sha256Hex } from "./lib.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 
 const artifactRoot = path.join(repoRoot, "public/metagraph");
 const r2ArtifactRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);

@@ -11,7 +11,7 @@
 // query param, not a header (matches taostats' own convention so existing
 // WSS-client code needs minimal changes to point here instead -- ADR 0021
 // section 6), validated via src/api-key-validation.mjs's KV-cache-fronted
-// lookup -- Unkey-backed since the 2026-07-19 rework (src/unkey-client.mjs),
+// lookup -- Unkey-backed since the 2026-07-19 rework (src/unkey-client.ts),
 // not the local hash/compare ADR 0020 originally used.
 //
 // Method scope: read-only SAFE_RPC_METHODS PLUS author_submitExtrinsic
@@ -28,7 +28,7 @@
 // than shaving upstream calls, and it now carries a non-idempotent write
 // method -- a deliberate v1 scope cut, not an oversight.
 import { errorResponse } from "../http.ts";
-import { validateApiKey } from "../../src/api-key-validation.mjs";
+import { validateApiKey } from "../../src/api-key-validation.ts";
 import {
   orderSafeRpcEndpoints,
   proxyWithFailover,
@@ -83,7 +83,7 @@ export const FULLNODE_RPC_GUESS_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // than IP, so legitimate traffic from many callers sharing one key isn't
 // starved and one key can't be inflated by rotating source IPs. This is
 // DELIBERATELY still Cloudflare-native, not Unkey's own per-key ratelimits
-// -- see src/unkey-client.mjs's header comment for why.
+// -- see src/unkey-client.ts's header comment for why.
 interface FullnodeRpcTierPolicy {
   envVar: string;
   limit: number;
@@ -190,7 +190,11 @@ export async function handleFullnodeRpcProxyRequest(
     );
   }
 
-  const rateLimitPolicy = rateLimitPolicyForTier(auth.tier);
+  // auth.tier is `unknown` (validateApiKey's success-shape tier comes straight
+  // from Unkey's own untyped JSON response) -- rateLimitPolicyForTier's own
+  // `|| FULLNODE_RPC_TIER_RATE_LIMITS.free` fallback already handles a
+  // missing/unmapped tier, so this is a safe cast, not a new assumption.
+  const rateLimitPolicy = rateLimitPolicyForTier(auth.tier as string);
   const rateLimiter = (env as unknown as Record<string, RateLimit | undefined>)[
     rateLimitPolicy.envVar
   ];

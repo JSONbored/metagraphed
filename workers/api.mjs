@@ -8,7 +8,7 @@ import {
 import {
   isUsageTelemetryConfigured,
   recordUsageEvent,
-} from "../src/usage-telemetry.mjs";
+} from "../src/usage-telemetry.ts";
 import {
   applyQueryFilters,
   canonicalListSearch,
@@ -238,11 +238,11 @@ import {
   WEBHOOK_IDEMPOTENCY_HEADER,
   WEBHOOK_SECRET_HEADER,
   WEBHOOK_SIGNATURE_HEADER,
-} from "../src/webhooks.mjs";
+} from "../src/webhooks.ts";
 import {
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,
-} from "../src/alert-triggers.mjs";
+} from "../src/alert-triggers.ts";
 import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
@@ -250,7 +250,7 @@ import {
   rollupDailyUptime,
   runHealthProber,
   writeSubnetSnapshot,
-} from "../src/health-prober.mjs";
+} from "../src/health-prober.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import {
   mergeFreshness,
@@ -264,14 +264,14 @@ import {
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
-} from "../src/health-serving.mjs";
+} from "../src/health-serving.ts";
 import {
   deriveNetuidGroupedAliases,
   derivePreviouslyKnownAs,
   overlayPreviouslyKnownAs,
-} from "../src/subnet-identity-history.mjs";
+} from "../src/subnet-identity-history.ts";
 import { tryPostgresTier } from "./postgres-tier.ts";
-import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
+import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   ChainFirehoseHub,
@@ -280,15 +280,15 @@ import { McpSessionHub } from "./mcp-session-hub.ts";
 import { AlerterHub } from "./alerter-hub.ts";
 import { SubnetStatusHub } from "./subnet-status-hub.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
-import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
-import { handleBadgeRequest } from "../src/badge.mjs";
-import { handleOgImage } from "../src/og-image.mjs";
-import { handleIconProxy } from "../src/icon-proxy.mjs";
+import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.ts";
+import { handleBadgeRequest } from "../src/badge.ts";
+import { handleOgImage } from "../src/og-image.ts";
+import { handleIconProxy } from "../src/icon-proxy.ts";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
-} from "../src/github-oauth.mjs";
+} from "../src/github-oauth.ts";
 import {
   handleSavedQueryRequest,
   SAVED_QUERIES_PATH_PREFIX,
@@ -299,7 +299,7 @@ import {
   runEmbeddingSync,
   semanticSearch,
   withinRateLimit,
-} from "../src/ai-search.mjs";
+} from "../src/ai-search.ts";
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_ROOT_CLAIM_PATH_PATTERN,
@@ -977,7 +977,7 @@ function walletAuthErrorCode(status) {
 // Proxies POST /api/v1/auth/wallet/challenge and /verify (ADR 0021, #6835) to
 // the DATA_API service binding -- all challenge issuance, sr25519
 // verification, and session issuance live in workers/data-api.mjs (via
-// src/wallet-auth.mjs); this is only the forwarding + envelope-translation
+// src/wallet-auth.ts); this is only the forwarding + envelope-translation
 // boundary, same shape as handleAlertTriggersProxy above.
 async function handleWalletAuthProxy(request, env) {
   if (!env.DATA_API) {
@@ -1561,7 +1561,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // GitHub OAuth (metagraphed#7151): the two routes @cloudflare/workers-
   // oauth-provider's own authorizeEndpoint deliberately leaves to
-  // application code (see src/github-oauth.mjs's header). GET-only --
+  // application code (see src/github-oauth.ts's header). GET-only --
   // both are browser-redirect targets, never called by a client library
   // directly.
   if (request.method === "GET" && url.pathname === "/authorize") {
@@ -1768,7 +1768,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   }
 
   // Curated parameterized query library (#6755/#6757): GET /api/v1/queries/{id}
-  // runs one maintainer-curated saved-query template (src/saved-queries.mjs),
+  // runs one maintainer-curated saved-query template (src/saved-queries.ts),
   // the REST mirror of the run_saved_query MCP tool. Live per-request result
   // with no fixed response shape across templates -- same reason /api/v1/graphql
   // above sits outside the API_ROUTES/contracts.mjs registry rather than a
@@ -1797,14 +1797,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // bundle over Cloudflare's deploy ceiling once @sentry/cloudflare was
   // added; the fix was to stop shipping workers-og in any live Worker at
   // all, not to relocate the render into a second Worker). See
-  // src/og-image.mjs's own header for the full rationale.
+  // src/og-image.ts's own header for the full rationale.
   if (url.pathname === "/og.png" || url.pathname === "/og") {
     return handleOgImage(request, env, url, { readR2Object });
   }
 
   // Brand-icon favicon proxy (binary, not a JSON contract route). Implements the
   // icon-proxy contract consumed by metagraphed-ui <BrandIcon>; SSRF-safe (fetches
-  // only fixed favicon services) + R2-cached. See src/icon-proxy.mjs.
+  // only fixed favicon services) + R2-cached. See src/icon-proxy.ts.
   if (url.pathname === "/api/v1/icon") {
     return handleIconProxy(request, env, url, { readArtifact });
   }
@@ -3728,7 +3728,7 @@ export async function readEconomicsCurrentKv(env, now = Date.now()) {
 // fully dropped by #4772 (D1 chain-data write-path retirement) — the live
 // chain_events tier now lives in Postgres, reached through the DATA_API
 // service binding, the same way handleChainEventsProxy (above) and
-// dataApiFetchJson (src/data-api-mcp.mjs) already read it (#5357).
+// dataApiFetchJson (src/data-api-mcp.ts) already read it (#5357).
 export const CHAIN_EVENTS_DB_TTL_MS = 30_000;
 let chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
 

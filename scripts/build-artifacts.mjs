@@ -6,8 +6,8 @@ import {
   OPERATIONAL_SURFACE_KINDS,
   mapLimit,
   rollupSubnetStatus,
-} from "../src/health-probe-core.mjs";
-import { generateServiceSnippets } from "../src/integration-snippets.mjs";
+} from "../src/health-probe-core.ts";
+import { generateServiceSnippets } from "../src/integration-snippets.ts";
 import {
   githubSignalsForSubnet,
   loadGithubSignals,
@@ -93,7 +93,7 @@ import { buildChangelog } from "./changelog.mjs";
 import {
   buildSurfaceAliasArtifact,
   SURFACE_ALIASES_RELATIVE_PATH,
-} from "../src/surface-aliases.mjs";
+} from "../src/surface-aliases.ts";
 import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
@@ -103,7 +103,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
   schemaDetailArtifactRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -2579,7 +2579,7 @@ await writeJson(artifactFile("registry-summary.json"), {
 });
 
 // Operational-surfaces list — the input for the 15-minute Cloudflare cron health
-// prober (src/health-prober.mjs). Deterministic, committed (git-tier), and read
+// prober (src/health-prober.ts). Deterministic, committed (git-tier), and read
 // by the Worker at runtime via the ASSETS binding. Only probe-enabled,
 // public-safe, operational-kind surfaces; everything else stays on this batch build.
 const operationalKindSet = new Set(OPERATIONAL_SURFACE_KINDS);

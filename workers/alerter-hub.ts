@@ -20,20 +20,24 @@
 // shell that actually calls fetch) -- this class only decides WHICH
 // triggers matched AND whether a match should actually be delivered right
 // now (burst rate-limiting), never how each channel's request is shaped.
-import { triggerMatchesEvent } from "../src/alert-triggers.mjs";
-import { buildDeregRiskSnapshot } from "../src/dereg-risk.mjs";
+import {
+  triggerMatchesEvent,
+  type EvaluatorAlertTrigger,
+} from "../src/alert-triggers.ts";
+import { buildDeregRiskSnapshot } from "../src/dereg-risk.ts";
 import {
   mapBounded,
   resolvedWebhookUrlStatus,
   resolveWebhookHostnamesWithDoh,
-} from "../src/webhooks.mjs";
+} from "../src/webhooks.ts";
 import {
   buildDiscordDeliveryRequest,
   buildEmailDeliveryRequest,
   buildTelegramDeliveryRequest,
   buildWebhookDeliveryRequest,
   isDeliveryRateLimited,
-} from "../src/alert-delivery.mjs";
+  type AlertTrigger,
+} from "../src/alert-delivery.ts";
 
 // #6746/#6747: the empty snapshot every AlerterHub starts with and falls
 // back to whenever a metric refresh is skipped/fails -- both of
@@ -75,7 +79,7 @@ const ALERT_TRIGGER_REFRESH_TIMEOUT_MS = 4000;
 // the SAME trigger, not how many different triggers fire on one event) --
 // an unbounded Promise.all could open one outbound fetch per match,
 // exhausting this Durable Object invocation's concurrent-subrequest budget
-// under a large, broad-condition trigger set. Matches src/webhooks.mjs's
+// under a large, broad-condition trigger set. Matches src/webhooks.ts's
 // own dispatchChangeEvent concurrency default.
 const ALERT_DELIVERY_CONCURRENCY = 8;
 
@@ -86,7 +90,7 @@ const ALERT_DELIVERY_CONCURRENCY = 8;
 // arbitrary user-supplied webhook or a slow third-party API. Without a
 // bound, ONE slow/hanging delivery target would add its own latency to
 // EVERY firehose consumer's next event, not just this trigger's owner.
-// Matches src/webhooks.mjs's own deliverChangeEvent timeout convention
+// Matches src/webhooks.ts's own deliverChangeEvent timeout convention
 // (same 8s default).
 const ALERT_DELIVERY_TIMEOUT_MS = 8000;
 
@@ -127,27 +131,36 @@ export async function deliverAlertMatch(
   fetchFn: typeof fetch = fetch,
   {
     resolveHostnames,
-  }: { resolveHostnames?: (host: string) => Promise<unknown> } = {},
+  }: { resolveHostnames?: (host: string) => Promise<string[]> } = {},
 ): Promise<boolean> {
   let request: { url: string; init?: RequestInit } | null | undefined;
+  // Trigger's `destination` lives behind its index signature (the shape
+  // varies by channel), but every delivered trigger carries one — the
+  // alert-delivery builders below require it as a concrete string field.
+  const alertTrigger = trigger as unknown as AlertTrigger;
+  const alertPayload = payload as Record<string, unknown> | null | undefined;
   switch (trigger.channel) {
     case "webhook":
-      request = buildWebhookDeliveryRequest(trigger, payload, Date.now());
+      request = buildWebhookDeliveryRequest(
+        alertTrigger,
+        alertPayload,
+        Date.now(),
+      );
       break;
     case "discord":
-      request = buildDiscordDeliveryRequest(trigger, payload);
+      request = buildDiscordDeliveryRequest(alertTrigger, alertPayload);
       break;
     case "telegram":
       if (!env.TELEGRAM_BOT_TOKEN) return false;
       request = buildTelegramDeliveryRequest(
-        trigger,
-        payload,
+        alertTrigger,
+        alertPayload,
         env.TELEGRAM_BOT_TOKEN,
       );
       break;
     case "email":
       if (!env.RESEND_API_KEY || !env.RESEND_FROM_ADDRESS) return false;
-      request = buildEmailDeliveryRequest(trigger, payload, {
+      request = buildEmailDeliveryRequest(alertTrigger, alertPayload, {
         resendKey: env.RESEND_API_KEY,
         fromAddress: env.RESEND_FROM_ADDRESS,
       });
@@ -328,16 +341,11 @@ export class AlerterHub implements DurableObject {
         immune_neurons?: unknown;
         current_block?: unknown;
       };
-      // buildDeregRiskSnapshot (src/dereg-risk.mjs, not yet converted -- Phase
-      // 3) has an untyped `= {}` default parameter, which TS infers as the
-      // exact empty-object type rather than a real parameter shape; cast
-      // through unknown at this one call site rather than widening its
-      // inferred signature repo-wide from here.
       this.metricSnapshot = buildDeregRiskSnapshot({
-        economicsRows: body?.subnets,
-        neuronRows: body?.immune_neurons,
-        currentBlock: body?.current_block,
-      }) as unknown as MetricSnapshot;
+        economicsRows: body?.subnets as Array<Record<string, unknown>>,
+        neuronRows: body?.immune_neurons as Array<Record<string, unknown>>,
+        currentBlock: body?.current_block as number,
+      });
     } catch {
       // Best-effort -- keep serving the stale (or empty) snapshot rather
       // than throwing out of evaluate(); a condition trigger just keeps
@@ -351,13 +359,14 @@ export class AlerterHub implements DurableObject {
   // this just applies it across every cached trigger.
   matchingTriggers(payload: unknown): Trigger[] {
     return this.triggers.filter((trigger) =>
-      // Same untyped-default-parameter cast as buildDeregRiskSnapshot above
-      // -- triggerMatchesEvent's 3rd parameter (src/alert-triggers.mjs, not
-      // yet converted) infers as an exact empty-object type.
+      // this.triggers is fetched straight from the active-triggers response
+      // (built server-side via evaluatorAlertTriggerView), so it already has
+      // EvaluatorAlertTrigger's shape at runtime even though Trigger's own
+      // index signature doesn't statically expose it.
       triggerMatchesEvent(
-        trigger,
-        payload,
-        this.metricSnapshot as unknown as null | undefined,
+        trigger as unknown as EvaluatorAlertTrigger,
+        payload as Record<string, unknown> | null | undefined,
+        this.metricSnapshot,
       ),
     );
   }

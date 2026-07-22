@@ -10,29 +10,29 @@ import {
   listToolDefinitions,
   handleMcpRequest,
 } from "../src/mcp-server.mjs";
-import * as profilesMcp from "../src/profiles-mcp.mjs";
-import * as healthHistoryMcp from "../src/health-history-mcp.mjs";
-import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
+import * as profilesMcp from "../src/profiles-mcp.ts";
+import * as healthHistoryMcp from "../src/health-history-mcp.ts";
+import { KV_HEALTH_RPC_POOL } from "../src/health-prober.ts";
 import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
-import { buildChainStakeMoves } from "../src/chain-stake-moves.mjs";
-import { buildChainStakeTransfers } from "../src/chain-stake-transfers.mjs";
-import { buildChainWeightSetters } from "../src/chain-weight-setters.mjs";
-import { buildChainAxonRemovals } from "../src/chain-axon-removals.mjs";
-import { buildChainDeregistrations } from "../src/chain-deregistrations.mjs";
-import { buildChainServing } from "../src/chain-serving.mjs";
-import { buildChainPrometheus } from "../src/chain-prometheus.mjs";
-import { buildChainRegistrations } from "../src/chain-registrations.mjs";
-import { buildChainStakeFlow } from "../src/chain-stake-flow.mjs";
-import { buildChainAlphaVolume } from "../src/chain-alpha-volume.mjs";
-import { buildChainWeights } from "../src/chain-weights.mjs";
-import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
-import { buildChainTransfers } from "../src/chain-transfers.mjs";
-import { buildChainCalls } from "../src/chain-analytics.mjs";
-import { DOMAIN_TAGS } from "../src/domain-tags.mjs";
-import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.mjs";
+import { buildChainStakeMoves } from "../src/chain-stake-moves.ts";
+import { buildChainStakeTransfers } from "../src/chain-stake-transfers.ts";
+import { buildChainWeightSetters } from "../src/chain-weight-setters.ts";
+import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
+import { buildChainDeregistrations } from "../src/chain-deregistrations.ts";
+import { buildChainServing } from "../src/chain-serving.ts";
+import { buildChainPrometheus } from "../src/chain-prometheus.ts";
+import { buildChainRegistrations } from "../src/chain-registrations.ts";
+import { buildChainStakeFlow } from "../src/chain-stake-flow.ts";
+import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
+import { buildChainWeights } from "../src/chain-weights.ts";
+import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
+import { buildChainTransfers } from "../src/chain-transfers.ts";
+import { buildChainCalls } from "../src/chain-analytics.ts";
+import { DOMAIN_TAGS } from "../src/domain-tags.ts";
+import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 

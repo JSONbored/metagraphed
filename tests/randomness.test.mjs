@@ -5,7 +5,7 @@ import {
   RANDOMNESS_NEGATIVE_KV_TTL,
   RANDOMNESS_RPC_TIMEOUT_MS,
   loadRandomnessStatus,
-} from "../src/randomness.mjs";
+} from "../src/randomness.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 function req(path) {

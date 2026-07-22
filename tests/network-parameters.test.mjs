@@ -5,7 +5,7 @@ import {
   NETWORK_PARAMETERS_NEGATIVE_KV_TTL,
   NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
   loadNetworkParameters,
-} from "../src/network-parameters.mjs";
+} from "../src/network-parameters.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 function req(path) {

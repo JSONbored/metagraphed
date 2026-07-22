@@ -29,7 +29,7 @@ import {
   WEBHOOK_REDELIVERY_LIST_LIMIT,
   WEBHOOK_REDELIVERY_MAX_PER_RUN,
   WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
-} from "../src/webhooks.mjs";
+} from "../src/webhooks.ts";
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");

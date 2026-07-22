@@ -7624,7 +7624,7 @@ export interface components {
             /** Format: date-time */
             observed_at?: string | null;
         };
-        /** @description Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. SubnetLeaseDividendsDistributed/Contributed/Withdrew are deliberately excluded -- none carry a netuid on their account_events row (see src/subnet-lease-history.mjs's own header for why). A subnet that has never been leased returns an empty list, not an error -- that's the common case. */
+        /** @description Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. SubnetLeaseDividendsDistributed/Contributed/Withdrew are deliberately excluded -- none carry a netuid on their account_events row (see src/subnet-lease-history.ts's own header for why). A subnet that has never been leased returns an empty list, not an error -- that's the common case. */
         SubnetLeaseHistoryArtifact: {
             count: number;
             event_kinds?: string[];

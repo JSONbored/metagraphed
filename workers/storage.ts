@@ -8,7 +8,7 @@ import {
   artifactStorageTierForPath,
   ARTIFACT_STORAGE_TIERS,
   isR2PreferredDualArtifactPath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 import { METAGRAPH_LATEST_KEY } from "./config.ts";
 
 const DEFAULT_R2_TIMEOUT_MS = 5000;
@@ -192,7 +192,7 @@ export async function readR2(
 
 // Same R2 fetch as readR2 (key resolution, timeout guard, not-found handling),
 // but returns the raw R2Object instead of parsing it as JSON -- for binary
-// artifacts (the og-image.png card, see src/og-image.mjs) that readR2's
+// artifacts (the og-image.png card, see src/og-image.ts) that readR2's
 // .json() would throw on. readR2 above is implemented in terms of this.
 export async function readR2Object(
   env: Env,

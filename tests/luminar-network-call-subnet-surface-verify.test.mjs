@@ -22,8 +22,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import { callSubnetSurface } from "../src/call-subnet-surface.mjs";
-import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
+import { callSubnetSurface } from "../src/call-subnet-surface.ts";
+import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 const NETUID = 87;

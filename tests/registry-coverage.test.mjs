@@ -8,7 +8,7 @@ import {
   REGISTRY_COVERAGE_ARTIFACT,
   loadRegistryCoverage,
   registryCoverageToolError,
-} from "../src/registry-coverage.mjs";
+} from "../src/registry-coverage.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_COVERAGE = {

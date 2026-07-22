@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { buildAccountIdentity } from "../src/account-identity.mjs";
-import { buildAccountIdentityHistory } from "../src/account-identity-history.mjs";
+import { buildAccountIdentity } from "../src/account-identity.ts";
+import { buildAccountIdentityHistory } from "../src/account-identity-history.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 

@@ -14,14 +14,14 @@ import {
   readJson,
   repoRoot,
 } from "./lib.mjs";
-import { buildBlockFeed } from "../src/blocks.mjs";
-import { buildExtrinsicFeed } from "../src/extrinsics.mjs";
-import { buildAccountEvents } from "../src/account-events.mjs";
-import { buildSubnetMetagraph } from "../src/metagraph-neurons.mjs";
-import { buildSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
-import { buildAccountIdentity } from "../src/account-identity.mjs";
-import { buildSubnetIdentityHistory } from "../src/subnet-identity-history.mjs";
-import { formatRpcUsage } from "../src/health-serving.mjs";
+import { buildBlockFeed } from "../src/blocks.ts";
+import { buildExtrinsicFeed } from "../src/extrinsics.ts";
+import { buildAccountEvents } from "../src/account-events.ts";
+import { buildSubnetMetagraph } from "../src/metagraph-neurons.ts";
+import { buildSubnetHyperparams } from "../src/subnet-hyperparams.ts";
+import { buildAccountIdentity } from "../src/account-identity.ts";
+import { buildSubnetIdentityHistory } from "../src/subnet-identity-history.ts";
+import { formatRpcUsage } from "../src/health-serving.ts";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,

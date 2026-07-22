@@ -6,7 +6,7 @@ import {
   buildAccountPositions,
   distinctHotkeys,
   stakeByHotkeyNetuid,
-} from "../src/account-nominator-positions.mjs";
+} from "../src/account-nominator-positions.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

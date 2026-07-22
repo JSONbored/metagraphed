@@ -6,7 +6,7 @@ import { describe, test } from "vitest";
 import {
   ECONOMICS_FRESHNESS_MAX_AGE_MS,
   resolveLiveEconomics,
-} from "../src/health-serving.mjs";
+} from "../src/health-serving.ts";
 
 const NOW = Date.parse("2026-06-20T12:00:00.000Z");
 const FRESH = "2026-06-20T11:00:00.000Z"; // 1h old

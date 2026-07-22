@@ -18,7 +18,7 @@ import {
   ownerAlertTriggerView,
   triggerMatchesEvent,
   validateAlertTriggerInput,
-} from "../src/alert-triggers.mjs";
+} from "../src/alert-triggers.ts";
 
 test("header/limit constants are the documented values", () => {
   assert.equal(

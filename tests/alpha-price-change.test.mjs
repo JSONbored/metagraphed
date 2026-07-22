@@ -6,7 +6,7 @@ import {
   normalizeAlphaPricePoints,
   pctChange,
   withAlphaPriceChanges,
-} from "../src/alpha-price-change.mjs";
+} from "../src/alpha-price-change.ts";
 
 describe("pctChange", () => {
   test("returns signed %-change rounded to 2dp", () => {

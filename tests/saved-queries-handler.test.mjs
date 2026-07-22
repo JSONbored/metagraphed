@@ -6,7 +6,7 @@ import {
   SAVED_QUERIES_PATH_PREFIX,
 } from "../workers/request-handlers/saved-queries.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { SAVED_QUERY_HANDLERS } from "../src/saved-queries.mjs";
+import { SAVED_QUERY_HANDLERS } from "../src/saved-queries.ts";
 
 function req(path) {
   return new Request(`https://api.metagraph.sh${path}`);

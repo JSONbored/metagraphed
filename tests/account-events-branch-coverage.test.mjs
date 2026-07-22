@@ -8,7 +8,7 @@ import {
   formatAccountDay,
   buildAccountHistory,
   buildAccountTransfers,
-} from "../src/account-events.mjs";
+} from "../src/account-events.ts";
 
 describe("formatAccountEvent block_number fallback", () => {
   test("formatAccountEvent falls back block_number to null when nullish", () => {
@@ -91,7 +91,7 @@ describe("formatAccountDay", () => {
     // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
     // `?? null` pass-through this replaced would have leaked strings into the API
     // payload. Mirrors the coercion in formatAccountEvent (#2481), blocks.mjs
-    // (#2435), and extrinsics.mjs (#2439).
+    // (#2435), and extrinsics.ts (#2439).
     const out = formatAccountDay({ netuid: "7", event_count: "42" });
     assert.equal(out.netuid, 7);
     assert.equal(typeof out.netuid, "number");

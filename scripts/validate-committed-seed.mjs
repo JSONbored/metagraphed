@@ -29,7 +29,7 @@ import { handleRequest } from "../workers/api.mjs";
 import {
   ARTIFACT_STORAGE_TIERS,
   artifactStorageTierForPath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.mjs";
 
 export const SEED_FAILURE_HINT =

@@ -6,7 +6,7 @@ import {
   formatAccountIdentityHistoryEntry,
   identityHash,
   loadAccountIdentityHistory,
-} from "../src/account-identity-history.mjs";
+} from "../src/account-identity-history.ts";
 import { encodeCursor } from "../src/cursor.ts";
 
 describe("identityHash", () => {

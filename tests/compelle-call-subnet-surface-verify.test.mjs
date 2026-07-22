@@ -13,7 +13,7 @@
 // {"ok":true,"db_size_bytes":...,"last_epoch_block":...,"last_indexed_at":...,
 // "games":...,"miners":...}. The surface declares no `probe` block at all --
 // which is not a defect: call_subnet_surface resolves an absent probe method to
-// its default GET (src/call-subnet-surface.mjs) and classifies the body by the
+// its default GET (src/call-subnet-surface.ts) and classifies the body by the
 // live content-type (probe.expect is never read by the tool), and the MCP
 // handler only rejects a surface when auth_required is true or probe.enabled is
 // explicitly false (src/mcp-server.mjs). The fixture below mirrors that live
@@ -23,7 +23,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import { callSubnetSurface } from "../src/call-subnet-surface.mjs";
+import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 const SURFACE_ID = "sn-82-compelle-health";

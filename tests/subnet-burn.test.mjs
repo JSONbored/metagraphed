@@ -5,7 +5,7 @@ import {
   BURN_NEGATIVE_KV_TTL,
   BURN_RPC_TIMEOUT_MS,
   loadSubnetBurn,
-} from "../src/subnet-burn.mjs";
+} from "../src/subnet-burn.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 function req(path) {

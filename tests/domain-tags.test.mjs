@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.mjs";
+import { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.ts";
 
 describe("DOMAIN_TAGS", () => {
   test("is the sorted controlled vocabulary", () => {

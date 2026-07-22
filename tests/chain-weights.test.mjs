@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_MAX,
-} from "../src/chain-weights.mjs";
+} from "../src/chain-weights.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

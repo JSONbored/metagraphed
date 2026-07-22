@@ -13,7 +13,7 @@ import {
   signPayload,
   timingSafeEqual,
   validateSubscriptionInput,
-} from "../src/webhooks.mjs";
+} from "../src/webhooks.ts";
 
 // --- isPublicWebhookAddress ---------------------------------------------------
 describe("isPublicWebhookAddress", () => {

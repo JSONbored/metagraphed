@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { decodePostgresCallArgs } from "../src/postgres-call-args.mjs";
+import { decodePostgresCallArgs } from "../src/postgres-call-args.ts";
 import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
 // decodePostgresCallArgs must run BEFORE normalizePostgresValue (see
-// src/postgres-call-args.mjs's own header for why) -- every test below
-// chains them in that order, matching src/extrinsics.mjs's formatExtrinsic.
+// src/postgres-call-args.ts's own header for why) -- every test below
+// chains them in that order, matching src/extrinsics.ts's formatExtrinsic.
 function decode(value) {
   return normalizePostgresValue(decodePostgresCallArgs(value));
 }
@@ -654,7 +654,7 @@ describe("decodePostgresCallArgs", () => {
       const out = decodePostgresCallArgs(raw);
       // Without the exclusion, unwrapByteArray/decodeBytesField would have
       // hex-encoded this into "0x0102030405" -- the array must survive
-      // intact so decodeBTreeSetFields (postgres-collection-normalize.mjs)
+      // intact so decodeBTreeSetFields (postgres-collection-normalize.ts)
       // can still correctly unwrap it afterward.
       assert.deepEqual(out.call.call_args.subnets, [[1, 2, 3, 4, 5]]);
     });

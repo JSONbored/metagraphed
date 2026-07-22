@@ -1,4 +1,4 @@
-// Unit tests for src/subnet-status-subscribe.mjs (#6034).
+// Unit tests for src/subnet-status-subscribe.ts (#6034).
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -9,7 +9,7 @@ import {
   notifySubnetStatusChanged,
   parseSubnetStatusResourceUri,
   subnetStatusFingerprint,
-} from "../src/subnet-status-subscribe.mjs";
+} from "../src/subnet-status-subscribe.ts";
 
 describe("subnet status resource URIs (#6034)", () => {
   test("build/parse round-trip a valid netuid", () => {

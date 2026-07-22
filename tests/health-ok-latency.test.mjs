@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { okLatencyMs } from "../src/health-probe-core.mjs";
+import { okLatencyMs } from "../src/health-probe-core.ts";
 
 describe("okLatencyMs", () => {
   test("returns the latency only for a successful probe with a finite reading", () => {

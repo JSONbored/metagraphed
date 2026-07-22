@@ -4,7 +4,7 @@
 // with no module state and no I/O, so the output is byte-identical to the in-
 // build-artifacts.mjs originals. Imported directly by scripts/build-artifacts.mjs
 // and unit-tested in tests/build-readiness.test.mjs.
-import { OPERATIONAL_SURFACE_KINDS } from "../../src/health-probe-core.mjs";
+import { OPERATIONAL_SURFACE_KINDS } from "../../src/health-probe-core.ts";
 
 export const READINESS_VERSION = 2;
 

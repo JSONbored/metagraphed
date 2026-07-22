@@ -100,7 +100,7 @@ with one Railway project for everything off the edge.
 2. **D1 chain sink → Postgres (TimescaleDB).** The portable schema lives at
    `deploy/postgres/schema.sql` and keeps the existing idempotent keys
    (`block_number` / `(block_number, extrinsic_index)` / `(block_number,
-event_index)`) so the serving code (`src/blocks.mjs`, `extrinsics.mjs`,
+event_index)`) so the serving code (`src/blocks.mjs`, `extrinsics.ts`,
    `account-events.mjs`) changes only its binding. **D1 demotes to the hot/recent
    cache**; the prune-and-discard logic is deleted on cutover.
 3. **Cloudflare adds two edge primitives and keeps the rest.** A **Hyperdrive**

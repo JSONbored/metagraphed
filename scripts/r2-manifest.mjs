@@ -13,7 +13,7 @@ import {
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 
 // og-image.png (#6502) is the one binary exception to this otherwise
 // JSON/.d.ts-only manifest -- named exactly, not a general ".png" allowance,

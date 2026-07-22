@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildBlocksSummary,
   loadBlocksSummary,
-} from "../src/blocks-summary.mjs";
+} from "../src/blocks-summary.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

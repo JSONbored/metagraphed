@@ -4,14 +4,14 @@
 import { beforeEach, test, expect, vi } from "vitest";
 import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.ts";
 import { encodeCursor } from "../src/cursor.ts";
-import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
-import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";
-import { IDENTITY_FIELDS } from "../src/account-identity.mjs";
-import { identityHash } from "../src/account-identity-history.mjs";
+import { formatSubnetHyperparams } from "../src/subnet-hyperparams.ts";
+import { hyperparamsHash } from "../src/subnet-hyperparams-history.ts";
+import { IDENTITY_FIELDS } from "../src/account-identity.ts";
+import { identityHash } from "../src/account-identity-history.ts";
 import {
   identityHash as subnetIdentityHash,
   identitySnapshotFromProfile,
-} from "../src/subnet-identity-history.mjs";
+} from "../src/subnet-identity-history.ts";
 
 const sqlCalls = vi.hoisted(() => []);
 const sqlBeginOptions = vi.hoisted(() => []);
@@ -624,7 +624,7 @@ test("chain-events decodes a positional SubtensorModule.TimelockedWeightsReveale
   // depth -- coerceEvent already passed row.pallet/row.method as ctx, but
   // decodeChainEventArgs only used ctx for the TEXTUAL/HEX_BLOB/ENUM_PAYLOAD
   // allowlists, never to recover a positional tuple's field names. Fixed by
-  // POSITIONAL_FIELD_NAMES (src/chain-event-args.mjs) -- see
+  // POSITIONAL_FIELD_NAMES (src/chain-event-args.ts) -- see
   // tests/chain-event-args.test.mjs for the exhaustive per-event-kind unit
   // coverage; this is the one route-level regression test proving the fix
   // reaches a real REST response, not just the decoder in isolation.
@@ -1747,7 +1747,7 @@ test("GET /api/v1/runtime with no readings returns the schema-stable empty timel
   expect(body.current_spec_version).toBeNull();
 });
 
-// #4771: per-UID metagraph tier, mirroring src/metagraph-neurons.mjs's D1
+// #4771: per-UID metagraph tier, mirroring src/metagraph-neurons.ts's D1
 // loaders + builders unchanged. Rows carry native Postgres BOOLEAN (not D1's
 // 0/1 INTEGER) and NUMERIC/BIGINT-as-string cells, exercising the same
 // toD1Flag/nullableNumber/nonNegativeInt coercions those builders already use.
@@ -3774,7 +3774,7 @@ test("GET /api/v1/subnets/:netuid/ohlc shapes raw account_events rows into candl
   expect(body.data.candles[0].open).toBe(2); // 20/10
   expect(body.data.candles[0].close).toBe(3); // 15/5
   expect(body.data.candles[0].event_count).toBe(2);
-  // Raw-row query, not a GROUP BY/array_agg aggregation (src/subnet-ohlc.mjs
+  // Raw-row query, not a GROUP BY/array_agg aggregation (src/subnet-ohlc.ts
   // does the bucketing in JS) -- the SQL itself stays a plain filtered
   // SELECT ordered by observed_at.
   expect(queryText()).toContain("event_kind IN (");
@@ -6398,7 +6398,7 @@ test("subnet-identity-sync maps a DB failure to a clean 502 instead of throwing"
 });
 
 // #4832 gap-closure: health-checks-sync -- best-effort Postgres mirror of
-// src/health-prober.mjs's D1+KV write, called from the main Worker's own
+// src/health-prober.ts's D1+KV write, called from the main Worker's own
 // 15-minute cron (syncHealthChecksToPostgres), not an external workflow.
 function probedRow(overrides = {}) {
   return {
@@ -7230,7 +7230,7 @@ test("GET /api/v1/chain/transfer-pairs: an empty totals row falls back to null",
 });
 
 // #4832 gap-closure: chain-wide identity-change feed, mirroring
-// src/chain-identity-history.mjs's loadChainIdentityHistory -- no netuid
+// src/chain-identity-history.ts's loadChainIdentityHistory -- no netuid
 // filter, single query, reusing METAGRAPH_SUBNET_IDENTITY_SOURCE (same
 // table as the per-subnet identity-history route already tested above).
 test("GET /api/v1/chain/identity-history returns the network-wide feed", async () => {
@@ -7772,7 +7772,7 @@ test("GET /api/v1/internal/subnet-identity-aliases: no netuids returns rows:[] w
 });
 
 // D1 retirement (2026-07-16, item 5 of the D1->Postgres cleanup):
-// src/health-serving.mjs's resolveLiveHealth KV-cold fallback.
+// src/health-serving.ts's resolveLiveHealth KV-cold fallback.
 test("GET /api/v1/internal/health-status-live: coerces BIGINT epoch-ms columns to numbers", async () => {
   // postgres.js returns BIGINT columns as strings (see numberOrNull's own
   // header comment) -- this route must coerce them before returning JSON, or
@@ -7825,7 +7825,7 @@ test("GET /api/v1/internal/health-status-live: a missing/non-finite since return
 });
 
 // D1 retirement (2026-07-16, item 10 of the D1->Postgres cleanup):
-// src/subnet-identity-history.mjs's latestBlockNumber.
+// src/subnet-identity-history.ts's latestBlockNumber.
 test("GET /api/v1/internal/latest-block-number: returns the coerced MAX(block_number)", async () => {
   mockRows.current = [{ block_number: "8404076" }];
   const res = await req("/api/v1/internal/latest-block-number");

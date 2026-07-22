@@ -55,7 +55,7 @@ function writeStoredSession(session: StoredSession | null) {
  * persisted in sessionStorage (cleared on tab close) so a reload within the
  * token's lifetime doesn't force re-signing. Resets whenever the connected
  * wallet address changes -- a session is scoped to the address that signed
- * it (server-side too, see src/wallet-auth.mjs's verifySessionToken).
+ * it (server-side too, see src/wallet-auth.ts's verifySessionToken).
  */
 export function useApiSession(wallet: ConnectedWallet | null) {
   const [status, setStatus] = useState<ApiSessionStatus>("idle");

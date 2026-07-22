@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
-import * as healthServing from "../src/health-serving.mjs";
+import * as healthServing from "../src/health-serving.ts";
 import {
   economicsQueryUrl,
   GET_ECONOMICS_MCP_TOOL,
   GET_ECONOMICS_OUTPUT_SCHEMA,
   loadNetworkEconomics,
   networkEconomicsError,
-} from "../src/network-economics.mjs";
+} from "../src/network-economics.ts";
 
 const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
 

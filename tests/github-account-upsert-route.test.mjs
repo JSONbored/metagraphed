@@ -1,6 +1,6 @@
 // Unit tests for workers/data-api.mjs's handleGithubAccountUpsert
 // (metagraphed#7151) -- POST /api/v1/auth/github/upsert-account, reached
-// only via the DATA_API service binding from src/github-oauth.mjs's
+// only via the DATA_API service binding from src/github-oauth.ts's
 // callback handler (see that module's own test file for the OAuth-flow
 // side). Mirrors tests/wallet-auth-keys-route.test.mjs's shape: its own
 // per-test postgres mock queue, scoped only to this file (vi.mock is

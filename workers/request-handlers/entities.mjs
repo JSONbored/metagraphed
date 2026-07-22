@@ -51,34 +51,34 @@ import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
-} from "../../src/metagraph-neurons.mjs";
+} from "../../src/metagraph-neurons.ts";
 import {
   buildAccountsList,
   ACCOUNTS_LIST_SORTS,
   DEFAULT_ACCOUNTS_LIST_SORT,
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
-} from "../../src/accounts-list.mjs";
+} from "../../src/accounts-list.ts";
 import {
   buildTopHoldersList,
   TOP_HOLDERS_SORTS,
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
-} from "../../src/top-holders.mjs";
-import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.mjs";
-import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.mjs";
+} from "../../src/top-holders.ts";
+import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.ts";
+import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.ts";
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,
   parseSubnetYieldHistoryWindow,
-} from "../../src/subnet-yield.mjs";
+} from "../../src/subnet-yield.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
   parseHistoryWindow,
   unsupportedWindowMessage,
-} from "../../src/neuron-history.mjs";
+} from "../../src/neuron-history.ts";
 import {
   INGESTED_EVENT_KINDS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
@@ -93,41 +93,38 @@ import {
   buildAccountTransfers,
   buildAccountSubnets,
   buildBlockEvents,
-} from "../../src/account-events.mjs";
-import { buildAccountPortfolio } from "../../src/account-portfolio.mjs";
-import { buildAccountPositions } from "../../src/account-nominator-positions.mjs";
-import { buildAccountPositionHistory } from "../../src/account-position-history.mjs";
-import { buildAccountIdentity } from "../../src/account-identity.mjs";
-import { buildAccountIdentityHistory } from "../../src/account-identity-history.mjs";
+} from "../../src/account-events.ts";
+import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
+import { buildAccountPositions } from "../../src/account-nominator-positions.ts";
+import { buildAccountPositionHistory } from "../../src/account-position-history.ts";
+import { buildAccountIdentity } from "../../src/account-identity.ts";
+import { buildAccountIdentityHistory } from "../../src/account-identity-history.ts";
 import {
   isFinneySs58Address,
   loadAccountBalance,
-} from "../../src/account-balance.mjs";
-import { loadAccountRootClaim } from "../../src/account-root-claim.mjs";
+} from "../../src/account-balance.ts";
+import { loadAccountRootClaim } from "../../src/account-root-claim.ts";
 import {
   loadAccountChildren,
   loadAccountParents,
-} from "../../src/child-hotkey-delegation.mjs";
-import { loadSudoKey } from "../../src/sudo-key.mjs";
-import {
-  H160_PATTERN,
-  loadAddressMapping,
-} from "../../src/address-mapping.mjs";
-import { loadNetworkParameters } from "../../src/network-parameters.mjs";
-import { loadRandomnessStatus } from "../../src/randomness.mjs";
+} from "../../src/child-hotkey-delegation.ts";
+import { loadSudoKey } from "../../src/sudo-key.ts";
+import { H160_PATTERN, loadAddressMapping } from "../../src/address-mapping.ts";
+import { loadNetworkParameters } from "../../src/network-parameters.ts";
+import { loadRandomnessStatus } from "../../src/randomness.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
   buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
-} from "../../src/entity-labels.mjs";
-import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
-import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
-import { loadSubnetLease } from "../../src/subnet-lease.mjs";
-import { computeStakeQuote } from "../../src/stake-quote.mjs";
-import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
-import { buildBlock, buildBlockFeed } from "../../src/blocks.mjs";
-import { buildBlocksSummary } from "../../src/blocks-summary.mjs";
+} from "../../src/entity-labels.ts";
+import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
+import { loadSubnetBurn } from "../../src/subnet-burn.ts";
+import { loadSubnetLease } from "../../src/subnet-lease.ts";
+import { computeStakeQuote } from "../../src/stake-quote.ts";
+import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
+import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
+import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,
   extrinsicsToCsvRows,
@@ -135,143 +132,143 @@ import {
   buildExtrinsicFeed,
   buildAccountExtrinsics,
   buildBlockExtrinsics,
-} from "../../src/extrinsics.mjs";
+} from "../../src/extrinsics.ts";
 import {
   buildConcentration,
   buildChainConcentration,
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
-} from "../../src/concentration.mjs";
-import { buildChainPerformance } from "../../src/chain-performance.mjs";
-import { buildChainYield } from "../../src/chain-yield.mjs";
+} from "../../src/concentration.ts";
+import { buildChainPerformance } from "../../src/chain-performance.ts";
+import { buildChainYield } from "../../src/chain-yield.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "../../src/subnet-idle-stake.mjs";
+} from "../../src/subnet-idle-stake.ts";
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-} from "../../src/chain-identity-history.mjs";
+} from "../../src/chain-identity-history.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
   parseSubnetPerformanceHistoryWindow,
-} from "../../src/subnet-performance.mjs";
+} from "../../src/subnet-performance.ts";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
-} from "../../src/counterparties.mjs";
+} from "../../src/counterparties.ts";
 import {
   buildTurnover,
   buildTurnoverChanges,
   turnoverChangeDetail,
-} from "../../src/turnover.mjs";
+} from "../../src/turnover.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
-} from "../../src/subnet-weights.mjs";
+} from "../../src/subnet-weights.ts";
 import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
-} from "../../src/subnet-weight-setters.mjs";
+} from "../../src/subnet-weight-setters.ts";
 import {
   buildSubnetServing,
   SUBNET_SERVING_WINDOWS,
   DEFAULT_SUBNET_SERVING_WINDOW,
-} from "../../src/subnet-serving.mjs";
+} from "../../src/subnet-serving.ts";
 import {
   buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
-} from "../../src/subnet-prometheus.mjs";
+} from "../../src/subnet-prometheus.ts";
 import {
   buildSubnetStakeMoves,
   SUBNET_STAKE_MOVES_WINDOWS,
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
-} from "../../src/subnet-stake-moves.mjs";
+} from "../../src/subnet-stake-moves.ts";
 import {
   buildSubnetStakeTransfers,
   SUBNET_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
-} from "../../src/subnet-stake-transfers.mjs";
+} from "../../src/subnet-stake-transfers.ts";
 import {
   buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
-} from "../../src/subnet-registrations.mjs";
+} from "../../src/subnet-registrations.ts";
 import {
   buildSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
-} from "../../src/subnet-axon-removals.mjs";
+} from "../../src/subnet-axon-removals.ts";
 import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
-} from "../../src/subnet-deregistrations.mjs";
+} from "../../src/subnet-deregistrations.ts";
 import {
   buildStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
   STAKE_FLOW_DIRECTIONS,
-} from "../../src/stake-flow.mjs";
-import { buildAlphaVolume } from "../../src/alpha-volume.mjs";
+} from "../../src/stake-flow.ts";
+import { buildAlphaVolume } from "../../src/alpha-volume.ts";
 import {
   buildSubnetOhlc,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
-} from "../../src/subnet-ohlc.mjs";
-import { resolveLiveEconomics } from "../../src/health-serving.mjs";
+} from "../../src/subnet-ohlc.ts";
+import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
-import { buildAccountStakeFlow } from "../../src/account-stake-flow.mjs";
+import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,
   DEFAULT_NOMINATOR_WINDOW,
   NOMINATOR_SORTS,
-} from "../../src/validator-nominators.mjs";
-import { buildValidatorHistory } from "../../src/validator-history.mjs";
+} from "../../src/validator-nominators.ts";
+import { buildValidatorHistory } from "../../src/validator-history.ts";
 import {
   buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "../../src/account-stake-moves.mjs";
+} from "../../src/account-stake-moves.ts";
 import {
   buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "../../src/account-weight-setters.mjs";
+} from "../../src/account-weight-setters.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
-} from "../../src/account-registrations.mjs";
+} from "../../src/account-registrations.ts";
 import {
   buildAccountServing,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
-} from "../../src/account-serving.mjs";
+} from "../../src/account-serving.ts";
 import {
   buildAccountAxonRemovals,
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
-} from "../../src/account-axon-removals.mjs";
+} from "../../src/account-axon-removals.ts";
 import {
   buildAccountPrometheus,
   PROMETHEUS_WINDOWS,
   DEFAULT_PROMETHEUS_WINDOW,
-} from "../../src/account-prometheus.mjs";
+} from "../../src/account-prometheus.ts";
 import {
   buildAccountDeregistrations,
   DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW,
-} from "../../src/account-deregistrations.mjs";
+} from "../../src/account-deregistrations.ts";
 import {
   buildMovers,
   MOVERS_WINDOWS,
@@ -280,15 +277,15 @@ import {
   DEFAULT_MOVERS_SORT,
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
-} from "../../src/movers.mjs";
+} from "../../src/movers.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
-} from "../../src/chain-turnover.mjs";
-import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
+} from "../../src/chain-turnover.ts";
+import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.ts";
 
 const RESPONSE_FORMATS = ["json", "csv"];
 const NEURON_CSV_COLUMNS = [
@@ -442,7 +439,7 @@ const SUBNET_YIELD_HISTORY_CSV_COLUMNS = [
   "p75_yield",
   "p90_yield",
 ];
-// performanceHistoryPoint's flat row shape (src/subnet-performance.mjs) — the
+// performanceHistoryPoint's flat row shape (src/subnet-performance.ts) — the
 // reward-flow twin of SUBNET_CONCENTRATION_HISTORY_CSV_COLUMNS.
 const SUBNET_PERFORMANCE_HISTORY_CSV_COLUMNS = [
   "snapshot_date",
@@ -462,7 +459,7 @@ const SUBNET_PERFORMANCE_HISTORY_CSV_COLUMNS = [
   "validator_trust_mean",
   "validator_trust_median",
 ];
-// formatHyperparamsHistoryEntry's row shape (src/subnet-hyperparams-history.mjs);
+// formatHyperparamsHistoryEntry's row shape (src/subnet-hyperparams-history.ts);
 // `hyperparameters` is the nested 33-field object, serialized as one JSON cell
 // like the `axon` column on NEURON_CSV_COLUMNS.
 const SUBNET_HYPERPARAMS_HISTORY_CSV_COLUMNS = [
@@ -530,7 +527,7 @@ const EVENTS_CSV_COLUMNS = [
   "observed_at",
   "extrinsic_index",
 ];
-// The formatIdentityHistoryEntry row shape (src/subnet-identity-history.mjs):
+// The formatIdentityHistoryEntry row shape (src/subnet-identity-history.ts):
 // one SubnetIdentitiesV3 snapshot per row, stable so a CSV consumer's columns
 // never shift.
 const SUBNET_IDENTITY_HISTORY_CSV_COLUMNS = [
@@ -2596,7 +2593,7 @@ async function resolveSubnetEconomicsRow(env, netuid) {
 // GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake
 // (#5235): a read-only constant-product slippage/price-impact estimate against
 // the subnet's live AMM pool reserves — no chain write, no custody. Pure math in
-// src/stake-quote.mjs; this handler just resolves the reserves and maps its
+// src/stake-quote.ts; this handler just resolves the reserves and maps its
 // typed result onto the API envelope (400 for a bad request, 422 when the pool
 // can't fill the requested swap).
 export async function handleSubnetStakeQuote(request, env, netuid, url) {
@@ -3013,7 +3010,7 @@ export async function handleAccount(request, env, ss58) {
 // GET /api/v1/accounts/{coldkey}/entities (#6740): one address's own entity
 // labels plus every subnet-ownership tie it has via the SubnetOwnerChanged
 // chain_events stream (either side of the transfer) -- see
-// src/entity-labels.mjs's own header for the scope/limitation note (this
+// src/entity-labels.ts's own header for the scope/limitation note (this
 // only tracks AUTOMATIC ownership transfers, not genesis ownership).
 //
 // The DATA_API service binding (workers/data-api.mjs) only carries the
@@ -3892,7 +3889,7 @@ export async function handleAccountRootClaim(request, env, ss58) {
 // delegation graph epic #6721): every child hotkey this account currently
 // delegates stake-weight to, per subnet, with the proportion charged. Live
 // RPC + KV-cache route, same shape as handleAccountBalance just above —
-// see src/child-hotkey-delegation.mjs's header for the on-chain storage
+// see src/child-hotkey-delegation.ts's header for the on-chain storage
 // details.
 export async function handleAccountChildren(request, env, ss58) {
   if (!isFinneySs58Address(ss58)) {
@@ -3974,7 +3971,7 @@ export async function handleAccountParents(request, env, ss58) {
 // GET /api/v1/subnets/{netuid}/recycled (#4339/8.4): the live cumulative TAO
 // recycled for registration on one subnet, queried from the chain's own
 // RAORecycledForRegistration storage map at request time (600s KV cache via
-// METAGRAPH_CONTROL) — see src/subnet-recycled.mjs's header for why this
+// METAGRAPH_CONTROL) — see src/subnet-recycled.ts's header for why this
 // isn't a log-layer/account_events aggregation. netuid is a per-request-
 // controllable cache-busting parameter (like /accounts/{ss58}/balance's
 // ss58), so it shares that route's rate limiter rather than sudo-key's
@@ -4018,7 +4015,7 @@ export async function handleSubnetRecycled(request, env, netuid) {
 
 // GET /api/v1/subnets/{netuid}/burn (#6321): the live current registration/
 // burn cost — the dynamic price between min_burn_tao/max_burn_tao's static
-// bounds (subnet-hyperparams.mjs). Same live-RPC + KV-cache + rate-limit
+// bounds (subnet-hyperparams.ts). Same live-RPC + KV-cache + rate-limit
 // shape as handleSubnetRecycled just above (a sibling storage-map read, not
 // the same underlying value).
 export async function handleSubnetBurn(request, env, netuid) {
@@ -4063,7 +4060,7 @@ export async function handleSubnetBurn(request, env, netuid) {
 // lease and, if so, its terms + accumulated-but-undistributed alpha
 // dividends. Same live-RPC + KV-cache + rate-limit shape as handleSubnetBurn
 // just above (a different set of storage items, same pattern). See
-// src/subnet-lease.mjs's header for the on-chain storage-key/struct-layout
+// src/subnet-lease.ts's header for the on-chain storage-key/struct-layout
 // details. The companion /lease/history route (event log) is a Postgres-
 // tier route in workers/data-api.mjs, not here.
 export async function handleSubnetLease(request, env, netuid) {
@@ -4542,7 +4539,7 @@ const RUNTIME_VERSIONS_CSV_COLUMNS = [
 // earliest known block at each distinct spec_version the blocks D1 tier has
 // observed, ascending by block_number. A single-row aggregate over the whole
 // retained window, nothing to filter or paginate (?format=csv is the one
-// accepted param, #6392). See src/runtime-versions.mjs for the coverage caveat
+// accepted param, #6392). See src/runtime-versions.ts for the coverage caveat
 // (spec_version wasn't tracked before 2026-06-25 and can't be back-filled for
 // rows written before then).
 export async function handleRuntime(request, env, url) {

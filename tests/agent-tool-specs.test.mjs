@@ -4,7 +4,7 @@ import {
   buildAgentToolsIndex,
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
-} from "../src/agent-tool-specs.mjs";
+} from "../src/agent-tool-specs.ts";
 
 const TOOLS = [
   {

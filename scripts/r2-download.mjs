@@ -11,7 +11,7 @@ import {
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");

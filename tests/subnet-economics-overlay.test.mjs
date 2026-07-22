@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { overlaySubnetEconomics } from "../src/health-serving.mjs";
+import { overlaySubnetEconomics } from "../src/health-serving.ts";
 
 const blob = {
   subnets: [

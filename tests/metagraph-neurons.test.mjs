@@ -13,7 +13,7 @@ import {
   loadSubnetValidators,
   loadGlobalValidators,
   loadValidatorDetail,
-} from "../src/metagraph-neurons.mjs";
+} from "../src/metagraph-neurons.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
@@ -102,7 +102,7 @@ describe("metagraph-neurons builders", () => {
     // D1 can return INTEGER / REAL columns as numeric strings ("3" not 3,
     // "1000.5" not 1000.5); the bare `?? null` pass-through this replaced would
     // have leaked strings into the API payload. Same shape as the coercion in
-    // blocks.mjs (#2435), extrinsics.mjs (#2439), and account-events.mjs
+    // blocks.mjs (#2435), extrinsics.ts (#2439), and account-events.mjs
     // (#2481, #2489). stake/emission additionally round to rao precision so
     // accumulated IEEE-754 float noise never reaches the payload. Ratio fields
     // use nullableNumber + round, matching buildGlobalValidators (#2611).
@@ -223,7 +223,7 @@ describe("metagraph-neurons builders", () => {
     // emission_tao must be rounded to 1e-9 (rao) precision so a noisy REAL
     // D1 cell (e.g. 22.1234567894) does not leak accumulated IEEE-754 noise
     // into the API payload. Mirrors toTaoOrNull in account-events.mjs and
-    // roundTao in chain-analytics.mjs.
+    // roundTao in chain-analytics.ts.
     const n = formatNeuron({
       stake_tao: "22.1234567894",
       emission_tao: "1000.50000000004",
@@ -256,7 +256,7 @@ describe("metagraph-neurons builders", () => {
   });
 
   test("formatNeuron rejects blank integer cells that coerce to 0 (not uid/block 0)", () => {
-    // Mirrors the blank-cell guard in chain-analytics.mjs (#3019): Number("") is 0.
+    // Mirrors the blank-cell guard in chain-analytics.ts (#3019): Number("") is 0.
     for (const blank of ["", "   "]) {
       const n = formatNeuron({
         uid: blank,

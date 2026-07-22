@@ -4,7 +4,7 @@ import {
   buildAccountStakeFlow,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-} from "../src/account-stake-flow.mjs";
+} from "../src/account-stake-flow.ts";
 
 // One GROUP BY netuid, event_kind row.
 function row(netuid, kind, tao, count) {
@@ -190,7 +190,7 @@ describe("buildAccountStakeFlow", () => {
   });
 
   test("skips blank netuid cells instead of coercing to subnet 0", () => {
-    // Mirrors the blank-cell guard in turnover.mjs (#3026): Number("") is 0.
+    // Mirrors the blank-cell guard in turnover.ts (#3026): Number("") is 0.
     for (const blank of ["", "   "]) {
       const d = buildAccountStakeFlow([added(blank, 100), added(1, 25)], ADDR);
       assert.equal(

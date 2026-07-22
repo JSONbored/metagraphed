@@ -5,7 +5,7 @@ import {
   buildAccountIdentity,
   loadAccountIdentity,
   sanitizeAccountIdentityFields,
-} from "../src/account-identity.mjs";
+} from "../src/account-identity.ts";
 
 function identityRow(overrides = {}) {
   return {

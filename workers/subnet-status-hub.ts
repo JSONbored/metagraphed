@@ -6,7 +6,7 @@
 // stream, but keyed by netuid so a health-probe change fans out only to
 // sessions that subscribed to that subnet — never sessions × all subnets.
 // Change detection itself lives in the health prober write path
-// (src/subnet-status-subscribe.mjs + src/health-prober.mjs); this class only
+// (src/subnet-status-subscribe.ts + src/health-prober.ts); this class only
 // stores membership and delivers pointer-only
 // notifications/resources/updated via each session's McpSessionHub /notify
 // route (same shape as ChainFirehoseHub.broadcast()'s MCP loop).
@@ -19,7 +19,7 @@
 import {
   buildSubnetStatusResourceUri,
   parseSubnetStatusResourceUri,
-} from "../src/subnet-status-subscribe.mjs";
+} from "../src/subnet-status-subscribe.ts";
 
 type NetuidIndex = Map<number, Set<string>>;
 type SessionIndex = Map<string, Set<number>>;

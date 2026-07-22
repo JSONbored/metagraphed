@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { ipv6EmbeddedIpv4, ipv6ToBytes } from "../src/ip-safety.mjs";
+import { ipv6EmbeddedIpv4, ipv6ToBytes } from "../src/ip-safety.ts";
 
 describe("ipv6ToBytes", () => {
   test("returns null for non-IPv6 input", () => {

@@ -1,7 +1,7 @@
 // Enforces that EVERY /api/v1 operation ships a worked response `example` in the
 // OpenAPI contract, and that each example is valid against its own response
 // schema. The examples are generated deterministically from the schemas at
-// build time (src/openapi-sample.mjs via buildOpenApiArtifact) so they stay
+// build time (src/openapi-sample.ts via buildOpenApiArtifact) so they stay
 // reproducible (no live data) and self-maintaining; this gate guarantees they
 // stay present + schema-correct, and surfaces any schema construct the sampler
 // mishandles.

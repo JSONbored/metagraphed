@@ -4,7 +4,7 @@ import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   buildChainIdentityHistory,
-} from "../src/chain-identity-history.mjs";
+} from "../src/chain-identity-history.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

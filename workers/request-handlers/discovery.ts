@@ -2,8 +2,8 @@ import { CACHE_SECONDS, PRIMARY_DOMAIN } from "../../src/contracts.mjs";
 import { errorResponse, ifNoneMatchSatisfied, weakEtag } from "../http.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import { contractVersion, publishedAt } from "../responses.ts";
-import { KV_HEALTH_CURRENT } from "../../src/health-prober.mjs";
-import { subnetBadgeStatus } from "../../src/health-serving.mjs";
+import { KV_HEALTH_CURRENT } from "../../src/health-prober.ts";
+import { subnetBadgeStatus } from "../../src/health-serving.ts";
 import {
   listToolDefinitions,
   listPromptDefinitions,
@@ -14,12 +14,12 @@ import {
   MCP_REGISTRY_META,
   MCP_RESOURCE_TEMPLATES,
 } from "../../src/mcp-server.mjs";
-import { feedLinkHeader } from "../../src/feeds.mjs";
+import { feedLinkHeader } from "../../src/feeds.ts";
 import {
   buildAgentToolsIndex,
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
-} from "../../src/agent-tool-specs.mjs";
+} from "../../src/agent-tool-specs.ts";
 
 // Self-hosted SVG health badges for subnet READMEs, e.g.
 // ![](https://api.metagraph.sh/metagraph/health/badges/7.svg) — no shields.io
@@ -76,7 +76,10 @@ export async function handleBadgeSvgRequest(
   // Live overlay: prefer the fresh operational status from the 2-min cron
   // snapshot; fall back to the static badge artifact, then to "unavailable".
   const liveCurrent = await readHealthKv(env, KV_HEALTH_CURRENT);
-  const liveStatus = subnetBadgeStatus(liveCurrent, Number(netuid)) as {
+  const liveStatus = subnetBadgeStatus(
+    liveCurrent as Record<string, unknown> | null,
+    Number(netuid),
+  ) as {
     status: string;
   } | null;
   const available = Boolean(liveStatus || (artifact.ok && artifact.data));

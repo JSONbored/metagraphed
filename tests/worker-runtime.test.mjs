@@ -2346,7 +2346,7 @@ describe("Agent discovery surfaces", () => {
 });
 
 // GitHub OAuth (metagraphed#7151): confirms api.mjs actually dispatches
-// these two GET-only paths to src/github-oauth.mjs's handlers -- the
+// these two GET-only paths to src/github-oauth.ts's handlers -- the
 // handlers' own logic (state validation, GitHub token exchange, the
 // DATA_API upsert, error branches) is exhaustively covered directly in
 // tests/github-oauth.test.mjs; this only proves the routing wire-up. The

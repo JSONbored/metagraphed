@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
+import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import {
   READINESS_VERSION,
   COVERAGE_DEPTH_VERSION,

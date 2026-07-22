@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildSubnetOwnershipHistory,
   OWNERSHIP_CHANGE_EVENT_METHOD,
-} from "../src/subnet-ownership-history.mjs";
+} from "../src/subnet-ownership-history.ts";
 
 // Real-shaped 32-byte AccountId32 raw args (double-wrapped array, matching
 // indexer-rs's dynamic-value dump for a tuple-struct-with-one-field --

@@ -9,7 +9,7 @@ import {
   removeSessionSubscription,
   serializeSubscriptionIndex,
 } from "../workers/subnet-status-hub.ts";
-import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
+import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.ts";
 
 function createStubStorage(initial = {}) {
   const data = new Map(Object.entries(initial));

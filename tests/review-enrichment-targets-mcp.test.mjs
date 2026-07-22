@@ -10,7 +10,7 @@ import {
   loadReviewEnrichmentTargetsList,
   reviewEnrichmentTargetsMcpError,
   reviewEnrichmentTargetsQueryUrl,
-} from "../src/review-enrichment-targets-mcp.mjs";
+} from "../src/review-enrichment-targets-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

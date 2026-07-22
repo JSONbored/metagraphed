@@ -10,7 +10,7 @@ import {
   loadProvidersList,
   providersMcpError,
   providersQueryUrl,
-} from "../src/providers-mcp.mjs";
+} from "../src/providers-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

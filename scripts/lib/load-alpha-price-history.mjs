@@ -3,7 +3,7 @@
  * Used by refresh-economics / build-artifacts when DATABASE_URL is set.
  * Returns null when the DB is unavailable so bake stays graceful.
  */
-import { indexAlphaPriceHistoryByNetuid } from "../../src/alpha-price-change.mjs";
+import { indexAlphaPriceHistoryByNetuid } from "../../src/alpha-price-change.ts";
 
 /** Days of history needed for the 1m window, plus a few days of slack. */
 export const ALPHA_PRICE_HISTORY_LOOKBACK_DAYS = 40;

@@ -10,7 +10,7 @@ import {
   loadSearchIndexList,
   searchIndexMcpError,
   searchIndexQueryUrl,
-} from "../src/search-index-mcp.mjs";
+} from "../src/search-index-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

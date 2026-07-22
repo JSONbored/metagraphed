@@ -5,7 +5,7 @@ import {
   loadAccountDeregistrations,
   DEREGISTRATION_EVENT_KIND,
   DEFAULT_DEREGISTRATION_WINDOW,
-} from "../src/account-deregistrations.mjs";
+} from "../src/account-deregistrations.ts";
 
 // One GROUP BY netuid row (deregistration count + first/last observed epoch ms).
 function row(netuid, deregistrations, first, last) {

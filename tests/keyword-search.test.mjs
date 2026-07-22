@@ -4,7 +4,7 @@ import {
   keywordScore,
   MAX_QUERY_TERMS,
   queryTerms,
-} from "../src/keyword-search.mjs";
+} from "../src/keyword-search.ts";
 
 // Convenience: score a doc against a raw query string the way the tools do.
 const score = (doc, query) => keywordScore(doc, queryTerms(query));

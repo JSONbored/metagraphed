@@ -5,7 +5,7 @@ import {
   loadAccountRegistrations,
   REGISTRATION_EVENT_KIND,
   DEFAULT_REGISTRATION_WINDOW,
-} from "../src/account-registrations.mjs";
+} from "../src/account-registrations.ts";
 
 // One GROUP BY netuid row (registrations count + first/last observed epoch ms).
 function row(netuid, registrations, first, last) {

@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   formatSubnetHyperparams,
   buildSubnetHyperparams,
-} from "../src/subnet-hyperparams.mjs";
+} from "../src/subnet-hyperparams.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

@@ -4,7 +4,7 @@
 // the output is byte-identical to the in-lib.mjs originals. Re-exported from
 // scripts/lib.mjs so existing importers keep their import paths unchanged.
 
-import { withAlphaPriceChanges } from "../../src/alpha-price-change.mjs";
+import { withAlphaPriceChanges } from "../../src/alpha-price-change.ts";
 
 // #1009: per-subnet validator + economic entity, derived from the chain
 // snapshot's `economics` block (validator/miner counts, stake, registration
@@ -71,7 +71,7 @@ const RAO_PER_TAO = 1_000_000_000n;
 // a fixed 9-decimal (rao-precision) string, never a JS number, so neither
 // the summation nor the JSON serialization loses precision. Mirrors the
 // toRaoBig/raoBigToTao pattern used for per-entity sums elsewhere (e.g.
-// src/chain-yield.mjs), extended to a string output since -- unlike those
+// src/chain-yield.ts), extended to a string output since -- unlike those
 // per-entity totals -- this sum's magnitude is the whole reason this exists.
 // No negative-sign handling: total_stake_tao is a non-negative on-chain
 // quantity (matches the schema's own `minimum: 0`), so a negative sum is
@@ -100,7 +100,7 @@ function sumFieldTaoString(rows, field) {
 // #6641: Backprop's "Total Network Value" split -- root (netuid 0) stake is
 // TAO-denominated with no AMM/price exposure, exactly like
 // buildGlobalValidatorEntry's root_stake_tao/alpha_stake_tao split in
-// src/metagraph-neurons.mjs and the root-has-no-AMM carve-out stake-quote.mjs
+// src/metagraph-neurons.ts and the root-has-no-AMM carve-out stake-quote.ts
 // documents -- just applied to the network-wide rollup instead of a
 // per-entity one. Root's own alpha_market_cap_tao (its ~1.0 moving_price
 // times its TAO stake) is deliberately excluded from the alpha rollup so its

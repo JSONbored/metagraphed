@@ -6,7 +6,7 @@ import {
   STAKE_MOVED_EVENT_KIND,
   SUBNET_STAKE_MOVES_WINDOWS,
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
-} from "../src/subnet-stake-moves.mjs";
+} from "../src/subnet-stake-moves.ts";
 
 describe("buildSubnetStakeMoves", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {

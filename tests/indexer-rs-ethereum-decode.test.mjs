@@ -7,11 +7,11 @@ import {
   decodeEvmWithdrawArgs,
   decodeSignatureFieldArgs,
   decodeEthereumEvmCallArgs,
-} from "../src/indexer-rs-ethereum-decode.mjs";
-import { decodePostgresCallArgs } from "../src/postgres-call-args.mjs";
+} from "../src/indexer-rs-ethereum-decode.ts";
+import { decodePostgresCallArgs } from "../src/postgres-call-args.ts";
 import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
-// Full formatExtrinsic-equivalent pipeline, matching src/extrinsics.mjs's
+// Full formatExtrinsic-equivalent pipeline, matching src/extrinsics.ts's
 // actual call order (decodePostgresCallArgs -> normalizePostgresValue ->
 // decodeEthereumEvmCallArgs).
 function decode(callModule, callFunction, raw) {
@@ -382,7 +382,7 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
 
   describe("precompile_call (#6725/#6727)", () => {
     // StakingV2's real address (0x...805) and getTotalColdkeyStake(bytes32)'s
-    // real selector, both from src/evm-precompiles.mjs's own registry -- not
+    // real selector, both from src/evm-precompiles.ts's own registry -- not
     // hand-transcribed here, so a registry change can never silently drift
     // this fixture out of sync with it.
     const STAKING_V2_ADDRESS = "0x0000000000000000000000000000000000000805";
@@ -414,7 +414,7 @@ describe("decodeEthereumTransactArgs (real production fixture, block 8587453/9)"
 
     test("decodes a real precompile call's calldata into named args", async () => {
       const { EVM_PRECOMPILE_BY_ADDRESS } =
-        await import("../src/evm-precompiles.mjs");
+        await import("../src/evm-precompiles.ts");
       const fn = EVM_PRECOMPILE_BY_ADDRESS.get(
         STAKING_V2_ADDRESS,
       ).functions.find((f) => f.name === STAKING_V2_FUNCTION);

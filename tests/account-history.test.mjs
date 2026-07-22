@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { buildAccountHistory } from "../src/account-events.mjs";
+import { buildAccountHistory } from "../src/account-events.ts";
 
 // SQL-capturing D1 mock variant: records each bound (sql, params) so a test can
 // assert the query shape (keyset seek vs offset).

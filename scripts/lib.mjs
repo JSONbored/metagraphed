@@ -12,8 +12,8 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactRelativePath,
   artifactStorageTierForRelativePath,
-} from "../src/artifact-storage.mjs";
-import { entityLabelsIndex } from "../src/entity-labels.mjs";
+} from "../src/artifact-storage.ts";
+import { entityLabelsIndex } from "../src/entity-labels.ts";
 import { sanitizeChainText, slugify } from "./lib/formatting.mjs";
 
 // Resolve via fileURLToPath rather than `new URL("..").pathname` so the repo
@@ -604,7 +604,7 @@ export async function loadProviders() {
 export async function loadEntities() {
   const files = await listJsonFiles(path.join(repoRoot, "registry/entities"));
   const entities = await Promise.all(files.map(readJson));
-  // Dedup-by-ss58 delegated to entityLabelsIndex (src/entity-labels.mjs,
+  // Dedup-by-ss58 delegated to entityLabelsIndex (src/entity-labels.ts,
   // already unit-tested there) rather than re-implemented inline here.
   return [...entityLabelsIndex(entities).values()].sort((a, b) =>
     a.ss58.localeCompare(b.ss58),
@@ -1807,9 +1807,9 @@ export function nativeContactUrl(contact) {
 }
 
 // Domain/capability tag derivation (issue #345) lives in the worker-safe
-// src/domain-tags.mjs so the build and the Worker's ?domain= enum share one
+// src/domain-tags.ts so the build and the Worker's ?domain= enum share one
 // vocabulary; re-exported here for the build-side import sites.
-export { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.mjs";
+export { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.ts";
 
 // Cross-network lineage join (issue #353): publish only maintainer-approved
 // cross-network pairs. On-chain github_repo/name equality is attacker-controlled

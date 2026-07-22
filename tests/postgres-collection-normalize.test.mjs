@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { decodeBTreeSetFields } from "../src/postgres-collection-normalize.mjs";
+import { decodeBTreeSetFields } from "../src/postgres-collection-normalize.ts";
 import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
-// Chains after normalizePostgresValue, matching src/extrinsics.mjs's actual
+// Chains after normalizePostgresValue, matching src/extrinsics.ts's actual
 // formatExtrinsic call order.
 function decode(callModule, callFunction, raw) {
   return decodeBTreeSetFields(

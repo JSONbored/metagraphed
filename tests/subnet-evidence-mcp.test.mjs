@@ -10,7 +10,7 @@ import {
   subnetEvidenceArtifactPath,
   subnetEvidenceMcpError,
   subnetEvidenceQueryUrl,
-} from "../src/subnet-evidence-mcp.mjs";
+} from "../src/subnet-evidence-mcp.ts";
 import {
   MCP_INSTRUCTIONS,
   MCP_SERVER_VERSION,

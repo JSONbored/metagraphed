@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { validateApiKey } from "../src/api-key-validation.mjs";
+import { validateApiKey } from "../src/api-key-validation.ts";
 
 const RAW_KEY = "mg_aVeryOpaqueUnkeyGeneratedSuffixHere";
 const OTHER_RAW_KEY = "mg_aDifferentOpaqueUnkeyGeneratedSuffix";

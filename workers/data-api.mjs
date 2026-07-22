@@ -21,15 +21,15 @@
 // read routes' `cache-control: public, max-age=10`).
 import postgres from "postgres";
 import * as Sentry from "@sentry/cloudflare";
-import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.mjs";
+import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.ts";
 import { decodeCursor, encodeCursor } from "../src/cursor.ts";
-import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
+import { buildBlock, buildBlockFeed } from "../src/blocks.ts";
 import {
   buildExtrinsic,
   buildExtrinsicFeed,
   buildBlockExtrinsics,
   buildAccountExtrinsics,
-} from "../src/extrinsics.mjs";
+} from "../src/extrinsics.ts";
 import {
   buildAccountEvents,
   formatAccountEvent,
@@ -45,33 +45,33 @@ import {
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
-} from "../src/account-events.mjs";
-import { buildAlphaVolume } from "../src/alpha-volume.mjs";
+} from "../src/account-events.ts";
+import { buildAlphaVolume } from "../src/alpha-volume.ts";
 import {
   buildSubnetOhlc,
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
-} from "../src/subnet-ohlc.mjs";
+} from "../src/subnet-ohlc.ts";
 import {
   buildSubnetOwnershipHistory,
   OWNERSHIP_CHANGE_EVENT_METHOD,
-} from "../src/subnet-ownership-history.mjs";
-import { buildAccountEntities } from "../src/entity-labels.mjs";
+} from "../src/subnet-ownership-history.ts";
+import { buildAccountEntities } from "../src/entity-labels.ts";
 import {
   buildSubnetLeaseHistory,
   SUBNET_LEASE_CREATED_KIND,
   SUBNET_LEASE_TERMINATED_KIND,
-} from "../src/subnet-lease-history.mjs";
+} from "../src/subnet-lease-history.ts";
 import {
   buildSubnetConviction,
   fetchConvictionRates,
-} from "../src/subnet-conviction.mjs";
+} from "../src/subnet-conviction.ts";
 import {
   buildBlocksSummary,
   BLOCKS_SUMMARY_SCAN_CAP,
-} from "../src/blocks-summary.mjs";
-import { buildRuntimeVersionHistory } from "../src/runtime-versions.mjs";
+} from "../src/blocks-summary.ts";
+import { buildRuntimeVersionHistory } from "../src/runtime-versions.ts";
 import {
   buildConcentration,
   buildChainConcentration,
@@ -79,65 +79,65 @@ import {
   CONCENTRATION_HISTORY_ROW_CAP,
   CONCENTRATION_HISTORY_WINDOWS,
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
-} from "../src/concentration.mjs";
+} from "../src/concentration.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
   PERFORMANCE_HISTORY_ROW_CAP,
   PERFORMANCE_HISTORY_WINDOWS,
   DEFAULT_PERFORMANCE_HISTORY_WINDOW,
-} from "../src/subnet-performance.mjs";
-import { buildChainPerformance } from "../src/chain-performance.mjs";
+} from "../src/subnet-performance.ts";
+import { buildChainPerformance } from "../src/chain-performance.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "../src/subnet-idle-stake.mjs";
-import { buildChainYield } from "../src/chain-yield.mjs";
+} from "../src/subnet-idle-stake.ts";
+import { buildChainYield } from "../src/chain-yield.ts";
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,
   YIELD_HISTORY_ROW_CAP,
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
-} from "../src/subnet-yield.mjs";
-import { buildAccountPortfolio } from "../src/account-portfolio.mjs";
+} from "../src/subnet-yield.ts";
+import { buildAccountPortfolio } from "../src/account-portfolio.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
   HISTORY_WINDOWS,
   DEFAULT_HISTORY_WINDOW,
   MAX_HISTORY_POINTS,
-} from "../src/neuron-history.mjs";
-import { buildValidatorHistory } from "../src/validator-history.mjs";
+} from "../src/neuron-history.ts";
+import { buildValidatorHistory } from "../src/validator-history.ts";
 import {
   buildTurnover,
   buildTurnoverChanges,
   turnoverChangeDetail,
-} from "../src/turnover.mjs";
+} from "../src/turnover.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
-} from "../src/chain-turnover.mjs";
+} from "../src/chain-turnover.ts";
 import {
   buildMovers,
   MOVERS_WINDOWS,
   DEFAULT_MOVERS_WINDOW,
   DEFAULT_MOVERS_SORT,
   MOVERS_LIMIT_DEFAULT,
-} from "../src/movers.mjs";
+} from "../src/movers.ts";
 import {
   buildAccountsList,
   DEFAULT_ACCOUNTS_LIST_SORT,
   ACCOUNTS_LIST_LIMIT_DEFAULT,
-} from "../src/accounts-list.mjs";
+} from "../src/accounts-list.ts";
 import {
   buildTopHoldersList,
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
-} from "../src/top-holders.mjs";
-import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
+} from "../src/top-holders.ts";
+import { decodeChainEventArgs } from "../src/chain-event-args.ts";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,
@@ -145,107 +145,107 @@ import {
   NOMINATOR_SORTS,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-} from "../src/validator-nominators.mjs";
+} from "../src/validator-nominators.ts";
 import {
   buildAccountWeightSetters,
   WEIGHTS_EVENT_KIND,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "../src/account-weight-setters.mjs";
+} from "../src/account-weight-setters.ts";
 import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_LIMIT,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
-} from "../src/subnet-weight-setters.mjs";
+} from "../src/subnet-weight-setters.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
-} from "../src/subnet-weights.mjs";
+} from "../src/subnet-weights.ts";
 import {
   buildAccountStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
-} from "../src/account-stake-flow.mjs";
-import { buildStakeFlow } from "../src/stake-flow.mjs";
+} from "../src/account-stake-flow.ts";
+import { buildStakeFlow } from "../src/stake-flow.ts";
 import {
   buildAccountStakeMoves,
   STAKE_MOVED_EVENT_KIND,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "../src/account-stake-moves.mjs";
+} from "../src/account-stake-moves.ts";
 import {
   buildSubnetStakeMoves,
   SUBNET_STAKE_MOVES_WINDOWS,
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
-} from "../src/subnet-stake-moves.mjs";
+} from "../src/subnet-stake-moves.ts";
 import {
   buildSubnetStakeTransfers,
   STAKE_TRANSFERRED_EVENT_KIND,
   SUBNET_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
-} from "../src/subnet-stake-transfers.mjs";
+} from "../src/subnet-stake-transfers.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_EVENT_KIND,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
-} from "../src/account-registrations.mjs";
+} from "../src/account-registrations.ts";
 import {
   buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
-} from "../src/subnet-registrations.mjs";
+} from "../src/subnet-registrations.ts";
 import {
   buildAccountServing,
   SERVING_EVENT_KIND,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
-} from "../src/account-serving.mjs";
+} from "../src/account-serving.ts";
 import {
   buildSubnetServing,
   SUBNET_SERVING_WINDOWS,
   DEFAULT_SUBNET_SERVING_WINDOW,
-} from "../src/subnet-serving.mjs";
+} from "../src/subnet-serving.ts";
 import {
   buildAccountAxonRemovals,
   AXON_REMOVAL_EVENT_KIND,
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
-} from "../src/account-axon-removals.mjs";
+} from "../src/account-axon-removals.ts";
 import {
   buildSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
-} from "../src/subnet-axon-removals.mjs";
+} from "../src/subnet-axon-removals.ts";
 import {
   buildAccountPrometheus,
   PROMETHEUS_EVENT_KIND,
   PROMETHEUS_WINDOWS,
   DEFAULT_PROMETHEUS_WINDOW,
-} from "../src/account-prometheus.mjs";
+} from "../src/account-prometheus.ts";
 import {
   buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
-} from "../src/subnet-prometheus.mjs";
+} from "../src/subnet-prometheus.ts";
 import {
   buildAccountDeregistrations,
   DEREGISTRATION_EVENT_KIND,
   DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW,
-} from "../src/account-deregistrations.mjs";
+} from "../src/account-deregistrations.ts";
 import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
-} from "../src/subnet-deregistrations.mjs";
+} from "../src/subnet-deregistrations.ts";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
   COUNTERPARTIES_SCAN_CAP,
-} from "../src/counterparties.mjs";
+} from "../src/counterparties.ts";
 import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
@@ -270,105 +270,105 @@ import {
   formatRpcUsage,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
-} from "../src/health-serving.mjs";
+} from "../src/health-serving.ts";
 import {
   buildEconomicsTrends,
   parseHistoryWindow,
-} from "../src/neuron-history.mjs";
-import { ECONOMICS_TRENDS_ROW_CAP } from "../src/economics-trends.mjs";
+} from "../src/neuron-history.ts";
+import { ECONOMICS_TRENDS_ROW_CAP } from "../src/economics-trends.ts";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
-} from "../src/chain-weights.mjs";
+} from "../src/chain-weights.ts";
 import {
   buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
-} from "../src/chain-weight-setters.mjs";
+} from "../src/chain-weight-setters.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
-} from "../src/chain-serving.mjs";
+} from "../src/chain-serving.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
-} from "../src/chain-prometheus.mjs";
+} from "../src/chain-prometheus.ts";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
-} from "../src/chain-axon-removals.mjs";
+} from "../src/chain-axon-removals.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
-} from "../src/chain-registrations.mjs";
+} from "../src/chain-registrations.ts";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
-} from "../src/chain-deregistrations.mjs";
+} from "../src/chain-deregistrations.ts";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
-} from "../src/chain-stake-moves.mjs";
+} from "../src/chain-stake-moves.ts";
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
-} from "../src/chain-stake-transfers.mjs";
+} from "../src/chain-stake-transfers.ts";
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
-} from "../src/chain-stake-flow.mjs";
+} from "../src/chain-stake-flow.ts";
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
-} from "../src/chain-alpha-volume.mjs";
-import { buildChainTransfers } from "../src/chain-transfers.mjs";
-import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
+} from "../src/chain-alpha-volume.ts";
+import { buildChainTransfers } from "../src/chain-transfers.ts";
+import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
 import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
   formatSubnetHyperparams,
   buildSubnetHyperparams,
-} from "../src/subnet-hyperparams.mjs";
+} from "../src/subnet-hyperparams.ts";
 import {
   hyperparamsHash,
   buildSubnetHyperparamsHistory,
-} from "../src/subnet-hyperparams-history.mjs";
+} from "../src/subnet-hyperparams-history.ts";
 import {
   ACCOUNT_IDENTITY_INSERT_COLUMNS,
   IDENTITY_FIELDS,
   buildAccountIdentity,
-} from "../src/account-identity.mjs";
+} from "../src/account-identity.ts";
 import {
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
   nominatorCountsByHotkey,
-} from "../src/validator-nominator-summary.mjs";
-import { tempoByNetuid as buildTempoByNetuid } from "../src/subnet-tempo.mjs";
+} from "../src/validator-nominator-summary.ts";
+import { tempoByNetuid as buildTempoByNetuid } from "../src/subnet-tempo.ts";
 import {
   NOMINATOR_POSITION_INSERT_COLUMNS,
   buildAccountPositions,
   distinctHotkeys,
   stakeByHotkeyNetuid,
-} from "../src/account-nominator-positions.mjs";
+} from "../src/account-nominator-positions.ts";
 import {
   identityHash,
   buildAccountIdentityHistory,
-} from "../src/account-identity-history.mjs";
+} from "../src/account-identity-history.ts";
 import {
   identitySnapshotFromProfile,
   identityHash as subnetIdentityHash,
   buildSubnetIdentityHistory,
-} from "../src/subnet-identity-history.mjs";
+} from "../src/subnet-identity-history.ts";
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-} from "../src/chain-identity-history.mjs";
+} from "../src/chain-identity-history.ts";
 import {
   buildChainActivity,
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "../src/chain-analytics.mjs";
-import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
+} from "../src/chain-analytics.ts";
+import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 
 // metagraphed#6769: a caught write/query failure (logged via console.error,
 // converted to a clean error response) never reached Sentry -- only an
@@ -473,7 +473,7 @@ function latestObservedIso(rows, field = "last_observed") {
   }
   return latest == null ? null : new Date(latest).toISOString();
 }
-import { timingSafeEqual } from "../src/webhooks.mjs";
+import { timingSafeEqual } from "../src/webhooks.ts";
 import {
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_MAX_BODY_BYTES,
@@ -485,7 +485,7 @@ import {
   isValidAlertTriggerId,
   ownerAlertTriggerView,
   validateAlertTriggerInput,
-} from "../src/alert-triggers.mjs";
+} from "../src/alert-triggers.ts";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,
@@ -505,22 +505,22 @@ import {
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
   NEURON_INSERT_COLUMNS,
-} from "../src/metagraph-neurons.mjs";
-import { buildAccountPositionHistory } from "../src/account-position-history.mjs";
+} from "../src/metagraph-neurons.ts";
+import { buildAccountPositionHistory } from "../src/account-position-history.ts";
 import {
   createUnkeyKey,
   verifyUnkeyKey,
   updateUnkeyKeyTier,
   revokeUnkeyKey,
-} from "../src/unkey-client.mjs";
-import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.mjs";
+} from "../src/unkey-client.ts";
+import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import {
   createSessionToken,
   issueWalletChallenge,
   SESSION_TTL_SECONDS,
   verifySessionToken,
   verifyWalletChallenge,
-} from "../src/wallet-auth.mjs";
+} from "../src/wallet-auth.ts";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -552,7 +552,7 @@ function validEventFilter(value) {
 // its own captured_at, so this upserts BOTH neurons (latest-only) AND
 // neuron_daily (dated) from the same payload in the same transaction. No
 // Postgres-side rollup cron is needed, and therefore none of D1's
-// archive-then-prune complexity (src/neuron-history.mjs, #4770) has an
+// archive-then-prune complexity (src/neuron-history.ts, #4770) has an
 // equivalent here to build.
 const NEURONS_SYNC_TOKEN_HEADER = "x-neurons-sync-token";
 // ~33k rows today (129 subnets x <=256 UIDs); generous headroom over that
@@ -1202,7 +1202,7 @@ async function handleRollupAccountEventsDaily(request, env) {
         // account_events_daily above, scoped to just the two stake-flow
         // kinds and grouped by account instead of (hotkey, netuid). Both
         // StakeAdded and StakeRemoved carry a positive amount_tao (see
-        // src/chain-stake-flow.mjs's own header), so net = added - removed.
+        // src/chain-stake-flow.ts's own header), so net = added - removed.
         await sql`
           INSERT INTO wallet_flow_daily (coldkey, day, net_flow_tao, gross_in_tao, gross_out_tao, updated_at)
           SELECT
@@ -2310,14 +2310,14 @@ async function handleAccountBalancesSync(request, env) {
 // The write path into subnet_identity_history -- architecturally different
 // from the three internal sync routes above: this one is triggered from
 // WITHIN the main Worker's own hourly cron (writeSubnetSnapshot,
-// src/health-prober.mjs), not an external GitHub Actions workflow, so it's
+// src/health-prober.ts), not an external GitHub Actions workflow, so it's
 // called via a direct env.DATA_API.fetch() service-binding call rather than
 // crossing the public internet through workers/api.mjs's proxy layer (see
 // that function's own comment). No latest-only sibling table exists here
 // (mirrors D1's own shape -- the current identity lives in the profiles.json
 // artifact itself): only diff-and-append against the last recorded hash per
 // netuid, reusing identitySnapshotFromProfile/identityHash UNCHANGED from
-// src/subnet-identity-history.mjs so the hash stays domain-identical to the
+// src/subnet-identity-history.ts so the hash stays domain-identical to the
 // D1 path. No dedicated per-field row validator (unlike the other three
 // sync routes): profiles.json is the SAME trust boundary D1's own
 // recordSubnetIdentityChanges reads from directly with no staging-style
@@ -2472,7 +2472,7 @@ async function handleSubnetIdentitySync(request, env) {
 // --- POST /api/v1/internal/health-checks-sync (#4832 gap-closure) --------
 //
 // Best-effort Postgres mirror of the D1+KV probe write in
-// src/health-prober.mjs's runHealthProber -- same "own hourly/15-min cron,
+// src/health-prober.ts's runHealthProber -- same "own hourly/15-min cron,
 // direct env.DATA_API.fetch() service-binding call" shape as
 // subnet-identity-sync above, not an external GitHub Actions workflow. D1+KV
 // stay the sole authoritative write target (live serving reads them
@@ -2652,14 +2652,14 @@ async function handleHealthChecksSync(request, env) {
 
 // --- POST /api/v1/internal/health-uptime-rollup-sync (#4832 gap-closure) --
 //
-// Best-effort Postgres mirror of src/health-prober.mjs's rollupDailyUptime,
+// Best-effort Postgres mirror of src/health-prober.ts's rollupDailyUptime,
 // same shape/isolation as health-checks-sync above (reuses
 // HEALTH_CHECKS_SYNC_SECRET -- see that route's own header comment). Unlike
 // health-checks-sync, the request body carries only UTC day *boundaries*,
 // not precomputed rows -- this route computes the rollup itself from
 // surface_checks (already mirrored here by health-checks-sync), using
 // PERCENTILE_CONT for the p50/p95/p99 tail latency instead of replaying
-// D1/SQLite's rank-based CTE (src/health-sql.mjs's rankedChecksCte/
+// D1/SQLite's rank-based CTE (src/health-sql.ts's rankedChecksCte/
 // latencyStatColumns) column-for-column.
 const HEALTH_UPTIME_ROLLUP_SYNC_MAX_DAYS = 10;
 
@@ -2794,7 +2794,7 @@ async function handleHealthUptimeRollupSync(request, env) {
 // --- POST /api/v1/internal/subnet-snapshot-sync (#4832 gap-closure) ------
 //
 // Best-effort Postgres mirror of writeSubnetSnapshot's D1 upsert
-// (src/health-prober.mjs) -- same "own hourly cron, direct
+// (src/health-prober.ts) -- same "own hourly cron, direct
 // env.DATA_API.fetch() service-binding call" shape as subnet-identity-sync
 // above, not an external GitHub Actions workflow. Rows arrive precomputed
 // (one per active subnet, already joined against economics.json), mirroring
@@ -3056,7 +3056,7 @@ async function handleRpcUsageEventSync(request, env) {
 // The Postgres mirror of rpc_proxy_events written by handleRpcUsageEventSync
 // above has no retention of its own (D1's copy is pruned to a 30-day hot
 // window on the hourly maintenance cron; Postgres just grew unbounded).
-// Called from src/health-prober.mjs's pruneHealthHistory
+// Called from src/health-prober.ts's pruneHealthHistory
 // (syncRpcProxyEventsPruneToPostgres), on the same cron, right after the D1
 // prune -- reuses the rpc-usage-sync token/secret (same trust boundary: both
 // routes write to the same table, no reason for a second secret).
@@ -3304,7 +3304,7 @@ async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}) {
 // above: a subnet_hyperparams read failure degrades the immunity-window
 // fields to omitted (formatNeuron's immunityPeriod-undefined no-op) rather
 // than failing the neurons/metagraph response. Same null-guard as
-// subnet-hyperparams.mjs's own nonNegativeInt -- Number(null) is 0, not
+// subnet-hyperparams.ts's own nonNegativeInt -- Number(null) is 0, not
 // NaN -- written inline rather than imported since each domain file owns its
 // small D1/Postgres cell-coercion copies (see that file's own header).
 async function loadSubnetImmunityPeriod(sql, netuid) {
@@ -3386,7 +3386,7 @@ function numberOrNull(v) {
   if (v == null) return null;
   // Blank Hyperdrive/Postgres cells coerce via Number("") → 0; trim rejects "" /
   // whitespace-only so absent indices/timestamps stay null (mirrors toBlockNumber
-  // in src/account-events.mjs and src/blocks.mjs).
+  // in src/account-events.mjs and src/blocks.ts).
   if (typeof v === "string" && v.trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
@@ -3437,8 +3437,8 @@ async function resolveBlockNumberPg(sql, ref) {
   return numberOrNull(rows[0]?.block_number);
 }
 
-// The blocks/extrinsics SELECT column lists below must match src/blocks.mjs's
-// BLOCK_READ_COLUMNS / src/extrinsics.mjs's EXTRINSIC_READ_COLUMNS so
+// The blocks/extrinsics SELECT column lists below must match src/blocks.ts's
+// BLOCK_READ_COLUMNS / src/extrinsics.ts's EXTRINSIC_READ_COLUMNS so
 // formatBlock/formatExtrinsic (reused unchanged, imported above) see the exact
 // same row shape from either sink. Written literally per query (not factored
 // into a shared string) because postgres.js tagged templates bind a `${...}`
@@ -3478,7 +3478,7 @@ function coerceEvent(row) {
 // Public CRUD for user-defined chain alert triggers, reached only via
 // workers/api.mjs's DATA_API service binding (no public routes of its own,
 // same invariant as every route in this file). Creation is gated by a
-// shared anti-abuse token (mirrors src/webhooks.mjs's own subscription-
+// shared anti-abuse token (mirrors src/webhooks.ts's own subscription-
 // creation gate, ALERT_TRIGGER_CREATE_TOKEN_HEADER/env.ALERT_TRIGGER_CREATE_TOKEN
 // -- every active trigger costs the #4984 Part 2 evaluator a real per-event
 // match check, so unbounded public creation is a workload vector, not just a
@@ -3599,7 +3599,7 @@ async function handleAlertTriggerCreate(request, env) {
   return withAlertTriggersSql(env, async (sql) => {
     // Short local name (`ownerToken`, not `secret`) keeps the public-safety
     // scanner's hardcoded-credential heuristic from false-positiving here,
-    // matching src/webhooks.mjs's createWebhookSubscription convention.
+    // matching src/webhooks.ts's createWebhookSubscription convention.
     const ownerToken = generateAlertTriggerOwnerToken();
     const now = Date.now();
     const v = validated.value;
@@ -3839,7 +3839,7 @@ async function handleAlertTriggersMatchedWriteback(request, env) {
 }
 
 // Internal-only: the #6747 evaluator's METRIC cache-refresh scan -- the raw
-// rows AlerterHub.refreshTriggers() feeds into src/dereg-risk.mjs's
+// rows AlerterHub.refreshTriggers() feeds into src/dereg-risk.ts's
 // buildDeregRiskSnapshot to build the in-memory Maps triggerMatchesEvent's
 // condition check reads from. Gated the SAME way as the active-list/
 // writeback routes above (same ALERT_TRIGGERS_INTERNAL_TOKEN secret, a
@@ -3953,14 +3953,14 @@ async function handleAlertTriggersRoute(request, env, url) {
 //   POST /api/v1/auth/wallet/verify     { ss58, signature } -> a session
 //   POST/GET /api/v1/keys, DELETE /api/v1/keys/{key_id} -> mint/list/revoke
 //     THIS account's own mg_... API key, now minted/verified/revoked via
-//     Unkey (src/unkey-client.mjs) rather than locally generated/hashed --
+//     Unkey (src/unkey-client.ts) rather than locally generated/hashed --
 //     every /api/v1/keys route requires a session (Authorization: Bearer
-//     <session_token>, src/wallet-auth.mjs). No invite-code gate anymore:
+//     <session_token>, src/wallet-auth.ts). No invite-code gate anymore:
 //     any wallet-connected account can self-serve a key immediately, at its
 //     account's current tier (rpc_accounts.tier, default 'free'); promoting
 //     an account to a higher tier afterward is the internal tier-promotion
 //     route below, not a mint-time credential. All crypto/no-I/O logic
-//     lives in src/wallet-auth.mjs; everything here is Postgres plumbing +
+//     lives in src/wallet-auth.ts; everything here is Postgres plumbing +
 //     the Unkey calls.
 //   POST /api/v1/internal/keys/verify   -- internal-only, see
 //     handleApiKeyVerify's own header comment.
@@ -4018,7 +4018,7 @@ async function readAccountRouteBody(request) {
   }
 }
 
-// No default/fallback case: src/wallet-auth.mjs's issueWalletChallenge and
+// No default/fallback case: src/wallet-auth.ts's issueWalletChallenge and
 // verifyWalletChallenge are the only callers of this map, and both are a
 // closed set of exactly these four codes -- a fifth is not reachable from
 // this codebase's own contract, so a catch-all here would be untestable
@@ -4121,7 +4121,7 @@ async function handleWalletVerify(request, env) {
 }
 
 // GitHub OAuth account upsert (metagraphed#7151) -- reached ONLY via the
-// DATA_API service binding from src/github-oauth.mjs's callback handler,
+// DATA_API service binding from src/github-oauth.ts's callback handler,
 // never directly from a browser/MCP client (this Worker has no public route
 // or workers.dev subdomain -- wrangler.data.jsonc's own "workers_dev": false,
 // same posture the wallet routes above already rely on). The GitHub identity
@@ -4645,13 +4645,13 @@ export default {
     // nearest float64 -- confirmed live 2026-07-12: chain_events.args carries
     // real u64 values (SubtensorModule.DifficultySet/SetChildren/
     // SetChildrenScheduled) beyond Number.MAX_SAFE_INTEGER. See
-    // src/postgres-json-parse.mjs's own header for why this must happen at
+    // src/postgres-json-parse.ts's own header for why this must happen at
     // the client boundary, not in decodeChainEventArgs -- by the time that
     // runs, a lossy default parse has already destroyed the original value
     // with no way to recover it downstream. Does NOT touch extrinsics'
     // call_args -- that column is queried with an explicit `::text` cast
     // (see the "extrinsics' call_args is cast to text" comment below) so its
-    // own, separately-gated big-int handling in src/extrinsics.mjs runs
+    // own, separately-gated big-int handling in src/extrinsics.ts runs
     // instead; after the cast the wire type is `text` (OID 25), which this
     // override never sees.
     const hyperdriveConnectionOptions = {
@@ -4688,7 +4688,7 @@ export default {
         await sql`SET statement_timeout = '3000ms'`;
 
         // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
-        // feed, mirroring src/blocks.mjs's loadBlocks filter set exactly (author,
+        // feed, mirroring src/blocks.ts's loadBlocks filter set exactly (author,
         // spec_version, block_start/block_end, from/to, min_extrinsics/min_events,
         // cursor). The main Worker only calls this when its per-tier serving flag
         // is on and forwards the SAME request it already validated -- this route
@@ -4765,7 +4765,7 @@ export default {
         }
 
         // GET /api/v1/blocks/:ref — per-block detail + nearest stored neighbors,
-        // mirroring src/blocks.mjs's loadBlock. ref is a numeric block_number or a
+        // mirroring src/blocks.ts's loadBlock. ref is a numeric block_number or a
         // 0x block_hash (lowercased before binding, matching the D1 path's
         // case-insensitivity workaround).
         const blockRef = url.pathname.match(/^\/api\/v1\/blocks\/([^/]+)$/);
@@ -4851,7 +4851,7 @@ export default {
         }
 
         // GET /api/v1/extrinsics — the recent-extrinsic feed, mirroring
-        // src/extrinsics.mjs's loadExtrinsics filter set exactly (signer,
+        // src/extrinsics.ts's loadExtrinsics filter set exactly (signer,
         // call_module, call_function, call_hash, success, block, block_start/
         // block_end, from/to, cursor). Ordered by observed_at (not
         // block_number) because `extrinsics` is a TimescaleDB hypertable
@@ -4934,7 +4934,7 @@ export default {
 
         // GET /api/v1/sudo and GET /api/v1/governance/config-changes share this
         // shape: the same extrinsics feed as /extrinsics above, with call_module
-        // fixed rather than caller-supplied (mirroring src/extrinsics.mjs's
+        // fixed rather than caller-supplied (mirroring src/extrinsics.ts's
         // loadExtrinsics({callModule: "Sudo"|"AdminUtils", ...}) call sites in
         // entities.mjs) -- so neither accepts ?signer=/?call_module=/?call_hash=.
         // Ordered by observed_at for the same chunk-exclusion reason as
@@ -4994,7 +4994,7 @@ export default {
         }
 
         // GET /api/v1/runtime — the spec-version transition timeline, mirroring
-        // src/runtime-versions.mjs's loadRuntimeVersionHistory. Two small
+        // src/runtime-versions.ts's loadRuntimeVersionHistory. Two small
         // aggregate reads (GROUP BY's earliest-block-per-version, then the
         // truly-latest reading), no filters/pagination.
         if (url.pathname === "/api/v1/runtime") {
@@ -5010,7 +5010,7 @@ export default {
 
         // GET /api/v1/extrinsics/:ref — per-extrinsic detail + embedded
         // account_events (up to MAX_EMBEDDED_EVENTS), mirroring the former
-        // src/extrinsic-detail.mjs D1 loader (removed in #4772). ref is a 0x hash
+        // src/extrinsic-detail.ts D1 loader (removed in #4772). ref is a 0x hash
         // or a composite "block_number-extrinsic_index".
         const extrinsicRef = url.pathname.match(
           /^\/api\/v1\/extrinsics\/([^/]+)$/,
@@ -5060,7 +5060,7 @@ export default {
 
         // GET /api/v1/accounts/top-holders?sort=&limit= (#6741/#6743): the
         // balance-based top-holder leaderboard, mirroring
-        // src/top-holders.mjs's buildTopHoldersList. FULL OUTER JOIN so an
+        // src/top-holders.ts's buildTopHoldersList. FULL OUTER JOIN so an
         // account with real free balance but no delegated position (or vice
         // versa) still appears -- neither source alone is a complete account
         // list. Checked here, before the generic /api/v1/accounts/:ss58
@@ -5637,7 +5637,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/weights (#4832 Tier 1b): the aggregate
         // WeightsSet activity for this subnet, mirroring the former
-        // src/subnet-weights.mjs D1 loader (removed in #4772). Distinct from /weights/setters below (the per-setter
+        // src/subnet-weights.ts D1 loader (removed in #4772). Distinct from /weights/setters below (the per-setter
         // leaderboard) -- this is the single-row summary.
         const subnetWeights = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/weights$/,
@@ -5696,7 +5696,7 @@ export default {
         // GET /api/v1/subnets/:netuid/ohlc?interval=1h|1d&days=1-365 (#5655,
         // Phase 1 of #5304): OHLCV candles, bucketed in pure JS by
         // buildSubnetOhlc -- deliberately NOT a SQL GROUP BY/array_agg
-        // aggregation (see src/subnet-ohlc.mjs's header), so this query stays
+        // aggregation (see src/subnet-ohlc.ts's header), so this query stays
         // a plain filtered raw-row SELECT ordered by observed_at ASC, the
         // exact shape buildSubnetOhlc expects (it sorts defensively anyway,
         // but ORDER BY here avoids trusting Postgres's unspecified default
@@ -5765,7 +5765,7 @@ export default {
         // address has via the SAME chain_events SubnetOwnerChanged stream as
         // ownership-history above -- unfiltered by netuid here (a network-
         // wide scan, not a per-subnet one), filtered by address in JS after
-        // decoding (see src/entity-labels.mjs's own header for why). This
+        // decoding (see src/entity-labels.ts's own header for why). This
         // Worker has no R2/KV bindings, so `entities` (community labels) is
         // always [] here -- the main API Worker joins those on afterward.
         const accountEntities = url.pathname.match(
@@ -5794,7 +5794,7 @@ export default {
         // (a plain `netuid` column) rather than chain_events (a JSONB
         // args->>'netuid' cast), since #6718's indexer-rs extract() already
         // curates netuid for both these kinds into that column. See
-        // src/subnet-lease-history.mjs's own header for why dividend-
+        // src/subnet-lease-history.ts's own header for why dividend-
         // distribution/crowdloan events are excluded. Cold/absent store ->
         // the schema-stable empty-list shape (never a 404): most subnets
         // have never been leased.
@@ -5889,7 +5889,7 @@ export default {
         }
 
         // GET /api/v1/chain/weights (#4832 Tier 2): network-wide WeightsSet
-        // leaderboard + rollup, mirroring src/chain-weights.mjs's
+        // leaderboard + rollup, mirroring src/chain-weights.ts's
         // loadChainWeights. window/limit are resolved from the shared
         // ANALYTICS_WINDOWS/DEFAULT_ANALYTICS_WINDOW (workers/config.mjs) --
         // the same set every chain-* module's own WINDOWS constant
@@ -5933,10 +5933,10 @@ export default {
 
         // GET /api/v1/chain/weights/setters (#4832 Tier 2): network-wide
         // weight-setter leaderboard, mirroring
-        // src/chain-weight-setters.mjs's loadChainWeightSetters. The
+        // src/chain-weight-setters.ts's loadChainWeightSetters. The
         // setter-identity CASE expression here omits chain-weights' extra
         // `AND netuid IS NOT NULL` guard -- matches SETTER_IDENTITY in
-        // chain-weight-setters.mjs exactly, not chain-weights.mjs's own.
+        // chain-weight-setters.ts exactly, not chain-weights.ts's own.
         const chainWeightSetters = url.pathname.match(
           /^\/api\/v1\/chain\/weights\/setters$/,
         );
@@ -5977,7 +5977,7 @@ export default {
         }
 
         // GET /api/v1/chain/serving (#4832 Tier 2): network-wide AxonServed
-        // announcement leaderboard, mirroring src/chain-serving.mjs's
+        // announcement leaderboard, mirroring src/chain-serving.ts's
         // loadChainServing.
         const chainServing = url.pathname.match(/^\/api\/v1\/chain\/serving$/);
         if (chainServing) {
@@ -6012,7 +6012,7 @@ export default {
 
         // GET /api/v1/chain/prometheus (#4832 Tier 2): network-wide
         // PrometheusServed announcement leaderboard, mirroring
-        // src/chain-prometheus.mjs's loadChainPrometheus.
+        // src/chain-prometheus.ts's loadChainPrometheus.
         const chainPrometheus = url.pathname.match(
           /^\/api\/v1\/chain\/prometheus$/,
         );
@@ -6048,7 +6048,7 @@ export default {
 
         // GET /api/v1/chain/axon-removals (#4832 Tier 2): network-wide
         // AxonInfoRemoved leaderboard, mirroring
-        // src/chain-axon-removals.mjs's loadChainAxonRemovals.
+        // src/chain-axon-removals.ts's loadChainAxonRemovals.
         const chainAxonRemovals = url.pathname.match(
           /^\/api\/v1\/chain\/axon-removals$/,
         );
@@ -6084,7 +6084,7 @@ export default {
 
         // GET /api/v1/chain/registrations (#4832 Tier 2): network-wide
         // NeuronRegistered leaderboard, mirroring
-        // src/chain-registrations.mjs's loadChainRegistrations.
+        // src/chain-registrations.ts's loadChainRegistrations.
         const chainRegistrations = url.pathname.match(
           /^\/api\/v1\/chain\/registrations$/,
         );
@@ -6120,7 +6120,7 @@ export default {
 
         // GET /api/v1/chain/deregistrations (#4832 Tier 2): network-wide
         // NeuronDeregistered leaderboard, mirroring
-        // src/chain-deregistrations.mjs's loadChainDeregistrations.
+        // src/chain-deregistrations.ts's loadChainDeregistrations.
         const chainDeregistrations = url.pathname.match(
           /^\/api\/v1\/chain\/deregistrations$/,
         );
@@ -6155,7 +6155,7 @@ export default {
         }
 
         // GET /api/v1/chain/stake-moves (#4832 Tier 2): network-wide
-        // StakeMoved leaderboard, mirroring src/chain-stake-moves.mjs's
+        // StakeMoved leaderboard, mirroring src/chain-stake-moves.ts's
         // loadChainStakeMoves. Distinct by the "coldkey" column (a stake
         // move is initiated by the owning account, not a specific hotkey).
         const chainStakeMoves = url.pathname.match(
@@ -6193,7 +6193,7 @@ export default {
 
         // GET /api/v1/chain/stake-transfers (#4832 Tier 2): network-wide
         // StakeTransferred leaderboard, mirroring
-        // src/chain-stake-transfers.mjs's loadChainStakeTransfers.
+        // src/chain-stake-transfers.ts's loadChainStakeTransfers.
         // Distinct by the "coldkey" column -- a stake transfer moves stake
         // between owning accounts.
         const chainStakeTransfers = url.pathname.match(
@@ -6231,7 +6231,7 @@ export default {
 
         // GET /api/v1/chain/stake-flow (#4832 Tier 2): network-wide
         // cross-subnet capital flow (StakeAdded - StakeRemoved), mirroring
-        // src/chain-stake-flow.mjs's loadChainStakeFlow. A single
+        // src/chain-stake-flow.ts's loadChainStakeFlow. A single
         // GROUP BY netuid, event_kind query, no cold-store guard branch --
         // matches the D1 loader exactly.
         const chainStakeFlow = url.pathname.match(
@@ -6262,7 +6262,7 @@ export default {
         }
 
         // GET /api/v1/chain/alpha-volume (#5598): network-wide rolling 24h
-        // buy/sell alpha-volume leaderboard, mirroring src/chain-alpha-volume.mjs's
+        // buy/sell alpha-volume leaderboard, mirroring src/chain-alpha-volume.ts's
         // loadChainAlphaVolume. Fixed 24h window (no ?window= param, unlike the
         // sibling chain-stake-flow above) -- same ANALYTICS_DAY_MS cutoff the
         // subnet-level /api/v1/subnets/:netuid/volume branch above uses.
@@ -6287,7 +6287,7 @@ export default {
 
         // GET /api/v1/chain/transfers (#4832 Tier 2): network-wide native-TAO
         // transfer scorecard (totals + top senders/receivers), mirroring
-        // src/chain-transfers.mjs's loadChainTransfers. "Transfer" mirrors
+        // src/chain-transfers.ts's loadChainTransfers. "Transfer" mirrors
         // that module's own private TRANSFER_KIND constant (not exported, so
         // inlined here). observedAt: the D1 path sources this from a KV
         // cron-freshness marker (readHealthMetaKv) that this Worker has no
@@ -6356,7 +6356,7 @@ export default {
 
         // GET /api/v1/chain/transfer-pairs (#4832 Tier 2): network-wide
         // sender->receiver corridor leaderboard, mirroring
-        // src/chain-transfer-pairs.mjs's loadChainTransferPairs -- the
+        // src/chain-transfer-pairs.ts's loadChainTransferPairs -- the
         // PAIR_FILTER predicate (event_kind/window/non-null/non-empty/
         // non-self/non-negative-amount) is inlined below since it's a
         // private, unexported constant there. observedAt: see chainTransfers
@@ -6415,7 +6415,7 @@ export default {
 
         // GET /api/v1/chain/signers (#4832 gap-closure, extrinsics-derived
         // cluster): windowed most-active-account leaderboard, mirroring
-        // src/chain-query-loaders.mjs's loadChainSigners. sort/call_module are
+        // src/chain-query-loaders.ts's loadChainSigners. sort/call_module are
         // already validated D1-side before this route is ever reached. A
         // separate freshness query is needed (unlike totals-style routes
         // above) because the grouped rows below carry last_tx_block, not a
@@ -6641,7 +6641,7 @@ export default {
 
         // GET /api/v1/health/trends (#4832 gap-closure): all-subnet 7d/30d
         // daily uptime + latency matrix from the daily rollup, mirroring
-        // src/bulk-health-trends.mjs's loadBulkHealthTrends. Reads
+        // src/bulk-health-trends.ts's loadBulkHealthTrends. Reads
         // surface_uptime_daily -- populated by the health-uptime-rollup-sync
         // write route (#4885), not surface_checks -- so this route stays
         // cheap regardless of the raw window's size.
@@ -6691,7 +6691,7 @@ export default {
         // surface_checks window, mirroring src/analytics-live.mjs's
         // loadSubnetHealthTrends. `ok` is BOOLEAN here (D1's `ok = 1`
         // becomes a bare `ok`); the SQLite rank-based p50/p95/p99 pick
-        // (src/health-sql.mjs's latencyStatColumns) becomes PERCENTILE_CONT
+        // (src/health-sql.ts's latencyStatColumns) becomes PERCENTILE_CONT
         // -- live-verified via psql (2026-07-11) at sub-millisecond cost
         // against current production volume (~350 rows across 117 surfaces,
         // 30 min of the 15-min cron so far).
@@ -7019,7 +7019,7 @@ export default {
 
         // GET /api/v1/internal/health-status-live?since=<epoch-ms> (D1
         // retirement, 2026-07-16, item 5 of the D1->Postgres cleanup):
-        // src/health-serving.mjs's resolveLiveHealth reconstructs the "KV
+        // src/health-serving.ts's resolveLiveHealth reconstructs the "KV
         // health:current is cold" fallback from surface_status directly (no
         // client request to forward -- same "internal, no secret header"
         // shape as /api/v1/internal/compare-health above, since a read has no
@@ -7061,7 +7061,7 @@ export default {
 
         // GET /api/v1/internal/latest-block-number (D1 retirement,
         // 2026-07-16, item 10 of the D1->Postgres cleanup):
-        // src/subnet-identity-history.mjs's latestBlockNumber has no client
+        // src/subnet-identity-history.ts's latestBlockNumber has no client
         // request to forward -- it's an internal cron-triggered helper inside
         // recordSubnetIdentityChanges, not a route -- so it synthesizes this
         // request itself, same "internal, no secret header" shape as
@@ -7080,7 +7080,7 @@ export default {
 
         // GET /api/v1/internal/subnet-identity-latest-hashes (D1 retirement,
         // 2026-07-16, item 8 of the D1->Postgres cleanup):
-        // src/subnet-identity-history.mjs's recordSubnetIdentityChanges reads
+        // src/subnet-identity-history.ts's recordSubnetIdentityChanges reads
         // D1's own latest identity_hash per netuid to diff against the fresh
         // profiles.json snapshot -- same "internal cron helper, no client
         // request to forward" shape as /api/v1/internal/latest-block-number
@@ -7101,7 +7101,7 @@ export default {
         }
 
         // GET /api/v1/internal/subnet-identity-aliases?netuids=1,7,19 (#4832
-        // gap-closure follow-up): src/subnet-identity-history.mjs's
+        // gap-closure follow-up): src/subnet-identity-history.ts's
         // loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids are D1-fetch
         // helpers embedded in 3 workers/api.mjs call sites (overlay logic,
         // not standalone routes), so -- same rationale as
@@ -7162,7 +7162,7 @@ export default {
         // GET /api/v1/economics/trends?window= (#4832 gap-closure):
         // network-wide daily economics time series, mirroring
         // workers/request-handlers/analytics-routes.mjs's handleEconomicsTrends
-        // via src/economics-trends.mjs's loadEconomicsTrends. A malformed
+        // via src/economics-trends.ts's loadEconomicsTrends. A malformed
         // window degrades to "all" (no cutoff) rather than erroring -- the
         // D1-side handler already rejects it before ever reaching this route
         // in the real request path, same convention as the uptime route's
@@ -7197,7 +7197,7 @@ export default {
         // reverse-proxy usage analytics -- request volume, latency p50/p95,
         // failover + error rate, cache-hit rate, per-endpoint/network
         // breakdown, and bounded time buckets. Mirrors
-        // src/rpc-usage-loader.mjs's loadRpcUsage exactly (same 5 parallel
+        // src/rpc-usage-loader.ts's loadRpcUsage exactly (same 5 parallel
         // queries feeding formatRpcUsage): the D1 rank-CTE p50/p95 becomes
         // PERCENTILE_CONT (live-verified via psql 2026-07-11, same
         // precedent as the health-trends/percentiles routes above), and D1's
@@ -7922,7 +7922,7 @@ export default {
         }
 
         // GET /api/v1/subnets/:netuid/metagraph?validator_permit=true (#4771):
-        // the per-UID metagraph tier, mirroring src/metagraph-neurons.mjs's
+        // the per-UID metagraph tier, mirroring src/metagraph-neurons.ts's
         // loadSubnetMetagraph. Same column list as the neuron detail/validators
         // routes below (NEURON_COLUMNS) -- written literally per this file's
         // own convention (a `${...}` interpolation binds a PARAMETER, not raw
@@ -8069,7 +8069,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/concentration (#4832 Tier 2): stake &
         // emission decentralization for one subnet, mirroring
-        // src/concentration.mjs's the handler's own inline query (no shared
+        // src/concentration.ts's the handler's own inline query (no shared
         // loader -- this is one of the live-`neurons` routes, distinct from
         // the neuron_daily-derived /concentration/history below).
         const subnetConcentration = url.pathname.match(
@@ -8098,7 +8098,7 @@ export default {
 
         // GET /api/v1/chain/concentration (#4832 Tier 2): network-wide stake &
         // emission decentralization across every subnet's neurons, mirroring
-        // src/concentration.mjs's loadChainConcentration.
+        // src/concentration.ts's loadChainConcentration.
         if (url.pathname === "/api/v1/chain/concentration") {
           const rows = await sql`
           SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
@@ -8107,7 +8107,7 @@ export default {
         }
 
         // GET /api/v1/chain/performance (#4832 Tier 2): network-wide reward-flow
-        // & trust-spread, mirroring src/chain-performance.mjs's loadChainPerformance.
+        // & trust-spread, mirroring src/chain-performance.ts's loadChainPerformance.
         if (url.pathname === "/api/v1/chain/performance") {
           const rows = await sql`
           SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, netuid, captured_at
@@ -8130,7 +8130,7 @@ export default {
         }
 
         // GET /api/v1/chain/idle-stake (#6789): network-wide idle-stake
-        // rollup, mirroring src/chain-alpha-volume.mjs's own per-subnet-
+        // rollup, mirroring src/chain-alpha-volume.ts's own per-subnet-
         // groupby-then-rollup shape over the per-subnet scorecard above.
         if (url.pathname === "/api/v1/chain/idle-stake") {
           const rows = await sql`
@@ -8139,7 +8139,7 @@ export default {
         }
 
         // GET /api/v1/chain/yield (#4832 Tier 2): network-wide emission-yield
-        // distribution, mirroring src/chain-yield.mjs's loadChainYield.
+        // distribution, mirroring src/chain-yield.ts's loadChainYield.
         if (url.pathname === "/api/v1/chain/yield") {
           const rows = await sql`
           SELECT validator_permit, stake_tao, emission_tao, netuid, captured_at
@@ -8148,7 +8148,7 @@ export default {
         }
 
         // GET /api/v1/subnets/:netuid/yield (#4832 Tier 2): one subnet's
-        // emission-yield distribution, mirroring src/subnet-yield.mjs's
+        // emission-yield distribution, mirroring src/subnet-yield.ts's
         // loadSubnetYield.
         const subnetYield = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/yield$/,
@@ -8163,7 +8163,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/hyperparameters (#4832 gap-closure,
         // Phase B): latest-only. Column list matches
-        // SUBNET_HYPERPARAMS_INSERT_COLUMNS in src/subnet-hyperparams.mjs
+        // SUBNET_HYPERPARAMS_INSERT_COLUMNS in src/subnet-hyperparams.ts
         // (every INSERT column except netuid, itself already known from the
         // WHERE clause) -- D1's own equivalent read (loadSubnetHyperparams)
         // is retired alongside D1's subnet_hyperparams write path.
@@ -8222,7 +8222,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/identity-history?limit=&offset=&cursor=
         // (#4832 gap-closure, Phase B): append-only on-chain identity
-        // timeline, mirroring src/subnet-identity-history.mjs's
+        // timeline, mirroring src/subnet-identity-history.ts's
         // loadSubnetIdentityHistory. observed_at/id are plain BIGINT
         // columns, no ::text cast needed.
         const subnetIdentityHistory = url.pathname.match(
@@ -8262,7 +8262,7 @@ export default {
 
         // GET /api/v1/chain/identity-history?limit= (#4832 gap-closure):
         // network-wide identity-change feed across EVERY subnet, mirroring
-        // src/chain-identity-history.mjs's loadChainIdentityHistory -- no
+        // src/chain-identity-history.ts's loadChainIdentityHistory -- no
         // netuid filter, unlike the per-subnet route above.
         const chainIdentityHistory = url.pathname.match(
           /^\/api\/v1\/chain\/identity-history$/,
@@ -8398,7 +8398,7 @@ export default {
 
         // GET /api/v1/validators/:hotkey/history?window= (#4832 Tier 2b): one
         // validator's staked-subnet-count + stake/emission totals over time,
-        // mirroring src/validator-history.mjs's buildValidatorHistory.
+        // mirroring src/validator-history.ts's buildValidatorHistory.
         const validatorHistoryMatch = url.pathname.match(
           /^\/api\/v1\/validators\/([^/]+)\/history$/,
         );
@@ -8435,7 +8435,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/neurons/:uid/history?window= (#4832
         // Tier 2b): one UID's daily metagraph snapshot over time, mirroring
-        // src/neuron-history.mjs's buildNeuronHistory.
+        // src/neuron-history.ts's buildNeuronHistory.
         const neuronHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/,
         );
@@ -8471,7 +8471,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/history?window= (#4832 Tier 2b): daily
         // neuron/validator counts + stake/emission totals for one subnet,
-        // mirroring src/neuron-history.mjs's buildSubnetHistory.
+        // mirroring src/neuron-history.ts's buildSubnetHistory.
         const subnetHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/history$/,
         );
@@ -8512,7 +8512,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/concentration/history?window= (#4832
         // Tier 2b): per-day stake & emission concentration trend, mirroring
-        // src/concentration.mjs's buildConcentrationHistory.
+        // src/concentration.ts's buildConcentrationHistory.
         const concentrationHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/,
         );
@@ -8542,7 +8542,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/performance/history?window= (#4832
         // Tier 2b): per-day reward-flow & trust trend, mirroring
-        // src/subnet-performance.mjs's buildSubnetPerformanceHistory.
+        // src/subnet-performance.ts's buildSubnetPerformanceHistory.
         const performanceHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/performance\/history$/,
         );
@@ -8572,7 +8572,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/yield/history?window= (#4832 Tier 2b):
         // per-day emission-yield distribution trend, mirroring
-        // src/subnet-yield.mjs's buildSubnetYieldHistory.
+        // src/subnet-yield.ts's buildSubnetYieldHistory.
         const yieldHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/yield\/history$/,
         );
@@ -8603,7 +8603,7 @@ export default {
         // GET /api/v1/chain/turnover?window=&limit= (#4832 Tier 2b):
         // network-wide validator-set turnover across every subnet between the
         // window's boundary snapshots, mirroring
-        // src/chain-turnover.mjs's loadChainTurnover.
+        // src/chain-turnover.ts's loadChainTurnover.
         if (url.pathname === "/api/v1/chain/turnover") {
           const windowParam =
             url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
@@ -8644,7 +8644,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/turnover?window=&changes= (#4832 Tier
         // 2b): validator-set & registration churn between one subnet's window
-        // boundary snapshots, mirroring src/turnover.mjs's loadSubnetTurnover.
+        // boundary snapshots, mirroring src/turnover.ts's loadSubnetTurnover.
         const turnoverMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/turnover$/,
         );
@@ -8693,7 +8693,7 @@ export default {
 
         // GET /api/v1/subnets/movers?window=&sort=&limit= (#4832 Tier 2b):
         // every subnet ranked by its stake/emission/validator change over the
-        // window, mirroring src/movers.mjs's loadSubnetMovers.
+        // window, mirroring src/movers.ts's loadSubnetMovers.
         if (url.pathname === "/api/v1/subnets/movers") {
           const windowParam =
             url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;

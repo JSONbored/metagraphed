@@ -14,7 +14,7 @@ import {
   overlayPreviouslyKnownAs,
   recordSubnetIdentityChanges,
   syncSubnetIdentityToPostgres,
-} from "../src/subnet-identity-history.mjs";
+} from "../src/subnet-identity-history.ts";
 import { encodeCursor } from "../src/cursor.ts";
 
 function identityHistoryRow(overrides = {}) {
@@ -427,7 +427,7 @@ describe("overlayPreviouslyKnownAs", () => {
 });
 
 // D1 write retired 2026-07-16 (item 8 of the D1->Postgres cleanup):
-// syncSubnetIdentityToPostgres (src/health-prober.mjs's writeSubnetSnapshot
+// syncSubnetIdentityToPostgres (src/health-prober.ts's writeSubnetSnapshot
 // calls it right alongside this function) is the real, working writer --
 // D1's own INSERT here had never successfully appended a single row to
 // production D1 (see wrangler.jsonc's METAGRAPH_SUBNET_IDENTITY_SOURCE
@@ -852,7 +852,7 @@ describe("deriveNetuidGroupedAliases", () => {
 });
 
 // #4832 gap-closure: syncSubnetIdentityToPostgres is called directly from
-// writeSubnetSnapshot (src/health-prober.mjs) via the DATA_API service
+// writeSubnetSnapshot (src/health-prober.ts) via the DATA_API service
 // binding, not through workers/api.mjs's public proxy layer -- see that
 // function's own header comment for why.
 describe("syncSubnetIdentityToPostgres", () => {

@@ -88,16 +88,16 @@ composite score readers may want to reproduce, just from a different kind of raw
 log, not an RPC call).
 
 Every probe result is classified first (`classifyProbe`/`classifyRpcProbe`,
-[`src/health-probe-core.mjs:268`](../src/health-probe-core.mjs)) into a fine-grained reason
+[`src/health-probe-core.ts:268`](../src/health-probe-core.ts)) into a fine-grained reason
 (`live`, `redirected`, `timeout`, `rate-limited`, `dead`, `wrong-chain`, …), then rolled up to one
 of four statuses (`statusForClassification`,
-[`src/health-probe-core.mjs:407`](../src/health-probe-core.mjs)): `ok` (live/redirected),
+[`src/health-probe-core.ts:407`](../src/health-probe-core.ts)): `ok` (live/redirected),
 `degraded` (rate-limited/auth-required/transient/timeout, or a registry-observed/community surface
 that's merely unsupported/dead/content-mismatched), or `failed` (everything else, including any
 wrong-chain answer regardless of authority).
 
 The reliability score itself is documented directly in its own source header
-([`src/reliability.mjs:1-13`](../src/reliability.mjs)):
+([`src/reliability.ts:1-13`](../src/reliability.ts)):
 
 ```
 uptimeScore    = uptime_ratio * 100                     (sample-weighted, exact)
@@ -109,7 +109,7 @@ score          = round(max(0, uptimeScore - latencyPenalty))
 `uptime_ratio = ok_count / samples` over the requested window. Grades: `A` at `score >= 99`, `B`
 at `>= 95`, `C` at `>= 90`, `D` at `>= 75`, else `F`. A sub-perfect uptime ratio is clamped so it
 can never round up to a flawless `score: 100`/grade `A`
-([`scoreFromStats`, `src/reliability.mjs:42`](../src/reliability.mjs)). `null` (not a fabricated
+([`scoreFromStats`, `src/reliability.ts:42`](../src/reliability.ts)). `null` (not a fabricated
 `0`) whenever there is no probe data for the window — this score is only ever computed from real
 history.
 

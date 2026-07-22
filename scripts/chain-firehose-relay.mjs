@@ -295,7 +295,7 @@ export const CHAIN_FIREHOSE_FORWARD_TIMEOUT_MS = 10_000;
 export const CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS = 6;
 
 // forwardBatch's in-flight concurrency -- forwarding a CHAIN_FIREHOSE_POLL_BATCH_SIZE
-// batch one row at a time (matching src/webhooks.mjs's own ALERT_DELIVERY_CONCURRENCY
+// batch one row at a time (matching src/webhooks.ts's own ALERT_DELIVERY_CONCURRENCY
 // default) would take minutes to drain any real backlog (each row is a real
 // HTTP round trip); this is the ingest endpoint's own Worker, not an
 // arbitrary third-party webhook, so higher concurrency than that 8 is
@@ -334,7 +334,7 @@ export function chunkRows(items, size) {
 }
 
 // Bounded-concurrency map: drains `items` through at most `concurrency`
-// in-flight `fn` calls. Duplicated from src/webhooks.mjs's own mapBounded
+// in-flight `fn` calls. Duplicated from src/webhooks.ts's own mapBounded
 // (not imported) -- this script is deployed standalone, COPYing only itself
 // into a minimal container (deploy/chain-firehose-relay.Dockerfile's own
 // comment: "a single small ESM file + one npm dependency"); pulling in `src/`

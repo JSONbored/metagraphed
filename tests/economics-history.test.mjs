@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { formatTrajectory } from "../src/health-serving.mjs";
+import { formatTrajectory } from "../src/health-serving.ts";
 
 // #1307: the daily subnet_snapshots rollup now carries per-subnet economics, so
 // the trajectory time series exposes economic trends alongside the structural ones.

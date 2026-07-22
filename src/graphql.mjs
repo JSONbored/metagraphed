@@ -10,12 +10,12 @@ import { readArtifact, readHealthKv } from "../workers/storage.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
 // and MCP already use) -- not a reimplementation.
-import { loadSourceSnapshotsList } from "./source-snapshots-mcp.mjs";
+import { loadSourceSnapshotsList } from "./source-snapshots-mcp.ts";
 // #7171: GraphQL parity for GET /api/v1/gaps and /api/v1/evidence, reusing
 // list_gaps / list_evidence loaders unchanged (same artifact + list-query
 // transforms REST and MCP already use) -- not a reimplementation.
-import { loadGapsList } from "./gaps-mcp.mjs";
-import { loadEvidenceList } from "./evidence-mcp.mjs";
+import { loadGapsList } from "./gaps-mcp.ts";
+import { loadEvidenceList } from "./evidence-mcp.ts";
 // #7171: GraphQL parity for GET /api/v1/chain-events (paginated Query feed),
 // reusing loadChainEventsFeed that MCP list_chain_events already calls.
 // Distinct from Subscription.chainEvents (live WebSocket firehose).
@@ -26,132 +26,132 @@ import {
   loadChainActivity,
   loadChainEventsFeed,
   optionalBlocksWindow,
-} from "./data-api-mcp.mjs";
+} from "./data-api-mcp.ts";
 // #6992: GraphQL parity for profiles, reusing list_profiles' own loader
 // unchanged (same artifact read, filter, sort, and page logic REST and MCP
 // already use) -- not a reimplementation.
-import { loadProfilesList } from "./profiles-mcp.mjs";
+import { loadProfilesList } from "./profiles-mcp.ts";
 import { contractVersion } from "../workers/responses.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
 // routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
 // list_endpoint_incidents already call for MCP parity -- not a reimplementation.
-import { loadEndpointPoolsList } from "./endpoint-pools-mcp.mjs";
-import { loadRpcPoolsList } from "./rpc-pools-mcp.mjs";
-import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.mjs";
+import { loadEndpointPoolsList } from "./endpoint-pools-mcp.ts";
+import { loadRpcPoolsList } from "./rpc-pools-mcp.ts";
+import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.ts";
 // #7175: GraphQL parity for GET /api/v1/providers/{slug}/endpoints, reusing the
 // same loadProviderEndpointsList that MCP list_provider_endpoints already calls
 // (#3289) -- not a reimplementation.
-import { loadProviderEndpointsList } from "./provider-endpoints-mcp.mjs";
+import { loadProviderEndpointsList } from "./provider-endpoints-mcp.ts";
 // #7167: GraphQL parity for the /api/v1/review/* contributor-review family,
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
 // and page logic REST and MCP already use) -- not a reimplementation.
-import { loadAdapterCandidatesList } from "./adapter-candidates-mcp.mjs";
-import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.mjs";
-import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.mjs";
-import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.mjs";
-import { loadReviewGapsList } from "./review-gaps-mcp.mjs";
-import { loadProfileCompletenessList } from "./profile-completeness-mcp.mjs";
+import { loadAdapterCandidatesList } from "./adapter-candidates-mcp.ts";
+import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.ts";
+import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.ts";
+import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.ts";
+import { loadReviewGapsList } from "./review-gaps-mcp.ts";
+import { loadProfileCompletenessList } from "./profile-completeness-mcp.ts";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
-import { loadAdapter } from "./adapters-mcp.mjs";
+import { loadAdapter } from "./adapters-mcp.ts";
 // #7170: GraphQL parity for the changelog/contracts/health-history REST routes,
 // reusing the same loaders MCP get_changelog/get_contracts/get_health_history
 // already call -- not a reimplementation.
-import { loadChangelog } from "./changelog-mcp.mjs";
-import { loadContracts } from "./contracts-mcp.mjs";
+import { loadChangelog } from "./changelog-mcp.ts";
+import { loadContracts } from "./contracts-mcp.ts";
 // #7431: GraphQL parity for GET /api/v1/build, reusing loadBuildSummary that
 // MCP get_build already calls -- not a reimplementation.
-import { loadBuildSummary } from "./build-mcp.mjs";
-import { loadHealthHistory } from "./health-history-mcp.mjs";
+import { loadBuildSummary } from "./build-mcp.ts";
+import { loadHealthHistory } from "./health-history-mcp.ts";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_WINDOWS,
   DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
-} from "./chain-axon-removals.mjs";
+} from "./chain-axon-removals.ts";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
-} from "./chain-deregistrations.mjs";
+} from "./chain-deregistrations.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
-} from "./chain-registrations.mjs";
+} from "./chain-registrations.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
   CHAIN_PROMETHEUS_LIMIT_MAX,
-} from "./chain-prometheus.mjs";
-import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
-import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
+} from "./chain-prometheus.ts";
+import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
+import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import {
   buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
-} from "./subnet-registrations.mjs";
+} from "./subnet-registrations.ts";
 import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
-} from "./subnet-deregistrations.mjs";
+} from "./subnet-deregistrations.ts";
 import {
   buildSubnetServing,
   SUBNET_SERVING_WINDOWS,
   DEFAULT_SUBNET_SERVING_WINDOW,
-} from "./subnet-serving.mjs";
+} from "./subnet-serving.ts";
 import {
   buildSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
-} from "./subnet-axon-removals.mjs";
+} from "./subnet-axon-removals.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
-} from "./subnet-weights.mjs";
+} from "./subnet-weights.ts";
 import {
   buildSubnetStakeMoves,
   SUBNET_STAKE_MOVES_WINDOWS,
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
-} from "./subnet-stake-moves.mjs";
+} from "./subnet-stake-moves.ts";
 import {
   buildSubnetStakeTransfers,
   SUBNET_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
-} from "./subnet-stake-transfers.mjs";
+} from "./subnet-stake-transfers.ts";
 import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
-} from "./subnet-weight-setters.mjs";
+} from "./subnet-weight-setters.ts";
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
-} from "./subnet-yield.mjs";
+} from "./subnet-yield.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
   PERFORMANCE_HISTORY_WINDOWS,
   DEFAULT_PERFORMANCE_HISTORY_WINDOW,
-} from "./subnet-performance.mjs";
+} from "./subnet-performance.ts";
 import {
   buildConcentration,
   buildConcentrationHistory,
   CONCENTRATION_HISTORY_WINDOWS,
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
-} from "./concentration.mjs";
+} from "./concentration.ts";
 import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
@@ -163,8 +163,8 @@ import {
   clampLimit,
   clampOffset,
 } from "../workers/request-params.ts";
-import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
-import { buildChainIdentityHistory } from "./chain-identity-history.mjs";
+import { buildSubnetIdentityHistory } from "./subnet-identity-history.ts";
+import { buildChainIdentityHistory } from "./chain-identity-history.ts";
 import {
   buildGlobalHealth,
   formatLeaderboards,
@@ -180,15 +180,15 @@ import {
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
-} from "./health-serving.mjs";
-import { loadSubnetProfile } from "./profiles-mcp.mjs";
+} from "./health-serving.ts";
+import { loadSubnetProfile } from "./profiles-mcp.ts";
 import {
   buildTopHoldersList,
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
   TOP_HOLDERS_SORTS,
-} from "./top-holders.mjs";
+} from "./top-holders.ts";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
 import {
   COMPARE_VALIDATORS_MAX,
@@ -201,48 +201,48 @@ import {
   parseCompareDimensionList,
   parseCompareNetuidList,
   parseUptimeWindow,
-} from "./analytics-live.mjs";
+} from "./analytics-live.ts";
 import { UPTIME_WINDOWS } from "../workers/config.ts";
 import {
   buildAccountExtrinsics,
   buildExtrinsic,
   buildExtrinsicFeed,
   buildBlockExtrinsics,
-} from "./extrinsics.mjs";
-import { buildBlock, buildBlockFeed } from "./blocks.mjs";
-import { loadBlockChainEvents } from "./data-api-mcp.mjs";
-import { buildBlocksSummary } from "./blocks-summary.mjs";
-import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
-import { buildChainYield } from "./chain-yield.mjs";
-import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
-import { loadSubnetBurn } from "./subnet-burn.mjs";
-import { loadSubnetLease } from "./subnet-lease.mjs";
-import { loadAccountBalance, isFinneySs58Address } from "./account-balance.mjs";
-import { loadAccountRootClaim } from "./account-root-claim.mjs";
+} from "./extrinsics.ts";
+import { buildBlock, buildBlockFeed } from "./blocks.ts";
+import { loadBlockChainEvents } from "./data-api-mcp.ts";
+import { buildBlocksSummary } from "./blocks-summary.ts";
+import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
+import { buildChainYield } from "./chain-yield.ts";
+import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.ts";
+import { loadSubnetBurn } from "./subnet-burn.ts";
+import { loadSubnetLease } from "./subnet-lease.ts";
+import { loadAccountBalance, isFinneySs58Address } from "./account-balance.ts";
+import { loadAccountRootClaim } from "./account-root-claim.ts";
 // #6976: GraphQL parity for the children/parents/weight-setters/entities account
 // relationship routes, reusing the same loaders/builders REST + MCP already call.
 import {
   loadAccountChildren,
   loadAccountParents,
-} from "./child-hotkey-delegation.mjs";
+} from "./child-hotkey-delegation.ts";
 import {
   buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "./account-weight-setters.mjs";
+} from "./account-weight-setters.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
   buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
-} from "./entity-labels.mjs";
-import { loadSudoKey } from "./sudo-key.mjs";
+} from "./entity-labels.ts";
+import { loadSudoKey } from "./sudo-key.ts";
 // #7642: saved_query reuses the same maintainer-curated template executor the
 // GET /api/v1/queries/{id} route and run_saved_query MCP tool already share.
-import { runSavedQuery } from "./saved-queries.mjs";
-import { loadNetworkParameters } from "./network-parameters.mjs";
-import { loadRandomnessStatus } from "./randomness.mjs";
-import { loadAddressMapping, H160_PATTERN } from "./address-mapping.mjs";
+import { runSavedQuery } from "./saved-queries.ts";
+import { loadNetworkParameters } from "./network-parameters.ts";
+import { loadRandomnessStatus } from "./randomness.ts";
+import { loadAddressMapping, H160_PATTERN } from "./address-mapping.ts";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
@@ -254,27 +254,27 @@ import {
   buildValidatorDetail,
   composeValidatorComparison,
   overlayFeaturedValidators,
-} from "./metagraph-neurons.mjs";
-import { buildAlphaVolume } from "./alpha-volume.mjs";
-import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.mjs";
-import { CURATION_ARTIFACT } from "./curation-mcp.mjs";
-import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
-import { DOMAIN_TAGS } from "./domain-tags.mjs";
+} from "./metagraph-neurons.ts";
+import { buildAlphaVolume } from "./alpha-volume.ts";
+import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.ts";
+import { CURATION_ARTIFACT } from "./curation-mcp.ts";
+import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
+import { DOMAIN_TAGS } from "./domain-tags.ts";
 import {
   buildSubnetOhlc,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
-} from "./subnet-ohlc.mjs";
-import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
+} from "./subnet-ohlc.ts";
+import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
   ACCOUNTS_LIST_SORTS,
   DEFAULT_ACCOUNTS_LIST_SORT,
   buildAccountsList,
-} from "./accounts-list.mjs";
+} from "./accounts-list.ts";
 import {
   buildAccountEvents,
   buildSubnetEvents,
@@ -288,76 +288,76 @@ import {
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   buildBlockEvents,
-} from "./account-events.mjs";
+} from "./account-events.ts";
 import {
   DEFAULT_PROMETHEUS_WINDOW,
   PROMETHEUS_WINDOWS,
   buildAccountPrometheus,
-} from "./account-prometheus.mjs";
+} from "./account-prometheus.ts";
 import {
   DEFAULT_STAKE_FLOW_WINDOW,
   STAKE_FLOW_WINDOWS,
   buildAccountStakeFlow,
-} from "./account-stake-flow.mjs";
-import { buildAccountPositionHistory } from "./account-position-history.mjs";
+} from "./account-stake-flow.ts";
+import { buildAccountPositionHistory } from "./account-position-history.ts";
 import {
   DEFAULT_STAKE_FLOW_DIRECTION,
   STAKE_FLOW_DIRECTIONS,
   buildStakeFlow,
-} from "./stake-flow.mjs";
-import { buildAccountPortfolio } from "./account-portfolio.mjs";
-import { buildAccountPositions } from "./account-nominator-positions.mjs";
+} from "./stake-flow.ts";
+import { buildAccountPortfolio } from "./account-portfolio.ts";
+import { buildAccountPositions } from "./account-nominator-positions.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
-} from "./account-registrations.mjs";
+} from "./account-registrations.ts";
 import {
   buildAccountDeregistrations,
   DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW,
-} from "./account-deregistrations.mjs";
+} from "./account-deregistrations.ts";
 import {
   buildAccountServing,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
-} from "./account-serving.mjs";
+} from "./account-serving.ts";
 import {
   buildAccountAxonRemovals,
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
-} from "./account-axon-removals.mjs";
+} from "./account-axon-removals.ts";
 import {
   buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "./account-stake-moves.mjs";
-import { buildAccountIdentity } from "./account-identity.mjs";
-import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
+} from "./account-stake-moves.ts";
+import { buildAccountIdentity } from "./account-identity.ts";
+import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
-} from "./counterparties.mjs";
+} from "./counterparties.ts";
 import { KV_HEALTH_META, KV_HEALTH_RPC_POOL } from "./kv-keys.ts";
 import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.ts";
-import { loadRpcUsage } from "./rpc-usage-loader.mjs";
+import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import {
   CHAIN_SIGNERS_SORTS,
   CHAIN_SIGNERS_LIMIT_DEFAULT,
   CHAIN_SIGNERS_LIMIT_MAX,
-} from "./chain-query-loaders.mjs";
+} from "./chain-query-loaders.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
   parseHistoryWindow,
   unsupportedWindowMessage,
-} from "./neuron-history.mjs";
-import { buildValidatorHistory } from "./validator-history.mjs";
-import { loadEconomicsTrends } from "./economics-trends.mjs";
+} from "./neuron-history.ts";
+import { buildValidatorHistory } from "./validator-history.ts";
+import { loadEconomicsTrends } from "./economics-trends.ts";
 import {
   DEFAULT_MOVERS_SORT,
   DEFAULT_MOVERS_WINDOW,
@@ -366,93 +366,93 @@ import {
   MOVERS_SORTS,
   MOVERS_WINDOWS,
   buildMovers,
-} from "./movers.mjs";
+} from "./movers.ts";
 import {
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,
   CHAIN_WEIGHTS_WINDOWS,
   DEFAULT_CHAIN_WEIGHTS_WINDOW,
   buildChainWeights,
-} from "./chain-weights.mjs";
+} from "./chain-weights.ts";
 import {
   CHAIN_SERVING_LIMIT_DEFAULT,
   CHAIN_SERVING_LIMIT_MAX,
   CHAIN_SERVING_WINDOWS,
   DEFAULT_CHAIN_SERVING_WINDOW,
   buildChainServing,
-} from "./chain-serving.mjs";
+} from "./chain-serving.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
-} from "./chain-turnover.mjs";
-import { buildTurnover } from "./turnover.mjs";
+} from "./chain-turnover.ts";
+import { buildTurnover } from "./turnover.ts";
 import {
   buildChainActivity,
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "./chain-analytics.mjs";
-import { buildChainPerformance } from "./chain-performance.mjs";
-import { buildChainConcentration } from "./concentration.mjs";
+} from "./chain-analytics.ts";
+import { buildChainPerformance } from "./chain-performance.ts";
+import { buildChainConcentration } from "./concentration.ts";
 import {
   DEFAULT_NOMINATOR_SORT,
   DEFAULT_NOMINATOR_WINDOW,
   buildValidatorNominators,
   NOMINATOR_SORTS,
   NOMINATOR_WINDOWS,
-} from "./validator-nominators.mjs";
+} from "./validator-nominators.ts";
 import {
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
   buildChainAlphaVolume,
-} from "./chain-alpha-volume.mjs";
+} from "./chain-alpha-volume.ts";
 import {
   buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
-} from "./chain-weight-setters.mjs";
+} from "./chain-weight-setters.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "./subnet-idle-stake.mjs";
+} from "./subnet-idle-stake.ts";
 import {
   buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
-} from "./subnet-prometheus.mjs";
+} from "./subnet-prometheus.ts";
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
   CHAIN_STAKE_FLOW_WINDOWS,
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
-} from "./chain-stake-flow.mjs";
+} from "./chain-stake-flow.ts";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
   CHAIN_STAKE_MOVES_WINDOWS,
   DEFAULT_CHAIN_STAKE_MOVES_WINDOW,
-} from "./chain-stake-moves.mjs";
+} from "./chain-stake-moves.ts";
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
   CHAIN_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW,
-} from "./chain-stake-transfers.mjs";
+} from "./chain-stake-transfers.ts";
 import {
   buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,
   CHAIN_TRANSFER_LIMIT_MAX,
   CHAIN_TRANSFER_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_WINDOW,
-} from "./chain-transfers.mjs";
+} from "./chain-transfers.ts";
 import {
   buildChainTransferPairs,
   CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
@@ -460,8 +460,8 @@ import {
   CHAIN_TRANSFER_PAIR_SORTS,
   CHAIN_TRANSFER_PAIR_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
-} from "./chain-transfer-pairs.mjs";
-import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
+} from "./chain-transfer-pairs.ts";
+import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -6211,7 +6211,7 @@ const rootValue = {
 
   rpc_pools(args, context) {
     // rpc-pools' loader additionally reads ctx.readHealthKv for its live
-    // 15-minute cron eligibility overlay (rpc-pools-mcp.mjs) -- graphql.mjs's
+    // 15-minute cron eligibility overlay (rpc-pools-mcp.ts) -- graphql.mjs's
     // own context has no such property, so it's supplied here from the same
     // module-level import loadLiveHealth/loadEconomics already use.
     return loadRpcPoolsList({ ...context, readHealthKv }, args, {
@@ -6266,7 +6266,7 @@ const rootValue = {
 
   async saved_query({ id, params }, context) {
     // #7642: the same maintainer-curated template executor the REST route and
-    // run_saved_query MCP tool share (src/saved-queries.mjs) -- template
+    // run_saved_query MCP tool share (src/saved-queries.ts) -- template
     // lookup, param coercion/validation, and execution are all its. Its
     // not_found (unknown id) and invalid_params toolErrors map to
     // BAD_USER_INPUT, matching this file's invalid-argument convention; any
@@ -7040,7 +7040,7 @@ const rootValue = {
   // #7432: the aggregate sibling of chain_events. Reuses optionalBlocksWindow
   // (the same 1000-default/positive-integer/1-5000-cap validation MCP's
   // get_chain_activity applies) then loadChainActivity — both relocated to
-  // data-api-mcp.mjs beside loadChainEventsFeed.
+  // data-api-mcp.ts beside loadChainEventsFeed.
   async chain_events_stats({ blocks }, context) {
     let window;
     try {

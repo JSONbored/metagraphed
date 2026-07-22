@@ -17,15 +17,15 @@ import {
 import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
-} from "../src/agent-tool-specs.mjs";
+} from "../src/agent-tool-specs.ts";
 import { ChainFirehoseHub } from "../workers/chain-firehose-hub.ts";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   McpSessionHub,
 } from "../workers/mcp-session-hub.ts";
 import { SubnetStatusHub } from "../workers/subnet-status-hub.ts";
-import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
-import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.mjs";
+import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.ts";
+import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.ts";
 import {
   artifactFilePath,
   createLocalArtifactEnv,

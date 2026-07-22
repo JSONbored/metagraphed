@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildSurfaceAliasArtifact,
   resolveSurfaceAlias,
-} from "../src/surface-aliases.mjs";
+} from "../src/surface-aliases.ts";
 
 describe("surface alias artifact (#1005)", () => {
   test("maps renamed display ids to stable surface keys", () => {

@@ -10,7 +10,7 @@ import {
   loadAccountRootClaim,
   ROOT_CLAIM_KV_TTL,
   ROOT_CLAIM_NEGATIVE_KV_TTL,
-} from "../src/account-root-claim.mjs";
+} from "../src/account-root-claim.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";

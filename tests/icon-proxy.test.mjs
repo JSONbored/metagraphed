@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { handleIconProxy } from "../src/icon-proxy.mjs";
+import { handleIconProxy } from "../src/icon-proxy.ts";
 
 const PNG = new Uint8Array(200).fill(1).buffer; // >100 bytes -> not a placeholder
 

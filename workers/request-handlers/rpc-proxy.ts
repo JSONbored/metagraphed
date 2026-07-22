@@ -46,16 +46,16 @@ import {
 import {
   findSurface,
   verifySurfaceWithCache,
-} from "../../src/surface-verify.mjs";
-import { SURFACE_ALIASES_PATH } from "../../src/surface-aliases.mjs";
+} from "../../src/surface-verify.ts";
+import { SURFACE_ALIASES_PATH } from "../../src/surface-aliases.ts";
 import {
   KV_HEALTH_RPC_POOL,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
-} from "../../src/health-prober.mjs";
-import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.mjs";
-import { overlayRpcPoolEligibility } from "../../src/health-serving.mjs";
-import { loadRpcUsage } from "../../src/rpc-usage-loader.mjs";
+} from "../../src/health-prober.ts";
+import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.ts";
+import { overlayRpcPoolEligibility } from "../../src/health-serving.ts";
+import { loadRpcUsage } from "../../src/rpc-usage-loader.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import {
   DENIED_RPC_PREFIXES,
@@ -312,7 +312,9 @@ export async function handleSurfaceVerify(
       503,
     );
   }
-  const catalogSurfaces = (catalog.data as { surfaces?: unknown[] })?.surfaces;
+  const catalogSurfaces = (
+    catalog.data as { surfaces?: Record<string, unknown>[] }
+  )?.surfaces;
   let surface = findSurface(catalogSurfaces, surfaceId);
   if (!surface) {
     const aliases = await readArtifact(env, SURFACE_ALIASES_PATH);
@@ -565,7 +567,10 @@ export async function handleRpcProxyRequest(
   // the static pool when the live snapshot is cold (always the case for the static
   // testnet pool, which is intentionally not probe-derived).
   const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
-  const pool = overlayRpcPoolEligibility(staticPool, liveRpcPool);
+  const pool = overlayRpcPoolEligibility(
+    staticPool as unknown as Record<string, unknown> | undefined,
+    liveRpcPool as Record<string, unknown> | null,
+  ) as RpcPool | null | undefined;
   // startedAt anchors end-to-end proxy latency for the B3 usage telemetry; the
   // recorder is best-effort + async (never adds latency to / fails the call).
   const startedAt = Date.now();
@@ -1064,8 +1069,8 @@ export async function proxyWithFailover(
         // checked against TRUSTED_RPC_UPSTREAM_ORIGINS, so following a 3xx would
         // re-POST the caller's body to an unvetted host. A 3xx/opaqueredirect is
         // classified transient (see classifyUpstreamAttempt) → failed attempt.
-        // Mirrors the redirect:"manual" invariant in webhooks.mjs /
-        // health-probe-core.mjs.
+        // Mirrors the redirect:"manual" invariant in webhooks.ts /
+        // health-probe-core.ts.
         redirect: "manual",
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -1354,7 +1359,7 @@ function isPrivateIpv4Octets([first, second]: number[]): boolean {
 // of registered domains, so no currently-configured origin can ever reach the
 // private-IP branches below through isSafeRpcEndpointUrl alone — this is
 // defense in depth against a future origin entry resolving privately, the same
-// posture health-probe-core.mjs's isUnsafePublicUrl documents for its guard.
+// posture health-probe-core.ts's isUnsafePublicUrl documents for its guard.
 export function isPrivateOrLocalHostname(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".localhost")) {
@@ -1380,8 +1385,8 @@ export function isPrivateOrLocalHostname(hostname: string): boolean {
   // IPv6 literal into hex-tail form (e.g. the bracketed literal for
   // ::ffff:100.64.0.1 becomes ::ffff:6440:1 in `new URL(...).hostname`), so a
   // dotted-quad string-prefix match against that value never fires on the real
-  // request path. Parse the embedded v4 the same way src/webhooks.mjs and
-  // src/health-probe-core.mjs already do (via the shared src/ip-safety.mjs
+  // request path. Parse the embedded v4 the same way src/webhooks.ts and
+  // src/health-probe-core.ts already do (via the shared src/ip-safety.ts
   // leaf) and re-check it against the same private-range policy.
   const embedded = ipv6EmbeddedIpv4(host);
   return embedded ? isPrivateIpv4Octets(embedded) : false;

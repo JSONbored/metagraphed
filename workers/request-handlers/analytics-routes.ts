@@ -29,8 +29,8 @@ import {
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,
-} from "../../src/neuron-history.mjs";
-import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
+} from "../../src/neuron-history.ts";
+import { loadEconomicsTrends } from "../../src/economics-trends.ts";
 import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
@@ -38,23 +38,23 @@ import {
   parseCompareDimensions,
   parseCompareHotkeys,
   parseCompareNetuids,
-} from "../../src/analytics-live.mjs";
+} from "../../src/analytics-live.ts";
 import {
   buildValidatorDetail,
   composeValidatorComparison,
-} from "../../src/metagraph-neurons.mjs";
+} from "../../src/metagraph-neurons.ts";
 import {
   formatLeaderboards,
   formatTrajectory,
   formatUptime,
   LEADERBOARD_BOARDS,
   resolveLiveEconomics,
-} from "../../src/health-serving.mjs";
-import { DOMAIN_TAGS } from "../../src/domain-tags.mjs";
+} from "../../src/health-serving.ts";
+import { DOMAIN_TAGS } from "../../src/domain-tags.ts";
 import {
   buildDomainOverview,
   buildDomainSummary,
-} from "../../src/domain-summary.mjs";
+} from "../../src/domain-summary.ts";
 
 type HealthMetaKvReader = (
   env: Env,
@@ -241,7 +241,7 @@ export async function handleTrajectory(
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
-      data.points,
+      data.points as unknown[],
       `subnet-${netuid}-trajectory`,
       "short",
       request,
@@ -299,7 +299,7 @@ export async function handleEconomicsTrends(
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
-      data.days,
+      data.days as unknown[],
       "economics-trends",
       "short",
       request,
@@ -846,7 +846,7 @@ export async function handleCompare(
 // -> categories/derived_categories) joined against the live economics tier
 // (netuid -> total_stake_tao/emission_share), mirroring resolveEconomicsRows'
 // own live-KV-first/R2-fallback precedence. `captured_at` comes from whichever
-// tier actually supplied economicsRows, matching network-economics.mjs's own
+// tier actually supplied economicsRows, matching network-economics.ts's own
 // `data.captured_at` convention -- the domain rollup is only as fresh as the
 // economics side (subnets.json's own domain tags change far less often).
 async function domainSummaryInputs(env: Env): Promise<{
@@ -889,7 +889,7 @@ async function domainSummaryInputs(env: Env): Promise<{
 
 // GET /api/v1/domains (#6749/#6750): every domain tag's rollup in one call --
 // the DefiLlama-style aggregation layer over the existing 14-tag domain/
-// capability taxonomy (src/domain-tags.mjs), already exposed read-only via
+// capability taxonomy (src/domain-tags.ts), already exposed read-only via
 // ?domain= on /api/v1/subnets. No new capture: pure composition of the
 // subnets index + economics tier, same registry+economics pattern
 // handleCompare uses above.
@@ -903,7 +903,10 @@ export async function handleDomains(
 
   const { subnetRows, economicsRows, capturedAt } =
     await domainSummaryInputs(env);
-  const data = buildDomainOverview(subnetRows, economicsRows);
+  const data = buildDomainOverview(
+    subnetRows as Array<Record<string, unknown>>,
+    economicsRows as Array<Record<string, unknown>>,
+  );
   return envelopeResponse(
     request,
     {
@@ -946,7 +949,11 @@ export async function handleDomainSummary(
 
   const { subnetRows, economicsRows, capturedAt } =
     await domainSummaryInputs(env);
-  const data = buildDomainSummary(tag, subnetRows, economicsRows);
+  const data = buildDomainSummary(
+    tag,
+    subnetRows as Array<Record<string, unknown>>,
+    economicsRows as Array<Record<string, unknown>>,
+  );
   return envelopeResponse(
     request,
     {

@@ -10,7 +10,7 @@ import {
   recordUsageEvent,
   resolvePostHogHost,
   usageEventProperties,
-} from "../src/usage-telemetry.mjs";
+} from "../src/usage-telemetry.ts";
 
 // A capture is one POST — record what it was handed, and let a test choose the
 // outcome (accepted, rejected, transport failure).

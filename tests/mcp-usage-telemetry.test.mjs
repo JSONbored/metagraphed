@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.mjs";
+import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 const CONFIGURED_ENV = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" };

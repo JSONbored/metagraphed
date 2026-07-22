@@ -8,7 +8,7 @@ import {
   GET_CHANGELOG_OUTPUT_SCHEMA,
   changelogToolError,
   loadChangelog,
-} from "../src/changelog-mcp.mjs";
+} from "../src/changelog-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_CHANGELOG = {

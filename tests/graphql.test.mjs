@@ -21,12 +21,12 @@ import {
   maxDepthRule,
   schema as chainEventsSchema,
 } from "../src/graphql.mjs";
-import { LEADERBOARD_BOARDS } from "../src/health-serving.mjs";
-import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.mjs";
-import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
-import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs";
-import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";
-import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
+import { LEADERBOARD_BOARDS } from "../src/health-serving.ts";
+import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.ts";
+import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
+import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.ts";
+import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.ts";
+import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp, DAY_MS } from "../workers/config.ts";
 import {
@@ -4563,7 +4563,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
 // #6978: subnet_lease is the live-RPC counterpart (current state, not the
 // event log) -- same schema-stable-null-on-RPC-failure shape as
 // subnet_recycled/subnet_burn above, reusing loadSubnetLease unchanged.
-describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.mjs)", () => {
+describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.ts)", () => {
   function withFetchStub(stub, fn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
@@ -11434,7 +11434,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 });
 
-describe("graphql — account_children / account_parents (#6976, live chain RPC via child-hotkey-delegation.mjs)", () => {
+describe("graphql — account_children / account_parents (#6976, live chain RPC via child-hotkey-delegation.ts)", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CHILD_SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
@@ -13257,7 +13257,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     assert.deepEqual(body.data.economics_trends.days, []);
   });
 
-  // D1 fully eliminated (2026-07-17): loadEconomicsTrends (src/economics-trends.mjs)
+  // D1 fully eliminated (2026-07-17): loadEconomicsTrends (src/economics-trends.ts)
   // no longer takes a d1 argument and always returns the schema-stable empty
   // shape -- even a "warm" D1 mock (real rows) must not change the response.
   test("no Postgres tier flag: never queries D1, returns a schema-stable empty series", async () => {
@@ -16245,7 +16245,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
   });
 });
 
-describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.mjs)", () => {
+describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/sudo-key.test.mjs.
   function withFetchStub(stub, fn) {
@@ -16313,7 +16313,7 @@ describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.mjs)", () => 
   });
 });
 
-describe("graphql — network_parameters (#6343, live chain RPC via network-parameters.mjs)", () => {
+describe("graphql — network_parameters (#6343, live chain RPC via network-parameters.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/network-parameters.test.mjs.
   function withFetchStub(stub, fn) {
@@ -16391,7 +16391,7 @@ describe("graphql — network_parameters (#6343, live chain RPC via network-para
   });
 });
 
-describe("graphql — network_randomness (#6990, live chain RPC via randomness.mjs)", () => {
+describe("graphql — network_randomness (#6990, live chain RPC via randomness.ts)", () => {
   function kvEnv(payload) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };
   }
@@ -16658,7 +16658,7 @@ describe("graphql — evm_address_mapping (#7648, get_evm_address_mapping name p
   });
 });
 
-describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.mjs)", () => {
+describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-recycled.test.mjs.
   function withFetchStub(stub, fn) {
@@ -16747,7 +16747,7 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
   });
 });
 
-describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.mjs)", () => {
+describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-burn.test.mjs.
   function withFetchStub(stub, fn) {
@@ -19739,7 +19739,7 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
 
 // #7432: GraphQL parity for GET /api/v1/chain-events/stats (the aggregate
 // sibling of chain_events), reusing the loadChainActivity + optionalBlocksWindow
-// that MCP get_chain_activity already calls, both relocated to data-api-mcp.mjs.
+// that MCP get_chain_activity already calls, both relocated to data-api-mcp.ts.
 describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

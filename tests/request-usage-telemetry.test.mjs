@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
-import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.mjs";
+import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import worker, {
   usageRouteLabel,
   withUsageTelemetry,

@@ -1,7 +1,7 @@
-import { artifactStorageTierForPath } from "./artifact-storage.mjs";
-import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.mjs";
-import { DOMAIN_TAGS } from "./domain-tags.mjs";
-import { sampleFromSchema } from "./openapi-sample.mjs";
+import { artifactStorageTierForPath } from "./artifact-storage.ts";
+import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.ts";
+import { DOMAIN_TAGS } from "./domain-tags.ts";
+import { sampleFromSchema } from "./openapi-sample.ts";
 
 export const CONTRACT_VERSION = "2026-07-03.2";
 export const SCHEMA_VERSION = 1;
@@ -1700,7 +1700,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "domains",
     "/metagraph/domains.json",
-    "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.mjs), each with its member subnet count, total stake, total emission share, and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy.",
+    "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy (src/domain-tags.ts), each with its member subnet count, total stake, total emission share, and within-domain emission concentration — computed live from the subnets index + economics tier at /api/v1/domains (no static file). The aggregation layer over ?domain=, not a new taxonomy.",
     "DomainsArtifact",
   ),
   artifact(
@@ -4656,7 +4656,7 @@ export function compileRoutePattern(pathTemplate) {
     // composite <block_number>-<extrinsic_index> ref.
     .replace(/\{hash\}/g, "__METAGRAPH_HASH__")
     // Domain rollup {tag} (#6749/#6750): one of the fixed 14 domain/capability
-    // tags (src/domain-tags.mjs) — same lowercase-hyphen shape as {slug}, kept
+    // tags (src/domain-tags.ts) — same lowercase-hyphen shape as {slug}, kept
     // as its own token since it's a distinct, unrelated enum.
     .replace(/\{tag\}/g, "__METAGRAPH_TAG__")
     // EVM {h160} (#6725/#6728): a 20-byte 0x-prefixed hex address, distinct

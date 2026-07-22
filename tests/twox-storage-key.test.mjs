@@ -55,7 +55,7 @@ describe("xxh64 4-lane path (inputs >= 32 bytes)", () => {
 });
 
 describe("twox128 against the codebase's own proven-correct reference", () => {
-  test('twox128("Sudo") ++ twox128("Key") matches sudo-key.mjs\'s hardcoded SUDO_KEY_STORAGE_KEY', () => {
+  test('twox128("Sudo") ++ twox128("Key") matches sudo-key.ts\'s hardcoded SUDO_KEY_STORAGE_KEY', () => {
     const key = bytesToHex(
       new Uint8Array([...twox128("Sudo"), ...twox128("Key")]),
     );
@@ -65,8 +65,8 @@ describe("twox128 against the codebase's own proven-correct reference", () => {
     );
   });
 
-  test('storageMapPrefix("SubtensorModule", "Burn") matches subnet-burn.mjs\'s hardcoded prefix', () => {
-    // subnet-burn.mjs's GOLDEN_STORAGE_KEY is
+  test('storageMapPrefix("SubtensorModule", "Burn") matches subnet-burn.ts\'s hardcoded prefix', () => {
+    // subnet-burn.ts's GOLDEN_STORAGE_KEY is
     // 0x658faa385070e074c85bf6b568cf0555...01be1755d08418802946bca51b6863250100
     // -- the full 32-byte prefix is twox128("SubtensorModule") ++ twox128("Burn").
     const prefix = bytesToHex(storageMapPrefix("SubtensorModule", "Burn"));
@@ -110,7 +110,7 @@ describe("u16LeBytes / u32LeBytes SCALE encoding", () => {
 // Python's `xxhash` library computing the same twox128/twox64Concat
 // derivation (see scratchpad compute_lease_keys.py from the #6719
 // investigation). The SubtensorModule prefix segment
-// (658faa385070e074c85bf6b568cf055) matches subnet-burn.mjs's own
+// (658faa385070e074c85bf6b568cf055) matches subnet-burn.ts's own
 // hardcoded, already-production-verified prefix.
 describe("twox64ConcatU16StorageKey (SubnetUidToLeaseId)", () => {
   const cases = [

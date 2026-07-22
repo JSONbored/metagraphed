@@ -5,7 +5,7 @@ import {
   loadSubnetAlphaVolume,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-} from "../src/alpha-volume.mjs";
+} from "../src/alpha-volume.ts";
 function volumeRow(kind, overrides = {}) {
   return {
     event_kind: kind,

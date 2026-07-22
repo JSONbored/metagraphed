@@ -5,7 +5,7 @@ import {
   loadAccountServing,
   SERVING_EVENT_KIND,
   DEFAULT_SERVING_WINDOW,
-} from "../src/account-serving.mjs";
+} from "../src/account-serving.ts";
 
 // One GROUP BY netuid row (announcement count + first/last observed epoch ms).
 function row(netuid, announcements, first, last) {

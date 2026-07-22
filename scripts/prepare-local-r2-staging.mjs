@@ -6,7 +6,7 @@ import { repoRoot, stableStringify } from "./lib.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,
   schemaDetailArtifactRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 
 const trackedPublicArtifacts = execFileSync(
   "git",

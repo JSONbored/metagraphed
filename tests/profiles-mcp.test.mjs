@@ -12,7 +12,7 @@ import {
   loadSubnetProfile,
   profilesMcpError,
   profilesQueryUrl,
-} from "../src/profiles-mcp.mjs";
+} from "../src/profiles-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const PROFILE_ROW = {

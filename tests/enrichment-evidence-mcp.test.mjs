@@ -10,7 +10,7 @@ import {
   enrichmentEvidenceMcpError,
   enrichmentEvidenceQueryUrl,
   loadEnrichmentEvidenceList,
-} from "../src/enrichment-evidence-mcp.mjs";
+} from "../src/enrichment-evidence-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

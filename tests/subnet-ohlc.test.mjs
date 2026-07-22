@@ -7,7 +7,7 @@ import {
   MAX_CANDLES,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-} from "../src/subnet-ohlc.mjs";
+} from "../src/subnet-ohlc.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

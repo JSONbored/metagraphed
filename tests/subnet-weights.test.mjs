@@ -4,7 +4,7 @@ import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
-} from "../src/subnet-weights.mjs";
+} from "../src/subnet-weights.ts";
 
 describe("buildSubnetWeights", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {

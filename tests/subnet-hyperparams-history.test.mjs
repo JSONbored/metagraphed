@@ -5,7 +5,7 @@ import {
   buildSubnetHyperparamsHistory,
   formatHyperparamsHistoryEntry,
   hyperparamsHash,
-} from "../src/subnet-hyperparams-history.mjs";
+} from "../src/subnet-hyperparams-history.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

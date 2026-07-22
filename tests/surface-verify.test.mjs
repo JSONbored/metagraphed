@@ -6,7 +6,7 @@ import {
   verifySurface,
   verifySurfaceWithCache,
   SURFACE_ID_PATTERN,
-} from "../src/surface-verify.mjs";
+} from "../src/surface-verify.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";

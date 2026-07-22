@@ -10,7 +10,7 @@ import {
   loadProfileCompletenessList,
   profileCompletenessMcpError,
   profileCompletenessQueryUrl,
-} from "../src/profile-completeness-mcp.mjs";
+} from "../src/profile-completeness-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

@@ -39,7 +39,7 @@ import * as Sentry from "@sentry/cloudflare";
 import {
   isUsageTelemetryConfigured,
   recordUsageEvent,
-} from "./usage-telemetry.mjs";
+} from "./usage-telemetry.ts";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.ts";
@@ -57,8 +57,8 @@ import {
   deliveryStoragePrefix,
   summarizeDeliveryRecords,
   WEBHOOK_REDELIVERY_LIST_LIMIT,
-} from "./webhooks.mjs";
-import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.mjs";
+} from "./webhooks.ts";
+import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.ts";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
@@ -68,184 +68,184 @@ import {
   isSubscribableMcpResourceUri,
   listSubscribableMcpResourceClasses,
   parseSubnetStatusResourceUri,
-} from "./subnet-status-subscribe.mjs";
+} from "./subnet-status-subscribe.ts";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
   GET_ECONOMICS_MCP_TOOL,
   GET_ECONOMICS_OUTPUT_SCHEMA,
   loadNetworkEconomics,
-} from "./network-economics.mjs";
+} from "./network-economics.ts";
 import {
   LIST_CURATION_INSTRUCTIONS,
   LIST_CURATION_MCP_TOOL,
   LIST_CURATION_OUTPUT_SCHEMA,
   loadCurationList,
-} from "./curation-mcp.mjs";
+} from "./curation-mcp.ts";
 import {
   LIST_GAPS_INSTRUCTIONS,
   LIST_GAPS_MCP_TOOL,
   LIST_GAPS_OUTPUT_SCHEMA,
   loadGapsList,
-} from "./gaps-mcp.mjs";
+} from "./gaps-mcp.ts";
 import {
   LIST_ENRICHMENT_QUEUE_INSTRUCTIONS,
   LIST_ENRICHMENT_QUEUE_MCP_TOOL,
   LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA,
   loadEnrichmentQueueList,
-} from "./enrichment-queue-mcp.mjs";
+} from "./enrichment-queue-mcp.ts";
 import {
   LIST_ADAPTER_CANDIDATES_INSTRUCTIONS,
   LIST_ADAPTER_CANDIDATES_MCP_TOOL,
   LIST_ADAPTER_CANDIDATES_OUTPUT_SCHEMA,
   loadAdapterCandidatesList,
-} from "./adapter-candidates-mcp.mjs";
+} from "./adapter-candidates-mcp.ts";
 import {
   LIST_ENRICHMENT_EVIDENCE_INSTRUCTIONS,
   LIST_ENRICHMENT_EVIDENCE_MCP_TOOL,
   LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA,
   loadEnrichmentEvidenceList,
-} from "./enrichment-evidence-mcp.mjs";
+} from "./enrichment-evidence-mcp.ts";
 import {
   LIST_REVIEW_GAPS_INSTRUCTIONS,
   LIST_REVIEW_GAPS_MCP_TOOL,
   LIST_REVIEW_GAPS_OUTPUT_SCHEMA,
   loadReviewGapsList,
-} from "./review-gaps-mcp.mjs";
+} from "./review-gaps-mcp.ts";
 import {
   LIST_REVIEW_ENRICHMENT_TARGETS_INSTRUCTIONS,
   LIST_REVIEW_ENRICHMENT_TARGETS_MCP_TOOL,
   LIST_REVIEW_ENRICHMENT_TARGETS_OUTPUT_SCHEMA,
   loadReviewEnrichmentTargetsList,
-} from "./review-enrichment-targets-mcp.mjs";
+} from "./review-enrichment-targets-mcp.ts";
 import {
   LIST_PROFILE_COMPLETENESS_INSTRUCTIONS,
   LIST_PROFILE_COMPLETENESS_MCP_TOOL,
   LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
   loadProfileCompletenessList,
-} from "./profile-completeness-mcp.mjs";
+} from "./profile-completeness-mcp.ts";
 import {
   LIST_SUBNET_ENDPOINTS_INSTRUCTIONS,
   LIST_SUBNET_ENDPOINTS_MCP_TOOL,
   LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA,
   loadSubnetEndpointsList,
-} from "./subnet-endpoints-mcp.mjs";
+} from "./subnet-endpoints-mcp.ts";
 import {
   LIST_SUBNET_EVIDENCE_INSTRUCTIONS,
   LIST_SUBNET_EVIDENCE_MCP_TOOL,
   LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
   loadSubnetEvidenceList,
-} from "./subnet-evidence-mcp.mjs";
+} from "./subnet-evidence-mcp.ts";
 import {
   LIST_EVIDENCE_INSTRUCTIONS,
   LIST_EVIDENCE_MCP_TOOL,
   LIST_EVIDENCE_OUTPUT_SCHEMA,
   loadEvidenceList,
-} from "./evidence-mcp.mjs";
+} from "./evidence-mcp.ts";
 import {
   LIST_SEARCH_INDEX_INSTRUCTIONS,
   LIST_SEARCH_INDEX_MCP_TOOL,
   LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
   loadSearchIndexList,
-} from "./search-index-mcp.mjs";
+} from "./search-index-mcp.ts";
 import {
   LIST_SEARCH_INSTRUCTIONS,
   LIST_SEARCH_MCP_TOOL,
   LIST_SEARCH_OUTPUT_SCHEMA,
   loadSearchList,
-} from "./search-mcp.mjs";
+} from "./search-mcp.ts";
 import {
   LIST_SOURCE_SNAPSHOTS_INSTRUCTIONS,
   LIST_SOURCE_SNAPSHOTS_MCP_TOOL,
   LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
   loadSourceSnapshotsList,
-} from "./source-snapshots-mcp.mjs";
+} from "./source-snapshots-mcp.ts";
 import {
   LIST_SURFACES_INSTRUCTIONS,
   LIST_SURFACES_MCP_TOOL,
   LIST_SURFACES_OUTPUT_SCHEMA,
   loadSurfacesList,
-} from "./surfaces-mcp.mjs";
+} from "./surfaces-mcp.ts";
 import {
   LIST_ENDPOINT_POOLS_INSTRUCTIONS,
   LIST_ENDPOINT_POOLS_MCP_TOOL,
   LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
   loadEndpointPoolsList,
-} from "./endpoint-pools-mcp.mjs";
+} from "./endpoint-pools-mcp.ts";
 import {
   LIST_RPC_POOLS_MCP_TOOL,
   LIST_RPC_POOLS_OUTPUT_SCHEMA,
   loadRpcPoolsList,
-} from "./rpc-pools-mcp.mjs";
+} from "./rpc-pools-mcp.ts";
 import {
   LIST_ENDPOINT_INCIDENTS_INSTRUCTIONS,
   LIST_ENDPOINT_INCIDENTS_MCP_TOOL,
   LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   loadEndpointIncidentsList,
-} from "./endpoint-incidents-mcp.mjs";
+} from "./endpoint-incidents-mcp.ts";
 import {
   LIST_PROVIDER_ENDPOINTS_INSTRUCTIONS,
   LIST_PROVIDER_ENDPOINTS_MCP_TOOL,
   LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
   loadProviderEndpointsList,
-} from "./provider-endpoints-mcp.mjs";
+} from "./provider-endpoints-mcp.ts";
 import {
   LIST_PROVIDERS_INSTRUCTIONS,
   LIST_PROVIDERS_MCP_TOOL,
   LIST_PROVIDERS_OUTPUT_SCHEMA,
   loadProvidersList,
-} from "./providers-mcp.mjs";
+} from "./providers-mcp.ts";
 import {
   GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   loadGlobalOperationalHealth,
-} from "./global-operational-health.mjs";
+} from "./global-operational-health.ts";
 import {
   GET_COVERAGE_INSTRUCTIONS,
   GET_COVERAGE_MCP_TOOL,
   GET_COVERAGE_OUTPUT_SCHEMA,
   loadRegistryCoverage,
-} from "./registry-coverage.mjs";
+} from "./registry-coverage.ts";
 import {
   GET_CONTRACTS_INSTRUCTIONS,
   GET_CONTRACTS_MCP_TOOL,
   GET_CONTRACTS_OUTPUT_SCHEMA,
   loadContracts,
-} from "./contracts-mcp.mjs";
+} from "./contracts-mcp.ts";
 import {
   GET_CHANGELOG_INSTRUCTIONS,
   GET_CHANGELOG_MCP_TOOL,
   GET_CHANGELOG_OUTPUT_SCHEMA,
   loadChangelog,
-} from "./changelog-mcp.mjs";
-import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.mjs";
-import { decodeEvmPrecompileCall } from "./evm-precompiles.mjs";
-import { H160_PATTERN, loadAddressMapping } from "./address-mapping.mjs";
+} from "./changelog-mcp.ts";
+import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.ts";
+import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
+import { H160_PATTERN, loadAddressMapping } from "./address-mapping.ts";
 import {
   GET_FEED_INSTRUCTIONS,
   GET_FEED_MCP_TOOL,
   GET_FEED_OUTPUT_SCHEMA,
   loadFeedItems,
-} from "./feed-mcp.mjs";
+} from "./feed-mcp.ts";
 import {
   GET_BUILD_INSTRUCTIONS,
   GET_BUILD_MCP_TOOL,
   GET_BUILD_OUTPUT_SCHEMA,
   loadBuildSummary,
-} from "./build-mcp.mjs";
+} from "./build-mcp.ts";
 import {
   GET_ADAPTER_INSTRUCTIONS,
   GET_ADAPTER_MCP_TOOL,
   GET_ADAPTER_OUTPUT_SCHEMA,
   loadAdapter,
-} from "./adapters-mcp.mjs";
+} from "./adapters-mcp.ts";
 import {
   GET_AGENT_RESOURCES_INSTRUCTIONS,
   GET_AGENT_RESOURCES_MCP_TOOL,
   GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
   loadAgentResources,
-} from "./agent-resources-mcp.mjs";
+} from "./agent-resources-mcp.ts";
 import {
   GET_SUBNET_PROFILE_MCP_TOOL,
   GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
@@ -254,78 +254,78 @@ import {
   LIST_PROFILES_OUTPUT_SCHEMA,
   loadProfilesList,
   loadSubnetProfile,
-} from "./profiles-mcp.mjs";
+} from "./profiles-mcp.ts";
 import {
   GET_HEALTH_HISTORY_INSTRUCTIONS,
   GET_HEALTH_HISTORY_MCP_TOOL,
   GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
   loadHealthHistory,
-} from "./health-history-mcp.mjs";
+} from "./health-history-mcp.ts";
 import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
-} from "./concentration.mjs";
-import { DOMAIN_TAGS } from "./domain-tags.mjs";
-import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
-import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.mjs";
-import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
-import { loadRpcUsage } from "./rpc-usage-loader.mjs";
+} from "./concentration.ts";
+import { DOMAIN_TAGS } from "./domain-tags.ts";
+import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
+import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
+import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
+import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import {
   buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,
   CHAIN_TRANSFER_LIMIT_MAX,
   CHAIN_TRANSFER_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_WINDOW,
-} from "./chain-transfers.mjs";
+} from "./chain-transfers.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
-} from "./chain-turnover.mjs";
+} from "./chain-turnover.ts";
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
   CHAIN_STAKE_FLOW_WINDOWS,
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
-} from "./chain-stake-flow.mjs";
+} from "./chain-stake-flow.ts";
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
-} from "./chain-alpha-volume.mjs";
+} from "./chain-alpha-volume.ts";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
   CHAIN_WEIGHTS_LIMIT_MAX,
   CHAIN_WEIGHTS_WINDOWS,
   DEFAULT_CHAIN_WEIGHTS_WINDOW,
-} from "./chain-weights.mjs";
+} from "./chain-weights.ts";
 import {
   buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
-} from "./chain-weight-setters.mjs";
+} from "./chain-weight-setters.ts";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
   CHAIN_STAKE_MOVES_WINDOWS,
   DEFAULT_CHAIN_STAKE_MOVES_WINDOW,
-} from "./chain-stake-moves.mjs";
+} from "./chain-stake-moves.ts";
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
   CHAIN_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW,
-} from "./chain-stake-transfers.mjs";
+} from "./chain-stake-transfers.ts";
 import {
   buildChainTransferPairs,
   CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
@@ -333,21 +333,21 @@ import {
   CHAIN_TRANSFER_PAIR_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
   CHAIN_TRANSFER_PAIR_SORTS,
-} from "./chain-transfer-pairs.mjs";
+} from "./chain-transfer-pairs.ts";
 import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
-} from "./economics-trends.mjs";
+} from "./economics-trends.ts";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
-} from "./counterparties.mjs";
+} from "./counterparties.ts";
 import {
   buildChainActivity,
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "./chain-analytics.mjs";
+} from "./chain-analytics.ts";
 import {
   loadCompareSubnets,
   loadGlobalIncidents,
@@ -364,57 +364,57 @@ import {
   composeCompareData,
   profilesProjectionFromRows,
   COMPARE_VALIDATORS_MAX,
-} from "./analytics-live.mjs";
+} from "./analytics-live.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
-} from "./chain-registrations.mjs";
+} from "./chain-registrations.ts";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
   CHAIN_AXON_REMOVALS_WINDOWS,
   DEFAULT_CHAIN_AXON_REMOVALS_WINDOW,
-} from "./chain-axon-removals.mjs";
+} from "./chain-axon-removals.ts";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
   CHAIN_DEREGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
-} from "./chain-deregistrations.mjs";
+} from "./chain-deregistrations.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
   CHAIN_PROMETHEUS_LIMIT_MAX,
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
-} from "./chain-prometheus.mjs";
+} from "./chain-prometheus.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
   CHAIN_SERVING_LIMIT_MAX,
   CHAIN_SERVING_WINDOWS,
   DEFAULT_CHAIN_SERVING_WINDOW,
-} from "./chain-serving.mjs";
-import { generateServiceSnippets } from "./integration-snippets.mjs";
+} from "./chain-serving.ts";
+import { generateServiceSnippets } from "./integration-snippets.ts";
 import {
   KV_HEALTH_RPC_POOL,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
-} from "./health-prober.mjs";
+} from "./health-prober.ts";
 import {
   findSurface,
   primarySurfaceForNetuid,
   verifySurfaceWithCache,
   SURFACE_ID_PATTERN,
-} from "./surface-verify.mjs";
-import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
+} from "./surface-verify.ts";
+import { SURFACE_ALIASES_PATH } from "./surface-aliases.ts";
 import {
   callSubnetSurface,
   matchSchemaOperation,
-} from "./call-subnet-surface.mjs";
+} from "./call-subnet-surface.ts";
 import {
   ECONOMIC_LEADERBOARD_BOARDS,
   formatLeaderboards,
@@ -431,7 +431,7 @@ import {
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
-} from "./health-serving.mjs";
+} from "./health-serving.ts";
 import {
   buildNeuronDetail,
   buildSubnetMetagraph,
@@ -443,7 +443,7 @@ import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
-} from "./metagraph-neurons.mjs";
+} from "./metagraph-neurons.ts";
 import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,
@@ -458,130 +458,130 @@ import {
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
-} from "./account-events.mjs";
+} from "./account-events.ts";
 import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
-} from "./subnet-weight-setters.mjs";
+} from "./subnet-weight-setters.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
-} from "./subnet-weights.mjs";
+} from "./subnet-weights.ts";
 import {
   buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
-} from "./subnet-registrations.mjs";
+} from "./subnet-registrations.ts";
 import {
   buildSubnetStakeMoves,
   SUBNET_STAKE_MOVES_WINDOWS,
   DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
-} from "./subnet-stake-moves.mjs";
+} from "./subnet-stake-moves.ts";
 import {
   buildSubnetStakeTransfers,
   SUBNET_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
-} from "./subnet-stake-transfers.mjs";
+} from "./subnet-stake-transfers.ts";
 import {
   buildSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
-} from "./subnet-axon-removals.mjs";
+} from "./subnet-axon-removals.ts";
 import {
   buildSubnetServing,
   SUBNET_SERVING_WINDOWS,
   DEFAULT_SUBNET_SERVING_WINDOW,
-} from "./subnet-serving.mjs";
+} from "./subnet-serving.ts";
 import {
   buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
-} from "./subnet-prometheus.mjs";
+} from "./subnet-prometheus.ts";
 import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
-} from "./subnet-deregistrations.mjs";
-import { buildAccountPortfolio } from "./account-portfolio.mjs";
-import { buildAccountPositions } from "./account-nominator-positions.mjs";
+} from "./subnet-deregistrations.ts";
+import { buildAccountPortfolio } from "./account-portfolio.ts";
+import { buildAccountPositions } from "./account-nominator-positions.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
   parseHistoryWindow,
-} from "./neuron-history.mjs";
-import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
+} from "./neuron-history.ts";
+import { buildSubnetIdentityHistory } from "./subnet-identity-history.ts";
 import {
   buildTurnover,
   buildTurnoverChanges,
   turnoverChangeDetail,
-} from "./turnover.mjs";
+} from "./turnover.ts";
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,
   parseSubnetYieldHistoryWindow,
-} from "./subnet-yield.mjs";
+} from "./subnet-yield.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
   parseSubnetPerformanceHistoryWindow,
-} from "./subnet-performance.mjs";
-import { buildChainPerformance } from "./chain-performance.mjs";
-import { buildChainYield } from "./chain-yield.mjs";
+} from "./subnet-performance.ts";
+import { buildChainPerformance } from "./chain-performance.ts";
+import { buildChainYield } from "./chain-yield.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "./subnet-idle-stake.mjs";
-import { buildBlocksSummary } from "./blocks-summary.mjs";
+} from "./subnet-idle-stake.ts";
+import { buildBlocksSummary } from "./blocks-summary.ts";
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-} from "./chain-identity-history.mjs";
+} from "./chain-identity-history.ts";
 import {
   buildStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
   STAKE_FLOW_DIRECTIONS,
   DEFAULT_STAKE_FLOW_DIRECTION,
-} from "./stake-flow.mjs";
-import { buildAccountStakeFlow } from "./account-stake-flow.mjs";
+} from "./stake-flow.ts";
+import { buildAccountStakeFlow } from "./account-stake-flow.ts";
 import {
   buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "./account-stake-moves.mjs";
+} from "./account-stake-moves.ts";
 import {
   buildAccountAxonRemovals,
   AXON_REMOVAL_WINDOWS,
   DEFAULT_AXON_REMOVAL_WINDOW,
-} from "./account-axon-removals.mjs";
+} from "./account-axon-removals.ts";
 import {
   buildAccountPrometheus,
   PROMETHEUS_WINDOWS,
   DEFAULT_PROMETHEUS_WINDOW,
-} from "./account-prometheus.mjs";
+} from "./account-prometheus.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
-} from "./account-registrations.mjs";
+} from "./account-registrations.ts";
 import {
   buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "./account-weight-setters.mjs";
+} from "./account-weight-setters.ts";
 import {
   buildAccountServing,
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
-} from "./account-serving.mjs";
+} from "./account-serving.ts";
 import {
   buildAccountDeregistrations,
   DEREGISTRATION_WINDOWS as ACCOUNT_DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW as DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW,
-} from "./account-deregistrations.mjs";
+} from "./account-deregistrations.ts";
 import {
   buildMovers,
   MOVERS_WINDOWS,
@@ -590,35 +590,35 @@ import {
   DEFAULT_MOVERS_SORT,
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
-} from "./movers.mjs";
-import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
-import { loadAccountRootClaim } from "./account-root-claim.mjs";
+} from "./movers.ts";
+import { isFinneySs58Address, loadAccountBalance } from "./account-balance.ts";
+import { loadAccountRootClaim } from "./account-root-claim.ts";
 import {
   loadAccountChildren,
   loadAccountParents,
-} from "./child-hotkey-delegation.mjs";
-import { buildBlockFeed, buildBlock } from "./blocks.mjs";
+} from "./child-hotkey-delegation.ts";
+import { buildBlockFeed, buildBlock } from "./blocks.ts";
 import {
   buildExtrinsic,
   buildExtrinsicFeed,
   buildAccountExtrinsics,
   buildBlockExtrinsics,
-} from "./extrinsics.mjs";
+} from "./extrinsics.ts";
 import {
   loadBlockChainEvents,
   loadChainActivity,
   loadChainEventsFeed,
   loadExtrinsicChainEvents,
   optionalBlocksWindow,
-} from "./data-api-mcp.mjs";
+} from "./data-api-mcp.ts";
 import {
   aiEnabled,
   askQuestion,
   SEMANTIC_TYPES,
   semanticSearch,
   withinRateLimit,
-} from "./ai-search.mjs";
-import { keywordScore, queryTerms } from "./keyword-search.mjs";
+} from "./ai-search.ts";
+import { keywordScore, queryTerms } from "./keyword-search.ts";
 import { KV_HEALTH_META } from "./kv-keys.ts";
 import {
   buildAccountsList,
@@ -626,41 +626,41 @@ import {
   DEFAULT_ACCOUNTS_LIST_SORT,
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
-} from "./accounts-list.mjs";
+} from "./accounts-list.ts";
 import {
   buildTopHoldersList,
   TOP_HOLDERS_SORTS,
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
-} from "./top-holders.mjs";
-import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
-import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
-import { buildAlphaVolume } from "./alpha-volume.mjs";
+} from "./top-holders.ts";
+import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
+import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
+import { buildAlphaVolume } from "./alpha-volume.ts";
 import {
   buildSubnetOhlc,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
-} from "./subnet-ohlc.mjs";
-import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.mjs";
-import { buildAccountPositionHistory } from "./account-position-history.mjs";
-import { buildAccountIdentity } from "./account-identity.mjs";
-import { buildAccountIdentityHistory } from "./account-identity-history.mjs";
-import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
-import { loadSubnetBurn } from "./subnet-burn.mjs";
-import { loadSubnetLease } from "./subnet-lease.mjs";
-import { loadSudoKey } from "./sudo-key.mjs";
-import { loadNetworkParameters } from "./network-parameters.mjs";
-import { loadRandomnessStatus } from "./randomness.mjs";
+} from "./subnet-ohlc.ts";
+import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
+import { buildAccountPositionHistory } from "./account-position-history.ts";
+import { buildAccountIdentity } from "./account-identity.ts";
+import { buildAccountIdentityHistory } from "./account-identity-history.ts";
+import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
+import { loadSubnetBurn } from "./subnet-burn.ts";
+import { loadSubnetLease } from "./subnet-lease.ts";
+import { loadSudoKey } from "./sudo-key.ts";
+import { loadNetworkParameters } from "./network-parameters.ts";
+import { loadRandomnessStatus } from "./randomness.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
   buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
-} from "./entity-labels.mjs";
-import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
+} from "./entity-labels.ts";
+import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,
@@ -669,8 +669,8 @@ import {
   DEFAULT_NOMINATOR_SORT,
   NOMINATOR_LIMIT_DEFAULT,
   NOMINATOR_LIMIT_MAX,
-} from "./validator-nominators.mjs";
-import { buildValidatorHistory } from "./validator-history.mjs";
+} from "./validator-nominators.ts";
+import { buildValidatorHistory } from "./validator-history.ts";
 
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet
@@ -1116,7 +1116,7 @@ function mcpContractVersion(ctx) {
 // does, so this reconstructs the identical query-string shape
 // workers/data-api.mjs's extrinsics routes parse. The host in the URL is
 // never dispatched to (DATA_API.fetch resolves the binding directly, the
-// same convention src/data-api-mcp.mjs's dataApiFetchJson already uses).
+// same convention src/data-api-mcp.ts's dataApiFetchJson already uses).
 function mcpExtrinsicsListRequest(args) {
   const params = new URLSearchParams();
   const block = optionalNonNegativeInt(args, "block");
@@ -1300,7 +1300,7 @@ async function loadSubnetEconomics(ctx, netuid) {
 }
 
 // Chain-activity aggregate (pallet.method event distribution) over the most
-// recent N blocks lives in src/data-api-mcp.mjs (exported loadChainActivity,
+// recent N blocks lives in src/data-api-mcp.ts (exported loadChainActivity,
 // #7432) alongside its raw-feed sibling loadChainEventsFeed — same shared
 // DATA_API path, now reused by GraphQL's chain_events_stats field too.
 
@@ -1309,7 +1309,7 @@ async function loadSubnetEconomics(ctx, netuid) {
 // loadChainActivity uses for the stats aggregate. Optional pallet/method/block/
 // extrinsic filters + an opaque keyset cursor; the data Worker validates the
 // filter combo and returns 400, surfaced here as a clean invalid_params error.
-// Implemented in src/data-api-mcp.mjs (shared with GraphQL Query.chain_events).
+// Implemented in src/data-api-mcp.ts (shared with GraphQL Query.chain_events).
 
 // Mirrors loadChainEventsFeed's own DATA_API-direct call (#6637): the
 // all-events tier has no per-table tryPostgresTier flag (unlike
@@ -1915,7 +1915,7 @@ function requireHotkey(args) {
 // compare_subnets/GET /api/v1/compare.
 
 // The optional `blocks` window for get_chain_activity lives in
-// src/data-api-mcp.mjs (exported optionalBlocksWindow, #7432) beside its
+// src/data-api-mcp.ts (exported optionalBlocksWindow, #7432) beside its
 // loadChainActivity loader — shared with GraphQL's chain_events_stats field.
 
 function clampLimit(value, fallback, max) {
@@ -11457,7 +11457,7 @@ export const MCP_TOOLS = [
     description:
       "Identify + decode a raw Ethereum.transact `to`/`input` pair against " +
       "Bittensor's 16 fixed-address EVM precompiles (epic #6725) -- the " +
-      "same registry src/evm-precompiles.mjs uses to add a `precompile_call` " +
+      "same registry src/evm-precompiles.ts uses to add a `precompile_call` " +
       "field onto captured Ethereum.transact calldata. precompile/address/" +
       "function are all null when `to` isn't one of the 16 known precompile " +
       "addresses (an ordinary contract call). When `to` IS a known " +

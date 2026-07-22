@@ -54,7 +54,7 @@ deprioritized.
   Hyperdrive round-trip before the actual route logic runs — unacceptable
   added latency on every single call, and a needless load multiplier on the
   connection pool ADR 0014 already treats as the scarce resource. Mirrors
-  two already-shipped precedents exactly: `src/network-parameters.mjs`'s
+  two already-shipped precedents exactly: `src/network-parameters.ts`'s
   `METAGRAPH_CONTROL`-KV-front-of-RPC pattern (300s TTL, negative-cached
   shorter), and `workers/alerter-hub.mjs`'s `ALERTER_HUB_TRIGGER_CACHE_TTL_MS`
   (5 min) front-of-Postgres trigger cache. A key lookup misses KV on first

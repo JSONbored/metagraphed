@@ -10,7 +10,7 @@ import {
   endpointIncidentsMcpError,
   endpointIncidentsQueryUrl,
   loadEndpointIncidentsList,
-} from "../src/endpoint-incidents-mcp.mjs";
+} from "../src/endpoint-incidents-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

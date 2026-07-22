@@ -10,7 +10,7 @@ import {
   gapsMcpError,
   gapsQueryUrl,
   loadGapsList,
-} from "../src/gaps-mcp.mjs";
+} from "../src/gaps-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

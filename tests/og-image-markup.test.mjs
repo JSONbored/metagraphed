@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { renderMarkup } from "../src/og-image.mjs";
+import { renderMarkup } from "../src/og-image.ts";
 
 // The stat-row separator dot (renderStatRow joins parts with this between them).
 const STAT_DOT = /width:8px;height:8px;border-radius:4px/g;

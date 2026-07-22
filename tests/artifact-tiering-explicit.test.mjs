@@ -14,7 +14,7 @@ import {
   DUAL_PATTERNS,
   R2_ONLY_PATTERNS,
   artifactRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 
 // Concrete sample values for the path-template tokens, mirroring
 // scripts/smoke-live-api.mjs so a templated path resolves to a real-shaped

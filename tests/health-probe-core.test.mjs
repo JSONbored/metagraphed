@@ -19,7 +19,7 @@ import {
   normalizeProbeStatus,
   statusForClassification,
   summarizeRpcProbe,
-} from "../src/health-probe-core.mjs";
+} from "../src/health-probe-core.ts";
 
 describe("normalizeProbeStatus", () => {
   test("passes through canonical values", () => {
@@ -163,7 +163,7 @@ describe("isUnsafePublicUrl", () => {
 
   test("blocks non-global special-use IPv4 the webhook guard already rejects", () => {
     // The probe literal guard drifted out of parity with the webhook + build SSRF
-    // guards (src/webhooks.mjs PRIVATE_IPV4_PATTERNS), letting these through:
+    // guards (src/webhooks.ts PRIVATE_IPV4_PATTERNS), letting these through:
     //   192.0.0.0/24  IETF protocol assignments
     //   198.18.0.0/15 benchmarking (RFC 2544)
     //   224.0.0.0/3   multicast 224/4 + reserved 240/4 + 255/8 broadcast

@@ -11,7 +11,7 @@
 //   - sn-85-vidaio-ready   GET https://api.vidaio.io/ready        -> { status: "ok" }
 //
 // Note on sn-85-vidaio-openapi: kind "openapi" is not in OPERATIONAL_SURFACE_KINDS
-// (src/health-probe-core.mjs), so that surface is absent from the real
+// (src/health-probe-core.ts), so that surface is absent from the real
 // public/metagraph/operational-surfaces.json and cannot be resolved by
 // surface_id through the MCP tool -- it is verified direct-call only (matching
 // the SN74 precedent). health/ready are subnet-api (operational) and carry no
@@ -22,8 +22,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import { callSubnetSurface } from "../src/call-subnet-surface.mjs";
-import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.mjs";
+import { callSubnetSurface } from "../src/call-subnet-surface.ts";
+import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 const NETUID = 85;

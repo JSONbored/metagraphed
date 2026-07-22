@@ -20,8 +20,8 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
   summarizeRows,
-} from "../src/health-serving.mjs";
-import { computeReliability, scoreFromStats } from "../src/reliability.mjs";
+} from "../src/health-serving.ts";
+import { computeReliability, scoreFromStats } from "../src/reliability.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
@@ -1371,7 +1371,7 @@ describe("resolveLiveHealth (KV → Postgres → null)", () => {
   // tryPostgresTier(METAGRAPH_HEALTH_SOURCE) against
   // /api/v1/internal/health-status-live -- no D1 fallback remains (surface_
   // status's own D1 write is retired too, see runHealthProber's own header
-  // comment in src/health-prober.mjs).
+  // comment in src/health-prober.ts).
   describe("Postgres tier (item 5)", () => {
     test("serves Postgres surface_status rows when the flag is on", async () => {
       let requestedUrl;

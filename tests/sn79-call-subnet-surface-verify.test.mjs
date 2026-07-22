@@ -12,13 +12,13 @@
 //   GET  -> HTTP 200 application/json {"status":"ok","mode":"host","network":"mainnet"}
 //   HEAD -> HTTP 405
 // callSubnetSurface defaults to GET when probe.method is unset (see
-// src/call-subnet-surface.mjs), which is the correct method for this host.
+// src/call-subnet-surface.ts), which is the correct method for this host.
 // The fixture below mirrors the live response rather than fetching it.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import { callSubnetSurface } from "../src/call-subnet-surface.mjs";
+import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 const SURFACE_ID = "sn-79-taos-im-subnet-api";

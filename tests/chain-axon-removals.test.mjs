@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
-} from "../src/chain-axon-removals.mjs";
+} from "../src/chain-axon-removals.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

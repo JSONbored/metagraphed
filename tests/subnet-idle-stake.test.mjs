@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "../src/subnet-idle-stake.mjs";
+} from "../src/subnet-idle-stake.ts";
 
 describe("buildSubnetIdleStake", () => {
   test("sums stake_tao only across neurons with dividends == 0", () => {

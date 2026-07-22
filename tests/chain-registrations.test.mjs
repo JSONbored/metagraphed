@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_MAX,
-} from "../src/chain-registrations.mjs";
+} from "../src/chain-registrations.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

@@ -5,7 +5,7 @@ import {
   verifyUnkeyKey,
   updateUnkeyKeyTier,
   revokeUnkeyKey,
-} from "./unkey-client.mjs";
+} from "./unkey-client.ts";
 
 const ENV = {
   UNKEY_ROOT_KEY: "test-root-key-placeholder",

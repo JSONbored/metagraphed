@@ -65,7 +65,7 @@ alpha-denominated per-subnet figures, not a delegator's free TAO balance).
 ## Decodable from metagraphed's existing capture — no new state polling needed
 
 Every input this needs is **already captured** in the `neurons` tier
-(`src/metagraph-neurons.mjs`'s `MetagraphNeuron` shape, sourced from the periodic metagraph
+(`src/metagraph-neurons.ts`'s `MetagraphNeuron` shape, sourced from the periodic metagraph
 snapshot): `validator_permit` (bool), `dividends` (already a per-neuron field), and `stake_tao`.
 Unlike #6638's conviction leaderboard (which needed a brand-new `subnet_locks` polling pipeline
 for state nothing else captured), this needs **zero new capture** — it's a pure shaping function
