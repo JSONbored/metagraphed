@@ -504,6 +504,14 @@ export function apiRouteUrl(routePath, date, options = {}) {
     // stake-quote requires `amount` — a bare GET is a correct 400
     // invalid_amount, not a route failure (same #1682 class as compare above).
     url.searchParams.set("amount", "1");
+  } else if (routePath === "/api/v1/compare/validators") {
+    // compare/validators requires `hotkeys` — a bare GET is a 400 invalid_query
+    // (same #1682 class as compare/stake-quote above). Alice's address is the
+    // same known-good SS58 already substituted for {ss58}/{hotkey} above.
+    url.searchParams.set(
+      "hotkeys",
+      "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM",
+    );
   } else if (
     [
       "/api/v1/surfaces",

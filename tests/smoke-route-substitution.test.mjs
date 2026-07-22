@@ -25,6 +25,19 @@ describe("smoke route substitution", () => {
     });
   }
 
+  // REGRESSION: /api/v1/compare/validators requires `hotkeys` -- a bare GET is
+  // a 400 invalid_query, not a route failure (same #1682 class as
+  // /api/v1/compare's `netuids` and stake-quote's `amount`, confirmed live
+  // against production: the smoke step failed with "hotkeys is required" until
+  // this special-case was added).
+  test("/api/v1/compare/validators URL includes a hotkeys query param", () => {
+    const url = new URL(apiRouteUrl("/api/v1/compare/validators", sampleDate));
+    assert.ok(
+      url.searchParams.get("hotkeys"),
+      "expected apiRouteUrl to set a hotkeys query param for /api/v1/compare/validators",
+    );
+  });
+
   test("fixture detail live smoke is included when a surface id is available", () => {
     assert.equal(
       liveSmokeApiRoutes(null).some((route) => route.id === "fixture-detail"),
