@@ -27,9 +27,9 @@ export const MAX_QUERY_TERMS = 32;
 // Lowercase alphanumeric terms. maxTerms caps the loop early so callers that
 // bound attacker-controlled input avoid building an unbounded intermediate array.
 // Document-side callers pass Infinity (default) to index the full field value.
-function tokenize(value, maxTerms = Infinity) {
-  const terms = [];
-  const seen = new Set();
+function tokenize(value: unknown, maxTerms: number = Infinity): string[] {
+  const terms: string[] = [];
+  const seen = new Set<string>();
   for (const term of String(value ?? "")
     .toLowerCase()
     .split(/[^a-z0-9]+/)) {
@@ -43,13 +43,13 @@ function tokenize(value, maxTerms = Infinity) {
 
 // Capped variant for attacker-controlled query input. Breaks early after
 // MAX_QUERY_TERMS so neither the loop nor the resulting array grow unbounded.
-export function queryTerms(query) {
+export function queryTerms(query: unknown): string[] {
   return tokenize(query, MAX_QUERY_TERMS);
 }
 
 // Distinct words across a list of field values (each a string or nullish).
-function wordSet(values) {
-  const words = new Set();
+function wordSet(values: unknown[]): Set<string> {
+  const words = new Set<string>();
   for (const value of values) {
     for (const word of tokenize(value)) words.add(word);
   }
@@ -58,7 +58,7 @@ function wordSet(values) {
 
 // Weight of a term against a field: full for a whole word, PREFIX_FACTOR for a
 // word prefix, 0 otherwise — never a mid-word substring (that kills "ai" → "brain").
-function termWeight(term, words, weight) {
+function termWeight(term: string, words: Set<string>, weight: number): number {
   if (words.has(term)) return weight;
   if (term.length >= MIN_PREFIX_LENGTH) {
     for (const word of words) {
@@ -74,7 +74,10 @@ function termWeight(term, words, weight) {
 // pre-tokenized terms; 0 when nothing matches. Each term scores its strongest
 // field — so a name hit isn't diluted by the same word in the token list — then
 // the coverage and exact-match boosts apply.
-export function keywordScore({ name, slug, text } = {}, terms) {
+export function keywordScore(
+  { name, slug, text }: { name?: unknown; slug?: unknown; text?: unknown } = {},
+  terms: string[],
+): number {
   if (!Array.isArray(terms) || terms.length === 0) return 0;
 
   const nameTokens = tokenize(name);
