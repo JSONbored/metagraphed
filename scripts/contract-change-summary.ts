@@ -3,15 +3,24 @@ import { fileURLToPath } from "node:url";
 import { readJson, repoRoot, stableStringify } from "./lib.mjs";
 import path from "node:path";
 
+type Row = Record<string, unknown>;
+type SchemaMap = Record<string, Row>;
+
 const schemaPath = "schemas/api-components.schema.json";
+
+interface EnumChangeEntry {
+  component: string;
+  added_values: unknown[];
+  removed_values: unknown[];
+}
 
 // Classify the component-schema delta between two OpenAPI component maps into
 // additive / risky / breaking buckets for PR review (docs/api-stability.md).
 // Pure + exported so it is unit-testable without invoking git or the CLI.
 export function classifyContractChanges(
-  previousSchemas = {},
-  currentSchemas = {},
-) {
+  previousSchemas: SchemaMap = {},
+  currentSchemas: SchemaMap = {},
+): Row {
   const previousNames = new Set(Object.keys(previousSchemas));
   const currentNames = new Set(Object.keys(currentSchemas));
 
@@ -34,7 +43,7 @@ export function classifyContractChanges(
     .map((name) =>
       enumChange(name, previousSchemas[name], currentSchemas[name]),
     )
-    .filter(Boolean);
+    .filter((entry): entry is EnumChangeEntry => Boolean(entry));
   const breaking = [
     ...removed.map((name) => ({
       component: name,
@@ -97,7 +106,11 @@ export function classifyContractChanges(
   };
 }
 
-function enumChange(component, previousSchema, currentSchema) {
+function enumChange(
+  component: string,
+  previousSchema: Row | undefined,
+  currentSchema: Row | undefined,
+): EnumChangeEntry | null {
   if (
     !Array.isArray(previousSchema?.enum) ||
     !Array.isArray(currentSchema?.enum)
@@ -122,7 +135,7 @@ function enumChange(component, previousSchema, currentSchema) {
   };
 }
 
-function readPreviousSchema(ref) {
+function readPreviousSchema(ref: string): Row | null {
   const result = spawnSync("git", ["show", `${ref}:${schemaPath}`], {
     cwd: repoRoot,
     encoding: "utf8",
@@ -144,7 +157,7 @@ if (
     (process.env.GITHUB_BASE_REF
       ? `origin/${process.env.GITHUB_BASE_REF}`
       : "HEAD~1");
-  const current = await readJson(path.join(repoRoot, schemaPath));
+  const current: Row = await readJson(path.join(repoRoot, schemaPath));
   const previous = readPreviousSchema(baseRef);
 
   if (!previous) {
@@ -154,7 +167,9 @@ if (
         source: "contract-change-summary",
         base_ref: baseRef,
         status: "base_unavailable",
-        current_component_count: Object.keys(current.components.schemas).length,
+        current_component_count: Object.keys(
+          ((current.components as Row).schemas as Row) || {},
+        ).length,
         notes: [
           "Set METAGRAPH_CONTRACT_BASE_REF to compare against a specific branch or commit.",
         ],
@@ -170,8 +185,8 @@ if (
       base_ref: baseRef,
       status: "ok",
       ...classifyContractChanges(
-        previous.components.schemas || {},
-        current.components.schemas || {},
+        ((previous.components as Row)?.schemas as SchemaMap) || {},
+        ((current.components as Row)?.schemas as SchemaMap) || {},
       ),
     }),
   );

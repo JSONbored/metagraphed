@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { classifyContractChanges } from "../scripts/contract-change-summary.mjs";
+import { classifyContractChanges } from "../scripts/contract-change-summary.ts";
 
 describe("classifyContractChanges", () => {
   test("an enum-only addition is additive, not risky", () => {
