@@ -47,7 +47,7 @@ import {
   findSurface,
   verifySurfaceWithCache,
 } from "../../src/surface-verify.mjs";
-import { SURFACE_ALIASES_PATH } from "../../src/surface-aliases.mjs";
+import { SURFACE_ALIASES_PATH } from "../../src/surface-aliases.ts";
 import {
   KV_HEALTH_RPC_POOL,
   workerResolvedUrlSafetyGuard,

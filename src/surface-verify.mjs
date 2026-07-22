@@ -6,7 +6,7 @@
 // demand. The worker layer adds the rate limiter + a 60s per-surface cache so
 // repeated calls can't fan out into real outbound probes.
 import { probeSurface } from "./health-probe-core.ts";
-import { resolveSurfaceAlias } from "./surface-aliases.mjs";
+import { resolveSurfaceAlias } from "./surface-aliases.ts";
 
 // Surface ids look like "7:subnet-api:x" or "nodies-finney-rpc"; stable
 // surface keys look like "srf-4d92fe6304cbb843". Both are catalog-resolved

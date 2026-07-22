@@ -93,7 +93,7 @@ import { buildChangelog } from "./changelog.mjs";
 import {
   buildSurfaceAliasArtifact,
   SURFACE_ALIASES_RELATIVE_PATH,
-} from "../src/surface-aliases.mjs";
+} from "../src/surface-aliases.ts";
 import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,

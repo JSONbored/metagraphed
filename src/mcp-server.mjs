@@ -410,7 +410,7 @@ import {
   verifySurfaceWithCache,
   SURFACE_ID_PATTERN,
 } from "./surface-verify.mjs";
-import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
+import { SURFACE_ALIASES_PATH } from "./surface-aliases.ts";
 import {
   callSubnetSurface,
   matchSchemaOperation,
