@@ -160,6 +160,110 @@
         "https://github.com/taostat/gm-miner/blob/main/image/envoy.yaml"
       ],
       "url": "https://raw.githubusercontent.com/taostat/gm-miner/refs/heads/main/image/envoy.yaml"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "scopes_note": "The subnet's own OpenAPI schema declares a single global bearer-token security requirement covering all four Gateway API operations. Enforced in practice: live-verified HTTP 401 unauthenticated on this endpoint (2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-28-gm-chat-completions",
+      "kind": "subnet-api",
+      "name": "gm chat completions (write, auth-gated)",
+      "notes": "POST /chat/completions on the gm Gateway API (schema servers base https://api.saygm.com/v1) -- OpenAI-compatible chat-completions inference endpoint, one of the four operations documented in the subnet's own OpenAPI schema, all under the schema's global bearer security requirement. Live-verified 2026-07-21 (~23:35 UTC): HTTP 401 unauthenticated with a JSON invalid-authentication error body. Registered auth_required:true with probe.enabled:false per the linked issue's guidance; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "url": "https://api.saygm.com/v1/chat/completions"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "scopes_note": "The subnet's own OpenAPI schema declares a single global bearer-token security requirement covering all four Gateway API operations. Enforced in practice: live-verified HTTP 401 unauthenticated on this endpoint (2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-28-gm-messages",
+      "kind": "subnet-api",
+      "name": "gm messages (write, auth-gated)",
+      "notes": "POST /messages on the gm Gateway API (schema servers base https://api.saygm.com/v1) -- Anthropic Messages-API-compatible inference endpoint documented in the subnet's own OpenAPI schema under the same global bearer security requirement as the sibling /chat/completions operation. Live-verified 2026-07-21 (~23:35 UTC): HTTP 401 unauthenticated with a JSON authentication-error body (the linked issue listed this sibling as not individually spot-verified; this registration verified it directly). Registered auth_required:true with probe.enabled:false; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "url": "https://api.saygm.com/v1/messages"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "scopes_note": "The subnet's own OpenAPI schema declares a single global bearer-token security requirement covering all four Gateway API operations. Enforced in practice: live-verified HTTP 401 unauthenticated on this endpoint (2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-28-gm-responses",
+      "kind": "subnet-api",
+      "name": "gm responses (write, auth-gated)",
+      "notes": "POST /responses on the gm Gateway API (schema servers base https://api.saygm.com/v1) -- OpenAI Responses-API-compatible inference endpoint documented in the subnet's own OpenAPI schema under the same global bearer security requirement as the sibling /chat/completions operation. Live-verified 2026-07-21 (~23:35 UTC): HTTP 401 unauthenticated with a JSON invalid-authentication error body (the linked issue listed this sibling as not individually spot-verified; this registration verified it directly). Registered auth_required:true with probe.enabled:false; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "url": "https://api.saygm.com/v1/responses"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "scopes_note": "The subnet's own OpenAPI schema declares a single global bearer-token security requirement covering all four Gateway API operations. Enforced in practice: live-verified HTTP 401 unauthenticated on this endpoint (2026-07-21)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-28-gm-gemini-model-actions",
+      "kind": "subnet-api",
+      "name": "gm Gemini-compatible model actions (write, auth-gated)",
+      "notes": "POST /v1beta/models/{modelAndAction} -- Gemini-compatible generateContent / streamGenerateContent endpoint (modelAndAction e.g. gemini-2.5-pro:generateContent), the fourth operation in the subnet's own OpenAPI schema. Per the operation's own description it ignores the schema's global servers entry (https://api.saygm.com/v1): the real base is https://api.saygm.com with no /v1 prefix. Live-verified 2026-07-21 (~23:35 UTC): HTTP 401 UNAUTHENTICATED JSON error at the correct un-prefixed URL, while the naively /v1-prefixed URL returns 404 -- confirming the un-prefixed base is the live one. Path parameter registered with percent-encoded braces per the registry URL format. Registered auth_required:true with probe.enabled:false; the probe pipeline only supports GET/HEAD, so a POST operation is never probed.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rsnetworkinginc"
+      },
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "url": "https://api.saygm.com/v1beta/models/%7BmodelAndAction%7D"
     }
   ],
   "website_url": "https://saygm.com/"
