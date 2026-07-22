@@ -12,7 +12,7 @@ import {
 } from "../workers/request-params.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { normalizePostgresValue } from "./scale-normalize.ts";
-import { decodePostgresCallArgs } from "./postgres-call-args.mjs";
+import { decodePostgresCallArgs } from "./postgres-call-args.ts";
 import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.ts";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.ts";
@@ -156,13 +156,10 @@ export function formatExtrinsic(
           normalizePostgresValue(
             decodePostgresCallArgs(
               parseJsonPreservingBigInts(row.call_args as string),
-              // postgres-call-args.mjs isn't converted yet (Phase 3) -- its
-              // untyped `topCall = null` default param infers as exactly
-              // `null`, so the real object needs a cast here.
               {
-                call_module: row.call_module,
-                call_function: row.call_function,
-              } as unknown as null,
+                call_module: row.call_module as string,
+                call_function: row.call_function as string,
+              },
             ),
           ),
         ),

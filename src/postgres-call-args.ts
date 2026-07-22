@@ -27,6 +27,17 @@ import { normalizeAccountId32Field } from "./ss58.ts";
 import { unwrapByteArray, decodeBytesField, bytesToHex } from "./bytes.ts";
 import { BTREESET_FIELDS } from "./postgres-collection-normalize.ts";
 
+interface CallContext {
+  call_module: string;
+  call_function: string;
+}
+
+interface TypedFieldDescriptor {
+  name: string;
+  type: string;
+  value: unknown;
+}
+
 // True when `value` is D1/indexer-rs's typed call_args field descriptor
 // `{name, type, value}` -- duplicated from scale-normalize.mjs's identical
 // check (not imported: that module deliberately treats AccountId32/byte-blob
@@ -34,16 +45,17 @@ import { BTREESET_FIELDS } from "./postgres-collection-normalize.ts";
 // predicate here would be the only coupling between the two modules for a
 // three-line shape test). Distinguished from isEnumTreeNode's `{name,
 // values}` (2 keys, plural) by key count/name.
-function isTypedFieldDescriptor(value) {
+function isTypedFieldDescriptor(value: unknown): value is TypedFieldDescriptor {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const keys = Object.keys(value);
+  const v = value as Record<string, unknown>;
   return (
     keys.length === 3 &&
     keys.includes("name") &&
     keys.includes("type") &&
     keys.includes("value") &&
-    typeof value.name === "string" &&
-    typeof value.type === "string"
+    typeof v.name === "string" &&
+    typeof v.type === "string"
   );
 }
 
@@ -54,7 +66,7 @@ function isTypedFieldDescriptor(value) {
 // already rendered as a bare SS58 string. normalizeAccountId32Field already
 // unwraps both the bare newtype shape and the MultiAddress::Id wrapper, so a
 // single call handles either type here.
-function isAccountId32Type(type) {
+function isAccountId32Type(type: string): boolean {
   return type === "AccountId32" || type.startsWith("MultiAddress<");
 }
 
@@ -67,7 +79,7 @@ function isAccountId32Type(type) {
 // allowlist (#4693), not by guessing from `type` + element count alone.
 const COLLECTION_TYPE_RE =
   /(?:Vec|BoundedVec|WeakBoundedVec|BTreeSet|BoundedBTreeSet|BTreeMap|BoundedBTreeMap)</;
-function isCollectionType(type) {
+function isCollectionType(type: string): boolean {
   return COLLECTION_TYPE_RE.test(type);
 }
 
@@ -85,7 +97,7 @@ function isCollectionType(type) {
 // with nothing narrower to catch this specific case instead.
 const BYTE_BLOB_COLLECTION_RE =
   /(?:Vec|BoundedVec|WeakBoundedVec)<\s*u8\s*[,>]/;
-function isByteBlobCollectionType(type) {
+function isByteBlobCollectionType(type: string): boolean {
   return BYTE_BLOB_COLLECTION_RE.test(type);
 }
 
@@ -95,7 +107,7 @@ function isByteBlobCollectionType(type) {
 // scalar wrappers such as [0] must survive until normalizePostgresValue can
 // unwrap them to 0.
 const BYTE_BLOB_SCALAR_RE = /^(?:H\d+|Hash|Bytes|\[u8;\s*\d+\])$/;
-function isByteBlobScalarType(type) {
+function isByteBlobScalarType(type: string): boolean {
   return BYTE_BLOB_SCALAR_RE.test(type);
 }
 
@@ -106,7 +118,11 @@ function isByteBlobScalarType(type) {
 // pipeline, since decodePostgresCallArgs runs BEFORE normalizePostgresValue's
 // Option<T> unwrap). Returns `value` unchanged if neither shape matches
 // (defensive; not expected for a real byte-blob-typed field).
-function decodeByteBlobTypedValue(value, ctx, fieldName) {
+function decodeByteBlobTypedValue(
+  value: unknown,
+  ctx: CallContext | null | undefined,
+  fieldName: string,
+): unknown {
   const bytes = unwrapByteArray(value);
   if (bytes && bytes.length > 0) {
     return decodeBytesField(
@@ -133,6 +149,11 @@ function decodeByteBlobTypedValue(value, ctx, fieldName) {
   return value;
 }
 
+interface StructVariantEnum {
+  name: string;
+  values: Record<string, unknown>;
+}
+
 // SubtensorModule.set_root_claim_type's `new_root_claim_type` is a
 // STRUCT-variant enum (RootClaimTypeEnum::KeepSubnets{subnets:
 // BTreeSet<NetUid>}), unlike every OTHER enum shape this file/
@@ -149,15 +170,15 @@ function decodeByteBlobTypedValue(value, ctx, fieldName) {
 // enum type is confirmed live so far; scoped narrowly to it (by its
 // declared `type` string) rather than a generic "any struct-variant enum"
 // rule, matching this file's established narrow-allowlist discipline.
-function isStructVariantEnum(value) {
-  return (
+function isStructVariantEnum(value: unknown): value is StructVariantEnum {
+  return Boolean(
     value &&
     typeof value === "object" &&
     !Array.isArray(value) &&
-    typeof value.name === "string" &&
-    value.values &&
-    typeof value.values === "object" &&
-    !Array.isArray(value.values)
+    typeof (value as Record<string, unknown>).name === "string" &&
+    (value as Record<string, unknown>).values &&
+    typeof (value as Record<string, unknown>).values === "object" &&
+    !Array.isArray((value as Record<string, unknown>).values),
   );
 }
 
@@ -173,11 +194,14 @@ function isStructVariantEnum(value) {
 // catch this. Confirmed live 2026-07-12: SubtensorModule.set_children's
 // `children` (Vec<(u64, AccountId32)>, the child's own proportion + account)
 // left its per-child AccountId32 (tuple index 1) as a raw byte array.
-const TUPLE_ACCOUNT_FIELDS = new Map([
+const TUPLE_ACCOUNT_FIELDS = new Map<string, number>([
   ["SubtensorModule.set_children.children", 1],
 ]);
 
-function decodeTupleAccountField(items, accountIndex) {
+function decodeTupleAccountField(
+  items: unknown[],
+  accountIndex: number,
+): unknown[] {
   return items.map((tuple) => {
     if (!Array.isArray(tuple) || accountIndex >= tuple.length) return tuple;
     const decoded = normalizeAccountId32Field(tuple[accountIndex]);
@@ -188,7 +212,7 @@ function decodeTupleAccountField(items, accountIndex) {
   });
 }
 
-function decodeRootClaimTypeValue(value) {
+function decodeRootClaimTypeValue(value: unknown): unknown {
   if (!isStructVariantEnum(value)) return value;
   const out = { name: value.name, values: { ...value.values } };
   const { subnets } = out.values;
@@ -256,8 +280,8 @@ const ACCOUNT_KEYS = new Set([
   "signatories",
 ]);
 
-function isAccountField(keyHint) {
-  if (!keyHint) return false;
+function isAccountField(keyHint: unknown): boolean {
+  if (!keyHint || typeof keyHint !== "string") return false;
   const lower = keyHint.toLowerCase();
   return (
     ACCOUNT_KEYS.has(lower) ||
@@ -291,18 +315,21 @@ function isAccountField(keyHint) {
 // value lacked its own string `.name`, so this never fired there). Safe:
 // "Some"/"None" are Rust/Option-reserved names, never a real pallet
 // identifier, so this can't produce a false negative for a genuine call.
-function tryReconstructNestedCall(value) {
+function tryReconstructNestedCall(
+  value: unknown,
+): { call_module: string; call_function: string; call_args: unknown } | null {
   if (!isEnumTreeNode(value) || value.values.length !== 1) return null;
   if (value.name === "Some" || value.name === "None") return null;
   const inner = value.values[0];
   if (!inner || typeof inner !== "object" || Array.isArray(inner)) return null;
-  if (typeof inner.name !== "string") return null;
+  const innerObj = inner as Record<string, unknown>;
+  if (typeof innerObj.name !== "string") return null;
   return {
     call_module: value.name,
-    call_function: inner.name,
+    call_function: innerObj.name,
     // UNCHANGED, matching extrinsics.ts:83-84's identical choice -- decoded
     // recursively by walk() below, not re-derived here.
-    call_args: inner.values,
+    call_args: innerObj.values,
   };
 }
 
@@ -327,7 +354,9 @@ function tryReconstructNestedCall(value) {
 // data legitimately produces a 2-key {name,values} node named "RawN".
 const RAW_DATA_VARIANT_RE = /^Raw\d+$/;
 
-function isRawDataVariant(value) {
+function isRawDataVariant(
+  value: unknown,
+): value is { name: string; values: unknown[] } {
   return (
     isEnumTreeNode(value) &&
     RAW_DATA_VARIANT_RE.test(value.name) &&
@@ -335,14 +364,18 @@ function isRawDataVariant(value) {
   );
 }
 
-function decodeRawDataValue(value) {
+function decodeRawDataValue(value: {
+  name: string;
+  values: unknown[];
+}): unknown {
   const bytes = unwrapByteArray(value.values[0]);
   if (!bytes) return value;
   try {
     return {
-      [value.name]: new TextDecoder("utf-8", { fatal: true }).decode(
-        Uint8Array.from(bytes),
-      ),
+      [value.name]: new TextDecoder("utf-8", {
+        fatal: true,
+        ignoreBOM: false,
+      }).decode(Uint8Array.from(bytes)),
     };
   } catch {
     // Malformed UTF-8 for a field expected to be textual -- fall back to
@@ -386,10 +419,15 @@ function decodeRawDataValue(value) {
 // rules out both AccountId32/MultiAddress and a collection generic, where
 // the ambiguity above cannot occur (a declared non-collection scalar/hash/
 // bytes type is unambiguously safe to byte-decode regardless of nesting).
-function walk(value, keyHint, nestedCall, topCall) {
+function walk(
+  value: unknown,
+  keyHint: string | undefined,
+  nestedCall: CallContext | null,
+  topCall: CallContext | null,
+): unknown {
   const nested = tryReconstructNestedCall(value);
   if (nested) {
-    const nextCall = {
+    const nextCall: CallContext = {
       call_module: nested.call_module,
       call_function: nested.call_function,
     };
@@ -529,7 +567,7 @@ function walk(value, keyHint, nestedCall, topCall) {
     return value.map((item) => walk(item, keyHint, nestedCall, topCall));
   }
   if (value && typeof value === "object") {
-    const out = {};
+    const out: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
       out[key] = walk(val, key, nestedCall, topCall);
     }
@@ -565,6 +603,9 @@ function walk(value, keyHint, nestedCall, topCall) {
  * shape historically (D1 is retired, #4772) and on a call_args tree with no
  * nested calls or account/byte fields at all -- safe to apply
  * unconditionally, same contract as normalizePostgresValue (#4690). */
-export function decodePostgresCallArgs(value, topCall = null) {
+export function decodePostgresCallArgs(
+  value: unknown,
+  topCall: CallContext | null = null,
+): unknown {
   return walk(value, undefined, null, topCall);
 }

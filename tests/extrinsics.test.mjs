@@ -244,7 +244,7 @@ test("formatExtrinsic unwraps a single-element BTreeSet (real SubtensorModule.cl
 
 test("formatExtrinsic correctly unwraps a BTreeSet nested inside Utility.batch, through the FULL real pipeline (real production fixture, block 8604111/11, fixed 2026-07-12)", () => {
   // Before this fix, a nested claim_root's `subnets` was corrupted into an
-  // opaque hex string ("0x0102030405") by postgres-call-args.mjs's generic
+  // opaque hex string ("0x0102030405") by postgres-call-args.ts's generic
   // nested-call byte-blob heuristic, running before decodeBTreeSetFields
   // ever got a chance to see the real array -- confirmed live via direct
   // Postgres query for this exact block/extrinsic.

@@ -207,7 +207,7 @@ function decodeEthereumTransactionPayload(payload: unknown): unknown {
 // `[{name:"transaction",type:"TransactionV3",value:{...}}]`), which is WHY
 // every decoder below was silently a 100% no-op in production despite being
 // individually well-tested against hand-constructed flat-object fixtures.
-// decodePostgresCallArgs (walk(), src/postgres-call-args.mjs) already
+// decodePostgresCallArgs (walk(), src/postgres-call-args.ts) already
 // decodes AccountId32/byte-blob fields INSIDE each descriptor's `.value`
 // without flattening the outer array -- by design, since the descriptor
 // array is the real, final served shape for every call type, not something
@@ -274,7 +274,7 @@ export function decodeEvmWithdrawArgs(callArgs: unknown): unknown {
  * gas_limit) to an exact decimal string. Returns callArgs unchanged when the
  * field isn't found. Found live 2026-07-12: this call type wasn't in
  * DECODERS at all, so `target` fell into the generic non-collection
- * byte-blob branch elsewhere in the pipeline (postgres-call-args.mjs),
+ * byte-blob branch elsewhere in the pipeline (postgres-call-args.ts),
  * which misinterprets the 4 raw u64 limbs as individual bytes and
  * hex-encodes them directly -- silently WRONG (not just undecoded) whenever
  * a limb is small enough to look like a valid byte value, e.g. limbs
@@ -354,7 +354,7 @@ interface TypedFieldDescriptor {
 // True for D1/indexer-rs's typed call_args field descriptor {name,type,value}
 // (duplicated 3-line shape check, matching this codebase's own established
 // pattern of not cross-importing such a check between sibling decode modules
-// -- see postgres-call-args.mjs's identical isTypedFieldDescriptor and its
+// -- see postgres-call-args.ts's identical isTypedFieldDescriptor and its
 // header comment for the rationale).
 function isTypedFieldDescriptor(value: unknown): value is TypedFieldDescriptor {
   return Boolean(

@@ -8,7 +8,7 @@ import {
   decodeSignatureFieldArgs,
   decodeEthereumEvmCallArgs,
 } from "../src/indexer-rs-ethereum-decode.ts";
-import { decodePostgresCallArgs } from "../src/postgres-call-args.mjs";
+import { decodePostgresCallArgs } from "../src/postgres-call-args.ts";
 import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
 // Full formatExtrinsic-equivalent pipeline, matching src/extrinsics.ts's

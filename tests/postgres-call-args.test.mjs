@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { decodePostgresCallArgs } from "../src/postgres-call-args.mjs";
+import { decodePostgresCallArgs } from "../src/postgres-call-args.ts";
 import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
 // decodePostgresCallArgs must run BEFORE normalizePostgresValue (see
-// src/postgres-call-args.mjs's own header for why) -- every test below
+// src/postgres-call-args.ts's own header for why) -- every test below
 // chains them in that order, matching src/extrinsics.ts's formatExtrinsic.
 function decode(value) {
   return normalizePostgresValue(decodePostgresCallArgs(value));

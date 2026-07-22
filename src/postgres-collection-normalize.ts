@@ -40,7 +40,7 @@
 // keeps the two passes' responsibilities cleanly separated: generic
 // Option/enum/scalar shapes first, named-field collection shapes second.
 //
-// Exported (not just used internally) because src/postgres-call-args.mjs's
+// Exported (not just used internally) because src/postgres-call-args.ts's
 // walk() also needs it: confirmed live 2026-07-12, a NESTED claim_root call
 // (inside Utility.batch) has its `subnets` field corrupted from an array
 // into an opaque hex STRING by walk()'s own generic nestedCall byte-blob
@@ -66,10 +66,10 @@ interface ReconstructedCall {
   call_args: unknown;
 }
 
-// True for postgres-call-args.mjs's tryReconstructNestedCall output --
+// True for postgres-call-args.ts's tryReconstructNestedCall output --
 // {call_module, call_function, call_args} -- so walk() below can switch to
 // that nested call's own module/function when descending into its args,
-// the same context-tracking pattern postgres-call-args.mjs's own walk()
+// the same context-tracking pattern postgres-call-args.ts's own walk()
 // uses for AccountId32/byte-blob decoding.
 function isReconstructedCall(value: unknown): value is ReconstructedCall {
   return Boolean(
