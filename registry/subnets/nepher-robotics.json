@@ -405,7 +405,7 @@
       "id": "sn-49-nepher-evaluations-api",
       "kind": "subnet-api",
       "name": "Nepher tournament evaluations API",
-      "notes": "Public no-auth GET /api/v1/evaluations — per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
+      "notes": "Public no-auth GET /api/v1/evaluations \u2014 per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -427,7 +427,7 @@
       "id": "sn-49-nepher-common-config",
       "kind": "data-artifact",
       "name": "Nepher common configuration",
-      "notes": "Public no-auth machine-readable common_config.yaml from the official SN49 Nepher Robotics repository (nepher-ai/nepher-subnet), pinned to an immutable commit. The project-maintained shared configuration for all Nepher validators and miners — it declares the subnet (network finney, subnet_uid 49) and the tournament API endpoint and related network settings. Static YAML artifact self-identifying as SN49.",
+      "notes": "Public no-auth machine-readable common_config.yaml from the official SN49 Nepher Robotics repository (nepher-ai/nepher-subnet), pinned to an immutable commit. The project-maintained shared configuration for all Nepher validators and miners \u2014 it declares the subnet (network finney, subnet_uid 49) and the tournament API endpoint and related network settings. Static YAML artifact self-identifying as SN49.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -481,6 +481,3333 @@
       "public_safe": true,
       "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
       "url": "https://tournament-api.nepher.ai/api/v1/tournaments/pricing?subnet_uid=49"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-weight-commits-latest",
+      "kind": "subnet-api",
+      "name": "Nepher weight-commits latest",
+      "notes": "Bearer-auth GET /api/v1/weight-commits/latest on tournament-api.nepher.ai returning the most recent validator weight-commit record. OpenAPI schema lists no security block but live-verified 2026-07-21 to return HTTP 401 without a token \u2014 auth actually required in practice. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/weight-commits/latest",
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-scores-bulk",
+      "kind": "subnet-api",
+      "name": "Nepher scores bulk-write",
+      "notes": "Bearer-auth POST /api/v1/scores/bulk on tournament-api.nepher.ai for bulk score submission. OpenAPI schema shows no security block but live-verified 2026-07-21 to return HTTP 401 without a token \u2014 auth actually required in practice. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/scores/bulk",
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      }
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-weight-commits",
+      "kind": "subnet-api",
+      "name": "Nepher weight-commits submit",
+      "notes": "Bearer-auth POST /api/v1/weight-commits on tournament-api.nepher.ai for submitting validator weight-commit records. Same host/family as GET /api/v1/weight-commits/latest which live-verified to 401 without a token \u2014 treat as auth_required:true pending individual verification. Register probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/weight-commits",
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-submit",
+      "kind": "subnet-api",
+      "name": "Nepher evaluation submit",
+      "notes": "Public no-auth POST /api/v1/evaluations/submit on tournament-api.nepher.ai for submitting evaluation results. Live-verified 2026-07-21 with an empty POST body: HTTP 422 (validation error), not 401 \u2014 confirms genuinely no-auth. Requires a request body per schema; register auth_required:false, probe.enabled:false (cannot health-probe a mutating POST with a fixed empty body).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations/submit"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-notifications-unsubscribe",
+      "kind": "subnet-api",
+      "name": "Nepher notifications unsubscribe",
+      "notes": "Public no-auth GET /api/v1/notifications/unsubscribe on tournament-api.nepher.ai. Requires a user_id query param per schema \u2014 live-verified 2026-07-21: HTTP 422 without user_id, not 401 (confirms no-auth). Register with bare base URL (no baked query), probe.enabled:false (user_id is a per-user token with no stable canonical value).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/notifications/unsubscribe"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item",
+      "kind": "subnet-api",
+      "name": "Nepher tournament detail by ID",
+      "notes": "Public no-auth GET /api/v1/tournaments/{tournament_id} on tournament-api.nepher.ai returning full tournament details for a given ID. No security block in OpenAPI schema \u2014 publicly readable once you have a tournament ID. Path-param gap relative to already-registered /list and /active surfaces; register with literal {tournament_id} template and probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-gallery-item-item",
+      "kind": "subnet-api",
+      "name": "Nepher tournament gallery item",
+      "notes": "Public no-auth GET /api/v1/tournaments/{tournament_id}/gallery/{media_type}/{index} on tournament-api.nepher.ai returning a specific gallery media item for a tournament. No security block in OpenAPI schema; same host/pattern as already-verified no-auth {tournament_id} detail endpoint. Register with literal {\u2026} templates and probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/gallery/%7Bmedia_type%7D/%7Bindex%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-config-subnet-config",
+      "kind": "data-artifact",
+      "name": "Nepher tournament subnet config",
+      "notes": "Public no-auth GET /api/v1/tournaments/{tournament_id}/config/subnet_config on tournament-api.nepher.ai returning the subnet configuration for a given tournament. No security block in OpenAPI schema; same no-auth config family as the other tournament config endpoints. Register with literal {tournament_id} template and probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/config/subnet_config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-config-eval-config",
+      "kind": "data-artifact",
+      "name": "Nepher tournament eval config",
+      "notes": "Public no-auth GET /api/v1/tournaments/{tournament_id}/config/eval_config on tournament-api.nepher.ai returning the evaluation configuration for a given tournament. No security block in OpenAPI schema. Register with literal {tournament_id} template and probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/config/eval_config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-config-active-eval-config",
+      "kind": "data-artifact",
+      "name": "Nepher tournament active eval config",
+      "notes": "Public no-auth GET /api/v1/tournaments/{tournament_id}/config/active_eval_config on tournament-api.nepher.ai returning the currently-active evaluation configuration for a given tournament. No security block in OpenAPI schema. Register with literal {tournament_id} template and probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/config/active_eval_config"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-config-public-eval-config",
+      "kind": "data-artifact",
+      "name": "Nepher tournament public eval config",
+      "notes": "Public no-auth GET /api/v1/tournaments/{tournament_id}/config/public_eval_config on tournament-api.nepher.ai returning the public-facing evaluation configuration for a given tournament. No security block in OpenAPI schema. Register with literal {tournament_id} template and probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/config/public_eval_config"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-agents-item-disqualify",
+      "kind": "subnet-api",
+      "name": "Nepher admin agent disqualify",
+      "notes": "Bearer-auth POST /api/v1/admin/agents/{agent_id}/disqualify on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/agents/%7Bagent_id%7D/disqualify"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-agents-item-hotkey",
+      "kind": "subnet-api",
+      "name": "Nepher admin agent hotkey update",
+      "notes": "Bearer-auth PATCH /api/v1/admin/agents/{agent_id}/hotkey on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/agents/%7Bagent_id%7D/hotkey"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-audit-logs",
+      "kind": "data-artifact",
+      "name": "Nepher admin audit logs",
+      "notes": "Bearer-auth GET /api/v1/admin/audit/logs on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/audit/logs"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-cleanup-agents-superseded-item",
+      "kind": "subnet-api",
+      "name": "Nepher admin cleanup superseded agents",
+      "notes": "Bearer-auth POST /api/v1/admin/cleanup/agents/superseded/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/cleanup/agents/superseded/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-cleanup-agents-superseded-item-list",
+      "kind": "data-artifact",
+      "name": "Nepher admin cleanup superseded agents list",
+      "notes": "Bearer-auth GET /api/v1/admin/cleanup/agents/superseded/{tournament_id}/list on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/cleanup/agents/superseded/%7Btournament_id%7D/list"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-cleanup-agents-unevaluated-item",
+      "kind": "subnet-api",
+      "name": "Nepher admin cleanup unevaluated agents",
+      "notes": "Bearer-auth POST /api/v1/admin/cleanup/agents/unevaluated/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/cleanup/agents/unevaluated/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-cleanup-agents-unevaluated-item-list",
+      "kind": "data-artifact",
+      "name": "Nepher admin cleanup unevaluated agents list",
+      "notes": "Bearer-auth GET /api/v1/admin/cleanup/agents/unevaluated/{tournament_id}/list on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/cleanup/agents/unevaluated/%7Btournament_id%7D/list"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-cleanup-eligible-miners",
+      "kind": "subnet-api",
+      "name": "Nepher admin cleanup eligible miners",
+      "notes": "Bearer-auth POST /api/v1/admin/cleanup/eligible-miners on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/cleanup/eligible-miners"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-cleanup-evaluations-failed-item",
+      "kind": "subnet-api",
+      "name": "Nepher admin cleanup failed evaluations",
+      "notes": "Bearer-auth POST /api/v1/admin/cleanup/evaluations/failed/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/cleanup/evaluations/failed/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-cleanup-evaluations-stale-item",
+      "kind": "subnet-api",
+      "name": "Nepher admin cleanup stale evaluations",
+      "notes": "Bearer-auth POST /api/v1/admin/cleanup/evaluations/stale/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/cleanup/evaluations/stale/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-clone-item",
+      "kind": "subnet-api",
+      "name": "Nepher admin tournament clone",
+      "notes": "Bearer-auth POST /api/v1/admin/clone/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/clone/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-config",
+      "kind": "data-artifact",
+      "name": "Nepher admin config",
+      "notes": "Bearer-auth GET /api/v1/admin/config on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/config"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-emergency-deactivate-item",
+      "kind": "subnet-api",
+      "name": "Nepher admin emergency deactivate",
+      "notes": "Bearer-auth POST /api/v1/admin/emergency/deactivate/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/emergency/deactivate/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-emergency-pause-item",
+      "kind": "subnet-api",
+      "name": "Nepher admin emergency pause",
+      "notes": "Bearer-auth POST /api/v1/admin/emergency/pause/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/emergency/pause/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-emergency-unpause-item",
+      "kind": "subnet-api",
+      "name": "Nepher admin emergency unpause",
+      "notes": "Bearer-auth POST /api/v1/admin/emergency/unpause/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/emergency/unpause/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-evaluations-item-exclude",
+      "kind": "subnet-api",
+      "name": "Nepher admin evaluation exclude",
+      "notes": "Bearer-auth POST /api/v1/admin/evaluations/{evaluation_id}/exclude on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/evaluations/%7Bevaluation_id%7D/exclude"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-export-audit-logs",
+      "kind": "data-artifact",
+      "name": "Nepher admin export audit logs",
+      "notes": "Bearer-auth GET /api/v1/admin/export/audit-logs on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/export/audit-logs"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-export-evaluations-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin export evaluations",
+      "notes": "Bearer-auth GET /api/v1/admin/export/evaluations/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/export/evaluations/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-export-leaderboard-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin export leaderboard",
+      "notes": "Bearer-auth GET /api/v1/admin/export/leaderboard/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/export/leaderboard/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-export-summary-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin export summary",
+      "notes": "Bearer-auth GET /api/v1/admin/export/summary/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/export/summary/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-gallery",
+      "kind": "data-artifact",
+      "name": "Nepher admin gallery",
+      "notes": "Bearer-auth GET /api/v1/admin/gallery on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/gallery"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-gallery-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin gallery item",
+      "notes": "Bearer-auth GET /api/v1/admin/gallery/{media_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/gallery/%7Bmedia_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-gallery-item-download",
+      "kind": "subnet-api",
+      "name": "Nepher admin gallery item download",
+      "notes": "Bearer-auth GET /api/v1/admin/gallery/{media_id}/download on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/gallery/%7Bmedia_id%7D/download"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-integrity-duplicate-hashes-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin integrity duplicate hashes",
+      "notes": "Bearer-auth GET /api/v1/admin/integrity/duplicate-hashes/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/integrity/duplicate-hashes/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-monitoring-blockchain",
+      "kind": "data-artifact",
+      "name": "Nepher admin monitoring blockchain",
+      "notes": "Bearer-auth GET /api/v1/admin/monitoring/blockchain on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/monitoring/blockchain"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-monitoring-database",
+      "kind": "data-artifact",
+      "name": "Nepher admin monitoring database",
+      "notes": "Bearer-auth GET /api/v1/admin/monitoring/database on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/monitoring/database"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-monitoring-health",
+      "kind": "data-artifact",
+      "name": "Nepher admin monitoring health",
+      "notes": "Bearer-auth GET /api/v1/admin/monitoring/health on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/monitoring/health"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-monitoring-miners-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin monitoring miners",
+      "notes": "Bearer-auth GET /api/v1/admin/monitoring/miners/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/monitoring/miners/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-monitoring-storage",
+      "kind": "data-artifact",
+      "name": "Nepher admin monitoring storage",
+      "notes": "Bearer-auth GET /api/v1/admin/monitoring/storage on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/monitoring/storage"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-monitoring-sync-status",
+      "kind": "data-artifact",
+      "name": "Nepher admin monitoring sync status",
+      "notes": "Bearer-auth GET /api/v1/admin/monitoring/sync-status on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/monitoring/sync-status"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-monitoring-tournament-item-dashboard",
+      "kind": "data-artifact",
+      "name": "Nepher admin monitoring tournament dashboard",
+      "notes": "Bearer-auth GET /api/v1/admin/monitoring/tournament/{tournament_id}/dashboard on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/monitoring/tournament/%7Btournament_id%7D/dashboard"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-monitoring-validators",
+      "kind": "data-artifact",
+      "name": "Nepher admin monitoring validators",
+      "notes": "Bearer-auth GET /api/v1/admin/monitoring/validators on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/monitoring/validators"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-status",
+      "kind": "data-artifact",
+      "name": "Nepher admin notifications status",
+      "notes": "Bearer-auth GET /api/v1/admin/notifications/status on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/status"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-item-config",
+      "kind": "data-artifact",
+      "name": "Nepher admin notifications config",
+      "notes": "Bearer-auth GET /api/v1/admin/notifications/{tournament_id}/config on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/%7Btournament_id%7D/config"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-item-logs",
+      "kind": "data-artifact",
+      "name": "Nepher admin notifications logs",
+      "notes": "Bearer-auth GET /api/v1/admin/notifications/{tournament_id}/logs on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/%7Btournament_id%7D/logs"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-item-preview",
+      "kind": "data-artifact",
+      "name": "Nepher admin notifications preview",
+      "notes": "Bearer-auth GET /api/v1/admin/notifications/{tournament_id}/preview on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/%7Btournament_id%7D/preview"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-item-queued",
+      "kind": "data-artifact",
+      "name": "Nepher admin notifications queued",
+      "notes": "Bearer-auth GET /api/v1/admin/notifications/{tournament_id}/queued on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/%7Btournament_id%7D/queued"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-item-discard",
+      "kind": "subnet-api",
+      "name": "Nepher admin notifications discard",
+      "notes": "Bearer-auth POST /api/v1/admin/notifications/{tournament_id}/discard on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/%7Btournament_id%7D/discard"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-item-manual-send",
+      "kind": "subnet-api",
+      "name": "Nepher admin notifications manual send",
+      "notes": "Bearer-auth POST /api/v1/admin/notifications/{tournament_id}/manual-send on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/%7Btournament_id%7D/manual-send"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-item-retry-failed",
+      "kind": "subnet-api",
+      "name": "Nepher admin notifications retry failed",
+      "notes": "Bearer-auth POST /api/v1/admin/notifications/{tournament_id}/retry-failed on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/%7Btournament_id%7D/retry-failed"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-notifications-item-send",
+      "kind": "subnet-api",
+      "name": "Nepher admin notifications send",
+      "notes": "Bearer-auth POST /api/v1/admin/notifications/{tournament_id}/send on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/notifications/%7Btournament_id%7D/send"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-platform-faqs",
+      "kind": "data-artifact",
+      "name": "Nepher admin platform FAQs",
+      "notes": "Bearer-auth GET /api/v1/admin/platform-faqs on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/platform-faqs"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-platform-faqs-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin platform FAQ item",
+      "notes": "Bearer-auth GET /api/v1/admin/platform-faqs/{faq_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/platform-faqs/%7Bfaq_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reports",
+      "kind": "data-artifact",
+      "name": "Nepher admin reports",
+      "notes": "Bearer-auth GET /api/v1/admin/reports on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reports"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reports-count",
+      "kind": "data-artifact",
+      "name": "Nepher admin reports count",
+      "notes": "Bearer-auth GET /api/v1/admin/reports/count on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reports/count"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reports-filters",
+      "kind": "data-artifact",
+      "name": "Nepher admin reports filters",
+      "notes": "Bearer-auth GET /api/v1/admin/reports/filters on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reports/filters"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reports-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin report item",
+      "notes": "Bearer-auth GET /api/v1/admin/reports/{report_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reports/%7Breport_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reports-item-block",
+      "kind": "subnet-api",
+      "name": "Nepher admin report block",
+      "notes": "Bearer-auth POST /api/v1/admin/reports/{report_id}/block on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reports/%7Breport_id%7D/block"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reports-item-review",
+      "kind": "subnet-api",
+      "name": "Nepher admin report review",
+      "notes": "Bearer-auth PATCH /api/v1/admin/reports/{report_id}/review on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reports/%7Breport_id%7D/review"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reset-blockchain-sync",
+      "kind": "subnet-api",
+      "name": "Nepher admin reset blockchain sync",
+      "notes": "Bearer-auth POST /api/v1/admin/reset/blockchain-sync on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reset/blockchain-sync"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reset-evaluations-in-progress",
+      "kind": "subnet-api",
+      "name": "Nepher admin reset in-progress evaluations",
+      "notes": "Bearer-auth POST /api/v1/admin/reset/evaluations/in-progress on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reset/evaluations/in-progress"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reset-tournament-item-eligible-miners",
+      "kind": "subnet-api",
+      "name": "Nepher admin reset eligible miners",
+      "notes": "Bearer-auth POST /api/v1/admin/reset/tournament/{tournament_id}/eligible-miners on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reset/tournament/%7Btournament_id%7D/eligible-miners"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reset-tournament-item-evaluations",
+      "kind": "subnet-api",
+      "name": "Nepher admin reset tournament evaluations",
+      "notes": "Bearer-auth POST /api/v1/admin/reset/tournament/{tournament_id}/evaluations on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reset/tournament/%7Btournament_id%7D/evaluations"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reset-tournament-item-full",
+      "kind": "subnet-api",
+      "name": "Nepher admin reset tournament full",
+      "notes": "Bearer-auth POST /api/v1/admin/reset/tournament/{tournament_id}/full on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reset/tournament/%7Btournament_id%7D/full"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reset-tournament-item-scores",
+      "kind": "subnet-api",
+      "name": "Nepher admin reset tournament scores",
+      "notes": "Bearer-auth POST /api/v1/admin/reset/tournament/{tournament_id}/scores on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reset/tournament/%7Btournament_id%7D/scores"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-reset-user-item-cooldown",
+      "kind": "subnet-api",
+      "name": "Nepher admin reset user cooldown",
+      "notes": "Bearer-auth POST /api/v1/admin/reset/user/{user_id}/cooldown on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/reset/user/%7Buser_id%7D/cooldown"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-agents-item-flag",
+      "kind": "subnet-api",
+      "name": "Nepher admin security agent flag",
+      "notes": "Bearer-auth POST /api/v1/admin/security/agents/{agent_id}/flag on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/agents/%7Bagent_id%7D/flag"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-agents-item-violations",
+      "kind": "data-artifact",
+      "name": "Nepher admin security agent violations",
+      "notes": "Bearer-auth GET /api/v1/admin/security/agents/{agent_id}/violations on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/agents/%7Bagent_id%7D/violations"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-queue",
+      "kind": "data-artifact",
+      "name": "Nepher admin security queue",
+      "notes": "Bearer-auth GET /api/v1/admin/security/queue on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/queue"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-queue-count",
+      "kind": "data-artifact",
+      "name": "Nepher admin security queue count",
+      "notes": "Bearer-auth GET /api/v1/admin/security/queue/count on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/queue/count"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-queue-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin security queue item",
+      "notes": "Bearer-auth GET /api/v1/admin/security/queue/{queue_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/queue/%7Bqueue_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-queue-item-block",
+      "kind": "subnet-api",
+      "name": "Nepher admin security queue block",
+      "notes": "Bearer-auth POST /api/v1/admin/security/queue/{queue_id}/block on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/queue/%7Bqueue_id%7D/block"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-queue-item-clear",
+      "kind": "subnet-api",
+      "name": "Nepher admin security queue clear",
+      "notes": "Bearer-auth POST /api/v1/admin/security/queue/{queue_id}/clear on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/queue/%7Bqueue_id%7D/clear"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-tournament-item-rescan",
+      "kind": "subnet-api",
+      "name": "Nepher admin security tournament rescan",
+      "notes": "Bearer-auth POST /api/v1/admin/security/tournament/{tournament_id}/rescan on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/tournament/%7Btournament_id%7D/rescan"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-security-tournaments",
+      "kind": "data-artifact",
+      "name": "Nepher admin security tournaments",
+      "notes": "Bearer-auth GET /api/v1/admin/security/tournaments on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/security/tournaments"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-tournaments-item-faqs",
+      "kind": "data-artifact",
+      "name": "Nepher admin tournament FAQs",
+      "notes": "Bearer-auth GET /api/v1/admin/tournaments/{tournament_id}/faqs on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/tournaments/%7Btournament_id%7D/faqs"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-tournaments-item-faqs-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin tournament FAQ item",
+      "notes": "Bearer-auth GET /api/v1/admin/tournaments/{tournament_id}/faqs/{faq_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/tournaments/%7Btournament_id%7D/faqs/%7Bfaq_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-tournaments-item-gallery",
+      "kind": "data-artifact",
+      "name": "Nepher admin tournament gallery",
+      "notes": "Bearer-auth GET /api/v1/admin/tournaments/{tournament_id}/gallery on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/tournaments/%7Btournament_id%7D/gallery"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-tournaments-item-gallery-upload",
+      "kind": "subnet-api",
+      "name": "Nepher admin tournament gallery upload",
+      "notes": "Bearer-auth POST /api/v1/admin/tournaments/{tournament_id}/gallery/upload on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/tournaments/%7Btournament_id%7D/gallery/upload"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-tournaments-item-gallery-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin tournament gallery item",
+      "notes": "Bearer-auth GET /api/v1/admin/tournaments/{tournament_id}/gallery/{media_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/tournaments/%7Btournament_id%7D/gallery/%7Bmedia_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-validators-available",
+      "kind": "data-artifact",
+      "name": "Nepher admin available validators",
+      "notes": "Bearer-auth GET /api/v1/admin/validators/available on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/validators/available"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-validators-hotkeys",
+      "kind": "data-artifact",
+      "name": "Nepher admin validator hotkeys",
+      "notes": "Bearer-auth GET /api/v1/admin/validators/hotkeys on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/validators/hotkeys"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-validators-link",
+      "kind": "subnet-api",
+      "name": "Nepher admin validator link",
+      "notes": "Bearer-auth POST /api/v1/admin/validators/link on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/validators/link"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-validators-link-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin validator link item",
+      "notes": "Bearer-auth GET /api/v1/admin/validators/link/{link_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/validators/link/%7Blink_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-validators-links",
+      "kind": "data-artifact",
+      "name": "Nepher admin validator links",
+      "notes": "Bearer-auth GET /api/v1/admin/validators/links on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/validators/links"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-whitelist-domains",
+      "kind": "data-artifact",
+      "name": "Nepher admin whitelist domains",
+      "notes": "Bearer-auth GET /api/v1/admin/whitelist/domains on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/whitelist/domains"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-whitelist-domains-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin whitelist domain item",
+      "notes": "Bearer-auth GET /api/v1/admin/whitelist/domains/{domain_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/whitelist/domains/%7Bdomain_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-whitelist-ips",
+      "kind": "data-artifact",
+      "name": "Nepher admin whitelist IPs",
+      "notes": "Bearer-auth GET /api/v1/admin/whitelist/ips on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/whitelist/ips"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-admin-whitelist-ips-item",
+      "kind": "data-artifact",
+      "name": "Nepher admin whitelist IP item",
+      "notes": "Bearer-auth GET /api/v1/admin/whitelist/ips/{ip_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/admin/whitelist/ips/%7Bip_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-list",
+      "kind": "data-artifact",
+      "name": "Nepher agents list",
+      "notes": "Bearer-auth GET /api/v1/agents/list on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/list"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-list-public",
+      "kind": "data-artifact",
+      "name": "Nepher agents public list",
+      "notes": "Bearer-auth GET /api/v1/agents/list/public on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/list/public"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-list-unevaluated",
+      "kind": "data-artifact",
+      "name": "Nepher agents unevaluated list",
+      "notes": "Bearer-auth GET /api/v1/agents/list/unevaluated on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/list/unevaluated"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-list-validators",
+      "kind": "data-artifact",
+      "name": "Nepher agents validators list",
+      "notes": "Bearer-auth GET /api/v1/agents/list/validators on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/list/validators"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-item",
+      "kind": "data-artifact",
+      "name": "Nepher agent by ID",
+      "notes": "Bearer-auth GET /api/v1/agents/{agent_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/%7Bagent_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-eligible-miners-status-item",
+      "kind": "data-artifact",
+      "name": "Nepher agents eligible miners status",
+      "notes": "Bearer-auth GET /api/v1/agents/eligible-miners-status/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/eligible-miners-status/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-upload-verify",
+      "kind": "subnet-api",
+      "name": "Nepher agent upload verify",
+      "notes": "Bearer-auth POST /api/v1/agents/upload/verify on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/upload/verify"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-upload-item",
+      "kind": "subnet-api",
+      "name": "Nepher agent upload",
+      "notes": "Bearer-auth POST /api/v1/agents/upload/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/upload/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-agents-download-item",
+      "kind": "subnet-api",
+      "name": "Nepher agent download",
+      "notes": "Bearer-auth GET /api/v1/agents/download/{agent_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/agents/download/%7Bagent_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-eligible-miners-item",
+      "kind": "data-artifact",
+      "name": "Nepher evaluation eligible miners",
+      "notes": "Bearer-auth GET /api/v1/evaluations/eligible-miners/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations/eligible-miners/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-in-progress-cli",
+      "kind": "subnet-api",
+      "name": "Nepher evaluation in-progress CLI",
+      "notes": "Bearer-auth POST /api/v1/evaluations/in-progress/cli on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations/in-progress/cli"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-progress-item",
+      "kind": "data-artifact",
+      "name": "Nepher evaluation progress",
+      "notes": "Bearer-auth GET /api/v1/evaluations/progress/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations/progress/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-submit-verify",
+      "kind": "subnet-api",
+      "name": "Nepher evaluation submit verify",
+      "notes": "Bearer-auth POST /api/v1/evaluations/submit/verify on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations/submit/verify"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-item",
+      "kind": "data-artifact",
+      "name": "Nepher evaluation by ID",
+      "notes": "Bearer-auth GET /api/v1/evaluations/{evaluation_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations/%7Bevaluation_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-evaluations-item-log",
+      "kind": "data-artifact",
+      "name": "Nepher evaluation log",
+      "notes": "Bearer-auth GET /api/v1/evaluations/{evaluation_id}/log on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/evaluations/%7Bevaluation_id%7D/log"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-notifications-preferences",
+      "kind": "data-artifact",
+      "name": "Nepher notification preferences",
+      "notes": "Bearer-auth GET /api/v1/notifications/preferences on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/notifications/preferences"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-scores-leaderboard-active",
+      "kind": "data-artifact",
+      "name": "Nepher scores active leaderboard",
+      "notes": "Bearer-auth GET /api/v1/scores/leaderboard/active on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/scores/leaderboard/active"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-scores-leaderboard-item",
+      "kind": "data-artifact",
+      "name": "Nepher scores tournament leaderboard",
+      "notes": "Bearer-auth GET /api/v1/scores/leaderboard/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/scores/leaderboard/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-scores-item",
+      "kind": "data-artifact",
+      "name": "Nepher scores by tournament",
+      "notes": "Bearer-auth GET /api/v1/scores/{tournament_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/scores/%7Btournament_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-scores-item-aggregated",
+      "kind": "data-artifact",
+      "name": "Nepher scores aggregated by tournament",
+      "notes": "Bearer-auth GET /api/v1/scores/{tournament_id}/aggregated on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/scores/%7Btournament_id%7D/aggregated"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-scores-agent-item",
+      "kind": "data-artifact",
+      "name": "Nepher scores by agent",
+      "notes": "Bearer-auth GET /api/v1/scores/agent/{agent_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/scores/agent/%7Bagent_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-users-list",
+      "kind": "data-artifact",
+      "name": "Nepher users list",
+      "notes": "Bearer-auth GET /api/v1/users/list on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/users/list"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-users-me",
+      "kind": "data-artifact",
+      "name": "Nepher user profile",
+      "notes": "Bearer-auth GET /api/v1/users/me on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/users/me"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-users-me-dashboard-stats",
+      "kind": "data-artifact",
+      "name": "Nepher user dashboard stats",
+      "notes": "Bearer-auth GET /api/v1/users/me/dashboard-stats on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/users/me/dashboard-stats"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-users-validators",
+      "kind": "data-artifact",
+      "name": "Nepher users validators",
+      "notes": "Bearer-auth GET /api/v1/users/validators on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/users/validators"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-create",
+      "kind": "subnet-api",
+      "name": "Nepher tournament create",
+      "notes": "Bearer-auth POST /api/v1/tournaments/create on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/create"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-preload-cache",
+      "kind": "subnet-api",
+      "name": "Nepher tournament preload cache",
+      "notes": "Bearer-auth POST /api/v1/tournaments/preload-cache on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/preload-cache"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-approve-winner-item",
+      "kind": "subnet-api",
+      "name": "Nepher tournament approve winner",
+      "notes": "Bearer-auth POST /api/v1/tournaments/{tournament_id}/approve-winner/{agent_id} on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/approve-winner/%7Bagent_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-auto-start",
+      "kind": "subnet-api",
+      "name": "Nepher tournament auto-start",
+      "notes": "Bearer-auth PATCH /api/v1/tournaments/{tournament_id}/auto-start on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/auto-start"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-confirm-no-winner",
+      "kind": "subnet-api",
+      "name": "Nepher tournament confirm no winner",
+      "notes": "Bearer-auth POST /api/v1/tournaments/{tournament_id}/confirm-no-winner on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/confirm-no-winner"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-preliminary-leader",
+      "kind": "data-artifact",
+      "name": "Nepher tournament preliminary leader",
+      "notes": "Bearer-auth GET /api/v1/tournaments/{tournament_id}/preliminary-leader on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/preliminary-leader"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-reset-winner",
+      "kind": "subnet-api",
+      "name": "Nepher tournament reset winner",
+      "notes": "Bearer-auth POST /api/v1/tournaments/{tournament_id}/reset-winner on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/reset-winner"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-status",
+      "kind": "subnet-api",
+      "name": "Nepher tournament status update",
+      "notes": "Bearer-auth PATCH /api/v1/tournaments/{tournament_id}/status on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/status"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-winner",
+      "kind": "data-artifact",
+      "name": "Nepher tournament winner",
+      "notes": "Bearer-auth GET /api/v1/tournaments/{tournament_id}/winner on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/winner"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-49-nepher-tournaments-item-winner-hotkey",
+      "kind": "data-artifact",
+      "name": "Nepher tournament winner hotkey",
+      "notes": "Bearer-auth GET /api/v1/tournaments/{tournament_id}/winner-hotkey on tournament-api.nepher.ai (SN49 Nepher Robotics tournament platform). Auth-required per the HTTPBearer security scheme in the OpenAPI schema at https://tournament-api.nepher.ai/openapi.json. Representative sample verified: GET /api/v1/admin/config returns HTTP 401 without a token. Register auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/%7Btournament_id%7D/winner-hotkey"
     }
   ],
   "website_url": "https://nepher.ai"
