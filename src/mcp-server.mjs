@@ -141,7 +141,7 @@ import {
   LIST_EVIDENCE_MCP_TOOL,
   LIST_EVIDENCE_OUTPUT_SCHEMA,
   loadEvidenceList,
-} from "./evidence-mcp.mjs";
+} from "./evidence-mcp.ts";
 import {
   LIST_SEARCH_INDEX_INSTRUCTIONS,
   LIST_SEARCH_INDEX_MCP_TOOL,
