@@ -29,7 +29,7 @@ const JSON_TOKEN_RE = /"(?:[^"\\]|\\.)*"|-?\d+(\.\d+)?([eE][+-]?\d+)?/g;
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 const MIN_SAFE = -MAX_SAFE;
 
-function quoteUnsafeIntegers(text) {
+function quoteUnsafeIntegers(text: string): string {
   return text.replace(JSON_TOKEN_RE, (match, decimalPart, exponentPart) => {
     // A quoted string always starts with '"' -- the alternation above can
     // only otherwise match a bare number, so this check alone distinguishes
@@ -52,6 +52,6 @@ function quoteUnsafeIntegers(text) {
  * parser (OIDs 114/3802) so every reader of a genuine json/jsonb column
  * (decodeChainEventArgs, ...) already sees the exact value with no
  * additional per-call-site handling required. */
-export function parseJsonPreservingBigIntegers(text) {
+export function parseJsonPreservingBigIntegers(text: string): unknown {
   return JSON.parse(quoteUnsafeIntegers(text));
 }

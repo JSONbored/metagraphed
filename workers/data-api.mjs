@@ -21,7 +21,7 @@
 // read routes' `cache-control: public, max-age=10`).
 import postgres from "postgres";
 import * as Sentry from "@sentry/cloudflare";
-import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.mjs";
+import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.ts";
 import { decodeCursor, encodeCursor } from "../src/cursor.ts";
 import { buildBlock, buildBlockFeed } from "../src/blocks.ts";
 import {
@@ -4645,7 +4645,7 @@ export default {
     // nearest float64 -- confirmed live 2026-07-12: chain_events.args carries
     // real u64 values (SubtensorModule.DifficultySet/SetChildren/
     // SetChildrenScheduled) beyond Number.MAX_SAFE_INTEGER. See
-    // src/postgres-json-parse.mjs's own header for why this must happen at
+    // src/postgres-json-parse.ts's own header for why this must happen at
     // the client boundary, not in decodeChainEventArgs -- by the time that
     // runs, a lossy default parse has already destroyed the original value
     // with no way to recover it downstream. Does NOT touch extrinsics'
