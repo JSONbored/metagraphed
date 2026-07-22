@@ -119,7 +119,7 @@ import {
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
-} from "../src/chain-turnover.mjs";
+} from "../src/chain-turnover.ts";
 import {
   buildMovers,
   MOVERS_WINDOWS,
@@ -8603,7 +8603,7 @@ export default {
         // GET /api/v1/chain/turnover?window=&limit= (#4832 Tier 2b):
         // network-wide validator-set turnover across every subnet between the
         // window's boundary snapshots, mirroring
-        // src/chain-turnover.mjs's loadChainTurnover.
+        // src/chain-turnover.ts's loadChainTurnover.
         if (url.pathname === "/api/v1/chain/turnover") {
           const windowParam =
             url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;

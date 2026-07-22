@@ -5,7 +5,7 @@ import {
   loadChainTurnover,
   CHAIN_TURNOVER_LIMIT_MAX,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
-} from "../src/chain-turnover.mjs";
+} from "../src/chain-turnover.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

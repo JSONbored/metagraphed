@@ -285,7 +285,7 @@ import {
   CHAIN_TURNOVER_LIMIT_MAX,
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
-} from "./chain-turnover.mjs";
+} from "./chain-turnover.ts";
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,

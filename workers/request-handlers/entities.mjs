@@ -284,7 +284,7 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
-} from "../../src/chain-turnover.mjs";
+} from "../../src/chain-turnover.ts";
 import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
 
 const RESPONSE_FORMATS = ["json", "csv"];

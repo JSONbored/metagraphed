@@ -38,7 +38,7 @@ function toCount(value: unknown): number {
 // Round a 0..1 concentration ratio to a stable precision WITHOUT letting a
 // sub-perfect value round up to an exact 1 — the same anti-overstatement guard
 // the sibling ratios apply (roundRatio in src/concentration.mjs, round in
-// src/chain-turnover.mjs, roundShare in src/chain-transfer-pairs.ts #2971).
+// src/chain-turnover.ts, roundShare in src/chain-transfer-pairs.ts #2971).
 // top_sender_share divides the summed top-N senders by the full-window total, so
 // a near-monopoly (e.g. 249990/250000 = 0.99996, with other senders still present
 // in unique_senders) must not surface as a flat 1 ("100% of outflow"). A genuine

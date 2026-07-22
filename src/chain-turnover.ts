@@ -13,7 +13,11 @@ export const CHAIN_TURNOVER_READ_COLUMNS =
 
 // Supported comparison windows (label -> days): the 7d/30d/90d set the turnover/concentration
 // scorecards use.
-export const CHAIN_TURNOVER_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const CHAIN_TURNOVER_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 export const DEFAULT_CHAIN_TURNOVER_WINDOW = "30d";
 
 export const CHAIN_TURNOVER_LIMIT_DEFAULT = 20;
@@ -22,7 +26,7 @@ export const CHAIN_TURNOVER_LIMIT_MAX = 100;
 // Round a retention ratio (a finite 0..1 jaccard result) to a stable precision WITHOUT
 // letting a sub-perfect ratio round up to an exact 1 — the same anti-overstatement invariant
 // src/turnover.mjs enforces: a set that actually churned must never report a flawless 1.
-function round(value, dp = 4) {
+function round(value: number, dp = 4): number {
   const factor = 10 ** dp;
   const rounded = Math.round(value * factor) / factor;
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
@@ -32,7 +36,7 @@ function round(value, dp = 4) {
 // are defined as 1 (nothing to lose ⇒ perfectly retained), reached for the network set when a
 // caller passes rows carrying no validators at all; past that guard at least one set is
 // non-empty, so the union is always > 0.
-function jaccard(setA, setB) {
+function jaccard(setA: Set<string>, setB: Set<string>): number {
   if (setA.size === 0 && setB.size === 0) return 1;
   let intersection = 0;
   for (const item of setA) if (setB.has(item)) intersection += 1;
@@ -41,7 +45,7 @@ function jaccard(setA, setB) {
 
 // A 0–100 composite from a retention ratio, with the same anti-overstatement clamp as
 // `round`: a sub-perfect retention must not round up to a flawless 100.
-function stabilityScore(retention) {
+function stabilityScore(retention: number): number {
   let score = Math.round(retention * 100);
   if (score >= 100 && retention < 1) score = 99;
   return score;
@@ -50,7 +54,7 @@ function stabilityScore(retention) {
 // Nearest-rank percentile of a NON-EMPTY ascending numeric array (deterministic, no
 // interpolation) — mirrors src/subnet-yield.mjs. Only called from stabilityDistribution,
 // which short-circuits an empty score set to null before reaching here.
-function percentile(ascending, p) {
+function percentile(ascending: number[], p: number): number {
   const rank = Math.ceil((p / 100) * ascending.length);
   return ascending[Math.min(rank, ascending.length) - 1];
 }
@@ -61,16 +65,27 @@ function percentile(ascending, p) {
 // indices coincide and it returns that middle value unchanged. Matches median() in chain-yield.mjs /
 // subnet-yield.mjs so a `median` field is the same statistic across the API. Reached only after
 // stabilityDistribution's empty short-circuit.
-function median(ascending) {
+function median(ascending: number[]): number {
   const mid = (ascending.length - 1) / 2;
   return round((ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2);
+}
+
+export interface StabilityDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
 }
 
 // Spread of the per-subnet stability scores across every subnet in the window: count, mean,
 // and min / p25 / median / p75 / p90 / max. Null when no subnet is comparable. Lets a caller
 // read network stability as a distribution (how many subnets are churning hard) rather than a
 // single rollup number.
-function stabilityDistribution(scores) {
+function stabilityDistribution(scores: number[]): StabilityDistribution | null {
   if (scores.length === 0) return null;
   const ascending = [...scores].sort((a, b) => a - b);
   const sum = ascending.reduce((total, value) => total + value, 0);
@@ -90,20 +105,25 @@ function stabilityDistribution(scores) {
 // blank/whitespace-only string explicitly so neither is silently coerced to subnet 0
 // (Number(null), Number(""), and Number("  ") all === 0); a malformed row must be skipped,
 // never counted as netuid 0.
-function normalizedNetuid(value) {
+function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
 }
 
+interface ValidatorIndex {
+  perNetuid: Map<number, Set<string>>;
+  network: Set<string>;
+}
+
 // Index one snapshot's validator-permit rows into { perNetuid: Map netuid -> Set<hotkey>,
 // network: Set<hotkey> }. A validator is identified by its hotkey (the key that votes); the
 // network set is the union of every subnet's validator hotkeys (one hotkey can validate on
 // several subnets and counts once network-wide).
-function indexValidators(rows) {
-  const perNetuid = new Map();
-  const network = new Set();
+function indexValidators(rows: Array<Record<string, unknown>>): ValidatorIndex {
+  const perNetuid = new Map<number, Set<string>>();
+  const network = new Set<string>();
   for (const row of rows) {
     if (Number(row?.validator_permit) !== 1) continue;
     const netuid = normalizedNetuid(row?.netuid);
@@ -121,7 +141,16 @@ function indexValidators(rows) {
   return { perNetuid, network };
 }
 
-const EMPTY_NETWORK = {
+export interface ChainTurnoverNetwork {
+  validators_start: number;
+  validators_end: number;
+  validators_entered: number;
+  validators_exited: number;
+  validator_retention: number | null;
+  stability_score: number | null;
+}
+
+const EMPTY_NETWORK: ChainTurnoverNetwork = {
   validators_start: 0,
   validators_end: 0,
   validators_entered: 0,
@@ -130,9 +159,16 @@ const EMPTY_NETWORK = {
   stability_score: null,
 };
 
+interface SetChurn {
+  entered: number;
+  exited: number;
+  retention: number;
+  stability: number;
+}
+
 // Churn between two validator sets: entered (in end, not start), exited (in start, not end),
 // jaccard retention, and a 0–100 stability score.
-function setChurn(startSet, endSet) {
+function setChurn(startSet: Set<string>, endSet: Set<string>): SetChurn {
   let entered = 0;
   for (const hotkey of endSet) if (!startSet.has(hotkey)) entered += 1;
   let exited = 0;
@@ -146,6 +182,30 @@ function setChurn(startSet, endSet) {
   };
 }
 
+export interface ChainTurnoverSubnet {
+  netuid: number;
+  validators_start: number;
+  validators_end: number;
+  validators_entered: number;
+  validators_exited: number;
+  validator_retention: number;
+  stability_score: number;
+}
+
+export interface ChainTurnoverResult {
+  schema_version: 1;
+  window: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  comparable: boolean;
+  subnet_count: number;
+  network: ChainTurnoverNetwork;
+  stability_distribution: StabilityDistribution | null;
+  subnets: ChainTurnoverSubnet[];
+}
+
+const EMPTY_SET = new Set<string>();
+
 // Shape the network-wide validator turnover scorecard from both boundary snapshots' rows.
 // Null-safe: no data or an unresolvable boundary yields the schema-stable empty block
 // (comparable:false, empty leaderboard), never throws. `limit` caps the per-subnet leaderboard;
@@ -154,12 +214,22 @@ function setChurn(startSet, endSet) {
 // validators in the window are absent) — subnet_count/distribution count all of those, not just
 // the returned page.
 export function buildChainTurnover(
-  rows,
-  { window, startDate, endDate, limit = CHAIN_TURNOVER_LIMIT_DEFAULT } = {},
-) {
+  rows: Array<Record<string, unknown>> | null | undefined,
+  {
+    window,
+    startDate,
+    endDate,
+    limit = CHAIN_TURNOVER_LIMIT_DEFAULT,
+  }: {
+    window?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    limit?: number;
+  } = {},
+): ChainTurnoverResult {
   const list = Array.isArray(rows) ? rows : [];
   const base = {
-    schema_version: 1,
+    schema_version: 1 as const,
     window: window ?? null,
     start_date: startDate ?? null,
     end_date: endDate ?? null,
@@ -171,7 +241,7 @@ export function buildChainTurnover(
     ? Math.max(0, Math.min(flooredLimit, CHAIN_TURNOVER_LIMIT_MAX))
     : CHAIN_TURNOVER_LIMIT_DEFAULT;
 
-  const empty = {
+  const empty: ChainTurnoverResult = {
     ...base,
     comparable: false,
     subnet_count: 0,
@@ -200,7 +270,7 @@ export function buildChainTurnover(
   const end = indexValidators(endRows);
   const netuids = new Set([...start.perNetuid.keys(), ...end.perNetuid.keys()]);
 
-  const subnets = [];
+  const subnets: ChainTurnoverSubnet[] = [];
   for (const netuid of netuids) {
     const sv = start.perNetuid.get(netuid) ?? EMPTY_SET;
     const ev = end.perNetuid.get(netuid) ?? EMPTY_SET;
@@ -225,7 +295,7 @@ export function buildChainTurnover(
   );
 
   const netChurn = setChurn(start.network, end.network);
-  const network = {
+  const network: ChainTurnoverNetwork = {
     validators_start: start.network.size,
     validators_end: end.network.size,
     validators_entered: netChurn.entered,
@@ -250,17 +320,21 @@ export function buildChainTurnover(
   };
 }
 
-const EMPTY_SET = new Set();
-
 // Network-wide validator turnover, computed live: anchor the window to the newest STORED
 // snapshot (date() relative to MAX(snapshot_date)) so a lagging/restored store still compares
 // real boundary snapshots, read every subnet's validator rows at those two days (bounded by
 // validator_permit = 1; the date-first idx_neuron_daily_date_netuid_agg covers the boundary
 // scan), shape with buildChainTurnover. Cold/absent or single-snapshot D1 → comparable:false.
 export async function loadChainTurnover(
-  d1,
-  { windowLabel = DEFAULT_CHAIN_TURNOVER_WINDOW, limit } = {},
-) {
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
+  {
+    windowLabel = DEFAULT_CHAIN_TURNOVER_WINDOW,
+    limit,
+  }: { windowLabel?: string; limit?: number } = {},
+): Promise<ChainTurnoverResult> {
   // Normalize the label ONCE and use it for both the day lookup and the emitted artifact window,
   // so a direct caller passing an unsupported label can never emit a schema-invalid window value
   // (the HTTP handler already rejects bad windows before this runs).
@@ -274,9 +348,9 @@ export async function loadChainTurnover(
       "WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)",
     [`-${days} days`],
   );
-  const startDate = bounds?.[0]?.start_date ?? null;
-  const endDate = bounds?.[0]?.end_date ?? null;
-  let rows = [];
+  const startDate = (bounds?.[0]?.start_date as string | null) ?? null;
+  const endDate = (bounds?.[0]?.end_date as string | null) ?? null;
+  let rows: Array<Record<string, unknown>> = [];
   if (startDate != null && endDate != null && startDate !== endDate) {
     rows = await d1(
       `SELECT ${CHAIN_TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE validator_permit = 1 AND snapshot_date IN (?, ?)`,

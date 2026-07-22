@@ -388,7 +388,7 @@ import {
   CHAIN_TURNOVER_LIMIT_MAX,
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
-} from "./chain-turnover.mjs";
+} from "./chain-turnover.ts";
 import { buildTurnover } from "./turnover.mjs";
 import {
   buildChainActivity,
