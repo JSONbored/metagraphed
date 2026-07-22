@@ -184,6 +184,408 @@
       "public_safe": true,
       "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
       "url": "https://iota.api.macrocosmos.ai/common/get_run_info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-9-iota-profiler-status",
+      "kind": "subnet-api",
+      "name": "iota orchestrator profiler status",
+      "notes": "Public no-auth GET returning the orchestrator's profiler state. Live-verified 2026-07-21: HTTP 200 {\"running\":false,\"profiler_exists\":false}. Unlike its /profiler/start and /profiler/stop siblings (write actions), this read declares no Epistula-signing headers in the registered schema and needs none.",
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/profiler/status"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-get-activations",
+      "kind": "subnet-api",
+      "name": "iota miner activations read",
+      "notes": "Epistula-signed orchestrator read (the subnet's non-bearer hotkey-signing scheme, same caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 422 listing the required request body, proving the route is real; its siblings return the EpistulaError signature failure. Not probe-enabled (a probe cannot sign).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_activations"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-heartbeat",
+      "kind": "subnet-api",
+      "name": "iota miner heartbeat read",
+      "notes": "Epistula-signed orchestrator read (the subnet's non-bearer hotkey-signing scheme, same caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError \"Invalid SS58 address\", proving the route is real and enforcing signature auth. Not probe-enabled (a probe cannot sign).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/heartbeat"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-layer-state",
+      "kind": "subnet-api",
+      "name": "iota miner layer-state read",
+      "notes": "Epistula-signed orchestrator read (the subnet's non-bearer hotkey-signing scheme, same caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError \"Invalid SS58 address\", proving the route is real and enforcing signature auth. Not probe-enabled (a probe cannot sign).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/layer_state"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-get-previous-partitions",
+      "kind": "subnet-api",
+      "name": "iota miner previous-partitions read",
+      "notes": "Epistula-signed orchestrator read (the subnet's non-bearer hotkey-signing scheme, same caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 422 listing the required request body, proving the route is real; its siblings return the EpistulaError signature failure. Not probe-enabled (a probe cannot sign).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_previous_partitions"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-get-partitions",
+      "kind": "subnet-api",
+      "name": "iota miner partitions read",
+      "notes": "Epistula-signed orchestrator read (the subnet's non-bearer hotkey-signing scheme, same caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError \"Invalid SS58 address\", proving the route is real and enforcing signature auth. Not probe-enabled (a probe cannot sign).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_partitions"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-get-weight-path-per-layer",
+      "kind": "subnet-api",
+      "name": "iota miner weight-path-per-layer read",
+      "notes": "Epistula-signed orchestrator read (the subnet's non-bearer hotkey-signing scheme, same caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError \"Invalid SS58 address\", proving the route is real and enforcing signature auth. Not probe-enabled (a probe cannot sign).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_weight_path_per_layer"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-validator-code",
+      "kind": "subnet-api",
+      "name": "iota validator code read",
+      "notes": "Epistula-signed orchestrator read (the subnet's non-bearer hotkey-signing scheme, same caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError \"Invalid SS58 address\", proving the route is real and enforcing signature auth. Not probe-enabled (a probe cannot sign).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/validator/get_validator_code"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-merged-partitions",
+      "kind": "subnet-api",
+      "name": "iota merged-partitions read",
+      "notes": "Epistula-signed orchestrator read (the subnet's non-bearer hotkey-signing scheme, same caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError \"Invalid SS58 address\", proving the route is real and enforcing signature auth. Not probe-enabled (a probe cannot sign).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/common/get_merged_partitions"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-all-layers-training",
+      "kind": "subnet-api",
+      "name": "iota miner all-layers-training read",
+      "notes": "Epistula-signed orchestrator read declared in the registered OpenAPI schema. Live-verified 2026-07-21 across repeated calls: alternates between HTTP 400 EpistulaError \"Invalid SS58 address\" (route served, signature enforced) and HTTP 404 from the fronting proxy, i.e. the route is real but not served by every backend behind the load balancer. Registered with the observed behavior noted; not probe-enabled (a probe cannot sign, and the 404-flap would misreport health).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/all_layers_training"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-layer-optimizer-state",
+      "kind": "subnet-api",
+      "name": "iota miner layer-optimizer-state read",
+      "notes": "Epistula-signed orchestrator read declared in the registered OpenAPI schema. Live-verified 2026-07-21 across repeated calls: alternates between HTTP 400 EpistulaError \"Invalid SS58 address\" (route served, signature enforced) and HTTP 404 from the fronting proxy, i.e. the route is real but not served by every backend behind the load balancer. Registered with the observed behavior noted; not probe-enabled (a probe cannot sign, and the 404-flap would misreport health).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_layer_optimizer_state"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-notify-state-call",
+      "kind": "subnet-api",
+      "name": "iota miner state-call notification read",
+      "notes": "Epistula-signed orchestrator read declared in the registered OpenAPI schema. Live-verified 2026-07-21 across repeated calls: alternates between HTTP 400 EpistulaError \"Invalid SS58 address\" (route served, signature enforced) and HTTP 404 from the fronting proxy, i.e. the route is real but not served by every backend behind the load balancer. Registered with the observed behavior noted; not probe-enabled (a probe cannot sign, and the 404-flap would misreport health).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/notify_orchestrator_of_state_call"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-run-epoch",
+      "kind": "subnet-api",
+      "name": "iota run-epoch read",
+      "notes": "Epistula-signed orchestrator read requiring a run_id query parameter. Live-verified 2026-07-21: unparameterized GET returns HTTP 422 {\"detail\":[{\"loc\":[\"query\",\"run_id\"],\"msg\":\"Field required\"}]}, a clean validation error naming the required field and proving the route is real. Registered with the fixed base URL (no query baked in) so callers supply run_id themselves; not probe-enabled.",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/common/get_run_epoch"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Epistula hotkey-signed request headers; no bearer token."
+      },
+      "id": "sn-9-iota-register-status",
+      "kind": "subnet-api",
+      "name": "iota miner registration status",
+      "notes": "Epistula-signed orchestrator read taking a {queue_id} path parameter. Live-verified 2026-07-21 with a placeholder id: HTTP 400 EpistulaError \"Invalid SS58 address\", proving the route is real and signature-gated. Path parameter registered in the percent-encoded brace form; not probe-enabled.",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/register/status/%7Bqueue_id%7D"
     }
   ],
   "website_url": "https://iota.macrocosmos.ai/"
