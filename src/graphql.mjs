@@ -245,7 +245,6 @@ import { loadRandomnessStatus } from "./randomness.ts";
 import { loadAddressMapping, H160_PATTERN } from "./address-mapping.ts";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
-  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
   GLOBAL_VALIDATOR_SORTS,
   buildGlobalValidators,
@@ -661,7 +660,7 @@ export const SDL = `
     global_incidents(window: String): GlobalIncidents!
     "Recent-extrinsic feed (newest first), optionally filtered. Mirrors GET /api/v1/extrinsics."
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
-    "Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Distinct from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events."
+    "Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events."
     chain_events(pallet: String, method: String, block: Int, extrinsic: Int, cursor: String, before: Int, limit: Int): ChainEventsFeed!
     "Chain-activity aggregate over the most recent N blocks (the blocks arg, 1-5000, default 1000, a stray large value silently capped) from the Postgres-backed all-events tier: the pallet.method event distribution, each with its count, busiest first. A non-positive/non-integer blocks is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty aggregate, never a GraphQL error. The aggregate sibling of chain_events (the raw feed). Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
     chain_events_stats(blocks: Int): ChainEventsStats!
@@ -683,8 +682,8 @@ export const SDL = `
     blocks_summary: BlocksSummary!
     "Site-wide runtime spec-version transition timeline: the earliest known block at each distinct spec_version observed (ascending), the current spec_version, and where coverage starts. The empty shape (transition_count 0, current_spec_version null) is schema-stable, never a GraphQL error, when the store has no reading yet. Mirrors GET /api/v1/runtime."
     runtime: RuntimeVersionHistory!
-    "Network-wide validator/operator leaderboard, grouped by hotkey across every subnet it operates in. Mirrors GET /api/v1/validators."
-    validators(sort: String, limit: Int): ValidatorList!
+    "Network-wide validator/operator leaderboard, grouped by hotkey across every subnet it operates in. Paginate with limit/cursor like providers. Mirrors GET /api/v1/validators."
+    validators(sort: String, limit: Int, cursor: String): ValidatorList!
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
     validator(hotkey: String!): Validator
     "One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked). An unsupported window/sort is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators."
@@ -3384,6 +3383,7 @@ export const SDL = `
   type ValidatorList {
     items: [Validator!]!
     total: Int!
+    next_cursor: String
     sort: String!
     captured_at: String
     block_number: Int
@@ -4770,6 +4770,24 @@ function validatorNode(validator) {
     block_number:
       validator.latest_block_number ?? validator.block_number ?? null,
   };
+}
+
+// buildValidatorDetail always returns a full-shaped object (rows=[] yields a
+// zeroed aggregate), but a malformed Postgres-tier response body degrades to
+// `{}` -- merged here with the cold-safe base the same way accountSummaryNode
+// normalizes a bad upstream body into the schema-stable zero card.
+function validatorDetailNode(data, hotkey) {
+  const base = buildValidatorDetail([], hotkey);
+  const raw = data && typeof data === "object" ? data : {};
+  return validatorNode({
+    ...base,
+    ...raw,
+    hotkey:
+      typeof raw.hotkey === "string" && raw.hotkey.length > 0
+        ? raw.hotkey
+        : hotkey,
+    subnets: Array.isArray(raw.subnets) ? raw.subnets : base.subnets,
+  });
 }
 
 // buildAccountSummary always returns a full-shaped object (a cold/absent store
@@ -7305,7 +7323,7 @@ const rootValue = {
     return loadBlockChainEvents(context, blockNumber);
   },
 
-  async validators({ sort, limit }, context) {
+  async validators({ sort, limit, cursor }, context) {
     const requestedSort = sort ?? DEFAULT_GLOBAL_VALIDATOR_SORT;
     if (!GLOBAL_VALIDATOR_SORTS.includes(requestedSort)) {
       throw new GraphQLError(
@@ -7313,13 +7331,11 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    const safeLimit = clampLimit(limit, {
-      defaultLimit: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-      maxLimit: GLOBAL_VALIDATOR_LIMIT_MAX,
-    });
+    // Same leaderboard computation REST/MCP use; fetch the max REST window once,
+    // then paginate in-process like providers/economics (cursor keyed by hotkey).
     const params = new URLSearchParams();
     params.set("sort", requestedSort);
-    params.set("limit", String(safeLimit));
+    params.set("limit", String(GLOBAL_VALIDATOR_LIMIT_MAX));
     const data = overlayFeaturedValidators(
       (await tryPostgresTier(
         context.env,
@@ -7328,12 +7344,20 @@ const rootValue = {
       )) ??
         buildGlobalValidators([], {
           sort: requestedSort,
-          limit: safeLimit,
+          limit: GLOBAL_VALIDATOR_LIMIT_MAX,
         }),
     );
+    const nodes = (data.validators || []).map(validatorNode);
+    const { page, total, nextCursor } = paginate(
+      nodes,
+      limit,
+      cursor,
+      (v) => v.hotkey,
+    );
     return {
-      items: (data.validators || []).map(validatorNode),
-      total: data.validator_count ?? 0,
+      items: page,
+      total: data.validator_count ?? total,
+      next_cursor: nextCursor,
       sort: data.sort ?? requestedSort,
       captured_at: data.captured_at ?? null,
       block_number: data.block_number ?? null,
@@ -7398,16 +7422,15 @@ const rootValue = {
   },
 
   async validator({ hotkey }, context) {
-    const data =
-      (await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/validators/${encodeURIComponent(hotkey)}`,
-        ),
-        "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildValidatorDetail([], hotkey);
-    return validatorNode(data);
+    const data = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+      ),
+      "METAGRAPH_NEURONS_SOURCE",
+    );
+    return validatorDetailNode(data, hotkey);
   },
 
   async validator_history({ hotkey, window }, context) {

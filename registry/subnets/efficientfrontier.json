@@ -56,7 +56,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Exact credential mechanism not confirmed from public docs -- auth_required is based on an access-state/challenge probe response, not a documented API key/token scheme."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet."
       },
       "auth_required": true,
       "authority": "official",
@@ -152,7 +152,7 @@
       "id": "sn-53-efficientfrontier-min-compute",
       "kind": "data-artifact",
       "name": "EfficientFrontier minimum compute requirements",
-      "notes": "Public no-auth machine-readable min_compute.yml from the SN53 EfficientFrontier subnet repository (oxylok/53-EfficientFrontier — the repo the file's existing surfaces already cite), pinned to an immutable commit. Specifies the minimum and recommended CPU, GPU, memory, storage, and network requirements for running SN53 miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
+      "notes": "Public no-auth machine-readable min_compute.yml from the SN53 EfficientFrontier subnet repository (oxylok/53-EfficientFrontier \u2014 the repo the file's existing surfaces already cite), pinned to an immutable commit. Specifies the minimum and recommended CPU, GPU, memory, storage, and network requirements for running SN53 miners and validators. Static YAML artifact useful for agents provisioning subnet nodes.",
       "provider": "signalplus",
       "public_safe": true,
       "review": {

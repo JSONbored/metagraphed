@@ -70,7 +70,7 @@
       "id": "sn-94-alveus-labs-subnet-api",
       "kind": "subnet-api",
       "name": "Bitsota AutoResearch coordinator API",
-      "notes": "Public no-auth endpoint of the SN94 Bitsota AutoResearch coordinator — live research task list served by the production coordinator at autoresearch.bitsota.com (documented in the official bitsota.ai backend-routes docs).",
+      "notes": "Public no-auth endpoint of the SN94 Bitsota AutoResearch coordinator \u2014 live research task list served by the production coordinator at autoresearch.bitsota.com (documented in the official bitsota.ai backend-routes docs).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -509,9 +509,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
+        "scheme": "api-key",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but this route empirically rejects an unauthenticated request (live-checked 2026-07-21). The header name and credential format are not documented in the spec, so only the location is asserted."
+        "name": "X-Admin-Token",
+        "scopes_note": "Requires an X-Admin-Token header (confirmed live: an unauthenticated request returns HTTP 401 \"invalid admin token\"). No bearer token or hotkey-signed request is accepted for this route."
       },
       "auth_required": true,
       "authority": "community",
@@ -536,9 +537,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
+        "scheme": "signature",
         "location": "header",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but this route empirically rejects an unauthenticated request (live-checked 2026-07-21). The header name and credential format are not documented in the spec, so only the location is asserted."
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"],
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",

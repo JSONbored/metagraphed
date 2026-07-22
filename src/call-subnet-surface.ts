@@ -62,17 +62,26 @@ export interface CallSubnetSurfaceCredential {
   // Where to place the credential -- mirrors the surface's own
   // `auth.location`. The CALLER (call_subnet_surface's tool handler) is
   // responsible for validating the surface's auth.scheme is generically
-  // supported (bearer/api-key) and auth.location/auth.name are both present
-  // BEFORE ever passing this; this function only places the value, it does
-  // not validate eligibility.
-  location: "header" | "query" | "cookie";
-  // Header name, query-parameter name, or cookie name -- the surface's own
-  // `auth.name`.
-  name: string;
-  // The credential value exactly as supplied by the caller, inserted
-  // verbatim (never reformatted against `auth.value_format` -- the caller is
-  // expected to have already formatted it, e.g. "Bearer <token>").
-  value: string;
+  // supported and auth.location plus (auth.name or auth.names) are present
+  // BEFORE ever passing this; this function only places the value(s), it
+  // does not validate eligibility.
+  location: "header" | "query" | "cookie" | "body";
+  // Single credential name (auth.scheme bearer/api-key/basic) -- mutually
+  // exclusive with `values`. The surface's own `auth.name`.
+  name?: string;
+  // Single credential value, paired with `name`. Inserted verbatim (never
+  // reformatted against `auth.value_format` -- the caller is expected to
+  // have already formatted it, e.g. "Bearer <token>").
+  value?: string;
+  // Multi-value credential bundle (metagraphed#7701, auth.scheme:signature)
+  // -- mutually exclusive with `name`/`value`. Every key is a name from the
+  // surface's own `auth.names`, mapped to the value the CALLER already
+  // computed (e.g. a signature the caller signed locally with their own
+  // key) -- this module never computes or validates a signature, only
+  // relays the bundle as given. For `location: "body"`, every entry is
+  // merged into the outgoing JSON request body alongside whatever `body`
+  // option is separately supplied.
+  values?: Record<string, string>;
 }
 
 // metagraphed#7687 (MCP execute Phase 3b): a query-location credential is,
@@ -80,35 +89,60 @@ export interface CallSubnetSurfaceCredential {
 // credential (which never appears in any response field, this module never
 // echoes request headers back), the URL is exactly what this module DOES
 // return to the caller on both success and some failure paths. Only a
-// query-location credential is ever redacted here; header/cookie placement
-// has nothing in the URL to redact.
+// query-location credential is ever redacted here; header/cookie/body
+// placement has nothing in the returned URL to redact. Handles both a
+// single-value credential (`name`) and a multi-value bundle (`values`,
+// metagraphed#7701's scheme:signature) -- every name in the bundle gets
+// redacted, not just the first.
 const REDACTED_CREDENTIAL_PLACEHOLDER = "<redacted>";
 function redactQueryCredential(
   url: string,
   credential: CallSubnetSurfaceCredential | undefined,
 ): string {
   if (!url || credential?.location !== "query") return url;
+  const names = credential.values
+    ? Object.keys(credential.values)
+    : credential.name
+      ? [credential.name]
+      : [];
+  if (names.length === 0) return url;
   // No try/catch: `url` here is always the output of an earlier `new URL()`
   // call within this same module (buildRequestUrl, or safetyCheckedFetch's
   // own redirect-target construction) -- by the time it reaches here it has
   // already been proven parseable, so a second parse can't newly fail.
   const parsed = new URL(url);
-  if (!parsed.searchParams.has(credential.name)) return url;
-  parsed.searchParams.set(credential.name, REDACTED_CREDENTIAL_PLACEHOLDER);
-  return parsed.toString();
+  let changed = false;
+  for (const name of names) {
+    if (parsed.searchParams.has(name)) {
+      parsed.searchParams.set(name, REDACTED_CREDENTIAL_PLACEHOLDER);
+      changed = true;
+    }
+  }
+  return changed ? parsed.toString() : url;
 }
 
-// Regardless of credential location, scrub the raw value out of any
-// free-form error string this module returns -- the underlying fetch
+// Regardless of credential location, scrub every raw credential value out of
+// any free-form error string this module returns -- the underlying fetch
 // implementation's own error text (network/timeout/DNS failures) is outside
 // this module's control, and some implementations echo the request URL (or
-// occasionally other request details) into it.
+// occasionally other request details) into it. Handles both a single value
+// and a multi-value bundle.
 function redactCredentialValue(
   text: string,
   credential: CallSubnetSurfaceCredential | undefined,
 ): string {
-  if (!text || !credential?.value) return text;
-  return text.split(credential.value).join(REDACTED_CREDENTIAL_PLACEHOLDER);
+  if (!text || !credential) return text;
+  const values = credential.values
+    ? Object.values(credential.values)
+    : credential.value
+      ? [credential.value]
+      : [];
+  let result = text;
+  for (const value of values) {
+    if (value)
+      result = result.split(value).join(REDACTED_CREDENTIAL_PLACEHOLDER);
+  }
+  return result;
 }
 
 export interface CallSubnetSurfaceOptions {
@@ -195,21 +229,41 @@ export async function callSubnetSurface(
   if (typeof isUnsafeUrl !== "function") {
     throw new Error("callSubnetSurface requires options.isUnsafeUrl");
   }
-  // Placed before URL/header construction so a query-location credential
-  // becomes part of the query object buildRequestUrl() merges below, and a
-  // header/cookie-location credential is ready to hand to safetyCheckedFetch.
+  // Normalize both the single-value shape ({name, value}) and the
+  // metagraphed#7701 multi-value bundle shape ({values: {name: value}}) to
+  // one list of entries, so every placement branch below handles both
+  // uniformly instead of duplicating logic per shape.
+  const credentialEntries: [string, string][] = credential
+    ? credential.values
+      ? Object.entries(credential.values)
+      : credential.name
+        ? [[credential.name, credential.value as string]]
+        : []
+    : [];
+  // Placed before URL/header/body construction so a query-location
+  // credential becomes part of the query object buildRequestUrl() merges
+  // below, a header/cookie-location credential is ready to hand to
+  // safetyCheckedFetch, and a body-location credential is ready to merge
+  // into the outgoing JSON below.
   let effectiveQuery = query;
   const extraHeaders: Record<string, string> = {};
-  if (credential) {
+  let bodyCredentialFields: Record<string, string> | null = null;
+  if (credential && credentialEntries.length > 0) {
     if (credential.location === "query") {
-      effectiveQuery = {
-        ...(query || {}),
-        [credential.name]: credential.value,
-      };
+      effectiveQuery = { ...(query || {}) };
+      for (const [name, value] of credentialEntries) {
+        effectiveQuery[name] = value;
+      }
     } else if (credential.location === "header") {
-      extraHeaders[credential.name] = credential.value;
+      for (const [name, value] of credentialEntries) {
+        extraHeaders[name] = value;
+      }
     } else if (credential.location === "cookie") {
-      extraHeaders.cookie = `${credential.name}=${credential.value}`;
+      extraHeaders.cookie = credentialEntries
+        .map(([name, value]) => `${name}=${value}`)
+        .join("; ");
+    } else if (credential.location === "body") {
+      bodyCredentialFields = Object.fromEntries(credentialEntries);
     }
   }
   const method =
@@ -248,10 +302,23 @@ export async function callSubnetSurface(
   }
   const requestUrl = buildRequestUrl(baseUrl, effectiveQuery);
 
+  // A body-location credential bundle is merged into the outgoing JSON
+  // request body -- the tool handler is responsible for ensuring this only
+  // ever happens for a JSON content type and a valid-JSON-or-absent existing
+  // body BEFORE calling this function; this function trusts that and merges
+  // unconditionally (matches this module's existing "caller validates
+  // eligibility, this module only places" contract for every other location).
+  const effectiveBody = bodyCredentialFields
+    ? JSON.stringify({
+        ...(requestBody ? JSON.parse(requestBody) : {}),
+        ...bodyCredentialFields,
+      })
+    : requestBody;
+
   const fetched = await safetyCheckedFetch(requestUrl, {
     method,
-    ...(canHaveBody && requestBody !== undefined
-      ? { body: requestBody, contentType: requestContentType }
+    ...(canHaveBody && effectiveBody !== undefined
+      ? { body: effectiveBody, contentType: requestContentType }
       : {}),
     extraHeaders,
     fetchImpl,

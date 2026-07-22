@@ -181,6 +181,96 @@ const MISSING_LOCATION_SURFACE = {
   probe: { method: "GET", enabled: true },
 };
 
+// #7701 (MCP execute Phase 4): scheme:signature multi-value credential
+// bundle fixtures -- a Bittensor hotkey-signed request the CALLER computes
+// and supplies as a complete {name: value} bundle; this tool only places it,
+// never signs anything itself.
+const SIGNATURE_HEADER_SURFACE = {
+  surface_id: "x:api:12",
+  netuid: 16,
+  kind: "subnet-api",
+  url: "https://x.example/signed",
+  auth_required: true,
+  auth: {
+    scheme: "signature",
+    location: "header",
+    names: ["X-Hotkey", "X-Timestamp", "X-Signature"],
+  },
+  probe: { method: "GET", enabled: true },
+};
+
+const SIGNATURE_QUERY_SURFACE = {
+  surface_id: "x:api:13",
+  netuid: 17,
+  kind: "subnet-api",
+  url: "https://x.example/signed-query",
+  auth_required: true,
+  auth: {
+    scheme: "signature",
+    location: "query",
+    names: ["validator_hotkey", "signature"],
+  },
+  probe: { method: "GET", enabled: true },
+};
+
+const SIGNATURE_COOKIE_SURFACE = {
+  surface_id: "x:api:14",
+  netuid: 18,
+  kind: "subnet-api",
+  url: "https://x.example/signed-cookie",
+  auth_required: true,
+  auth: { scheme: "signature", location: "cookie", names: ["session", "csrf"] },
+  probe: { method: "GET", enabled: true },
+};
+
+// Body-location signature needs a captured schema (the credential merges
+// into a POST/PUT JSON body) -- reuses SCHEMA_DOCUMENT's /users and /ping
+// operations via schema_source, same as SCHEMA_SURFACE above.
+const SIGNATURE_BODY_SURFACE = {
+  surface_id: "x:api:15",
+  netuid: 19,
+  kind: "subnet-api",
+  url: "https://x.example/signed-body",
+  auth_required: true,
+  auth: {
+    scheme: "signature",
+    location: "body",
+    names: ["identity", "timestamp", "signature"],
+  },
+  probe: { method: "GET", enabled: true },
+  schema_source: { surface_id: "x:openapi:1" },
+};
+
+const SIGNATURE_NO_NAMES_SURFACE = {
+  surface_id: "x:api:16",
+  netuid: 20,
+  kind: "subnet-api",
+  url: "https://x.example/signed-undocumented",
+  auth_required: true,
+  auth: { scheme: "signature", location: "header" },
+  probe: { method: "GET", enabled: true },
+};
+
+const SIGNATURE_EMPTY_NAMES_SURFACE = {
+  surface_id: "x:api:17",
+  netuid: 21,
+  kind: "subnet-api",
+  url: "https://x.example/signed-empty-names",
+  auth_required: true,
+  auth: { scheme: "signature", location: "header", names: [] },
+  probe: { method: "GET", enabled: true },
+};
+
+const SIGNATURE_NO_LOCATION_SURFACE = {
+  surface_id: "x:api:18",
+  netuid: 22,
+  kind: "subnet-api",
+  url: "https://x.example/signed-no-location",
+  auth_required: true,
+  auth: { scheme: "signature", names: ["X-Hotkey", "X-Signature"] },
+  probe: { method: "GET", enabled: true },
+};
+
 const CATALOG = {
   surfaces: [
     NO_AUTH_SURFACE,
@@ -195,6 +285,13 @@ const CATALOG = {
     INCOMPLETE_AUTH_SURFACE,
     DISABLED_PROBE_BEARER_SURFACE,
     MISSING_LOCATION_SURFACE,
+    SIGNATURE_HEADER_SURFACE,
+    SIGNATURE_QUERY_SURFACE,
+    SIGNATURE_COOKIE_SURFACE,
+    SIGNATURE_BODY_SURFACE,
+    SIGNATURE_NO_NAMES_SURFACE,
+    SIGNATURE_EMPTY_NAMES_SURFACE,
+    SIGNATURE_NO_LOCATION_SURFACE,
   ],
 };
 
@@ -831,6 +928,288 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /no_schema/);
       assert.equal(sentHeader, undefined);
       assert.equal(requestedUrl, undefined);
+    });
+  });
+
+  // #7701 (MCP execute Phase 4): scheme:signature multi-value credential
+  // bundle -- eligibility validation and placement across every supported
+  // location. src/call-subnet-surface.mjs's own unit tests already cover
+  // placement/redaction exhaustively; this block proves the tool-layer
+  // eligibility gate (name-set matching, value typing, body's path/method
+  // requirement) end-to-end.
+  describe("signature-scheme credential passthrough (#7701)", () => {
+    test("location:header injects every named header", async () => {
+      let sentHeaders;
+      const result = await callTool(
+        {
+          surface_id: "x:api:12",
+          credential: {
+            "X-Hotkey": "5F...",
+            "X-Timestamp": "1700000000",
+            "X-Signature": "0xabc",
+          },
+        },
+        async (url, init) => {
+          sentHeaders = init.headers;
+          return new Response("{}", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(sentHeaders["X-Hotkey"], "5F...");
+      assert.equal(sentHeaders["X-Timestamp"], "1700000000");
+      assert.equal(sentHeaders["X-Signature"], "0xabc");
+    });
+
+    test("location:query merges every named param", async () => {
+      let requestedUrl;
+      const result = await callTool(
+        {
+          surface_id: "x:api:13",
+          credential: { validator_hotkey: "5F...", signature: "0xabc" },
+        },
+        async (url) => {
+          requestedUrl = String(url);
+          return new Response("{}", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(
+        new URL(requestedUrl).searchParams.get("validator_hotkey"),
+        "5F...",
+      );
+      assert.equal(
+        new URL(requestedUrl).searchParams.get("signature"),
+        "0xabc",
+      );
+    });
+
+    test("location:cookie joins every named cookie", async () => {
+      let sentHeaders;
+      const result = await callTool(
+        {
+          surface_id: "x:api:14",
+          credential: { session: "abc", csrf: "def" },
+        },
+        async (url, init) => {
+          sentHeaders = init.headers;
+          return new Response("{}", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(sentHeaders.cookie, "session=abc; csrf=def");
+    });
+
+    test("location:body merges every named field into an explicitly-supplied JSON body", async () => {
+      let sentBody;
+      let sentContentType;
+      const result = await callTool(
+        {
+          surface_id: "x:api:15",
+          path: "/users",
+          method: "POST",
+          body: { name: "ada" },
+          credential: {
+            identity: "5F...",
+            timestamp: "1700000000",
+            signature: "0xabc",
+          },
+        },
+        async (url, init) => {
+          sentBody = init.body;
+          sentContentType = init.headers["content-type"];
+          return new Response(JSON.stringify({ id: 1 }), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.deepEqual(JSON.parse(sentBody), {
+        name: "ada",
+        identity: "5F...",
+        timestamp: "1700000000",
+        signature: "0xabc",
+      });
+      assert.equal(sentContentType, "application/json");
+    });
+
+    test("location:body with no separately-supplied body still defaults content-type to application/json", async () => {
+      let sentBody;
+      let sentContentType;
+      const result = await callTool(
+        {
+          surface_id: "x:api:15",
+          path: "/ping",
+          method: "POST",
+          credential: {
+            identity: "5F...",
+            timestamp: "1700000000",
+            signature: "0xabc",
+          },
+        },
+        async (url, init) => {
+          sentBody = init.body;
+          sentContentType = init.headers["content-type"];
+          return new Response("pong", { status: 200 });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.deepEqual(JSON.parse(sentBody), {
+        identity: "5F...",
+        timestamp: "1700000000",
+        signature: "0xabc",
+      });
+      assert.equal(sentContentType, "application/json");
+    });
+
+    test("a credential missing a required name is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:12",
+        credential: { "X-Hotkey": "5F...", "X-Timestamp": "1700000000" },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /Missing/);
+    });
+
+    test("a credential carrying an extra unexpected key is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:12",
+        credential: {
+          "X-Hotkey": "5F...",
+          "X-Timestamp": "1700000000",
+          "X-Signature": "0xabc",
+          "X-Extra": "nope",
+        },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /Unexpected/);
+    });
+
+    test("a non-string credential value is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:12",
+        credential: {
+          "X-Hotkey": "5F...",
+          "X-Timestamp": 1700000000,
+          "X-Signature": "0xabc",
+        },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /non-empty string/);
+    });
+
+    test("an empty-string credential value is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:12",
+        credential: {
+          "X-Hotkey": "",
+          "X-Timestamp": "1700000000",
+          "X-Signature": "0xabc",
+        },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /non-empty string/);
+    });
+
+    test("a plain string credential is invalid_params -- signature scheme requires an object", async () => {
+      const result = await callTool({
+        surface_id: "x:api:12",
+        credential: "just-a-string",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /object mapping/);
+    });
+
+    test("an object credential on a bearer surface is invalid_params -- bearer requires a string", async () => {
+      const result = await callTool({
+        surface_id: "x:api:6",
+        credential: { token: "abc123" },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /not an object/);
+    });
+
+    test("an array credential is treated as no credential at all (auth_required)", async () => {
+      const result = await callTool({
+        surface_id: "x:api:12",
+        credential: ["5F...", "1700000000", "0xabc"],
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /auth_required/);
+    });
+
+    test("location:body without path/method (POST or PUT) is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:15",
+        credential: {
+          identity: "5F...",
+          timestamp: "1700000000",
+          signature: "0xabc",
+        },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /POST or PUT/);
+    });
+
+    test("location:body with method GET is invalid_params even though path is set", async () => {
+      // Distinct from the no-path-at-all case above: exercises the PUT half
+      // of the POST/PUT check once hasPath is already true.
+      const result = await callTool({
+        surface_id: "x:api:15",
+        path: "/users/123",
+        method: "GET",
+        credential: {
+          identity: "5F...",
+          timestamp: "1700000000",
+          signature: "0xabc",
+        },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /POST or PUT/);
+    });
+
+    test("a surface with no auth.names documented is credential_not_supported", async () => {
+      const result = await callTool({
+        surface_id: "x:api:16",
+        credential: { "X-Hotkey": "5F..." },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
+    });
+
+    test("a surface with an empty auth.names array is credential_not_supported", async () => {
+      const result = await callTool({
+        surface_id: "x:api:17",
+        credential: { whatever: "x" },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
+    });
+
+    test("a surface with auth.names but no auth.location is credential_not_supported", async () => {
+      const result = await callTool({
+        surface_id: "x:api:18",
+        credential: { "X-Hotkey": "5F...", "X-Signature": "0xabc" },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
     });
   });
 

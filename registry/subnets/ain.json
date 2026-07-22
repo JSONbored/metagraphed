@@ -533,8 +533,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-results-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-results-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -559,8 +561,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-reveals-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-reveals-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -585,8 +589,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "signature",
+        "scopes_note": "Requires both the x-user-hotkey and x-service-token headers together (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"; both are declared as required header parameters on this operation in the subnet's own OpenAPI spec). No bearer token alone is accepted.",
+        "location": "header",
+        "names": ["x-user-hotkey", "x-service-token"]
       },
       "auth_required": true,
       "authority": "community",
@@ -611,8 +617,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -637,8 +645,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -663,8 +673,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -689,8 +701,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-service-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-service-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -715,8 +729,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -741,8 +757,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -767,8 +785,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -793,8 +813,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -819,8 +841,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -845,8 +869,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-admin-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-admin-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -871,8 +897,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-results-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-results-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -897,8 +925,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-results-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-results-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -923,8 +953,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-results-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-results-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -949,8 +981,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-service-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-service-token"
       },
       "auth_required": true,
       "authority": "community",
@@ -975,8 +1009,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scheme": "api-key",
+        "scopes_note": "Requires a x-service-token header (confirmed live: an unauthenticated request returns HTTP 401 \"unauthorized\"). No bearer token or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "x-service-token"
       },
       "auth_required": true,
       "authority": "community",

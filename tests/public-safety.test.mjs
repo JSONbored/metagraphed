@@ -34,7 +34,17 @@ const TEST_FIXTURE = "__public_safety_test__.json";
 const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);
 const TEST_PUBLIC_FILE = "__public_safety_test__.txt";
 const TEST_PUBLIC_PATH = path.join(repoRoot, "public", TEST_PUBLIC_FILE);
-const SCANNER_TEST_TIMEOUT_MS = 15000;
+// Each of the 38 tests that call runScanOutput() spawns a real `node
+// scripts/scan-public-safety.mjs` subprocess that walks the entire repo tree
+// -- unlike this file's other (in-process) tests, its cost scales with repo
+// size and is subject to real process-spawn/scheduler variance, not just
+// this file's own logic. 15000ms (set when the registry was a fraction of
+// today's size) left too thin a margin: a solo run now measures ~4.3s, but
+// under any contention (CI runner load, other parallel test files/
+// processes) that 3.5x margin evaporates, intermittently timing out tests
+// that aren't actually hung. 45000ms keeps a genuine hang catchable while
+// giving this subprocess-per-test pattern room to keep growing with the repo.
+const SCANNER_TEST_TIMEOUT_MS = 45000;
 
 vi.setConfig({ testTimeout: SCANNER_TEST_TIMEOUT_MS });
 
@@ -670,6 +680,52 @@ describe("captured-fixture body scan", () => {
         `line ${line} should be flagged as sensitive hotkey wording; got:\n${output}`,
       );
     }
+  });
+
+  test("does not flag a real X-Role-Hotkey HTTP header name", async () => {
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "X-Validator-Hotkey",
+        "X-Miner-Hotkey",
+        "Requires the X-Validator-Hotkey and X-Validator-Signature headers.",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `a real X-Role-Hotkey header name must not trip sensitive hotkey wording; got:\n${output}`,
+    );
+  });
+
+  test("still flags validator/miner hotkey prose alongside a real header name on other lines", async () => {
+    // The allowlist strips only the exact "X-Role-Hotkey" shape -- lowercase
+    // or space-joined wording using the same words, even on an adjacent line
+    // in the same file, must still trip the rule untouched.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "X-Validator-Hotkey",
+        "share your validator hotkey with us",
+        "x-validator-hotkey",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.ok(
+      !output.includes(`${TEST_PUBLIC_FILE}:1: sensitive hotkey wording`),
+      `line 1 (real header name) must not be flagged; got:\n${output}`,
+    );
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:2: sensitive hotkey wording`),
+      `line 2 (space-joined prose) should still be flagged; got:\n${output}`,
+    );
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:3: sensitive hotkey wording`),
+      `line 3 (lowercase header-shaped text) should still be flagged; got:\n${output}`,
+    );
   });
 });
 

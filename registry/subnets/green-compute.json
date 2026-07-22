@@ -70,8 +70,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Exact credential mechanism not confirmed -- the endpoint validates the request body before auth, so an auth-specific probe response could not be observed."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "official",
@@ -281,8 +283,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -310,8 +314,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -339,8 +345,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -368,8 +376,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -397,8 +407,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -426,8 +438,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -455,8 +469,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -484,8 +500,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -513,8 +531,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -542,8 +562,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -571,8 +593,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -600,8 +624,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -629,8 +655,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -658,8 +686,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -687,8 +717,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -716,8 +748,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -745,8 +779,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -774,8 +810,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -803,8 +841,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -832,8 +872,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -861,8 +903,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -890,8 +934,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -919,8 +965,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -948,8 +996,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -977,8 +1027,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1006,8 +1058,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1035,8 +1089,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1064,8 +1120,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1093,8 +1151,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1122,8 +1182,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1151,8 +1213,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1180,8 +1244,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1209,8 +1275,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1238,8 +1306,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1267,8 +1337,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1296,8 +1368,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1325,8 +1399,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1354,8 +1430,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1383,8 +1461,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1412,8 +1492,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1441,8 +1523,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1470,8 +1554,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1499,8 +1585,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1528,8 +1616,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1557,8 +1647,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1586,8 +1678,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1615,8 +1709,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1644,8 +1740,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1673,8 +1771,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1702,8 +1802,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1731,8 +1833,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1760,8 +1864,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1789,8 +1895,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1818,8 +1926,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1847,8 +1957,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1876,8 +1988,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1905,8 +2019,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1934,8 +2050,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1963,8 +2081,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1992,8 +2112,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2021,8 +2143,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2050,8 +2174,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2079,8 +2205,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2108,8 +2236,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2137,8 +2267,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2166,8 +2298,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2195,8 +2329,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2224,8 +2360,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2253,8 +2391,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2282,8 +2422,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2311,8 +2453,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2340,8 +2484,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2369,8 +2515,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2398,8 +2546,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2427,8 +2577,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2456,8 +2608,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2485,8 +2639,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2514,8 +2670,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2543,8 +2701,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2572,8 +2732,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2601,8 +2763,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2630,8 +2794,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2659,8 +2825,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2688,8 +2856,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2717,8 +2887,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2746,8 +2918,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2775,8 +2949,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2804,8 +2980,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2833,8 +3011,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2862,8 +3042,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2891,8 +3073,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2920,8 +3104,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2949,8 +3135,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2978,8 +3166,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented in the OpenAPI schema (no securitySchemes), but anonymous callers typically receive HTTP 401 missing api key (live-verified 2026-07-21 on /platform/nodes/supported and siblings). Same posture as sn-110-green-compute-chat-completions-api."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",

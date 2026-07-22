@@ -214,7 +214,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -240,7 +240,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -266,7 +266,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -292,7 +292,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -318,7 +318,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -344,7 +344,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -370,7 +370,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -396,7 +396,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -422,7 +422,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -448,7 +448,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -474,7 +474,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -500,7 +500,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -526,7 +526,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -552,7 +552,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -578,7 +578,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -604,7 +604,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -630,7 +630,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -656,7 +656,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -682,7 +682,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -708,7 +708,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -734,7 +734,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 403 (live-verified 2026-07-21 on sibling routes /api/private/frontend/summary and /api/private/frontend/competitions-list)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -760,7 +760,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -786,7 +786,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -812,7 +812,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -838,7 +838,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -864,7 +864,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -890,7 +890,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -916,7 +916,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -942,7 +942,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -968,7 +968,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -994,7 +994,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1020,7 +1020,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1046,7 +1046,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1072,7 +1072,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1098,7 +1098,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1124,7 +1124,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1150,7 +1150,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1176,7 +1176,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path (a documentation gap on SOMA's side), but anonymous callers receive HTTP 401 despite the 'public/frontend-key' path prefix (live-verified 2026-07-21 on sibling routes /api/public/frontend-key/summary and /api/public/frontend-key/competitions-list). Requires a frontend-key credential."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1202,7 +1202,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1228,7 +1228,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1254,7 +1254,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1280,7 +1280,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1306,7 +1306,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1332,7 +1332,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1358,7 +1358,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -1384,7 +1384,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Bittensor miner/validator protocol action -- the OpenAPI schema declares no security scheme, but these routes almost certainly require hotkey-signature or subnet credentials not expressed in OpenAPI security (not spot-verified individually; flagged in metagraphed#7125 for maintainer confirmation before Phase 3 credential passthrough)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",

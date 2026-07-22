@@ -276,6 +276,21 @@ const patterns = [
     // is.
     regex:
       /\b(?:private|secret|wallet|validator|miner)[\s-]+hotkey\b|\bhotkey[\s_-]+(?:path|private[\s_-]?key|seed[\s_-]?phrase|seed|mnemonic)\b/i,
+    // A real HTTP custom-header name, e.g. "X-Validator-Hotkey" or
+    // "X-Miner-Hotkey" (confirmed live 2026-07-22 against swarm124.com's and
+    // adtao.io's own APIs, and stored verbatim in registry/subnets/*.json's
+    // auth.names since that's the literal header the tool must send) -- this
+    // is the hyphenated sibling of the already-exempted `<role>_hotkey`
+    // snake_case field name above, just spelled the way HTTP header names
+    // conventionally are. Deliberately case-SENSITIVE and requires the
+    // leading "X-" + capitalized-word shape, unlike the case-insensitive main
+    // regex: that's what distinguishes "this is a real header identifier"
+    // from suspicious prose using the same words -- lowercase or
+    // space-joined "x-validator-hotkey"/"validator hotkey" still trips the
+    // rule untouched. Only "Hotkey" as the header's final segment is
+    // exempted; "X-Validator-Seed-Phrase" or similar would still match the
+    // main regex's other alternatives.
+    allow: /\bX-[A-Z][A-Za-z]*-Hotkey\b/g,
     soft: true,
   },
 ];

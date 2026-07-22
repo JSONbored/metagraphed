@@ -3813,7 +3813,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_tao: 1000 }]);
   });
 
-  test("validators: sort and limit args are forwarded as query params to the Postgres tier", async () => {
+  test("validators: sort is forwarded to the Postgres tier; limit is always the REST max window", async () => {
     let capturedUrl;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
@@ -3823,7 +3823,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
           return Response.json({
             schema_version: 1,
             sort: "uid_count",
-            limit: 5,
+            limit: 100,
             captured_at: null,
             block_number: null,
             validator_count: 0,
@@ -3835,10 +3835,10 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     await gql('{ validators(sort: "uid_count", limit: 5) { total } }', env);
     assert.equal(capturedUrl.pathname, "/api/v1/validators");
     assert.equal(capturedUrl.searchParams.get("sort"), "uid_count");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
   });
 
-  test("validators: an omitted limit forwards the default limit to the Postgres tier", async () => {
+  test("validators: an omitted GraphQL limit still fetches the REST max window from the Postgres tier", async () => {
     let capturedUrl;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
@@ -3848,7 +3848,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
           return Response.json({
             schema_version: 1,
             sort: "subnet_count",
-            limit: 20,
+            limit: 100,
             captured_at: null,
             block_number: null,
             validator_count: 0,
@@ -3859,7 +3859,54 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     await gql("{ validators { total } }", env);
     assert.equal(capturedUrl.searchParams.get("sort"), "subnet_count");
-    assert.equal(capturedUrl.searchParams.get("limit"), "20");
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("validators: paginate with a hotkey cursor", async () => {
+    const payload = {
+      schema_version: 1,
+      sort: "subnet_count",
+      limit: 100,
+      captured_at: null,
+      block_number: null,
+      validator_count: 2,
+      validators: [
+        {
+          hotkey: "5Alpha",
+          featured: false,
+          subnet_count: 2,
+          subnets: [],
+        },
+        {
+          hotkey: "5Beta",
+          featured: false,
+          subnet_count: 1,
+          subnets: [],
+        },
+      ],
+    };
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json(payload),
+      },
+    };
+    const first = await gql(
+      "{ validators(limit: 1) { items { hotkey } total next_cursor } }",
+      env,
+    );
+    assert.equal(first.status, 200);
+    assert.equal(first.body.data.validators.total, 2);
+    assert.equal(first.body.data.validators.items[0].hotkey, "5Alpha");
+    assert.equal(first.body.data.validators.next_cursor, "5Alpha");
+
+    const second = await gql(
+      '{ validators(limit: 1, cursor: "5Alpha") { items { hotkey } next_cursor } }',
+      env,
+    );
+    assert.equal(second.status, 200);
+    assert.equal(second.body.data.validators.items[0].hotkey, "5Beta");
+    assert.equal(second.body.data.validators.next_cursor, null);
   });
 
   test("validators: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -3962,6 +4009,28 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       { netuid: 1, stake_tao: 500 },
       { netuid: 3, stake_tao: 1500 },
     ]);
+  });
+
+  test("validator: a malformed Postgres-tier body degrades to a schema-stable zeroed aggregate", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => Response.json({}) },
+    };
+    const { status, body } = await gql(
+      '{ validator(hotkey: "5NoRows") { hotkey featured subnet_count total_stake_tao captured_at block_number subnets { netuid } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.validator, {
+      hotkey: "5NoRows",
+      featured: false,
+      subnet_count: 0,
+      total_stake_tao: 0,
+      captured_at: null,
+      block_number: null,
+      subnets: [],
+    });
   });
 
   test("validators / validator are weighted as fan-out fields", () => {
@@ -19439,6 +19508,91 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     assert.equal(event.method, "WeightsSet");
     assert.deepEqual(event.args, { netuid: 7 });
     assert.equal(event.observed_at, 1_720_000_000_000);
+  });
+
+  test("a block+extrinsic lookup resolves that extrinsic's emitted events", async () => {
+    // The get_extrinsic_chain_events use case (#7647): the raw pallet.method
+    // events one specific extrinsic emitted, scoped by ?block=&extrinsic=.
+    let capturedUrl;
+    const env = {
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            count: 2,
+            next_before: null,
+            next_cursor: null,
+            events: [
+              {
+                block_number: 9,
+                event_index: 4,
+                pallet: "SubtensorModule",
+                method: "StakeAdded",
+                args: { netuid: 3 },
+                phase: "ApplyExtrinsic",
+                extrinsic_index: 1,
+                observed_at: 1_720_000_000_000,
+              },
+              {
+                block_number: 9,
+                event_index: 5,
+                pallet: "System",
+                method: "ExtrinsicSuccess",
+                args: {},
+                phase: "ApplyExtrinsic",
+                extrinsic_index: 1,
+                observed_at: 1_720_000_000_000,
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ chain_events(block: 9, extrinsic: 1) {
+          count
+          events { block_number event_index pallet method extrinsic_index }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.searchParams.get("block"), "9");
+    assert.equal(capturedUrl.searchParams.get("extrinsic"), "1");
+    assert.equal(body.data.chain_events.count, 2);
+    const events = body.data.chain_events.events;
+    assert.equal(events.length, 2);
+    assert.ok(events.every((e) => e.block_number === 9));
+    assert.ok(events.every((e) => e.extrinsic_index === 1));
+    assert.deepEqual(
+      events.map((e) => `${e.pallet}.${e.method}`),
+      ["SubtensorModule.StakeAdded", "System.ExtrinsicSuccess"],
+    );
+  });
+
+  test("a block+extrinsic pair that emitted nothing resolves the schema-stable empty feed, never an error", async () => {
+    const env = {
+      DATA_API: dataApi(
+        Response.json({
+          count: 0,
+          next_before: null,
+          next_cursor: null,
+          events: [],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      "{ chain_events(block: 9, extrinsic: 3) { count next_cursor next_before events { pallet } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.chain_events, {
+      count: 0,
+      next_cursor: null,
+      next_before: null,
+      events: [],
+    });
   });
 
   test("forwards filter args as query params, including legacy before", async () => {

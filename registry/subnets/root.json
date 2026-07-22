@@ -183,7 +183,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Nodies now requires a paid subscription plan (HTTP 403 without one, verified 2026-06-15); exact credential mechanism is not publicly documented."
+        "scopes_note": "Requires a paid subscription plan; not a free-tier API key or bearer token. See the subnet operator's pricing for access."
       },
       "auth_required": true,
       "authority": "community",

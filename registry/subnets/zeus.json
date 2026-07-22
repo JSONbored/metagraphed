@@ -203,8 +203,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path, but anonymous callers receive HTTP 401 Invalid API key (live-verified 2026-07-21)."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -232,8 +234,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path, but anonymous callers receive HTTP 401 Invalid API key (live-verified 2026-07-21)."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -262,7 +266,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Not publicly documented -- the OpenAPI schema declares no security scheme for this path, but anonymous callers receive HTTP 403 (live-verified 2026-07-21)."
+        "scopes_note": "The exact credential mechanism for this endpoint is not publicly documented."
       },
       "auth_required": true,
       "authority": "community",

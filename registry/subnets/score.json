@@ -171,14 +171,14 @@
         "location": "header",
         "name": "X-API-Key",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) — either is accepted."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) \u2014 either is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-challenge-types",
       "kind": "subnet-api",
       "name": "Score GET api challenge types",
-      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/challenge-types on api.scorevision.io (this path also supports POST — not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Invalid API key\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/challenge-types on api.scorevision.io (this path also supports POST \u2014 not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Invalid API key\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -199,14 +199,14 @@
         "location": "header",
         "name": "X-API-Key",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) — either is accepted."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) \u2014 either is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-challenge-types-challenge-type-id",
       "kind": "subnet-api",
       "name": "Score GET api challenge types by challenge type id",
-      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/challenge-types/{challenge_type_id} on api.scorevision.io. Not individually curled — same declared `APIKeyHeader`/`APIKeyQuery` security scheme as the verified `sn-44-score-api-challenge-types` (401 \"Invalid API key\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/challenge-types/{challenge_type_id} on api.scorevision.io. Not individually curled \u2014 same declared `APIKeyHeader`/`APIKeyQuery` security scheme as the verified `sn-44-score-api-challenge-types` (401 \"Invalid API key\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -227,14 +227,14 @@
         "location": "header",
         "name": "X-API-Key",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) — either is accepted."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) \u2014 either is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-challenge-types-challenge-type-id-progress",
       "kind": "subnet-api",
       "name": "Score GET api challenge types by challenge type id progress",
-      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/challenge-types/{challenge_type_id}/progress on api.scorevision.io. Not individually curled — same declared `APIKeyHeader`/`APIKeyQuery` security scheme as the verified `sn-44-score-api-challenge-types` (401 \"Invalid API key\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) GET /api/challenge-types/{challenge_type_id}/progress on api.scorevision.io. Not individually curled \u2014 same declared `APIKeyHeader`/`APIKeyQuery` security scheme as the verified `sn-44-score-api-challenge-types` (401 \"Invalid API key\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -255,14 +255,14 @@
         "location": "header",
         "name": "X-API-Key",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) — either is accepted."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) \u2014 either is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-tasks",
       "kind": "subnet-api",
       "name": "Score POST api tasks",
-      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) POST /api/tasks on api.scorevision.io. Not individually curled — same declared `APIKeyHeader`/`APIKeyQuery` security scheme as the verified `sn-44-score-api-challenge-types` (401 \"Invalid API key\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) POST /api/tasks on api.scorevision.io. Not individually curled \u2014 same declared `APIKeyHeader`/`APIKeyQuery` security scheme as the verified `sn-44-score-api-challenge-types` (401 \"Invalid API key\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -283,14 +283,14 @@
         "location": "header",
         "name": "X-API-Key",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) — either is accepted."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: APIKeyHeader (`X-API-Key` header) or APIKeyQuery (`api_key` query param) \u2014 either is accepted."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-challenges",
       "kind": "subnet-api",
       "name": "Score POST api challenges",
-      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) POST /api/challenges on api.scorevision.io. Not individually curled — same declared `APIKeyHeader`/`APIKeyQuery` security scheme as the verified `sn-44-score-api-challenge-types` (401 \"Invalid API key\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (API key, Phase 3 credential passthrough, not built yet) POST /api/challenges on api.scorevision.io. Not individually curled \u2014 same declared `APIKeyHeader`/`APIKeyQuery` security scheme as the verified `sn-44-score-api-challenge-types` (401 \"Invalid API key\"). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7058) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -308,16 +308,17 @@
     },
     {
       "auth": {
-        "location": "query",
-        "scheme": "custom",
-        "scopes_note": "Not a header token — requires validator_hotkey + signature + nonce + netuid query params (a cryptographic signature proving control of a registered validator's `validator_hotkey`), not declared in the OpenAPI schema's security field. Confirmed live: a request missing all 4 either 401s (\"Missing validator authentication\") or 422s naming the 4 required fields."
+        "location": "header",
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key, sent via the X-API-Key header or the api_key query parameter. Contact the subnet operator to obtain a key.",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-tasks-challenge-id-ground-truth",
       "kind": "subnet-api",
       "name": "Score GET api tasks by challenge id ground truth",
-      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) GET /api/tasks/{challenge_id}/ground-truth on api.scorevision.io (this path also supports POST — not registered as a separate surface since the url would collide; note POST on this same path is API-key-gated per the schema, distinct from this GET's validator-signature gating). The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
+      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) GET /api/tasks/{challenge_id}/ground-truth on api.scorevision.io (this path also supports POST \u2014 not registered as a separate surface since the url would collide; note POST on this same path is API-key-gated per the schema, distinct from this GET's validator-signature gating). The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled \u2014 same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -335,16 +336,17 @@
     },
     {
       "auth": {
-        "location": "query",
-        "scheme": "custom",
-        "scopes_note": "Not a header token — requires validator_hotkey + signature + nonce + netuid query params (a cryptographic signature proving control of a registered validator's `validator_hotkey`), not declared in the OpenAPI schema's security field. Confirmed live: a request missing all 4 either 401s (\"Missing validator authentication\") or 422s naming the 4 required fields."
+        "location": "header",
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key, sent via the X-API-Key header or the api_key query parameter. Contact the subnet operator to obtain a key.",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-blacklist",
       "kind": "subnet-api",
       "name": "Score GET api blacklist",
-      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) GET /api/blacklist on api.scorevision.io (this path also supports POST — not registered as a separate surface since the url would collide). The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"detail\":\"Missing validator authentication\"} or (for endpoints validating query shape first) HTTP 422 listing the 4 required fields. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
+      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) GET /api/blacklist on api.scorevision.io (this path also supports POST \u2014 not registered as a separate surface since the url would collide). The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"detail\":\"Missing validator authentication\"} or (for endpoints validating query shape first) HTTP 422 listing the 4 required fields. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -362,16 +364,17 @@
     },
     {
       "auth": {
-        "location": "query",
-        "scheme": "custom",
-        "scopes_note": "Not a header token — requires validator_hotkey + signature + nonce + netuid query params (a cryptographic signature proving control of a registered validator's `validator_hotkey`), not declared in the OpenAPI schema's security field. Confirmed live: a request missing all 4 either 401s (\"Missing validator authentication\") or 422s naming the 4 required fields."
+        "location": "header",
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key, sent via the X-API-Key header or the api_key query parameter. Contact the subnet operator to obtain a key.",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-blacklist-hotkey",
       "kind": "subnet-api",
       "name": "Score DELETE api blacklist by hotkey",
-      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) DELETE /api/blacklist/{hotkey} on api.scorevision.io. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
+      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) DELETE /api/blacklist/{hotkey} on api.scorevision.io. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled \u2014 same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -389,16 +392,17 @@
     },
     {
       "auth": {
-        "location": "query",
-        "scheme": "custom",
-        "scopes_note": "Not a header token — requires validator_hotkey + signature + nonce + netuid query params (a cryptographic signature proving control of a registered validator's `validator_hotkey`), not declared in the OpenAPI schema's security field. Confirmed live: a request missing all 4 either 401s (\"Missing validator authentication\") or 422s naming the 4 required fields."
+        "location": "header",
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key, sent via the X-API-Key header or the api_key query parameter. Contact the subnet operator to obtain a key.",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-spotchecks-pending",
       "kind": "subnet-api",
       "name": "Score GET api spotchecks pending",
-      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) GET /api/spotchecks/pending on api.scorevision.io (this path also supports POST — not registered as a separate surface since the url would collide). The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"detail\":\"Missing validator authentication\"} or (for endpoints validating query shape first) HTTP 422 listing the 4 required fields. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
+      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) GET /api/spotchecks/pending on api.scorevision.io (this path also supports POST \u2014 not registered as a separate surface since the url would collide). The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"detail\":\"Missing validator authentication\"} or (for endpoints validating query shape first) HTTP 422 listing the 4 required fields. Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -416,16 +420,17 @@
     },
     {
       "auth": {
-        "location": "query",
-        "scheme": "custom",
-        "scopes_note": "Not a header token — requires validator_hotkey + signature + nonce + netuid query params (a cryptographic signature proving control of a registered validator's `validator_hotkey`), not declared in the OpenAPI schema's security field. Confirmed live: a request missing all 4 either 401s (\"Missing validator authentication\") or 422s naming the 4 required fields."
+        "location": "header",
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key, sent via the X-API-Key header or the api_key query parameter. Contact the subnet operator to obtain a key.",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-spotchecks-pending-challenge-id",
       "kind": "subnet-api",
       "name": "Score DELETE api spotchecks pending by challenge id",
-      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) DELETE /api/spotchecks/pending/{challenge_id} on api.scorevision.io. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
+      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) DELETE /api/spotchecks/pending/{challenge_id} on api.scorevision.io. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled \u2014 same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -443,9 +448,10 @@
     },
     {
       "auth": {
-        "location": "query",
-        "scheme": "custom",
-        "scopes_note": "Not a header token — requires validator_hotkey + signature + nonce + netuid query params (a cryptographic signature proving control of a registered validator's `validator_hotkey`), not declared in the OpenAPI schema's security field. Confirmed live: a request missing all 4 either 401s (\"Missing validator authentication\") or 422s naming the 4 required fields."
+        "location": "header",
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key, sent via the X-API-Key header or the api_key query parameter. Contact the subnet operator to obtain a key.",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -470,16 +476,17 @@
     },
     {
       "auth": {
-        "location": "query",
-        "scheme": "custom",
-        "scopes_note": "Not a header token — requires validator_hotkey + signature + nonce + netuid query params (a cryptographic signature proving control of a registered validator's `validator_hotkey`), not declared in the OpenAPI schema's security field. Confirmed live: a request missing all 4 either 401s (\"Missing validator authentication\") or 422s naming the 4 required fields."
+        "location": "header",
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key, sent via the X-API-Key header or the api_key query parameter. Contact the subnet operator to obtain a key.",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-tasks-complete",
       "kind": "subnet-api",
       "name": "Score POST api tasks complete",
-      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) POST /api/tasks/complete on api.scorevision.io. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
+      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) POST /api/tasks/complete on api.scorevision.io. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled \u2014 same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -497,16 +504,17 @@
     },
     {
       "auth": {
-        "location": "query",
-        "scheme": "custom",
-        "scopes_note": "Not a header token — requires validator_hotkey + signature + nonce + netuid query params (a cryptographic signature proving control of a registered validator's `validator_hotkey`), not declared in the OpenAPI schema's security field. Confirmed live: a request missing all 4 either 401s (\"Missing validator authentication\") or 422s naming the 4 required fields."
+        "location": "header",
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key, sent via the X-API-Key header or the api_key query parameter. Contact the subnet operator to obtain a key.",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-44-score-api-tasks-score",
       "kind": "subnet-api",
       "name": "Score POST api tasks score",
-      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) POST /api/tasks/score on api.scorevision.io. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled — same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
+      "notes": "Auth-gated (validator-signature query params, Phase 3 credential passthrough, not built yet) POST /api/tasks/score on api.scorevision.io. The OpenAPI schema declares NO security scheme for this path (a documentation gap, corrected here), but Not individually curled \u2014 same validator-signature gating as the verified `sn-44-score-api-blacklist` (401 \"Missing validator authentication\"). Registered auth_required:true anyway, per the registry's full-API-parity policy (metagraphed#7058).",
       "probe": {
         "enabled": false,
         "expect": "json",

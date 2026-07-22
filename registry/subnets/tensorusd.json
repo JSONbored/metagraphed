@@ -187,7 +187,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The /api/openapi.json path returns HTTP 401 unauthenticated, confirming a real gated schema endpoint; the required credential/header format is not documented (the schema itself is unreadable without it)."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet; this endpoint requires authentication to access."
       },
       "auth_required": true,
       "authority": "community",
