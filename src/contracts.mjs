@@ -1,7 +1,7 @@
 import { artifactStorageTierForPath } from "./artifact-storage.ts";
 import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
-import { sampleFromSchema } from "./openapi-sample.mjs";
+import { sampleFromSchema } from "./openapi-sample.ts";
 
 export const CONTRACT_VERSION = "2026-07-03.2";
 export const SCHEMA_VERSION = 1;

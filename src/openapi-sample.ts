@@ -8,6 +8,9 @@
 // responses rather than bare placeholders. Validity is enforced downstream by
 // scripts/validate-openapi-examples.mjs (ajv against each operation's schema).
 
+type Schema = Record<string, unknown>;
+type Sample = Record<string, unknown>;
+
 // Top levels show optional fields (informative); deeper levels stay required-only
 // so examples don't explode. MAX_DEPTH bounds recursion on self-referential schemas.
 const OPTIONAL_DEPTH = 3;
@@ -21,7 +24,7 @@ const SAMPLE_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const SAMPLE_COUNTERPARTY_SS58 =
   "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ";
 
-function valueForPattern(pattern, name = "") {
+function valueForPattern(pattern: string, name = ""): string {
   const n = String(name || "").toLowerCase();
   switch (pattern) {
     case "^[a-f0-9]{64}$":
@@ -65,7 +68,7 @@ function valueForPattern(pattern, name = "") {
   }
 }
 
-function seededString(name) {
+function seededString(name: unknown): string {
   const n = String(name || "").toLowerCase();
   if (/(^url$|_url$|href|endpoint|uri|repository|documentation|logo)/.test(n)) {
     return "https://api.metagraph.sh/example";
@@ -99,12 +102,12 @@ function seededString(name) {
   return "example";
 }
 
-function seededNumber(name, schema) {
+function seededNumber(name: unknown, schema: Schema): number {
   const n = String(name || "").toLowerCase();
   const isInt =
     schema.type === "integer" ||
     (Array.isArray(schema.type) && schema.type.includes("integer"));
-  let value;
+  let value: number;
   if (/netuid/.test(n)) value = 7;
   else if (/(uptime_ratio|_ratio$)/.test(n)) value = 0.9966;
   else if (/score$/.test(n)) value = 100;
@@ -122,18 +125,18 @@ function seededNumber(name, schema) {
   return isInt ? Math.round(value) : value;
 }
 
-function seededBoolean(name) {
+function seededBoolean(name: unknown): boolean {
   return /(required|^enabled$|public_safe|^ok$|supported)/.test(
     String(name || "").toLowerCase(),
   );
 }
 
-function sampleAmount(value) {
+function sampleAmount(value: unknown): number {
   const amount = typeof value === "number" ? value : Number(value);
   return Number.isFinite(amount) ? amount : 0;
 }
 
-function normalizeCounterpartyRelationshipSample(out) {
+function normalizeCounterpartyRelationshipSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -149,7 +152,7 @@ function normalizeCounterpartyRelationshipSample(out) {
   let totalSent = 0;
   let totalReceived = 0;
   let transferCount = 0;
-  for (const transfer of out.transfers) {
+  for (const transfer of out.transfers as Sample[]) {
     if (!transfer || typeof transfer !== "object") continue;
     const amount = sampleAmount(transfer.amount_tao);
     if (transfer.direction === "sent") {
@@ -168,7 +171,7 @@ function normalizeCounterpartyRelationshipSample(out) {
   return out;
 }
 
-function normalizeAccountCounterpartiesSample(out) {
+function normalizeAccountCounterpartiesSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -180,7 +183,7 @@ function normalizeAccountCounterpartiesSample(out) {
   }
 
   const relationship = normalizeCounterpartyRelationshipSample(
-    out.relationship,
+    out.relationship as Sample,
   );
   out.relationship = relationship;
   out.total_sent_tao = relationship.total_sent_tao;
@@ -200,11 +203,11 @@ function normalizeAccountCounterpartiesSample(out) {
             last_block: relationship.last_block,
           },
         ];
-  out.counterparty_count = out.counterparties.length;
+  out.counterparty_count = (out.counterparties as unknown[]).length;
   return out;
 }
 
-function normalizeSubnetYieldSample(out) {
+function normalizeSubnetYieldSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -254,7 +257,7 @@ function normalizeSubnetYieldSample(out) {
   return out;
 }
 
-function normalizeAccountStakeFlowSample(out) {
+function normalizeAccountStakeFlowSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -301,7 +304,7 @@ function normalizeAccountStakeFlowSample(out) {
   return out;
 }
 
-function normalizeAccountStakeMovesSample(out) {
+function normalizeAccountStakeMovesSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -334,7 +337,7 @@ function normalizeAccountStakeMovesSample(out) {
   return out;
 }
 
-function normalizeChainTransfersSample(out) {
+function normalizeChainTransfersSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -364,7 +367,7 @@ function normalizeChainTransfersSample(out) {
   return out;
 }
 
-function normalizeChainTransferPairsSample(out) {
+function normalizeChainTransferPairsSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -394,7 +397,7 @@ function normalizeChainTransferPairsSample(out) {
   return out;
 }
 
-function normalizeChainWeightsSample(out) {
+function normalizeChainWeightsSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -430,7 +433,7 @@ function normalizeChainWeightsSample(out) {
   return out;
 }
 
-function normalizeChainServingSample(out) {
+function normalizeChainServingSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -480,7 +483,7 @@ function normalizeChainServingSample(out) {
   return out;
 }
 
-function normalizeChainWeightSettersSample(out) {
+function normalizeChainWeightSettersSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -520,7 +523,7 @@ function normalizeChainWeightSettersSample(out) {
   return out;
 }
 
-function normalizeChainAxonRemovalsSample(out) {
+function normalizeChainAxonRemovalsSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -570,7 +573,7 @@ function normalizeChainAxonRemovalsSample(out) {
   return out;
 }
 
-function normalizeChainPrometheusSample(out) {
+function normalizeChainPrometheusSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -620,7 +623,7 @@ function normalizeChainPrometheusSample(out) {
   return out;
 }
 
-function normalizeChainRegistrationsSample(out) {
+function normalizeChainRegistrationsSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -670,7 +673,7 @@ function normalizeChainRegistrationsSample(out) {
   return out;
 }
 
-function normalizeChainDeregistrationsSample(out) {
+function normalizeChainDeregistrationsSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -720,7 +723,7 @@ function normalizeChainDeregistrationsSample(out) {
   return out;
 }
 
-function normalizeChainStakeMovesSample(out) {
+function normalizeChainStakeMovesSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -770,7 +773,7 @@ function normalizeChainStakeMovesSample(out) {
   return out;
 }
 
-function normalizeChainStakeTransfersSample(out) {
+function normalizeChainStakeTransfersSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -825,7 +828,7 @@ function normalizeChainStakeTransfersSample(out) {
 // on the top-level netuid so this never matches the chain leaderboard's nested `network` block, and
 // on the absence of `subnets`/`network`. The generic per-field generator emits transfers_per_sender
 // independently of transfers/distinct_senders (e.g. 1/1 but 0.5), so pin a consistent worked example.
-function normalizeSubnetStakeTransfersSample(out) {
+function normalizeSubnetStakeTransfersSample(out: Sample): Sample {
   if (
     !out ||
     typeof out !== "object" ||
@@ -845,7 +848,7 @@ function normalizeSubnetStakeTransfersSample(out) {
   return out;
 }
 
-function normalizeObjectSample(out) {
+function normalizeObjectSample(out: Sample): Sample {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
   normalizeAccountStakeFlowSample(out);
@@ -866,18 +869,22 @@ function normalizeObjectSample(out) {
   return out;
 }
 
-function pickType(type) {
+function pickType(type: unknown): unknown {
   if (Array.isArray(type)) {
     return type.find((entry) => entry !== "null") || type[0];
   }
   return type;
 }
 
-function resolveRef(ref, components) {
-  return components[ref.split("/").pop()];
+function resolveRef(ref: string, components: Record<string, Schema>): Schema {
+  return components[ref.split("/").pop() as string];
 }
 
-function markActiveRef(activeRefsByDepth, depth, ref) {
+function markActiveRef(
+  activeRefsByDepth: Map<number, Set<string>>,
+  depth: number,
+  ref: string,
+): boolean {
   let active = activeRefsByDepth.get(depth);
   if (!active) {
     active = new Set();
@@ -888,21 +895,25 @@ function markActiveRef(activeRefsByDepth, depth, ref) {
   return true;
 }
 
-function unmarkActiveRef(activeRefsByDepth, depth, ref) {
+function unmarkActiveRef(
+  activeRefsByDepth: Map<number, Set<string>>,
+  depth: number,
+  ref: string,
+): void {
   activeRefsByDepth.get(depth)?.delete(ref);
 }
 
 // Sample a JSON-Schema (2020-12 subset used by the metagraphed contract) into a
 // concrete, valid instance. `components` is the bundle's components.schemas map.
 export function sampleFromSchema(
-  schema,
-  components,
+  schema: Schema | null | undefined,
+  components: Record<string, Schema>,
   name = "",
   depth = 0,
-  activeRefsByDepth = null,
-) {
+  activeRefsByDepth: Map<number, Set<string>> | null = null,
+): unknown {
   if (!schema || typeof schema !== "object") return null;
-  const activeRefs = activeRefsByDepth ?? new Map();
+  const activeRefs = activeRefsByDepth ?? new Map<number, Set<string>>();
   if (schema.$ref) {
     // Bound self-referential schemas. The object and array branches grow
     // `depth` as they descend, but only the array branch had a MAX_DEPTH guard,
@@ -915,7 +926,7 @@ export function sampleFromSchema(
     // self-hop routed purely through them never advanced `depth` and overflowed.
     // Track active $refs per depth and cut non-advancing revisits.
     if (depth >= MAX_DEPTH) return null;
-    const ref = schema.$ref;
+    const ref = schema.$ref as string;
     if (!markActiveRef(activeRefs, depth, ref)) return null;
     try {
       return sampleFromSchema(
@@ -934,19 +945,19 @@ export function sampleFromSchema(
     return schema.enum.find((value) => value !== null) ?? schema.enum[0];
   }
   if (Array.isArray(schema.allOf)) {
-    let merged = {};
-    let scalar;
-    for (const sub of schema.allOf) {
+    let merged: Sample = {};
+    let scalar: unknown;
+    for (const sub of schema.allOf as Schema[]) {
       const part = sampleFromSchema(sub, components, name, depth, activeRefs);
       if (part && typeof part === "object" && !Array.isArray(part)) {
-        merged = { ...merged, ...part };
+        merged = { ...merged, ...(part as Sample) };
       } else if (part !== null && part !== undefined) {
         scalar = part;
       }
     }
     return Object.keys(merged).length > 0 ? merged : (scalar ?? merged);
   }
-  const variants = schema.oneOf || schema.anyOf;
+  const variants = (schema.oneOf || schema.anyOf) as Schema[] | undefined;
   if (Array.isArray(variants) && variants.length > 0) {
     const pick =
       variants.find((variant) => pickType(variant.type) !== "null") ||
@@ -958,9 +969,9 @@ export function sampleFromSchema(
   if (type === "null") return null;
 
   if (type === "object" || (!type && schema.properties)) {
-    const out = {};
-    const props = schema.properties || {};
-    const required = new Set(schema.required || []);
+    const out: Sample = {};
+    const props = (schema.properties as Record<string, Schema>) || {};
+    const required = new Set((schema.required as string[]) || []);
     const includeOptional = depth < OPTIONAL_DEPTH;
     for (const [key, propSchema] of Object.entries(props)) {
       if (!required.has(key) && !includeOptional) continue;
@@ -981,7 +992,7 @@ export function sampleFromSchema(
       depth < OPTIONAL_DEPTH
     ) {
       out.example = sampleFromSchema(
-        schema.additionalProperties,
+        schema.additionalProperties as Schema,
         components,
         "example",
         depth + 1,
@@ -995,7 +1006,7 @@ export function sampleFromSchema(
     if (depth >= MAX_DEPTH) return [];
     return [
       sampleFromSchema(
-        schema.items || {},
+        (schema.items as Schema) || {},
         components,
         name,
         depth + 1,
@@ -1005,7 +1016,7 @@ export function sampleFromSchema(
   }
 
   if (type === "string") {
-    if (schema.pattern) return valueForPattern(schema.pattern, name);
+    if (schema.pattern) return valueForPattern(schema.pattern as string, name);
     if (schema.format === "uri") return "https://api.metagraph.sh/example";
     if (schema.format === "date-time") return ISO;
     if (schema.format === "date") return DATE_ONLY;
