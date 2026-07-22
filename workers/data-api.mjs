@@ -7712,15 +7712,35 @@ export default {
             100,
           );
           if (counterparty) {
-            // ORDER BY leads with observed_at (same chunk-exclusion fix as
-            // the /api/v1/extrinsics list route) -- not selected, since
-            // buildCounterpartyRelationship only reads the columns above,
-            // but a valid ORDER BY key doesn't need to be in the SELECT list.
+            // METAGRAPHED-6/5: rewritten as a UNION ALL of two single-column-indexed
+            // legs instead of one `((hotkey=? AND coldkey=?) OR (hotkey=? AND
+            // coldkey=?))` predicate. account_events is a 10M-rows/week compressed
+            // TimescaleDB hypertable (#4832/#4869) -- neither idx_ae_kind_hotkey_observed
+            // nor idx_ae_kind_coldkey_observed can drive a single scan across an OR of
+            // two independently-valued hotkey/coldkey pairs, so Postgres fell back to a
+            // cross-chunk scan + sort that timed out under load (statement_timeout
+            // cancellations, "canceling statement due to statement timeout"). Each leg
+            // here filters on ONE indexed `hotkey = <literal>` value (idx_ae_kind_hotkey_
+            // observed covers event_kind+hotkey+observed_at, INCLUDE amount_tao), with
+            // coldkey/observed_at ORDER BY + LIMIT applied inside the leg so the index
+            // scan itself is bounded, not a residual filter over the whole table. The
+            // trailing `${ss58} IS DISTINCT FROM ${counterparty}` guard (NULL-safe,
+            // unlike !=) skips leg 2 entirely when querying an account's relationship
+            // with itself, where both legs would otherwise resolve to the identical
+            // predicate and UNION ALL would double-count every matching row.
             const rows = await sql`
-            SELECT hotkey, coldkey, amount_tao, block_number, event_index
-            FROM account_events
-            WHERE event_kind = 'Transfer'
-              AND ((hotkey = ${ss58} AND coldkey = ${counterparty}) OR (hotkey = ${counterparty} AND coldkey = ${ss58}))
+            SELECT hotkey, coldkey, amount_tao, block_number, event_index FROM (
+              (SELECT hotkey, coldkey, amount_tao, block_number, event_index, observed_at
+               FROM account_events
+               WHERE event_kind = 'Transfer' AND hotkey = ${ss58} AND coldkey = ${counterparty}
+               ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP})
+              UNION ALL
+              (SELECT hotkey, coldkey, amount_tao, block_number, event_index, observed_at
+               FROM account_events
+               WHERE event_kind = 'Transfer' AND hotkey = ${counterparty} AND coldkey = ${ss58}
+                 AND ${ss58} IS DISTINCT FROM ${counterparty}
+               ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP})
+            ) combined
             ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
             const relationship = buildCounterpartyRelationship(
               rows,
@@ -7753,12 +7773,27 @@ export default {
               relationship,
             });
           }
-          // ORDER BY leads with observed_at, same reasoning as the
-          // counterparty-drilldown query above.
+          // METAGRAPHED-6/5: same UNION ALL rewrite as the counterparty-drilldown query
+          // above, for the same reason -- `(hotkey = ? OR coldkey = ?)` can't use either
+          // idx_ae_kind_hotkey_observed or idx_ae_kind_coldkey_observed, and this is the
+          // route the timing-out production traffic actually hit (a crawler repeatedly
+          // listing ALL counterparties for many addresses with no ?counterparty= filter).
+          // `hotkey IS DISTINCT FROM ss58` (NULL-safe) on the coldkey = ss58 leg
+          // excludes the one row shape (a genuine self-transfer, hotkey = coldkey =
+          // ss58) the hotkey = ss58 leg already caught, so UNION ALL can never
+          // double-count it.
           const rows = await sql`
-          SELECT hotkey, coldkey, amount_tao, block_number, event_index
-          FROM account_events
-          WHERE event_kind = 'Transfer' AND (hotkey = ${ss58} OR coldkey = ${ss58})
+          SELECT hotkey, coldkey, amount_tao, block_number, event_index FROM (
+            (SELECT hotkey, coldkey, amount_tao, block_number, event_index, observed_at
+             FROM account_events
+             WHERE event_kind = 'Transfer' AND hotkey = ${ss58}
+             ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP})
+            UNION ALL
+            (SELECT hotkey, coldkey, amount_tao, block_number, event_index, observed_at
+             FROM account_events
+             WHERE event_kind = 'Transfer' AND coldkey = ${ss58} AND hotkey IS DISTINCT FROM ${ss58}
+             ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP})
+          ) combined
           ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${COUNTERPARTIES_SCAN_CAP}`;
           return json(buildCounterparties(rows, ss58, { limit }));
         }
