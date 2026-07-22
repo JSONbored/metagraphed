@@ -8,7 +8,7 @@ import {
   parseBadgePath,
   parseBadgeOptions,
   formatUptimePercent,
-} from "../src/badge.mjs";
+} from "../src/badge.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
