@@ -59,7 +59,7 @@ import { loadAdapter } from "./adapters-mcp.ts";
 // reusing the same loaders MCP get_changelog/get_contracts/get_health_history
 // already call -- not a reimplementation.
 import { loadChangelog } from "./changelog-mcp.ts";
-import { loadContracts } from "./contracts-mcp.mjs";
+import { loadContracts } from "./contracts-mcp.ts";
 // #7431: GraphQL parity for GET /api/v1/build, reusing loadBuildSummary that
 // MCP get_build already calls -- not a reimplementation.
 import { loadBuildSummary } from "./build-mcp.ts";

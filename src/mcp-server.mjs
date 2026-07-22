@@ -212,7 +212,7 @@ import {
   GET_CONTRACTS_MCP_TOOL,
   GET_CONTRACTS_OUTPUT_SCHEMA,
   loadContracts,
-} from "./contracts-mcp.mjs";
+} from "./contracts-mcp.ts";
 import {
   GET_CHANGELOG_INSTRUCTIONS,
   GET_CHANGELOG_MCP_TOOL,

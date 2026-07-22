@@ -8,7 +8,7 @@ import {
   GET_CONTRACTS_OUTPUT_SCHEMA,
   contractsToolError,
   loadContracts,
-} from "../src/contracts-mcp.mjs";
+} from "../src/contracts-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_CONTRACTS = {

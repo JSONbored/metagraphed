@@ -2,20 +2,41 @@
 // Serves the baked /metagraph/contracts.json artifact (public artifact
 // contract metadata for registry consumers).
 
+import type { StorageReadResult } from "../workers/storage.ts";
+
 export const CONTRACTS_ARTIFACT = "/metagraph/contracts.json";
 
-export function contractsToolError(code, message) {
-  const error = new Error(message);
+export interface ContractsToolError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function contractsToolError(
+  code: string,
+  message: string,
+): ContractsToolError {
+  const error = new Error(message) as ContractsToolError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-export async function loadContracts(ctx, { readArtifact } = {}) {
+export async function loadContracts(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<unknown> {
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, CONTRACTS_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw contractsToolError(
         "not_found",
