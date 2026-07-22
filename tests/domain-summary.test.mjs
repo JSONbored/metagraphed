@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildDomainSummary,
   buildDomainOverview,
-} from "../src/domain-summary.mjs";
+} from "../src/domain-summary.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.mjs";
 
 const SUBNETS = [

@@ -259,7 +259,7 @@ import {
 import { buildAlphaVolume } from "./alpha-volume.ts";
 import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.ts";
 import { CURATION_ARTIFACT } from "./curation-mcp.ts";
-import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
+import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import {
   buildSubnetOhlc,

@@ -54,7 +54,7 @@ import { DOMAIN_TAGS } from "../../src/domain-tags.mjs";
 import {
   buildDomainOverview,
   buildDomainSummary,
-} from "../../src/domain-summary.mjs";
+} from "../../src/domain-summary.ts";
 
 type HealthMetaKvReader = (
   env: Env,
@@ -903,7 +903,10 @@ export async function handleDomains(
 
   const { subnetRows, economicsRows, capturedAt } =
     await domainSummaryInputs(env);
-  const data = buildDomainOverview(subnetRows, economicsRows);
+  const data = buildDomainOverview(
+    subnetRows as Array<Record<string, unknown>>,
+    economicsRows as Array<Record<string, unknown>>,
+  );
   return envelopeResponse(
     request,
     {
@@ -946,7 +949,11 @@ export async function handleDomainSummary(
 
   const { subnetRows, economicsRows, capturedAt } =
     await domainSummaryInputs(env);
-  const data = buildDomainSummary(tag, subnetRows, economicsRows);
+  const data = buildDomainSummary(
+    tag,
+    subnetRows as Array<Record<string, unknown>>,
+    economicsRows as Array<Record<string, unknown>>,
+  );
   return envelopeResponse(
     request,
     {
