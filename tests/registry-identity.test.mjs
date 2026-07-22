@@ -9,7 +9,7 @@ import {
 } from "../scripts/registry-identity.mjs";
 
 // Owner-token matching guards the candidate→surface promotion in
-// scripts/generated-overlays.mjs: an ownership-sensitive community surface is
+// scripts/generated-overlays.ts: an ownership-sensitive community surface is
 // only promoted when its URL owner relates to its declared provider. These are
 // the adversarial cases the helpers must hold (carried over from the retired
 // submission preflight, which these helpers outlived).

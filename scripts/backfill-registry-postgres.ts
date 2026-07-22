@@ -39,7 +39,7 @@ import {
   stableStringify,
   subnetSurfaceKey,
 } from "./lib.mjs";
-import { generateBaselineOverlaySet } from "./generated-overlays.mjs";
+import { generateBaselineOverlaySet } from "./generated-overlays.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { initSentry, endSessionAndFlush } from "./observability.mjs";
 

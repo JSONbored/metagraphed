@@ -24,6 +24,8 @@ import {
   urlOwnerTokens,
 } from "./registry-identity.mjs";
 
+type Row = Record<string, unknown>;
+
 export const generatedOverlayDirectory = path.join(
   repoRoot,
   "registry/subnets/generated",
@@ -37,44 +39,76 @@ export const generatedOverlaySourcePath = path.join(
   "subnets/generated-overlays.json",
 );
 
-function overlayFieldOrFallback(overlay, field, fallback) {
+function overlayFieldOrFallback(
+  overlay: Row,
+  field: string,
+  fallback: unknown,
+): unknown {
   return Object.hasOwn(overlay, field) ? overlay[field] : fallback;
 }
 
-export async function loadManualSubnetOverlays() {
+export async function loadManualSubnetOverlays(): Promise<Row[]> {
   const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
-  const overlays = await Promise.all(files.map(readJson));
+  const overlays = await Promise.all(
+    (files as string[]).map((file: string) => readJson(file)),
+  );
   return sortOverlays(overlays);
 }
 
-export async function loadExistingGeneratedSubnetOverlays() {
+export async function loadExistingGeneratedSubnetOverlays(): Promise<Row[]> {
   const files = await listJsonFiles(generatedOverlayDirectory);
-  const overlays = await Promise.all(files.map(readJson));
+  const overlays = await Promise.all(
+    (files as string[]).map((file: string) => readJson(file)),
+  );
   return sortOverlays(overlays);
 }
 
-export async function generateBaselineOverlaySet(options = {}) {
-  const nativeSnapshot = options.nativeSnapshot || (await loadNativeSnapshot());
-  const candidates = options.candidates || (await loadCandidates());
-  const verification =
+interface GenerateBaselineOverlaySetOptions {
+  nativeSnapshot?: Row;
+  candidates?: Row[];
+  verification?: Row;
+  providers?: Row[];
+  manualOverlays?: Row[];
+  existingGeneratedOverlays?: Row[];
+  maintainerReviewedDecisions?: Row[];
+}
+
+interface OverlaySet {
+  candidates: Row[];
+  generatedOverlays: Row[];
+  manualBaselineOverlays: Row[];
+  manualOverlays: Row[];
+  nativeSnapshot: Row;
+  summary: Row;
+  providers: Row[];
+  verification: Row;
+}
+
+export async function generateBaselineOverlaySet(
+  options: GenerateBaselineOverlaySetOptions = {},
+): Promise<OverlaySet> {
+  const nativeSnapshot: Row =
+    options.nativeSnapshot || (await loadNativeSnapshot());
+  const candidates: Row[] = options.candidates || (await loadCandidates());
+  const verification: Row =
     options.verification || (await loadVerification({ preferDetailed: false }));
-  const providers = options.providers || (await loadProviders());
-  const manualOverlays =
+  const providers: Row[] = options.providers || (await loadProviders());
+  const manualOverlays: Row[] =
     options.manualOverlays || (await loadManualSubnetOverlays());
-  const existingGeneratedOverlays =
+  const existingGeneratedOverlays: Row[] =
     options.existingGeneratedOverlays ||
     (await loadExistingGeneratedSubnetOverlays());
   // Maintainer-reviewed decisions elevate generated-only overlays too (not just
   // manual ones), but the elevation must be tied to reviewed evidence. A subnet
   // should not inherit the maintainer-reviewed tier merely because any unrelated
   // surface was promoted for the same netuid.
-  const maintainerReviewedDecisions =
+  const maintainerReviewedDecisions: Row[] =
     options.maintainerReviewedDecisions ||
-    (
-      await readJson(
+    ((
+      (await readJson(
         path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
-      ).catch(() => ({ decisions: [] }))
-    ).decisions ||
+      ).catch(() => ({ decisions: [] }))) as Row
+    ).decisions as Row[] | undefined) ||
     [];
   const maintainerReviewedDecisionsByNetuid = groupByNetuid(
     maintainerReviewedDecisions.filter(
@@ -89,16 +123,20 @@ export async function generateBaselineOverlaySet(options = {}) {
     existingGeneratedOverlays.map((overlay) => [overlay.netuid, overlay]),
   );
   const verificationByCandidate = new Map(
-    (verification.results || []).map((result) => [result.candidate_id, result]),
+    ((verification.results as Row[] | undefined) || []).map((result) => [
+      result.candidate_id,
+      result,
+    ]),
   );
   const providersById = new Map(
     providers.map((provider) => [provider.id, provider]),
   );
   const candidatesByNetuid = groupByNetuid(candidates);
-  const generatedOverlays = [];
-  const manualBaselineOverlays = [];
+  const generatedOverlays: Row[] = [];
+  const manualBaselineOverlays: Row[] = [];
 
-  for (const nativeSubnet of nativeSnapshot.subnets || []) {
+  for (const nativeSubnet of (nativeSnapshot.subnets as Row[] | undefined) ||
+    []) {
     const baselineOverlay = buildGeneratedOverlay({
       candidatesByNetuid,
       existingGeneratedByNetuid,
@@ -138,9 +176,9 @@ export async function generateBaselineOverlaySet(options = {}) {
 }
 
 export function augmentManualOverlaysWithBaseline(
-  manualOverlays,
-  baselineOverlays,
-) {
+  manualOverlays: Row[],
+  baselineOverlays: Row[],
+): Row[] {
   const baselineByNetuid = new Map(
     baselineOverlays.map((overlay) => [overlay.netuid, overlay]),
   );
@@ -148,26 +186,32 @@ export function augmentManualOverlaysWithBaseline(
   return sortOverlays(
     manualOverlays.map((manualOverlay) => {
       const baselineOverlay = baselineByNetuid.get(manualOverlay.netuid);
-      const baselineSurfaces = baselineOverlay?.surfaces || [];
+      const baselineSurfaces =
+        (baselineOverlay?.surfaces as Row[] | undefined) || [];
       if (baselineSurfaces.length === 0) {
         return manualOverlay;
       }
 
-      const manualSurfaces = manualOverlay.surfaces || [];
+      const manualSurfaces =
+        (manualOverlay.surfaces as Row[] | undefined) || [];
       const excludedSurfaceIds = new Set(
-        manualOverlay.baseline_excluded_surface_ids || [],
+        (manualOverlay.baseline_excluded_surface_ids as string[] | undefined) ||
+          [],
       );
       const excludedSurfaceUrls = new Set(
-        (manualOverlay.baseline_excluded_surface_urls || [])
+        (
+          (manualOverlay.baseline_excluded_surface_urls as
+            string[] | undefined) || []
+        )
           .map((url) => normalizePublicUrl(url))
           .filter(Boolean),
       );
       const existingKeys = new Set(manualSurfaces.map(registrySurfaceKey));
       const additions = baselineSurfaces.filter((surface) => {
-        if (excludedSurfaceIds.has(surface.id)) {
+        if (excludedSurfaceIds.has(surface.id as string)) {
           return false;
         }
-        const normalizedUrl = normalizePublicUrl(surface.url);
+        const normalizedUrl = normalizePublicUrl(surface.url as string);
         if (normalizedUrl && excludedSurfaceUrls.has(normalizedUrl)) {
           return false;
         }
@@ -185,12 +229,20 @@ export function augmentManualOverlaysWithBaseline(
 
       const surfaces = [...manualSurfaces, ...additions].sort(
         (a, b) =>
-          surfaceRank(a.kind) - surfaceRank(b.kind) || a.id.localeCompare(b.id),
+          surfaceRank(a.kind) - surfaceRank(b.kind) ||
+          (a.id as string).localeCompare(b.id as string),
       );
       const sourceUrls = new Set(
-        surfaces.flatMap((surface) => surface.source_urls || [surface.url]),
+        surfaces.flatMap(
+          (surface) =>
+            (surface.source_urls as string[] | undefined) || [
+              surface.url as string,
+            ],
+        ),
       );
-      const categories = new Set(manualOverlay.categories || []);
+      const categories = new Set(
+        (manualOverlay.categories as string[] | undefined) || [],
+      );
       categories.add("baseline-augmented");
 
       return {
@@ -210,9 +262,10 @@ export function augmentManualOverlaysWithBaseline(
           firstUrl(manualSurfaces, "website"),
         ),
         curation: {
-          ...(manualOverlay.curation || {}),
+          ...((manualOverlay.curation as Row | undefined) || {}),
           source_count: Math.max(
-            manualOverlay.curation?.source_count || 0,
+            ((manualOverlay.curation as Row | undefined)
+              ?.source_count as number) || 0,
             sourceUrls.size,
           ),
         },
@@ -222,37 +275,53 @@ export function augmentManualOverlaysWithBaseline(
   );
 }
 
+interface BuildGeneratedOverlaySummaryOptions {
+  generatedOverlays: Row[];
+  manualOverlays: Row[];
+  nativeSnapshot: Row;
+  verification: Row;
+  mode?: string;
+}
+
 export function buildGeneratedOverlaySummary({
   generatedOverlays,
   manualOverlays,
   nativeSnapshot,
   verification,
   mode = "write",
-}) {
+}: BuildGeneratedOverlaySummaryOptions): Row {
   const promotedSurfaceCount = generatedOverlays.reduce(
-    (count, overlay) => count + overlay.surfaces.length,
+    (count, overlay) => count + (overlay.surfaces as Row[]).length,
     0,
   );
 
   return {
     schema_version: 1,
     mode,
-    native_subnet_count: nativeSnapshot.subnets.length,
+    native_subnet_count: (nativeSnapshot.subnets as Row[]).length,
     manual_overlay_count: manualOverlays.length,
     generated_overlay_count: generatedOverlays.length,
     total_overlay_count: manualOverlays.length + generatedOverlays.length,
     promoted_surface_count: promotedSurfaceCount,
     generated_without_surfaces: generatedOverlays
-      .filter((overlay) => overlay.surfaces.length === 0)
+      .filter((overlay) => (overlay.surfaces as Row[]).length === 0)
       .map((overlay) => overlay.netuid),
-    verification_result_count: verification.results?.length || 0,
+    verification_result_count:
+      (verification.results as Row[] | undefined)?.length || 0,
     overlays: generatedOverlays.map((overlay) => ({
       checksum: hashJson(overlay),
       netuid: overlay.netuid,
       slug: overlay.slug,
-      surface_count: overlay.surfaces.length,
+      surface_count: (overlay.surfaces as Row[]).length,
     })),
   };
+}
+
+interface WriteGeneratedOverlayArtifactsOptions {
+  generatedOverlays: Row[];
+  manualOverlays: Row[];
+  nativeSnapshot: Row;
+  verification: Row;
 }
 
 export async function writeGeneratedOverlayArtifacts({
@@ -260,7 +329,7 @@ export async function writeGeneratedOverlayArtifacts({
   manualOverlays,
   nativeSnapshot,
   verification,
-}) {
+}: WriteGeneratedOverlayArtifactsOptions): Promise<Row> {
   const summary = buildGeneratedOverlaySummary({
     generatedOverlays,
     manualOverlays,
@@ -277,6 +346,13 @@ export async function writeGeneratedOverlayArtifacts({
   return summary;
 }
 
+interface BuildGeneratedCurationOptions {
+  hasSurfaces: boolean;
+  hasReviewedEvidence: boolean;
+  sourceCount: number;
+  gapNotes: string[];
+}
+
 // Curation block for a generated overlay. A maintainer-reviewed decision elevates
 // the level to the trusted tier (only when there are surfaces to vouch for);
 // otherwise it's machine-verified (has surfaces) or candidate-discovered (none).
@@ -287,7 +363,7 @@ function buildGeneratedCuration({
   hasReviewedEvidence,
   sourceCount,
   gapNotes,
-}) {
+}: BuildGeneratedCurationOptions): Row {
   const elevated = hasSurfaces && hasReviewedEvidence;
   return {
     level: elevated
@@ -303,6 +379,15 @@ function buildGeneratedCuration({
   };
 }
 
+interface BuildGeneratedOverlayOptions {
+  candidatesByNetuid: Map<unknown, Row[]>;
+  existingGeneratedByNetuid: Map<unknown, Row>;
+  nativeSubnet: Row;
+  providersById: Map<unknown, Row>;
+  verificationByCandidate: Map<unknown, Row>;
+  maintainerReviewedDecisionsByNetuid?: Map<unknown, Row[]>;
+}
+
 function buildGeneratedOverlay({
   candidatesByNetuid,
   existingGeneratedByNetuid,
@@ -310,7 +395,7 @@ function buildGeneratedOverlay({
   providersById,
   verificationByCandidate,
   maintainerReviewedDecisionsByNetuid = new Map(),
-}) {
+}: BuildGeneratedOverlayOptions): Row {
   const subnetCandidates = candidatesByNetuid.get(nativeSubnet.netuid) || [];
   const promotedSurfaces = subnetCandidates
     .map((candidate) => ({
@@ -321,49 +406,57 @@ function buildGeneratedOverlay({
       isPromotable(candidate, verification, providersById),
     )
     .map(({ candidate, verification }) =>
-      promoteCandidate(candidate, verification),
+      promoteCandidate(candidate, verification as Row),
     )
     .filter(uniqueSurfaceLocator())
     .filter(limitPromotedSurfaceKinds())
     .sort(
       (a, b) =>
-        surfaceRank(a.kind) - surfaceRank(b.kind) || a.id.localeCompare(b.id),
+        surfaceRank(a.kind) - surfaceRank(b.kind) ||
+        (a.id as string).localeCompare(b.id as string),
     );
 
   const gaps = calculateGaps(promotedSurfaces);
   const sourceUrls = new Set(
-    promotedSurfaces.flatMap((surface) => surface.source_urls || []),
+    promotedSurfaces.flatMap(
+      (surface) => (surface.source_urls as string[] | undefined) || [],
+    ),
   );
 
-  const slug = nativeSubnet.netuid === 0 ? "root" : `sn-${nativeSubnet.netuid}`;
-  const existingOverlay = existingGeneratedByNetuid.get(nativeSubnet.netuid);
+  const netuid = nativeSubnet.netuid as number;
+  const slug = netuid === 0 ? "root" : `sn-${netuid}`;
+  const existingOverlay = existingGeneratedByNetuid.get(netuid);
   const existingName =
     existingOverlay && nativeNameQuality(existingOverlay) === "chain"
       ? existingOverlay.name
       : null;
-  const name = nativeDisplayName(nativeSubnet, existingName);
+  // nativeDisplayName's untyped .mjs default param (fallbackName = null) locks
+  // TS's cross-file inference to null | undefined; cast until Phase 4 Batch 7
+  // converts scripts/lib/formatting.mjs.
+  const name = (
+    nativeDisplayName as (subnet: Row, fallback?: unknown) => unknown
+  )(nativeSubnet, existingName);
 
   return {
     schema_version: 1,
-    netuid: nativeSubnet.netuid,
+    netuid,
     name,
     slug,
     status: nativeSubnet.status,
-    categories:
-      nativeSubnet.netuid === 0 ? ["root", "system"] : ["baseline-curated"],
+    categories: netuid === 0 ? ["root", "system"] : ["baseline-curated"],
     docs_url: firstUrl(promotedSurfaces, "docs"),
     source_repo: firstUrl(promotedSurfaces, "source-repo"),
     dashboard_url: firstUrl(promotedSurfaces, "dashboard"),
     website_url: firstUrl(promotedSurfaces, "website"),
     notes:
-      nativeSubnet.netuid === 0
+      netuid === 0
         ? "Machine-generated root/system baseline overlay."
         : "Machine-generated baseline overlay from verified public-source candidates.",
     curation: buildGeneratedCuration({
       hasSurfaces: promotedSurfaces.length > 0,
       hasReviewedEvidence: hasMaintainerReviewedEvidence(
         promotedSurfaces,
-        maintainerReviewedDecisionsByNetuid.get(nativeSubnet.netuid) || [],
+        maintainerReviewedDecisionsByNetuid.get(netuid) || [],
       ),
       sourceCount: sourceUrls.size,
       gapNotes: gaps.gap_notes,
@@ -373,19 +466,25 @@ function buildGeneratedOverlay({
   };
 }
 
-function hasMaintainerReviewedEvidence(surfaces, decisions) {
+function hasMaintainerReviewedEvidence(
+  surfaces: Row[],
+  decisions: Row[],
+): boolean {
   if (surfaces.length === 0 || decisions.length === 0) {
     return false;
   }
 
   const promotedUrls = new Set(
     surfaces
-      .flatMap((surface) => [surface.url, ...(surface.source_urls || [])])
+      .flatMap((surface) => [
+        surface.url as string,
+        ...((surface.source_urls as string[] | undefined) || []),
+      ])
       .map((url) => normalizePublicUrl(url))
       .filter(Boolean),
   );
   return decisions.some((decision) =>
-    (decision.source_urls || [])
+    ((decision.source_urls as string[] | undefined) || [])
       .map((url) => normalizePublicUrl(url))
       .filter(Boolean)
       .some((url) => promotedUrls.has(url)),
@@ -400,10 +499,14 @@ const OWNER_SENSITIVE_KINDS = new Set([
   "sse",
 ]);
 
-function isPromotable(candidate, verification, providersById = new Map()) {
+function isPromotable(
+  candidate: Row,
+  verification: Row | undefined,
+  providersById: Map<unknown, Row> = new Map(),
+): boolean {
   if (
     !verification ||
-    !["live", "redirected"].includes(verification.classification)
+    !["live", "redirected"].includes(verification.classification as string)
   ) {
     return false;
   }
@@ -444,18 +547,18 @@ function isPromotable(candidate, verification, providersById = new Map()) {
   return true;
 }
 
-function isCommunityOwnerSensitiveCandidate(candidate) {
+function isCommunityOwnerSensitiveCandidate(candidate: Row): boolean {
   return (
-    OWNER_SENSITIVE_KINDS.has(candidate.kind) &&
+    OWNER_SENSITIVE_KINDS.has(candidate.kind as string) &&
     (candidate.source_type === "community-pr-intake" ||
       candidate.source_tier === "community-docs")
   );
 }
 
-function isGenericToolingSurface(candidate) {
-  let url;
+function isGenericToolingSurface(candidate: Row): boolean {
+  let url: URL;
   try {
-    url = new URL(candidate.url);
+    url = new URL(candidate.url as string);
   } catch {
     return true;
   }
@@ -475,9 +578,9 @@ function isGenericToolingSurface(candidate) {
   return false;
 }
 
-function limitPromotedSurfaceKinds() {
-  const counts = new Map();
-  const limits = {
+function limitPromotedSurfaceKinds(): (surface: Row) => boolean {
+  const counts = new Map<string, number>();
+  const limits: Record<string, number> = {
     dashboard: 3,
     "data-artifact": 5,
     docs: 4,
@@ -488,17 +591,18 @@ function limitPromotedSurfaceKinds() {
   };
 
   return (surface) => {
-    const count = counts.get(surface.kind) || 0;
-    const limit = limits[surface.kind] || 2;
+    const kind = surface.kind as string;
+    const count = counts.get(kind) || 0;
+    const limit = limits[kind] || 2;
     if (count >= limit) {
       return false;
     }
-    counts.set(surface.kind, count + 1);
+    counts.set(kind, count + 1);
     return true;
   };
 }
 
-function isApiContentType(contentType) {
+function isApiContentType(contentType: unknown): boolean {
   const normalized = String(contentType || "").toLowerCase();
   return (
     normalized.includes("json") ||
@@ -508,14 +612,14 @@ function isApiContentType(contentType) {
   );
 }
 
-function isJsonContentType(contentType) {
+function isJsonContentType(contentType: unknown): boolean {
   return String(contentType || "")
     .toLowerCase()
     .includes("json");
 }
 
-function uniqueSurfaceLocator() {
-  const seen = new Set();
+function uniqueSurfaceLocator(): (surface: Row) => boolean {
+  const seen = new Set<string>();
   return (surface) => {
     const key = registrySurfaceKey(surface);
     if (seen.has(key)) {
@@ -526,8 +630,8 @@ function uniqueSurfaceLocator() {
   };
 }
 
-function promoteCandidate(candidate, verification) {
-  const surface = {
+function promoteCandidate(candidate: Row, verification: Row): Row {
+  const surface: Row = {
     id: candidate.id,
     name: candidate.name,
     kind: candidate.kind,
@@ -552,10 +656,10 @@ function promoteCandidate(candidate, verification) {
   return surface;
 }
 
-function calculateGaps(surfaces) {
+function calculateGaps(surfaces: Row[]): { gap_notes: string[] } {
   const kinds = new Set(surfaces.map((surface) => surface.kind));
-  const gapNotes = [];
-  const expected = [
+  const gapNotes: string[] = [];
+  const expected: [string, string][] = [
     ["docs", "No verified project docs surface yet."],
     ["source-repo", "No verified source repository yet."],
     ["website", "No verified project website yet."],
@@ -575,11 +679,12 @@ function calculateGaps(surfaces) {
   return { gap_notes: gapNotes };
 }
 
-function firstUrl(surfaces, kind) {
-  return surfaces.find((surface) => surface.kind === kind)?.url;
+function firstUrl(surfaces: Row[], kind: string): string | undefined {
+  return surfaces.find((surface) => surface.kind === kind)?.url as
+    string | undefined;
 }
 
-function probeForKind(kind) {
+function probeForKind(kind: unknown): Row {
   if (kind === "sse") {
     return { enabled: true, method: "GET", expect: "sse", timeout_ms: 5000 };
   }
@@ -589,23 +694,25 @@ function probeForKind(kind) {
   return { enabled: true, method: "HEAD", expect: "any", timeout_ms: 10000 };
 }
 
-function surfaceRank(kind) {
+function surfaceRank(kind: unknown): number {
   return (
-    {
-      "source-repo": 1,
-      website: 2,
-      docs: 3,
-      dashboard: 4,
-      openapi: 5,
-      "subnet-api": 6,
-      sse: 7,
-      "data-artifact": 8,
-    }[kind] || 99
+    (
+      {
+        "source-repo": 1,
+        website: 2,
+        docs: 3,
+        dashboard: 4,
+        openapi: 5,
+        "subnet-api": 6,
+        sse: 7,
+        "data-artifact": 8,
+      } as Record<string, number>
+    )[kind as string] || 99
   );
 }
 
-function groupByNetuid(items) {
-  const groups = new Map();
+function groupByNetuid(items: Row[]): Map<unknown, Row[]> {
+  const groups = new Map<unknown, Row[]>();
   for (const item of items) {
     const group = groups.get(item.netuid) || [];
     group.push(item);
@@ -614,13 +721,15 @@ function groupByNetuid(items) {
   return groups;
 }
 
-function sortOverlays(overlays) {
+function sortOverlays(overlays: Row[]): Row[] {
   return overlays.sort(
-    (a, b) => a.netuid - b.netuid || a.slug.localeCompare(b.slug),
+    (a, b) =>
+      (a.netuid as number) - (b.netuid as number) ||
+      (a.slug as string).localeCompare(b.slug as string),
   );
 }
 
-export function printGeneratedOverlaySummary(summary) {
+export function printGeneratedOverlaySummary(summary: Row): void {
   if (process.env.METAGRAPH_VERBOSE_SUMMARY === "1") {
     console.log(stableStringify(summary));
     return;
@@ -630,7 +739,7 @@ export function printGeneratedOverlaySummary(summary) {
   console.log(
     stableStringify({
       ...compact,
-      overlay_checksum_count: overlays?.length || 0,
+      overlay_checksum_count: (overlays as unknown[] | undefined)?.length || 0,
       overlay_summary_path: "registry/generated/subnet-overlays-summary.json",
     }),
   );

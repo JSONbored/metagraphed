@@ -613,7 +613,7 @@ export async function loadEntities() {
 
 export async function loadSubnets() {
   const { generateBaselineOverlaySet, loadManualSubnetOverlays } =
-    await import("./generated-overlays.mjs");
+    await import("./generated-overlays.ts");
   const manualOverlays = await loadManualSubnetOverlays();
   const overlaySet = await generateBaselineOverlaySet({
     manualOverlays,

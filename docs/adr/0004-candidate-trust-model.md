@@ -56,7 +56,7 @@ and the IPv6 equivalents (`fc00::/7`, `fe80::/10`, NAT64).
 
 - **Intake** (`normalizePublicUrl`) applies the synchronous literal-IP filter
   `isUnsafeUrl` so obviously-internal targets never enter the bundle.
-- **Probe + promotion** (`fetchWithSafeRedirects`, `generated-overlays.mjs`)
+- **Probe + promotion** (`fetchWithSafeRedirects`, `generated-overlays.ts`)
   apply `isUnsafeResolvedUrl`, which **resolves DNS and re-checks every resolved
   address** — defeating DNS-rebinding and redirect-to-internal.
 - Known limitation: intake is hostname-based; the authoritative resolve-time

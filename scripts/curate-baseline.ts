@@ -2,7 +2,7 @@ import {
   generateBaselineOverlaySet,
   printGeneratedOverlaySummary,
   writeGeneratedOverlayArtifacts,
-} from "./generated-overlays.mjs";
+} from "./generated-overlays.ts";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");

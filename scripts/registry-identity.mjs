@@ -1,7 +1,7 @@
 // Registry-identity helpers: owner-token matching (does a community-submitted
 // surface's URL belong to the provider it claims?) + GitHub-login normalization.
 // Extracted from the retired submission preflight (submission-policy.mjs) because
-// the candidate→surface promotion in scripts/generated-overlays.mjs and the
+// the candidate→surface promotion in scripts/generated-overlays.ts and the
 // surface:add intake still depend on them — they are the only live survivors of
 // that module. Pure + dependency-light so they stay unit-covered.
 import { clusterDomainFromUrl, MULTI_TENANT_HOST_SUFFIXES } from "./lib.mjs";

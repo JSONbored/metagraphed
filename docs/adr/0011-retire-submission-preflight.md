@@ -41,7 +41,7 @@ stubs entirely. Remove `submission-policy.mjs`, `submission-pr.mjs`,
 `submission-gate.yml` workflow, the dead tests, and `docs/submission-gate.md`.
 
 Preserve the **only live survivors** — the owner-token match + GitHub-login helpers
-that the build's candidate→surface promotion (`generated-overlays.mjs`) and
+that the build's candidate→surface promotion (`generated-overlays.ts`) and
 `surface:add` depend on — in a focused `scripts/registry-identity.mjs`.
 
 ## Consequences
