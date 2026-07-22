@@ -190,8 +190,15 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Nonce, and X-Validator-Timestamp headers proving control of a registered hotkey (live-verified 2026-07-22: the API's own 422 response names all four as missing). Also requires a separate X-Code-Version header (a client-version gate, not part of the credential itself) -- calls without it are rejected with HTTP 426 before the credential is even checked. No bearer token or API key is accepted.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Nonce",
+          "X-Validator-Timestamp"
+        ]
       },
       "auth_required": true,
       "authority": "community",
@@ -218,8 +225,15 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Nonce, and X-Validator-Timestamp headers proving control of a registered hotkey (live-verified 2026-07-22: the API's own 422 response names all four as missing). Also requires a separate X-Code-Version header (a client-version gate, not part of the credential itself) -- calls without it are rejected with HTTP 426 before the credential is even checked. No bearer token or API key is accepted.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Nonce",
+          "X-Validator-Timestamp"
+        ]
       },
       "auth_required": true,
       "authority": "community",
@@ -246,8 +260,15 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Nonce, and X-Validator-Timestamp headers proving control of a registered hotkey (live-verified 2026-07-22: the API's own 422 response names all four as missing). Also requires a separate X-Code-Version header (a client-version gate, not part of the credential itself) -- calls without it are rejected with HTTP 426 before the credential is even checked. No bearer token or API key is accepted.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Nonce",
+          "X-Validator-Timestamp"
+        ]
       },
       "auth_required": true,
       "authority": "community",
@@ -274,8 +295,15 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Nonce, and X-Validator-Timestamp headers proving control of a registered hotkey (live-verified 2026-07-22: the API's own 422 response names all four as missing). Also requires a separate X-Code-Version header (a client-version gate, not part of the credential itself) -- calls without it are rejected with HTTP 426 before the credential is even checked. No bearer token or API key is accepted.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Nonce",
+          "X-Validator-Timestamp"
+        ]
       },
       "auth_required": true,
       "authority": "community",
@@ -302,8 +330,15 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Nonce, and X-Validator-Timestamp headers proving control of a registered hotkey (live-verified 2026-07-22: the API's own 422 response names all four as missing). Also requires a separate X-Code-Version header (a client-version gate, not part of the credential itself) -- calls without it are rejected with HTTP 426 before the credential is even checked. No bearer token or API key is accepted.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Nonce",
+          "X-Validator-Timestamp"
+        ]
       },
       "auth_required": true,
       "authority": "community",
@@ -330,8 +365,15 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Nonce, and X-Validator-Timestamp headers proving control of a registered hotkey (live-verified 2026-07-22: the API's own 422 response names all four as missing). Also requires a separate X-Code-Version header (a client-version gate, not part of the credential itself) -- calls without it are rejected with HTTP 426 before the credential is even checked. No bearer token or API key is accepted.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Nonce",
+          "X-Validator-Timestamp"
+        ]
       },
       "auth_required": true,
       "authority": "community",
@@ -358,8 +400,15 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Nonce, and X-Validator-Timestamp headers proving control of a registered hotkey (live-verified 2026-07-22: the API's own 422 response names all four as missing). Also requires a separate X-Code-Version header (a client-version gate, not part of the credential itself) -- calls without it are rejected with HTTP 426 before the credential is even checked. No bearer token or API key is accepted.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Nonce",
+          "X-Validator-Timestamp"
+        ]
       },
       "auth_required": true,
       "authority": "community",
@@ -386,8 +435,15 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Nonce, and X-Validator-Timestamp headers proving control of a registered hotkey (live-verified 2026-07-22: the API's own 422 response names all four as missing). Also requires a separate X-Code-Version header (a client-version gate, not part of the credential itself) -- calls without it are rejected with HTTP 426 before the credential is even checked. No bearer token or API key is accepted.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Nonce",
+          "X-Validator-Timestamp"
+        ]
       },
       "auth_required": true,
       "authority": "community",
