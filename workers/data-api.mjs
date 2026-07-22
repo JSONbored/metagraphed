@@ -513,7 +513,7 @@ import {
   updateUnkeyKeyTier,
   revokeUnkeyKey,
 } from "../src/unkey-client.mjs";
-import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.mjs";
+import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import {
   createSessionToken,
   issueWalletChallenge,

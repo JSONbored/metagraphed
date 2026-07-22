@@ -28,7 +28,7 @@
 // than shaving upstream calls, and it now carries a non-idempotent write
 // method -- a deliberate v1 scope cut, not an oversight.
 import { errorResponse } from "../http.ts";
-import { validateApiKey } from "../../src/api-key-validation.mjs";
+import { validateApiKey } from "../../src/api-key-validation.ts";
 import {
   orderSafeRpcEndpoints,
   proxyWithFailover,
@@ -190,7 +190,11 @@ export async function handleFullnodeRpcProxyRequest(
     );
   }
 
-  const rateLimitPolicy = rateLimitPolicyForTier(auth.tier);
+  // auth.tier is `unknown` (validateApiKey's success-shape tier comes straight
+  // from Unkey's own untyped JSON response) -- rateLimitPolicyForTier's own
+  // `|| FULLNODE_RPC_TIER_RATE_LIMITS.free` fallback already handles a
+  // missing/unmapped tier, so this is a safe cast, not a new assumption.
+  const rateLimitPolicy = rateLimitPolicyForTier(auth.tier as string);
   const rateLimiter = (env as unknown as Record<string, RateLimit | undefined>)[
     rateLimitPolicy.envVar
   ];

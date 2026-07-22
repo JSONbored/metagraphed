@@ -38,14 +38,14 @@ export const API_KEY_LOOKUP_TOKEN_HEADER = "x-api-key-lookup-token";
 // without a real Unkey/KV round trip.
 const MIN_BARE_KEY_LENGTH = 20;
 
-function bareKeyFrom(value) {
+function bareKeyFrom(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const bare = value.startsWith("Bearer ") ? value.slice(7) : value;
   if (!bare.startsWith("mg_") || bare.length < MIN_BARE_KEY_LENGTH) return null;
   return bare;
 }
 
-async function hashKeyForCache(bareKey) {
+async function hashKeyForCache(bareKey: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(bareKey),
@@ -55,8 +55,15 @@ async function hashKeyForCache(bareKey) {
     .join("");
 }
 
-function cacheKeyFor(hash) {
+function cacheKeyFor(hash: string): string {
   return `api-key-lookup:${hash}`;
+}
+
+export interface ApiKeyLookupRecord {
+  found: boolean;
+  code?: unknown;
+  tier?: unknown;
+  accountId?: unknown;
 }
 
 // Calls the data-api Worker's internal verify route (the only place holding
@@ -64,7 +71,10 @@ function cacheKeyFor(hash) {
 // { found, code, tier, accountId } -- found mirrors Unkey's own `valid`,
 // never null/throws, so callers have one shape to check regardless of
 // whether the upstream call itself succeeded.
-async function lookupViaDataApi(env, bareKey) {
+async function lookupViaDataApi(
+  env: Env,
+  bareKey: string,
+): Promise<ApiKeyLookupRecord> {
   if (!env?.DATA_API?.fetch || !env?.API_KEY_LOOKUP_INTERNAL_TOKEN) {
     return { found: false };
   }
@@ -80,7 +90,7 @@ async function lookupViaDataApi(env, bareKey) {
       }),
     );
     if (!upstream.ok) return { found: false };
-    const record = await upstream.json();
+    const record: Record<string, unknown> = await upstream.json();
     return {
       found: !!record.valid,
       code: record.code,
@@ -95,13 +105,16 @@ async function lookupViaDataApi(env, bareKey) {
   }
 }
 
-async function lookupApiKey(env, bareKey) {
+async function lookupApiKey(
+  env: Env,
+  bareKey: string,
+): Promise<ApiKeyLookupRecord> {
   const kv = env?.METAGRAPH_CONTROL;
   const cacheKey = cacheKeyFor(await hashKeyForCache(bareKey));
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as ApiKeyLookupRecord;
     } catch {
       // KV read failure is non-fatal -- fall through to the live lookup.
     }
@@ -122,10 +135,17 @@ async function lookupApiKey(env, bareKey) {
   return payload;
 }
 
+export type ApiKeyValidationResult =
+  | { ok: true; tier: unknown; accountId: unknown }
+  | { ok: false; code: "invalid_key" | "key_revoked" };
+
 /** Validates a caller-supplied key end to end: format, KV-cache-fronted
  * Unkey verification. Returns { ok: true, tier, accountId } or
  * { ok: false, code }. Never throws on attacker-controlled input. */
-export async function validateApiKey(env, rawKey) {
+export async function validateApiKey(
+  env: Env,
+  rawKey: unknown,
+): Promise<ApiKeyValidationResult> {
   const bareKey = bareKeyFrom(rawKey);
   if (!bareKey) return { ok: false, code: "invalid_key" };
   const record = await lookupApiKey(env, bareKey);
