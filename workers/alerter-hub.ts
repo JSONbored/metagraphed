@@ -33,7 +33,8 @@ import {
   buildTelegramDeliveryRequest,
   buildWebhookDeliveryRequest,
   isDeliveryRateLimited,
-} from "../src/alert-delivery.mjs";
+  type AlertTrigger,
+} from "../src/alert-delivery.ts";
 
 // #6746/#6747: the empty snapshot every AlerterHub starts with and falls
 // back to whenever a metric refresh is skipped/fails -- both of
@@ -130,24 +131,33 @@ export async function deliverAlertMatch(
   }: { resolveHostnames?: (host: string) => Promise<unknown> } = {},
 ): Promise<boolean> {
   let request: { url: string; init?: RequestInit } | null | undefined;
+  // Trigger's `destination` lives behind its index signature (the shape
+  // varies by channel), but every delivered trigger carries one — the
+  // alert-delivery builders below require it as a concrete string field.
+  const alertTrigger = trigger as unknown as AlertTrigger;
+  const alertPayload = payload as Record<string, unknown> | null | undefined;
   switch (trigger.channel) {
     case "webhook":
-      request = buildWebhookDeliveryRequest(trigger, payload, Date.now());
+      request = buildWebhookDeliveryRequest(
+        alertTrigger,
+        alertPayload,
+        Date.now(),
+      );
       break;
     case "discord":
-      request = buildDiscordDeliveryRequest(trigger, payload);
+      request = buildDiscordDeliveryRequest(alertTrigger, alertPayload);
       break;
     case "telegram":
       if (!env.TELEGRAM_BOT_TOKEN) return false;
       request = buildTelegramDeliveryRequest(
-        trigger,
-        payload,
+        alertTrigger,
+        alertPayload,
         env.TELEGRAM_BOT_TOKEN,
       );
       break;
     case "email":
       if (!env.RESEND_API_KEY || !env.RESEND_FROM_ADDRESS) return false;
-      request = buildEmailDeliveryRequest(trigger, payload, {
+      request = buildEmailDeliveryRequest(alertTrigger, alertPayload, {
         resendKey: env.RESEND_API_KEY,
         fromAddress: env.RESEND_FROM_ADDRESS,
       });

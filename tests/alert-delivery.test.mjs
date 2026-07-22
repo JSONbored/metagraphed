@@ -10,7 +10,7 @@ import {
   buildWebhookDeliveryRequest,
   formatAlertMessage,
   isDeliveryRateLimited,
-} from "../src/alert-delivery.mjs";
+} from "../src/alert-delivery.ts";
 
 function trigger(overrides = {}) {
   return {

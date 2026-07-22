@@ -32,22 +32,40 @@ import { isValidAlertDestination } from "./alert-triggers.mjs";
 export const ALERT_DELIVERY_MIN_INTERVAL_MS = 60 * 1000;
 
 export function isDeliveryRateLimited(
-  lastDeliveredAtMs,
-  nowMs,
-  minIntervalMs = ALERT_DELIVERY_MIN_INTERVAL_MS,
-) {
+  lastDeliveredAtMs: number | null | undefined,
+  nowMs: number,
+  minIntervalMs: number = ALERT_DELIVERY_MIN_INTERVAL_MS,
+): boolean {
   if (!lastDeliveredAtMs) return false;
   return nowMs - lastDeliveredAtMs < minIntervalMs;
 }
 
 const DISCORD_CONTENT_MAX_LENGTH = 2000; // Discord's own message-content cap
 
+export interface AlertTrigger {
+  id: unknown;
+  name?: unknown;
+  destination: string;
+}
+
+export interface AlertDeliveryRequest {
+  url: string;
+  init: {
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+  };
+}
+
 // A single human-readable line describing the match, shared across every
 // channel's text body. Only includes fields the specific payload actually
 // carries (blocks/extrinsics/chain_events/account_events each populate a
 // different subset -- see workers/chain-firehose-hub.mjs's
 // CHAIN_FIREHOSE_TABLES), never assumes account_events' shape universally.
-export function formatAlertMessage(trigger, payload) {
+export function formatAlertMessage(
+  trigger: AlertTrigger | null | undefined,
+  payload: Record<string, unknown> | null | undefined,
+): string {
   const parts = [
     trigger?.name
       ? `Chain alert "${trigger.name}" matched`
@@ -72,7 +90,11 @@ export function formatAlertMessage(trigger, payload) {
 // re-check is defense in depth against a record that slipped past intake
 // (or a future bug in that validator), matching deliverChangeEvent's own
 // "re-validate at delivery time" precedent.
-export function buildWebhookDeliveryRequest(trigger, payload, nowMs) {
+export function buildWebhookDeliveryRequest(
+  trigger: AlertTrigger,
+  payload: Record<string, unknown> | null | undefined,
+  nowMs: number,
+): AlertDeliveryRequest | null {
   if (!isPublicWebhookUrl(trigger.destination)) return null;
   return {
     url: trigger.destination,
@@ -99,7 +121,10 @@ export function buildWebhookDeliveryRequest(trigger, payload, nowMs) {
 // defense in depth against a record that slipped past intake, mirroring
 // buildWebhookDeliveryRequest's own re-check above (found by an automated
 // review: the webhook channel had this re-check, Discord didn't).
-export function buildDiscordDeliveryRequest(trigger, payload) {
+export function buildDiscordDeliveryRequest(
+  trigger: AlertTrigger,
+  payload: Record<string, unknown> | null | undefined,
+): AlertDeliveryRequest | null {
   if (!isValidAlertDestination("discord", trigger.destination)) return null;
   return {
     url: trigger.destination,
@@ -116,7 +141,11 @@ export function buildDiscordDeliveryRequest(trigger, payload) {
   };
 }
 
-export function buildTelegramDeliveryRequest(trigger, payload, botToken) {
+export function buildTelegramDeliveryRequest(
+  trigger: AlertTrigger,
+  payload: Record<string, unknown> | null | undefined,
+  botToken: string,
+): AlertDeliveryRequest {
   return {
     url: `https://api.telegram.org/bot${botToken}/sendMessage`,
     init: {
@@ -136,10 +165,10 @@ export function buildTelegramDeliveryRequest(trigger, payload, botToken) {
 // false-positiving on a legitimate env-injected-secret passthrough,
 // matching src/webhooks.mjs's own `hookSecret` naming precedent.
 export function buildEmailDeliveryRequest(
-  trigger,
-  payload,
-  { resendKey, fromAddress },
-) {
+  trigger: AlertTrigger,
+  payload: Record<string, unknown> | null | undefined,
+  { resendKey, fromAddress }: { resendKey: string; fromAddress: string },
+): AlertDeliveryRequest {
   return {
     url: "https://api.resend.com/emails",
     init: {
