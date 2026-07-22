@@ -78,7 +78,7 @@ import {
   buildSubnetHistory,
   parseHistoryWindow,
   unsupportedWindowMessage,
-} from "../../src/neuron-history.mjs";
+} from "../../src/neuron-history.ts";
 import {
   INGESTED_EVENT_KINDS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,

@@ -1,7 +1,7 @@
 // Cross-subnet daily history for one validator hotkey (#4334/7.3): staked-
 // over-time + a rewards-per-1000-TAO rate, rolled up from the neuron_daily
 // tier the same way buildSubnetHistory rolls up a subnet's daily totals
-// (src/neuron-history.mjs) — one point per snapshot_date, SUM(stake_tao)/
+// (src/neuron-history.ts) — one point per snapshot_date, SUM(stake_tao)/
 // SUM(emission_tao) across every subnet the hotkey validates in that day
 // (idx_neuron_daily_hotkey_date already indexes exactly this access path).
 
@@ -21,7 +21,7 @@ function roundTao(v) {
   return Math.round(v * 1e6) / 1e6;
 }
 
-// Round a TAO sum, preserving null -- mirrors neuron-history.mjs's
+// Round a TAO sum, preserving null -- mirrors neuron-history.ts's
 // roundTaoOrNull so an unrounded D1 SUM() never leaks float noise while a
 // null/cold-day SUM stays null rather than collapsing to 0.
 function roundTaoOrNull(v) {

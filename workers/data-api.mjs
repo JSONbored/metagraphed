@@ -107,7 +107,7 @@ import {
   HISTORY_WINDOWS,
   DEFAULT_HISTORY_WINDOW,
   MAX_HISTORY_POINTS,
-} from "../src/neuron-history.mjs";
+} from "../src/neuron-history.ts";
 import { buildValidatorHistory } from "../src/validator-history.mjs";
 import {
   buildTurnover,
@@ -274,7 +274,7 @@ import {
 import {
   buildEconomicsTrends,
   parseHistoryWindow,
-} from "../src/neuron-history.mjs";
+} from "../src/neuron-history.ts";
 import { ECONOMICS_TRENDS_ROW_CAP } from "../src/economics-trends.ts";
 import {
   buildChainWeights,
@@ -552,7 +552,7 @@ function validEventFilter(value) {
 // its own captured_at, so this upserts BOTH neurons (latest-only) AND
 // neuron_daily (dated) from the same payload in the same transaction. No
 // Postgres-side rollup cron is needed, and therefore none of D1's
-// archive-then-prune complexity (src/neuron-history.mjs, #4770) has an
+// archive-then-prune complexity (src/neuron-history.ts, #4770) has an
 // equivalent here to build.
 const NEURONS_SYNC_TOKEN_HEADER = "x-neurons-sync-token";
 // ~33k rows today (129 subnets x <=256 UIDs); generous headroom over that
@@ -8435,7 +8435,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/neurons/:uid/history?window= (#4832
         // Tier 2b): one UID's daily metagraph snapshot over time, mirroring
-        // src/neuron-history.mjs's buildNeuronHistory.
+        // src/neuron-history.ts's buildNeuronHistory.
         const neuronHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/,
         );
@@ -8471,7 +8471,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/history?window= (#4832 Tier 2b): daily
         // neuron/validator counts + stake/emission totals for one subnet,
-        // mirroring src/neuron-history.mjs's buildSubnetHistory.
+        // mirroring src/neuron-history.ts's buildSubnetHistory.
         const subnetHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/history$/,
         );

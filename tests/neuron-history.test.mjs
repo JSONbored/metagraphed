@@ -7,7 +7,7 @@ import {
   buildEconomicsTrends,
   HISTORY_WINDOWS,
   MAX_HISTORY_POINTS,
-} from "../src/neuron-history.mjs";
+} from "../src/neuron-history.ts";
 import { buildConcentrationHistory } from "../src/concentration.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";

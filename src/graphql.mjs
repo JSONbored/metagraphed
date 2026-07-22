@@ -356,7 +356,7 @@ import {
   buildSubnetHistory,
   parseHistoryWindow,
   unsupportedWindowMessage,
-} from "./neuron-history.mjs";
+} from "./neuron-history.ts";
 import { buildValidatorHistory } from "./validator-history.mjs";
 import { loadEconomicsTrends } from "./economics-trends.ts";
 import {

@@ -7,9 +7,11 @@
 // these.
 import { NEURON_COLUMNS, formatNeuron } from "./metagraph-neurons.ts";
 
+type Row = Record<string, unknown>;
+
 // History windows. Deliberately NOT analyticsWindow (which only understands
 // 7d/30d and clamps anything else to 400 days). `all` → no lower bound.
-export const HISTORY_WINDOWS = {
+export const HISTORY_WINDOWS: Record<string, number | null> = {
   "7d": 7,
   "30d": 30,
   "90d": 90,
@@ -20,11 +22,18 @@ export const DEFAULT_HISTORY_WINDOW = "30d";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;
 
-export function unsupportedWindowMessage(value, windows) {
+export function unsupportedWindowMessage(
+  value: unknown,
+  windows: Record<string, unknown>,
+): string {
   return `"${value}" is not a supported window. Supported: ${Object.keys(windows).join(", ")}.`;
 }
 
-export function parseHistoryWindow(value) {
+export function parseHistoryWindow(
+  value: unknown,
+):
+  | { label: string; days: number | null }
+  | { error: { parameter: string; message: string } } {
   const v = typeof value === "string" && value ? value : DEFAULT_HISTORY_WINDOW;
   if (!Object.prototype.hasOwnProperty.call(HISTORY_WINDOWS, v)) {
     return {
@@ -37,7 +46,7 @@ export function parseHistoryWindow(value) {
   return { label: v, days: HISTORY_WINDOWS[v] };
 }
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -50,7 +59,7 @@ function toIso(ms) {
 // `r.neuron_count ?? null` would leak the string into the subnet-history
 // payload (breaking the ["integer","null"] contract). Mirrors toBlockNumber in
 // blocks.mjs / account-events.mjs.
-function toNonNegativeInt(value) {
+function toNonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
@@ -63,14 +72,19 @@ export const NEURON_DAILY_READ_COLUMNS = `snapshot_date, ${NEURON_COLUMNS}`;
 
 // Per-UID time series: one point per snapshot_date (the handler queries newest
 // first, bounded by MAX_HISTORY_POINTS), each a live-shaped neuron plus its date.
-export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
+export function buildNeuronHistory(
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+  uid: unknown,
+  { window }: { window?: unknown } = {},
+): Row {
   // Drop any malformed (non-object) row so the array only holds real points and
   // the count tracks it (point_count === points.length) -- mirroring the
   // blocks/extrinsics/metagraph builders' .filter(Boolean) guard (#1793). Reading
   // formatNeuron(r) first also means a null/undefined element degrades gracefully
   // instead of throwing on `r.snapshot_date`.
   const points = (rows || [])
-    .map((r) => {
+    .map((r): Row | null => {
       const neuron = formatNeuron(r);
       if (!neuron) return null;
       return {
@@ -80,7 +94,7 @@ export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
         ...neuron,
       };
     })
-    .filter(Boolean);
+    .filter((p): p is Row => p !== null);
   return {
     schema_version: 1,
     netuid,
@@ -91,6 +105,21 @@ export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
   };
 }
 
+interface EconomicsTrendAccumulator {
+  subnet_count: number;
+  stake_sum_rao: bigint;
+  stake_seen: boolean;
+  validator_sum: number;
+  validator_seen: boolean;
+  miner_sum: number;
+  miner_seen: boolean;
+  emission_sum: number;
+  emission_seen: number;
+  weighted_price_num: number;
+  weighted_price_den: number;
+  prices: number[];
+}
+
 // Network-wide economics time series (#1307): roll the per-subnet daily
 // subnet_snapshots rows up to ONE point per UTC day across all subnets. Each input
 // row is {snapshot_date, total_stake_tao, alpha_price_tao, validator_count,
@@ -98,8 +127,11 @@ export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
 // stake-weighted mean + median alpha price can be computed here. Rows arrive newest
 // first; the output preserves that order. Null-safe throughout — a metric is null
 // for a day only when NO subnet reported it.
-export function buildEconomicsTrends(rows, { window, capped } = {}) {
-  const byDay = new Map(); // snapshot_date -> accumulator (insertion order = newest first)
+export function buildEconomicsTrends(
+  rows: Row[] | null | undefined,
+  { window, capped }: { window?: unknown; capped?: boolean } = {},
+): Row {
+  const byDay = new Map<unknown, EconomicsTrendAccumulator>(); // snapshot_date -> accumulator (insertion order = newest first)
   for (const r of rows || []) {
     const day = r.snapshot_date;
     if (day == null) continue;
@@ -189,14 +221,14 @@ export function buildEconomicsTrends(rows, { window, capped } = {}) {
 // Blank D1 cells coerce via Number("") -> 0; trim rejects "" / whitespace-only
 // so a blank cell is excluded from the day's aggregate rather than read as a
 // genuine 0. Mirrors toNonNegativeInt above.
-function toFiniteOrNull(v) {
+function toFiniteOrNull(v: unknown): number | null {
   if (v == null) return null;
   if (typeof v === "string" && v.trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-function roundTao(v) {
+function roundTao(v: number): number {
   return Math.round(v * 1e6) / 1e6;
 }
 
@@ -213,7 +245,7 @@ const RAO_PER_TAO = 1_000_000_000n;
 // No negative-sign handling: total_stake_tao is a non-negative on-chain
 // quantity, so a negative sum is unreachable here -- would be untestable
 // dead code.
-function raoToTaoString(rao) {
+function raoToTaoString(rao: bigint): string {
   const whole = rao / RAO_PER_TAO;
   const frac = rao % RAO_PER_TAO;
   return `${whole}.${frac.toString().padStart(9, "0")}`;
@@ -221,18 +253,18 @@ function raoToTaoString(rao) {
 // Round a TAO sum, preserving null — so an unrounded D1 SUM(stake_tao)/SUM(
 // emission_tao) never leaks accumulated float noise, while a null SUM (cold/
 // sparse day) stays null rather than collapsing to 0.
-function roundTaoOrNull(v) {
+function roundTaoOrNull(v: unknown): number | null {
   const n = toFiniteOrNull(v);
   return n == null ? null : roundTao(n);
 }
-function roundPrice(v) {
+function roundPrice(v: number): number {
   return Math.round(v * 1e9) / 1e9;
 }
-function roundShare(v) {
+function roundShare(v: number): number {
   return Math.round(v * 1e6) / 1e6;
 }
 
-function median(values) {
+function median(values: number[]): number | null {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -244,7 +276,11 @@ function median(values) {
 // Per-subnet metric-over-time: the daily count + a couple of cheap aggregates per
 // snapshot_date (newest first), for a subnet-level history sparkline without
 // shipping every UID. Rows come from a GROUP BY snapshot_date query.
-export function buildSubnetHistory(rows, netuid, { window } = {}) {
+export function buildSubnetHistory(
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+  { window }: { window?: unknown } = {},
+): Row {
   // Drop any malformed (non-object) row so the count tracks the emitted array
   // (point_count === points.length) and a null/undefined element never throws on
   // `r.snapshot_date` -- mirroring the sibling feed builders' guard (#1793).

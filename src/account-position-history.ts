@@ -145,9 +145,9 @@ export function formatAccountPosition(
 
 // Per-account, per-subnet time series: one point per snapshot_date (the
 // handler queries newest first, bounded by MAX_HISTORY_POINTS from
-// neuron-history.mjs — the shared history-window vocabulary every other
+// neuron-history.ts — the shared history-window vocabulary every other
 // history route already reuses). Mirrors buildNeuronHistory's shape
-// (src/neuron-history.mjs), the response-builder template this issue names.
+// (src/neuron-history.ts), the response-builder template this issue names.
 export interface AccountPositionHistoryPoint extends AccountPositionEntry {
   snapshot_date: unknown;
   captured_at: string | null;

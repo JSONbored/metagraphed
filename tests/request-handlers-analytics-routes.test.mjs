@@ -24,7 +24,7 @@ import { MCP_TOOLS } from "../src/mcp-server.mjs";
 import {
   unsupportedWindowMessage,
   HISTORY_WINDOWS,
-} from "../src/neuron-history.mjs";
+} from "../src/neuron-history.ts";
 import { UPTIME_WINDOWS } from "../workers/config.ts";
 
 const NETUID = 7;

@@ -8,19 +8,19 @@ import {
   buildEconomicsTrends,
   DEFAULT_HISTORY_WINDOW,
   parseHistoryWindow,
-} from "./neuron-history.mjs";
+} from "./neuron-history.ts";
 
 // ~129 subnets × 365 days ≈ 47k rows for `all`; generous but finite.
 export const ECONOMICS_TRENDS_ROW_CAP = 60000;
 
 export function parseEconomicsTrendsWindow(
   window: unknown,
-): { label: string; days: number } | null {
+): { label: string; days: number | null } | null {
   const parsed = parseHistoryWindow(
     window === undefined || window === null ? DEFAULT_HISTORY_WINDOW : window,
   );
-  if (parsed.error) return null;
-  return parsed;
+  if ("error" in parsed) return null;
+  return { label: parsed.label, days: parsed.days };
 }
 
 export async function loadEconomicsTrends({

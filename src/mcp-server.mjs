@@ -510,7 +510,7 @@ import {
   buildNeuronHistory,
   buildSubnetHistory,
   parseHistoryWindow,
-} from "./neuron-history.mjs";
+} from "./neuron-history.ts";
 import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import {
   buildTurnover,

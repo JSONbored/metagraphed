@@ -29,7 +29,7 @@ import {
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,
-} from "../../src/neuron-history.mjs";
+} from "../../src/neuron-history.ts";
 import { loadEconomicsTrends } from "../../src/economics-trends.ts";
 import {
   COMPARE_DIMENSIONS,
