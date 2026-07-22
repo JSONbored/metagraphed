@@ -34,29 +34,29 @@ export const USAGE_EVENT_NAME = "usage_event";
 // Cap free-form string fields so a buggy caller can't ship unbounded payloads.
 const MAX_LABEL_CHARS = 256;
 
-/**
- * @typedef {object} UsageEvent
- * @property {string} [route] REST/GraphQL route path (no query string / bodies).
- * @property {string} [mcpTool] MCP tool name (no arguments / response content).
- * @property {boolean} ok Whether the request/tool call succeeded.
- * @property {number} durationMs Wall-clock duration in milliseconds (>= 0).
- */
+/** REST/GraphQL route path (no query string / bodies) or MCP tool name (no
+ * arguments / response content); ok/durationMs describe the outcome. */
+export interface UsageEvent {
+  route?: string;
+  mcpTool?: string;
+  ok: boolean;
+  durationMs: number;
+}
 
 /** Public capture endpoint, appended to the resolved PostHog host. */
 export const POSTHOG_CAPTURE_PATH = "/i/v0/e/";
 
-/**
- * @typedef {object} RecordUsageEventDeps
- * @property {typeof fetch} [fetch] Injectable fetch (tests).
- * @property {string} [distinctId] Override distinct_id (tests).
- */
+export interface RecordUsageEventDeps {
+  /** Injectable fetch (tests). */
+  fetch?: typeof fetch;
+  /** Override distinct_id (tests). */
+  distinctId?: string;
+}
 
-/**
- * True when this deployment has a non-empty PostHog project token configured.
- * @param {object | null | undefined} env
- * @returns {boolean}
- */
-export function isUsageTelemetryConfigured(env) {
+/** True when this deployment has a non-empty PostHog project token configured. */
+export function isUsageTelemetryConfigured(
+  env: Env | null | undefined,
+): boolean {
   const token = env?.[POSTHOG_PROJECT_TOKEN_ENV];
   return typeof token === "string" && token.trim().length > 0;
 }
@@ -64,10 +64,10 @@ export function isUsageTelemetryConfigured(env) {
 /**
  * Build the allowlisted PostHog properties object, or null when the event is
  * too malformed to record (missing ok / non-finite duration).
- * @param {UsageEvent | null | undefined} event
- * @returns {Record<string, string | number | boolean> | null}
  */
-export function usageEventProperties(event) {
+export function usageEventProperties(
+  event: UsageEvent | null | undefined,
+): Record<string, string | number | boolean> | null {
   if (!event || typeof event !== "object") return null;
   if (typeof event.ok !== "boolean") return null;
   if (
@@ -78,8 +78,7 @@ export function usageEventProperties(event) {
     return null;
   }
 
-  /** @type {Record<string, string | number | boolean>} */
-  const properties = {
+  const properties: Record<string, string | number | boolean> = {
     ok: event.ok,
     // Coarse integer ms — drop sub-ms noise; clamp absurd values at 24h.
     duration_ms: Math.min(Math.round(event.durationMs), 86_400_000),
@@ -98,13 +97,12 @@ export function usageEventProperties(event) {
  * Record one product-usage event. Resolves without throwing; returns whether
  * an event was handed to PostHog. Callers that need Workers flush semantics
  * should schedule the returned promise via `ctx.waitUntil(...)`.
- *
- * @param {object | null | undefined} env Worker env (reads POSTHOG_* vars).
- * @param {UsageEvent} event Allowlisted usage fields only.
- * @param {RecordUsageEventDeps} [deps]
- * @returns {Promise<boolean>}
  */
-export async function recordUsageEvent(env, event, deps = {}) {
+export async function recordUsageEvent(
+  env: Env | null | undefined,
+  event: UsageEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
   try {
     if (!isUsageTelemetryConfigured(env)) return false;
 
@@ -118,7 +116,7 @@ export async function recordUsageEvent(env, event, deps = {}) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          api_key: String(env[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
           event: USAGE_EVENT_NAME,
           distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
           properties,
@@ -135,22 +133,14 @@ export async function recordUsageEvent(env, event, deps = {}) {
   }
 }
 
-/**
- * @param {object | null | undefined} env
- * @returns {string}
- */
-export function resolvePostHogHost(env) {
+export function resolvePostHogHost(env: Env | null | undefined): string {
   return typeof env?.[POSTHOG_HOST_ENV] === "string" &&
     env[POSTHOG_HOST_ENV].trim()
     ? env[POSTHOG_HOST_ENV].trim()
     : DEFAULT_POSTHOG_HOST;
 }
 
-/**
- * @param {unknown} value
- * @returns {string | undefined}
- */
-function sanitizeLabel(value) {
+function sanitizeLabel(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;

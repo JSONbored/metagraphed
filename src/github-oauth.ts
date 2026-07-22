@@ -40,7 +40,7 @@
 // actually called). Both exported handlers also accept an injectable
 // `deps.getHelpers` for exactly this reason -- tests inject a fake helpers
 // object and never touch the real package at all, same shape as
-// usage-telemetry.mjs's injectable `deps.fetch`.
+// usage-telemetry.ts's injectable `deps.fetch`.
 //
 // The package's real TYPES (as opposed to its runtime) have no
 // cloudflare:workers dependency, so `import type` below is safe at module

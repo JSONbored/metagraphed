@@ -28,6 +28,8 @@ interface Env {
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
   METAGRAPH_ICON_ALLOWED_HOSTS?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
+  POSTHOG_HOST?: string;
+  POSTHOG_PROJECT_TOKEN?: string;
   REGISTRY_SYNC_SECRET?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_ADDRESS?: string;

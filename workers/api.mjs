@@ -8,7 +8,7 @@ import {
 import {
   isUsageTelemetryConfigured,
   recordUsageEvent,
-} from "../src/usage-telemetry.mjs";
+} from "../src/usage-telemetry.ts";
 import {
   applyQueryFilters,
   canonicalListSearch,

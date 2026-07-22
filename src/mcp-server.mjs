@@ -39,7 +39,7 @@ import * as Sentry from "@sentry/cloudflare";
 import {
   isUsageTelemetryConfigured,
   recordUsageEvent,
-} from "./usage-telemetry.mjs";
+} from "./usage-telemetry.ts";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters } from "../workers/list-query.ts";
