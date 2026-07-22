@@ -41,7 +41,7 @@ function roundRatio(value: number | null | undefined, dp = 6): number | null {
 // entity, or as a distribution total) with plain `+=` compounds rounding error
 // across the accumulation even when each individual value is itself exact
 // (metagraphed#2922, mirrors the toRaoBig pattern in src/chain-yield.ts and
-// src/metagraph-neurons.mjs). Convert back to TAO only once, at the very end.
+// src/metagraph-neurons.ts). Convert back to TAO only once, at the very end.
 function toRaoBig(taoValue: unknown): bigint {
   const n = typeof taoValue === "number" ? taoValue : Number(taoValue);
   return Number.isFinite(n) ? BigInt(Math.round(n * 1e9)) : 0n;

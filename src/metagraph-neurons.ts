@@ -7,6 +7,9 @@
 
 import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.ts";
 
+type Row = Record<string, unknown>;
+type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
 // The columns the handlers SELECT for a neuron row.
 export const NEURON_COLUMNS =
   "uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, " +
@@ -70,7 +73,7 @@ const APY_SECONDS_PER_BLOCK = 12;
 // snapshot-only, never annualized) -- apy_estimate is the new precedent.
 const APY_SECONDS_PER_YEAR = 365 * 24 * 60 * 60; // 31,536,000
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   // D1 can return the INTEGER captured_at as a numeric string; a bare
   // Number.isFinite(ms) is false for a string, so the old form dropped a real
   // snapshot timestamp to null. Coerce first and require n > 0 so null/blank/
@@ -83,12 +86,12 @@ function toIso(ms) {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function numberOrZero(value) {
+function numberOrZero(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
-function nullableNumber(value) {
+function nullableNumber(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -96,7 +99,7 @@ function nullableNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function nonNegativeInt(value) {
+function nonNegativeInt(value: unknown): number | null {
   // Guard null first: Number(null) === 0, so a null column (block_number is a
   // nullable INTEGER) would masquerade as the real chain height / netuid / uid 0
   // instead of "absent". A numeric string like "10" from D1 must still pass.
@@ -107,7 +110,7 @@ function nonNegativeInt(value) {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function roundTao(value) {
+function roundTao(value: unknown): number {
   return Math.round(numberOrZero(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
@@ -119,17 +122,17 @@ function roundTao(value) {
 // src/account-balance.mjs for #2070). Convert back to TAO only once, at the
 // very end. Callers always pass an already-finite numberOrZero()/roundTao()
 // result, so no isFinite guard here.
-function toRaoBig(tao) {
+function toRaoBig(tao: number): bigint {
   return BigInt(Math.round(tao * RAO_PER_TAO));
 }
-function raoBigToTao(rao) {
+function raoBigToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
-function round(value, dp = 6) {
-  if (value == null || !Number.isFinite(value)) return null;
+function round(value: unknown, dp = 6): number | null {
+  if (value == null || !Number.isFinite(value as number)) return null;
   const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
+  return Math.round((value as number) * factor) / factor;
 }
 
 // 1 TAO = 1e9 rao; round yield-shaped outputs to that precision to shed
@@ -137,16 +140,21 @@ function round(value, dp = 6) {
 // Matches src/chain-yield.ts / src/subnet-yield.mjs's own round9 exactly
 // (apy_estimate is a sibling yield-shaped field, not a trust/take value, so
 // it uses this precision convention rather than round()'s 6dp default).
-function round9(value) {
-  if (value == null || !Number.isFinite(value)) return null;
+function round9(value: unknown): number | null {
+  if (value == null || !Number.isFinite(value as number)) return null;
   return Math.round(Number(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
 // Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
 // must not pass through Boolean(), which treats any non-empty string as true.
 // Mirrors the local toD1Flag added to formatRegistration by #2487.
-function toD1Flag(value) {
+function toD1Flag(value: unknown): boolean {
   return Number(value) === 1;
+}
+
+interface ImmunityWindow {
+  immunity_expires_at_block?: number;
+  immunity_expires_at?: string | null;
 }
 
 // coerce the flag columns back to real booleans for the API (toD1Flag
@@ -180,23 +188,29 @@ function toD1Flag(value) {
 // already depends on. Exported for direct unit testing, mirroring
 // src/concentration.ts's pure-statistics convention; formatNeuron is its only
 // real caller.
-export function computeImmunityWindow(row, neuron, immunityPeriod) {
+export function computeImmunityWindow(
+  row: Row,
+  neuron: Row,
+  immunityPeriod: number,
+): ImmunityWindow {
   if (!neuron.is_immunity_period || neuron.registered_at_block == null) {
     return {};
   }
-  const expiresAtBlock = neuron.registered_at_block + immunityPeriod;
+  const expiresAtBlock =
+    (neuron.registered_at_block as number) + immunityPeriod;
   const snapshotBlock = nonNegativeInt(row.block_number);
   const capturedAtMs = row.captured_at == null ? null : Number(row.captured_at);
-  let expiresAt = null;
+  let expiresAt: string | null = null;
   if (
     snapshotBlock != null &&
-    Number.isFinite(capturedAtMs) &&
-    capturedAtMs > 0
+    Number.isFinite(capturedAtMs as number) &&
+    (capturedAtMs as number) > 0
   ) {
     const blocksRemaining = expiresAtBlock - snapshotBlock;
     if (blocksRemaining > 0) {
       expiresAt = toIso(
-        capturedAtMs + blocksRemaining * APY_SECONDS_PER_BLOCK * 1000,
+        (capturedAtMs as number) +
+          blocksRemaining * APY_SECONDS_PER_BLOCK * 1000,
       );
     }
   }
@@ -212,10 +226,14 @@ export function computeImmunityWindow(row, neuron, immunityPeriod) {
 // omits it, so their rows get no immunity_expires_at* keys at all (not
 // null-valued ones), keeping their own additionalProperties:false schemas
 // untouched by this change.
-export function formatNeuron(row, featuredHotkeys, immunityPeriod) {
+export function formatNeuron(
+  row: Row | null | undefined,
+  featuredHotkeys?: Set<string>,
+  immunityPeriod?: number,
+): Row | null {
   if (!row || typeof row !== "object") return null;
   const hotkey = row.hotkey ?? null;
-  const neuron = {
+  const neuron: Row = {
     uid: row.uid == null ? null : nonNegativeInt(row.uid),
     hotkey,
     coldkey: row.coldkey ?? null,
@@ -246,16 +264,22 @@ export function formatNeuron(row, featuredHotkeys, immunityPeriod) {
     take: row.take == null ? null : round(nullableNumber(row.take)),
   };
   if (featuredHotkeys) {
-    neuron.featured = Boolean(hotkey && featuredHotkeys.has(hotkey));
+    neuron.featured = Boolean(hotkey && featuredHotkeys.has(hotkey as string));
   }
-  if (Number.isSafeInteger(immunityPeriod) && immunityPeriod >= 0) {
-    Object.assign(neuron, computeImmunityWindow(row, neuron, immunityPeriod));
+  if (Number.isSafeInteger(immunityPeriod) && (immunityPeriod as number) >= 0) {
+    Object.assign(
+      neuron,
+      computeImmunityWindow(row, neuron, immunityPeriod as number),
+    );
   }
   return neuron;
 }
 
 // All rows of one subnet's snapshot share the same captured_at/block_number.
-function snapshotStamp(rows) {
+function snapshotStamp(rows: Row[]): {
+  captured_at: string | null;
+  block_number: number | null;
+} {
   const first = rows[0] || {};
   return {
     captured_at: toIso(first.captured_at),
@@ -267,7 +291,11 @@ function snapshotStamp(rows) {
   };
 }
 
-export function buildSubnetMetagraph(rows, netuid, { immunityPeriod } = {}) {
+export function buildSubnetMetagraph(
+  rows: Row[],
+  netuid: unknown,
+  { immunityPeriod }: { immunityPeriod?: number } = {},
+): Row {
   const { captured_at, block_number } = snapshotStamp(rows);
   // Drop any malformed row (formatNeuron → null) so the array only holds real
   // Neuron objects, mirroring the blocks/extrinsics feed builders; the count
@@ -276,7 +304,7 @@ export function buildSubnetMetagraph(rows, netuid, { immunityPeriod } = {}) {
   // never lands in formatNeuron's featuredHotkeys parameter.
   const neurons = rows
     .map((row) => formatNeuron(row, undefined, immunityPeriod))
-    .filter(Boolean);
+    .filter((n): n is Row => Boolean(n));
   return {
     schema_version: 1,
     netuid,
@@ -288,10 +316,12 @@ export function buildSubnetMetagraph(rows, netuid, { immunityPeriod } = {}) {
 }
 
 export function buildSubnetValidators(
-  rows,
-  netuid,
-  { featuredHotkeys = new Set() } = {},
-) {
+  rows: Row[],
+  netuid: unknown,
+  {
+    featuredHotkeys = new Set<string>(),
+  }: { featuredHotkeys?: Set<string> } = {},
+): Row {
   const { captured_at, block_number } = snapshotStamp(rows);
   // A real (if possibly empty) Set is always passed to formatNeuron here, so
   // `featured` is always present on a validator row -- unlike the metagraph/
@@ -299,7 +329,7 @@ export function buildSubnetValidators(
   // when nothing is currently featured.
   const validators = rows
     .map((row) => formatNeuron(row, featuredHotkeys))
-    .filter(Boolean);
+    .filter((n): n is Row => Boolean(n));
   return {
     schema_version: 1,
     netuid,
@@ -310,7 +340,11 @@ export function buildSubnetValidators(
   };
 }
 
-export function buildNeuronDetail(row, netuid, { immunityPeriod } = {}) {
+export function buildNeuronDetail(
+  row: Row | null | undefined,
+  netuid: unknown,
+  { immunityPeriod }: { immunityPeriod?: number } = {},
+): Row {
   return {
     schema_version: 1,
     netuid,
@@ -322,7 +356,7 @@ export function buildNeuronDetail(row, netuid, { immunityPeriod } = {}) {
   };
 }
 
-function primaryColdkey(coldkeys) {
+function primaryColdkey(coldkeys: Map<string, number>): string | null {
   const ranked = [...coldkeys.entries()].sort(
     (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
   );
@@ -338,16 +372,25 @@ function primaryColdkey(coldkeys) {
 // /accounts/{ss58}/identity artifact) rather than re-deriving it, dropping
 // only that artifact's own schema_version/account (redundant here -- the
 // caller already knows which coldkey this is).
-function coldkeyIdentity(coldkey, identityByColdkey) {
+function coldkeyIdentity(
+  coldkey: string | null,
+  identityByColdkey: Map<string, Row>,
+): Row | null {
   if (!coldkey) return null;
   const full = buildAccountIdentity(
     identityByColdkey.get(coldkey) ?? null,
     coldkey,
   );
-  const identity = { has_identity: full.has_identity };
+  const identity: Row = { has_identity: full.has_identity };
   for (const field of IDENTITY_FIELDS) identity[field] = full[field];
   identity.captured_at = full.captured_at;
   return identity;
+}
+
+interface ApyAccumulator {
+  apyNumeratorRao: bigint;
+  apyDenominatorRao: bigint;
+  apyEligibleCount: number;
 }
 
 // Estimated annualized yield (#2551): mutates `acc` (either a
@@ -369,7 +412,13 @@ function coldkeyIdentity(coldkey, identityByColdkey) {
 // computed as one sum-of-emission / sum-of-stake division rather than an
 // average of per-row ratios -- mirrors stakeTotalRao/emissionTotalRao's own
 // accumulate-then-convert-once pattern.
-function accumulateApyRow(acc, netuid, stake, emission, tempoByNetuid) {
+function accumulateApyRow(
+  acc: ApyAccumulator,
+  netuid: number,
+  stake: number,
+  emission: number,
+  tempoByNetuid: Map<number, number>,
+): void {
   const tempo = tempoByNetuid.get(netuid);
   if (tempo == null) return; // unresolved tempo -- excluded, never defaulted
   if (!(stake > 0)) return; // zero/negative-impossible stake -- excluded
@@ -383,7 +432,7 @@ function accumulateApyRow(acc, netuid, stake, emission, tempoByNetuid) {
 // Reads the three fields accumulateApyRow above populates and produces the
 // two apy_estimate* output fields. Null (never 0) when no membership had a
 // resolvable tempo -- "no APY opinion" rather than "confirmed zero yield".
-function finalizeApy(acc) {
+function finalizeApy(acc: ApyAccumulator): Row {
   if (acc.apyEligibleCount === 0 || acc.apyDenominatorRao <= 0n) {
     return { apy_estimate: null, apy_estimate_eligible_subnet_count: 0 };
   }
@@ -401,7 +450,7 @@ function finalizeApy(acc) {
 // in workers/data-api.mjs); the values are the human window labels the field
 // names carry (1d/1w/1m). A cold/absent baseline (D1 fallback, or a hotkey with
 // no neuron_daily row far enough back) leaves that window's return null.
-const REALIZED_RETURN_FIELDS = [
+const REALIZED_RETURN_FIELDS: Array<[string, string]> = [
   ["d1", "realized_return_1d"],
   ["d7", "realized_return_1w"],
   ["d30", "realized_return_1m"],
@@ -419,7 +468,10 @@ const REALIZED_RETURN_FIELDS = [
 // (baselineStakeTao null) or the baseline stake is non-positive (a return is
 // undefined with nothing staked) -- "no realized figure" vs. "confirmed zero
 // return", mirroring finalizeApy's null-never-fabricated convention.
-function realizedReturn(currentStakeRao, baselineStakeTao) {
+function realizedReturn(
+  currentStakeRao: bigint,
+  baselineStakeTao: number | null,
+): number | null {
   if (baselineStakeTao == null) return null;
   const baselineRao = toRaoBig(baselineStakeTao);
   if (baselineRao <= 0n) return null;
@@ -433,21 +485,44 @@ function realizedReturn(currentStakeRao, baselineStakeTao) {
 // realized_return_* output fields. Always returns all three keys so the
 // response shape is schema-stable across every tier (a cold baseline yields
 // three nulls, never omitted fields), mirroring finalizeApy.
-function realizedReturns(currentStakeRao, baseline) {
+function realizedReturns(
+  currentStakeRao: bigint,
+  baseline: Row | null | undefined,
+): Row {
   const b = baseline ?? {};
-  const out = {};
+  const out: Row = {};
   for (const [key, field] of REALIZED_RETURN_FIELDS) {
-    out[field] = realizedReturn(currentStakeRao, b[key] ?? null);
+    out[field] = realizedReturn(currentStakeRao, (b[key] as number) ?? null);
   }
   return out;
 }
 
+interface ValidatorAccumEntry {
+  hotkey: string;
+  featured: boolean;
+  coldkeys: Map<string, number>;
+  netuids: Set<number>;
+  uidCount: number;
+  stakeTotalRao: bigint;
+  emissionTotalRao: bigint;
+  apyNumeratorRao: bigint;
+  apyDenominatorRao: bigint;
+  apyEligibleCount: number;
+  validatorTrustTotal: number;
+  validatorTrustCount: number;
+  maxValidatorTrust: number | null;
+  latestCapturedAt: number | null;
+  latestBlockNumber: number | null;
+  take: number | null;
+  subnets: Row[];
+}
+
 function buildGlobalValidatorEntry(
-  entry,
-  identityByColdkey,
-  nominatorCounts = new Map(),
-  realizedStakeByHotkey = new Map(),
-) {
+  entry: ValidatorAccumEntry,
+  identityByColdkey: Map<string, Row>,
+  nominatorCounts: Map<string, number> = new Map(),
+  realizedStakeByHotkey: Map<string, Row> = new Map(),
+): Row {
   const avgTrust =
     entry.validatorTrustCount > 0
       ? entry.validatorTrustTotal / entry.validatorTrustCount
@@ -460,15 +535,17 @@ function buildGlobalValidatorEntry(
   // total by whether a root membership row exists. Rao-BigInt subtraction
   // (not float) keeps it exact, mirroring stakeTotalRao's own accumulation.
   const rootSubnet = entry.subnets.find((s) => s.netuid === 0) ?? null;
-  const rootStakeRao = rootSubnet ? toRaoBig(rootSubnet.stake_tao) : 0n;
+  const rootStakeRao = rootSubnet
+    ? toRaoBig(rootSubnet.stake_tao as number)
+    : 0n;
   const alphaStakeRao = entry.stakeTotalRao - rootStakeRao;
   const subnets = entry.subnets
     .sort(
       (a, b) =>
-        b.stake_tao - a.stake_tao ||
-        b.emission_tao - a.emission_tao ||
-        a.netuid - b.netuid ||
-        a.uid - b.uid,
+        (b.stake_tao as number) - (a.stake_tao as number) ||
+        (b.emission_tao as number) - (a.emission_tao as number) ||
+        (a.netuid as number) - (b.netuid as number) ||
+        (a.uid as number) - (b.uid as number),
     )
     .slice(0, GLOBAL_VALIDATOR_SUBNET_LIMIT);
   const coldkey = primaryColdkey(entry.coldkeys);
@@ -504,14 +581,14 @@ function buildGlobalValidatorEntry(
   };
 }
 
-function applyStakeDominance(validators) {
+function applyStakeDominance(validators: Row[]): Row[] {
   // Same rao-BigInt treatment as the per-hotkey accumulation above: summing
   // every validator's already-rounded total_stake_tao (one per hotkey,
   // network-wide) with plain `+=` reintroduces the same float-compounding risk
   // this fix removed upstream. total_stake_tao is already rao-precision here
   // (roundTao'd from an exact BigInt sum), so re-deriving its rao value is exact.
   const networkStakeRao = validators.reduce(
-    (sum, entry) => sum + toRaoBig(entry.total_stake_tao),
+    (sum, entry) => sum + toRaoBig(entry.total_stake_tao as number),
     0n,
   );
   const networkStakeTotal = raoBigToTao(networkStakeRao);
@@ -526,31 +603,41 @@ function applyStakeDominance(validators) {
   }));
 }
 
+export interface BuildGlobalValidatorsOptions {
+  sort?: string;
+  limit?: unknown;
+  featuredHotkeys?: Set<string>;
+  identityByColdkey?: Map<string, Row>;
+  nominatorCounts?: Map<string, number>;
+  tempoByNetuid?: Map<number, number>;
+  realizedStakeByHotkey?: Map<string, Row>;
+}
+
 export function buildGlobalValidators(
-  rows,
+  rows: Row[],
   {
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-    featuredHotkeys = new Set(),
-    identityByColdkey = new Map(),
+    featuredHotkeys = new Set<string>(),
+    identityByColdkey = new Map<string, Row>(),
     // hotkey -> nominator_count (#2549), sourced from the separate
     // validator_nominator_counts side table -- see that migration's own
     // comment for why this can't be a neurons-tier column. A cold/absent
     // map (e.g. the D1-retired fallback below, which never has one) leaves
     // every entry's nominator_count null, never throws.
-    nominatorCounts = new Map(),
+    nominatorCounts = new Map<string, number>(),
     // netuid -> tempo(blocks) (#2551), sourced from subnet_hyperparams --
     // see accumulateApyRow's own comment for why an unresolved netuid is
     // excluded rather than defaulted. A cold/absent map leaves every entry's
     // apy_estimate null, never throws.
-    tempoByNetuid = new Map(),
+    tempoByNetuid = new Map<number, number>(),
     // hotkey -> {d1,d7,d30} baseline total_stake_tao ~1d/1w/1m ago (#7228),
     // sourced from the neuron_daily rollup (loadRealizedStakeBaselines). A
     // cold/absent map (e.g. the D1-retired fallback below, which never has one)
     // leaves every entry's realized_return_* null, never throws.
-    realizedStakeByHotkey = new Map(),
-  } = {},
-) {
+    realizedStakeByHotkey = new Map<string, Row>(),
+  }: BuildGlobalValidatorsOptions = {},
+): Row {
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
     ? sort
     : DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -561,9 +648,9 @@ export function buildGlobalValidators(
   const normalizedLimit = Number.isFinite(flooredLimit)
     ? Math.max(0, Math.min(flooredLimit, GLOBAL_VALIDATOR_LIMIT_MAX))
     : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-  const validatorsByHotkey = new Map();
-  let latestCapturedAt = null;
-  let latestBlockNumber = null;
+  const validatorsByHotkey = new Map<string, ValidatorAccumEntry>();
+  let latestCapturedAt: number | null = null;
+  let latestBlockNumber: number | null = null;
 
   for (const row of Array.isArray(rows) ? rows : []) {
     const hotkey =
@@ -675,7 +762,7 @@ export function buildGlobalValidators(
     (a, b) =>
       validatorSortValue(b, normalizedSort) -
         validatorSortValue(a, normalizedSort) ||
-      a.hotkey.localeCompare(b.hotkey),
+      (a.hotkey as string).localeCompare(b.hotkey as string),
   );
 
   return {
@@ -689,12 +776,12 @@ export function buildGlobalValidators(
   };
 }
 
-const GLOBAL_VALIDATOR_SORT_FIELDS = {
+const GLOBAL_VALIDATOR_SORT_FIELDS: Record<string, string> = {
   total_stake: "total_stake_tao",
   total_emission: "total_emission_tao",
 };
 
-function validatorSortValue(row, key) {
+function validatorSortValue(row: Row, key: string): number {
   const field = GLOBAL_VALIDATOR_SORT_FIELDS[key] ?? key;
   const value = row?.[field];
   return typeof value === "number" && Number.isFinite(value)
@@ -705,10 +792,10 @@ function validatorSortValue(row, key) {
 // Stable partition, not a re-sort: featured rows keep their relative order
 // among themselves, and everyone else keeps theirs, so the pin only ever
 // bubbles rows up -- it never re-ranks within either group.
-function moveFeaturedToFront(rows) {
+function moveFeaturedToFront(rows: Row[]): Row[] {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
-  const featured = [];
-  const rest = [];
+  const featured: Row[] = [];
+  const rest: Row[] = [];
   for (const row of rows) {
     (row?.featured === true ? featured : rest).push(row);
   }
@@ -725,7 +812,9 @@ function moveFeaturedToFront(rows) {
 // per-subnet artifact has no `sort` field at all (its ranking is always the
 // stake-DESC default), so it always gets the pin. The `featured` flag itself
 // is untouched either way -- this function only ever reorders.
-export function overlayFeaturedValidators(data) {
+export function overlayFeaturedValidators(
+  data: Row | null | undefined,
+): Row | null | undefined {
   if (!data || typeof data !== "object" || !Array.isArray(data.validators)) {
     return data;
   }
@@ -735,17 +824,20 @@ export function overlayFeaturedValidators(data) {
   ) {
     return data;
   }
-  return { ...data, validators: moveFeaturedToFront(data.validators) };
+  return {
+    ...data,
+    validators: moveFeaturedToFront(data.validators as Row[]),
+  };
 }
 
 // D1 read paths shared by the REST handlers and the MCP tools (one source of
 // truth). `d1` is a (sql, params) => Promise<rows[]> runner; a cold/unbound DB
 // returns [] → a schema-stable empty payload.
 export async function loadSubnetMetagraph(
-  d1,
-  netuid,
-  { validatorsOnly = false } = {},
-) {
+  d1: D1Runner,
+  netuid: unknown,
+  { validatorsOnly = false }: { validatorsOnly?: boolean } = {},
+): Promise<Row> {
   const rows = await d1(
     `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
       validatorsOnly ? " AND validator_permit = 1" : ""
@@ -755,7 +847,10 @@ export async function loadSubnetMetagraph(
   return buildSubnetMetagraph(rows, netuid);
 }
 
-export async function loadSubnetValidators(d1, netuid) {
+export async function loadSubnetValidators(
+  d1: D1Runner,
+  netuid: unknown,
+): Promise<Row> {
   // Tie-break equal stake by the unique uid so the ranking is deterministic
   // across snapshot-replaced captures (without it, SQLite returns tied rows in
   // arbitrary physical order). Mirrors loadSubnetMetagraph's ORDER BY uid.
@@ -773,12 +868,12 @@ export async function loadSubnetValidators(d1, netuid) {
 // (workers/data-api.mjs's /api/v1/validators, Postgres-backed) is what
 // actually joins.
 export async function loadGlobalValidators(
-  d1,
+  d1: D1Runner,
   {
     sort = DEFAULT_GLOBAL_VALIDATOR_SORT,
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-  } = {},
-) {
+  }: { sort?: string; limit?: unknown } = {},
+): Promise<Row> {
   const rows = await d1(
     "SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, " +
       "stake_tao, block_number, captured_at FROM neurons " +
@@ -789,12 +884,23 @@ export async function loadGlobalValidators(
   return buildGlobalValidators(rows, { sort, limit });
 }
 
-export async function loadNeuron(d1, netuid, uid) {
+export async function loadNeuron(
+  d1: D1Runner,
+  netuid: unknown,
+  uid: unknown,
+): Promise<Row> {
   const rows = await d1(
     `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
     [netuid, uid],
   );
   return buildNeuronDetail(rows[0] ?? null, netuid);
+}
+
+export interface BuildValidatorDetailOptions {
+  identityByColdkey?: Map<string, Row>;
+  nominatorCount?: number | null;
+  tempoByNetuid?: Map<number, number>;
+  realizedStake?: Row | null;
 }
 
 // Cross-subnet validator detail (#4334/7.1): one hotkey's validator_permit=1
@@ -806,10 +912,10 @@ export async function loadNeuron(d1, netuid, uid) {
 // GlobalValidatorSubnet slice) since a detail page's whole point is the full
 // per-subnet performance table.
 export function buildValidatorDetail(
-  rows,
-  hotkey,
+  rows: Row[],
+  hotkey: unknown,
   {
-    identityByColdkey = new Map(),
+    identityByColdkey = new Map<string, Row>(),
     // #2549: from the separate validator_nominator_counts side table (looked
     // up by the caller, since this function has no DB access of its own).
     // Null when that table has no row for this hotkey yet -- never fabricated
@@ -818,14 +924,14 @@ export function buildValidatorDetail(
     // netuid -> tempo(blocks) (#2551), sourced from subnet_hyperparams. See
     // accumulateApyRow's own comment. A cold/absent map leaves apy_estimate
     // null, never throws.
-    tempoByNetuid = new Map(),
+    tempoByNetuid = new Map<number, number>(),
     // {d1,d7,d30} baseline total_stake_tao ~1d/1w/1m ago for this hotkey
     // (#7228), from the neuron_daily rollup (loadRealizedStakeBaselines). Null
     // (the D1-retired fallback default) leaves every realized_return_* null.
     realizedStake = null,
-  } = {},
-) {
-  const coldkeys = new Map();
+  }: BuildValidatorDetailOptions = {},
+): Row {
+  const coldkeys = new Map<string, number>();
   let stakeTotalRao = 0n;
   // Root (netuid 0) stake is TAO-denominated with no AMM/price exposure;
   // every other netuid's stake is that subnet's alpha token (#2550) --
@@ -836,18 +942,18 @@ export function buildValidatorDetail(
   // Plain object (not three separate `let`s) so it can be passed directly to
   // the shared accumulateApyRow/finalizeApy helpers buildGlobalValidators
   // also uses (#2551) -- one accumulation implementation, not duplicated.
-  const apyAcc = {
+  const apyAcc: ApyAccumulator = {
     apyNumeratorRao: 0n,
     apyDenominatorRao: 0n,
     apyEligibleCount: 0,
   };
   let validatorTrustTotal = 0;
   let validatorTrustCount = 0;
-  let maxValidatorTrust = null;
-  let latestCapturedAt = null;
-  let latestBlockNumber = null;
-  let take = null;
-  const subnets = [];
+  let maxValidatorTrust: number | null = null;
+  let latestCapturedAt: number | null = null;
+  let latestBlockNumber: number | null = null;
+  let take: number | null = null;
+  const subnets: Row[] = [];
 
   for (const row of Array.isArray(rows) ? rows : []) {
     // formatNeuron only nulls on a non-object row, and a non-object row's
@@ -899,7 +1005,11 @@ export function buildValidatorDetail(
 
   const avgTrust =
     validatorTrustCount > 0 ? validatorTrustTotal / validatorTrustCount : null;
-  subnets.sort((a, b) => a.netuid - b.netuid || a.uid - b.uid);
+  subnets.sort(
+    (a, b) =>
+      (a.netuid as number) - (b.netuid as number) ||
+      (a.uid as number) - (b.uid as number),
+  );
   const coldkey = primaryColdkey(coldkeys);
 
   return {
@@ -926,7 +1036,10 @@ export function buildValidatorDetail(
 }
 
 // No identityByColdkey passed here either -- see loadGlobalValidators' comment.
-export async function loadValidatorDetail(d1, hotkey) {
+export async function loadValidatorDetail(
+  d1: D1Runner,
+  hotkey: unknown,
+): Promise<Row> {
   const rows = await d1(
     `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
     [hotkey],
@@ -965,17 +1078,22 @@ const VALIDATOR_COMPARISON_FIELDS = [
 // null when the validator holds no permit there -- letting a caller weigh the
 // global picture against one subnet at a time. `details` that isn't an array is
 // treated as an empty comparison, mirroring the cold-safe builders above.
-export function composeValidatorComparison(details, { netuid = null } = {}) {
-  const list = Array.isArray(details) ? details : [];
+export function composeValidatorComparison(
+  details: unknown,
+  { netuid = null }: { netuid?: unknown } = {},
+): Row {
+  const list = Array.isArray(details) ? (details as Row[]) : [];
   const validators = list.map((detail) => {
-    const projected = {};
+    const projected: Row = {};
     for (const field of VALIDATOR_COMPARISON_FIELDS) {
       projected[field] = detail?.[field] ?? null;
     }
     projected.subnet_context =
       netuid == null
         ? null
-        : (detail?.subnets?.find((subnet) => subnet.netuid === netuid) ?? null);
+        : ((detail?.subnets as Row[] | undefined)?.find(
+            (subnet) => subnet.netuid === netuid,
+          ) ?? null);
     return projected;
   });
   return {

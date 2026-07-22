@@ -1,6 +1,6 @@
 // Site-wide accounts leaderboard (#4324/5.3): every hotkey currently
 // registered somewhere on the network, aggregated cross-subnet from the
-// `neurons` D1 tier. Follows buildGlobalValidators (src/metagraph-neurons.mjs)
+// `neurons` D1 tier. Follows buildGlobalValidators (src/metagraph-neurons.ts)
 // as its explicit precedent — the collection-level counterpart to
 // /api/v1/validators — but is NOT validator-scoped: every registered hotkey
 // appears here, miners included, with a role breakdown per entry.

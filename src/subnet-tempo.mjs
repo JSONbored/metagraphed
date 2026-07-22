@@ -5,7 +5,7 @@
 // buildGlobalValidators/buildValidatorDetail's apy_estimate by netuid.
 
 // netuid -> tempo Map built from a Postgres query result, for
-// accumulateApyRow (src/metagraph-neurons.mjs) to annualize each subnet
+// accumulateApyRow (src/metagraph-neurons.ts) to annualize each subnet
 // membership's emission_tao. Null-safe on a cold/absent table (returns an
 // empty Map, so every lookup misses and apy_estimate serves as null) --
 // never throws, mirrors nominatorCountsByHotkey's cold-safety.
@@ -23,10 +23,10 @@ export function tempoByNetuid(rows) {
   return map;
 }
 
-// Same coercion rules as src/metagraph-neurons.mjs's own nonNegativeInt --
+// Same coercion rules as src/metagraph-neurons.ts's own nonNegativeInt --
 // duplicated locally rather than imported since that one isn't exported and
 // this module should stay independently testable/importable without pulling
-// in metagraph-neurons.mjs's whole surface.
+// in metagraph-neurons.ts's whole surface.
 function nonNegativeInt(value) {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;

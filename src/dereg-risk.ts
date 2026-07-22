@@ -4,7 +4,7 @@
 // trading "AVOID/CAUTION" framing and buildable entirely from data
 // metagraphed already captures. No I/O: callers own fetching the underlying
 // rows (the economics tier, formatNeuron's own immunity_expires_at_block
-// output, src/metagraph-neurons.mjs) and the current block number --
+// output, src/metagraph-neurons.ts) and the current block number --
 // matches this codebase's other pure-shaping/no-I/O module convention
 // (src/concentration.ts, src/alpha-volume.mjs).
 //
@@ -45,7 +45,7 @@ export function subnetAlphaPriceRank(
 // expires, keyed by "netuid:hotkey" (the same key alert-triggers.mjs's
 // readConditionMetric looks up). `rows` is a flat list drawn from any
 // combination of subnets' already-formatted neuron rows (formatNeuron's own
-// output, src/metagraph-neurons.mjs -- immunity_expires_at_block is only
+// output, src/metagraph-neurons.ts -- immunity_expires_at_block is only
 // present there when a subnet's live immunity_period hyperparameter was
 // passed in, and only non-null while is_immunity_period is true). A row
 // with no immunity_expires_at_block, or whose countdown has already reached

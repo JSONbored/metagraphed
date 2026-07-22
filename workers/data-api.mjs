@@ -505,7 +505,7 @@ import {
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
   NEURON_INSERT_COLUMNS,
-} from "../src/metagraph-neurons.mjs";
+} from "../src/metagraph-neurons.ts";
 import { buildAccountPositionHistory } from "../src/account-position-history.ts";
 import {
   createUnkeyKey,
@@ -7922,7 +7922,7 @@ export default {
         }
 
         // GET /api/v1/subnets/:netuid/metagraph?validator_permit=true (#4771):
-        // the per-UID metagraph tier, mirroring src/metagraph-neurons.mjs's
+        // the per-UID metagraph tier, mirroring src/metagraph-neurons.ts's
         // loadSubnetMetagraph. Same column list as the neuron detail/validators
         // routes below (NEURON_COLUMNS) -- written literally per this file's
         // own convention (a `${...}` interpolation binds a PARAMETER, not raw

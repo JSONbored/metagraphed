@@ -2,10 +2,10 @@
 //
 // The rollup snapshots the live `neurons` table into the dated `neuron_daily`
 // table once a day (its own cron); the read builders reuse the live formatters
-// (metagraph-neurons.mjs) so a historical row is byte-identical in shape to a live
+// (metagraph-neurons.ts) so a historical row is byte-identical in shape to a live
 // one. Pure + injectable for tests — the Worker handlers run the D1 query and call
 // these.
-import { NEURON_COLUMNS, formatNeuron } from "./metagraph-neurons.mjs";
+import { NEURON_COLUMNS, formatNeuron } from "./metagraph-neurons.ts";
 
 // History windows. Deliberately NOT analyticsWindow (which only understands
 // 7d/30d and clamps anything else to 400 days). `all` → no lower bound.

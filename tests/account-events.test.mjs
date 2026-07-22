@@ -343,7 +343,7 @@ test("formatAccountEvent coerces string-typed amount_tao and alpha_amount cells 
   // D1 can return a REAL column as a numeric string; the bare `?? null`
   // pass-through this replaced would have leaked strings into the JSON payload.
   // Mirrors the coercion in blocks.mjs (#2435), extrinsics.ts (#2439), and
-  // metagraph-neurons.mjs (#2503). Rounded to rao precision (9 dp) so the
+  // metagraph-neurons.ts (#2503). Rounded to rao precision (9 dp) so the
   // IEEE-754 float noise from SUM() never carries into the payload.
   const out = formatAccountEvent({
     block_number: 1,

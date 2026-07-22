@@ -100,7 +100,7 @@ function sumFieldTaoString(rows, field) {
 // #6641: Backprop's "Total Network Value" split -- root (netuid 0) stake is
 // TAO-denominated with no AMM/price exposure, exactly like
 // buildGlobalValidatorEntry's root_stake_tao/alpha_stake_tao split in
-// src/metagraph-neurons.mjs and the root-has-no-AMM carve-out stake-quote.mjs
+// src/metagraph-neurons.ts and the root-has-no-AMM carve-out stake-quote.mjs
 // documents -- just applied to the network-wide rollup instead of a
 // per-entity one. Root's own alpha_market_cap_tao (its ~1.0 moving_price
 // times its TAO stake) is deliberately excluded from the alpha rollup so its

@@ -258,7 +258,7 @@ describe("buildSubnetYield", () => {
   });
 
   test("blank uid and block_number cells stay null (not uid/block 0)", () => {
-    // Mirrors the blank-cell guard in metagraph-neurons.mjs (#3020).
+    // Mirrors the blank-cell guard in metagraph-neurons.ts (#3020).
     for (const blank of ["", "   "]) {
       const skipped = buildSubnetYield(
         [{ ...neuron(1, { stake: 1, emission: 1 }), uid: blank }],

@@ -1747,7 +1747,7 @@ test("GET /api/v1/runtime with no readings returns the schema-stable empty timel
   expect(body.current_spec_version).toBeNull();
 });
 
-// #4771: per-UID metagraph tier, mirroring src/metagraph-neurons.mjs's D1
+// #4771: per-UID metagraph tier, mirroring src/metagraph-neurons.ts's D1
 // loaders + builders unchanged. Rows carry native Postgres BOOLEAN (not D1's
 // 0/1 INTEGER) and NUMERIC/BIGINT-as-string cells, exercising the same
 // toD1Flag/nullableNumber/nonNegativeInt coercions those builders already use.

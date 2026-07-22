@@ -42,7 +42,7 @@ import {
 import {
   buildValidatorDetail,
   composeValidatorComparison,
-} from "../../src/metagraph-neurons.mjs";
+} from "../../src/metagraph-neurons.ts";
 import {
   formatLeaderboards,
   formatTrajectory,

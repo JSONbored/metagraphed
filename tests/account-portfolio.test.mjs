@@ -107,7 +107,7 @@ describe("buildAccountPortfolio", () => {
   });
 
   test("blank score cells stay null (not rank/trust 0)", () => {
-    // Mirrors the blank-cell guard in metagraph-neurons.mjs (#3033): Number("") is 0.
+    // Mirrors the blank-cell guard in metagraph-neurons.ts (#3033): Number("") is 0.
     for (const blank of ["", "   "]) {
       const out = buildAccountPortfolio(
         [

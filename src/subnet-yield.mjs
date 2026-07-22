@@ -23,7 +23,7 @@ function toNumber(value) {
 
 // A finite TAO cell, or null when absent/blank/non-numeric. Blank D1 cells coerce via
 // Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
-// zero-yield readings (mirrors nullableNumber in metagraph-neurons.mjs).
+// zero-yield readings (mirrors nullableNumber in metagraph-neurons.ts).
 function nullableTao(value) {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;

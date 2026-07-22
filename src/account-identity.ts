@@ -4,7 +4,7 @@
 // the identity a coldkey attaches to itself. Field mapping documented in
 // apps/indexer-rs/src/bin/poller/jobs/account_identity.rs and
 // migrations/0039_account_identity.sql. Mirrors NEURON_INSERT_COLUMNS's role
-// in src/metagraph-neurons.mjs — the full column set once written by the
+// in src/metagraph-neurons.ts — the full column set once written by the
 // retired staged-load path (loadStagedAccountIdentity, removed in the
 // D1→Postgres cutover #4772 — see workers/api.mjs's staged-loader note).
 //

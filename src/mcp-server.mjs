@@ -443,7 +443,7 @@ import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
-} from "./metagraph-neurons.mjs";
+} from "./metagraph-neurons.ts";
 import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,

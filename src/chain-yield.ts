@@ -27,7 +27,7 @@ function round9(value: unknown): number {
 
 // A finite TAO cell, or null when absent/blank/non-numeric. Blank D1 cells coerce via
 // Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
-// zero-yield readings (mirrors subnet-yield.mjs / metagraph-neurons.mjs).
+// zero-yield readings (mirrors subnet-yield.mjs / metagraph-neurons.ts).
 function nullableTao(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;

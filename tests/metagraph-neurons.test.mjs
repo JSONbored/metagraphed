@@ -13,7 +13,7 @@ import {
   loadSubnetValidators,
   loadGlobalValidators,
   loadValidatorDetail,
-} from "../src/metagraph-neurons.mjs";
+} from "../src/metagraph-neurons.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

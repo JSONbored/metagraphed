@@ -51,7 +51,7 @@ import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
-} from "../../src/metagraph-neurons.mjs";
+} from "../../src/metagraph-neurons.ts";
 import {
   buildAccountsList,
   ACCOUNTS_LIST_SORTS,

@@ -2,7 +2,7 @@
 // Field mapping documented in
 // apps/indexer-rs/src/bin/poller/jobs/subnet_hyperparams.rs and
 // migrations/0036_subnet_hyperparams.sql. Mirrors NEURON_INSERT_COLUMNS's
-// role in src/metagraph-neurons.mjs — the full column set written by the
+// role in src/metagraph-neurons.ts — the full column set written by the
 // Postgres write path (workers/data-api.mjs's handleSubnetHyperparamsSync)
 // and read by the serving route (#4307/1.4).
 
@@ -45,7 +45,7 @@ export const SUBNET_HYPERPARAMS_INSERT_COLUMNS = [
   "captured_at",
 ];
 
-// Same D1-cell coercion helpers as src/metagraph-neurons.mjs (each domain file
+// Same D1-cell coercion helpers as src/metagraph-neurons.ts (each domain file
 // owns its own small copies rather than a shared util — see formatNeuron's
 // header comment for why the null-guards matter: Number(null) is 0, not NaN).
 function toIso(ms) {
@@ -85,7 +85,7 @@ function ratio(value) {
   return round(nullableNumber(value), 9);
 }
 
-// D1 0/1 INTEGER -> real boolean, matching toD1Flag in metagraph-neurons.mjs.
+// D1 0/1 INTEGER -> real boolean, matching toD1Flag in metagraph-neurons.ts.
 function toD1Flag(value) {
   return Number(value) === 1;
 }
