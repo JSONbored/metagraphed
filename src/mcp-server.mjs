@@ -111,7 +111,7 @@ import {
   LIST_REVIEW_GAPS_MCP_TOOL,
   LIST_REVIEW_GAPS_OUTPUT_SCHEMA,
   loadReviewGapsList,
-} from "./review-gaps-mcp.mjs";
+} from "./review-gaps-mcp.ts";
 import {
   LIST_REVIEW_ENRICHMENT_TARGETS_INSTRUCTIONS,
   LIST_REVIEW_ENRICHMENT_TARGETS_MCP_TOOL,

@@ -10,7 +10,7 @@ import {
   loadReviewGapsList,
   reviewGapsMcpError,
   reviewGapsQueryUrl,
-} from "../src/review-gaps-mcp.mjs";
+} from "../src/review-gaps-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {
