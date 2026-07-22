@@ -6,7 +6,7 @@ import {
   sign as sr25519Sign,
 } from "@scure/sr25519";
 import { encodeAccountId32 } from "../src/ss58.ts";
-import { signPayload } from "../src/webhooks.mjs";
+import { signPayload } from "../src/webhooks.ts";
 import {
   createSessionToken,
   issueWalletChallenge,

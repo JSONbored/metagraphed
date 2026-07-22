@@ -29,7 +29,7 @@ import {
   mapBounded,
   resolvedWebhookUrlStatus,
   resolveWebhookHostnamesWithDoh,
-} from "../src/webhooks.mjs";
+} from "../src/webhooks.ts";
 import {
   buildDiscordDeliveryRequest,
   buildEmailDeliveryRequest,
@@ -79,7 +79,7 @@ const ALERT_TRIGGER_REFRESH_TIMEOUT_MS = 4000;
 // the SAME trigger, not how many different triggers fire on one event) --
 // an unbounded Promise.all could open one outbound fetch per match,
 // exhausting this Durable Object invocation's concurrent-subrequest budget
-// under a large, broad-condition trigger set. Matches src/webhooks.mjs's
+// under a large, broad-condition trigger set. Matches src/webhooks.ts's
 // own dispatchChangeEvent concurrency default.
 const ALERT_DELIVERY_CONCURRENCY = 8;
 
@@ -90,7 +90,7 @@ const ALERT_DELIVERY_CONCURRENCY = 8;
 // arbitrary user-supplied webhook or a slow third-party API. Without a
 // bound, ONE slow/hanging delivery target would add its own latency to
 // EVERY firehose consumer's next event, not just this trigger's owner.
-// Matches src/webhooks.mjs's own deliverChangeEvent timeout convention
+// Matches src/webhooks.ts's own deliverChangeEvent timeout convention
 // (same 8s default).
 const ALERT_DELIVERY_TIMEOUT_MS = 8000;
 
@@ -131,7 +131,7 @@ export async function deliverAlertMatch(
   fetchFn: typeof fetch = fetch,
   {
     resolveHostnames,
-  }: { resolveHostnames?: (host: string) => Promise<unknown> } = {},
+  }: { resolveHostnames?: (host: string) => Promise<string[]> } = {},
 ): Promise<boolean> {
   let request: { url: string; init?: RequestInit } | null | undefined;
   // Trigger's `destination` lives behind its index signature (the shape

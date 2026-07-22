@@ -5,7 +5,7 @@
 // established src/*.mjs split.
 //
 // Deliberately single-attempt, no retry/dead-letter (unlike
-// src/webhooks.mjs's deliverChangeEvent): these are lower-stakes,
+// src/webhooks.ts's deliverChangeEvent): these are lower-stakes,
 // user-configured "ping me" notifications, not the dataset change feed
 // automated pipelines may depend on. If delivery reliability becomes a
 // measured real problem, the natural fast-follow is a retry/dead-letter
@@ -21,7 +21,7 @@
 // Threading a signing secret through the trusted-internal-cache boundary
 // is a real, deliberate v1 scope cut, not an oversight -- worth adding if
 // a receiver-authenticity requirement ever surfaces.
-import { isPublicWebhookUrl } from "./webhooks.mjs";
+import { isPublicWebhookUrl } from "./webhooks.ts";
 import { isValidAlertDestination } from "./alert-triggers.ts";
 
 // At most one delivery per trigger per this window; a burst of matching
@@ -163,7 +163,7 @@ export function buildTelegramDeliveryRequest(
 // hardcoded-credential heuristic (a bare env-var reference 16+ chars long
 // assigned to a key/secret/token/password-shaped name) from
 // false-positiving on a legitimate env-injected-secret passthrough,
-// matching src/webhooks.mjs's own `hookSecret` naming precedent.
+// matching src/webhooks.ts's own `hookSecret` naming precedent.
 export function buildEmailDeliveryRequest(
   trigger: AlertTrigger,
   payload: Record<string, unknown> | null | undefined,

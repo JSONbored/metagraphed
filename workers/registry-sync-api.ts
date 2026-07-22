@@ -20,7 +20,7 @@
 // (bound to 127.0.0.1 on its host, reachable only via the Cloudflare Tunnel
 // + Workers VPC Service + Hyperdrive path already proven for reads).
 import postgres from "postgres";
-import { timingSafeEqual } from "../src/webhooks.mjs";
+import { timingSafeEqual } from "../src/webhooks.ts";
 import { resolveClientIp } from "./config.ts";
 
 const TOKEN_HEADER = "x-registry-sync-token";

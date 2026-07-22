@@ -473,7 +473,7 @@ function latestObservedIso(rows, field = "last_observed") {
   }
   return latest == null ? null : new Date(latest).toISOString();
 }
-import { timingSafeEqual } from "../src/webhooks.mjs";
+import { timingSafeEqual } from "../src/webhooks.ts";
 import {
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_MAX_BODY_BYTES,
@@ -3478,7 +3478,7 @@ function coerceEvent(row) {
 // Public CRUD for user-defined chain alert triggers, reached only via
 // workers/api.mjs's DATA_API service binding (no public routes of its own,
 // same invariant as every route in this file). Creation is gated by a
-// shared anti-abuse token (mirrors src/webhooks.mjs's own subscription-
+// shared anti-abuse token (mirrors src/webhooks.ts's own subscription-
 // creation gate, ALERT_TRIGGER_CREATE_TOKEN_HEADER/env.ALERT_TRIGGER_CREATE_TOKEN
 // -- every active trigger costs the #4984 Part 2 evaluator a real per-event
 // match check, so unbounded public creation is a workload vector, not just a
@@ -3599,7 +3599,7 @@ async function handleAlertTriggerCreate(request, env) {
   return withAlertTriggersSql(env, async (sql) => {
     // Short local name (`ownerToken`, not `secret`) keeps the public-safety
     // scanner's hardcoded-credential heuristic from false-positiving here,
-    // matching src/webhooks.mjs's createWebhookSubscription convention.
+    // matching src/webhooks.ts's createWebhookSubscription convention.
     const ownerToken = generateAlertTriggerOwnerToken();
     const now = Date.now();
     const v = validated.value;

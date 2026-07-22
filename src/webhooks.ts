@@ -9,6 +9,8 @@
 // expose Web Crypto + TextEncoder + URL).
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
 
+type Row = Record<string, unknown>;
+
 export const WEBHOOK_KV_PREFIX = "webhooks:sub:";
 // Per-(subscription, event) delivery state for at-least-once redelivery: a failed
 // transient delivery is parked here, retried on later runs, then dead-lettered.
@@ -42,17 +44,20 @@ const WEBHOOK_DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
 const WEBHOOK_DNS_RECORD_TYPES = ["A", "AAAA"];
 const WEBHOOK_DNS_TIMEOUT_MS = 3000;
 
-export function subscriptionStorageKey(id) {
+export function subscriptionStorageKey(id: unknown): string {
   return `${WEBHOOK_KV_PREFIX}${id}`;
 }
 
 // All of a subscription's parked deliveries share this prefix, so its delivery
 // health lists in one scan.
-export function deliveryStoragePrefix(subscriptionId) {
+export function deliveryStoragePrefix(subscriptionId: unknown): string {
   return `${WEBHOOK_DELIVERY_PREFIX}${subscriptionId}:`;
 }
 
-export function deliveryStorageKey(subscriptionId, eventId) {
+export function deliveryStorageKey(
+  subscriptionId: unknown,
+  eventId: unknown,
+): string {
   return `${deliveryStoragePrefix(subscriptionId)}${eventId}`;
 }
 
@@ -73,13 +78,13 @@ const PRIVATE_IPV4_PATTERNS = [
   /^(22[4-9]|2[3-5]\d)\./, // 224.0.0.0/3 — multicast 224/4 + reserved 240/4 (incl 255/8 broadcast); not unicast, matching the prober's a>=224 guard (#1538)
 ];
 
-function normalizedHostname(value) {
+function normalizedHostname(value: unknown): string {
   return String(value || "")
     .toLowerCase()
     .replace(/^\[|\]$/g, "");
 }
 
-function isIpv4Literal(host) {
+function isIpv4Literal(host: string): boolean {
   if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return false;
   return host.split(".").every((part) => {
     const value = Number(part);
@@ -87,16 +92,16 @@ function isIpv4Literal(host) {
   });
 }
 
-function isPrivateIpv4Octets(octets) {
+function isPrivateIpv4Octets(octets: number[]): boolean {
   const dotted = octets.join(".");
   return PRIVATE_IPV4_PATTERNS.some((pattern) => pattern.test(dotted));
 }
 
-function isLiteralIp(host) {
+function isLiteralIp(host: string): boolean {
   return isIpv4Literal(host) || host.includes(":");
 }
 
-export function isPublicWebhookAddress(value) {
+export function isPublicWebhookAddress(value: unknown): boolean {
   const host = normalizedHostname(value);
   if (!host) return false;
 
@@ -127,8 +132,8 @@ export function isPublicWebhookAddress(value) {
   return false;
 }
 
-export function isPublicWebhookUrl(value) {
-  let url;
+export function isPublicWebhookUrl(value: unknown): boolean {
+  let url: URL;
   try {
     url = new URL(String(value));
   } catch {
@@ -152,23 +157,29 @@ export function isPublicWebhookUrl(value) {
   return host.includes(".");
 }
 
-function dnsJsonAddressAnswers(body) {
-  if (!body || typeof body !== "object" || !Array.isArray(body.Answer)) {
+function dnsJsonAddressAnswers(body: unknown): string[] {
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !Array.isArray((body as Row).Answer)
+  ) {
     return [];
   }
-  return body.Answer.map((answer) => String(answer?.data || "").trim()).filter(
-    (data) =>
-      isIpv4Literal(normalizedHostname(data)) ||
-      normalizedHostname(data).includes(":"),
-  );
+  return ((body as Row).Answer as unknown[])
+    .map((answer) => String((answer as Row)?.data || "").trim())
+    .filter(
+      (data) =>
+        isIpv4Literal(normalizedHostname(data)) ||
+        normalizedHostname(data).includes(":"),
+    );
 }
 
 async function resolveWebhookDnsJson(
-  host,
-  recordType,
-  fetchImpl,
-  endpoint = WEBHOOK_DNS_JSON_ENDPOINT,
-) {
+  host: string,
+  recordType: string,
+  fetchImpl: typeof fetch,
+  endpoint: string = WEBHOOK_DNS_JSON_ENDPOINT,
+): Promise<string[]> {
   const query = new URL(endpoint);
   query.searchParams.set("name", host);
   query.searchParams.set("type", recordType);
@@ -193,9 +204,12 @@ async function resolveWebhookDnsJson(
 }
 
 export async function resolveWebhookHostnamesWithDoh(
-  host,
-  { fetchImpl = fetch, dnsJsonEndpoint = WEBHOOK_DNS_JSON_ENDPOINT } = {},
-) {
+  host: string,
+  {
+    fetchImpl = fetch,
+    dnsJsonEndpoint = WEBHOOK_DNS_JSON_ENDPOINT,
+  }: { fetchImpl?: typeof fetch; dnsJsonEndpoint?: string } = {},
+): Promise<string[]> {
   const lookups = await Promise.all(
     WEBHOOK_DNS_RECORD_TYPES.map((type) =>
       resolveWebhookDnsJson(host, type, fetchImpl, dnsJsonEndpoint),
@@ -213,14 +227,18 @@ export async function resolveWebhookHostnamesWithDoh(
 // Splitting the transient resolver failure out from a genuine "unsafe" verdict is
 // what lets deliverChangeEvent park + retry it instead of silently dropping an
 // owed at-least-once delivery when DNS momentarily fails during a sweep.
-function isUnsafeWebhookDnsError(error) {
+function isUnsafeWebhookDnsError(error: unknown): boolean {
+  const err = error as { code?: unknown; message?: unknown } | null | undefined;
   return (
-    error?.code === "UNSAFE_WEBHOOK_DNS_RESULT" ||
-    error?.message === "unsafe webhook DNS result"
+    err?.code === "UNSAFE_WEBHOOK_DNS_RESULT" ||
+    err?.message === "unsafe webhook DNS result"
   );
 }
 
-export async function resolvedWebhookUrlStatus(value, resolveHostnames) {
+export async function resolvedWebhookUrlStatus(
+  value: unknown,
+  resolveHostnames: ((host: string) => Promise<string[]>) | undefined,
+): Promise<"ok" | "unsafe" | "resolve-error"> {
   if (!isPublicWebhookUrl(value)) return "unsafe";
   if (typeof resolveHostnames !== "function") return "ok";
 
@@ -230,7 +248,7 @@ export async function resolvedWebhookUrlStatus(value, resolveHostnames) {
   // nothing to resolve, so it is "ok" (its private-IP case was rejected upstream).
   if (isLiteralIp(host)) return "ok";
 
-  let addresses;
+  let addresses: string[];
   try {
     addresses = await resolveHostnames(host);
   } catch (error) {
@@ -243,17 +261,23 @@ export async function resolvedWebhookUrlStatus(value, resolveHostnames) {
   return allPublic ? "ok" : "unsafe";
 }
 
+interface Filters {
+  netuids?: number[];
+  kinds?: string[];
+}
+
 // --- subscription validation --------------------------------------------------
-export function normalizeFilters(filters) {
+export function normalizeFilters(filters: unknown): Filters | null {
   if (filters === undefined || filters === null) return {};
   if (typeof filters !== "object" || Array.isArray(filters)) return null;
-  const out = {};
+  const input = filters as Row;
+  const out: Filters = {};
 
-  if (filters.netuids !== undefined) {
-    if (!Array.isArray(filters.netuids)) return null;
-    if (filters.netuids.length > MAX_FILTER_NETUIDS) return null;
-    const clean = [];
-    for (const netuid of filters.netuids) {
+  if (input.netuids !== undefined) {
+    if (!Array.isArray(input.netuids)) return null;
+    if (input.netuids.length > MAX_FILTER_NETUIDS) return null;
+    const clean: number[] = [];
+    for (const netuid of input.netuids) {
       if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535)
         return null;
       if (!clean.includes(netuid)) clean.push(netuid);
@@ -261,11 +285,11 @@ export function normalizeFilters(filters) {
     out.netuids = clean.sort((a, b) => a - b);
   }
 
-  if (filters.kinds !== undefined) {
-    if (!Array.isArray(filters.kinds)) return null;
-    if (filters.kinds.length > MAX_FILTER_KINDS) return null;
-    const clean = [];
-    for (const kind of filters.kinds) {
+  if (input.kinds !== undefined) {
+    if (!Array.isArray(input.kinds)) return null;
+    if (input.kinds.length > MAX_FILTER_KINDS) return null;
+    const clean: string[] = [];
+    for (const kind of input.kinds) {
       if (typeof kind !== "string" || !VALID_CHANGE_KINDS.has(kind))
         return null;
       if (!clean.includes(kind)) clean.push(kind);
@@ -276,18 +300,26 @@ export function normalizeFilters(filters) {
   return out;
 }
 
-export function validateSubscriptionInput(input) {
+export function validateSubscriptionInput(
+  input: unknown,
+):
+  | {
+      ok: true;
+      value: { url: string; filters: Filters; secret: string | null };
+    }
+  | { ok: false; error: string } {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { ok: false, error: "Request body must be a JSON object." };
   }
-  if (typeof input.url !== "string" || !isPublicWebhookUrl(input.url)) {
+  const body = input as Row;
+  if (typeof body.url !== "string" || !isPublicWebhookUrl(body.url)) {
     return {
       ok: false,
       error:
         "`url` must be a public https:// URL (no credentials, no private/loopback hosts, default port).",
     };
   }
-  const filters = normalizeFilters(input.filters);
+  const filters = normalizeFilters(body.filters);
   if (filters === null) {
     return {
       ok: false,
@@ -295,21 +327,21 @@ export function validateSubscriptionInput(input) {
         '`filters` must be an object {netuids?: integer[], kinds?: ("subnets"|"artifacts")[]}.',
     };
   }
-  let secret = null;
-  if (input.secret !== undefined) {
+  let secret: string | null = null;
+  if (body.secret !== undefined) {
     if (
-      typeof input.secret !== "string" ||
-      input.secret.length < 16 ||
-      input.secret.length > 256
+      typeof body.secret !== "string" ||
+      body.secret.length < 16 ||
+      body.secret.length > 256
     ) {
       return {
         ok: false,
         error: "`secret`, when provided, must be a 16-256 character string.",
       };
     }
-    secret = input.secret;
+    secret = body.secret;
   }
-  return { ok: true, value: { url: input.url, filters, secret } };
+  return { ok: true, value: { url: body.url, filters, secret } };
 }
 
 // --- change-event construction ------------------------------------------------
@@ -317,26 +349,33 @@ export function validateSubscriptionInput(input) {
 const NETUID_ARTIFACT_PATTERN =
   /(?:^|\/)(?:subnets|surfaces|profiles|endpoints|candidates|evidence|health\/subnets|health\/badges|verification\/subnets|review\/gaps)\/(\d+)\.json$/;
 
-function netuidFromArtifactPath(artifactPath) {
+function netuidFromArtifactPath(artifactPath: unknown): number | null {
   const match = String(artifactPath || "").match(NETUID_ARTIFACT_PATTERN);
   return match ? Number(match[1]) : null;
 }
 
-function artifactPaths(entries) {
+function artifactPaths(entries: unknown): string[] {
   if (!Array.isArray(entries)) return [];
   return entries
-    .map((entry) => (typeof entry === "string" ? entry : entry?.path))
-    .filter((value) => typeof value === "string" && value.length > 0);
+    .map((entry) => (typeof entry === "string" ? entry : (entry as Row)?.path))
+    .filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
 }
 
 // Build the public change-feed payload from changelog.json + the KV `latest`
 // pointer. Deterministic and side-effect-free.
-export function buildChangeEvent({ changelog, pointer } = {}) {
+export function buildChangeEvent({
+  changelog,
+  pointer,
+}: { changelog?: Row; pointer?: Row } = {}): Row {
   const cl = changelog && typeof changelog === "object" ? changelog : {};
   const artifacts =
-    cl.artifacts && typeof cl.artifacts === "object" ? cl.artifacts : {};
+    cl.artifacts && typeof cl.artifacts === "object"
+      ? (cl.artifacts as Row)
+      : {};
   const subnets =
-    cl.subnets && typeof cl.subnets === "object" ? cl.subnets : {};
+    cl.subnets && typeof cl.subnets === "object" ? (cl.subnets as Row) : {};
 
   const added = artifactPaths(artifacts.added);
   const modified = artifactPaths(artifacts.modified);
@@ -345,13 +384,13 @@ export function buildChangeEvent({ changelog, pointer } = {}) {
   const subnetsRemoved = Array.isArray(subnets.removed) ? subnets.removed : [];
   const subnetsRenamed = Array.isArray(subnets.renamed) ? subnets.renamed : [];
 
-  const netuids = new Set();
+  const netuids = new Set<number>();
   for (const entry of [...subnetsAdded, ...subnetsRemoved, ...subnetsRenamed]) {
     const netuid =
       typeof entry === "number"
         ? entry
-        : entry && typeof entry.netuid === "number"
-          ? entry.netuid
+        : entry && typeof (entry as Row).netuid === "number"
+          ? ((entry as Row).netuid as number)
           : null;
     if (netuid !== null) netuids.add(netuid);
   }
@@ -396,7 +435,10 @@ export function buildChangeEvent({ changelog, pointer } = {}) {
   };
 }
 
-export function eventMatchesFilters(event, filters) {
+export function eventMatchesFilters(
+  event: Row | null | undefined,
+  filters: Filters | null | undefined,
+): boolean {
   // No filters object (or neither facet present) means "no restriction" — match
   // every event. A PRESENT facet is an allowlist, including an explicit empty
   // one: `{kinds: []}` allows zero kinds, so it must match NOTHING, not fall
@@ -410,11 +452,11 @@ export function eventMatchesFilters(event, filters) {
     return true;
   }
   if (Array.isArray(filters.kinds)) {
-    const eventKinds = new Set(event?.change_kinds || []);
+    const eventKinds = new Set((event?.change_kinds as unknown[]) || []);
     if (!filters.kinds.some((kind) => eventKinds.has(kind))) return false;
   }
   if (Array.isArray(filters.netuids)) {
-    const affected = new Set(event?.affected_netuids || []);
+    const affected = new Set((event?.affected_netuids as unknown[]) || []);
     if (!filters.netuids.some((netuid) => affected.has(netuid))) return false;
   }
   return true;
@@ -422,13 +464,13 @@ export function eventMatchesFilters(event, filters) {
 
 // --- HMAC signing -------------------------------------------------------------
 // Lowercase hex — shared by HMAC signing, secret generation, and the digests below.
-function bytesToHex(buffer) {
+function bytesToHex(buffer: ArrayBuffer | Uint8Array): string {
   return [...new Uint8Array(buffer)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 }
 
-async function sha256Hex(text) {
+async function sha256Hex(text: unknown): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(String(text)),
@@ -436,7 +478,10 @@ async function sha256Hex(text) {
   return bytesToHex(digest);
 }
 
-export async function signPayload(secret, bodyText) {
+export async function signPayload(
+  secret: unknown,
+  bodyText: unknown,
+): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
@@ -455,18 +500,21 @@ export async function signPayload(secret, bodyText) {
 
 // Stable id for an event's content: same bytes ⇒ same id, for every subscriber
 // and every (re)delivery of that event. Subscribers use it to correlate retries.
-export async function webhookEventId(bodyText) {
+export async function webhookEventId(bodyText: unknown): Promise<string> {
   return (await sha256Hex(bodyText)).slice(0, 32);
 }
 
 // Idempotency key scoped to one subscriber and one event, derived from the
 // subscription id and the exact event body. Every retry within a run and every
 // redelivery on a later run carries the same key, so subscribers can dedupe.
-export async function webhookIdempotencyKey(subscriptionId, bodyText) {
+export async function webhookIdempotencyKey(
+  subscriptionId: unknown,
+  bodyText: unknown,
+): Promise<string> {
   return sha256Hex(`${subscriptionId}\n${bodyText}`);
 }
 
-export function timingSafeEqual(a, b) {
+export function timingSafeEqual(a: unknown, b: unknown): boolean {
   const left = String(a);
   const right = String(b);
   // Constant-time compare WITHOUT an early length-mismatch return (which would
@@ -482,25 +530,27 @@ export function timingSafeEqual(a, b) {
 }
 
 // --- identifiers --------------------------------------------------------------
-export function generateSecret() {
+export function generateSecret(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return bytesToHex(bytes);
 }
 
-export function generateSubscriptionId() {
+export function generateSubscriptionId(): string {
   return crypto.randomUUID();
 }
 
 // A subscription id is a UUID v4; validate before using it as a KV key.
-export function isValidSubscriptionId(id) {
+export function isValidSubscriptionId(id: unknown): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     String(id),
   );
 }
 
 // Strip the secret before returning a subscription to a client.
-export function publicSubscriptionView(record) {
+export function publicSubscriptionView(
+  record: Row | null | undefined,
+): Row | null {
   if (!record || typeof record !== "object") return null;
   return {
     id: record.id,
@@ -528,9 +578,20 @@ export async function deliverChangeEvent({
   timeoutMs = 8000,
   maxAttempts = 3,
   backoffBaseMs = 500,
-  sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  sleepFn = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
   resolveHostnames,
-}) {
+}: {
+  subscription: Row | null | undefined;
+  event: Row;
+  bodyText?: string;
+  fetchFn: typeof fetch;
+  now?: () => string;
+  timeoutMs?: number;
+  maxAttempts?: number;
+  backoffBaseMs?: number;
+  sleepFn?: (ms: number) => Promise<void>;
+  resolveHostnames?: (host: string) => Promise<string[]>;
+}): Promise<Row> {
   if (!subscription || typeof subscription.url !== "string") {
     return {
       id: subscription?.id ?? null,
@@ -541,7 +602,7 @@ export async function deliverChangeEvent({
   if (!isPublicWebhookUrl(subscription.url)) {
     return { id: subscription.id, status: "skipped", reason: "unsafe-url" };
   }
-  if (!eventMatchesFilters(event, subscription.filters)) {
+  if (!eventMatchesFilters(event, subscription.filters as Filters | null)) {
     return { id: subscription.id, status: "filtered" };
   }
   if (typeof subscription.secret !== "string" || !subscription.secret) {
@@ -559,7 +620,7 @@ export async function deliverChangeEvent({
     webhookEventId(bodyText),
     webhookIdempotencyKey(subscription.id, bodyText),
   ]);
-  const headers = {
+  const headers: Record<string, string> = {
     "content-type": "application/json",
     "user-agent": "metagraphed-webhook/1.0",
     [WEBHOOK_SIGNATURE_HEADER]: signature,
@@ -594,9 +655,9 @@ export async function deliverChangeEvent({
 
   let lastReason = "unknown";
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    let response;
+    let response: Response | null;
     try {
-      response = await fetchFn(subscription.url, {
+      response = await fetchFn(subscription.url as string, {
         method: "POST",
         headers,
         body: bodyText,
@@ -604,7 +665,8 @@ export async function deliverChangeEvent({
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
-      lastReason = error?.name === "TimeoutError" ? "timeout" : "network-error";
+      const err = error as { name?: string } | null | undefined;
+      lastReason = err?.name === "TimeoutError" ? "timeout" : "network-error";
       response = null; // transient — fall through to backoff + retry
     }
     if (response) {
@@ -665,14 +727,18 @@ export async function deliverChangeEvent({
 // `fn` calls. Shared by the fresh fan-out and the redelivery sweep -- exported
 // (#4984 Part 3 adversarial-review fix) so workers/alerter-hub.ts's own
 // delivery fan-out can reuse it rather than duplicating this logic.
-export async function mapBounded(items, concurrency, fn) {
+export async function mapBounded<T, R>(
+  items: T[] | null | undefined,
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
   const list = [...(items || [])];
   // Place each result at its INPUT index, not in completion order — workers
   // resolve concurrently (and the per-item work does real async I/O: crypto
   // signing + fetch), so a push-on-complete would return results in a
   // nondeterministic order. Order-preserving output is what every caller relies
   // on (the redelivery sweep's per-subscription budget + redelivered sequence).
-  const results = new Array(list.length);
+  const results: R[] = new Array(list.length);
   let cursor = 0;
   const worker = async () => {
     while (cursor < list.length) {
@@ -702,7 +768,17 @@ export async function dispatchChangeEvent({
   maxAttempts,
   resolveHostnames,
   concurrency = 8,
-}) {
+}: {
+  subscriptions: Row[] | null | undefined;
+  event: Row;
+  bodyText?: string;
+  fetchFn: typeof fetch;
+  now?: () => string;
+  timeoutMs?: number;
+  maxAttempts?: number;
+  resolveHostnames?: (host: string) => Promise<string[]>;
+  concurrency?: number;
+}): Promise<Row[]> {
   return mapBounded(subscriptions, concurrency, (subscription) =>
     deliverChangeEvent({
       subscription,
@@ -729,8 +805,17 @@ function nextDeliveryRecord({
   maxRounds,
   baseMs,
   maxMs,
-}) {
-  const round = (existing?.round || 0) + 1;
+}: {
+  existing: Row | null | undefined;
+  result: Row;
+  bodyText: string;
+  nowIso: string;
+  nowMs: number;
+  maxRounds: number;
+  baseMs: number;
+  maxMs: number;
+}): Row {
+  const round = ((existing?.round as number) || 0) + 1;
   const dead = result.retryable === false || round >= maxRounds;
   const delayMs = Math.min(baseMs * 2 ** (round - 1), maxMs);
   return {
@@ -750,17 +835,22 @@ function nextDeliveryRecord({
 
 // Roll a subscription's parked records into a compact health view for the public
 // GET. Pure — the caller injects the records it listed from the store.
-export function summarizeDeliveryRecords(records) {
+export function summarizeDeliveryRecords(
+  records: Row[] | null | undefined,
+): Row {
   const list = (records || []).filter(
     (record) => record && typeof record === "object",
   );
   let pending = 0;
   let deadLetter = 0;
-  let latest = null; // the failure with the most recent attempt (ISO sorts lexically)
+  let latest: Row | null = null; // the failure with the most recent attempt (ISO sorts lexically)
   for (const record of list) {
     if (record.state === "dead") deadLetter += 1;
     else pending += 1;
-    if (!latest || record.last_attempt_at > latest.last_attempt_at) {
+    if (
+      !latest ||
+      (record.last_attempt_at as string) > (latest.last_attempt_at as string)
+    ) {
       latest = record;
     }
   }
@@ -780,6 +870,17 @@ export function summarizeDeliveryRecords(records) {
         }
       : null,
   };
+}
+
+interface DeliveryStore {
+  listKeys: (prefix: string, options: { limit?: number }) => Promise<string[]>;
+  get: (key: string) => Promise<Row | null>;
+  put: (
+    key: string,
+    value: Row,
+    options: { ttlSeconds: number },
+  ) => Promise<void>;
+  delete: (key: string) => Promise<void>;
 }
 
 // At-least-once dispatch: deliver the current event, then redeliver the backlog of
@@ -803,45 +904,72 @@ export async function dispatchWithRedelivery({
   redeliveryListLimit = WEBHOOK_REDELIVERY_LIST_LIMIT,
   maxRedeliveriesPerRun = WEBHOOK_REDELIVERY_MAX_PER_RUN,
   maxRedeliveriesPerSubscription = WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
-}) {
+}: {
+  subscriptions: Row[] | null | undefined;
+  event: Row;
+  fetchFn: typeof fetch;
+  now?: () => string;
+  store: DeliveryStore | null | undefined;
+  resolveHostnames?: (host: string) => Promise<string[]>;
+  timeoutMs?: number;
+  maxAttempts?: number;
+  concurrency?: number;
+  ttlSeconds?: number;
+  maxRounds?: number;
+  redeliveryBaseMs?: number;
+  redeliveryMaxMs?: number;
+  redeliveryListLimit?: number;
+  maxRedeliveriesPerRun?: number;
+  maxRedeliveriesPerSubscription?: number;
+}): Promise<{ delivered: Row[]; redelivered: Row[] }> {
   const nowIso = typeof now === "function" ? now() : new Date(0).toISOString();
   const nowMs = Date.parse(nowIso) || 0; // 0 on the epoch fallback or a bad clock
   const subList = (subscriptions || []).filter(Boolean);
   const subById = new Map(
-    subList.filter((sub) => sub.id).map((sub) => [sub.id, sub]),
+    subList
+      .filter((sub) => sub.id)
+      .map((sub) => [sub.id as string, sub] as [string, Row]),
   );
 
   // Store wrappers: a control-store hiccup degrades to a retry next run, never throws.
-  const safeListKeys = async (prefix, limit) => {
+  const safeListKeys = async (
+    prefix: string,
+    limit: number,
+  ): Promise<string[]> => {
     try {
-      const keys = await store.listKeys(prefix, { limit });
+      const keys = await store!.listKeys(prefix, { limit });
       return Number.isFinite(limit) && limit >= 0 ? keys.slice(0, limit) : keys;
     } catch {
       return [];
     }
   };
-  const safeGet = async (key) => {
+  const safeGet = async (key: string): Promise<Row | null> => {
     try {
-      return await store.get(key);
+      return await store!.get(key);
     } catch {
       return null;
     }
   };
-  const safePut = async (key, value) => {
+  const safePut = async (key: string, value: Row): Promise<void> => {
     try {
-      await store.put(key, value, { ttlSeconds });
+      await store!.put(key, value, { ttlSeconds });
     } catch {
       /* deduped via the idempotency key on the next run's retry */
     }
   };
-  const safeDelete = async (key) => {
+  const safeDelete = async (key: string): Promise<void> => {
     try {
-      await store.delete(key);
+      await store!.delete(key);
     } catch {
       /* a stale record is harmless and TTL-reaped */
     }
   };
-  const park = (key, existing, result, bodyText) =>
+  const park = (
+    key: string,
+    existing: Row | null | undefined,
+    result: Row,
+    bodyText: string,
+  ) =>
     safePut(
       key,
       nextDeliveryRecord({
@@ -861,7 +989,7 @@ export async function dispatchWithRedelivery({
   // healthy path); Phase 2 then sweeps whatever remains.
   const parked = store
     ? new Set(await safeListKeys(WEBHOOK_DELIVERY_PREFIX, redeliveryListLimit))
-    : new Set();
+    : new Set<string>();
 
   // --- Phase 1: deliver the freshly-published event ---------------------------
   // One body for all subscribers (only the per-subscriber signature/key differ),
@@ -902,27 +1030,35 @@ export async function dispatchWithRedelivery({
   // --- Phase 2: redeliver whatever is still parked and now due ----------------
   // Records (re)parked in Phase 1 were removed from `parked`, so they can't be
   // re-attempted this run. Independent keys → concurrent sweep.
-  const due = [];
-  const dueBySubscription = new Map();
+  const due: { key: string; record: Row }[] = [];
+  const dueBySubscription = new Map<string, number>();
   // Sweep the parked backlog in a STABLE lexicographic key order — the order KV
   // itself lists in — so the shared per-run / per-subscription budget always
   // selects the same records for the same inputs, independent of the injected
   // store's iteration order or the concurrent get-completion order.
   for (const candidate of (
-    await mapBounded([...parked].sort(), concurrency, async (key) => {
-      const record = await safeGet(key);
-      return record &&
-        record.state === "pending" &&
-        subById.has(record.subscription_id) && // gone/beyond cap → TTL reaps it
-        !(record.next_attempt_at && Date.parse(record.next_attempt_at) > nowMs)
-        ? { key, record }
-        : null;
-    })
-  ).filter(Boolean)) {
+    await mapBounded(
+      [...parked].sort(),
+      concurrency,
+      async (key): Promise<{ key: string; record: Row } | null> => {
+        const record = await safeGet(key);
+        return record &&
+          record.state === "pending" &&
+          subById.has(record.subscription_id as string) && // gone/beyond cap → TTL reaps it
+          !(
+            record.next_attempt_at &&
+            Date.parse(record.next_attempt_at as string) > nowMs
+          )
+          ? { key, record }
+          : null;
+      },
+    )
+  ).filter((entry): entry is { key: string; record: Row } => entry != null)) {
     if (due.length >= maxRedeliveriesPerRun) break;
-    const count = dueBySubscription.get(candidate.record.subscription_id) || 0;
+    const subscriptionId = candidate.record.subscription_id as string;
+    const count = dueBySubscription.get(subscriptionId) || 0;
     if (count >= maxRedeliveriesPerSubscription) continue;
-    dueBySubscription.set(candidate.record.subscription_id, count + 1);
+    dueBySubscription.set(subscriptionId, count + 1);
     due.push(candidate);
   }
   const redelivered = await mapBounded(
@@ -930,9 +1066,9 @@ export async function dispatchWithRedelivery({
     concurrency,
     async ({ key, record }) => {
       const result = await deliverChangeEvent({
-        subscription: subById.get(record.subscription_id),
-        event: safeParseJson(record.body),
-        bodyText: record.body,
+        subscription: subById.get(record.subscription_id as string),
+        event: safeParseJson(record.body as string) as Row,
+        bodyText: record.body as string,
         fetchFn,
         now,
         timeoutMs,
@@ -940,7 +1076,7 @@ export async function dispatchWithRedelivery({
         resolveHostnames,
       });
       if (result.status === "failed") {
-        await park(key, record, result, record.body);
+        await park(key, record, result, record.body as string);
       } else {
         // delivered, or no longer applicable (filters/secret changed) → stop tracking
         await safeDelete(key);
@@ -957,7 +1093,7 @@ export async function dispatchWithRedelivery({
   return { delivered, redelivered };
 }
 
-function safeParseJson(text) {
+function safeParseJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {

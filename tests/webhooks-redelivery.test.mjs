@@ -10,7 +10,7 @@ import {
   WEBHOOK_DELIVERY_PREFIX,
   webhookEventId,
   webhookIdempotencyKey,
-} from "../src/webhooks.mjs";
+} from "../src/webhooks.ts";
 
 // In-memory stand-in for the METAGRAPH_CONTROL delivery namespace. Serializes on
 // put / parses on get like the real KV-backed store the dispatcher injects.

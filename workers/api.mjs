@@ -238,7 +238,7 @@ import {
   WEBHOOK_IDEMPOTENCY_HEADER,
   WEBHOOK_SECRET_HEADER,
   WEBHOOK_SIGNATURE_HEADER,
-} from "../src/webhooks.mjs";
+} from "../src/webhooks.ts";
 import {
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,

@@ -1069,7 +1069,7 @@ export async function proxyWithFailover(
         // checked against TRUSTED_RPC_UPSTREAM_ORIGINS, so following a 3xx would
         // re-POST the caller's body to an unvetted host. A 3xx/opaqueredirect is
         // classified transient (see classifyUpstreamAttempt) → failed attempt.
-        // Mirrors the redirect:"manual" invariant in webhooks.mjs /
+        // Mirrors the redirect:"manual" invariant in webhooks.ts /
         // health-probe-core.ts.
         redirect: "manual",
         signal: AbortSignal.timeout(timeoutMs),
@@ -1385,7 +1385,7 @@ export function isPrivateOrLocalHostname(hostname: string): boolean {
   // IPv6 literal into hex-tail form (e.g. the bracketed literal for
   // ::ffff:100.64.0.1 becomes ::ffff:6440:1 in `new URL(...).hostname`), so a
   // dotted-quad string-prefix match against that value never fires on the real
-  // request path. Parse the embedded v4 the same way src/webhooks.mjs and
+  // request path. Parse the embedded v4 the same way src/webhooks.ts and
   // src/health-probe-core.ts already do (via the shared src/ip-safety.ts
   // leaf) and re-check it against the same private-range policy.
   const embedded = ipv6EmbeddedIpv4(host);

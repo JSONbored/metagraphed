@@ -3,7 +3,7 @@
 // the future AlerterHub Durable Object (#4984 Part 2, which evaluates each
 // live ChainFirehoseHub broadcast against every active trigger). No I/O --
 // Postgres/fetch are injected by callers -- so every branch here is
-// unit-testable without a live database or network, matching src/webhooks.mjs's
+// unit-testable without a live database or network, matching src/webhooks.ts's
 // own split (this module reuses that file's SSRF guard + constant-time
 // compare + secret generation rather than re-deriving them).
 //
@@ -19,7 +19,7 @@ import {
   generateSecret,
   isPublicWebhookUrl,
   timingSafeEqual,
-} from "./webhooks.mjs";
+} from "./webhooks.ts";
 import { CHAIN_FIREHOSE_TABLES } from "../workers/chain-firehose-hub.ts";
 
 // Anti-abuse gate on trigger CREATION (public but shared-secret-gated,
@@ -473,7 +473,7 @@ export function triggerMatchesEvent(
 
 // The owner_token is the sole ownership credential (returned once, at
 // creation, never echoed back on read) -- there is no user-account system in
-// this codebase, matching src/webhooks.mjs's own per-subscription-secret
+// this codebase, matching src/webhooks.ts's own per-subscription-secret
 // model. Unlike webhook subscriptions, a trigger's `destination` can itself
 // be a bearer credential (a Discord incoming-webhook URL grants POST-message
 // capability to anyone holding it), so every single-trigger route

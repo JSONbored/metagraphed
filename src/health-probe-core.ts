@@ -77,7 +77,7 @@ const UNSAFE_HOST_PATTERNS = [
   // Non-global special-use IPv4 the webhook + build guards already reject; the
   // probe literal guard drifted out of parity and let these through (both as a
   // direct host and as an IPv4 tunnelled inside an IPv6 literal, since the
-  // embedded-v4 re-check below reuses this list). Mirror src/webhooks.mjs:
+  // embedded-v4 re-check below reuses this list). Mirror src/webhooks.ts:
   //   192.0.0.0/24   IETF protocol assignments
   //   198.18.0.0/15  benchmarking (RFC 2544)
   //   224.0.0.0/3    multicast 224/4 + reserved 240/4 (incl. 255/8 broadcast) —
@@ -89,7 +89,7 @@ const UNSAFE_HOST_PATTERNS = [
 
 // IPv6-literal SSRF ranges, checked only when the host is an actual IPv6 literal
 // (it contains a colon — a registrable domain never does). Mirrors the webhook
-// guard in src/webhooks.mjs so the two stay at parity:
+// guard in src/webhooks.ts so the two stay at parity:
 //   ::1            loopback
 //   ::             unspecified
 //   fe00::/8       link-local fe80::/10 + deprecated site-local fec0::/10 (#1538)
