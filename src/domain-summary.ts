@@ -1,5 +1,5 @@
 // Per-domain rollup aggregation (#6749): a DefiLlama-style category summary layer
-// on top of the existing 14-tag domain/capability taxonomy (src/domain-tags.mjs),
+// on top of the existing 14-tag domain/capability taxonomy (src/domain-tags.ts),
 // already exposed read-only via ?domain= on /api/v1/subnets. That taxonomy is NOT
 // rebuilt here -- this module only joins it against current subnet economics to
 // answer "how much of the network's stake/emission sits in each domain, and how
@@ -12,7 +12,7 @@
 // tiers: a subnet missing from either input just contributes nothing extra, never
 // throws.
 
-import { DOMAIN_TAGS } from "./domain-tags.mjs";
+import { DOMAIN_TAGS } from "./domain-tags.ts";
 import {
   computeConcentration,
   type ConcentrationScorecard,
@@ -147,13 +147,7 @@ export function buildDomainOverview(
   return {
     schema_version: 1,
     domain_count: DOMAIN_TAGS.length,
-    // DOMAIN_TAGS is derived from domain-tags.mjs (still untyped) via
-    // `DOMAIN_TAG_RULES.map(([tag]) => tag)`, which TS widens to
-    // `(string | RegExp)[]` since it can't see the [string, RegExp] tuple
-    // shape through the untyped .mjs import -- every element is a string
-    // at runtime (DOMAIN_TAG_RULES's own first element is always a string
-    // literal), so this cast reflects the real value, not a workaround.
-    domains: (DOMAIN_TAGS as string[]).map((tag) =>
+    domains: DOMAIN_TAGS.map((tag) =>
       buildDomainSummary(tag, subnetRows, economicsRows),
     ),
   };

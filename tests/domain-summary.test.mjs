@@ -4,7 +4,7 @@ import {
   buildDomainSummary,
   buildDomainOverview,
 } from "../src/domain-summary.ts";
-import { DOMAIN_TAGS } from "../src/domain-tags.mjs";
+import { DOMAIN_TAGS } from "../src/domain-tags.ts";
 
 const SUBNETS = [
   { netuid: 1, categories: ["inference"], derived_categories: [] },

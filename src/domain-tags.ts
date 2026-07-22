@@ -7,7 +7,7 @@
 // several tags. The OUTPUT is always drawn from this fixed vocabulary — never
 // the raw input text — so feeding untrusted on-chain text in is safe (no value
 // can escape into the tag set).
-const DOMAIN_TAG_RULES = [
+const DOMAIN_TAG_RULES: Array<[string, RegExp]> = [
   [
     "agents",
     /\b(agents?|agentic|autonomous (?:agents?|software)|tool[- ]?use|workflow automat\w*)\b/i,
@@ -78,11 +78,15 @@ export function deriveDomainTags({
   description = null,
   additional = null,
   categories = [],
-} = {}) {
+}: {
+  description?: unknown;
+  additional?: unknown;
+  categories?: unknown;
+} = {}): string[] {
   const text = [description, additional]
     .filter((value) => typeof value === "string")
     .join(" ");
-  const tags = new Set();
+  const tags = new Set<string>();
   if (text) {
     for (const [tag, re] of DOMAIN_TAG_RULES) {
       if (re.test(text)) tags.add(tag);

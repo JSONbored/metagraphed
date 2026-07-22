@@ -31,7 +31,7 @@ import { buildChainWeights } from "../src/chain-weights.ts";
 import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
 import { buildChainTransfers } from "../src/chain-transfers.ts";
 import { buildChainCalls } from "../src/chain-analytics.ts";
-import { DOMAIN_TAGS } from "../src/domain-tags.mjs";
+import { DOMAIN_TAGS } from "../src/domain-tags.ts";
 import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";

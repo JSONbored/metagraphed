@@ -1807,9 +1807,9 @@ export function nativeContactUrl(contact) {
 }
 
 // Domain/capability tag derivation (issue #345) lives in the worker-safe
-// src/domain-tags.mjs so the build and the Worker's ?domain= enum share one
+// src/domain-tags.ts so the build and the Worker's ?domain= enum share one
 // vocabulary; re-exported here for the build-side import sites.
-export { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.mjs";
+export { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.ts";
 
 // Cross-network lineage join (issue #353): publish only maintainer-approved
 // cross-network pairs. On-chain github_repo/name equality is attacker-controlled

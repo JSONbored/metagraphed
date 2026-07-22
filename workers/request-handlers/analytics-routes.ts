@@ -50,7 +50,7 @@ import {
   LEADERBOARD_BOARDS,
   resolveLiveEconomics,
 } from "../../src/health-serving.mjs";
-import { DOMAIN_TAGS } from "../../src/domain-tags.mjs";
+import { DOMAIN_TAGS } from "../../src/domain-tags.ts";
 import {
   buildDomainOverview,
   buildDomainSummary,
@@ -889,7 +889,7 @@ async function domainSummaryInputs(env: Env): Promise<{
 
 // GET /api/v1/domains (#6749/#6750): every domain tag's rollup in one call --
 // the DefiLlama-style aggregation layer over the existing 14-tag domain/
-// capability taxonomy (src/domain-tags.mjs), already exposed read-only via
+// capability taxonomy (src/domain-tags.ts), already exposed read-only via
 // ?domain= on /api/v1/subnets. No new capture: pure composition of the
 // subnets index + economics tier, same registry+economics pattern
 // handleCompare uses above.
