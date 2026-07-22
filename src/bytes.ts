@@ -9,7 +9,7 @@
 // route that imports bytes.ts. Kept as a duplicate file (not a shared import)
 // because apps/ui is a separate TypeScript toolchain the Workers runtime
 // can't import from directly -- same split already established for
-// ss58.ts/ss58.mjs and chain-event-args.ts/chain-event-args.mjs.
+// ss58.ts/ss58.mjs and chain-event-args.ts/chain-event-args.ts.
 
 function isIntArray(value: unknown): value is number[] {
   return (

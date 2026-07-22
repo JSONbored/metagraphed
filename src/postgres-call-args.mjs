@@ -207,7 +207,7 @@ function decodeRootClaimTypeValue(value) {
 // string once repackaged, or a struct field nested inside an untyped
 // `value`) -- a field carrying its own `type: "AccountId32"`/`"MultiAddress<...>"`
 // is decoded via isAccountId32Type above instead, which doesn't need to
-// guess. Mirrors src/chain-event-args.mjs's ACCOUNT_KEYS (the analogous
+// guess. Mirrors src/chain-event-args.ts's ACCOUNT_KEYS (the analogous
 // chain_events.args decode, #4685) plus two additions specific to
 // call_args' richer field vocabulary: "real" (Proxy.proxy's acting-account
 // arg, extrinsics.ts:117-129)

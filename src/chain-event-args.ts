@@ -177,7 +177,7 @@ const POSITIONAL_FIELD_NAMES = new Map([
   ],
 ]);
 
-function isByteArray(v, len) {
+function isByteArray(v: unknown, len: number): v is number[] {
   return (
     Array.isArray(v) &&
     v.length === len &&
@@ -192,7 +192,7 @@ function isByteArray(v, len) {
 // allowlist match, never applied on shape alone, so it can't collide with a
 // same-length numeric/typed field elsewhere (e.g. a netuid list) the way a
 // generic byte-blob heuristic would.
-function isAnyByteArray(v) {
+function isAnyByteArray(v: unknown): v is number[] {
   return (
     Array.isArray(v) &&
     v.every(
@@ -201,7 +201,7 @@ function isAnyByteArray(v) {
   );
 }
 
-function toHex(bytes) {
+function toHex(bytes: number[]): string {
   return "0x" + bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -253,41 +253,47 @@ const HEX_BLOB_FIELDS = new Set([
 //   both Result<(), DispatchError> -- Ok(()) becomes bare "Ok"). Otherwise
 //   (a real Err(DispatchError) payload) the tag+payload are left exactly as
 //   decoded -- the error detail is meaningful and must not be discarded.
-const ENUM_PAYLOAD_FIELDS = new Map([
+const ENUM_PAYLOAD_FIELDS = new Map<string, "unwrap" | "unit-or-passthrough">([
   ["Contracts.Called.caller", "unwrap"],
   ["Proxy.ProxyExecuted.result", "unit-or-passthrough"],
   ["Sudo.Sudid.sudo_result", "unit-or-passthrough"],
 ]);
 
-function normalizeChainEventValue(value) {
+export interface ChainEventCtx {
+  pallet?: string | null;
+  method?: string | null;
+}
+
+function normalizeChainEventValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(normalizeChainEventValue);
   }
   if (value && typeof value === "object") {
-    const keys = Object.keys(value);
+    const record = value as Record<string, unknown>;
+    const keys = Object.keys(record);
     if (
       keys.length === 2 &&
       keys.includes("name") &&
       keys.includes("values") &&
-      typeof value.name === "string" &&
-      Array.isArray(value.values)
+      typeof record.name === "string" &&
+      Array.isArray(record.values)
     ) {
-      if (value.name === "Some" && value.values.length === 1) {
-        return normalizeChainEventValue(value.values[0]);
+      if (record.name === "Some" && record.values.length === 1) {
+        return normalizeChainEventValue(record.values[0]);
       }
-      if (value.name === "None" && value.values.length === 0) {
+      if (record.name === "None" && record.values.length === 0) {
         return null;
       }
-      if (value.values.length === 0) {
-        return value.name;
+      if (record.values.length === 0) {
+        return record.name;
       }
       return {
-        name: value.name,
-        values: value.values.map(normalizeChainEventValue),
+        name: record.name,
+        values: record.values.map(normalizeChainEventValue),
       };
     }
-    const out = {};
-    for (const [key, val] of Object.entries(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(record)) {
       out[key] = normalizeChainEventValue(val);
     }
     return out;
@@ -295,9 +301,9 @@ function normalizeChainEventValue(value) {
   return value;
 }
 
-function decodeTextualField(bytes) {
+function decodeTextualField(bytes: number[]): string {
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(
       Uint8Array.from(bytes),
     );
   } catch {
@@ -308,7 +314,11 @@ function decodeTextualField(bytes) {
   }
 }
 
-function decode(value, keyHint, ctx) {
+function decode(
+  value: unknown,
+  keyHint: string | undefined,
+  ctx: ChainEventCtx | null | undefined,
+): unknown {
   if (isByteArray(value, 32)) {
     // encodeAccountId32 can't return null here -- isByteArray already
     // confirmed exactly 32 bytes, the only condition it checks internally.
@@ -356,6 +366,7 @@ function decode(value, keyHint, ctx) {
     return value.map((item) => decode(item, keyHint, ctx));
   }
   if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
     // Field-specific enum-tag collapse (see ENUM_PAYLOAD_FIELDS above) --
     // checked against the RAW (not-yet-decoded) shape and BEFORE the generic
     // recursion below, so the unwrapped payload can be decoded with the
@@ -370,26 +381,26 @@ function decode(value, keyHint, ctx) {
     if (
       keyHint &&
       ctx &&
-      typeof value.name === "string" &&
-      Array.isArray(value.values) &&
-      value.values.length === 1
+      typeof record.name === "string" &&
+      Array.isArray(record.values) &&
+      record.values.length === 1
     ) {
       const strategy = ENUM_PAYLOAD_FIELDS.get(
         `${ctx.pallet ?? ""}.${ctx.method ?? ""}.${keyHint}`,
       );
       if (strategy === "unwrap") {
-        return decode(value.values[0], keyHint, ctx);
+        return decode(record.values[0], keyHint, ctx);
       }
       if (strategy === "unit-or-passthrough") {
-        const decodedPayload = decode(value.values[0], keyHint, ctx);
+        const decodedPayload = decode(record.values[0], keyHint, ctx);
         if (Array.isArray(decodedPayload) && decodedPayload.length === 0) {
-          return value.name;
+          return record.name;
         }
-        return { name: value.name, values: [decodedPayload] };
+        return { name: record.name, values: [decodedPayload] };
       }
     }
-    const out = {};
-    for (const [k, val] of Object.entries(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(record)) {
       out[k] = decode(val, k, ctx);
     }
     return out;
@@ -432,7 +443,10 @@ function decode(value, keyHint, ctx) {
  * for an arbitrary field would risk the same collection-vs-blob ambiguity
  * #4693/#4915 avoid elsewhere by consulting a typed descriptor's own `type`
  * first. */
-export function decodeChainEventArgs(args, ctx = null) {
+export function decodeChainEventArgs(
+  args: unknown,
+  ctx: ChainEventCtx | null = null,
+): unknown {
   const normalized = normalizeChainEventValue(args);
   // Untagged positional tuples (a bare array, no key at any depth) get a
   // synthetic per-position key hint for the handful of event kinds this

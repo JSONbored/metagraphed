@@ -12,7 +12,7 @@
 // ownership changes yields an empty list (never throws), matching the
 // sibling live tiers (movers, subnet-axon-removals).
 
-import { decodeChainEventArgs } from "./chain-event-args.mjs";
+import { decodeChainEventArgs } from "./chain-event-args.ts";
 
 const EVENT_PALLET = "SubtensorModule";
 export const OWNERSHIP_CHANGE_EVENT_METHOD = "SubnetOwnerChanged";

@@ -12,7 +12,7 @@
 // held a subnet since registration and never lost it to a challenger will not
 // appear in ownership_ties at all. This is a real data-source gap, not a bug.
 
-import { decodeChainEventArgs } from "./chain-event-args.mjs";
+import { decodeChainEventArgs } from "./chain-event-args.ts";
 
 export const ENTITY_LABELS_ARTIFACT = "/metagraph/entities.json";
 

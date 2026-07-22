@@ -137,7 +137,7 @@ import {
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
 } from "../src/top-holders.mjs";
-import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
+import { decodeChainEventArgs } from "../src/chain-event-args.ts";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,

@@ -624,7 +624,7 @@ test("chain-events decodes a positional SubtensorModule.TimelockedWeightsReveale
   // depth -- coerceEvent already passed row.pallet/row.method as ctx, but
   // decodeChainEventArgs only used ctx for the TEXTUAL/HEX_BLOB/ENUM_PAYLOAD
   // allowlists, never to recover a positional tuple's field names. Fixed by
-  // POSITIONAL_FIELD_NAMES (src/chain-event-args.mjs) -- see
+  // POSITIONAL_FIELD_NAMES (src/chain-event-args.ts) -- see
   // tests/chain-event-args.test.mjs for the exhaustive per-event-kind unit
   // coverage; this is the one route-level regression test proving the fix
   // reaches a real REST response, not just the decoder in isolation.

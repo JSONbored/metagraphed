@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { decodeChainEventArgs } from "../src/chain-event-args.mjs";
+import { decodeChainEventArgs } from "../src/chain-event-args.ts";
 
 describe("decodeChainEventArgs", () => {
   test("decodes an account-keyed 32-byte field to SS58 (real TransactionFeePaid.who, block 8587754/412)", () => {
