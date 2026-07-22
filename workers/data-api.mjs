@@ -288,7 +288,7 @@ import {
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
-} from "../src/chain-serving.mjs";
+} from "../src/chain-serving.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
@@ -5977,7 +5977,7 @@ export default {
         }
 
         // GET /api/v1/chain/serving (#4832 Tier 2): network-wide AxonServed
-        // announcement leaderboard, mirroring src/chain-serving.mjs's
+        // announcement leaderboard, mirroring src/chain-serving.ts's
         // loadChainServing.
         const chainServing = url.pathname.match(/^\/api\/v1\/chain\/serving$/);
         if (chainServing) {

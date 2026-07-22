@@ -397,7 +397,7 @@ import {
   CHAIN_SERVING_LIMIT_MAX,
   CHAIN_SERVING_WINDOWS,
   DEFAULT_CHAIN_SERVING_WINDOW,
-} from "./chain-serving.mjs";
+} from "./chain-serving.ts";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
   KV_HEALTH_RPC_POOL,

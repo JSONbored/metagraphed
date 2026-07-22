@@ -70,7 +70,7 @@ import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
   CHAIN_SERVING_LIMIT_MAX,
-} from "../../src/chain-serving.mjs";
+} from "../../src/chain-serving.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,

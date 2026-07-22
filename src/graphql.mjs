@@ -381,7 +381,7 @@ import {
   CHAIN_SERVING_WINDOWS,
   DEFAULT_CHAIN_SERVING_WINDOW,
   buildChainServing,
-} from "./chain-serving.mjs";
+} from "./chain-serving.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_LIMIT_DEFAULT,

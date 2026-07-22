@@ -22,7 +22,7 @@ import { buildChainStakeTransfers } from "../src/chain-stake-transfers.mjs";
 import { buildChainWeightSetters } from "../src/chain-weight-setters.mjs";
 import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
 import { buildChainDeregistrations } from "../src/chain-deregistrations.ts";
-import { buildChainServing } from "../src/chain-serving.mjs";
+import { buildChainServing } from "../src/chain-serving.ts";
 import { buildChainPrometheus } from "../src/chain-prometheus.ts";
 import { buildChainRegistrations } from "../src/chain-registrations.ts";
 import { buildChainStakeFlow } from "../src/chain-stake-flow.mjs";
