@@ -2,20 +2,32 @@
 // Serves the baked /metagraph/adapters/{slug}.json artifact (adapter-backed
 // public metrics for one subnet slug).
 
+import type { StorageReadResult } from "../workers/storage.ts";
+
 export const ADAPTER_SLUG_PATTERN = /^[a-z0-9-]+$/;
 
-export function adapterArtifactPath(slug) {
+export function adapterArtifactPath(slug: string): string {
   return `/metagraph/adapters/${slug}.json`;
 }
 
-export function adapterToolError(code, message) {
-  const error = new Error(message);
+export interface AdapterToolError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function adapterToolError(
+  code: string,
+  message: string,
+): AdapterToolError {
+  const error = new Error(message) as AdapterToolError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-export function parseAdapterSlug(args) {
+export function parseAdapterSlug(
+  args: Record<string, unknown> | null | undefined,
+): string {
   const slug = args?.slug;
   if (typeof slug !== "string" || slug.trim() === "") {
     throw adapterToolError(
@@ -33,13 +45,25 @@ export function parseAdapterSlug(args) {
   return normalized;
 }
 
-export async function loadAdapter(ctx, args, { readArtifact } = {}) {
+export async function loadAdapter(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<unknown> {
   const slug = parseAdapterSlug(args);
   const artifactPath = adapterArtifactPath(slug);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, artifactPath);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw adapterToolError(
         "not_found",

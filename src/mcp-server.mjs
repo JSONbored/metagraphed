@@ -239,7 +239,7 @@ import {
   GET_ADAPTER_MCP_TOOL,
   GET_ADAPTER_OUTPUT_SCHEMA,
   loadAdapter,
-} from "./adapters-mcp.mjs";
+} from "./adapters-mcp.ts";
 import {
   GET_AGENT_RESOURCES_INSTRUCTIONS,
   GET_AGENT_RESOURCES_MCP_TOOL,

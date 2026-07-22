@@ -54,7 +54,7 @@ import { loadReviewGapsList } from "./review-gaps-mcp.mjs";
 import { loadProfileCompletenessList } from "./profile-completeness-mcp.mjs";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
-import { loadAdapter } from "./adapters-mcp.mjs";
+import { loadAdapter } from "./adapters-mcp.ts";
 // #7170: GraphQL parity for the changelog/contracts/health-history REST routes,
 // reusing the same loaders MCP get_changelog/get_contracts/get_health_history
 // already call -- not a reimplementation.

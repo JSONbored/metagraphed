@@ -9,7 +9,7 @@ import {
   adapterToolError,
   loadAdapter,
   parseAdapterSlug,
-} from "../src/adapters-mcp.mjs";
+} from "../src/adapters-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_ADAPTER = {
