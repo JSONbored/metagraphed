@@ -979,19 +979,6 @@
       "url": "https://new-collector-api-production.up.railway.app/openapi.json"
     },
     {
-      "drift_status": "not-captured",
-      "error": null,
-      "hash": null,
-      "netuid": 38,
-      "path": null,
-      "previous_hash": null,
-      "schema_url": "https://api.chronollm.com/openapi.json",
-      "status": "not-captured",
-      "subnet_slug": "sn-38",
-      "surface_id": "sn-38-tao-colosseum-openapi",
-      "url": "https://api.chronollm.com/openapi.json"
-    },
-    {
       "content_type": "application/json",
       "drift_status": "unchanged",
       "hash": "46cb94ecdbe833d387bbb64348b235071a941e5c00ca4037c0178f654169fb06",
@@ -2601,15 +2588,14 @@
   "summary": {
     "by_drift_status": {
       "changed": 12,
-      "not-captured": 4,
+      "not-captured": 3,
       "unchanged": 49
     },
     "by_status": {
       "captured": 61,
-      "not-captured": 1,
       "not-found": 3
     },
     "schema_count": 61,
-    "surface_count": 65
+    "surface_count": 64
   }
 }
