@@ -3,7 +3,7 @@
 // without a live Unkey round trip on every request -- mirrors this file's
 // original ADR 0020/0021 shape, except the "live" fallback on a cache miss
 // now calls Unkey's verifyKey() (via the DATA_API service binding's internal
-// route, the only place holding UNKEY_ROOT_KEY -- src/unkey-client.mjs)
+// route, the only place holding UNKEY_ROOT_KEY -- src/unkey-client.ts)
 // instead of a Postgres secret_hash lookup.
 //
 // The cache is keyed by a LOCAL SHA-256 hash of the full raw key, not a
@@ -12,7 +12,7 @@
 // format did, so there's nothing else safe to key a cache entry by. Hashing
 // locally costs nothing (no network round trip) and never reveals the key
 // even if the KV namespace itself were ever exposed (one-way digest). This
-// module itself never imports src/unkey-client.mjs -- the actual Unkey call
+// module itself never imports src/unkey-client.ts -- the actual Unkey call
 // happens on the OTHER side of the DATA_API service-binding hop (that
 // Worker is the only place holding UNKEY_ROOT_KEY); this file only ever
 // talks to DATA_API's internal route.
@@ -20,7 +20,7 @@
 // TTL is asymmetric and deliberately NOT the same for every outcome: a
 // verified, valid key gets a long TTL (30 min) -- this is the one place
 // accepting eventual consistency for identity/revocation (NOT rate-limiting;
-// see src/unkey-client.mjs's header for why that stays live/uncached), and a
+// see src/unkey-client.ts's header for why that stays live/uncached), and a
 // longer TTL directly cuts how often verifyKey() gets called, keeping usage
 // comfortably inside Unkey's free tier. A revoked/disabled/not-found/garbage
 // key gets a SHORT TTL (30s) instead -- this falls straight out of caching

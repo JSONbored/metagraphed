@@ -512,7 +512,7 @@ import {
   verifyUnkeyKey,
   updateUnkeyKeyTier,
   revokeUnkeyKey,
-} from "../src/unkey-client.mjs";
+} from "../src/unkey-client.ts";
 import { API_KEY_LOOKUP_TOKEN_HEADER } from "../src/api-key-validation.ts";
 import {
   createSessionToken,
@@ -3953,7 +3953,7 @@ async function handleAlertTriggersRoute(request, env, url) {
 //   POST /api/v1/auth/wallet/verify     { ss58, signature } -> a session
 //   POST/GET /api/v1/keys, DELETE /api/v1/keys/{key_id} -> mint/list/revoke
 //     THIS account's own mg_... API key, now minted/verified/revoked via
-//     Unkey (src/unkey-client.mjs) rather than locally generated/hashed --
+//     Unkey (src/unkey-client.ts) rather than locally generated/hashed --
 //     every /api/v1/keys route requires a session (Authorization: Bearer
 //     <session_token>, src/wallet-auth.mjs). No invite-code gate anymore:
 //     any wallet-connected account can self-serve a key immediately, at its

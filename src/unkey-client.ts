@@ -31,14 +31,33 @@
 // provisioning comment.
 const UNKEY_BASE_URL = "https://api.unkey.com";
 
+type Row = Record<string, unknown>;
+
+interface UnkeyFetchFailure {
+  ok: false;
+  code: string;
+  status?: number;
+}
+
+interface UnkeyFetchSuccess {
+  ok: true;
+  data: Row;
+}
+
+type UnkeyFetchResult = UnkeyFetchSuccess | UnkeyFetchFailure;
+
 // Never throws on a network failure, a non-2xx response, or a malformed
 // response body -- a key-management/verification call must fail closed with
 // a discriminated result, not crash the caller's request.
-async function unkeyFetch(env, path, body) {
+async function unkeyFetch(
+  env: Env,
+  path: string,
+  body: Row,
+): Promise<UnkeyFetchResult> {
   if (!env?.UNKEY_ROOT_KEY || !env?.UNKEY_API_ID) {
     return { ok: false, code: "provider_not_configured" };
   }
-  let response;
+  let response: Response;
   try {
     response = await fetch(`${UNKEY_BASE_URL}${path}`, {
       method: "POST",
@@ -51,16 +70,16 @@ async function unkeyFetch(env, path, body) {
   } catch {
     return { ok: false, code: "provider_unreachable" };
   }
-  let payload;
+  let payload: Row;
   try {
-    payload = await response.json();
+    payload = (await response.json()) as Row;
   } catch {
     return { ok: false, code: "provider_invalid_response" };
   }
   if (!response.ok || !payload?.data) {
     return { ok: false, code: "provider_error", status: response.status };
   }
-  return { ok: true, data: payload.data };
+  return { ok: true, data: payload.data as Row };
 }
 
 /** Mints a new key under this deployment's one API/keyspace. `externalId` is
@@ -70,7 +89,10 @@ async function unkeyFetch(env, path, body) {
  * see this file's header for why it isn't an Unkey-side rate limit. Returns
  * { ok: true, keyId, key } -- `key` is the full mg_... credential, returned
  * only once, exactly like the old generateApiKey() contract. */
-export async function createUnkeyKey(env, { externalId, tier }) {
+export async function createUnkeyKey(
+  env: Env,
+  { externalId, tier }: { externalId: string; tier: unknown },
+): Promise<Row | UnkeyFetchFailure> {
   const result = await unkeyFetch(env, "/v2/keys.createKey", {
     apiId: env.UNKEY_API_ID,
     externalId,
@@ -87,17 +109,20 @@ export async function createUnkeyKey(env, { externalId, tier }) {
  * `code`) or { ok: false, code } if Unkey itself couldn't be reached/
  * misconfigured -- callers must treat ok:false the same as valid:false
  * (fail closed), never distinguish the two into a different error surface. */
-export async function verifyUnkeyKey(env, rawKey) {
+export async function verifyUnkeyKey(
+  env: Env,
+  rawKey: string,
+): Promise<Row | UnkeyFetchFailure> {
   const result = await unkeyFetch(env, "/v2/keys.verifyKey", { key: rawKey });
   if (!result.ok) return result;
-  const { valid, code, keyId, meta, identity } = result.data;
+  const { valid, code, keyId, meta, identity } = result.data as Row;
   return {
     ok: true,
     valid: !!valid,
     code,
     keyId,
-    tier: meta?.tier ?? null,
-    accountId: identity?.externalId ?? null,
+    tier: (meta as Row | null)?.tier ?? null,
+    accountId: (identity as Row | null)?.externalId ?? null,
   };
 }
 
@@ -105,7 +130,10 @@ export async function verifyUnkeyKey(env, rawKey) {
  * internal tier-promotion route's mechanism. Does NOT change any Unkey-side
  * rate limit (there isn't one); the caller's own rpc_accounts.tier row is
  * what actually changes the request-throttling binding selection. */
-export async function updateUnkeyKeyTier(env, { keyId, tier }) {
+export async function updateUnkeyKeyTier(
+  env: Env,
+  { keyId, tier }: { keyId: string; tier: unknown },
+): Promise<UnkeyFetchResult> {
   return unkeyFetch(env, "/v2/keys.updateKey", { keyId, meta: { tier } });
 }
 
@@ -118,6 +146,9 @@ export async function updateUnkeyKeyTier(env, { keyId, tier }) {
  * OWN /api/v1/keys route still never exposes a reactivate endpoint -- that
  * one-way behavior is enforced at our API layer, not by permanently
  * destroying the underlying key. */
-export async function revokeUnkeyKey(env, keyId) {
+export async function revokeUnkeyKey(
+  env: Env,
+  keyId: string,
+): Promise<UnkeyFetchResult> {
   return unkeyFetch(env, "/v2/keys.updateKey", { keyId, enabled: false });
 }

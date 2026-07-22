@@ -38,4 +38,5 @@ interface Env {
   SUBNET_IDENTITY_SYNC_SECRET?: string;
   SUBNET_SNAPSHOT_SYNC_SECRET?: string;
   TELEGRAM_BOT_TOKEN?: string;
+  UNKEY_ROOT_KEY?: string;
 }
