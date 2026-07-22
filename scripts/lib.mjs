@@ -12,7 +12,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactRelativePath,
   artifactStorageTierForRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 import { entityLabelsIndex } from "../src/entity-labels.mjs";
 import { sanitizeChainText, slugify } from "./lib/formatting.mjs";
 

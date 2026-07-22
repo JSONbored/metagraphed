@@ -1,4 +1,4 @@
-import { artifactStorageTierForPath } from "./artifact-storage.mjs";
+import { artifactStorageTierForPath } from "./artifact-storage.ts";
 import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";

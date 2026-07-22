@@ -336,7 +336,7 @@ test("readR2 for a schema document reads the literal latest/ key even when the p
 
 test("readArtifact serves R2-first for an R2-preferred dual artifact (R2 hit)", async () => {
   vi.resetModules();
-  vi.doMock("../src/artifact-storage.mjs", async (importOriginal) => {
+  vi.doMock("../src/artifact-storage.ts", async (importOriginal) => {
     const actual = await importOriginal();
     return { ...actual, isR2PreferredDualArtifactPath: () => true };
   });
@@ -353,13 +353,13 @@ test("readArtifact serves R2-first for an R2-preferred dual artifact (R2 hit)", 
   assert.equal(result.ok, true);
   assert.equal(result.source, "r2");
   assert.deepEqual(result.data, { from: "r2-fresh" });
-  vi.doUnmock("../src/artifact-storage.mjs");
+  vi.doUnmock("../src/artifact-storage.ts");
   vi.resetModules();
 });
 
 test("readArtifact falls back to the committed baseline when R2 is cold for an R2-preferred dual artifact", async () => {
   vi.resetModules();
-  vi.doMock("../src/artifact-storage.mjs", async (importOriginal) => {
+  vi.doMock("../src/artifact-storage.ts", async (importOriginal) => {
     const actual = await importOriginal();
     return { ...actual, isR2PreferredDualArtifactPath: () => true };
   });
@@ -376,13 +376,13 @@ test("readArtifact falls back to the committed baseline when R2 is cold for an R
   assert.equal(result.ok, true);
   assert.equal(result.source, "static-assets");
   assert.deepEqual(result.data, { from: "committed-baseline" });
-  vi.doUnmock("../src/artifact-storage.mjs");
+  vi.doUnmock("../src/artifact-storage.ts");
   vi.resetModules();
 });
 
 test("readArtifact returns the non-404 R2 error over the asset 404 for an R2-preferred dual artifact", async () => {
   vi.resetModules();
-  vi.doMock("../src/artifact-storage.mjs", async (importOriginal) => {
+  vi.doMock("../src/artifact-storage.ts", async (importOriginal) => {
     const actual = await importOriginal();
     return { ...actual, isR2PreferredDualArtifactPath: () => true };
   });
@@ -402,6 +402,6 @@ test("readArtifact returns the non-404 R2 error over the asset 404 for an R2-pre
   // r2Preferred.status (504) !== 404, so the R2 error wins the tiebreak.
   assert.equal(result.status, 504);
   assert.equal(result.code, "r2_timeout");
-  vi.doUnmock("../src/artifact-storage.mjs");
+  vi.doUnmock("../src/artifact-storage.ts");
   vi.resetModules();
 });

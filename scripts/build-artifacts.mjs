@@ -103,7 +103,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
   schemaDetailArtifactRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 
 const execFileAsync = promisify(execFile);
 

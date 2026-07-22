@@ -14,7 +14,7 @@ import {
   buildSurfaceAliasArtifact,
   SURFACE_ALIASES_RELATIVE_PATH,
 } from "../src/surface-aliases.mjs";
-import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
+import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 
 const dryRun = process.argv.includes("--dry-run");
 

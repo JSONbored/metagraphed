@@ -34,7 +34,7 @@ import path from "node:path";
 import { Resvg } from "@resvg/resvg-js";
 import satori from "satori";
 import { html } from "satori-html";
-import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
+import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 import { buildStatParts, renderMarkup } from "../src/og-image.mjs";
 import { repoRoot, stableStringify } from "./lib.mjs";
 import { initSentry, endSessionAndFlush } from "./observability.mjs";

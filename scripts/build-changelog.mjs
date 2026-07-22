@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { buildChangelog } from "./changelog.mjs";
 import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.mjs";
-import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.mjs";
+import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 
 const dryRun = process.argv.includes("--dry-run");
 

@@ -9,7 +9,7 @@ import {
   isR2OnlyArtifactPath,
   isR2PreferredDualArtifactPath,
   schemaDetailArtifactRelativePath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 
 const SS58 = "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM";
 

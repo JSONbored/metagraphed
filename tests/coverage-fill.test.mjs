@@ -12,7 +12,7 @@ import {
   readArtifactJson,
   selectReviewableReadmeLinks,
 } from "../scripts/lib.mjs";
-import { schemaDetailArtifactRelativePath } from "../src/artifact-storage.mjs";
+import { schemaDetailArtifactRelativePath } from "../src/artifact-storage.ts";
 
 describe("artifact-storage schema detail guards", () => {
   test("rejects schema detail paths containing a backslash segment", () => {

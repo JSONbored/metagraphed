@@ -1,4 +1,9 @@
-export const ARTIFACT_STORAGE_TIERS = {
+export type ArtifactStorageTier = "dual" | "git" | "r2";
+
+export const ARTIFACT_STORAGE_TIERS: Record<
+  ArtifactStorageTier,
+  ArtifactStorageTier
+> = {
   dual: "dual",
   git: "git",
   r2: "r2",
@@ -6,7 +11,7 @@ export const ARTIFACT_STORAGE_TIERS = {
 
 export const R2_STAGING_RELATIVE_ROOT = "dist/metagraph-r2/metagraph";
 
-export const R2_ONLY_PATTERNS = [
+export const R2_ONLY_PATTERNS: RegExp[] = [
   /^adapters\/[^/]+\.json$/,
   /^candidates\.json$/,
   /^candidates\/(?:\d+|\{netuid\})\.json$/,
@@ -422,7 +427,7 @@ export const R2_ONLY_PATTERNS = [
 // Committed to git (and mirrored to R2): the low-churn, consumer-facing API
 // contract plus the small coverage "shop window". These only change when the
 // API/schema changes — exactly what belongs in version control.
-export const DUAL_PATTERNS = [
+export const DUAL_PATTERNS: RegExp[] = [
   /^api-index\.json$/,
   // r2-manifest.json: the publish MANIFEST (what's in R2 + per-artifact hashes),
   // read by the upload/kv/verify pipeline — kept committed as publish
@@ -451,9 +456,11 @@ export const DUAL_PATTERNS = [
 // reproducible contract, which is correct to serve ASSETS-first. Kept as an
 // (empty) extension point and for the exported isR2PreferredDualArtifactPath()
 // contract.
-const R2_PREFERRED_DUAL_PATTERNS = [];
+const R2_PREFERRED_DUAL_PATTERNS: RegExp[] = [];
 
-export function isR2PreferredDualArtifactPath(artifactPath = "") {
+export function isR2PreferredDualArtifactPath(
+  artifactPath: string = "",
+): boolean {
   const normalized = artifactRelativePath(artifactPath);
   if (
     artifactStorageTierForRelativePath(normalized) !==
@@ -464,7 +471,7 @@ export function isR2PreferredDualArtifactPath(artifactPath = "") {
   return R2_PREFERRED_DUAL_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
-export function artifactRelativePath(artifactPath = "") {
+export function artifactRelativePath(artifactPath: string = ""): string {
   const value = String(artifactPath);
   const normalized = value.replace(/^\/+/, "");
   if (value.startsWith("/") && normalized.startsWith("metagraph/")) {
@@ -473,7 +480,9 @@ export function artifactRelativePath(artifactPath = "") {
   return normalized;
 }
 
-export function isGeneratedPublicArtifactRelativePath(relativePath = "") {
+export function isGeneratedPublicArtifactRelativePath(
+  relativePath: string = "",
+): boolean {
   const normalized = artifactRelativePath(relativePath);
   return DUAL_PATTERNS.some((pattern) => pattern.test(normalized));
 }
@@ -483,7 +492,9 @@ export function isGeneratedPublicArtifactRelativePath(relativePath = "") {
 // (finney) registry stays unprefixed and keeps its existing dual/git/r2 tiers.
 export const NETWORK_KEY_PREFIXES = ["testnet", "local"];
 
-export function artifactStorageTierForRelativePath(relativePath = "") {
+export function artifactStorageTierForRelativePath(
+  relativePath: string = "",
+): ArtifactStorageTier {
   const normalized = artifactRelativePath(relativePath);
   // Non-default network artifacts (testnet/…, local/…) are R2-only regardless of
   // what the unprefixed equivalent would be — secondary-network data is large and
@@ -502,11 +513,15 @@ export function artifactStorageTierForRelativePath(relativePath = "") {
   return ARTIFACT_STORAGE_TIERS.git;
 }
 
-export function artifactStorageTierForPath(artifactPath = "") {
+export function artifactStorageTierForPath(
+  artifactPath: string = "",
+): ArtifactStorageTier {
   return artifactStorageTierForRelativePath(artifactRelativePath(artifactPath));
 }
 
-export function schemaDetailArtifactRelativePath(artifactPath = "") {
+export function schemaDetailArtifactRelativePath(
+  artifactPath: string = "",
+): string | null {
   const relativePath = artifactRelativePath(artifactPath);
   if (!relativePath || relativePath === "schemas/index.json") {
     return null;
@@ -526,6 +541,6 @@ export function schemaDetailArtifactRelativePath(artifactPath = "") {
   return relativePath;
 }
 
-export function isR2OnlyArtifactPath(artifactPath = "") {
+export function isR2OnlyArtifactPath(artifactPath: string = ""): boolean {
   return artifactStorageTierForPath(artifactPath) === ARTIFACT_STORAGE_TIERS.r2;
 }

@@ -16,7 +16,7 @@ import {
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,
-} from "../src/artifact-storage.mjs";
+} from "../src/artifact-storage.ts";
 import { createComponentValidatorCompiler } from "./lib/component-validator.mjs";
 
 // Artifacts whose schema describes a live-computed API response with no static
