@@ -1,5 +1,5 @@
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import { buildApiComponentBundle } from "./bundle-schemas.mjs";
+import { buildApiComponentBundle } from "./bundle-schemas.ts";
 import { buildTimestamp } from "./lib.mjs";
 
 export async function loadOpenApiComponentSchemas(

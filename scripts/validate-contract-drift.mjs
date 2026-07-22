@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { buildApiComponentBundle } from "./bundle-schemas.mjs";
+import { buildApiComponentBundle } from "./bundle-schemas.ts";
 import { generateClientSource } from "./generate-client.mjs";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
 import { readJson, repoRoot, stableStringify } from "./lib.mjs";

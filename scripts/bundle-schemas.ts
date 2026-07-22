@@ -25,13 +25,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 }
 
-export async function buildApiComponentBundle() {
+export async function buildApiComponentBundle(): Promise<
+  Record<string, unknown>
+> {
   const entries = (await fs.readdir(componentRoot, { withFileTypes: true }))
     .filter((entry) => entry.isFile() && entry.name.endsWith(".schema.json"))
     .map((entry) => entry.name)
     .sort();
 
-  const schemas = {};
+  const schemas: Record<string, unknown> = {};
   for (const entry of entries) {
     const document = await readJson(path.join(componentRoot, entry));
     const components = document.components?.schemas || {};

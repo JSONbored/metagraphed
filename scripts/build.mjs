@@ -125,7 +125,7 @@ function revertDeployOwnedArtifactsIfChanged() {
 
 function localSteps() {
   return [
-    nodeStep("bundle-schemas", "scripts/bundle-schemas.mjs", "--write"),
+    nodeStep("bundle-schemas", "scripts/bundle-schemas.ts", "--write"),
     nodeStep("build-artifacts", "scripts/build-artifacts.mjs", {
       METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
     }),
@@ -141,7 +141,7 @@ function localSteps() {
 
 function productionSteps() {
   return [
-    nodeStep("bundle-schemas", "scripts/bundle-schemas.mjs", "--write"),
+    nodeStep("bundle-schemas", "scripts/bundle-schemas.ts", "--write"),
     // Refresh the finney native chain snapshot fresh each publish (ADR 0006
     // step 2) so the registry stays current without the retired scheduled
     // sync-subnets PR. Tolerant: a chain RPC failure keeps the last snapshot and
