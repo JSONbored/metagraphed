@@ -106,7 +106,7 @@
     "worker:deploy:dry-run": "node scripts/worker-deploy-dry-run.mjs",
     "worker:bundle:budget": "node scripts/worker-bundle-budget.mjs",
     "types:workers": "wrangler types -c wrangler.jsonc workers/worker-configuration.d.ts && wrangler types -c wrangler.data.jsonc --include-runtime=false workers/data-api.worker-configuration.d.ts && wrangler types -c wrangler.registry.jsonc --include-runtime=false workers/registry-sync-api.worker-configuration.d.ts",
-    "worker:check-deploy-drift": "node scripts/check-worker-deploy-drift.mjs",
+    "worker:check-deploy-drift": "node scripts/check-worker-deploy-drift.ts",
     "deploy:api": "scripts/deploy-worker-with-sourcemaps.sh wrangler.jsonc",
     "deploy:api:preview": "scripts/deploy-worker-with-sourcemaps.sh wrangler.jsonc --preview",
     "deploy:data-api": "scripts/deploy-worker-with-sourcemaps.sh wrangler.data.jsonc",

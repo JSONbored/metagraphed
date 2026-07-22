@@ -9,7 +9,7 @@ name: Check Worker Deploy Drift
 # Cloudflare API, using the same read-only CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID
 # secrets publish-cloudflare.yml already uses) and compares it against a fresh
 # origin/main HEAD checkout, failing the job once the drift has persisted across a
-# prior scheduled run (see scripts/check-worker-deploy-drift.mjs for the exact
+# prior scheduled run (see scripts/check-worker-deploy-drift.ts for the exact
 # grace-window rule -- this only needs to catch a genuinely stuck build, not race a
 # normal in-flight deploy).
 #
@@ -62,7 +62,7 @@ jobs:
           node-version: 22.23.1
 
       - name: Check live Worker deployment against origin/main HEAD
-        run: node scripts/check-worker-deploy-drift.mjs
+        run: node scripts/check-worker-deploy-drift.ts
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

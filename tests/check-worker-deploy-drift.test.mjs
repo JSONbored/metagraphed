@@ -5,7 +5,7 @@ import {
   extractDeployedCommitSha,
   findPreviousScheduledRunAt,
   selectLatestProductionRelease,
-} from "../scripts/check-worker-deploy-drift.mjs";
+} from "../scripts/check-worker-deploy-drift.ts";
 
 describe("extractDeployedCommitSha", () => {
   const shaA = "a".repeat(40);

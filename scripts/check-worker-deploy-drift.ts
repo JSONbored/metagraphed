@@ -21,6 +21,8 @@
 // different product). Nothing was ever going to populate it.
 import { fileURLToPath } from "node:url";
 
+type Row = Record<string, unknown>;
+
 const DEPLOYMENTS_PATH_TEMPLATE =
   "https://api.cloudflare.com/client/v4/accounts/{accountId}/workers/scripts/{scriptName}/deployments";
 const SENTRY_RELEASES_PATH_TEMPLATE =
@@ -34,15 +36,18 @@ const SENTRY_RELEASES_PATH_TEMPLATE =
 // actually live in production.
 const PRODUCTION_RELEASE_VERSION_PATTERN = /^[0-9a-f]{40}$/i;
 
-export function extractDeployedCommitSha(deploymentsJson) {
-  const deployments = deploymentsJson?.result?.deployments;
+export function extractDeployedCommitSha(deploymentsJson: Row): string {
+  const deployments = (deploymentsJson?.result as Row | undefined)
+    ?.deployments as Row[] | undefined;
   if (!Array.isArray(deployments) || deployments.length === 0) {
     throw new Error(
       "Cloudflare deployments response contained no deployments for this Worker script",
     );
   }
   const active = deployments[0];
-  const message = active?.annotations?.["workers/message"];
+  const message = (active?.annotations as Row | undefined)?.[
+    "workers/message"
+  ] as string | undefined;
   if (!message || !PRODUCTION_RELEASE_VERSION_PATTERN.test(message)) {
     throw new Error(
       `Active deployment ${active?.id ?? "(unknown id)"} has no workers/message annotation containing a git commit SHA -- scripts/deploy-worker-with-sourcemaps.sh may not have deployed it (or it predates the --message fix, #7224)`,
@@ -58,21 +63,24 @@ export function extractDeployedCommitSha(deploymentsJson) {
 // release, independent of Cloudflare's own deployment bookkeeping. Sorts by
 // dateCreated rather than trusting response order, since that isn't
 // documented/guaranteed.
-export function selectLatestProductionRelease(releases) {
+export function selectLatestProductionRelease(
+  releases: Row[] | null | undefined,
+): Row | null {
   if (!Array.isArray(releases)) {
     return null;
   }
   const candidates = releases.filter(
     (release) =>
       typeof release?.version === "string" &&
-      PRODUCTION_RELEASE_VERSION_PATTERN.test(release.version),
+      PRODUCTION_RELEASE_VERSION_PATTERN.test(release.version as string),
   );
   if (candidates.length === 0) {
     return null;
   }
   return candidates.sort(
     (a, b) =>
-      new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime(),
+      new Date(b.dateCreated as string).getTime() -
+      new Date(a.dateCreated as string).getTime(),
   )[0];
 }
 
@@ -80,7 +88,11 @@ export async function findLatestProductionReleaseCommit({
   sentryAuthToken,
   sentryOrg,
   sentryProject,
-}) {
+}: {
+  sentryAuthToken: string;
+  sentryOrg: string;
+  sentryProject: string;
+}): Promise<string | null> {
   const releasesUrl = SENTRY_RELEASES_PATH_TEMPLATE.replace(
     "{org}",
     sentryOrg,
@@ -93,21 +105,31 @@ export async function findLatestProductionReleaseCommit({
       `Sentry releases API returned HTTP ${res.status}: ${await res.text()}`,
     );
   }
-  const latest = selectLatestProductionRelease(await res.json());
-  return latest?.version ?? null;
+  const latest = selectLatestProductionRelease((await res.json()) as Row[]);
+  return (latest?.version as string | undefined) ?? null;
 }
 
-export function findPreviousScheduledRunAt(runsJson, currentRunId) {
+export function findPreviousScheduledRunAt(
+  runsJson: Row,
+  currentRunId: unknown,
+): string | null {
   const runs = Array.isArray(runsJson?.workflow_runs)
-    ? runsJson.workflow_runs
+    ? (runsJson.workflow_runs as Row[])
     : [];
   const previous = runs
     .filter((run) => String(run.id) !== String(currentRunId))
     .sort(
       (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        new Date(b.created_at as string).getTime() -
+        new Date(a.created_at as string).getTime(),
     )[0];
-  return previous?.created_at ?? null;
+  return (previous?.created_at as string | undefined) ?? null;
+}
+
+interface DeployDriftResult {
+  drifted: boolean;
+  shouldAlert: boolean;
+  reason: string;
 }
 
 // Grace window, per issue #5538: skip the very first scheduled run that observes a
@@ -121,7 +143,12 @@ export function evaluateDeployDrift({
   mainHeadSha,
   mainHeadCommittedAt,
   previousScheduledRunAt,
-}) {
+}: {
+  deployedCommitSha: string;
+  mainHeadSha: string;
+  mainHeadCommittedAt: string;
+  previousScheduledRunAt: string | null;
+}): DeployDriftResult {
   if (deployedCommitSha === mainHeadSha) {
     return {
       drifted: false,
@@ -153,7 +180,7 @@ export function evaluateDeployDrift({
   };
 }
 
-async function main() {
+async function main(): Promise<number> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   const scriptName = process.env.WORKER_SCRIPT_NAME || "metagraphed";
@@ -200,44 +227,48 @@ async function main() {
     return 1;
   }
 
-  let deployedCommitSha;
+  let deployedCommitSha: string;
   try {
-    deployedCommitSha = extractDeployedCommitSha(await deploymentsRes.json());
+    deployedCommitSha = extractDeployedCommitSha(
+      (await deploymentsRes.json()) as Row,
+    );
   } catch (cfError) {
     // Fall back to Sentry's release tracking (see findLatestProductionReleaseCommit
     // above) rather than failing outright -- this is what actually let a maintainer
     // confirm live code was current while this annotation gap was unresolved.
     const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
     if (!sentryAuthToken) {
-      console.error(`::error::${cfError.message}`);
+      console.error(`::error::${(cfError as Error).message}`);
       return 1;
     }
     console.error(
-      `::warning::${cfError.message} -- falling back to Sentry's latest release commit.`,
+      `::warning::${(cfError as Error).message} -- falling back to Sentry's latest release commit.`,
     );
+    let fallbackSha: string | null;
     try {
-      deployedCommitSha = await findLatestProductionReleaseCommit({
+      fallbackSha = await findLatestProductionReleaseCommit({
         sentryAuthToken,
         sentryOrg: process.env.SENTRY_ORG || "jsonbored",
         sentryProject: process.env.SENTRY_PROJECT || "metagraphed",
       });
     } catch (sentryError) {
-      console.error(`::error::${cfError.message}`);
+      console.error(`::error::${(cfError as Error).message}`);
       console.error(
-        `::error::Sentry fallback also failed: ${sentryError.message}`,
+        `::error::Sentry fallback also failed: ${(sentryError as Error).message}`,
       );
       return 1;
     }
-    if (!deployedCommitSha) {
-      console.error(`::error::${cfError.message}`);
+    if (!fallbackSha) {
+      console.error(`::error::${(cfError as Error).message}`);
       console.error(
         "::error::Sentry fallback found no production release either.",
       );
       return 1;
     }
+    deployedCommitSha = fallbackSha;
   }
 
-  let previousScheduledRunAt = null;
+  let previousScheduledRunAt: string | null = null;
   if (githubToken && repository && workflowFilename) {
     const runsUrl = `https://api.github.com/repos/${repository}/actions/workflows/${workflowFilename}/runs?event=schedule&status=completed&per_page=5`;
     const runsRes = await fetch(runsUrl, {
@@ -254,7 +285,7 @@ async function main() {
       return 1;
     }
     previousScheduledRunAt = findPreviousScheduledRunAt(
-      await runsRes.json(),
+      (await runsRes.json()) as Row,
       runId,
     );
   }
