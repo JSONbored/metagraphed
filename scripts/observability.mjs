@@ -6,7 +6,7 @@
 // Cloudflare-publish-side build steps that fit the same "short-lived batch
 // script" shape. Used by refresh-economics.mjs, refresh-native-snapshot.mjs,
 // backfill-registry-postgres.ts, discover-testnet-surfaces.ts,
-// export-parquet.mjs, reconcile-neurons.mjs, sync-registry-to-postgres.mjs,
+// export-parquet.ts, reconcile-neurons.mjs, sync-registry-to-postgres.mjs,
 // and refresh-og-image.mjs so all eight report to the same consolidated
 // `metagraphed` Sentry project with a consistent `component` tag --
 // matching scripts/observability.py's own Python-side convention for the

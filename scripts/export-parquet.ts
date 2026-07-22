@@ -27,7 +27,7 @@
 // run) is the primary, bounded-size discovery point for downloaders in the
 // meantime; dated history accumulates until a follow-up adds pruning.
 //
-// Usage: node scripts/export-parquet.mjs [--dry-run]
+// Usage: node scripts/export-parquet.ts [--dry-run]
 import { DuckDBInstance } from "@duckdb/node-api";
 import { execFileSync } from "node:child_process";
 import { mkdtemp, readdir, readFile, rm, stat } from "node:fs/promises";
@@ -74,7 +74,15 @@ const EXPORTS = [
   { table: "account_events_daily", db: "indexer" },
 ];
 
-function requireEnv(name) {
+interface PgConn {
+  host: string;
+  port: number;
+  dbname: string;
+  user: string;
+  password: string;
+}
+
+function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} env var required`);
   return value;
@@ -87,9 +95,19 @@ function requireEnv(name) {
 // Minimal libpq escaping (backslash, single-quote) for robustness; this
 // project's generated passwords are alphanumeric-only in practice, but the
 // escaping costs nothing.
-export function libpqConnString({ host, port, dbname, user, password }) {
-  const esc = (value) => String(value).replace(/([\\'])/g, "\\$1");
+export function libpqConnString({
+  host,
+  port,
+  dbname,
+  user,
+  password,
+}: PgConn): string {
+  const esc = (value: unknown) => String(value).replace(/([\\'])/g, "\\$1");
   return `host=${esc(host)} port=${esc(port)} dbname=${esc(dbname)} user=${esc(user)} password=${esc(password)}`;
+}
+
+interface RunnableConnection {
+  run(sql: string): Promise<unknown>;
 }
 
 // DuckDB's own ATTACH failure errors embed the full connection string --
@@ -97,7 +115,11 @@ export function libpqConnString({ host, port, dbname, user, password }) {
 // during local testing printed the plaintext password to stderr). Never let
 // that reach a log/journal: attach with a scrubbed error on failure instead
 // of letting DuckDB's own message propagate.
-export async function attachPostgres(connection, alias, conn) {
+export async function attachPostgres(
+  connection: RunnableConnection,
+  alias: string,
+  conn: PgConn,
+): Promise<void> {
   try {
     await connection.run(
       `ATTACH '${libpqConnString(conn)}' AS ${alias} (TYPE postgres, READ_ONLY)`,
@@ -109,15 +131,38 @@ export async function attachPostgres(connection, alias, conn) {
   }
 }
 
-async function main() {
-  const registryConn = {
+interface Artifact {
+  table: string;
+  source_db: string;
+  path: string;
+  key: string;
+  latest_key: string;
+  sha256: string;
+  size_bytes: number;
+  row_count: number;
+  part_count: number;
+}
+
+interface Manifest {
+  schema_version: number;
+  generated_at: string;
+  bucket_name: string;
+  run_prefix: string;
+  latest_prefix: string;
+  artifact_count: number;
+  artifact_size_bytes: number;
+  artifacts: Artifact[];
+}
+
+async function main(): Promise<void> {
+  const registryConn: PgConn = {
     host: process.env.REGISTRY_PG_HOST || "127.0.0.1",
     port: Number(process.env.REGISTRY_PG_PORT || 5433),
     dbname: requireEnv("REGISTRY_PG_DB"),
     user: requireEnv("REGISTRY_PG_USER"),
     password: requireEnv("REGISTRY_PG_PASSWORD"),
   };
-  const indexerConn = {
+  const indexerConn: PgConn = {
     host: process.env.INDEXER_PG_HOST || "127.0.0.1",
     port: Number(process.env.INDEXER_PG_PORT || 5432),
     dbname: requireEnv("INDEXER_PG_DB"),
@@ -138,7 +183,7 @@ async function main() {
   const runPrefix = `${RUN_PREFIX_ROOT}/${date}/`;
   const latestPrefix = `${RUN_PREFIX_ROOT}/latest/`;
 
-  const artifacts = [];
+  const artifacts: Artifact[] = [];
   try {
     for (const { table, db } of EXPORTS) {
       const tableDir = path.join(workDir, table);
@@ -175,7 +220,7 @@ async function main() {
       }
     }
 
-    const manifest = {
+    const manifest: Manifest = {
       schema_version: SCHEMA_VERSION,
       generated_at: generatedAt,
       bucket_name: BUCKET,
@@ -207,19 +252,28 @@ async function main() {
   }
 }
 
-async function rowCount(connection, db, table) {
+async function rowCount(
+  connection: RunnableConnection & {
+    runAndReadAll(sql: string): Promise<{ getRows(): unknown[][] }>;
+  },
+  db: string,
+  table: string,
+): Promise<number> {
   const reader = await connection.runAndReadAll(
     `SELECT count(*) AS n FROM ${db}.${table}`,
   );
   return Number(reader.getRows()[0][0]);
 }
 
-async function writeManifest(manifestPath, manifest) {
+async function writeManifest(
+  manifestPath: string,
+  manifest: Manifest,
+): Promise<void> {
   const { writeFile } = await import("node:fs/promises");
   await writeFile(manifestPath, `${stableStringify(manifest)}\n`);
 }
 
-function uploadToR2(localPath, remoteKey) {
+function uploadToR2(localPath: string, remoteKey: string): void {
   execFileSync(
     "npx",
     [
@@ -235,7 +289,7 @@ function uploadToR2(localPath, remoteKey) {
   );
 }
 
-function summarize(manifest) {
+function summarize(manifest: Manifest) {
   return {
     generated_at: manifest.generated_at,
     run_prefix: manifest.run_prefix,

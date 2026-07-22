@@ -173,7 +173,7 @@ case "$STEP" in
     : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN env var required for the export-parquet step}"
     : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID env var required for the export-parquet step}"
     echo "entrypoint: nightly Parquet bulk export to R2"
-    exec node scripts/export-parquet.mjs
+    exec node scripts/export-parquet.ts
     ;;
   reconcile-neurons)
     : "${LIVE_SNAPSHOT_JSON:?LIVE_SNAPSHOT_JSON env var required for the reconcile-neurons step}"

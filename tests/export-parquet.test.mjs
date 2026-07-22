@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { attachPostgres, libpqConnString } from "../scripts/export-parquet.mjs";
+import { attachPostgres, libpqConnString } from "../scripts/export-parquet.ts";
 
 const BASE = { host: "h", port: 5432, dbname: "d", user: "u" };
 
