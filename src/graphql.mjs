@@ -305,7 +305,7 @@ import {
   DEFAULT_STAKE_FLOW_DIRECTION,
   STAKE_FLOW_DIRECTIONS,
   buildStakeFlow,
-} from "./stake-flow.mjs";
+} from "./stake-flow.ts";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
 import { buildAccountPositions } from "./account-nominator-positions.ts";
 import {

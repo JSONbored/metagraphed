@@ -214,7 +214,7 @@ import {
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
   STAKE_FLOW_DIRECTIONS,
-} from "../../src/stake-flow.mjs";
+} from "../../src/stake-flow.ts";
 import { buildAlphaVolume } from "../../src/alpha-volume.ts";
 import {
   buildSubnetOhlc,

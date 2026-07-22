@@ -4,7 +4,7 @@ import {
   buildStakeFlow,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-} from "../src/stake-flow.mjs";
+} from "../src/stake-flow.ts";
 
 describe("buildStakeFlow", () => {
   test("cold / empty / non-array inputs yield schema-stable zeros", () => {

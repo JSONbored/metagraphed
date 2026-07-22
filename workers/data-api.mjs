@@ -168,7 +168,7 @@ import {
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
 } from "../src/account-stake-flow.ts";
-import { buildStakeFlow } from "../src/stake-flow.mjs";
+import { buildStakeFlow } from "../src/stake-flow.ts";
 import {
   buildAccountStakeMoves,
   STAKE_MOVED_EVENT_KIND,

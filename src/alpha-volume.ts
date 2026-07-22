@@ -14,7 +14,7 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// The two account_events kinds that move stake — same pair stake-flow.mjs sums.
+// The two account_events kinds that move stake — same pair stake-flow.ts sums.
 // StakeAdded is a buy (TAO spent, alpha received); StakeRemoved is a sell (alpha
 // spent, TAO received). Both carry alpha_amount (migrations/0020) alongside
 // amount_tao, so one query yields both units without a second read.
@@ -38,7 +38,7 @@ function nullableAmount(value: unknown): number | null {
 
 // 1 TAO/alpha = 1e9 rao. Summing many REAL amount cells accumulates IEEE-754
 // noise below the rao floor; round every output to rao precision, mirroring
-// stake-flow.mjs's roundTao.
+// stake-flow.ts's roundTao.
 const RAO_PER_UNIT = 1e9;
 function roundUnit(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
@@ -166,7 +166,7 @@ export function buildAlphaVolume(
   // not just the single-row-per-kind shape GROUP BY event_kind guarantees.
   //
   // A malformed alpha_volume/tao_volume cell zeroes that one sum but still
-  // credits event_count — deliberately NOT stake-flow.mjs's buildStakeFlow,
+  // credits event_count — deliberately NOT stake-flow.ts's buildStakeFlow,
   // which skips the whole row (including the count) on a malformed total_tao.
   // There, total_tao is the row's only signal, so a bad cell means "nothing
   // usable here." Here alpha_volume and tao_volume are two independent
@@ -220,7 +220,7 @@ export function buildAlphaVolume(
 // alpha_amount + amount_tao from account_events over the last 24h (observed_at
 // >= now - 24h, epoch ms), grouped by kind, shaped with buildAlphaVolume. Rides
 // the same (netuid, event_kind) prefix of idx_account_events_netuid_kind
-// (migrations/0024) stake-flow.mjs seeks; observed_at is a residual filter.
+// (migrations/0024) stake-flow.ts seeks; observed_at is a residual filter.
 // Returns { data, generatedAt } where generatedAt is the newest event's
 // observed_at as an ISO string (string|null), matching stake-flow's contract.
 // Cold/absent D1 -> zeroed totals + generatedAt null. The 3-day account_events

@@ -13,6 +13,8 @@
 // keeping the per-subnet analytics windows consistent for the recent-capital-movement
 // signal a flow view answers.
 
+type Row = Record<string, unknown>;
+
 // The two account_events kinds that move stake: StakeAdded is capital entering the
 // subnet, StakeRemoved is capital leaving. Both carry a positive amount_tao
 // (migrations/0009_account_events.sql:21), so net flow = staked - unstaked.
@@ -22,7 +24,11 @@ export const STAKE_REMOVED_KIND = "StakeRemoved";
 // Supported flow windows (label -> days), the same set the concentration/history
 // route exposes. Mirrors the UPTIME_WINDOWS lookup pattern; an unsupported label is
 // rejected by the handler with a 400.
-export const STAKE_FLOW_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const STAKE_FLOW_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 export const DEFAULT_STAKE_FLOW_WINDOW = "30d";
 
 // direction narrows the stake-flow aggregate to one side: in = StakeAdded only,
@@ -34,7 +40,7 @@ export const DEFAULT_STAKE_FLOW_DIRECTION = "all";
 // below the rao floor; round every TAO output to rao precision, the smallest real
 // unit (the same rounding the turnover/account-summary scorecards apply).
 const RAO_PER_TAO = 1e9;
-function roundTao(value) {
+function roundTao(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
@@ -42,13 +48,13 @@ function roundTao(value) {
 
 // Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite
 // number, defaulting to 0.
-function toNumber(value) {
+function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric.
-function nullableTao(value) {
+function nullableTao(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
@@ -59,7 +65,11 @@ function nullableTao(value) {
 // `rows` is the GROUP BY event_kind result: at most one row per kind carrying
 // total_tao (SUM amount_tao) and event_count (COUNT). Null-safe: no rows (cold
 // store / empty window) yields zeroed totals, never throws.
-export function buildStakeFlow(rows, netuid, { window } = {}) {
+export function buildStakeFlow(
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+  { window }: { window?: unknown } = {},
+): Row {
   const list = Array.isArray(rows) ? rows : [];
   let stakedTao = 0;
   let unstakedTao = 0;
