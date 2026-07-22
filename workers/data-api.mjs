@@ -2659,7 +2659,7 @@ async function handleHealthChecksSync(request, env) {
 // not precomputed rows -- this route computes the rollup itself from
 // surface_checks (already mirrored here by health-checks-sync), using
 // PERCENTILE_CONT for the p50/p95/p99 tail latency instead of replaying
-// D1/SQLite's rank-based CTE (src/health-sql.mjs's rankedChecksCte/
+// D1/SQLite's rank-based CTE (src/health-sql.ts's rankedChecksCte/
 // latencyStatColumns) column-for-column.
 const HEALTH_UPTIME_ROLLUP_SYNC_MAX_DAYS = 10;
 
@@ -6691,7 +6691,7 @@ export default {
         // surface_checks window, mirroring src/analytics-live.mjs's
         // loadSubnetHealthTrends. `ok` is BOOLEAN here (D1's `ok = 1`
         // becomes a bare `ok`); the SQLite rank-based p50/p95/p99 pick
-        // (src/health-sql.mjs's latencyStatColumns) becomes PERCENTILE_CONT
+        // (src/health-sql.ts's latencyStatColumns) becomes PERCENTILE_CONT
         // -- live-verified via psql (2026-07-11) at sub-millisecond cost
         // against current production volume (~350 rows across 117 surfaces,
         // 30 min of the 15-min cron so far).

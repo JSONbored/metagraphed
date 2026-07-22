@@ -7,7 +7,7 @@ import {
   latencyStatColumns,
   rankedChecksCte,
   surfaceStatusAvgLatencySql,
-} from "../src/health-sql.mjs";
+} from "../src/health-sql.ts";
 
 describe("health-sql latency builders", () => {
   test("OK_LATENCY gates latency on a successful probe that recorded one", () => {

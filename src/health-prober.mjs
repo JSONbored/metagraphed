@@ -665,7 +665,7 @@ export async function syncHealthChecksToPostgres(env, probed) {
 // UTC day *boundaries*; Postgres computes its own rollup from its own
 // surface_checks (already populated by the sibling sync), using
 // PERCENTILE_CONT for the p50/p95/p99 tail instead of D1/SQLite's
-// rank-based CTE (see src/health-sql.mjs's rankedChecksCte/
+// rank-based CTE (see src/health-sql.ts's rankedChecksCte/
 // latencyStatColumns, which this mirrors semantically, not textually).
 export async function syncHealthUptimeRollupToPostgres(env, days, updatedAt) {
   if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {

@@ -17,7 +17,9 @@ export const SURFACE_STATUS_OK_LATENCY =
 
 // Mean latency over `surface_status` rows, success-only. `rounded: true` wraps
 // the AVG in ROUND() for compare-style integer output.
-export function surfaceStatusAvgLatencySql({ rounded = false } = {}) {
+export function surfaceStatusAvgLatencySql({
+  rounded = false,
+}: { rounded?: boolean } = {}): string {
   const avg = `AVG(CASE WHEN ${SURFACE_STATUS_OK_LATENCY} THEN latency_ms END)`;
   return rounded ? `ROUND(${avg})` : avg;
 }
@@ -26,7 +28,7 @@ export function surfaceStatusAvgLatencySql({ rounded = false } = {}) {
 // latency (`rn`) and counts them (`lat_cnt`), passing all rows through so uptime
 // still totals over every check. The grp term in the PARTITION isolates
 // ok-latency rows, so `rn` ranks among them alone. `whereSql`'s `?` binds lead.
-export function rankedChecksCte(whereSql) {
+export function rankedChecksCte(whereSql: string): string {
   return `WITH ranked AS (
     SELECT
       surface_id,
@@ -54,7 +56,7 @@ export function rankedChecksCte(whereSql) {
 export function latencyStatColumns({
   roundedAvg = false,
   includeMinMax = true,
-} = {}) {
+}: { roundedAvg?: boolean; includeMinMax?: boolean } = {}): string {
   const avg = `AVG(CASE WHEN ${OK_LATENCY} THEN latency_ms END)`;
   // Nearest-rank order statistic: the value at 1-based ordinal position
   // ceil(q * N) among the N ok-latency rows. `CAST(x AS INTEGER)` truncates
@@ -62,7 +64,7 @@ export function latencyStatColumns({
   // a fractional part — that is ceil. The previous `floor(q*N) + 1` overshot by
   // one whenever q*N was an integer (e.g. N=100 → p50/p95/p99 picked ranks
   // 51/96/100 instead of 50/95/99).
-  const pick = (q, name) => {
+  const pick = (q: number, name: string): string => {
     const pos = `${q} * lat_cnt`;
     return `MAX(CASE WHEN rn = CAST(${pos} AS INTEGER) + (${pos} > CAST(${pos} AS INTEGER)) THEN latency_ms END) AS ${name}`;
   };
@@ -88,7 +90,9 @@ export function latencyStatColumns({
 // cast to REAL so the division is floating-point — both `avg_latency_ms` and the
 // sample counts are INTEGER columns, so a plain `SUM(int)/SUM(int)` would be
 // SQLite integer division and truncate the mean before it is rounded.
-export function dailyLatencyColumns({ roundedAvg = false } = {}) {
+export function dailyLatencyColumns({
+  roundedAvg = false,
+}: { roundedAvg?: boolean } = {}): string {
   const weight = `CASE WHEN avg_latency_ms IS NOT NULL THEN COALESCE(latency_samples, samples) ELSE 0 END`;
   const denom = `SUM(${weight})`;
   const mean = `CAST(SUM(CASE WHEN avg_latency_ms IS NOT NULL THEN avg_latency_ms * COALESCE(latency_samples, samples) ELSE 0 END) AS REAL) / ${denom}`;
