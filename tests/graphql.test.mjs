@@ -6812,10 +6812,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     assert.equal(body.data.global_incidents.window, "7d");
     assert.deepEqual(body.data.global_incidents.surfaces, []);
     // Alias equivalence: identical envelope fields to incidents on the same env.
-    assert.equal(
-      body.data.global_incidents.window,
-      body.data.incidents.window,
-    );
+    assert.equal(body.data.global_incidents.window, body.data.incidents.window);
   });
 
   test("an unsupported window is the same GraphQL error incidents raises", async () => {
@@ -6829,10 +6826,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
   });
 
   test("is priced identically to incidents", () => {
-    assert.equal(
-      FIELD_COMPLEXITY.global_incidents,
-      FIELD_COMPLEXITY.incidents,
-    );
+    assert.equal(FIELD_COMPLEXITY.global_incidents, FIELD_COMPLEXITY.incidents);
   });
 });
 
