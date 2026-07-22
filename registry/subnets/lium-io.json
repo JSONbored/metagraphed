@@ -44,7 +44,9 @@
       },
       "provider": "lium",
       "public_safe": true,
-      "source_urls": ["https://github.com/Datura-ai/lium-io"],
+      "source_urls": [
+        "https://github.com/Datura-ai/lium-io"
+      ],
       "url": "https://lium.io/"
     },
     {
@@ -62,7 +64,9 @@
       },
       "provider": "lium",
       "public_safe": true,
-      "source_urls": ["https://lium.io/"],
+      "source_urls": [
+        "https://lium.io/"
+      ],
       "url": "https://github.com/Datura-ai/lium-io"
     },
     {
@@ -86,7 +90,10 @@
       },
       "schema_status": "machine-readable",
       "schema_url": "https://lium.io/api/openapi.json",
-      "source_urls": ["https://lium.io/", "https://lium.io/api/openapi.json"],
+      "source_urls": [
+        "https://lium.io/",
+        "https://lium.io/api/openapi.json"
+      ],
       "url": "https://lium.io/api/openapi.json"
     },
     {
@@ -137,7 +144,10 @@
       },
       "schema_status": "machine-readable",
       "schema_url": "https://lium.io/api/openapi.json",
-      "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
+      "source_urls": [
+        "https://lium.io/api/openapi.json",
+        "https://lium.io/"
+      ],
       "url": "https://lium.io/api/version"
     },
     {
@@ -161,7 +171,10 @@
       },
       "schema_status": "machine-readable",
       "schema_url": "https://lium.io/api/openapi.json",
-      "source_urls": ["https://lium.io/api/openapi.json", "https://lium.io/"],
+      "source_urls": [
+        "https://lium.io/api/openapi.json",
+        "https://lium.io/"
+      ],
       "url": "https://lium.io/api/reclaims"
     },
     {
@@ -231,7 +244,9 @@
       },
       "provider": "lium",
       "public_safe": true,
-      "source_urls": ["https://lium.io/api/openapi.json"],
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
       "url": "https://lium.io/api/billing/revenue-for-validators"
     },
     {
@@ -249,7 +264,9 @@
       },
       "provider": "lium",
       "public_safe": true,
-      "source_urls": ["https://lium.io/api/openapi.json"],
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
       "url": "https://lium.io/api/executors/count"
     },
     {
@@ -267,7 +284,9 @@
       },
       "provider": "lium",
       "public_safe": true,
-      "source_urls": ["https://lium.io/api/openapi.json"],
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
       "url": "https://lium.io/api/executors/total-count"
     },
     {
@@ -285,7 +304,9 @@
       },
       "provider": "lium",
       "public_safe": true,
-      "source_urls": ["https://lium.io/api/openapi.json"],
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
       "url": "https://lium.io/api/latest-set-weights"
     },
     {
@@ -303,7 +324,9 @@
       },
       "provider": "lium",
       "public_safe": true,
-      "source_urls": ["https://lium.io/api/openapi.json"],
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
       "url": "https://lium.io/api/v1/shared-config"
     },
     {
@@ -321,8 +344,3346 @@
       },
       "provider": "lium",
       "public_safe": true,
-      "source_urls": ["https://lium.io/api/openapi.json"],
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
       "url": "https://lium.io/api/watchtower/digest"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-banned-machines",
+      "kind": "subnet-api",
+      "name": "lium.io admin banned machines (auth-gated)",
+      "notes": "GET+POST /admin/banned-machines on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/admin/banned-machines"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-banned-machines-item",
+      "kind": "subnet-api",
+      "name": "lium.io admin banned machine by ID (auth-gated)",
+      "notes": "GET+PATCH+DELETE /admin/banned-machines/{ban_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/admin/banned-machines/%7Bban_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-custom-referral-links",
+      "kind": "subnet-api",
+      "name": "lium.io admin custom referral links (auth-gated)",
+      "notes": "GET+POST /admin/custom-referral-links on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/admin/custom-referral-links"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-custom-referral-links-stats",
+      "kind": "subnet-api",
+      "name": "lium.io admin referral link stats (auth-gated)",
+      "notes": "GET /admin/custom-referral-links/stats on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/admin/custom-referral-links/stats"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-custom-referral-links-item",
+      "kind": "subnet-api",
+      "name": "lium.io admin referral link by ID (auth-gated)",
+      "notes": "GET+PATCH+DELETE /admin/custom-referral-links/{link_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/admin/custom-referral-links/%7Blink_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-expiring-credit-grants",
+      "kind": "subnet-api",
+      "name": "lium.io admin expiring credit grants (auth-gated)",
+      "notes": "GET+POST /admin/expiring-credit-grants on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/admin/expiring-credit-grants"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-configs",
+      "kind": "subnet-api",
+      "name": "lium.io pod backup configs (auth-gated)",
+      "notes": "GET+POST /backup-configs on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/backup-configs"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-configs-pod-item",
+      "kind": "subnet-api",
+      "name": "lium.io backup configs for pod (auth-gated)",
+      "notes": "GET /backup-configs/pod/{pod_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/backup-configs/pod/%7Bpod_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-configs-item",
+      "kind": "subnet-api",
+      "name": "lium.io backup config by ID (auth-gated)",
+      "notes": "PUT+DELETE /backup-configs/{config_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/backup-configs/%7Bconfig_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs",
+      "kind": "subnet-api",
+      "name": "lium.io pod backup logs (auth-gated)",
+      "notes": "GET /backup-logs/ on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/backup-logs/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-bulk-delete",
+      "kind": "subnet-api",
+      "name": "lium.io backup logs bulk delete (auth-gated)",
+      "notes": "POST /backup-logs/bulk-delete on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/backup-logs/bulk-delete"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-bulk-delete-status-item",
+      "kind": "subnet-api",
+      "name": "lium.io backup logs bulk delete status (auth-gated)",
+      "notes": "GET /backup-logs/bulk-delete/status/{task_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/backup-logs/bulk-delete/status/%7Btask_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-pod-item",
+      "kind": "subnet-api",
+      "name": "lium.io backup logs for pod (auth-gated)",
+      "notes": "GET /backup-logs/pod/{pod_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/backup-logs/pod/%7Bpod_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-item",
+      "kind": "subnet-api",
+      "name": "lium.io backup log by ID (auth-gated)",
+      "notes": "GET+DELETE /backup-logs/{backup_log_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/backup-logs/%7Bbackup_log_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-billing-billing-history-item",
+      "kind": "subnet-api",
+      "name": "lium.io miner billing history",
+      "notes": "GET /billing/billing-history/{miner_coldkey} on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (path-parameter URL).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/billing/billing-history/%7Bminer_coldkey%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-billing-billing-info-for-users",
+      "kind": "subnet-api",
+      "name": "lium.io billing info for users (auth-gated)",
+      "notes": "GET /billing/billing-info-for-users on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/billing/billing-info-for-users"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-billing-billing-per-day",
+      "kind": "subnet-api",
+      "name": "lium.io billing per day (auth-gated)",
+      "notes": "GET /billing/billing-per-day on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/billing/billing-per-day"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-bookmark",
+      "kind": "subnet-api",
+      "name": "lium.io executor bookmarks (auth-gated)",
+      "notes": "GET /bookmark on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/bookmark"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-bookmark-executors",
+      "kind": "subnet-api",
+      "name": "lium.io bookmarked executors (auth-gated)",
+      "notes": "GET /bookmark/executors on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/bookmark/executors"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-bookmark-item",
+      "kind": "subnet-api",
+      "name": "lium.io executor bookmark by hotkey (auth-gated)",
+      "notes": "POST+DELETE /bookmark/{miner_hotkey} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/bookmark/%7Bminer_hotkey%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-coinbase-create-charge",
+      "kind": "subnet-api",
+      "name": "lium.io Coinbase create charge (auth-gated)",
+      "notes": "POST /coinbase/create-charge on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/coinbase/create-charge"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-crypto-wallets",
+      "kind": "subnet-api",
+      "name": "lium.io crypto wallets (auth-gated)",
+      "notes": "GET+POST /crypto-wallets on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/crypto-wallets"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-crypto-wallets-item",
+      "kind": "subnet-api",
+      "name": "lium.io crypto wallet by ID (auth-gated)",
+      "notes": "DELETE /crypto-wallets/{wallet_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/crypto-wallets/%7Bwallet_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-crypto-wallets-item-set-default",
+      "kind": "subnet-api",
+      "name": "lium.io crypto wallet set default (auth-gated)",
+      "notes": "PUT /crypto-wallets/{wallet_id}/set-default on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/crypto-wallets/%7Bwallet_id%7D/set-default"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-db-chat-chat",
+      "kind": "subnet-api",
+      "name": "lium.io DB chat (auth-gated)",
+      "notes": "POST /db-chat/chat on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/db-chat/chat"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-db-chat-clear",
+      "kind": "subnet-api",
+      "name": "lium.io DB chat clear (auth-gated)",
+      "notes": "POST /db-chat/clear on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/db-chat/clear"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-db-chat-history",
+      "kind": "subnet-api",
+      "name": "lium.io DB chat history (auth-gated)",
+      "notes": "GET /db-chat/history on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/db-chat/history"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-docker-credentials",
+      "kind": "subnet-api",
+      "name": "lium.io Docker credentials (auth-gated)",
+      "notes": "GET+POST /docker-credentials/ on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/docker-credentials/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-docker-credentials-item",
+      "kind": "subnet-api",
+      "name": "lium.io Docker credential by ID (auth-gated)",
+      "notes": "GET+PUT+DELETE /docker-credentials/{docker_credential_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/docker-credentials/%7Bdocker_credential_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-executors",
+      "kind": "subnet-api",
+      "name": "lium.io executors list (auth-gated)",
+      "notes": "GET /executors on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/executors"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-executors-default-docker-image",
+      "kind": "subnet-api",
+      "name": "lium.io executor default Docker image",
+      "notes": "GET /executors/default-docker-image on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (POST-only or requires query params).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/executors/default-docker-image"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-executors-deployment-estimate",
+      "kind": "subnet-api",
+      "name": "lium.io executor deployment estimate (auth-gated)",
+      "notes": "GET /executors/deployment-estimate on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/executors/deployment-estimate"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-executors-item-hardware-utilization",
+      "kind": "subnet-api",
+      "name": "lium.io executor hardware utilization",
+      "notes": "GET /executors/{executor_uuid}/hardware-utilization on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (path-parameter URL).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/executors/%7Bexecutor_uuid%7D/hardware-utilization"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-executors-item-rent",
+      "kind": "subnet-api",
+      "name": "lium.io executor rent (auth-gated)",
+      "notes": "POST /executors/{executor_uuid}/rent on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/executors/%7Bexecutor_uuid%7D/rent"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-feedbacks",
+      "kind": "subnet-api",
+      "name": "lium.io platform feedbacks (auth-gated)",
+      "notes": "GET+POST /feedbacks on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/feedbacks"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-feedbacks-item",
+      "kind": "subnet-api",
+      "name": "lium.io platform feedback by ID (auth-gated)",
+      "notes": "GET+PUT+DELETE /feedbacks/{feedback_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/feedbacks/%7Bfeedback_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-gpu-allocation",
+      "kind": "subnet-api",
+      "name": "lium.io GPU allocation request",
+      "notes": "POST /gpu-allocation on lium.io/api \u2014 no authentication required for POST operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (POST-only or requires query params).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/gpu-allocation"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-keys",
+      "kind": "subnet-api",
+      "name": "lium.io API keys (auth-gated)",
+      "notes": "GET+POST /keys on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/keys"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-keys-item",
+      "kind": "subnet-api",
+      "name": "lium.io API key by ID (auth-gated)",
+      "notes": "GET+PUT+DELETE /keys/{api_key_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/keys/%7Bapi_key_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-locations-country-codes",
+      "kind": "subnet-api",
+      "name": "lium.io supported country codes",
+      "notes": "GET /locations/country_codes on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/locations/country_codes"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-machine-requests",
+      "kind": "subnet-api",
+      "name": "lium.io machine requests (auth-gated)",
+      "notes": "GET+POST /machine-requests on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/machine-requests"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-machine-requests-item",
+      "kind": "subnet-api",
+      "name": "lium.io machine request by ID",
+      "notes": "GET /machine-requests/{request_id} on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). PUT+DELETE on the same URL require JWT bearer auth. probe.enabled:false (path-parameter URL).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-machine-requests-item-achieve",
+      "kind": "subnet-api",
+      "name": "lium.io machine request achieve (auth-gated)",
+      "notes": "POST /machine-requests/{request_id}/achieve on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D/achieve"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-machine-requests-item-executors",
+      "kind": "subnet-api",
+      "name": "lium.io machine request executors",
+      "notes": "GET /machine-requests/{request_id}/executors on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (path-parameter URL).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D/executors"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-machines-estimate",
+      "kind": "subnet-api",
+      "name": "lium.io machine cost estimate",
+      "notes": "GET /machines/estimate on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (POST-only or requires query params).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/machines/estimate"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-nowpayments-create-invoice",
+      "kind": "subnet-api",
+      "name": "lium.io NOWPayments create invoice (auth-gated)",
+      "notes": "POST /nowpayments/create-invoice on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/nowpayments/create-invoice"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-nowpayments-currencies",
+      "kind": "subnet-api",
+      "name": "lium.io NOWPayments currencies (auth-gated)",
+      "notes": "GET /nowpayments/currencies on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/nowpayments/currencies"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-payouts",
+      "kind": "subnet-api",
+      "name": "lium.io payouts (auth-gated)",
+      "notes": "GET /payouts on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/payouts"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-payouts-item",
+      "kind": "subnet-api",
+      "name": "lium.io payout by ID (auth-gated)",
+      "notes": "GET /payouts/{payout_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/payouts/%7Bpayout_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods",
+      "kind": "subnet-api",
+      "name": "lium.io pods list (auth-gated)",
+      "notes": "GET /pods on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item",
+      "kind": "subnet-api",
+      "name": "lium.io pod by ID (auth-gated)",
+      "notes": "GET+PATCH+PUT+DELETE /pods/{id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bid%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-discord-channel",
+      "kind": "subnet-api",
+      "name": "lium.io pod Discord channel (auth-gated)",
+      "notes": "POST /pods/{id}/discord-channel on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bid%7D/discord-channel"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-install-jupyter",
+      "kind": "subnet-api",
+      "name": "lium.io pod install Jupyter (auth-gated)",
+      "notes": "POST /pods/{id}/install-jupyter on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bid%7D/install-jupyter"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-like",
+      "kind": "subnet-api",
+      "name": "lium.io pod like (auth-gated)",
+      "notes": "POST /pods/{id}/like on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bid%7D/like"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-multiple-ssh-keys",
+      "kind": "subnet-api",
+      "name": "lium.io pod multiple SSH keys (auth-gated)",
+      "notes": "POST /pods/{id}/multiple-ssh-keys on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bid%7D/multiple-ssh-keys"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-reboot",
+      "kind": "subnet-api",
+      "name": "lium.io pod reboot (auth-gated)",
+      "notes": "POST /pods/{id}/reboot on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bid%7D/reboot"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-schedule-removal",
+      "kind": "subnet-api",
+      "name": "lium.io pod scheduled removal (auth-gated)",
+      "notes": "POST+DELETE /pods/{id}/schedule-removal on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bid%7D/schedule-removal"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-switch-template",
+      "kind": "subnet-api",
+      "name": "lium.io pod switch template (auth-gated)",
+      "notes": "PUT /pods/{id}/switch-template on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bid%7D/switch-template"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-backup",
+      "kind": "subnet-api",
+      "name": "lium.io pod backup (auth-gated)",
+      "notes": "POST /pods/{pod_id}/backup on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/backup"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-feedback",
+      "kind": "subnet-api",
+      "name": "lium.io pod feedback (auth-gated)",
+      "notes": "POST /pods/{pod_id}/feedback on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/feedback"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-gpu-utilization",
+      "kind": "subnet-api",
+      "name": "lium.io pod GPU utilization",
+      "notes": "GET /pods/{pod_id}/gpu-utilization on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (path-parameter URL).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/gpu-utilization"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-logs",
+      "kind": "subnet-api",
+      "name": "lium.io pod logs (auth-gated)",
+      "notes": "GET /pods/{pod_id}/logs on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/logs"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-restore",
+      "kind": "subnet-api",
+      "name": "lium.io pod restore (auth-gated)",
+      "notes": "POST /pods/{pod_uuid}/restore on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bpod_uuid%7D/restore"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-item-restore-logs",
+      "kind": "subnet-api",
+      "name": "lium.io pod restore logs (auth-gated)",
+      "notes": "GET /pods/{pod_uuid}/restore-logs on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/pods/%7Bpod_uuid%7D/restore-logs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-provider-stats-item",
+      "kind": "subnet-api",
+      "name": "lium.io miner provider stats",
+      "notes": "GET /provider-stats/{miner_hotkey} on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (path-parameter URL).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/provider-stats/%7Bminer_hotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-provider-stats-item-executors",
+      "kind": "subnet-api",
+      "name": "lium.io miner provider executors",
+      "notes": "GET /provider-stats/{miner_hotkey}/executors on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (path-parameter URL).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/provider-stats/%7Bminer_hotkey%7D/executors"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-history",
+      "kind": "subnet-api",
+      "name": "lium.io referral history (auth-gated)",
+      "notes": "GET /referrals/history on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/referrals/history"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-my-code",
+      "kind": "subnet-api",
+      "name": "lium.io my referral code (auth-gated)",
+      "notes": "GET /referrals/my-code on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/referrals/my-code"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-pending-payouts",
+      "kind": "subnet-api",
+      "name": "lium.io referral pending payouts (auth-gated)",
+      "notes": "GET /referrals/pending-payouts on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/referrals/pending-payouts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-program-info",
+      "kind": "subnet-api",
+      "name": "lium.io referral program info",
+      "notes": "GET /referrals/program-info on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/referrals/program-info"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-stats",
+      "kind": "subnet-api",
+      "name": "lium.io referral stats (auth-gated)",
+      "notes": "GET /referrals/stats on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/referrals/stats"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-withdraw",
+      "kind": "subnet-api",
+      "name": "lium.io referral withdrawal (auth-gated)",
+      "notes": "POST /referrals/withdraw on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/referrals/withdraw"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-ssh-keys",
+      "kind": "subnet-api",
+      "name": "lium.io SSH keys (auth-gated)",
+      "notes": "GET+POST /ssh-keys on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/ssh-keys"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-ssh-keys-item",
+      "kind": "subnet-api",
+      "name": "lium.io SSH key by ID (auth-gated)",
+      "notes": "GET+PUT+DELETE /ssh-keys/{id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/ssh-keys/%7Bid%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-connect-account",
+      "kind": "subnet-api",
+      "name": "lium.io Stripe Connect account (auth-gated)",
+      "notes": "POST /stripe/connect/account on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/stripe/connect/account"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-connect-onboarding-link",
+      "kind": "subnet-api",
+      "name": "lium.io Stripe Connect onboarding (auth-gated)",
+      "notes": "POST /stripe/connect/onboarding-link on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/stripe/connect/onboarding-link"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-connect-supported-countries",
+      "kind": "subnet-api",
+      "name": "lium.io Stripe Connect supported countries",
+      "notes": "GET /stripe/connect/supported-countries on lium.io/api \u2014 no authentication required for GET operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation).",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/stripe/connect/supported-countries"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-create-checkout-session",
+      "kind": "subnet-api",
+      "name": "lium.io Stripe checkout session (auth-gated)",
+      "notes": "POST /stripe/create-checkout-session on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/stripe/create-checkout-session"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-invoices-item",
+      "kind": "subnet-api",
+      "name": "lium.io Stripe invoice by ID (auth-gated)",
+      "notes": "GET /stripe/invoices/{invoice_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/stripe/invoices/%7Binvoice_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-payments-payment-methods",
+      "kind": "subnet-api",
+      "name": "lium.io Stripe payment methods (auth-gated)",
+      "notes": "GET+POST /stripe/payments/payment-methods on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/stripe/payments/payment-methods"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-payments-payment-methods-item",
+      "kind": "subnet-api",
+      "name": "lium.io Stripe payment method by ID (auth-gated)",
+      "notes": "DELETE /stripe/payments/payment-methods/{payment_method_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/stripe/payments/payment-methods/%7Bpayment_method_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-tao-create-transfer",
+      "kind": "subnet-api",
+      "name": "lium.io TAO transfer (auth-gated)",
+      "notes": "POST /tao/create-transfer on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/tao/create-transfer"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-templates",
+      "kind": "subnet-api",
+      "name": "lium.io pod templates (auth-gated)",
+      "notes": "GET+POST /templates on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/templates"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-templates-item",
+      "kind": "subnet-api",
+      "name": "lium.io pod template by ID (auth-gated)",
+      "notes": "GET+PUT+DELETE /templates/{id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/templates/%7Bid%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-tmc-pay-create-invoice",
+      "kind": "subnet-api",
+      "name": "lium.io TMC Pay create invoice (auth-gated)",
+      "notes": "POST /tmc-pay/create-invoice on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/tmc-pay/create-invoice"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-tmc-pay-currencies",
+      "kind": "subnet-api",
+      "name": "lium.io TMC Pay currencies (auth-gated)",
+      "notes": "GET /tmc-pay/currencies on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/tmc-pay/currencies"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-transactions",
+      "kind": "subnet-api",
+      "name": "lium.io transactions (auth-gated)",
+      "notes": "GET /transactions on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/transactions"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me",
+      "kind": "subnet-api",
+      "name": "lium.io current user account (auth-gated)",
+      "notes": "GET+PUT+DELETE /users/me on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-auto-top-up",
+      "kind": "subnet-api",
+      "name": "lium.io auto top-up settings (auth-gated)",
+      "notes": "GET+PUT /users/me/auto-top-up on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/auto-top-up"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-discord",
+      "kind": "subnet-api",
+      "name": "lium.io Discord integration (auth-gated)",
+      "notes": "DELETE /users/me/discord on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/discord"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-discord-callback",
+      "kind": "subnet-api",
+      "name": "lium.io Discord OAuth callback (auth-gated)",
+      "notes": "GET /users/me/discord/callback on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/discord/callback"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-discord-oauth-url",
+      "kind": "subnet-api",
+      "name": "lium.io Discord OAuth URL (auth-gated)",
+      "notes": "GET /users/me/discord/oauth-url on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/discord/oauth-url"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-events",
+      "kind": "subnet-api",
+      "name": "lium.io user events (auth-gated)",
+      "notes": "GET /users/me/events on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/events"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-low-balance-threshold",
+      "kind": "subnet-api",
+      "name": "lium.io low balance threshold (auth-gated)",
+      "notes": "GET+PUT /users/me/low-balance-threshold on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/low-balance-threshold"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-notification",
+      "kind": "subnet-api",
+      "name": "lium.io notification preferences (auth-gated)",
+      "notes": "GET+PUT /users/me/notification on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/notification"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-preference",
+      "kind": "subnet-api",
+      "name": "lium.io user preferences (auth-gated)",
+      "notes": "GET /users/me/preference on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/preference"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-preference-default-template",
+      "kind": "subnet-api",
+      "name": "lium.io default template preference (auth-gated)",
+      "notes": "DELETE /users/me/preference/default-template on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/preference/default-template"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-referral-payout-method",
+      "kind": "subnet-api",
+      "name": "lium.io referral payout method (auth-gated)",
+      "notes": "PUT /users/me/referral-payout-method on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/referral-payout-method"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-transfer-credit-history",
+      "kind": "subnet-api",
+      "name": "lium.io credit transfer history (auth-gated)",
+      "notes": "GET /users/me/transfer-credit-history on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/transfer-credit-history"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-transfer-credits",
+      "kind": "subnet-api",
+      "name": "lium.io transfer credits (auth-gated)",
+      "notes": "POST /users/me/transfer-credits on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/transfer-credits"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-transfer-history",
+      "kind": "subnet-api",
+      "name": "lium.io transfer history (auth-gated)",
+      "notes": "GET /users/me/transfer-history on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/me/transfer-history"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-presigned-url",
+      "kind": "subnet-api",
+      "name": "lium.io presigned URL (auth-gated)",
+      "notes": "POST /users/presigned-url on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/presigned-url"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-search",
+      "kind": "subnet-api",
+      "name": "lium.io user search (auth-gated)",
+      "notes": "GET /users/search on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/users/search"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-validator-item-executor-health-check",
+      "kind": "subnet-api",
+      "name": "lium.io validator executor health check (auth-gated)",
+      "notes": "POST /validator/{validator_hotkey}/executor-health-check on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/validator/%7Bvalidator_hotkey%7D/executor-health-check"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-validator-item-executors",
+      "kind": "subnet-api",
+      "name": "lium.io validator executors report",
+      "notes": "POST /validator/{validator_hotkey}/executors on lium.io/api \u2014 no authentication required for POST operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (POST-only or requires query params).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/validator/%7Bvalidator_hotkey%7D/executors"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-validator-item-latest-set-weights",
+      "kind": "subnet-api",
+      "name": "lium.io per-validator latest set weights",
+      "notes": "GET+POST /validator/{validator_hotkey}/latest-set-weights on lium.io/api \u2014 no authentication required for GET+POST operation(s) per the OpenAPI schema (JwtAccessBearer not declared on this operation). probe.enabled:false (path-parameter URL).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/validator/%7Bvalidator_hotkey%7D/latest-set-weights"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes",
+      "kind": "subnet-api",
+      "name": "lium.io storage volumes (auth-gated)",
+      "notes": "GET+POST /volumes on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/volumes"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes-cost-summary",
+      "kind": "subnet-api",
+      "name": "lium.io volumes cost summary (auth-gated)",
+      "notes": "GET /volumes/cost-summary on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/volumes/cost-summary"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes-costs",
+      "kind": "subnet-api",
+      "name": "lium.io volumes costs (auth-gated)",
+      "notes": "GET /volumes/costs on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/volumes/costs"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes-item",
+      "kind": "subnet-api",
+      "name": "lium.io volume by ID (auth-gated)",
+      "notes": "GET+PUT+DELETE /volumes/{volume_id} on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/volumes/%7Bvolume_id%7D"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (JwtAccessBearer, HTTP bearer JWT). Verified empirically: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064). No credential scope restrictions are documented.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes-item-current-stats",
+      "kind": "subnet-api",
+      "name": "lium.io volume current stats (auth-gated)",
+      "notes": "GET /volumes/{volume_id}/current-stats on lium.io/api \u2014 JWT bearer auth required (JwtAccessBearer). Sanity-checked: GET /admin/banned-machines returns HTTP 401 unauthenticated (per linked issue #7064); same JwtAccessBearer security scheme declared on this operation. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/volumes/%7Bvolume_id%7D/current-stats"
     }
   ],
   "source_repo": "https://github.com/Datura-ai/lium-io"
