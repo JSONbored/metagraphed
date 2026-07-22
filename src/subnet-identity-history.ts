@@ -19,21 +19,25 @@ import {
 } from "../workers/request-params.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 
+type Row = Record<string, unknown>;
+type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
 const READ_COLUMNS =
   "id, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash";
 
-function stableStringify(value) {
+function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(",")}]`;
   }
-  const keys = Object.keys(value).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  const record = value as Row;
+  const keys = Object.keys(record).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }
 
-async function sha256Hex(text) {
+async function sha256Hex(text: unknown): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(String(text)),
@@ -43,12 +47,14 @@ async function sha256Hex(text) {
     .join("");
 }
 
-export function identitySnapshotFromProfile(profile) {
-  const identity = profile?.native_identity;
+export function identitySnapshotFromProfile(
+  profile: Row | null | undefined,
+): Row | null {
+  const identity = profile?.native_identity as Row | null | undefined;
   if (!identity || typeof identity !== "object") return null;
   return sanitizeIdentityHistoryFields({
     subnet_name: identity.subnet_name ?? null,
-    symbol: profile.symbol ?? null,
+    symbol: profile?.symbol ?? null,
     description: identity.description ?? null,
     github_repo: identity.github_url ?? null,
     subnet_url: identity.website_url ?? null,
@@ -57,7 +63,7 @@ export function identitySnapshotFromProfile(profile) {
   });
 }
 
-export async function identityHash(snapshot) {
+export async function identityHash(snapshot: unknown): Promise<string | null> {
   if (!snapshot) return null;
   return sha256Hex(stableStringify(snapshot));
 }
@@ -65,14 +71,14 @@ export async function identityHash(snapshot) {
 // Non-negative integer block height, or null for absent/blank/negative cells.
 // Mirrors toBlockNumber in account-events.mjs: Number("") / Number("   ") both
 // coerce to 0, so a blank D1 cell must be rejected before the Number() coercion.
-function toBlockNumber(value) {
+function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -80,35 +86,40 @@ function toIso(ms) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-function normalizeName(value) {
+function normalizeName(value: unknown): string | null {
   const sanitized = sanitizeIdentityHistoryText(value);
   return typeof sanitized === "string" && sanitized.trim()
     ? sanitized.trim()
     : null;
 }
 
-export function formatIdentityHistoryEntry(row) {
+export function formatIdentityHistoryEntry(row: unknown): Row | null {
   if (!row || typeof row !== "object") return null;
+  const record = row as Row;
   const entry = sanitizeIdentityHistoryFields({
-    block_number: toBlockNumber(row.block_number),
-    observed_at: toIso(row.observed_at),
-    subnet_name: row.subnet_name ?? null,
-    symbol: row.symbol ?? null,
-    description: row.description ?? null,
-    github_repo: row.github_repo ?? null,
-    subnet_url: row.subnet_url ?? null,
-    discord: row.discord ?? null,
-    logo_url: row.logo_url ?? null,
-    identity_hash: row.identity_hash ?? null,
+    block_number: toBlockNumber(record.block_number),
+    observed_at: toIso(record.observed_at),
+    subnet_name: record.subnet_name ?? null,
+    symbol: record.symbol ?? null,
+    description: record.description ?? null,
+    github_repo: record.github_repo ?? null,
+    subnet_url: record.subnet_url ?? null,
+    discord: record.discord ?? null,
+    logo_url: record.logo_url ?? null,
+    identity_hash: record.identity_hash ?? null,
   });
   return entry;
 }
 
 export function buildSubnetIdentityHistory(
-  rows,
-  netuid,
-  { limit, offset, nextCursor } = {},
-) {
+  rows: unknown[] | null | undefined,
+  netuid: unknown,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: { limit?: unknown; offset?: unknown; nextCursor?: unknown } = {},
+): Row {
   const entries = (rows || []).map(formatIdentityHistoryEntry).filter(Boolean);
   return {
     schema_version: 1,
@@ -121,10 +132,13 @@ export function buildSubnetIdentityHistory(
   };
 }
 
-export function derivePreviouslyKnownAs(rows, currentName) {
+export function derivePreviouslyKnownAs(
+  rows: Row[] | null | undefined,
+  currentName: unknown,
+): string[] {
   const current = normalizeName(currentName);
-  const seen = new Set();
-  const names = [];
+  const seen = new Set<string>();
+  const names: string[] = [];
   for (const row of rows || []) {
     const name = normalizeName(row?.subnet_name);
     if (!name || name === current || seen.has(name)) continue;
@@ -134,10 +148,13 @@ export function derivePreviouslyKnownAs(rows, currentName) {
   return names;
 }
 
-export function overlayPreviouslyKnownAs(detail, names) {
+export function overlayPreviouslyKnownAs(
+  detail: unknown,
+  names: string[] | null | undefined,
+): unknown {
   if (!detail || typeof detail !== "object") return detail;
   if (!Array.isArray(names) || names.length === 0) return detail;
-  return { ...detail, previously_known_as: names };
+  return { ...(detail as Row), previously_known_as: names };
 }
 
 // D1 hands INTEGER columns back as numeric strings on GROUP BY / JOIN read paths
@@ -145,7 +162,7 @@ export function overlayPreviouslyKnownAs(detail, names) {
 // ONLY a real number or an all-digits string so a blank/null/false cell is rejected
 // rather than read as a valid subnet 0 (Number("") === Number(null) === 0). A raw
 // string key otherwise silently misses the integer netuid the callers look up by.
-function rowNetuid(value) {
+function rowNetuid(value: unknown): number | null {
   if (typeof value === "number") {
     return Number.isInteger(value) && value >= 0 ? value : null;
   }
@@ -163,7 +180,7 @@ function rowNetuid(value) {
 // An unavailable/off tier degrades to an empty map -- every profile then
 // reads as "changed" for that one run, the same degrade recordSubnetIdentity
 // Changes already tolerates on a cold table.
-async function latestIdentityHashes(env) {
+async function latestIdentityHashes(env: Env): Promise<Map<number, unknown>> {
   const pg = await tryPostgresTier(
     env,
     new Request(
@@ -171,8 +188,8 @@ async function latestIdentityHashes(env) {
     ),
     "METAGRAPH_SUBNET_IDENTITY_SOURCE",
   );
-  const map = new Map();
-  for (const row of pg?.hashes || []) {
+  const map = new Map<number, unknown>();
+  for (const row of (pg?.hashes as Row[]) || []) {
     const netuid = rowNetuid(row.netuid);
     if (netuid != null) map.set(netuid, row.identity_hash);
   }
@@ -193,14 +210,15 @@ async function latestIdentityHashes(env) {
 // simply returns null when Postgres is unavailable or the flag is off,
 // same degrade as before, but now for a real reason instead of a guaranteed
 // D1 miss.
-async function latestBlockNumber(env) {
+async function latestBlockNumber(env: Env): Promise<number | null> {
   const pg = await tryPostgresTier(
     env,
     new Request("https://api.metagraph.sh/api/v1/internal/latest-block-number"),
     "METAGRAPH_BLOCKS_SOURCE",
   );
-  return Number.isSafeInteger(pg?.block_number) && pg.block_number > 0
-    ? pg.block_number
+  const blockNumber = pg?.block_number as number | undefined;
+  return Number.isSafeInteger(blockNumber) && (blockNumber as number) > 0
+    ? (blockNumber as number)
     : null;
 }
 
@@ -216,7 +234,10 @@ async function latestBlockNumber(env) {
  * failure here must never block the D1 write above (the primary contract)
  * or the rest of writeSubnetSnapshot's own work.
  */
-export async function syncSubnetIdentityToPostgres(env, { profiles } = {}) {
+export async function syncSubnetIdentityToPostgres(
+  env: Env,
+  { profiles }: { profiles?: Row[] } = {},
+): Promise<Row> {
   if (!env?.DATA_API || !env?.SUBNET_IDENTITY_SYNC_SECRET) {
     return { synced: false, reason: "unavailable" };
   }
@@ -260,13 +281,13 @@ export async function syncSubnetIdentityToPostgres(env, { profiles } = {}) {
  * return value -- without writing anything back.
  */
 export async function recordSubnetIdentityChanges(
-  env,
-  { profiles, now = Date.now() } = {},
-) {
+  env: Env,
+  { profiles, now = Date.now() }: { profiles?: Row[]; now?: number } = {},
+): Promise<Row> {
   if (!Array.isArray(profiles) || profiles.length === 0) {
     return { recorded: false, reason: "unavailable" };
   }
-  let latestByNetuid;
+  let latestByNetuid: Map<number, unknown>;
   try {
     latestByNetuid = await latestIdentityHashes(env);
   } catch (error) {
@@ -275,7 +296,7 @@ export async function recordSubnetIdentityChanges(
     // noticed -- same failure class d1All was originally hardened against.
     console.error(
       "[recordSubnetIdentityChanges]",
-      String(error?.message ?? error),
+      String((error as Error)?.message ?? error),
     );
     return { recorded: false, reason: "read_failed" };
   }
@@ -283,12 +304,13 @@ export async function recordSubnetIdentityChanges(
   let changed = 0;
   for (const profile of profiles) {
     if (!Number.isInteger(profile?.netuid)) continue;
+    const netuid = profile.netuid as number;
     const snapshot = identitySnapshotFromProfile(profile);
     if (!snapshot) continue;
     const hash = await identityHash(snapshot);
-    if (latestByNetuid.get(profile.netuid) === hash) continue;
+    if (latestByNetuid.get(netuid) === hash) continue;
     changed += 1;
-    latestByNetuid.set(profile.netuid, hash);
+    latestByNetuid.set(netuid, hash);
   }
   return {
     recorded: true,
@@ -299,19 +321,27 @@ export async function recordSubnetIdentityChanges(
 }
 
 export async function loadSubnetIdentityHistory(
-  d1,
-  netuid,
-  { limit, offset, cursor } = {},
-) {
+  d1: D1Runner,
+  netuid: unknown,
+  {
+    limit,
+    offset,
+    cursor,
+  }: {
+    limit?: string | number | null;
+    offset?: string | number | null;
+    cursor?: unknown;
+  } = {},
+): Promise<Row> {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
-  const params = [netuid];
+  const params: unknown[] = [netuid];
   let sql = `SELECT ${READ_COLUMNS} FROM subnet_identity_history WHERE netuid = ?`;
   if (useCursor) {
     sql += " AND (observed_at, id) < (?, ?)";
-    params.push(cur[0], cur[1]);
+    params.push((cur as number[])[0], (cur as number[])[1]);
   }
   sql += " ORDER BY observed_at DESC, id DESC LIMIT ?";
   params.push(lim);
@@ -332,7 +362,11 @@ export async function loadSubnetIdentityHistory(
   });
 }
 
-export async function loadPreviouslyKnownAs(d1, netuid, currentName) {
+export async function loadPreviouslyKnownAs(
+  d1: D1Runner,
+  netuid: unknown,
+  currentName: unknown,
+): Promise<string[]> {
   const rows = await d1(
     `SELECT subnet_name, MAX(observed_at) AS observed_at
      FROM subnet_identity_history
@@ -349,13 +383,19 @@ export async function loadPreviouslyKnownAs(d1, netuid, currentName) {
 // so a Postgres-tier caller (workers/api.mjs) can reuse the exact same grouping
 // instead of duplicating it, the same way the single-netuid derivePreviouslyKnownAs
 // above is shared by both storage tiers.
-export function deriveNetuidGroupedAliases(rows, entries) {
-  const currentByNetuid = new Map(
+export function deriveNetuidGroupedAliases(
+  rows: Row[] | null | undefined,
+  entries: Row[] | null | undefined,
+): Map<number, string[]> {
+  const currentByNetuid = new Map<number, unknown>(
     (entries || [])
       .filter((entry) => Number.isInteger(entry?.netuid))
-      .map((entry) => [entry.netuid, entry.native_name ?? entry.name ?? null]),
+      .map((entry) => [
+        entry.netuid as number,
+        entry.native_name ?? entry.name ?? null,
+      ]),
   );
-  const grouped = new Map();
+  const grouped = new Map<number, Row[]>();
   for (const row of rows || []) {
     // Coerce so the group keys on the same integer the caller and currentByNetuid
     // use — a raw string key both drops the alias from the agent-catalog lookup
@@ -366,7 +406,7 @@ export function deriveNetuidGroupedAliases(rows, entries) {
     if (!list) grouped.set(netuid, (list = []));
     list.push(row);
   }
-  const out = new Map();
+  const out = new Map<number, string[]>();
   for (const [netuid, list] of grouped) {
     const names = derivePreviouslyKnownAs(list, currentByNetuid.get(netuid));
     if (names.length) out.set(netuid, names);
@@ -374,11 +414,14 @@ export function deriveNetuidGroupedAliases(rows, entries) {
   return out;
 }
 
-export async function loadPreviouslyKnownAsForNetuids(d1, entries) {
+export async function loadPreviouslyKnownAsForNetuids(
+  d1: D1Runner,
+  entries: Row[] | null | undefined,
+): Promise<Map<number, string[]>> {
   const items = entries || [];
   const netuids = items
     .map((entry) => entry?.netuid)
-    .filter((netuid) => Number.isInteger(netuid));
+    .filter((netuid): netuid is number => Number.isInteger(netuid));
   if (!netuids.length) return new Map();
   const placeholders = netuids.map(() => "?").join(", ");
   const rows = await d1(

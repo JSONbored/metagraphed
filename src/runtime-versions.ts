@@ -29,7 +29,7 @@ function toIso(ms: unknown): string | null {
 // non-finite, or negative. D1 can return an INTEGER column as a numeric
 // string, so a bare `row.spec_version ?? null` would silently leak the string
 // into the API payload. Mirrors the `toBlockNumber` helper duplicated per
-// module across src/blocks.mjs, src/subnet-identity-history.mjs, etc.
+// module across src/blocks.mjs, src/subnet-identity-history.ts, etc.
 function toNonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.

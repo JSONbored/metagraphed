@@ -511,7 +511,7 @@ import {
   buildSubnetHistory,
   parseHistoryWindow,
 } from "./neuron-history.ts";
-import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
+import { buildSubnetIdentityHistory } from "./subnet-identity-history.ts";
 import {
   buildTurnover,
   buildTurnoverChanges,

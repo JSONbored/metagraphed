@@ -11,7 +11,7 @@ import { identityHash } from "../src/account-identity-history.ts";
 import {
   identityHash as subnetIdentityHash,
   identitySnapshotFromProfile,
-} from "../src/subnet-identity-history.mjs";
+} from "../src/subnet-identity-history.ts";
 
 const sqlCalls = vi.hoisted(() => []);
 const sqlBeginOptions = vi.hoisted(() => []);
@@ -7825,7 +7825,7 @@ test("GET /api/v1/internal/health-status-live: a missing/non-finite since return
 });
 
 // D1 retirement (2026-07-16, item 10 of the D1->Postgres cleanup):
-// src/subnet-identity-history.mjs's latestBlockNumber.
+// src/subnet-identity-history.ts's latestBlockNumber.
 test("GET /api/v1/internal/latest-block-number: returns the coerced MAX(block_number)", async () => {
   mockRows.current = [{ block_number: "8404076" }];
   const res = await req("/api/v1/internal/latest-block-number");

@@ -2915,7 +2915,7 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
 // env.DATA_API.fetch() service-binding call... not an external GitHub
 // Actions workflow" -- correctly reached only via a direct service-binding
 // call from elsewhere in THIS SAME Worker's code (src/health-prober.ts,
-// src/subnet-identity-history.mjs, etc.), never through this public HTTP
+// src/subnet-identity-history.ts, etc.), never through this public HTTP
 // dispatcher. Adding a public proxy for those would be unnecessary surface,
 // not a fix -- verified live (2026-07-19) that none of them have any
 // caller, in this repo or metagraphed-infra, that hits the public domain.

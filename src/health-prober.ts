@@ -30,7 +30,7 @@ import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   recordSubnetIdentityChanges,
   syncSubnetIdentityToPostgres,
-} from "./subnet-identity-history.mjs";
+} from "./subnet-identity-history.ts";
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -690,7 +690,7 @@ async function persistToKv(
 
 // #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
 // never awaited-and-thrown into the caller, mirroring
-// syncSubnetIdentityToPostgres's own header comment (subnet-identity-history.mjs)
+// syncSubnetIdentityToPostgres's own header comment (subnet-identity-history.ts)
 // for why this is a direct service-binding call rather than routing through
 // the public proxy layer. D1+KV remain the sole authoritative write target;
 // a Postgres failure here never affects live serving.
@@ -872,7 +872,7 @@ export async function syncRpcProxyEventsPruneToPostgres(
 // the DATA_API service binding, called directly from writeSubnetSnapshot
 // below -- same "in-Worker hourly cron, direct env.DATA_API.fetch() service-
 // binding call, not an external GitHub Actions workflow" shape as
-// syncSubnetIdentityToPostgres (src/subnet-identity-history.mjs), which this
+// syncSubnetIdentityToPostgres (src/subnet-identity-history.ts), which this
 // same function already calls. Best-effort: never throws, and a failure here
 // must never block the D1 write above (the primary contract).
 export async function syncSubnetSnapshotToPostgres(
@@ -954,7 +954,7 @@ interface WriteSubnetSnapshotOverrides {
 // anywhere in this function anymore -- subnet_snapshots is Postgres-only (see
 // syncSubnetSnapshotToPostgres below) and recordSubnetIdentityChanges reads
 // its own latest-hash baseline from Postgres too now (see that function's own
-// header comment in src/subnet-identity-history.mjs).
+// header comment in src/subnet-identity-history.ts).
 export async function writeSubnetSnapshot(
   env: Env,
   overrides: WriteSubnetSnapshotOverrides = {},

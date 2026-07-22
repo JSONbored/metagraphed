@@ -269,7 +269,7 @@ import {
   deriveNetuidGroupedAliases,
   derivePreviouslyKnownAs,
   overlayPreviouslyKnownAs,
-} from "../src/subnet-identity-history.mjs";
+} from "../src/subnet-identity-history.ts";
 import { tryPostgresTier } from "./postgres-tier.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {

@@ -1085,7 +1085,7 @@ describe("writeSubnetSnapshot", () => {
   });
 });
 
-// #4832 gap-closure: mirrors src/subnet-identity-history.mjs's
+// #4832 gap-closure: mirrors src/subnet-identity-history.ts's
 // syncSubnetIdentityToPostgres tests -- same shape, own dedicated secret
 // (SUBNET_SNAPSHOT_SYNC_SECRET) and own internal route.
 describe("syncSubnetSnapshotToPostgres", () => {

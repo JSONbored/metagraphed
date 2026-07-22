@@ -1,6 +1,6 @@
 // Personal (coldkey) chain identity (#4324/5.1) — one row per account, latest
 // only. Distinct from subnet identity (SubtensorModule::SubnetIdentitiesV3,
-// src/subnet-identity-history.mjs / src/chain-identity-history.ts) — this is
+// src/subnet-identity-history.ts / src/chain-identity-history.ts) — this is
 // the identity a coldkey attaches to itself. Field mapping documented in
 // apps/indexer-rs/src/bin/poller/jobs/account_identity.rs and
 // migrations/0039_account_identity.sql. Mirrors NEURON_INSERT_COLUMNS's role
@@ -42,7 +42,7 @@ function toIso(ms: unknown): string | null {
 
 // account_identity is operator-controlled untrusted chain data, same as
 // subnet identity — sanitize at serve time with the same primitives
-// src/subnet-identity-history.mjs's sanitizeIdentityHistoryFields uses
+// src/subnet-identity-history.ts's sanitizeIdentityHistoryFields uses
 // (src/chain-identity-sanitize.ts), mapped onto this table's field names
 // (url/github/image are links; discord is a contact handle; name/description/
 // additional are free text). Applied only when SERVING — the diff-tracking

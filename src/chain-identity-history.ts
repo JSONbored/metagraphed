@@ -1,7 +1,7 @@
 // Network-wide subnet-identity-change feed: the most-recent SubnetIdentitiesV3
 // changes aggregated across EVERY subnet (newest first), a capped feed rather than
 // a per-subnet timeline. The network analog of the per-subnet
-// /api/v1/subnets/{netuid}/identity-history route (src/subnet-identity-history.mjs)
+// /api/v1/subnets/{netuid}/identity-history route (src/subnet-identity-history.ts)
 // and the identity-change companion to the other chain/* aggregates. Each entry is
 // shaped identically to the per-subnet route via the shared
 // formatIdentityHistoryEntry, plus the `netuid` it belongs to so a change is
@@ -11,7 +11,7 @@
 // never a live D1 read). Null-safe: a non-array/empty read yields a
 // schema-stable empty feed and never throws.
 
-import { formatIdentityHistoryEntry } from "./subnet-identity-history.mjs";
+import { formatIdentityHistoryEntry } from "./subnet-identity-history.ts";
 
 // Analytics-feed limit convention copied from the chain-calls / chain-signers feeds
 // (parseLimitParam with defaultLimit: 50, maxLimit: 200 — the recent-events feed

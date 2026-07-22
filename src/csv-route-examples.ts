@@ -29,7 +29,7 @@ export const ROUTE_CSV_EXAMPLES: Record<string, string> = {
     "block_number,observed_at,hyperparameters,hyperparams_hash",
     '8454388,2026-06-27T00:00:00.000Z,"{""kappa"":0.5}",hash_sample',
   ].join("\r\n"),
-  // The formatIdentityHistoryEntry row shape (src/subnet-identity-history.mjs):
+  // The formatIdentityHistoryEntry row shape (src/subnet-identity-history.ts):
   // one SubnetIdentitiesV3 snapshot per row.
   "subnet-identity-history": [
     "block_number,observed_at,subnet_name,symbol,description,github_repo,subnet_url,discord,logo_url,identity_hash",

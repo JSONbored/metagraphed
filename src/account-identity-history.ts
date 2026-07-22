@@ -11,7 +11,7 @@
 // hyperparams-history.mjs's own recordSubnetHyperparamsChanges retirement.
 //
 // Read/format/build functions land here with the serving route (#4328/5.4),
-// mirroring src/subnet-identity-history.mjs's read side exactly (keyed by
+// mirroring src/subnet-identity-history.ts's read side exactly (keyed by
 // account instead of netuid, and with no block_number column — account_identity
 // carries no chain block height, only captured_at).
 

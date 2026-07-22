@@ -356,7 +356,7 @@ import {
   identitySnapshotFromProfile,
   identityHash as subnetIdentityHash,
   buildSubnetIdentityHistory,
-} from "../src/subnet-identity-history.mjs";
+} from "../src/subnet-identity-history.ts";
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
@@ -2317,7 +2317,7 @@ async function handleAccountBalancesSync(request, env) {
 // (mirrors D1's own shape -- the current identity lives in the profiles.json
 // artifact itself): only diff-and-append against the last recorded hash per
 // netuid, reusing identitySnapshotFromProfile/identityHash UNCHANGED from
-// src/subnet-identity-history.mjs so the hash stays domain-identical to the
+// src/subnet-identity-history.ts so the hash stays domain-identical to the
 // D1 path. No dedicated per-field row validator (unlike the other three
 // sync routes): profiles.json is the SAME trust boundary D1's own
 // recordSubnetIdentityChanges reads from directly with no staging-style
@@ -7061,7 +7061,7 @@ export default {
 
         // GET /api/v1/internal/latest-block-number (D1 retirement,
         // 2026-07-16, item 10 of the D1->Postgres cleanup):
-        // src/subnet-identity-history.mjs's latestBlockNumber has no client
+        // src/subnet-identity-history.ts's latestBlockNumber has no client
         // request to forward -- it's an internal cron-triggered helper inside
         // recordSubnetIdentityChanges, not a route -- so it synthesizes this
         // request itself, same "internal, no secret header" shape as
@@ -7080,7 +7080,7 @@ export default {
 
         // GET /api/v1/internal/subnet-identity-latest-hashes (D1 retirement,
         // 2026-07-16, item 8 of the D1->Postgres cleanup):
-        // src/subnet-identity-history.mjs's recordSubnetIdentityChanges reads
+        // src/subnet-identity-history.ts's recordSubnetIdentityChanges reads
         // D1's own latest identity_hash per netuid to diff against the fresh
         // profiles.json snapshot -- same "internal cron helper, no client
         // request to forward" shape as /api/v1/internal/latest-block-number
@@ -7101,7 +7101,7 @@ export default {
         }
 
         // GET /api/v1/internal/subnet-identity-aliases?netuids=1,7,19 (#4832
-        // gap-closure follow-up): src/subnet-identity-history.mjs's
+        // gap-closure follow-up): src/subnet-identity-history.ts's
         // loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids are D1-fetch
         // helpers embedded in 3 workers/api.mjs call sites (overlay logic,
         // not standalone routes), so -- same rationale as
@@ -8222,7 +8222,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/identity-history?limit=&offset=&cursor=
         // (#4832 gap-closure, Phase B): append-only on-chain identity
-        // timeline, mirroring src/subnet-identity-history.mjs's
+        // timeline, mirroring src/subnet-identity-history.ts's
         // loadSubnetIdentityHistory. observed_at/id are plain BIGINT
         // columns, no ::text cast needed.
         const subnetIdentityHistory = url.pathname.match(

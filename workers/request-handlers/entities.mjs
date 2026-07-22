@@ -285,7 +285,7 @@ import {
   CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
 } from "../../src/chain-turnover.ts";
-import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
+import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.ts";
 
 const RESPONSE_FORMATS = ["json", "csv"];
 const NEURON_CSV_COLUMNS = [
@@ -527,7 +527,7 @@ const EVENTS_CSV_COLUMNS = [
   "observed_at",
   "extrinsic_index",
 ];
-// The formatIdentityHistoryEntry row shape (src/subnet-identity-history.mjs):
+// The formatIdentityHistoryEntry row shape (src/subnet-identity-history.ts):
 // one SubnetIdentitiesV3 snapshot per row, stable so a CSV consumer's columns
 // never shift.
 const SUBNET_IDENTITY_HISTORY_CSV_COLUMNS = [

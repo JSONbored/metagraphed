@@ -35,6 +35,7 @@ interface Env {
   SENTRY_DSN?: string;
   SENTRY_ENVIRONMENT?: string;
   SENTRY_RELEASE?: string;
+  SUBNET_IDENTITY_SYNC_SECRET?: string;
   SUBNET_SNAPSHOT_SYNC_SECRET?: string;
   TELEGRAM_BOT_TOKEN?: string;
 }

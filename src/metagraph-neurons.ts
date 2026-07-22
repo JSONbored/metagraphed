@@ -805,7 +805,7 @@ function moveFeaturedToFront(rows: Row[]): Row[] {
 // Featured-validator pin overlay (#5166): moves any row with featured=true to
 // the front of GlobalValidatorsArtifact.validators / SubnetValidatorsArtifact.
 // validators, applied ONCE at the point where the D1/Postgres tiers already
-// converge (mirrors overlayPreviouslyKnownAs in src/subnet-identity-history.mjs
+// converge (mirrors overlayPreviouslyKnownAs in src/subnet-identity-history.ts
 // -- a small pure post-processing function, not duplicated per tier). Must
 // never run on an explicit, non-default sort: GlobalValidatorsArtifact carries
 // `sort`, so a caller who chose e.g. total_stake keeps that exact order; the

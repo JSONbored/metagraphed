@@ -163,7 +163,7 @@ import {
   clampLimit,
   clampOffset,
 } from "../workers/request-params.ts";
-import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
+import { buildSubnetIdentityHistory } from "./subnet-identity-history.ts";
 import { buildChainIdentityHistory } from "./chain-identity-history.ts";
 import {
   buildGlobalHealth,
