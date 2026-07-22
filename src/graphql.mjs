@@ -218,7 +218,7 @@ import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
 import { loadSubnetBurn } from "./subnet-burn.mjs";
 import { loadSubnetLease } from "./subnet-lease.mjs";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.ts";
-import { loadAccountRootClaim } from "./account-root-claim.mjs";
+import { loadAccountRootClaim } from "./account-root-claim.ts";
 // #6976: GraphQL parity for the children/parents/weight-setters/entities account
 // relationship routes, reusing the same loaders/builders REST + MCP already call.
 import {

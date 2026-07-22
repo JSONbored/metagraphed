@@ -103,7 +103,7 @@ import {
   isFinneySs58Address,
   loadAccountBalance,
 } from "../../src/account-balance.ts";
-import { loadAccountRootClaim } from "../../src/account-root-claim.mjs";
+import { loadAccountRootClaim } from "../../src/account-root-claim.ts";
 import {
   loadAccountChildren,
   loadAccountParents,

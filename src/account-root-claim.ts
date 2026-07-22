@@ -33,13 +33,13 @@ const I96F32_BYTES = 16;
 const ACCOUNT_ID_BYTES = 32;
 const MAX_HOTKEYS = 64;
 
-function accountIdFromSs58(ss58) {
+function accountIdFromSs58(ss58: string): Uint8Array {
   const BASE58_ALPHABET =
     "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   const INDEX = new Map([...BASE58_ALPHABET].map((c, i) => [c, i]));
   const bytes = [0];
   for (const char of ss58) {
-    let carry = INDEX.get(char);
+    let carry = INDEX.get(char) ?? 0;
     for (let i = 0; i < bytes.length; i += 1) {
       carry += bytes[i] * 58;
       bytes[i] = carry & 0xff;
@@ -54,7 +54,7 @@ function accountIdFromSs58(ss58) {
   return decoded.subarray(1, 33);
 }
 
-function blake2_128Concat(bytes) {
+function blake2_128Concat(bytes: Uint8Array): Uint8Array {
   const hash = blake2b(bytes, { dkLen: 16 });
   const out = new Uint8Array(hash.length + bytes.length);
   out.set(hash, 0);
@@ -62,11 +62,11 @@ function blake2_128Concat(bytes) {
   return out;
 }
 
-function u16LeBytes(netuid) {
+function u16LeBytes(netuid: number): Uint8Array {
   return Uint8Array.of(netuid & 0xff, (netuid >>> 8) & 0xff);
 }
 
-function accountScopedKey(itemName, accountId) {
+function accountScopedKey(itemName: string, accountId: Uint8Array): string {
   const prefix = storageMapPrefix("SubtensorModule", itemName);
   const hashed = blake2_128Concat(accountId);
   const out = new Uint8Array(prefix.length + hashed.length);
@@ -75,7 +75,7 @@ function accountScopedKey(itemName, accountId) {
   return bytesToHex(out);
 }
 
-function thresholdKey(netuid) {
+function thresholdKey(netuid: number): string {
   const prefix = storageMapPrefix("SubtensorModule", "RootClaimableThreshold");
   const hashed = blake2_128Concat(u16LeBytes(netuid));
   const out = new Uint8Array(prefix.length + hashed.length);
@@ -84,7 +84,11 @@ function thresholdKey(netuid) {
   return bytesToHex(out);
 }
 
-function claimedKey(netuid, hotAccountId, coldAccountId) {
+function claimedKey(
+  netuid: number,
+  hotAccountId: Uint8Array,
+  coldAccountId: Uint8Array,
+): string {
   const prefix = storageMapPrefix("SubtensorModule", "RootClaimed");
   const net = u16LeBytes(netuid);
   const hot = blake2_128Concat(hotAccountId);
@@ -103,7 +107,11 @@ function claimedKey(netuid, hotAccountId, coldAccountId) {
   return bytesToHex(out);
 }
 
-async function rpcCall(method, params, timeoutMs) {
+async function rpcCall(
+  method: string,
+  params: unknown[],
+  timeoutMs: number,
+): Promise<{ ok: boolean; result: unknown }> {
   try {
     const resp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
@@ -112,7 +120,7 @@ async function rpcCall(method, params, timeoutMs) {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
     if (!resp.ok) return { ok: false, result: undefined };
-    const body = await resp.json();
+    const body: { error?: unknown; result?: unknown } = await resp.json();
     if (body?.error) return { ok: false, result: undefined };
     return { ok: true, result: body?.result };
   } catch {
@@ -120,7 +128,7 @@ async function rpcCall(method, params, timeoutMs) {
   }
 }
 
-function hexToBytes(hex) {
+function hexToBytes(hex: unknown): Uint8Array | null {
   if (typeof hex !== "string" || !/^0x([0-9a-fA-F]{2})*$/.test(hex)) {
     return null;
   }
@@ -132,7 +140,7 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-function readI128Le(bytes, offset) {
+function readI128Le(bytes: Uint8Array, offset: number): bigint {
   let value = 0n;
   for (let i = I96F32_BYTES - 1; i >= 0; i -= 1) {
     value = (value << 8n) | BigInt(bytes[offset + i]);
@@ -144,7 +152,7 @@ function readI128Le(bytes, offset) {
   return value;
 }
 
-function readU128Le(bytes, offset) {
+function readU128Le(bytes: Uint8Array, offset: number): bigint {
   let value = 0n;
   for (let i = I96F32_BYTES - 1; i >= 0; i -= 1) {
     value = (value << 8n) | BigInt(bytes[offset + i]);
@@ -153,14 +161,17 @@ function readU128Le(bytes, offset) {
 }
 
 /** I96F32 bits → float (value / 2^32). */
-export function i96f32ToFloat(bits) {
+export function i96f32ToFloat(bits: bigint): number {
   const whole = bits / I96F32_SCALE;
   const remainder = bits % I96F32_SCALE;
   // Remainder is negative when bits is negative — Number(remainder)/scale preserves sign.
   return Number(whole) + Number(remainder) / Number(I96F32_SCALE);
 }
 
-function readCompactU32(bytes, offset) {
+function readCompactU32(
+  bytes: Uint8Array,
+  offset: number,
+): { value: number; nextOffset: number } | null {
   if (offset >= bytes.length) return null;
   const first = bytes[offset];
   const mode = first & 0b11;
@@ -188,8 +199,15 @@ function readCompactU32(bytes, offset) {
   return null;
 }
 
+export type RootClaimType =
+  | { kind: "Swap" }
+  | { kind: "Keep" }
+  | { kind: "KeepSubnets"; subnets: number[] };
+
 /** Decode RootClaimTypeEnum SCALE. null on malformed. */
-export function decodeRootClaimType(hex) {
+export function decodeRootClaimType(
+  hex: string | null | undefined,
+): RootClaimType | null {
   // ValueQuery default Swap when storage is unset.
   if (hex == null) return { kind: "Swap" };
   const bytes = hexToBytes(hex);
@@ -207,7 +225,7 @@ export function decodeRootClaimType(hex) {
     const lenResult = readCompactU32(bytes, 1);
     if (!lenResult) return null;
     const { value: count, nextOffset } = lenResult;
-    const subnets = [];
+    const subnets: number[] = [];
     let offset = nextOffset;
     for (let i = 0; i < count; i += 1) {
       if (offset + 2 > bytes.length) return null;
@@ -220,8 +238,15 @@ export function decodeRootClaimType(hex) {
   return null;
 }
 
+export interface ClaimableMapEntry {
+  netuid: number;
+  claimable_rate: number;
+}
+
 /** Decode BTreeMap<NetUid, I96F32>. null on malformed; [] when empty/unset. */
-export function decodeClaimableMap(hex) {
+export function decodeClaimableMap(
+  hex: string | null | undefined,
+): ClaimableMapEntry[] | null {
   if (hex == null) return [];
   const bytes = hexToBytes(hex);
   if (!bytes) return null;
@@ -229,7 +254,7 @@ export function decodeClaimableMap(hex) {
   const lenResult = readCompactU32(bytes, 0);
   if (!lenResult) return null;
   const { value: count, nextOffset } = lenResult;
-  const entries = [];
+  const entries: ClaimableMapEntry[] = [];
   let offset = nextOffset;
   for (let i = 0; i < count; i += 1) {
     if (offset + 2 + I96F32_BYTES > bytes.length) return null;
@@ -247,7 +272,9 @@ export function decodeClaimableMap(hex) {
 }
 
 /** Decode Vec<AccountId> (StakingHotkeys / OwnedHotkeys). */
-export function decodeAccountIdVec(hex) {
+export function decodeAccountIdVec(
+  hex: string | null | undefined,
+): string[] | null {
   if (hex == null) return [];
   const bytes = hexToBytes(hex);
   if (!bytes) return null;
@@ -255,12 +282,14 @@ export function decodeAccountIdVec(hex) {
   const lenResult = readCompactU32(bytes, 0);
   if (!lenResult) return null;
   const { value: count, nextOffset } = lenResult;
-  const accounts = [];
+  const accounts: string[] = [];
   let offset = nextOffset;
   for (let i = 0; i < count; i += 1) {
     if (offset + ACCOUNT_ID_BYTES > bytes.length) return null;
+    // The 32-byte slice below always satisfies encodeAccountId32's exactly-32-bytes
+    // precondition (checked one line above), so it never returns null in practice.
     accounts.push(
-      encodeAccountId32(bytes.slice(offset, offset + ACCOUNT_ID_BYTES)),
+      encodeAccountId32(bytes.slice(offset, offset + ACCOUNT_ID_BYTES))!,
     );
     offset += ACCOUNT_ID_BYTES;
   }
@@ -269,7 +298,7 @@ export function decodeAccountIdVec(hex) {
 }
 
 /** Decode I96F32 ValueQuery (threshold). null unset→default handled by caller. */
-export function decodeI96F32(hex) {
+export function decodeI96F32(hex: string | null | undefined): number | null {
   if (hex == null) return 0;
   const bytes = hexToBytes(hex);
   if (!bytes || bytes.length !== I96F32_BYTES) return null;
@@ -277,17 +306,43 @@ export function decodeI96F32(hex) {
 }
 
 /** Decode u128 ValueQuery (RootClaimed). */
-export function decodeU128(hex) {
+export function decodeU128(hex: string | null | undefined): string | null {
   if (hex == null) return "0";
   const bytes = hexToBytes(hex);
   if (!bytes || bytes.length !== I96F32_BYTES) return null;
   return readU128Le(bytes, 0).toString();
 }
 
-async function fetchStorage(key, timeoutMs) {
+async function fetchStorage(
+  key: string,
+  timeoutMs: number,
+): Promise<{ ok: boolean; hex: string | null | undefined }> {
   const result = await rpcCall("state_getStorage", [key], timeoutMs);
   if (!result.ok) return { ok: false, hex: undefined };
-  return { ok: true, hex: result.result ?? null };
+  return {
+    ok: true,
+    hex: (result.result as string | null | undefined) ?? null,
+  };
+}
+
+export interface RootClaimHotkeyEntry {
+  netuid: number;
+  claimable_rate: number;
+  claimed: string;
+  threshold: number;
+}
+
+export interface RootClaimHotkeyRow {
+  hotkey: string;
+  entries: RootClaimHotkeyEntry[];
+}
+
+export interface AccountRootClaimResult {
+  schema_version: 1;
+  ss58: string;
+  claim_type: RootClaimType | null;
+  hotkeys: RootClaimHotkeyRow[] | null;
+  queried_at: string;
 }
 
 /**
@@ -295,7 +350,10 @@ async function fetchStorage(key, timeoutMs) {
  * (120s / 10s negative). On RPC failure: claim_type/hotkeys are null
  * (schema-stable), never throws.
  */
-export async function loadAccountRootClaim(env, ss58) {
+export async function loadAccountRootClaim(
+  env: Env,
+  ss58: string,
+): Promise<AccountRootClaimResult> {
   if (!isFinneySs58Address(ss58)) {
     throw new RangeError("ss58 must be a valid finney SS58 account address");
   }
@@ -305,7 +363,7 @@ export async function loadAccountRootClaim(env, ss58) {
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as AccountRootClaimResult;
     } catch {
       // non-fatal
     }
@@ -322,7 +380,7 @@ export async function loadAccountRootClaim(env, ss58) {
   ]);
 
   if (!claimTypeRaw.ok || !stakingHotkeysRaw.ok || !ownedHotkeysRaw.ok) {
-    const payload = {
+    const payload: AccountRootClaimResult = {
       schema_version: 1,
       ss58,
       claim_type: null,
@@ -346,7 +404,7 @@ export async function loadAccountRootClaim(env, ss58) {
   const ownedHotkeys = decodeAccountIdVec(ownedHotkeysRaw.hex);
 
   if (claimType == null || stakingHotkeys == null || ownedHotkeys == null) {
-    const payload = {
+    const payload: AccountRootClaimResult = {
       schema_version: 1,
       ss58,
       claim_type: null,
@@ -371,7 +429,7 @@ export async function loadAccountRootClaim(env, ss58) {
   ).slice(0, MAX_HOTKEYS);
 
   const hotkeyRows = await Promise.all(
-    hotkeyList.map(async (hotkey) => {
+    hotkeyList.map(async (hotkey): Promise<RootClaimHotkeyRow | null> => {
       const hotAccountId = accountIdFromSs58(hotkey);
       const claimableRaw = await fetchStorage(
         accountScopedKey("RootClaimable", hotAccountId),
@@ -382,7 +440,7 @@ export async function loadAccountRootClaim(env, ss58) {
       if (rates == null) return null;
 
       const entries = await Promise.all(
-        rates.map(async (row) => {
+        rates.map(async (row): Promise<RootClaimHotkeyEntry | null> => {
           const [claimedRaw, thresholdRaw] = await Promise.all([
             fetchStorage(
               claimedKey(row.netuid, hotAccountId, coldAccountId),
@@ -403,12 +461,12 @@ export async function loadAccountRootClaim(env, ss58) {
         }),
       );
       if (entries.some((e) => e == null)) return null;
-      return { hotkey, entries };
+      return { hotkey, entries: entries as RootClaimHotkeyEntry[] };
     }),
   );
 
   if (hotkeyRows.some((row) => row == null)) {
-    const payload = {
+    const payload: AccountRootClaimResult = {
       schema_version: 1,
       ss58,
       claim_type: null,
@@ -427,11 +485,11 @@ export async function loadAccountRootClaim(env, ss58) {
     return payload;
   }
 
-  const payload = {
+  const payload: AccountRootClaimResult = {
     schema_version: 1,
     ss58,
     claim_type: claimType,
-    hotkeys: hotkeyRows,
+    hotkeys: hotkeyRows as RootClaimHotkeyRow[],
     queried_at: queriedAt,
   };
 

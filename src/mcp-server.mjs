@@ -592,7 +592,7 @@ import {
   MOVERS_LIMIT_MAX,
 } from "./movers.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.ts";
-import { loadAccountRootClaim } from "./account-root-claim.mjs";
+import { loadAccountRootClaim } from "./account-root-claim.ts";
 import {
   loadAccountChildren,
   loadAccountParents,
