@@ -11,7 +11,7 @@ import {
   extrinsicsToCsvRows,
   formatExtrinsic,
   loadExtrinsics,
-} from "../src/extrinsics.mjs";
+} from "../src/extrinsics.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { DAY_MS } from "../workers/config.ts";
 

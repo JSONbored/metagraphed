@@ -3,7 +3,7 @@
 import { unwrapByteArray, bytesToHex } from "./bytes";
 
 const EXTRINSIC_HASH = /^0x[0-9a-fA-F]{1,128}$/;
-/** block_number-extrinsic_index (e.g. 123456-2). Mirrors src/extrinsic-detail.mjs COMPOSITE_REF_RE,
+/** block_number-extrinsic_index (e.g. 123456-2). Mirrors src/extrinsic-detail.ts COMPOSITE_REF_RE,
  *  but disallows a leading-zero block number so omnibox decimal-block detection stays disjoint. */
 const COMPOSITE_EXTRINSIC_REF = /^[1-9][0-9]*-[0-9]+$/;
 

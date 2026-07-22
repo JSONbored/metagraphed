@@ -11,7 +11,7 @@
 // (SubtensorModule.DifficultySet/SetChildren/SetChildrenScheduled) carrying
 // u64 sentinel/fixed-point values in this range. Does NOT apply to
 // extrinsics.call_args -- that column is queried with an explicit `::text`
-// cast (workers/data-api.mjs) specifically so src/extrinsics.mjs's own,
+// cast (workers/data-api.mjs) specifically so src/extrinsics.ts's own,
 // separately-gated big-int handling (src/big-int-safe-json.mjs, scoped only
 // to Ethereum/EVM call types) runs instead; after the cast the wire type is
 // `text`, not `json`/`jsonb`, so this module's parser is never invoked for

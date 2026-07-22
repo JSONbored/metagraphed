@@ -17,6 +17,11 @@ import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.mjs";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 
+type D1Runner = (
+  sql: string,
+  params: unknown[],
+) => Promise<Array<Record<string, unknown>>>;
+
 // Was the D1 prune-cron's retention window (a 2026-07-10 capacity emergency:
 // ~101k rows/day, ~9.0GB of D1's hard 10GB-per-database cap already used).
 // D1's write path + prune cron are retired (#4772 D1 chain-data retirement) --
@@ -26,7 +31,7 @@ import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 // since Postgres (self-hosted, no capacity cap) is the actual serving tier now.
 export const EXTRINSIC_RETENTION_MS = 5 * 24 * 60 * 60 * 1000;
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   // D1 can return the INTEGER observed_at as a numeric string; a bare
   // Number.isFinite(ms) is false for a string, so the old form dropped a real
   // timestamp to null. Coerce first, and require n > 0 so a null/blank/invalid
@@ -49,7 +54,7 @@ function toIso(ms) {
 // arithmetic/comparisons. Mirrors the `toBlockNumber` already applied in
 // account-events.mjs / chain-analytics.ts and the `toBlockNumber` added to
 // blocks.mjs in #2435.
-function toChainPosition(value) {
+function toChainPosition(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -63,7 +68,7 @@ function toChainPosition(value) {
 // would leak the string form into the ["number","null"] contract field and
 // serve unrounded float noise. Mirrors toTaoOrNull in account-events.mjs
 // (#2662) and the coercion in formatRegistration (#2487).
-function toTaoOrNull(value) {
+function toTaoOrNull(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -76,11 +81,27 @@ function toTaoOrNull(value) {
 export const EXTRINSIC_READ_COLUMNS =
   "block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao, tip_tao, observed_at";
 
+export interface ExtrinsicApi {
+  block_number: number | null;
+  extrinsic_index: number | null;
+  extrinsic_hash: unknown;
+  signer: unknown;
+  call_module: unknown;
+  call_function: unknown;
+  call_args: unknown;
+  success: boolean | null;
+  fee_tao: number | null;
+  tip_tao: number | null;
+  observed_at: string | null;
+}
+
 // One D1 extrinsics row → a clean API extrinsic object. Null-safe on junk/sparse
 // rows. success is normalized to a boolean (null when undeterminable).
-export function formatExtrinsic(row) {
+export function formatExtrinsic(
+  row: Record<string, unknown> | null | undefined,
+): ExtrinsicApi | null {
   if (!row || typeof row !== "object") return null;
-  let call_args = null;
+  let call_args: unknown = null;
   if (row.call_args != null) {
     try {
       // decodePostgresCallArgs (#4691) MUST run before normalizePostgresValue
@@ -133,10 +154,16 @@ export function formatExtrinsic(row) {
           row.call_module,
           row.call_function,
           normalizePostgresValue(
-            decodePostgresCallArgs(parseJsonPreservingBigInts(row.call_args), {
-              call_module: row.call_module,
-              call_function: row.call_function,
-            }),
+            decodePostgresCallArgs(
+              parseJsonPreservingBigInts(row.call_args as string),
+              // postgres-call-args.mjs isn't converted yet (Phase 3) -- its
+              // untyped `topCall = null` default param infers as exactly
+              // `null`, so the real object needs a cast here.
+              {
+                call_module: row.call_module,
+                call_function: row.call_function,
+              } as unknown as null,
+            ),
           ),
         ),
       );
@@ -166,12 +193,23 @@ export function formatExtrinsic(row) {
   };
 }
 
+export interface ExtrinsicDetail {
+  schema_version: 1;
+  ref: unknown;
+  extrinsic: ExtrinsicApi | null;
+  events: unknown[];
+}
+
 // Per-extrinsic detail artifact. `extrinsic` is null when the ref didn't resolve
 // (cold store or unknown extrinsic) — schema-stable, never throws (mirrors the
 // block detail route's `block:null`). `events` are the indexed account_events this
 // extrinsic emitted (#1849), already formatted + bounded by the handler; defaults
 // to [] (empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store).
-export function buildExtrinsic(row, ref, events = []) {
+export function buildExtrinsic(
+  row: Record<string, unknown> | null | undefined,
+  ref: unknown,
+  events: unknown[] = [],
+): ExtrinsicDetail {
   return {
     schema_version: 1,
     ref: ref ?? null,
@@ -192,9 +230,20 @@ export const EXTRINSICS_CSV_COLUMNS = [
   "success",
 ];
 
+export interface ExtrinsicCsvRow {
+  extrinsic_id: string | null;
+  block_number: unknown;
+  signer: unknown;
+  call_module: unknown;
+  call_function: unknown;
+  success: unknown;
+}
+
 // Narrow CSV projection for the extrinsics feed (#2529): composite id plus the
 // core call metadata columns requested by the bounty issue.
-export function extrinsicsToCsvRows(extrinsics) {
+export function extrinsicsToCsvRows(
+  extrinsics: Array<Record<string, unknown>> | null | undefined,
+): ExtrinsicCsvRow[] {
   return (extrinsics || []).map((row) => ({
     extrinsic_id:
       row?.block_number != null && row?.extrinsic_index != null
@@ -208,8 +257,30 @@ export function extrinsicsToCsvRows(extrinsics) {
   }));
 }
 
-export function buildExtrinsicFeed(rows, { limit, offset, nextCursor } = {}) {
-  const extrinsics = (rows || []).map(formatExtrinsic).filter(Boolean);
+export interface ExtrinsicFeed {
+  schema_version: 1;
+  extrinsic_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  extrinsics: ExtrinsicApi[];
+}
+
+export function buildExtrinsicFeed(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    nextCursor?: string | null;
+  } = {},
+): ExtrinsicFeed {
+  const extrinsics = (rows || [])
+    .map(formatExtrinsic)
+    .filter((e): e is ExtrinsicApi => Boolean(e));
   return {
     schema_version: 1,
     extrinsic_count: extrinsics.length,
@@ -220,17 +291,37 @@ export function buildExtrinsicFeed(rows, { limit, offset, nextCursor } = {}) {
   };
 }
 
+export interface AccountExtrinsicFeed {
+  schema_version: 1;
+  ss58: unknown;
+  extrinsic_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  extrinsics: ExtrinsicApi[];
+}
+
 // Per-account signed-extrinsic feed artifact (#1844, newest first). The account's
 // extrinsics are matched by the extrinsic SIGNER only, NOT the hotkey or coldkey
 // union the account_events routes use — `extrinsics` carries a single `signer`
 // column. extrinsic_count is the PAGE count (matches the feed + account-events
 // convention), not a grand total. Null-safe on a cold store.
 export function buildAccountExtrinsics(
-  rows,
-  ss58,
-  { limit, offset, nextCursor } = {},
-) {
-  const extrinsics = (rows || []).map(formatExtrinsic).filter(Boolean);
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: unknown,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    nextCursor?: string | null;
+  } = {},
+): AccountExtrinsicFeed {
+  const extrinsics = (rows || [])
+    .map(formatExtrinsic)
+    .filter((e): e is ExtrinsicApi => Boolean(e));
   return {
     schema_version: 1,
     ss58,
@@ -242,18 +333,30 @@ export function buildAccountExtrinsics(
   };
 }
 
+export interface BlockExtrinsicFeed {
+  schema_version: 1;
+  ref: unknown;
+  block_number: unknown;
+  extrinsic_count: number;
+  limit: number | null;
+  offset: number | null;
+  extrinsics: ExtrinsicApi[];
+}
+
 // Per-block extrinsics sub-resource artifact (#1845): the extrinsics in one block,
 // in natural read order (extrinsic_index ASC) — note this differs from the global
 // feed's newest-first DESC; both are covered by the (block_number, extrinsic_index)
 // PK. block_number is null + extrinsics:[] when the ref didn't resolve (cold store
 // or unknown block) — schema-stable, never throws.
 export function buildBlockExtrinsics(
-  rows,
-  ref,
-  blockNumber,
-  { limit, offset } = {},
-) {
-  const extrinsics = (rows || []).map(formatExtrinsic).filter(Boolean);
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ref: unknown,
+  blockNumber: unknown,
+  { limit, offset }: { limit?: number | null; offset?: number | null } = {},
+): BlockExtrinsicFeed {
+  const extrinsics = (rows || [])
+    .map(formatExtrinsic)
+    .filter((e): e is ExtrinsicApi => Boolean(e));
   return {
     schema_version: 1,
     ref: ref ?? null,
@@ -270,6 +373,23 @@ export function buildBlockExtrinsics(
 // handlers and the MCP extrinsic tools. `d1` is a
 // (sql, params) => Promise<rows[]> runner; a cold/unbound DB yields [].
 
+export interface LoadExtrinsicsOptions {
+  signer?: string | null;
+  callModule?: string | null;
+  callFunction?: string | null;
+  block?: number | null;
+  blockStart?: number | null;
+  blockEnd?: number | null;
+  from?: number | null;
+  to?: number | null;
+  success?: boolean | null;
+  callHash?: string | null;
+  limit?: number | string | null;
+  offset?: number | string | null;
+  cursor?: unknown;
+  nowMs?: number;
+}
+
 // Filtered extrinsic feed (newest first) with keyset cursor support (#1851).
 // Supported filters mirror GET /api/v1/extrinsics (#1846): signer, callModule,
 // callFunction, block, blockStart/blockEnd, from/to (observed_at epoch-ms),
@@ -277,7 +397,7 @@ export function buildBlockExtrinsics(
 // below). A cursor takes precedence over offset when present — uses a
 // (block_number, extrinsic_index) row-value seek.
 export async function loadExtrinsics(
-  d1,
+  d1: D1Runner,
   {
     signer,
     callModule,
@@ -293,8 +413,8 @@ export async function loadExtrinsics(
     offset,
     cursor,
     nowMs = Date.now(),
-  } = {},
-) {
+  }: LoadExtrinsicsOptions = {},
+): Promise<ExtrinsicFeed> {
   const lim = clampLimit(limit, BLOCK_PAGINATION);
   const off = clampOffset(offset);
   const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
@@ -310,8 +430,8 @@ export async function loadExtrinsics(
       nextCursor: null,
     });
   }
-  const conds = [];
-  const params = [];
+  const conds: string[] = [];
+  const params: unknown[] = [];
   const hasBlockFilter = block != null;
   const hasSignerFilter = Boolean(signer);
   const hasCallModuleFilter = Boolean(callModule);
@@ -377,7 +497,7 @@ export async function loadExtrinsics(
   }
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
-  if (useCursor) {
+  if (useCursor && cur) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
@@ -418,7 +538,10 @@ export async function loadExtrinsics(
   const rows = await d1(sql, params);
   const last = rows.length === lim ? rows[rows.length - 1] : null;
   const nextCursor = last
-    ? encodeCursor([last.block_number, last.extrinsic_index])
+    ? encodeCursor([
+        last.block_number as number,
+        last.extrinsic_index as number,
+      ])
     : null;
   return buildExtrinsicFeed(rows, { limit: lim, offset: off, nextCursor });
 }

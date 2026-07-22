@@ -29,7 +29,7 @@ import {
   buildExtrinsicFeed,
   buildBlockExtrinsics,
   buildAccountExtrinsics,
-} from "../src/extrinsics.mjs";
+} from "../src/extrinsics.ts";
 import {
   buildAccountEvents,
   formatAccountEvent,
@@ -3438,7 +3438,7 @@ async function resolveBlockNumberPg(sql, ref) {
 }
 
 // The blocks/extrinsics SELECT column lists below must match src/blocks.ts's
-// BLOCK_READ_COLUMNS / src/extrinsics.mjs's EXTRINSIC_READ_COLUMNS so
+// BLOCK_READ_COLUMNS / src/extrinsics.ts's EXTRINSIC_READ_COLUMNS so
 // formatBlock/formatExtrinsic (reused unchanged, imported above) see the exact
 // same row shape from either sink. Written literally per query (not factored
 // into a shared string) because postgres.js tagged templates bind a `${...}`
@@ -4651,7 +4651,7 @@ export default {
     // with no way to recover it downstream. Does NOT touch extrinsics'
     // call_args -- that column is queried with an explicit `::text` cast
     // (see the "extrinsics' call_args is cast to text" comment below) so its
-    // own, separately-gated big-int handling in src/extrinsics.mjs runs
+    // own, separately-gated big-int handling in src/extrinsics.ts runs
     // instead; after the cast the wire type is `text` (OID 25), which this
     // override never sees.
     const hyperdriveConnectionOptions = {
@@ -4851,7 +4851,7 @@ export default {
         }
 
         // GET /api/v1/extrinsics — the recent-extrinsic feed, mirroring
-        // src/extrinsics.mjs's loadExtrinsics filter set exactly (signer,
+        // src/extrinsics.ts's loadExtrinsics filter set exactly (signer,
         // call_module, call_function, call_hash, success, block, block_start/
         // block_end, from/to, cursor). Ordered by observed_at (not
         // block_number) because `extrinsics` is a TimescaleDB hypertable
@@ -4934,7 +4934,7 @@ export default {
 
         // GET /api/v1/sudo and GET /api/v1/governance/config-changes share this
         // shape: the same extrinsics feed as /extrinsics above, with call_module
-        // fixed rather than caller-supplied (mirroring src/extrinsics.mjs's
+        // fixed rather than caller-supplied (mirroring src/extrinsics.ts's
         // loadExtrinsics({callModule: "Sudo"|"AdminUtils", ...}) call sites in
         // entities.mjs) -- so neither accepts ?signer=/?call_module=/?call_hash=.
         // Ordered by observed_at for the same chunk-exclusion reason as
@@ -5010,7 +5010,7 @@ export default {
 
         // GET /api/v1/extrinsics/:ref — per-extrinsic detail + embedded
         // account_events (up to MAX_EMBEDDED_EVENTS), mirroring the former
-        // src/extrinsic-detail.mjs D1 loader (removed in #4772). ref is a 0x hash
+        // src/extrinsic-detail.ts D1 loader (removed in #4772). ref is a 0x hash
         // or a composite "block_number-extrinsic_index".
         const extrinsicRef = url.pathname.match(
           /^\/api\/v1\/extrinsics\/([^/]+)$/,

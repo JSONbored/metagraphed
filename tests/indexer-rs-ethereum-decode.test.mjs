@@ -11,7 +11,7 @@ import {
 import { decodePostgresCallArgs } from "../src/postgres-call-args.mjs";
 import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
-// Full formatExtrinsic-equivalent pipeline, matching src/extrinsics.mjs's
+// Full formatExtrinsic-equivalent pipeline, matching src/extrinsics.ts's
 // actual call order (decodePostgresCallArgs -> normalizePostgresValue ->
 // decodeEthereumEvmCallArgs).
 function decode(callModule, callFunction, raw) {

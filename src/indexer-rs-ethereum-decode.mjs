@@ -24,7 +24,7 @@
 // reconcile: fetch-events.py writes the exact Python int via json.dumps
 // (lossless at the storage layer; no str()/precision handling anywhere in
 // that file), and the actual corruption happens in the SHARED
-// src/extrinsics.mjs formatExtrinsic's `JSON.parse(row.call_args)` call --
+// src/extrinsics.ts formatExtrinsic's `JSON.parse(row.call_args)` call --
 // the same JSON.parse used for BOTH D1 and Postgres rows. So "reproduce D1's
 // behavior" and "the bug this repo already accepts for
 // SubtensorModule.register's PoW nonce" are the same underlying JS
@@ -41,7 +41,7 @@
 // IMPORTANT: this decision is only real if the limbs Postgres hands over
 // actually survive intact to this point. A first version of this module
 // (caught by Gittensory review on the original #4692 PR) reconstructed the
-// BigInt correctly but from an ALREADY-corrupted input: src/extrinsics.mjs's
+// BigInt correctly but from an ALREADY-corrupted input: src/extrinsics.ts's
 // formatExtrinsic ran plain `JSON.parse(row.call_args)` before this decoder
 // ever ran, and standard JSON.parse silently rounds any bare integer literal
 // past 2^53 the exact same way -- so a limb like 9131459485341369597 arrived
@@ -56,7 +56,7 @@ import { isEnumTreeNode } from "./scale-normalize.ts";
 import { unwrapByteArray, bytesToHex } from "./bytes.ts";
 import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
 
-// A single limb (u64, up to 2^64-1) as delivered by src/extrinsics.mjs's
+// A single limb (u64, up to 2^64-1) as delivered by src/extrinsics.ts's
 // parseJsonPreservingBigInts (#4692 review fix): most limbs are small enough
 // to survive plain JSON.parse as a JS number (the common case -- 3 of a
 // U256's 4 limbs are usually 0), but a limb large enough to lose precision

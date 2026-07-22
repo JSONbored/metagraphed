@@ -208,7 +208,7 @@ import {
   buildExtrinsic,
   buildExtrinsicFeed,
   buildBlockExtrinsics,
-} from "./extrinsics.mjs";
+} from "./extrinsics.ts";
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { loadBlockChainEvents } from "./data-api-mcp.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";

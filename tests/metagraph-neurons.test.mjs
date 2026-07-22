@@ -102,7 +102,7 @@ describe("metagraph-neurons builders", () => {
     // D1 can return INTEGER / REAL columns as numeric strings ("3" not 3,
     // "1000.5" not 1000.5); the bare `?? null` pass-through this replaced would
     // have leaked strings into the API payload. Same shape as the coercion in
-    // blocks.mjs (#2435), extrinsics.mjs (#2439), and account-events.mjs
+    // blocks.mjs (#2435), extrinsics.ts (#2439), and account-events.mjs
     // (#2481, #2489). stake/emission additionally round to rao precision so
     // accumulated IEEE-754 float noise never reaches the payload. Ratio fields
     // use nullableNumber + round, matching buildGlobalValidators (#2611).

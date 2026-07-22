@@ -603,7 +603,7 @@ import {
   buildExtrinsicFeed,
   buildAccountExtrinsics,
   buildBlockExtrinsics,
-} from "./extrinsics.mjs";
+} from "./extrinsics.ts";
 import {
   loadBlockChainEvents,
   loadChainActivity,

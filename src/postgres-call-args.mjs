@@ -20,7 +20,7 @@
 // `{call_module, call_function, call_args}` shape has neither a "name" nor a
 // "values" key (isEnumTreeNode requires both), so normalizePostgresValue's
 // later pass over the combined tree recurses into it generically and never
-// misidentifies it -- see src/extrinsics.mjs's formatExtrinsic for the call
+// misidentifies it -- see src/extrinsics.ts's formatExtrinsic for the call
 // order this depends on.
 import { isEnumTreeNode } from "./scale-normalize.ts";
 import { normalizeAccountId32Field } from "./ss58.ts";

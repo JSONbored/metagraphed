@@ -132,7 +132,7 @@ import {
   buildExtrinsicFeed,
   buildAccountExtrinsics,
   buildBlockExtrinsics,
-} from "../../src/extrinsics.mjs";
+} from "../../src/extrinsics.ts";
 import {
   buildConcentration,
   buildChainConcentration,

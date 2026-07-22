@@ -353,7 +353,7 @@ NOTHING`, so a backfill re-run would have silently preserved
   Postgres serving/write Workers (connection-affinity fix, 2026-07-10)
 - `workers/postgres-tier.mjs` (`tryPostgresTier`) — the per-tier fallback
   contract shared by REST and MCP callers
-- `src/extrinsics.mjs`'s `EXTRINSIC_RETENTION_MS` — the one D1 retention
+- `src/extrinsics.ts`'s `EXTRINSIC_RETENTION_MS` — the one D1 retention
   constant that survives #4772: no longer a prune-cron window (that cron is
   retired), now only `loadExtrinsics`' query-floor short-circuit. The
   `blocks`/`account_events` equivalents (`BLOCK_RETENTION_MS`,

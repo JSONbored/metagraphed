@@ -5,7 +5,7 @@ import { normalizePostgresValue } from "../src/scale-normalize.ts";
 
 // decodePostgresCallArgs must run BEFORE normalizePostgresValue (see
 // src/postgres-call-args.mjs's own header for why) -- every test below
-// chains them in that order, matching src/extrinsics.mjs's formatExtrinsic.
+// chains them in that order, matching src/extrinsics.ts's formatExtrinsic.
 function decode(value) {
   return normalizePostgresValue(decodePostgresCallArgs(value));
 }

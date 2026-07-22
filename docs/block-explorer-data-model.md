@@ -211,7 +211,7 @@ each inner call carries `call_module`, `call_function`, a fully-expanded `call_a
 its own `call_hash` — everything a renderer needs per inner call with zero extra decoding.
 
 This repo does no recursive decode of its own — `scripts/fetch-events.py`'s `_extrinsic_call`
-(`call.get("call_args")` → `_safe_json`) and `src/extrinsics.mjs`'s `formatExtrinsic`
+(`call.get("call_args")` → `_safe_json`) and `src/extrinsics.ts`'s `formatExtrinsic`
 (`JSON.parse(row.call_args)`) are both flat pass-throughs. The nesting is already present in
 `substrate-interface`'s decoded `Call`-type SCALE output (pinned `==1.8.1`,
 `.github/workflows/backfill-events.yml`) before this repo ever sees it — the recursion happens

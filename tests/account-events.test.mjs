@@ -290,7 +290,7 @@ test("buildAccountSummary coerces string-typed first/last seen timestamps", () =
 test("formatAccountEvent coerces string-typed netuid and uid cells to Numbers", () => {
   // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
   // `?? null` pass-through this replaced would have leaked strings into the API
-  // payload. Mirrors the coercion in blocks.mjs (#2435) and extrinsics.mjs
+  // payload. Mirrors the coercion in blocks.mjs (#2435) and extrinsics.ts
   // (#2439) — and the block_number / event_index / extrinsic_index coercion
   // already applied in this same function.
   const out = formatAccountEvent({ netuid: "7", uid: "42", block_number: 1 });
@@ -342,7 +342,7 @@ test("formatAccountEvent rejects blank integer cells that coerce to 0 (not block
 test("formatAccountEvent coerces string-typed amount_tao and alpha_amount cells to Numbers", () => {
   // D1 can return a REAL column as a numeric string; the bare `?? null`
   // pass-through this replaced would have leaked strings into the JSON payload.
-  // Mirrors the coercion in blocks.mjs (#2435), extrinsics.mjs (#2439), and
+  // Mirrors the coercion in blocks.mjs (#2435), extrinsics.ts (#2439), and
   // metagraph-neurons.mjs (#2503). Rounded to rao precision (9 dp) so the
   // IEEE-754 float noise from SUM() never carries into the payload.
   const out = formatAccountEvent({
@@ -365,7 +365,7 @@ test("formatAccountEvent coerces null amount_tao and alpha_amount to null (not 0
 });
 
 test("formatAccountEvent rejects blank amount_tao/alpha_amount cells that coerce to 0", () => {
-  // Mirrors the blank-cell guard in extrinsics.mjs (#3030): Number("") is 0.
+  // Mirrors the blank-cell guard in extrinsics.ts (#3030): Number("") is 0.
   for (const blank of ["", "   "]) {
     const out = formatAccountEvent({
       block_number: 1,

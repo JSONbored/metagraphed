@@ -164,7 +164,7 @@ const EVENT_KIND_CATEGORIES: Record<string, string> = {
 function toIso(ms: unknown): string | null {
   // D1 can return the INTEGER observed_at as a numeric string; coerce first, and
   // require n > 0 so a null/blank/zero/invalid cell stays null instead of epoch
-  // 1970. Mirrors the toIso guards in blocks.mjs (#2708) and extrinsics.mjs
+  // 1970. Mirrors the toIso guards in blocks.mjs (#2708) and extrinsics.ts
   // (#2714).
   if (ms == null) return null;
   const n = Number(ms);
@@ -238,7 +238,7 @@ export function formatAccountEvent(
     // through toBlockNumber so a bare `?? null` pass-through never leaks the
     // string form into the API payload. Same shape as the coercion applied to
     // block_number / event_index / extrinsic_index directly below — and to the
-    // sibling formatters in blocks.mjs (#2435) and extrinsics.mjs (#2439).
+    // sibling formatters in blocks.mjs (#2435) and extrinsics.ts (#2439).
     netuid: toBlockNumber(row.netuid),
     uid: toBlockNumber(row.uid),
     // amount_tao / alpha_amount (D1 REAL columns) — coerce through toTaoOrNull
@@ -720,7 +720,7 @@ export function formatAccountDay(
     // strings) through toBlockNumber so a bare `?? null` pass-through never
     // leaks the string form into the API payload. Same shape as the coercion
     // applied in formatAccountEvent above (#2481) and the sibling formatters
-    // in blocks.mjs (#2435) / extrinsics.mjs (#2439).
+    // in blocks.mjs (#2435) / extrinsics.ts (#2439).
     netuid: toBlockNumber(row.netuid),
     event_count: toBlockNumber(row.event_count),
     event_kinds:
