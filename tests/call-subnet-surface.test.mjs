@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   callSubnetSurface,
+  matchSchemaOperation,
   MAX_RESPONSE_BYTES,
 } from "../src/call-subnet-surface.mjs";
 
@@ -370,5 +371,143 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
     assert.equal(result.truncated, true);
     assert.equal(result.body.length, MAX_RESPONSE_BYTES);
+  });
+});
+
+describe("matchSchemaOperation", () => {
+  test("throws when path does not start with a slash", () => {
+    assert.throws(
+      () => matchSchemaOperation({ paths: {} }, "users/123", "GET"),
+      /path must be a string starting with "\/"/,
+    );
+  });
+
+  test("throws when method is missing or not a string", () => {
+    assert.throws(
+      () => matchSchemaOperation({ paths: {} }, "/users", ""),
+      /method must be a non-empty string/,
+    );
+    assert.throws(
+      () => matchSchemaOperation({ paths: {} }, "/users", undefined),
+      /method must be a non-empty string/,
+    );
+  });
+
+  test("returns null when document.paths is missing, empty, or malformed", () => {
+    assert.equal(matchSchemaOperation({}, "/users", "GET"), null);
+    assert.equal(matchSchemaOperation({ paths: {} }, "/users", "GET"), null);
+    assert.equal(matchSchemaOperation({ paths: null }, "/users", "GET"), null);
+    assert.equal(matchSchemaOperation(undefined, "/users", "GET"), null);
+  });
+
+  test("matches an exact literal path", () => {
+    const getOp = { summary: "list users" };
+    const document = { paths: { "/users": { get: getOp } } };
+    const result = matchSchemaOperation(document, "/users", "GET");
+    assert.deepEqual(result, { operation: getOp, matchedTemplate: "/users" });
+  });
+
+  test("matches a single {param} path segment", () => {
+    const getOp = { summary: "get user" };
+    const document = { paths: { "/users/{id}": { get: getOp } } };
+    const result = matchSchemaOperation(document, "/users/123", "GET");
+    assert.deepEqual(result, {
+      operation: getOp,
+      matchedTemplate: "/users/{id}",
+    });
+  });
+
+  test("matches multiple {param} segments in one template", () => {
+    const getOp = { summary: "get post" };
+    const document = {
+      paths: { "/users/{id}/posts/{postId}": { get: getOp } },
+    };
+    const result = matchSchemaOperation(
+      document,
+      "/users/123/posts/456",
+      "GET",
+    );
+    assert.deepEqual(result, {
+      operation: getOp,
+      matchedTemplate: "/users/{id}/posts/{postId}",
+    });
+  });
+
+  test("does not match when the concrete path has more segments than the template", () => {
+    const document = { paths: { "/users/{id}": { get: {} } } };
+    assert.equal(
+      matchSchemaOperation(document, "/users/123/extra", "GET"),
+      null,
+    );
+  });
+
+  test("does not match when the concrete path has fewer segments than the template", () => {
+    const document = { paths: { "/users/{id}/posts": { get: {} } } };
+    assert.equal(matchSchemaOperation(document, "/users/123", "GET"), null);
+  });
+
+  test("does not match when a literal segment differs", () => {
+    const document = { paths: { "/users/{id}": { get: {} } } };
+    assert.equal(matchSchemaOperation(document, "/accounts/123", "GET"), null);
+  });
+
+  test("returns null when the path matches but the method is not declared", () => {
+    const document = { paths: { "/users": { get: {} } } };
+    assert.equal(matchSchemaOperation(document, "/users", "POST"), null);
+  });
+
+  test("is case-insensitive on the requested method", () => {
+    const getOp = { summary: "list users" };
+    const document = { paths: { "/users": { get: getOp } } };
+    assert.deepEqual(matchSchemaOperation(document, "/users", "get"), {
+      operation: getOp,
+      matchedTemplate: "/users",
+    });
+    assert.deepEqual(matchSchemaOperation(document, "/users", "GeT"), {
+      operation: getOp,
+      matchedTemplate: "/users",
+    });
+  });
+
+  test("treats doubled/trailing slashes the same as a clean path on both sides", () => {
+    const getOp = { summary: "list users" };
+    const document = { paths: { "/users/": { get: getOp } } };
+    assert.deepEqual(matchSchemaOperation(document, "/users", "GET"), {
+      operation: getOp,
+      matchedTemplate: "/users/",
+    });
+  });
+
+  test("ignores a query string or fragment appended to the concrete path", () => {
+    const getOp = { summary: "list users" };
+    const document = { paths: { "/users": { get: getOp } } };
+    assert.deepEqual(matchSchemaOperation(document, "/users?limit=5", "GET"), {
+      operation: getOp,
+      matchedTemplate: "/users",
+    });
+    assert.deepEqual(matchSchemaOperation(document, "/users#frag", "GET"), {
+      operation: getOp,
+      matchedTemplate: "/users",
+    });
+  });
+
+  test("skips a malformed path-item entry instead of throwing", () => {
+    const getOp = { summary: "list users" };
+    const document = {
+      paths: { "/broken": null, "/users": { get: getOp } },
+    };
+    assert.deepEqual(matchSchemaOperation(document, "/users", "GET"), {
+      operation: getOp,
+      matchedTemplate: "/users",
+    });
+  });
+
+  test("root path matches an empty-segment template", () => {
+    const getOp = { summary: "root" };
+    const document = { paths: { "/": { get: getOp } } };
+    assert.deepEqual(matchSchemaOperation(document, "/", "GET"), {
+      operation: getOp,
+      matchedTemplate: "/",
+    });
   });
 });

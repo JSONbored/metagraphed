@@ -161,6 +161,83 @@ async function readBodyCapped(response, maxBytes) {
 }
 
 /**
+ * Decides whether a concrete request `path` + `method` is declared in a
+ * surface's captured OpenAPI document (metagraphed#7673, MCP execute Phase
+ * 2a). Pure and synchronous -- no fetch, no I/O -- the gate `call_subnet_surface`
+ * Phase 2 (#7674) runs before it will ever construct a request URL from a
+ * caller-supplied path, so a surface's schema is the only thing that can
+ * make a path/method combination callable, never a guess.
+ *
+ * A declared path template's `{param}` segments (OpenAPI's own syntax, e.g.
+ * "/users/{id}") each match exactly one non-empty concrete path segment, any
+ * value; every other segment must match literally. The template and the
+ * concrete path must have the same segment count -- no partial/prefix
+ * matches. Method comparison is case-insensitive on the `method` argument;
+ * OpenAPI's own path-item keys are always lowercase (get/post/put/...), so
+ * the caller-supplied method is lowercased before lookup.
+ *
+ * Returns `null` (never throws) when: no declared path template matches the
+ * concrete path's shape, a template matches but doesn't declare an operation
+ * for the requested method, or `document.paths` is missing/empty/malformed
+ * -- callers can treat `null` as "reject the request" uniformly. Only throws
+ * for genuinely malformed input (`path` not starting with "/", or a missing
+ * `method`), never for a legitimate "not found in this schema" outcome.
+ *
+ * @param {{paths?: Record<string, Record<string, object>>}} document The `document` field `get_api_schema` returns for this surface.
+ * @param {string} path Concrete request path, e.g. "/users/123" -- never a template.
+ * @param {string} method HTTP method, case-insensitive (e.g. "POST" or "post").
+ * @returns {{operation: object, matchedTemplate: string} | null}
+ */
+export function matchSchemaOperation(document, path, method) {
+  if (typeof path !== "string" || !path.startsWith("/")) {
+    throw new Error(
+      'matchSchemaOperation: path must be a string starting with "/".',
+    );
+  }
+  if (typeof method !== "string" || !method) {
+    throw new Error("matchSchemaOperation: method must be a non-empty string.");
+  }
+  const paths = document?.paths;
+  if (!paths || typeof paths !== "object") return null;
+
+  const requestSegments = splitPathSegments(path);
+  const normalizedMethod = method.toLowerCase();
+
+  for (const [template, pathItem] of Object.entries(paths)) {
+    if (!pathItem || typeof pathItem !== "object") continue;
+    if (!segmentsMatch(splitPathSegments(template), requestSegments)) {
+      continue;
+    }
+    const operation = pathItem[normalizedMethod];
+    if (!operation || typeof operation !== "object") continue;
+    return { operation, matchedTemplate: template };
+  }
+  return null;
+}
+
+// Query/fragment stripped defensively -- callers should only ever pass a
+// bare path, but this keeps a stray "?x=1" from corrupting the last segment.
+// Empty segments (leading/trailing/doubled slashes) are dropped on both
+// sides before comparison, so "/a//b" and "/a/b" are treated the same way.
+function splitPathSegments(rawPath) {
+  return rawPath
+    .split("?")[0]
+    .split("#")[0]
+    .split("/")
+    .filter((segment) => segment.length > 0);
+}
+
+function segmentsMatch(templateSegments, requestSegments) {
+  if (templateSegments.length !== requestSegments.length) return false;
+  return templateSegments.every((templateSegment, index) => {
+    if (templateSegment.startsWith("{") && templateSegment.endsWith("}")) {
+      return requestSegments[index].length > 0;
+    }
+    return templateSegment === requestSegments[index];
+  });
+}
+
+/**
  * Mirrors src/health-probe-core.mjs's probeUrl redirect-revalidation loop
  * (manual redirect handling, isUnsafeUrl re-checked on every hop, 5-hop
  * cap) but returns the live Response on success instead of discarding the
