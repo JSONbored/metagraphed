@@ -206,7 +206,7 @@ import {
   GET_COVERAGE_MCP_TOOL,
   GET_COVERAGE_OUTPUT_SCHEMA,
   loadRegistryCoverage,
-} from "./registry-coverage.mjs";
+} from "./registry-coverage.ts";
 import {
   GET_CONTRACTS_INSTRUCTIONS,
   GET_CONTRACTS_MCP_TOOL,

@@ -1,21 +1,41 @@
 // Registry coverage loader for MCP parity on GET /api/v1/coverage.
 // Serves the baked /metagraph/coverage.json artifact (surface counts,
 // completeness aggregate, domain breakdown).
+import type { StorageReadResult } from "../workers/storage.ts";
 
 export const REGISTRY_COVERAGE_ARTIFACT = "/metagraph/coverage.json";
 
-export function registryCoverageToolError(code, message) {
-  const error = new Error(message);
+export interface RegistryCoverageToolError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function registryCoverageToolError(
+  code: string,
+  message: string,
+): RegistryCoverageToolError {
+  const error = new Error(message) as RegistryCoverageToolError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-export async function loadRegistryCoverage(ctx, { readArtifact } = {}) {
+export async function loadRegistryCoverage(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<unknown> {
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, REGISTRY_COVERAGE_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw registryCoverageToolError(
         "not_found",
