@@ -173,7 +173,7 @@ import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
-} from "../../src/subnet-weight-setters.mjs";
+} from "../../src/subnet-weight-setters.ts";
 import {
   buildSubnetServing,
   SUBNET_SERVING_WINDOWS,

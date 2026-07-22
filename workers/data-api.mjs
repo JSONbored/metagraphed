@@ -157,7 +157,7 @@ import {
   SUBNET_WEIGHT_SETTERS_LIMIT,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
-} from "../src/subnet-weight-setters.mjs";
+} from "../src/subnet-weight-setters.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,

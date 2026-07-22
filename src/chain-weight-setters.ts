@@ -23,13 +23,13 @@ export const CHAIN_WEIGHT_SETTERS_LIMIT_MAX = 100;
 // (a hotkey is a network-wide identity, so this correctly merges one validator's activity across
 // every subnet it sets weights on), else by its (netuid, uid) — a uid alone has no meaning outside
 // its own subnet, so a uid-only setter stays scoped to the subnet it was observed on, exactly
-// mirroring the sibling subnet-weight-setters.mjs identity. Rows whose identity is NULL (no hotkey
+// mirroring the sibling subnet-weight-setters.ts identity. Rows whose identity is NULL (no hotkey
 // AND no uid) are excluded from the leaderboard rather than collapsed into one bogus setter.
 
 // Round a share to a stable 4dp precision WITHOUT letting a sub-1 share round up to an exact 1 —
 // a setter that drove < 100% of the network's weight-setting must not read as a flat 1 while
 // another setter still holds activity (e.g. 49999/50000 = 0.99998 -> 1.0000). Mirrors the
-// anti-overstatement guard in subnet-weight-setters.mjs. A genuine sole setter (its count == the
+// anti-overstatement guard in subnet-weight-setters.ts. A genuine sole setter (its count == the
 // network total) keeps a true 1.
 function round(value: number, dp = 4): number {
   const factor = 10 ** dp;

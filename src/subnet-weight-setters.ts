@@ -9,10 +9,16 @@
 
 import { WEIGHTS_EVENT_KIND } from "./subnet-weights.ts";
 
+type Row = Record<string, unknown>;
+type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Supported windows (label -> days) + default, matching the sibling /weights route.
-export const SUBNET_WEIGHT_SETTERS_WINDOWS = { "7d": 7, "30d": 30 };
+export const SUBNET_WEIGHT_SETTERS_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+};
 export const DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW = "7d";
 // Leaderboard cap — the top-N most active setters. Bounds the response and the D1 read; a
 // subnet rarely has more than a few dozen active setters in a 7d/30d window.
@@ -33,7 +39,7 @@ const SETTER_IDENTITY =
 // flat 1 while another setter still holds activity (e.g. 49999/50000 = 0.99998 -> 1.0000).
 // The same anti-overstatement guard the sibling share/ratio rounders apply. A genuine sole
 // setter (its count == the subnet total) keeps a true 1.
-function round(value, dp = 4) {
+function round(value: number, dp = 4): number {
   const factor = 10 ** dp;
   const rounded = Math.round(value * factor) / factor;
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
@@ -41,14 +47,14 @@ function round(value, dp = 4) {
 
 // A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
-function toCount(value) {
+function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
 // A representative uid cell -> non-negative integer, or null when absent/non-integer. A
 // hotkey-identified setter may carry no uid, so this stays nullable.
-function toUid(value) {
+function toUid(value: unknown): number | null {
   if (typeof value === "number") {
     return Number.isInteger(value) && value >= 0 ? value : null;
   }
@@ -60,13 +66,13 @@ function toUid(value) {
 
 // A representative hotkey cell -> non-empty string, or null when absent/blank (a uid-only
 // setter has no hotkey).
-function toHotkey(value) {
+function toHotkey(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
 // Newest/oldest epoch-ms observed_at -> ISO, or null when not finite/absent. Guards the JS
 // Date range so a finite but out-of-range epoch cannot throw, mirroring the sibling routes.
-function toIso(value) {
+function toIso(value: unknown): string | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -80,11 +86,11 @@ function toIso(value) {
 // setter's share is its count over the subnet total, null when the total is zero (no rows).
 // Null-safe: null/absent inputs yield the schema-stable empty card.
 export function buildSubnetWeightSetters(
-  rows,
-  totals,
-  netuid,
-  { window } = {},
-) {
+  rows: Row[] | null | undefined,
+  totals: Row | null | undefined,
+  netuid: unknown,
+  { window }: { window?: string } = {},
+): Row {
   const list = Array.isArray(rows) ? rows : [];
   const totalSets = toCount(totals?.weight_sets);
   const setters = list.map((row) => {
@@ -117,10 +123,10 @@ export function buildSubnetWeightSetters(
 // the subnet-wide totals (count + true distinct setters + newest observed_at, matching
 // /weights). Cold/absent store -> the schema-stable empty card.
 export async function loadSubnetWeightSetters(
-  d1,
-  netuid,
-  { windowLabel, windowDays } = {},
-) {
+  d1: D1Runner,
+  netuid: number,
+  { windowLabel, windowDays }: { windowLabel?: string; windowDays: number },
+): Promise<Row> {
   const cutoff = Date.now() - windowDays * DAY_MS;
   const rows = await d1(
     "SELECT MAX(hotkey) AS hotkey, MAX(uid) AS uid, COUNT(*) AS weight_sets, " +

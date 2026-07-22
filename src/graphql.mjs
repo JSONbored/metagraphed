@@ -133,7 +133,7 @@ import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
-} from "./subnet-weight-setters.mjs";
+} from "./subnet-weight-setters.ts";
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,
