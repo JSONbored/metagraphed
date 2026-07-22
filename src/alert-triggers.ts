@@ -200,7 +200,7 @@ const TELEGRAM_CHAT_ID_PATTERN = /^(-?\d{1,15}|@[A-Za-z0-9_]{5,32})$/;
 
 // Discord incoming-webhook URLs have one fixed, well-known shape. Allowlisting
 // the exact host + path shape (matching this repo's own icon-proxy
-// aggregator-only precedent, workers/icon-proxy.mjs) is safer than a generic
+// aggregator-only precedent, workers/icon-proxy.ts) is safer than a generic
 // "is this URL public" SSRF check: alertmanager-discord-style relays exist
 // specifically because Discord's OWN webhook endpoint is the only fetch
 // target this channel ever needs, so there is no legitimate reason to accept

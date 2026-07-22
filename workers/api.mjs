@@ -283,7 +283,7 @@ import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.ts";
 import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.mjs";
-import { handleIconProxy } from "../src/icon-proxy.mjs";
+import { handleIconProxy } from "../src/icon-proxy.ts";
 import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
   handleAuthorizeRequest,
@@ -1804,7 +1804,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // Brand-icon favicon proxy (binary, not a JSON contract route). Implements the
   // icon-proxy contract consumed by metagraphed-ui <BrandIcon>; SSRF-safe (fetches
-  // only fixed favicon services) + R2-cached. See src/icon-proxy.mjs.
+  // only fixed favicon services) + R2-cached. See src/icon-proxy.ts.
   if (url.pathname === "/api/v1/icon") {
     return handleIconProxy(request, env, url, { readArtifact });
   }

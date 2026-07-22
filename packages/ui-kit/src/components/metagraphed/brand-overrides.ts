@@ -45,7 +45,7 @@ export interface BrandOverrideLookup {
 
 /**
  * Public proxy base URL. Defaults to the production backend favicon proxy
- * (src/icon-proxy.mjs in metagraphed) so brand icons resolve out-of-the-box;
+ * (src/icon-proxy.ts in metagraphed) so brand icons resolve out-of-the-box;
  * override with VITE_ICON_PROXY_URL for local/staging. Read defensively
  * (not `import.meta.env` directly) -- unlike apps/ui, this package doesn't
  * assume its consumer is Vite, and `import.meta.env` isn't universally

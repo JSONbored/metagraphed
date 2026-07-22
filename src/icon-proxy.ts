@@ -17,6 +17,8 @@
 // direct /favicon.ico). Those add an SSRF surface for marginal gain — aggregators are
 // often bot-blocked from Worker egress anyway, and the UI's GitHub-avatar fallback
 // (BrandIcon repoUrl) is the real icon source for most subnets.
+import type { StorageReadResult } from "../workers/storage.ts";
+
 const ICON_CACHE_PREFIX = "icon-cache";
 const MAX_SIZE = 256;
 const DEFAULT_SIZE = 64;
@@ -36,7 +38,7 @@ const BLOCKED_TLDS = new Set(["localhost", "local", "internal"]);
 const BROWSER_UA =
   "Mozilla/5.0 (compatible; MetagraphedIconBot/1.0; +https://metagraph.sh)";
 
-function normalizeHost(input) {
+function normalizeHost(input: unknown): string | null {
   const host = String(input ?? "")
     .trim()
     .toLowerCase()
@@ -63,13 +65,13 @@ function normalizeHost(input) {
   return ok ? host : null;
 }
 
-function clampSize(input) {
+function clampSize(input: unknown): number {
   const n = Number.parseInt(String(input ?? ""), 10);
   if (!Number.isFinite(n)) return DEFAULT_SIZE;
   return Math.max(16, Math.min(n, MAX_SIZE));
 }
 
-function hostFromUrl(value) {
+function hostFromUrl(value: unknown): string | null {
   try {
     const url = new URL(String(value));
     return normalizeHost(url.hostname);
@@ -78,13 +80,16 @@ function hostFromUrl(value) {
   }
 }
 
-function collectHosts(value, hosts = new Set()) {
+function collectHosts(
+  value: unknown,
+  hosts: Set<string> = new Set(),
+): Set<string> {
   if (!value || typeof value !== "object") return hosts;
   if (Array.isArray(value)) {
     for (const item of value) collectHosts(item, hosts);
     return hosts;
   }
-  for (const [key, item] of Object.entries(value)) {
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (
       (key === "url" || key === "base_url" || key === "website") &&
       typeof item === "string"
@@ -98,21 +103,34 @@ function collectHosts(value, hosts = new Set()) {
   return hosts;
 }
 
+interface IconProxyOptions {
+  readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  now?: number;
+}
+
 // In-isolate memo of the derived host allowlist, TTL'd so a newly published
 // provider/subnet host becomes allowed within one interval instead of staying
 // rejected until the isolate recycles. Same {env, value, expiresAt} pattern as
 // the Worker's readHealthMetaKv (#1375); the previous WeakMap had no expiry.
 const ICON_ALLOWLIST_TTL_MS = 300_000; // 5 min
-let allowlistMemo = { env: null, value: null, expiresAt: 0 };
+let allowlistMemo: {
+  env: Env | null;
+  value: Set<string> | null;
+  expiresAt: number;
+} = { env: null, value: null, expiresAt: 0 };
 
-async function iconHostAllowlist(env, options = {}, now = Date.now()) {
+async function iconHostAllowlist(
+  env: Env,
+  options: IconProxyOptions = {},
+  now: number = Date.now(),
+): Promise<Set<string>> {
   const configured = String(env?.METAGRAPH_ICON_ALLOWED_HOSTS || "")
     .split(",")
     .map(normalizeHost)
-    .filter(Boolean);
+    .filter((h): h is string => Boolean(h));
   if (!options.readArtifact) return new Set(configured);
   if (allowlistMemo.env === env && now < allowlistMemo.expiresAt) {
-    return allowlistMemo.value;
+    return allowlistMemo.value as Set<string>;
   }
   const hosts = new Set(configured);
   for (const path of [
@@ -131,7 +149,7 @@ async function iconHostAllowlist(env, options = {}, now = Date.now()) {
   return hosts;
 }
 
-async function boundedArrayBuffer(res) {
+async function boundedArrayBuffer(res: Response): Promise<ArrayBuffer | null> {
   const declared = Number(res.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_ICON_BYTES) return null;
   const reader = res.body?.getReader?.();
@@ -139,7 +157,7 @@ async function boundedArrayBuffer(res) {
     const buf = await res.arrayBuffer();
     return buf.byteLength <= MAX_ICON_BYTES ? buf : null;
   }
-  const chunks = [];
+  const chunks: Uint8Array[] = [];
   let total = 0;
   try {
     while (true) {
@@ -168,26 +186,32 @@ async function boundedArrayBuffer(res) {
 // target. Do NOT add `https://${host}/...` entries here: fetching a registry-controlled
 // host directly is an SSRF surface (operator-controlled / DNS-rebindable) for marginal
 // gain. The UI's GitHub-avatar fallback covers most subnets.
-function faviconSources(host, size) {
+function faviconSources(host: string, size: number): string[] {
   return [
     `https://icons.duckduckgo.com/ip3/${host}.ico`,
     `https://www.google.com/s2/favicons?domain=${host}&sz=${Math.min(size * 2, MAX_SIZE)}`,
   ];
 }
 
-function etagFor(host, size) {
+function etagFor(host: string, size: number): string {
   return `"icon-${host}-${size}"`;
 }
 
 // A HEAD must carry the same status + headers as the GET but no body (mirrors the
 // discovery handler's `request.method === "HEAD" ? null : ...`). We pass the GET's
 // byte length through so HEAD still advertises an accurate content-length.
-function imageResponse(body, contentType, etag, extra = {}, head = false) {
+function imageResponse(
+  body: ArrayBuffer | ReadableStream | null,
+  contentType: string | null | undefined,
+  etag: string,
+  extra: Record<string, string> = {},
+  head = false,
+): Response {
   const byteLength =
     body && typeof body === "object" && "byteLength" in body
-      ? body.byteLength
+      ? (body as ArrayBuffer).byteLength
       : null;
-  const headers = {
+  const headers: Record<string, string> = {
     "content-type": contentType || "image/png",
     "cache-control": CACHE_CONTROL,
     etag,
@@ -200,7 +224,7 @@ function imageResponse(body, contentType, etag, extra = {}, head = false) {
   return new Response(head ? null : body, { status: 200, headers });
 }
 
-function notFound(cacheControl = NEGATIVE_CACHE_STABLE) {
+function notFound(cacheControl: string = NEGATIVE_CACHE_STABLE): Response {
   return new Response(null, {
     status: 404,
     headers: {
@@ -210,7 +234,12 @@ function notFound(cacheControl = NEGATIVE_CACHE_STABLE) {
   });
 }
 
-export async function handleIconProxy(request, env, url, options = {}) {
+export async function handleIconProxy(
+  request: Request,
+  env: Env,
+  url: URL,
+  options: IconProxyOptions = {},
+): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("method not allowed", {
       status: 405,
@@ -256,14 +285,14 @@ export async function handleIconProxy(request, env, url, options = {}) {
       const cached = await bucket.get(cacheKey);
       if (cached) {
         const ct = cached.httpMetadata?.contentType || "image/png";
-        const extra = { "x-icon-cache": "hit" };
+        const extra: Record<string, string> = { "x-icon-cache": "hit" };
         if (isHead) {
           if (typeof cached.size === "number")
             extra["content-length"] = String(cached.size);
-          await cached.body?.cancel?.();
+          await (cached.body as ReadableStream | undefined)?.cancel?.();
           return imageResponse(null, ct, etag, extra, true);
         }
-        return imageResponse(cached.body, ct, etag, extra);
+        return imageResponse(cached.body as ReadableStream, ct, etag, extra);
       }
     } catch {
       // fall through to live resolution
