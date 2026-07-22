@@ -40,6 +40,12 @@ export default tseslint.config(
       "packages/*/node_modules/**",
       "packages/*/dist/**",
       "packages/*/src/metagraphed-*.ts",
+      // Isolated agent worktrees live under .claude/worktrees/** — each is a
+      // full nested checkout that can be mid-edit or on a different branch
+      // entirely, so a plain `eslint .` recursive scan picks it up and can
+      // fail on files that don't exist yet in that worktree's working tree.
+      // Not application source; never meant to be linted from the root config.
+      ".claude/**",
       // apps/ui has its own eslint.config.js scoped to its own React/TS setup —
       // this repo's root config has no TSX/JSX parser wired in and would just
       // error on syntax it can't parse, not meaningfully lint it.
