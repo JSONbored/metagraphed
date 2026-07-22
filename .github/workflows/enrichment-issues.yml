@@ -2,7 +2,7 @@ name: Enrichment Issues
 
 # Tops up the contributor-workable "Enrich SN<n>" issue buffer from the live
 # enrichment queue (registry/subnets/**), deduped against issues already open.
-# Previously only ever ran when a maintainer invoked scripts/enrichment-issues.mjs
+# Previously only ever ran when a maintainer invoked scripts/enrichment-issues.ts
 # by hand, which let the buffer go stale for 6 straight days (#5153) with every
 # open Enrich-SN issue pointing at a since-closed tracker (#5152). Scheduling it
 # keeps the contributor flywheel fed without a manual trigger each time.
@@ -53,7 +53,7 @@ jobs:
       - name: Generate enrichment issues
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/enrichment-issues.mjs --write | tee enrichment-run.log
+        run: node scripts/enrichment-issues.ts --write | tee enrichment-run.log
 
       - name: Job summary
         run: |

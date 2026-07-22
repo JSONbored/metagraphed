@@ -203,7 +203,7 @@ export function netuidFromEvidenceSubject(subject) {
  * how endpoint-ops-brief.ts came to document `--prefix latest/` for a script
  * that only reads `--prefix=` (#6365).
  *
- * Accepting both is what enrichment-issues.mjs's `getOpt` already does; this is
+ * Accepting both is what enrichment-issues.ts's `getOpt` already does; this is
  * that behaviour, shared and unit-tested.
  *
  * A following token starting with `--` is treated as the next flag rather than

@@ -3,9 +3,9 @@
 // tracker. This is the scalable home for the gittensor-farmer work surface —
 // pull the live gaps, never hardcode (mirrors the #427 epic + CONTRIBUTING).
 //
-//   node scripts/enrichment-issues.mjs --dry-run            # default: print plan
-//   node scripts/enrichment-issues.mjs --write --limit 20   # create up to 20
-//   node scripts/enrichment-issues.mjs --kinds openapi,subnet-api --limit 15
+//   node scripts/enrichment-issues.ts --dry-run            # default: print plan
+//   node scripts/enrichment-issues.ts --write --limit 20   # create up to 20
+//   node scripts/enrichment-issues.ts --kinds openapi,subnet-api --limit 15
 //
 // --write shells out to `gh issue create` (needs gh auth). Each issue mirrors
 // the established format: title "Enrich SN<n> <name> — add <kinds>", body links
@@ -13,10 +13,12 @@
 // good first issue + help wanted, and references the #427 tracker.
 import { execFileSync } from "node:child_process";
 
+type Row = Record<string, unknown>;
+
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
 const dryRun = !write;
-const getOpt = (name, fallback) => {
+const getOpt = (name: string, fallback: string): string => {
   const hit = [...args].find((a) => a.startsWith(`${name}=`));
   if (hit) return hit.slice(name.length + 1);
   const idx = process.argv.indexOf(name);
@@ -52,7 +54,7 @@ const VALUE_PRIORITY = [
 ];
 
 // Human phrasing + the surface:add --kind value for each gap kind.
-const KIND_LABEL = {
+const KIND_LABEL: Record<string, string> = {
   "source-repo": "source repository",
   website: "official website",
   docs: "documentation",
@@ -63,12 +65,12 @@ const KIND_LABEL = {
   sdk: "SDK",
 };
 
-function formatMarkdownValue(value) {
+function formatMarkdownValue(value: unknown): string {
   const markdownCharacters = new Set("\\&<>{}[]()#*_`|.!+-");
   let safeValue = "";
 
   for (const char of String(value ?? "")) {
-    const codePoint = char.codePointAt(0);
+    const codePoint = char.codePointAt(0) as number;
     if (char === "\r") {
       safeValue += "\\r";
     } else if (char === "\n") {
@@ -76,7 +78,7 @@ function formatMarkdownValue(value) {
     } else if (char === "\t") {
       safeValue += "\\t";
     } else if (char === "@") {
-      safeValue += "@\u200b";
+      safeValue += "@​";
     } else if (codePoint < 0x20 || codePoint === 0x7f) {
       safeValue += `\\u${codePoint.toString(16).padStart(4, "0")}`;
     } else if (markdownCharacters.has(char)) {
@@ -89,14 +91,17 @@ function formatMarkdownValue(value) {
   return safeValue;
 }
 
-function formatTitleValue(value, { maxLength = 120 } = {}) {
+function formatTitleValue(
+  value: unknown,
+  { maxLength = 120 }: { maxLength?: number } = {},
+): string {
   return formatMarkdownValue(value)
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
 }
 
-async function fetchJson(path) {
+async function fetchJson(path: string): Promise<Row> {
   const res = await fetch(`${API_BASE}${path}`);
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.json();
@@ -104,7 +109,7 @@ async function fetchJson(path) {
 
 // netuids that already have an open "Enrich SN<n>" issue — skip them so we never
 // pile a second task on a subnet the tracker already covers.
-function coveredNetuids() {
+function coveredNetuids(): Set<number> {
   try {
     const out = execFileSync(
       "gh",
@@ -122,7 +127,7 @@ function coveredNetuids() {
       ],
       { encoding: "utf8" },
     );
-    const covered = new Set();
+    const covered = new Set<number>();
     for (const title of out.split("\n")) {
       const m = /Enrich SN(\d+)\b/.exec(title);
       if (m) covered.add(Number(m[1]));
@@ -130,13 +135,13 @@ function coveredNetuids() {
     return covered;
   } catch (error) {
     console.warn(
-      `warning: could not read open issues for dedup (${error.message}); proceeding WITHOUT dedup.`,
+      `warning: could not read open issues for dedup (${(error as Error).message}); proceeding WITHOUT dedup.`,
     );
     return new Set();
   }
 }
 
-function issueBody(netuid, name, kinds) {
+function issueBody(netuid: number, name: unknown, kinds: string[]): string {
   const kindList = kinds.map((k) => KIND_LABEL[k] || k).join(", ");
   const primary = kinds[0];
   return `Part of #${TRACKER}.
@@ -160,17 +165,26 @@ Open a PR touching **exactly one** \`registry/subnets/<slug>.json\` file — app
 **Rules:** a real \`url\` that resolves · a \`source_url\` that proves it's official · one file · no generated artifacts · \`public_safe: true\` · \`auth_required: false\`. Full guide: [CONTRIBUTING → Community submissions](https://github.com/JSONbored/metagraphed/blob/main/CONTRIBUTING.md#community-submissions).`;
 }
 
+interface PlannedIssue {
+  netuid: number;
+  name: unknown;
+  kinds: string[];
+  title: string;
+}
+
 const queue =
-  (await fetchJson(`/api/v1/review/enrichment-queue?limit=128`)).data?.queue ||
-  [];
+  ((
+    (await fetchJson(`/api/v1/review/enrichment-queue?limit=128`)).data as
+      Row | undefined
+  )?.queue as Row[] | undefined) || [];
 const covered = coveredNetuids();
 
-const planned = [];
+const planned: PlannedIssue[] = [];
 for (const entry of queue) {
   if (planned.length >= LIMIT) break;
-  const netuid = entry.netuid;
+  const netuid = entry.netuid as number;
   if (covered.has(netuid)) continue;
-  const missing = (entry.missing_kinds || [])
+  const missing = ((entry.missing_kinds as string[] | undefined) || [])
     .filter((k) => KINDS.includes(k))
     // Lead with the highest-value surface so the surface:add command targets
     // it: a callable API + its spec matter more to agents than artifacts/streams.
@@ -231,7 +245,7 @@ if (dryRun) {
       created += 1;
       console.log(`created: ${url}`);
     } catch (error) {
-      console.error(`failed SN${p.netuid}: ${error.message}`);
+      console.error(`failed SN${p.netuid}: ${(error as Error).message}`);
     }
   }
   console.log(`\nCreated ${created}/${planned.length} enrichment issues.`);
