@@ -6,11 +6,13 @@
 // rendering (its per-repo data-fetch approach inspired this, but the visual
 // design here is our own, matching apps/ui/src/styles.css).
 //
-// Usage: node scripts/gittensor-impact-card.mjs <owner/repo> <out-file.svg>
+// Usage: node scripts/gittensor-impact-card.ts <owner/repo> <out-file.svg>
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+
+type Row = Record<string, unknown>;
 
 const WEEKS = 12;
 const THEME = {
@@ -27,7 +29,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const repoIconPath = path.join(repoRoot, "apps/ui/public/favicon.svg");
 
-function compact(n) {
+function compact(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
   if (n >= 1000) return (n / 1000).toFixed(0) + "k";
   return String(n);
@@ -35,7 +37,7 @@ function compact(n) {
 
 // api.gittensor.io values (and the repo name) end up as SVG <text> content,
 // so escape XML special chars rather than trust they're clean numbers/strings.
-function escapeXml(value) {
+function escapeXml(value: unknown): string {
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -44,7 +46,7 @@ function escapeXml(value) {
     .replace(/'/g, "&#x27;");
 }
 
-async function fetchJson(url) {
+async function fetchJson(url: string): Promise<Row> {
   const res = await fetch(url, {
     headers: { "User-Agent": "gittensor-impact-card/1.0" },
   });
@@ -52,24 +54,43 @@ async function fetchJson(url) {
   return res.json();
 }
 
-function bucketWeekly(prs, now) {
+interface Pr {
+  mergedAt: string;
+  additions?: number;
+  deletions?: number;
+  author: string;
+}
+
+interface Buckets {
+  prBuckets: number[];
+  locBuckets: number[];
+  contributorBuckets: number[];
+}
+
+function bucketWeekly(prs: Pr[], now: Date): Buckets {
   const weekMs = 7 * 24 * 60 * 60 * 1000;
   const bucketStart = new Date(now.getTime() - WEEKS * weekMs);
   const prBuckets = Array(WEEKS).fill(0);
   const locBuckets = Array(WEEKS).fill(0);
-  const seenByBucket = Array.from({ length: WEEKS }, () => new Set());
+  const seenByBucket: Set<string>[] = Array.from(
+    { length: WEEKS },
+    () => new Set(),
+  );
   const contributorBuckets = Array(WEEKS).fill(0);
 
   for (const pr of prs) {
     const t = new Date(pr.mergedAt);
     if (t < bucketStart || t > now) continue;
-    const idx = Math.min(WEEKS - 1, Math.floor((t - bucketStart) / weekMs));
+    const idx = Math.min(
+      WEEKS - 1,
+      Math.floor((t.getTime() - bucketStart.getTime()) / weekMs),
+    );
     prBuckets[idx] += 1;
     locBuckets[idx] += (pr.additions || 0) + (pr.deletions || 0);
     seenByBucket[idx].add(pr.author);
   }
 
-  const seenSoFar = new Set();
+  const seenSoFar = new Set<string>();
   for (let i = 0; i < WEEKS; i++) {
     for (const a of seenByBucket[i]) seenSoFar.add(a);
     contributorBuckets[i] = seenSoFar.size;
@@ -77,13 +98,22 @@ function bucketWeekly(prs, now) {
   return { prBuckets, locBuckets, contributorBuckets };
 }
 
-function sparkline(x, y, w, h, values, mutedColor, accentColor, cardBg) {
+function sparkline(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  values: number[],
+  mutedColor: string,
+  accentColor: string,
+  cardBg: string,
+): string {
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = max - min || 1;
   const n = values.length;
   const stepX = w / (n - 1);
-  const pts = values.map((v, i) => [
+  const pts = values.map((v, i): [number, number] => [
     x + i * stepX,
     y + h - ((v - min) / range) * h,
   ]);
@@ -100,14 +130,59 @@ function sparkline(x, y, w, h, values, mutedColor, accentColor, cardBg) {
 <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="4" fill="${accentColor}"/>`;
 }
 
-function meter(x, y, w, h, value, max, accentColor, trackColor) {
+function meter(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  value: number,
+  max: number,
+  accentColor: string,
+  trackColor: string,
+): string {
   const fillW = Math.max(h, Math.min(value / max, 1) * w);
   return `
 <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${trackColor}"/>
 <rect x="${x}" y="${y}" width="${fillW.toFixed(1)}" height="${h}" rx="${h / 2}" fill="${accentColor}"/>`;
 }
 
-function render({ repo, impact, buckets, gtLogoB64, repoIconB64 }) {
+interface Impact {
+  totalPRs: number;
+  totalContributors: number;
+  totalLinesChanged: number;
+  emissionShare: number;
+}
+
+interface RenderOptions {
+  repo: string;
+  impact: Impact;
+  buckets: Buckets;
+  gtLogoB64: string;
+  repoIconB64: string;
+}
+
+type Stat =
+  | {
+      type: "sparkline";
+      series: number[];
+      value: string;
+      label: string;
+    }
+  | {
+      type: "meter";
+      raw: number;
+      max: number;
+      value: string;
+      label: string;
+    };
+
+function render({
+  repo,
+  impact,
+  buckets,
+  gtLogoB64,
+  repoIconB64,
+}: RenderOptions): string {
   const { cardBg, fg, muted, accent, accentTrack, border, radius } = THEME;
   const W = 1200,
     H = 420;
@@ -121,7 +196,7 @@ function render({ repo, impact, buckets, gtLogoB64, repoIconB64 }) {
   const sparkH = 56;
   const sparkY = 150;
 
-  const stats = [
+  const stats: Stat[] = [
     {
       type: "sparkline",
       series: buckets.prBuckets,
@@ -199,11 +274,11 @@ ${statsSvg}
 </svg>`;
 }
 
-async function main() {
+async function main(): Promise<void> {
   const [repo, outFile] = process.argv.slice(2);
   if (!repo || !outFile) {
     console.error(
-      "Usage: node scripts/gittensor-impact-card.mjs <owner/repo> <out-file.svg>",
+      "Usage: node scripts/gittensor-impact-card.ts <owner/repo> <out-file.svg>",
     );
     process.exit(1);
   }
@@ -213,13 +288,19 @@ async function main() {
     fetchJson(`https://api.gittensor.io/repos/${encoded}/prs`),
     fetch("https://gittensor.io/gt-logo.svg").then((r) => r.text()),
   ]);
-  const buckets = bucketWeekly(prs, new Date());
+  const buckets = bucketWeekly((prs as unknown as Pr[]) || [], new Date());
   const gtLogoB64 = Buffer.from(gtLogoSvg).toString("base64");
   const repoIconB64 = Buffer.from(readFileSync(repoIconPath)).toString(
     "base64",
   );
 
-  const svg = render({ repo, impact, buckets, gtLogoB64, repoIconB64 });
+  const svg = render({
+    repo,
+    impact: impact as unknown as Impact,
+    buckets,
+    gtLogoB64,
+    repoIconB64,
+  });
   writeFileSync(outFile, svg);
   console.log(`Wrote ${outFile} (${svg.length} bytes)`);
 }
