@@ -9,7 +9,7 @@ vi.mock("../scripts/lib.mjs", async (importOriginal) => {
   };
 });
 
-const { classify } = await import("../scripts/discover-testnet-surfaces.mjs");
+const { classify } = await import("../scripts/discover-testnet-surfaces.ts");
 
 const subnet = {
   netuid: 99,

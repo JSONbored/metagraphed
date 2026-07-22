@@ -5,7 +5,7 @@
 // container runtime -- see those entrypoints' own headers), plus a couple of
 // Cloudflare-publish-side build steps that fit the same "short-lived batch
 // script" shape. Used by refresh-economics.mjs, refresh-native-snapshot.mjs,
-// backfill-registry-postgres.ts, discover-testnet-surfaces.mjs,
+// backfill-registry-postgres.ts, discover-testnet-surfaces.ts,
 // export-parquet.mjs, reconcile-neurons.mjs, sync-registry-to-postgres.mjs,
 // and refresh-og-image.mjs so all eight report to the same consolidated
 // `metagraphed` Sentry project with a consistent `component` tag --
@@ -108,7 +108,7 @@ export async function endSessionAndFlush() {
 }
 
 // For the one script with its own explicit top-level `.catch()`
-// (discover-testnet-surfaces.mjs): Node stops considering a promise
+// (discover-testnet-surfaces.ts): Node stops considering a promise
 // "unhandled" once something calls .catch() on it, so that script calls
 // this directly instead of relying on the uncaughtException/
 // unhandledRejection handlers above.

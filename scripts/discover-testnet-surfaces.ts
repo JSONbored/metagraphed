@@ -11,7 +11,7 @@
 // is the signal to add it as a curated testnet surface. SSRF-guarded via
 // isUnsafeResolvedUrl, bounded concurrency + timeouts so a hung host can't wedge.
 //
-// Usage: node scripts/discover-testnet-surfaces.mjs [--out path] [--json]
+// Usage: node scripts/discover-testnet-surfaces.ts [--out path] [--json]
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -29,6 +29,8 @@ import {
   captureFatalAndExit,
 } from "./observability.mjs";
 
+type Row = Record<string, unknown>;
+
 const SNAPSHOT = path.join(repoRoot, "registry/native/test-subnets.json");
 const PROBE_TIMEOUT_MS = 8000;
 const CONCURRENCY = 12;
@@ -44,13 +46,19 @@ const API_PATHS = [
   "/docs/openapi.json",
 ];
 
-async function readBodySnippet(res) {
+interface FetchResult {
+  status: number;
+  contentType: string;
+  body: string;
+}
+
+async function readBodySnippet(res: Response): Promise<string> {
   if (!res.body) {
     return "";
   }
 
   const reader = res.body.getReader();
-  const chunks = [];
+  const chunks: Uint8Array[] = [];
   let bytesRead = 0;
   try {
     while (bytesRead < MAX_BODY_BYTES) {
@@ -72,7 +80,7 @@ async function readBodySnippet(res) {
   return new TextDecoder().decode(Buffer.concat(chunks)).toLowerCase();
 }
 
-async function safeFetch(url, redirectCount = 0) {
+async function safeFetch(url: string, redirectCount = 0): Promise<FetchResult> {
   // SSRF guard: refuse private/loopback/rebinding targets before every request,
   // including each manually-followed redirect target.
   if (await isUnsafeResolvedUrl(url)) {
@@ -102,11 +110,15 @@ async function safeFetch(url, redirectCount = 0) {
     const body = await readBodySnippet(res);
     return { status: res.status, contentType, body };
   } catch (error) {
-    return { status: 0, contentType: error?.name || "FetchError", body: "" };
+    return {
+      status: 0,
+      contentType: (error as Error)?.name || "FetchError",
+      body: "",
+    };
   }
 }
 
-function looksLikeOpenApi(body) {
+function looksLikeOpenApi(body: string): boolean {
   return (
     body.includes('"openapi"') ||
     body.includes('"swagger"') ||
@@ -117,7 +129,7 @@ function looksLikeOpenApi(body) {
 // Parse the host rather than substring-matching "github.com" (which would also
 // match e.g. https://evil.com/?x=github.com). Returns "" for non-URL inputs so
 // they fall through to probing.
-function repoHostname(rawUrl) {
+function repoHostname(rawUrl: string): string {
   try {
     return new URL(
       rawUrl.includes("://") ? rawUrl : `https://${rawUrl}`,
@@ -129,7 +141,13 @@ function repoHostname(rawUrl) {
   }
 }
 
-async function classify(subnet) {
+interface Subnet {
+  netuid: unknown;
+  name: unknown;
+  url: string;
+}
+
+async function classify(subnet: Subnet): Promise<Row> {
   const url = subnet.url;
   const host = repoHostname(url);
   if (host === "github.com" || host.endsWith(".github.com")) {
@@ -183,8 +201,12 @@ async function classify(subnet) {
   return { ...subnet, classification, callable: false, status: root.status };
 }
 
-async function mapLimit(items, limit, fn) {
-  const out = new Array(items.length);
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
   let cursor = 0;
   async function worker() {
     while (cursor < items.length) {
@@ -198,27 +220,30 @@ async function mapLimit(items, limit, fn) {
   return out;
 }
 
-async function main() {
+async function main(): Promise<Row> {
   const args = process.argv.slice(2);
   const outIndex = args.indexOf("--out");
   const outPath = outIndex >= 0 ? args[outIndex + 1] : null;
   const asJson = args.includes("--json");
 
-  const snapshot = await readJson(SNAPSHOT);
-  const targets = (snapshot.subnets || [])
+  const snapshot: Row = await readJson(SNAPSHOT);
+  const targets = ((snapshot.subnets as Row[]) || [])
     .map((s) => ({
       netuid: s.netuid,
       name: s.name,
-      url: s.chain_identity?.subnet_url || null,
+      url: (s.chain_identity as Row | undefined)?.subnet_url || null,
     }))
-    .filter((s) => typeof s.url === "string" && /^https?:\/\//.test(s.url));
+    .filter(
+      (s): s is Subnet =>
+        typeof s.url === "string" && /^https?:\/\//.test(s.url),
+    );
 
   const results = await mapLimit(targets, CONCURRENCY, classify);
   const callable = results.filter((r) => r.callable);
-  const byClassification = {};
+  const byClassification: Record<string, number> = {};
   for (const r of results) {
-    byClassification[r.classification] =
-      (byClassification[r.classification] || 0) + 1;
+    const key = r.classification as string;
+    byClassification[key] = (byClassification[key] || 0) + 1;
   }
 
   const report = {
@@ -231,8 +256,12 @@ async function main() {
       callable_count: callable.length,
       by_classification: byClassification,
     },
-    callable_apis: callable.sort((a, b) => a.netuid - b.netuid),
-    results: results.sort((a, b) => a.netuid - b.netuid),
+    callable_apis: callable.sort(
+      (a, b) => (a.netuid as number) - (b.netuid as number),
+    ),
+    results: results.sort(
+      (a, b) => (a.netuid as number) - (b.netuid as number),
+    ),
   };
 
   if (outPath) {
@@ -276,7 +305,9 @@ if (
       await endSessionAndFlush();
     })
     .catch(async (error) => {
-      console.error(`testnet discovery failed: ${error?.message || error}`);
+      console.error(
+        `testnet discovery failed: ${(error as Error)?.message || error}`,
+      );
       // Explicit capture required here (not left to @sentry/node's default
       // OnUnhandledRejection integration, see observability.mjs's own
       // comment): Node stops considering a promise "unhandled" once
