@@ -49,7 +49,7 @@ import { loadProviderEndpointsList } from "./provider-endpoints-mcp.ts";
 import { loadAdapterCandidatesList } from "./adapter-candidates-mcp.ts";
 import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.ts";
 import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.ts";
-import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.mjs";
+import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.ts";
 import { loadReviewGapsList } from "./review-gaps-mcp.ts";
 import { loadProfileCompletenessList } from "./profile-completeness-mcp.ts";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that

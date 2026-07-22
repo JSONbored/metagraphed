@@ -117,7 +117,7 @@ import {
   LIST_REVIEW_ENRICHMENT_TARGETS_MCP_TOOL,
   LIST_REVIEW_ENRICHMENT_TARGETS_OUTPUT_SCHEMA,
   loadReviewEnrichmentTargetsList,
-} from "./review-enrichment-targets-mcp.mjs";
+} from "./review-enrichment-targets-mcp.ts";
 import {
   LIST_PROFILE_COMPLETENESS_INSTRUCTIONS,
   LIST_PROFILE_COMPLETENESS_MCP_TOOL,
