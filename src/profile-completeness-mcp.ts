@@ -3,7 +3,8 @@
 // transforms as the REST route over the baked
 // /metagraph/review/profile-completeness.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const PROFILE_COMPLETENESS_ARTIFACT =
@@ -17,14 +18,25 @@ const CONFIDENCE_LEVELS = ["low", "medium", "high"];
 const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"];
 const NATIVE_NAME_QUALITIES = ["chain", "placeholder", "empty"];
 
-export function profileCompletenessMcpError(code, message) {
-  const error = new Error(message);
+export interface ProfileCompletenessMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function profileCompletenessMcpError(
+  code: string,
+  message: string,
+): ProfileCompletenessMcpError {
+  const error = new Error(message) as ProfileCompletenessMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -36,7 +48,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -48,22 +64,25 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function clampLimit(value, fallback, max) {
+function clampLimit(value: unknown, fallback: number, max: number): number {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
 }
 
-export function profileCompletenessQueryUrl(args) {
+export function profileCompletenessQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/review/profile-completeness");
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
       throw profileCompletenessMcpError(
         "invalid_params",
         "netuid must be a non-negative integer.",
       );
     }
-    url.searchParams.set("netuid", String(args.netuid));
+    url.searchParams.set("netuid", String(netuid));
   }
   const profileLevel = optionalEnum(args, "profile_level", PROFILE_LEVELS);
   if (profileLevel) url.searchParams.set("profile_level", profileLevel);
@@ -97,27 +116,50 @@ export function profileCompletenessQueryUrl(args) {
     url.searchParams.set("limit", String(clampLimit(args.limit, 50, 100)));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw profileCompletenessMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
+export interface ProfileCompletenessListResult {
+  generated_at: unknown;
+  notes: unknown;
+  summary: unknown;
+  profiles: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
 export async function loadProfileCompletenessList(
-  ctx,
-  args,
-  { readArtifact } = {},
-) {
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<ProfileCompletenessListResult> {
   const queryUrl = profileCompletenessQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, PROFILE_COMPLETENESS_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw profileCompletenessMcpError(
         "not_found",
@@ -137,7 +179,7 @@ export async function loadProfileCompletenessList(
     );
   }
   const transformed = applyQueryFilters(
-    blob,
+    blob as Record<string, unknown>,
     queryUrl,
     "profile-completeness",
     [],
@@ -148,9 +190,10 @@ export async function loadProfileCompletenessList(
       transformed.error.message,
     );
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.profiles) ? data.profiles : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows = Array.isArray(data.profiles) ? (data.profiles as Row[]) : [];
   const rowLen = rows.length;
   return {
     generated_at: data.generated_at ?? null,

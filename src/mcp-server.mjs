@@ -123,7 +123,7 @@ import {
   LIST_PROFILE_COMPLETENESS_MCP_TOOL,
   LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
   loadProfileCompletenessList,
-} from "./profile-completeness-mcp.mjs";
+} from "./profile-completeness-mcp.ts";
 import {
   LIST_SUBNET_ENDPOINTS_INSTRUCTIONS,
   LIST_SUBNET_ENDPOINTS_MCP_TOOL,

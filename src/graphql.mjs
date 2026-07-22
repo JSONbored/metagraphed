@@ -51,7 +51,7 @@ import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.ts";
 import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.ts";
 import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.mjs";
 import { loadReviewGapsList } from "./review-gaps-mcp.ts";
-import { loadProfileCompletenessList } from "./profile-completeness-mcp.mjs";
+import { loadProfileCompletenessList } from "./profile-completeness-mcp.ts";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.ts";
