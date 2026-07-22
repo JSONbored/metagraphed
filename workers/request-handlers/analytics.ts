@@ -41,7 +41,7 @@ import {
   tryPostgresTier,
 } from "../postgres-tier.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
-import { formatGlobalIncidents } from "../../src/health-serving.mjs";
+import { formatGlobalIncidents } from "../../src/health-serving.ts";
 import {
   applyQueryFilters,
   listQueryParamNames,

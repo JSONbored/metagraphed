@@ -10,7 +10,7 @@
 import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
-import { overlayRpcPoolEligibility } from "./health-serving.mjs";
+import { overlayRpcPoolEligibility } from "./health-serving.ts";
 
 export const RPC_POOLS_ARTIFACT = "/metagraph/rpc/pools.json";
 

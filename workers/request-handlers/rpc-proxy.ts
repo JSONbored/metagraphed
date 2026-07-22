@@ -54,7 +54,7 @@ import {
   workerWebSocketConnector,
 } from "../../src/health-prober.mjs";
 import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.mjs";
-import { overlayRpcPoolEligibility } from "../../src/health-serving.mjs";
+import { overlayRpcPoolEligibility } from "../../src/health-serving.ts";
 import { loadRpcUsage } from "../../src/rpc-usage-loader.mjs";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import {
@@ -565,7 +565,10 @@ export async function handleRpcProxyRequest(
   // the static pool when the live snapshot is cold (always the case for the static
   // testnet pool, which is intentionally not probe-derived).
   const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
-  const pool = overlayRpcPoolEligibility(staticPool, liveRpcPool);
+  const pool = overlayRpcPoolEligibility(
+    staticPool as unknown as Record<string, unknown> | undefined,
+    liveRpcPool as Record<string, unknown> | null,
+  ) as RpcPool | null | undefined;
   // startedAt anchors end-to-end proxy latency for the B3 usage telemetry; the
   // recorder is best-effort + async (never adds latency to / fails the call).
   const startedAt = Date.now();

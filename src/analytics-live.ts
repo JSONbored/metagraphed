@@ -12,7 +12,7 @@ import {
   formatPercentiles,
   formatTrends,
   formatUptime,
-} from "./health-serving.mjs";
+} from "./health-serving.ts";
 import {
   ANALYTICS_WINDOWS,
   HEALTH_TREND_WINDOWS,
@@ -223,7 +223,7 @@ export async function loadSubnetUptime(
   }: { window?: string; observedAt?: unknown; now?: string | null } = {},
 ): Promise<unknown> {
   const windowParam = Object.hasOwn(UPTIME_WINDOWS, window) ? window : "90d";
-  // formatUptime (health-serving.mjs, not yet converted) infers its
+  // formatUptime (health-serving.ts, not yet converted) infers its
   // observedAt/now default-param types as exactly `null` from their `= null`
   // defaults -- the untyped-default-parameter inference gap.
   return formatUptime({

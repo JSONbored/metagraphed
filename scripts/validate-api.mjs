@@ -21,7 +21,7 @@ import { buildSubnetMetagraph } from "../src/metagraph-neurons.mjs";
 import { buildSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
 import { buildAccountIdentity } from "../src/account-identity.ts";
 import { buildSubnetIdentityHistory } from "../src/subnet-identity-history.mjs";
-import { formatRpcUsage } from "../src/health-serving.mjs";
+import { formatRpcUsage } from "../src/health-serving.ts";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,

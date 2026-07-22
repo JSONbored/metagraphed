@@ -20,6 +20,8 @@ import {
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 
+type Row = Record<string, unknown>;
+
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated
 // as stale just because the next probe hasn't run yet. 25 min = cadence + a
 // one-missed-run buffer. (KV health:current has no TTL, so this only bounds the
@@ -34,7 +36,10 @@ const D1_HEALTH_FALLBACK_MAX_AGE_MS = 25 * 60 * 1000;
 // Env-overridable.
 const POOL_SUSTAINED_DOWN_FAILURES = Math.max(
   1,
-  Number(globalThis.process?.env?.METAGRAPH_POOL_SUSTAINED_DOWN_FAILURES) || 2,
+  Number(
+    (globalThis as { process?: { env?: Record<string, unknown> } }).process?.env
+      ?.METAGRAPH_POOL_SUSTAINED_DOWN_FAILURES,
+  ) || 2,
 );
 
 const OPERATIONAL_KINDS = new Set([
@@ -46,15 +51,15 @@ const OPERATIONAL_KINDS = new Set([
   "data-artifact",
 ]);
 
-function isBaseLayerEndpoint(kind) {
+function isBaseLayerEndpoint(kind: unknown): boolean {
   return kind === "subtensor-rpc" || kind === "subtensor-wss";
 }
 
-function surfaceLookupKey(row) {
+function surfaceLookupKey(row: Row | null | undefined): unknown {
   return row?.surface_key || row?.surface_id || null;
 }
 
-function addLiveSurfaceRow(map, row) {
+function addLiveSurfaceRow(map: Map<unknown, Row>, row: Row): void {
   const key = surfaceLookupKey(row);
   if (key) map.set(key, row);
   // Fallback for pre-#1005 artifacts/caches that only carry surface_id. Do not
@@ -64,7 +69,10 @@ function addLiveSurfaceRow(map, row) {
   }
 }
 
-function liveRowForSurface(map, surface) {
+function liveRowForSurface(
+  map: Map<unknown, Row>,
+  surface: Row | null | undefined,
+): Row | null {
   return (
     (surface?.surface_key ? map.get(surface.surface_key) : null) ||
     (surface?.surface_id ? map.get(surface.surface_id) : null) ||
@@ -72,8 +80,11 @@ function liveRowForSurface(map, surface) {
   );
 }
 
-function endpointPoolEligibility(endpoint) {
-  const reasons = [];
+function endpointPoolEligibility(endpoint: Row): {
+  eligible: boolean;
+  reasons: string[];
+} {
+  const reasons: string[] = [];
   if (!isBaseLayerEndpoint(endpoint.kind)) {
     reasons.push("not-bittensor-base-layer");
   }
@@ -92,18 +103,23 @@ function endpointPoolEligibility(endpoint) {
   };
 }
 
-function latestIso(values) {
-  let best = null;
+function latestIso(values: unknown[]): string | null {
+  let best: string | null = null;
   for (const value of values) {
-    if (value && (!best || value > best)) best = value;
+    if (value && (!best || (value as string) > best)) best = value as string;
   }
   return best;
 }
 
 // Summarize a set of serving rows ({status, latency_ms, last_checked, last_ok}).
-export function summarizeRows(rows) {
-  const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
-  const latencies = [];
+export function summarizeRows(rows: Row[]): Row {
+  const counts: Record<string, number> = {
+    ok: 0,
+    degraded: 0,
+    failed: 0,
+    unknown: 0,
+  };
+  const latencies: number[] = [];
   for (const row of rows) {
     const status = normalizeProbeStatus(row.status);
     counts[status] += 1;
@@ -129,15 +145,19 @@ export function summarizeRows(rows) {
 // Per-subnet overlay: build the response from fresh live rows only. Static
 // metadata may supply non-operational identity fields, but stale static surface
 // rows are never preserved. Returns null when there is no live snapshot.
-export function overlaySubnetHealth(staticArtifact, liveCurrent, netuid) {
+export function overlaySubnetHealth(
+  staticArtifact: Row | null | undefined,
+  liveCurrent: Row | null | undefined,
+  netuid: unknown,
+): Row | null {
   if (!liveCurrent || !Array.isArray(liveCurrent.surfaces)) return null;
-  const liveBySurface = new Map();
-  for (const row of liveCurrent.surfaces) {
+  const liveBySurface = new Map<unknown, Row>();
+  for (const row of liveCurrent.surfaces as Row[]) {
     if (row.netuid === netuid) addLiveSurfaceRow(liveBySurface, row);
   }
   if (liveBySurface.size === 0) return null;
 
-  const merged = [];
+  const merged: Row[] = [];
   for (const live of new Map(
     [...liveBySurface.values()].map((row) => [surfaceLookupKey(row), row]),
   ).values()) {
@@ -173,7 +193,10 @@ export function overlaySubnetHealth(staticArtifact, liveCurrent, netuid) {
 // Global operational health (fresh): the live per-subnet operational rollup +
 // global counts. Returns null when the snapshot is cold so the caller serves the
 // static summary (and labels the source correctly).
-export function buildGlobalHealth(liveCurrent, staticSummary) {
+export function buildGlobalHealth(
+  liveCurrent: Row | null | undefined,
+  staticSummary: Row | null | undefined,
+): Row | null {
   if (!liveCurrent || !liveCurrent.summary) {
     return null;
   }
@@ -192,13 +215,28 @@ export function buildGlobalHealth(liveCurrent, staticSummary) {
 }
 
 // Per-subnet status for badges (overlaid). Returns {status, ...} or null.
-export function subnetBadgeStatus(liveCurrent, netuid) {
+export function subnetBadgeStatus(
+  liveCurrent: Row | null | undefined,
+  netuid: unknown,
+): Row | null {
   if (!liveCurrent || !Array.isArray(liveCurrent.subnets)) return null;
-  return liveCurrent.subnets.find((entry) => entry.netuid === netuid) || null;
+  return (
+    (liveCurrent.subnets as Row[]).find((entry) => entry.netuid === netuid) ||
+    null
+  );
+}
+
+function sortedRecord(record: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(record).sort(([a], [b]) => a.localeCompare(b)),
+  );
 }
 
 // Overlay live RPC/WSS health onto the static rpc-endpoints artifact.
-export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
+export function mergeRpcEndpoints(
+  staticArtifact: Row | null | undefined,
+  liveRpcPool: Row | null | undefined,
+): Row | null {
   if (
     !staticArtifact ||
     !Array.isArray(staticArtifact.endpoints) ||
@@ -207,8 +245,10 @@ export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
   ) {
     return null;
   }
-  const liveById = new Map(liveRpcPool.endpoints.map((e) => [e.id, e]));
-  const endpoints = staticArtifact.endpoints.map((endpoint) => {
+  const liveById = new Map(
+    (liveRpcPool.endpoints as Row[]).map((e) => [e.id, e]),
+  );
+  const endpoints = (staticArtifact.endpoints as Row[]).map((endpoint) => {
     const live = liveById.get(endpoint.id);
     if (!live) return endpoint;
     return {
@@ -233,10 +273,10 @@ export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
   // sweep still reported stale `degraded` counts from the last static build).
   // `by_kind`/`by_provider`/`endpoint_count` are untouched by the overlay (kind
   // and provider are static-only fields), so those pass through unchanged.
-  const byStatus = {};
+  const byStatus: Record<string, number> = {};
   let archiveSupportedCount = 0;
   for (const endpoint of endpoints) {
-    const status = endpoint.status || "unknown";
+    const status = (endpoint.status as string) || "unknown";
     byStatus[status] = (byStatus[status] || 0) + 1;
     if (endpoint.archive_support === true) archiveSupportedCount += 1;
   }
@@ -246,18 +286,12 @@ export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
     source: "live-cron-prober",
     operational_observed_at: liveRpcPool.last_run_at || null,
     summary: {
-      ...staticArtifact.summary,
+      ...(staticArtifact.summary as Row),
       by_status: sortedRecord(byStatus),
       archive_supported_count: archiveSupportedCount,
     },
     endpoints,
   };
-}
-
-function sortedRecord(record) {
-  return Object.fromEntries(
-    Object.entries(record).sort(([a], [b]) => a.localeCompare(b)),
-  );
 }
 
 // Overlay live RPC health onto the static proxy pool: an endpoint stays eligible
@@ -294,24 +328,29 @@ function sortedRecord(record) {
 // fix; a stale score never excludes an eligible endpoint since
 // weightedPickEndpoint falls back to weight 1 for score<=0, only
 // deprioritises it).
-export function overlayRpcPoolEligibility(pool, liveRpcPool) {
+export function overlayRpcPoolEligibility(
+  pool: Row | null | undefined,
+  liveRpcPool: Row | null | undefined,
+): Row | null | undefined {
   if (!pool || !liveRpcPool || !Array.isArray(liveRpcPool.endpoints)) {
     return pool;
   }
-  const liveById = new Map(liveRpcPool.endpoints.map((e) => [e.id, e]));
+  const liveById = new Map(
+    (liveRpcPool.endpoints as Row[]).map((e) => [e.id, e]),
+  );
   return {
     ...pool,
-    endpoints: (pool.endpoints || []).map((endpoint) => {
+    endpoints: ((pool.endpoints as Row[]) || []).map((endpoint) => {
       const live = liveById.get(endpoint.id);
       if (!live) return endpoint;
-      const refreshed = {
+      const refreshed: Row = {
         ...endpoint,
         status: normalizeProbeStatus(live.status),
         latency_ms: live.latency_ms ?? endpoint.latency_ms,
         latest_block: live.latest_block ?? endpoint.latest_block ?? null,
         health_source: "live-cron-prober",
       };
-      const reasons = [];
+      const reasons: string[] = [];
       if (!isBaseLayerEndpoint(refreshed.kind)) {
         reasons.push("not-bittensor-base-layer");
       }
@@ -326,7 +365,8 @@ export function overlayRpcPoolEligibility(pool, liveRpcPool) {
       }
       if (
         live.status !== "ok" &&
-        (live.consecutive_failures || 0) >= POOL_SUSTAINED_DOWN_FAILURES
+        ((live.consecutive_failures as number) || 0) >=
+          POOL_SUSTAINED_DOWN_FAILURES
       ) {
         reasons.push("sustained-down");
       }
@@ -340,10 +380,13 @@ export function overlayRpcPoolEligibility(pool, liveRpcPool) {
 }
 
 // Set the live health-probe freshness onto the static freshness artifact.
-export function mergeFreshness(staticFreshness, liveMeta) {
+export function mergeFreshness(
+  staticFreshness: Row | null | undefined,
+  liveMeta: Row | null | undefined,
+): Row | null {
   if (!liveMeta || !staticFreshness) return null;
   const sources = Array.isArray(staticFreshness.sources)
-    ? staticFreshness.sources.map((source) =>
+    ? (staticFreshness.sources as Row[]).map((source) =>
         source.id === "surface-health"
           ? {
               ...source,
@@ -360,11 +403,40 @@ export function mergeFreshness(staticFreshness, liveMeta) {
     ...staticFreshness,
     sources,
     summary: {
-      ...staticFreshness.summary,
+      ...(staticFreshness.summary as Row),
       health_probe_as_of: liveMeta.last_run_at,
       operational_probe_as_of: liveMeta.last_run_at,
     },
   };
+}
+
+// --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
+
+// A gap larger than this between consecutive failing checks ends one incident and
+// starts another. Must exceed the probe cadence (15 min) so consecutive failed
+// probes group into a single incident; 30 min = cadence + one missed-run buffer.
+// Used by the gap-island SQL in the incidents handler.
+export const INCIDENT_GAP_MS = 30 * 60 * 1000;
+
+// Minimum consecutive failed probes for a gap-island to count as an incident.
+// A single failed probe that recovers on the next (~15 min later) is transient
+// noise — a momentary timeout / rate-limit / 5xx — not downtime, and it
+// dominated the ledger (~76% of rows were single-sample, zero-duration). This
+// mirrors the Cosmos liveness model: an isolated missed block is tolerated;
+// only sustained misses (MinSignedPerWindow) count as downtime. At 2 (≥ ~4 min
+// sustained) the ledger reflects real dips, not prober flapping.
+export const MIN_INCIDENT_SAMPLES = 2;
+
+function round4(value: unknown): number | null {
+  return value == null ? null : Number(Number(value).toFixed(4));
+}
+function roundInt(value: unknown): number | null {
+  return value == null ? null : Math.round(Number(value));
+}
+function toFiniteOrNull(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 // Format D1 GROUP BY aggregates into a trends payload. `windows` maps a label to
@@ -373,12 +445,20 @@ export function mergeFreshness(staticFreshness, liveMeta) {
 // surface_key and keeps surface_id as the current display alias. Latency is
 // success-only: avg_latency_ms / the p50/p95/p99 tail describe healthy probes,
 // and latency_sample_count says how many backed them (0 ⇒ no healthy reading).
-export function formatTrends({ netuid, observedAt, windows }) {
-  const formatWindow = (rows) => {
+export function formatTrends({
+  netuid,
+  observedAt,
+  windows,
+}: {
+  netuid?: unknown;
+  observedAt?: unknown;
+  windows: Record<string, unknown[]>;
+}): Row {
+  const formatWindow = (rows: Row[]) => {
     let total = 0;
     let okCount = 0;
     let latencySampleTotal = 0;
-    const perSurface = [];
+    const perSurface: Row[] = [];
     for (const row of rows) {
       const rowTotal = Number(row.total) || 0;
       const rowOk = Number(row.ok_count) || 0;
@@ -399,7 +479,9 @@ export function formatTrends({ netuid, observedAt, windows }) {
         },
       });
     }
-    perSurface.sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+    perSurface.sort((a, b) =>
+      (a.surface_id as string).localeCompare(b.surface_id as string),
+    );
     return {
       samples: total,
       uptime_ratio: total ? displayUptimeRatio(okCount / total) : null,
@@ -407,9 +489,9 @@ export function formatTrends({ netuid, observedAt, windows }) {
       surfaces: perSurface,
     };
   };
-  const windowsOut = {};
+  const windowsOut: Record<string, unknown> = {};
   for (const [label, rows] of Object.entries(windows)) {
-    windowsOut[label] = formatWindow(rows);
+    windowsOut[label] = formatWindow(rows as Row[]);
   }
   return {
     schema_version: 1,
@@ -423,9 +505,27 @@ export function formatTrends({ netuid, observedAt, windows }) {
 // Format all-subnet daily aggregates for the matrix UI. This intentionally
 // keeps the bulk contract subnet-level instead of per-surface to bound payload
 // size while still exposing enough data for sparklines and uptime sorting.
-export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
-  const formatWindow = (rows, days) => {
-    const bySubnet = new Map();
+export function formatBulkTrends({
+  observedAt,
+  windows,
+  windowDays = {},
+}: {
+  observedAt?: unknown;
+  windows?: Record<string, unknown[]>;
+  windowDays?: Record<string, unknown>;
+}): Row {
+  const formatWindow = (rows: Row[] | undefined, days: unknown) => {
+    const bySubnet = new Map<
+      number,
+      {
+        netuid: number;
+        samples: number;
+        okCount: number;
+        latencyTotal: number;
+        latencySamples: number;
+        points: Row[];
+      }
+    >();
     for (const row of rows || []) {
       const netuid = Number(row.netuid);
       const date = String(row.date || "");
@@ -440,12 +540,12 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
       const okCount = Math.max(0, Number(row.ok_count) || 0);
       const latencyRaw =
         row.avg_latency_ms == null ? null : Number(row.avg_latency_ms);
-      const avgLatency = Number.isFinite(latencyRaw)
-        ? Math.round(latencyRaw)
+      const avgLatency = Number.isFinite(latencyRaw as number)
+        ? Math.round(latencyRaw as number)
         : null;
       // Healthy readings behind this day's mean — weight by these, not total
       // samples. Legacy rows lack the count, so fall back to total samples.
-      const latencyCount = !Number.isFinite(latencyRaw)
+      const latencyCount = !Number.isFinite(latencyRaw as number)
         ? 0
         : row.latency_samples == null
           ? samples
@@ -466,8 +566,8 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
 
       entry.samples += samples;
       entry.okCount += okCount;
-      if (Number.isFinite(latencyRaw) && latencyCount > 0) {
-        entry.latencyTotal += latencyRaw * latencyCount;
+      if (Number.isFinite(latencyRaw as number) && latencyCount > 0) {
+        entry.latencyTotal += (latencyRaw as number) * latencyCount;
         entry.latencySamples += latencyCount;
       }
       entry.points.push({
@@ -490,7 +590,9 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
           ? Math.round(entry.latencyTotal / entry.latencySamples)
           : null,
         latency_sample_count: entry.latencySamples,
-        points: entry.points.sort((a, b) => a.date.localeCompare(b.date)),
+        points: entry.points.sort((a, b) =>
+          (a.date as string).localeCompare(b.date as string),
+        ),
       }))
       .sort((a, b) => a.netuid - b.netuid);
 
@@ -502,9 +604,9 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
     };
   };
 
-  const windowsOut = {};
+  const windowsOut: Record<string, unknown> = {};
   for (const [label, rows] of Object.entries(windows || {})) {
-    windowsOut[label] = formatWindow(rows, windowDays[label]);
+    windowsOut[label] = formatWindow(rows as Row[], windowDays[label]);
   }
   return {
     schema_version: 1,
@@ -514,39 +616,20 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
   };
 }
 
-// --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
-
-// A gap larger than this between consecutive failing checks ends one incident and
-// starts another. Must exceed the probe cadence (15 min) so consecutive failed
-// probes group into a single incident; 30 min = cadence + one missed-run buffer.
-// Used by the gap-island SQL in the incidents handler.
-export const INCIDENT_GAP_MS = 30 * 60 * 1000;
-
-// Minimum consecutive failed probes for a gap-island to count as an incident.
-// A single failed probe that recovers on the next (~15 min later) is transient
-// noise — a momentary timeout / rate-limit / 5xx — not downtime, and it
-// dominated the ledger (~76% of rows were single-sample, zero-duration). This
-// mirrors the Cosmos liveness model: an isolated missed block is tolerated;
-// only sustained misses (MinSignedPerWindow) count as downtime. At 2 (≥ ~4 min
-// sustained) the ledger reflects real dips, not prober flapping.
-export const MIN_INCIDENT_SAMPLES = 2;
-
-function round4(value) {
-  return value == null ? null : Number(Number(value).toFixed(4));
-}
-function roundInt(value) {
-  return value == null ? null : Math.round(Number(value));
-}
-function toFiniteOrNull(value) {
-  if (value == null) return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
 // p50/p95/p99 + avg/min/max latency per surface, computed in SQL (one row per
 // stable surface). `rows`: [{ surface_id, surface_key?, samples, p50, p95, p99,
 // avg_latency_ms, min_latency_ms, max_latency_ms }].
-export function formatPercentiles({ netuid, window, observedAt, rows }) {
+export function formatPercentiles({
+  netuid,
+  window,
+  observedAt,
+  rows,
+}: {
+  netuid?: unknown;
+  window?: unknown;
+  observedAt?: unknown;
+  rows?: Row[];
+}): Row {
   const surfaces = (rows || [])
     .map((row) => ({
       surface_id: row.surface_id,
@@ -562,7 +645,9 @@ export function formatPercentiles({ netuid, window, observedAt, rows }) {
         max: roundInt(row.max_latency_ms),
       },
     }))
-    .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+    .sort((a, b) =>
+      (a.surface_id as string).localeCompare(b.surface_id as string),
+    );
   return {
     schema_version: 1,
     netuid,
@@ -589,13 +674,22 @@ export function formatRpcUsage({
   networkRows,
   bucketRows,
   bucketGranularity,
-}) {
+}: {
+  window?: unknown;
+  observedAt?: unknown;
+  totals?: Row;
+  latency?: Row;
+  endpointRows?: Row[];
+  networkRows?: Row[];
+  bucketRows?: Row[];
+  bucketGranularity?: unknown;
+}): Row {
   const total = Number(totals?.total) || 0;
   const okCount = Number(totals?.ok_count) || 0;
   const failoverCount = Number(totals?.failover_count) || 0;
   const cacheHits = Number(totals?.cache_hits) || 0;
   const errorCount = Math.max(0, total - okCount);
-  const ratioOf = (numerator, denominator) =>
+  const ratioOf = (numerator: number, denominator: number) =>
     denominator ? round4(numerator / denominator) : null;
   return {
     schema_version: 1,
@@ -668,12 +762,19 @@ export function formatIncidents({
   slaRows,
   incidentRows,
   maxIncidents,
-}) {
+}: {
+  netuid?: unknown;
+  window?: unknown;
+  observedAt?: unknown;
+  slaRows?: Row[];
+  incidentRows?: Row[];
+  maxIncidents?: unknown;
+}): Row {
   const incidentLimit = Number.isInteger(maxIncidents)
-    ? Math.max(0, maxIncidents)
+    ? Math.max(0, maxIncidents as number)
     : Infinity;
-  const incidentsBySurface = new Map();
-  const acceptedBySurface = new Map();
+  const incidentsBySurface = new Map<unknown, Row[]>();
+  const acceptedBySurface = new Map<unknown, number>();
   for (const row of incidentRows || []) {
     const key = surfaceLookupKey(row);
     if (!key) continue;
@@ -699,7 +800,10 @@ export function formatIncidents({
       const total = Number(row.total) || 0;
       const okCount = Number(row.ok_count) || 0;
       const incidents = incidentsBySurface.get(surfaceLookupKey(row)) || [];
-      const downtimeMs = incidents.reduce((sum, i) => sum + i.duration_ms, 0);
+      const downtimeMs = incidents.reduce(
+        (sum, i) => sum + (i.duration_ms as number),
+        0,
+      );
       return {
         surface_id: row.surface_id,
         samples: total,
@@ -709,7 +813,9 @@ export function formatIncidents({
         incidents,
       };
     })
-    .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+    .sort((a, b) =>
+      (a.surface_id as string).localeCompare(b.surface_id as string),
+    );
 
   return {
     schema_version: 1,
@@ -731,11 +837,19 @@ export function formatGlobalIncidents({
   observedAt,
   incidentRows,
   maxIncidents,
-}) {
+}: {
+  window?: unknown;
+  observedAt?: unknown;
+  incidentRows?: Row[];
+  maxIncidents?: unknown;
+}): Row {
   const incidentLimit = Number.isInteger(maxIncidents)
-    ? Math.max(0, maxIncidents)
+    ? Math.max(0, maxIncidents as number)
     : Infinity;
-  const bySurface = new Map();
+  const bySurface = new Map<
+    string,
+    { netuid: number; surface_id: unknown; incidents: Row[] }
+  >();
   let acceptedIncidents = 0;
   for (const row of incidentRows || []) {
     if (acceptedIncidents >= incidentLimit) {
@@ -765,11 +879,16 @@ export function formatGlobalIncidents({
       netuid: entry.netuid,
       surface_id: entry.surface_id,
       incident_count: entry.incidents.length,
-      downtime_ms: entry.incidents.reduce((sum, i) => sum + i.duration_ms, 0),
+      downtime_ms: entry.incidents.reduce(
+        (sum, i) => sum + (i.duration_ms as number),
+        0,
+      ),
       incidents: entry.incidents,
     }))
     .sort(
-      (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
+      (a, b) =>
+        a.netuid - b.netuid ||
+        (a.surface_id as string).localeCompare(b.surface_id as string),
     );
 
   return {
@@ -786,14 +905,26 @@ export function formatGlobalIncidents({
 }
 
 // A finite number, or null — coerces economic metrics that may be missing or NaN.
-function finiteOrNull(value) {
+function finiteOrNull(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 // Shared by the alpha-gain boards (#7227): higher current price breaks a tied
 // %-change; unknown price ranks last.
-function alphaGainTiebreak(a, b) {
-  return (b.alpha_price_tao ?? -1) - (a.alpha_price_tao ?? -1);
+function alphaGainTiebreak(a: Row, b: Row): number {
+  return (
+    ((b.alpha_price_tao as number) ?? -1) -
+    ((a.alpha_price_tao as number) ?? -1)
+  );
+}
+
+interface EconomicBoardSpec {
+  key: string;
+  direction: "asc" | "desc";
+  metric: (row: Row) => number | null;
+  project: (row: Row, metric: number) => Row;
+  eligible: (entry: Row) => boolean;
+  tiebreak?: (a: Row, b: Row) => number;
 }
 
 // Cross-subnet economic opportunity boards: where the open slots are, what they
@@ -801,7 +932,7 @@ function alphaGainTiebreak(a, b) {
 // Each board is a spec run through the shared `economicBoard` pipeline below, so
 // adding one is a table entry, not a code path. `metric` is the sort key (null
 // drops the row); `eligible` filters the projected entry; `project` shapes it.
-const ECONOMIC_BOARD_SPECS = [
+const ECONOMIC_BOARD_SPECS: EconomicBoardSpec[] = [
   {
     // Most room to register a new neuron — the miner's first question.
     key: "open-slots",
@@ -813,11 +944,11 @@ const ECONOMIC_BOARD_SPECS = [
       registration_cost_tao: finiteOrNull(row.registration_cost_tao),
       registration_allowed: row.registration_allowed === true,
     }),
-    eligible: (entry) => entry.open_slots > 0,
+    eligible: (entry) => (entry.open_slots as number) > 0,
     // Cheaper entry breaks ties (unknown cost ranks last).
     tiebreak: (a, b) =>
-      (a.registration_cost_tao ?? Infinity) -
-      (b.registration_cost_tao ?? Infinity),
+      ((a.registration_cost_tao as number) ?? Infinity) -
+      ((b.registration_cost_tao as number) ?? Infinity),
   },
   {
     // Cheapest way in, among subnets whose registration is actually open.
@@ -833,9 +964,11 @@ const ECONOMIC_BOARD_SPECS = [
       registration_allowed: true,
     }),
     // Drop subnets known to be full; keep unknown-capacity ones (open_slots null).
-    eligible: (entry) => entry.open_slots == null || entry.open_slots > 0,
+    eligible: (entry) =>
+      entry.open_slots == null || (entry.open_slots as number) > 0,
     // More open slots breaks ties.
-    tiebreak: (a, b) => (b.open_slots ?? -1) - (a.open_slots ?? -1),
+    tiebreak: (a, b) =>
+      ((b.open_slots as number) ?? -1) - ((a.open_slots as number) ?? -1),
   },
   {
     // Where the emission is concentrated — the yield signal.
@@ -848,8 +981,10 @@ const ECONOMIC_BOARD_SPECS = [
       validator_count: finiteOrNull(row.validator_count),
       miner_count: finiteOrNull(row.miner_count),
     }),
-    eligible: (entry) => entry.emission_share > 0,
-    tiebreak: (a, b) => (b.total_stake_tao ?? -1) - (a.total_stake_tao ?? -1),
+    eligible: (entry) => (entry.emission_share as number) > 0,
+    tiebreak: (a, b) =>
+      ((b.total_stake_tao as number) ?? -1) -
+      ((a.total_stake_tao as number) ?? -1),
   },
   {
     // Open validator permits — the validator's first question.
@@ -868,9 +1003,11 @@ const ECONOMIC_BOARD_SPECS = [
       max_validators: finiteOrNull(row.max_validators),
       emission_share: finiteOrNull(row.emission_share),
     }),
-    eligible: (entry) => entry.validator_headroom > 0,
+    eligible: (entry) => (entry.validator_headroom as number) > 0,
     // More emission per open permit breaks ties.
-    tiebreak: (a, b) => (b.emission_share ?? -1) - (a.emission_share ?? -1),
+    tiebreak: (a, b) =>
+      ((b.emission_share as number) ?? -1) -
+      ((a.emission_share as number) ?? -1),
   },
   {
     // Biggest 1-day alpha-price gainers (#7227) — sort key for "which subnet
@@ -883,7 +1020,7 @@ const ECONOMIC_BOARD_SPECS = [
       alpha_price_tao: finiteOrNull(row.alpha_price_tao),
       emission_share: finiteOrNull(row.emission_share),
     }),
-    eligible: (entry) => entry.alpha_price_change_1d > 0,
+    eligible: (entry) => (entry.alpha_price_change_1d as number) > 0,
     tiebreak: alphaGainTiebreak,
   },
   {
@@ -896,7 +1033,7 @@ const ECONOMIC_BOARD_SPECS = [
       alpha_price_tao: finiteOrNull(row.alpha_price_tao),
       emission_share: finiteOrNull(row.emission_share),
     }),
-    eligible: (entry) => entry.alpha_price_change_7d > 0,
+    eligible: (entry) => (entry.alpha_price_change_7d as number) > 0,
     tiebreak: alphaGainTiebreak,
   },
 ];
@@ -919,14 +1056,19 @@ export const LEADERBOARD_BOARDS = [
 // gate → eligibility → rank (board direction, then board tiebreak, then netuid
 // for total determinism) → cap. Null-safe end to end: a missing `rows` yields []
 // and a row whose metric is null never reaches the board.
-function economicBoard(rows, metaFor, cap, spec) {
+function economicBoard(
+  rows: Row[] | undefined,
+  metaFor: (netuid: unknown) => Row,
+  cap: number,
+  spec: EconomicBoardSpec,
+): Row[] {
   const direction = spec.direction === "asc" ? 1 : -1;
   return (rows || [])
     .map((row) => {
       const metric = spec.metric(row);
       if (metric == null) return null;
       const meta = metaFor(row.netuid);
-      const entry = {
+      const entry: Row = {
         netuid: row.netuid,
         slug: meta.slug ?? row.slug ?? null,
         name: meta.name ?? row.name ?? null,
@@ -934,12 +1076,12 @@ function economicBoard(rows, metaFor, cap, spec) {
       };
       return spec.eligible(entry) ? { metric, entry } : null;
     })
-    .filter(Boolean)
+    .filter((item): item is { metric: number; entry: Row } => Boolean(item))
     .sort(
       (a, b) =>
         direction * (a.metric - b.metric) ||
         (spec.tiebreak ? spec.tiebreak(a.entry, b.entry) : 0) ||
-        a.entry.netuid - b.entry.netuid,
+        (a.entry.netuid as number) - (b.entry.netuid as number),
     )
     .slice(0, cap)
     .map((item) => item.entry);
@@ -965,9 +1107,21 @@ export function formatLeaderboards({
   reliabilityRows,
   economicsRows,
   subnetMeta,
-}) {
+}: {
+  board?: unknown;
+  limit?: unknown;
+  observedAt?: unknown;
+  healthRows?: Row[];
+  rpcRows?: Row[];
+  mostComplete?: Row[];
+  growthRows?: Row[];
+  reliabilityRows?: Row[];
+  economicsRows?: Row[];
+  subnetMeta?: Map<unknown, unknown>;
+}): Row {
   const cap = Math.max(1, Math.min(100, Number(limit) || 20));
-  const metaFor = (netuid) => (subnetMeta && subnetMeta.get(netuid)) || {};
+  const metaFor = (netuid: unknown): Row =>
+    ((subnetMeta && subnetMeta.get(netuid)) || {}) as Row;
 
   const healthiest = (healthRows || [])
     .map((row) => {
@@ -982,12 +1136,14 @@ export function formatLeaderboards({
         avg_latency_ms: roundInt(row.avg_latency_ms),
       };
     })
-    .filter((entry) => entry.surfaces_total > 0)
+    .filter((entry) => (entry.surfaces_total as number) > 0)
     .sort(
       (a, b) =>
-        (b.uptime_ratio ?? -1) - (a.uptime_ratio ?? -1) ||
-        (a.avg_latency_ms ?? Infinity) - (b.avg_latency_ms ?? Infinity) ||
-        a.netuid - b.netuid,
+        ((b.uptime_ratio as number) ?? -1) -
+          ((a.uptime_ratio as number) ?? -1) ||
+        ((a.avg_latency_ms as number) ?? Infinity) -
+          ((b.avg_latency_ms as number) ?? Infinity) ||
+        (a.netuid as number) - (b.netuid as number),
     )
     .slice(0, cap);
 
@@ -998,7 +1154,11 @@ export function formatLeaderboards({
       latency_ms: roundInt(row.min_latency_ms),
     }))
     .filter((entry) => entry.latency_ms != null)
-    .sort((a, b) => a.latency_ms - b.latency_ms || a.netuid - b.netuid)
+    .sort(
+      (a, b) =>
+        (a.latency_ms as number) - (b.latency_ms as number) ||
+        (a.netuid as number) - (b.netuid as number),
+    )
     .slice(0, cap);
 
   const completeBoard = (mostComplete || [])
@@ -1016,7 +1176,8 @@ export function formatLeaderboards({
     .filter((entry) => entry.completeness_score != null)
     .sort(
       (a, b) =>
-        b.completeness_score - a.completeness_score || a.netuid - b.netuid,
+        (b.completeness_score as number) - (a.completeness_score as number) ||
+        (a.netuid as number) - (b.netuid as number),
     )
     .slice(0, cap);
 
@@ -1037,7 +1198,7 @@ export function formatLeaderboards({
       (a, b) =>
         b.surface_count - a.surface_count ||
         b.operational_interface_count - a.operational_interface_count ||
-        a.netuid - b.netuid,
+        (a.netuid as number) - (b.netuid as number),
     )
     .slice(0, cap);
 
@@ -1049,11 +1210,13 @@ export function formatLeaderboards({
     }))
     .filter(
       (entry) =>
-        entry.completeness_delta != null && entry.completeness_delta > 0,
+        entry.completeness_delta != null &&
+        (entry.completeness_delta as number) > 0,
     )
     .sort(
       (a, b) =>
-        b.completeness_delta - a.completeness_delta || a.netuid - b.netuid,
+        (b.completeness_delta as number) - (a.completeness_delta as number) ||
+        (a.netuid as number) - (b.netuid as number),
     )
     .slice(0, cap);
 
@@ -1063,7 +1226,7 @@ export function formatLeaderboards({
   // snapshot uptime rather than the window-based grade. Null-safe: a subnet with
   // no samples in the window scores null and is dropped.
   const mostReliable = (reliabilityRows || [])
-    .map((row) => {
+    .map((row): Row | null => {
       const score = scoreFromStats({
         samples: Number(row.samples) || 0,
         okCount: Number(row.ok_count) || 0,
@@ -1071,23 +1234,26 @@ export function formatLeaderboards({
           row.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
         latencySamples: Number(row.latency_samples) || 0,
       });
-      return score && { netuid: row.netuid, ...metaFor(row.netuid), ...score };
+      return score
+        ? { netuid: row.netuid, ...metaFor(row.netuid), ...score }
+        : null;
     })
-    .filter(Boolean)
+    .filter((entry): entry is Row => entry !== null)
     .sort(
       (a, b) =>
-        b.score - a.score ||
-        (a.avg_latency_ms ?? Infinity) - (b.avg_latency_ms ?? Infinity) ||
-        a.netuid - b.netuid,
+        (b.score as number) - (a.score as number) ||
+        ((a.avg_latency_ms as number) ?? Infinity) -
+          ((b.avg_latency_ms as number) ?? Infinity) ||
+        (a.netuid as number) - (b.netuid as number),
     )
     .slice(0, cap);
 
-  const economicBoards = {};
+  const economicBoards: Record<string, Row[]> = {};
   for (const spec of ECONOMIC_BOARD_SPECS) {
     economicBoards[spec.key] = economicBoard(economicsRows, metaFor, cap, spec);
   }
 
-  const allBoards = {
+  const allBoards: Record<string, Row[]> = {
     healthiest,
     "fastest-rpc": fastestRpc,
     "most-complete": completeBoard,
@@ -1096,7 +1262,10 @@ export function formatLeaderboards({
     "most-reliable": mostReliable,
     ...economicBoards,
   };
-  const boards = board ? { [board]: allBoards[board] || [] } : allBoards;
+  const boardKey = typeof board === "string" ? board : null;
+  const boards = boardKey
+    ? { [boardKey]: allBoards[boardKey] || [] }
+    : allBoards;
 
   return {
     schema_version: 1,
@@ -1107,9 +1276,42 @@ export function formatLeaderboards({
   };
 }
 
+function diff(now: unknown, then: unknown): number | null {
+  if (now == null || then == null) return null;
+  return Number(now) - Number(then);
+}
+
+// Latest point whose date is <= (latestDate - days). Dates are YYYY-MM-DD
+// strings compared lexically (valid for ISO dates).
+function pointAtOrBefore(
+  points: Row[],
+  latestDate: unknown,
+  days: number,
+): Row | null {
+  const target = shiftDate(latestDate, -days);
+  let chosen: Row | null = null;
+  for (const point of points) {
+    if (String(point.date) <= target) chosen = point;
+    else break;
+  }
+  return chosen;
+}
+
+function shiftDate(isoDate: unknown, days: number): string {
+  const [y, m, d] = String(isoDate).split("-").map(Number);
+  const base = Date.UTC(y, (m || 1) - 1, d || 1) + days * 24 * 60 * 60 * 1000;
+  return new Date(base).toISOString().slice(0, 10);
+}
+
 // Week-over-week trajectory from daily snapshots. `rows`: [{snapshot_date,
 // completeness_score, surface_count, endpoint_count}].
-export function formatTrajectory({ netuid, rows }) {
+export function formatTrajectory({
+  netuid,
+  rows,
+}: {
+  netuid?: unknown;
+  rows?: Row[];
+}): Row {
   const points = (rows || [])
     .map((row) => ({
       date: row.snapshot_date,
@@ -1138,7 +1340,7 @@ export function formatTrajectory({ netuid, rows }) {
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
   const latest = points[points.length - 1] || null;
-  const deltaOver = (days) => {
+  const deltaOver = (days: number) => {
     if (!latest) return null;
     const cutoff = pointAtOrBefore(points, latest.date, days);
     if (!cutoff || cutoff.date === latest.date) return null;
@@ -1174,31 +1376,8 @@ export function formatTrajectory({ netuid, rows }) {
 // and the MCP tool). D1 fully eliminated (2026-07-17): subnet_snapshots is
 // Postgres-only now (both callers try the Postgres tier first), so this is
 // only reached on a tier miss and always returns an empty trajectory.
-export async function loadSubnetTrajectory(netuid) {
+export async function loadSubnetTrajectory(netuid: unknown): Promise<Row> {
   return formatTrajectory({ netuid, rows: [] });
-}
-
-function diff(now, then) {
-  if (now == null || then == null) return null;
-  return Number(now) - Number(then);
-}
-
-// Latest point whose date is <= (latestDate - days). Dates are YYYY-MM-DD
-// strings compared lexically (valid for ISO dates).
-function pointAtOrBefore(points, latestDate, days) {
-  const target = shiftDate(latestDate, -days);
-  let chosen = null;
-  for (const point of points) {
-    if (String(point.date) <= target) chosen = point;
-    else break;
-  }
-  return chosen;
-}
-
-function shiftDate(isoDate, days) {
-  const [y, m, d] = String(isoDate).split("-").map(Number);
-  const base = Date.UTC(y, (m || 1) - 1, d || 1) + days * 24 * 60 * 60 * 1000;
-  return new Date(base).toISOString().slice(0, 10);
 }
 
 // Long-term daily uptime series per surface, from surface_uptime_daily rows
@@ -1211,15 +1390,27 @@ export function formatUptime({
   observedAt = null,
   rows,
   now = null,
-}) {
+}: {
+  netuid?: unknown;
+  window?: unknown;
+  observedAt?: unknown;
+  rows?: Row[];
+  now?: unknown;
+}): Row {
   // computeReliability keys per-surface aggregation on the stable surface_key
   // itself (falling back to surface_id), so renamed rows already collapse into
   // one bucket — no need to pre-rewrite surface_id here.
+  // reliability.mjs isn't converted yet (Phase 3) -- its untyped
+  // `{ window = null, now = null }` defaults infer as exactly `null`, so the
+  // real values need a cast here.
   const reliability = computeReliability(rows || [], {
     window: window || null,
     now,
-  });
-  const bySurface = new Map();
+  } as Parameters<typeof computeReliability>[1]);
+  const bySurface = new Map<
+    unknown,
+    { surface_id: unknown; surface_id_day: string | null; days: Row[] }
+  >();
   for (const row of rows || []) {
     const key = surfaceLookupKey(row);
     if (!key) continue;
@@ -1263,14 +1454,15 @@ export function formatUptime({
     .map(([surfaceKey, entry]) => {
       const { days } = entry;
       days.sort((a, b) => String(a.day).localeCompare(String(b.day)));
-      const samples = days.reduce((sum, d) => sum + d.samples, 0);
-      const okCount = days.reduce((sum, d) => sum + d.ok_count, 0);
+      const samples = days.reduce((sum, d) => sum + (d.samples as number), 0);
+      const okCount = days.reduce((sum, d) => sum + (d.ok_count as number), 0);
       return {
         surface_id: entry.surface_id || surfaceKey,
         day_count: days.length,
         samples,
         uptime_ratio: samples ? displayUptimeRatio(okCount / samples) : null,
-        reliability: reliability.surfaces[surfaceKey] || null,
+        reliability:
+          (reliability.surfaces as Row)[surfaceKey as string] || null,
         // Per-day series without the internal ok_count (uptime_ratio covers it).
         days: days.map((d) => ({
           day: d.day,
@@ -1283,7 +1475,9 @@ export function formatUptime({
         })),
       };
     })
-    .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
+    .sort((a, b) =>
+      (a.surface_id as string).localeCompare(b.surface_id as string),
+    );
   return {
     schema_version: 1,
     netuid,
@@ -1301,7 +1495,7 @@ export function formatUptime({
 // adding new tier plumbing out of scope for D1 retirement -- callers already
 // treat a null reliability as the no-data case (matches the prior cold-D1
 // behavior exactly).
-export async function loadSubnetReliability() {
+export async function loadSubnetReliability(): Promise<null> {
   return null;
 }
 
@@ -1312,7 +1506,7 @@ export async function loadSubnetReliability() {
 // returns null now rather than adding new tier plumbing out of scope for D1
 // retirement -- the reliability badge renders "n/a" for this metric, exactly
 // as it already did whenever D1 was cold/unbound.
-export async function loadReliabilityAggregate() {
+export async function loadReliabilityAggregate(): Promise<null> {
   return null;
 }
 
@@ -1339,13 +1533,13 @@ export async function loadReliabilityAggregate() {
 // toISOString() throw a RangeError, which would 500 the live endpoint response
 // on one corrupt last_checked/last_ok cell. Range-guard via getTime() and drop
 // to null, preserving the existing non-finite -> null behavior.
-function isoFromMs(ms) {
+function isoFromMs(ms: unknown): string | null {
   if (!Number.isFinite(ms)) return null;
-  const date = new Date(ms);
+  const date = new Date(ms as number);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-function liveFromStatusRows(rows) {
+function liveFromStatusRows(rows: Row[]): Row {
   const surfaces = rows.map((r) => ({
     surface_id: r.surface_id,
     surface_key: r.surface_key ?? null,
@@ -1355,12 +1549,16 @@ function liveFromStatusRows(rows) {
     url: r.url,
     status: normalizeProbeStatus(r.status),
     classification: r.classification,
-    latency_ms: Number.isFinite(r.latency_ms) ? r.latency_ms : null,
-    status_code: Number.isInteger(r.status_code) ? r.status_code : null,
+    latency_ms: Number.isFinite(r.latency_ms as number)
+      ? (r.latency_ms as number)
+      : null,
+    status_code: Number.isInteger(r.status_code)
+      ? (r.status_code as number)
+      : null,
     last_checked: isoFromMs(r.last_checked),
     last_ok: isoFromMs(r.last_ok),
   }));
-  const byNetuid = new Map();
+  const byNetuid = new Map<unknown, Row[]>();
   for (const row of surfaces) {
     const group = byNetuid.get(row.netuid) || [];
     group.push(row);
@@ -1368,9 +1566,14 @@ function liveFromStatusRows(rows) {
   }
   const subnets = [...byNetuid.entries()]
     .map(([netuid, group]) => ({ netuid, ...summarizeRows(group) }))
-    .sort((a, b) => a.netuid - b.netuid);
+    .sort((a, b) => (a.netuid as number) - (b.netuid as number));
   const lastRun = latestIso(surfaces.map((s) => s.last_checked));
-  const statusCounts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
+  const statusCounts: Record<string, number> = {
+    ok: 0,
+    degraded: 0,
+    failed: 0,
+    unknown: 0,
+  };
   for (const row of surfaces) {
     statusCounts[normalizeProbeStatus(row.status)] += 1;
   }
@@ -1386,7 +1589,15 @@ function liveFromStatusRows(rows) {
   };
 }
 
-export async function resolveLiveHealth({ readHealthKv, env, now } = {}) {
+export async function resolveLiveHealth({
+  readHealthKv,
+  env,
+  now,
+}: {
+  readHealthKv?: (env: Env, key: string) => Promise<Row | null>;
+  env?: Env;
+  now?: () => number;
+} = {}): Promise<Row | null> {
   if (typeof readHealthKv === "function" && env) {
     try {
       const current = await readHealthKv(env, KV_HEALTH_CURRENT);
@@ -1404,7 +1615,7 @@ export async function resolveLiveHealth({ readHealthKv, env, now } = {}) {
         (Array.isArray(current.surfaces) || Array.isArray(current.subnets))
       ) {
         const currentTime = typeof now === "function" ? now() : Date.now();
-        const lastRun = Date.parse(current.last_run_at);
+        const lastRun = Date.parse(current.last_run_at as string);
         if (
           !Number.isFinite(lastRun) ||
           lastRun >= currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS
@@ -1427,7 +1638,7 @@ export async function resolveLiveHealth({ readHealthKv, env, now } = {}) {
       "METAGRAPH_HEALTH_SOURCE",
     );
     if (Array.isArray(pg?.rows) && pg.rows.length) {
-      return liveFromStatusRows(pg.rows);
+      return liveFromStatusRows(pg.rows as Row[]);
     }
   }
   return null;
@@ -1452,34 +1663,42 @@ export async function resolveLiveEconomics({
   env,
   contractVersion,
   now,
-} = {}) {
+}: {
+  readHealthKv?: (env: Env, key: string) => Promise<unknown>;
+  env?: Env;
+  contractVersion?: unknown;
+  now?: () => number;
+} = {}): Promise<{ data: Row; source: "live-kv" } | null> {
   if (typeof readHealthKv !== "function" || !env) return null;
-  let blob;
+  let blob: unknown;
   try {
     blob = await readHealthKv(env, KV_ECONOMICS_CURRENT);
   } catch {
     return null;
   }
   if (!blob || typeof blob !== "object" || Array.isArray(blob)) return null;
+  const blobRow = blob as Row;
   // On-contract only: a blob built under an older contract may predate a schema
   // change — fall through to the (also-versioned) R2 artifact + stale-contract path.
   if (
     contractVersion &&
-    blob.contract_version &&
-    blob.contract_version !== contractVersion
+    blobRow.contract_version &&
+    blobRow.contract_version !== contractVersion
   ) {
     return null;
   }
   // Freshness: reject a stale blob (writer wedged) so R2 takes over.
-  const capturedMs = Date.parse(blob.captured_at);
+  const capturedMs = Date.parse(blobRow.captured_at as string);
   if (!Number.isFinite(capturedMs)) return null;
   const currentMs = typeof now === "function" ? now() : Date.now();
   if (currentMs - capturedMs > ECONOMICS_FRESHNESS_MAX_AGE_MS) return null;
   // Integrity: row count must match the summary and the cross-subnet
   // emission_share must still sum to ~1 — a partial/corrupt write never serves.
-  const rows = Array.isArray(blob.subnets) ? blob.subnets : null;
+  const rows = Array.isArray(blobRow.subnets)
+    ? (blobRow.subnets as Row[])
+    : null;
   if (!rows) return null;
-  const expected = blob.summary?.with_economics_count;
+  const expected = (blobRow.summary as Row | undefined)?.with_economics_count;
   if (Number.isInteger(expected) && rows.length !== expected) return null;
   const emissionSum = rows.reduce(
     (sum, row) =>
@@ -1487,7 +1706,7 @@ export async function resolveLiveEconomics({
     0,
   );
   if (rows.length > 0 && Math.abs(emissionSum - 1) > 0.001) return null;
-  return { data: blob, source: "live-kv" };
+  return { data: blobRow, source: "live-kv" };
 }
 
 // Attach the per-subnet economics row from the live economics blob onto a
@@ -1496,11 +1715,15 @@ export async function resolveLiveEconomics({
 // second call to /api/v1/economics. Null-safe: when the live economics store is
 // cold/stale (resolveLiveEconomics → null) or the subnet has no economics row,
 // the detail is returned unchanged (no `economics` field).
-export function overlaySubnetEconomics(detail, economicsBlob, netuid) {
+export function overlaySubnetEconomics(
+  detail: Row | null | undefined,
+  economicsBlob: Row | null | undefined,
+  netuid: unknown,
+): Row | null | undefined {
   if (!detail || typeof detail !== "object") return detail;
   const rows = economicsBlob?.subnets;
   if (!Array.isArray(rows)) return detail;
-  const row = rows.find((entry) => entry?.netuid === netuid);
+  const row = (rows as Row[]).find((entry) => entry?.netuid === netuid);
   if (!row) return detail;
   return { ...detail, economics: row };
 }
@@ -1509,9 +1732,14 @@ export function overlaySubnetEconomics(detail, economicsBlob, netuid) {
 // artifact's `health`. Returns null only when there is no live snapshot at all
 // (caller falls back); when the snapshot exists but the subnet has no probed
 // surfaces, health is `unknown` — never the baked value.
-export function overlayOverviewHealth(staticOverview, live, netuid) {
+export function overlayOverviewHealth(
+  staticOverview: Row | null | undefined,
+  live: Row | null | undefined,
+  netuid: unknown,
+): Row | null {
   if (!live || !Array.isArray(live.subnets)) return null;
-  const summary = live.subnets.find((entry) => entry.netuid === netuid) || null;
+  const summary =
+    (live.subnets as Row[]).find((entry) => entry.netuid === netuid) || null;
   return {
     ...(staticOverview || { netuid }),
     health: summary
@@ -1527,18 +1755,22 @@ export function overlayOverviewHealth(staticOverview, live, netuid) {
 // `health` and `eligibility.callable` become live (callable now = live status
 // not failed AND not classified dead/unsafe). Catalog services are already a
 // public-safe subset at build time, so structural callability is implied.
-export function overlayCatalogDetail(staticDetail, live, netuid) {
+export function overlayCatalogDetail(
+  staticDetail: Row | null | undefined,
+  live: Row | null | undefined,
+  netuid: unknown,
+): Row | null {
   if (!live || !Array.isArray(live.surfaces)) return null;
-  const liveBySurface = new Map();
-  for (const row of live.surfaces) {
+  const liveBySurface = new Map<unknown, Row>();
+  for (const row of live.surfaces as Row[]) {
     if (row.netuid === netuid) addLiveSurfaceRow(liveBySurface, row);
   }
-  const services = (staticDetail?.services || []).map((service) => {
+  const services = ((staticDetail?.services as Row[]) || []).map((service) => {
     const row = liveRowForSurface(liveBySurface, service);
     const status = row ? row.status : "unknown";
     const classification = row
       ? row.classification
-      : (service.health?.classification ?? null);
+      : ((service.health as Row | undefined)?.classification ?? null);
     const callableNow =
       Boolean(row) &&
       status !== "failed" &&
@@ -1556,7 +1788,7 @@ export function overlayCatalogDetail(staticDetail, live, netuid) {
         observed_by: row ? "live-cron-prober" : "unavailable",
       },
       eligibility: {
-        ...(service.eligibility || {}),
+        ...((service.eligibility as Row) || {}),
         callable: callableNow,
         live_status: status,
       },
@@ -1567,13 +1799,16 @@ export function overlayCatalogDetail(staticDetail, live, netuid) {
   // catalogued-but-dead API as ready. Computed from the same rows that drive
   // per-service health; absent on the static artifact (no live truth there).
   const readinessVerified = services.some(
-    (service) => service.health?.status === "ok",
+    (service) => (service.health as Row | undefined)?.status === "ok",
   );
   return {
     ...staticDetail,
     services,
     readiness: staticDetail?.readiness
-      ? { ...staticDetail.readiness, readiness_verified: readinessVerified }
+      ? {
+          ...(staticDetail.readiness as Row),
+          readiness_verified: readinessVerified,
+        }
       : staticDetail?.readiness,
     operational_observed_at: live.last_run_at || null,
     health_source: live.health_source || "live-cron-prober",
@@ -1582,12 +1817,15 @@ export function overlayCatalogDetail(staticDetail, live, netuid) {
 
 // Overlay each agent-catalog index entry's `health` (a per-subnet status string)
 // from the live snapshot. Structural counts are left untouched.
-export function overlayCatalogIndex(staticIndex, live) {
+export function overlayCatalogIndex(
+  staticIndex: Row | null | undefined,
+  live: Row | null | undefined,
+): Row | null {
   if (!live || !Array.isArray(live.subnets)) return null;
   const statusByNetuid = new Map(
-    live.subnets.map((entry) => [entry.netuid, entry.status]),
+    (live.subnets as Row[]).map((entry) => [entry.netuid, entry.status]),
   );
-  const subnets = (staticIndex?.subnets || []).map((entry) => ({
+  const subnets = ((staticIndex?.subnets as Row[]) || []).map((entry) => ({
     ...entry,
     health: statusByNetuid.get(entry.netuid) ?? "unknown",
   }));
@@ -1605,7 +1843,7 @@ export function overlayCatalogIndex(staticIndex, live) {
 // classification, latency, the observed_* timestamps, health_source/stale, and
 // pool eligibility) are overwritten so a build-time value is never served as
 // fresh.
-function withPoolEligibility(endpoint) {
+function withPoolEligibility(endpoint: Row): Row {
   const eligibility = endpointPoolEligibility(endpoint);
   return {
     ...endpoint,
@@ -1614,7 +1852,7 @@ function withPoolEligibility(endpoint) {
   };
 }
 
-function overlayEndpointHealth(endpoint, liveRow) {
+function overlayEndpointHealth(endpoint: Row, liveRow: Row | null): Row {
   // Not-monitored endpoints (docs, dashboards, …) carry a stable structural
   // classification, not a freshness signal — they are never probed, so their
   // `not-monitored` status is permanent and honest. Leave them untouched;
@@ -1645,7 +1883,9 @@ function overlayEndpointHealth(endpoint, liveRow) {
     status: normalizeProbeStatus(liveRow.status),
     classification:
       liveRow.classification ?? endpoint.classification ?? "unknown",
-    latency_ms: Number.isFinite(liveRow.latency_ms) ? liveRow.latency_ms : null,
+    latency_ms: Number.isFinite(liveRow.latency_ms as number)
+      ? (liveRow.latency_ms as number)
+      : null,
     observed_at: liveRow.last_checked || null,
     last_checked: liveRow.last_checked || null,
     last_ok: liveRow.last_ok || null,
@@ -1655,8 +1895,8 @@ function overlayEndpointHealth(endpoint, liveRow) {
   });
 }
 
-function countEndpointStatuses(endpoints) {
-  const counts = {};
+function countEndpointStatuses(endpoints: Row[]): Record<string, number> {
+  const counts: Record<string, number> = {};
   for (const endpoint of endpoints) {
     const bucket = normalizeProbeStatus(endpoint.status);
     counts[bucket] = (counts[bucket] || 0) + 1;
@@ -1671,16 +1911,20 @@ function countEndpointStatuses(endpoints) {
 // become `unknown` (never the baked build-time value). The artifact's status
 // histogram is recomputed when present. Returns null only when the artifact
 // carries no endpoints array (the caller then serves it untouched).
-export function overlayArtifactEndpoints(staticData, live) {
+export function overlayArtifactEndpoints(
+  staticData: Row | null | undefined,
+  live: Row | null | undefined,
+): Row | null {
   if (!staticData || !Array.isArray(staticData.endpoints)) return null;
-  const liveBySurface = new Map();
+  const liveBySurface = new Map<unknown, Row>();
   if (live && Array.isArray(live.surfaces)) {
-    for (const row of live.surfaces) addLiveSurfaceRow(liveBySurface, row);
+    for (const row of live.surfaces as Row[])
+      addLiveSurfaceRow(liveBySurface, row);
   }
-  const endpoints = staticData.endpoints.map((endpoint) =>
+  const endpoints = (staticData.endpoints as Row[]).map((endpoint) =>
     overlayEndpointHealth(endpoint, liveRowForSurface(liveBySurface, endpoint)),
   );
-  const result = {
+  const result: Row = {
     ...staticData,
     endpoints,
     operational_observed_at: live?.last_run_at || null,
@@ -1688,7 +1932,7 @@ export function overlayArtifactEndpoints(staticData, live) {
   };
   if (staticData.summary && typeof staticData.summary === "object") {
     result.summary = {
-      ...staticData.summary,
+      ...(staticData.summary as Row),
       by_status: countEndpointStatuses(endpoints),
       pool_eligible_count: endpoints.filter(
         (endpoint) => endpoint.pool_eligible,

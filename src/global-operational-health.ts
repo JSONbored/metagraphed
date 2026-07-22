@@ -3,7 +3,7 @@
 // 2026-07-17), with an explicit unknown payload when the live store is cold
 // (never a stale baked fallback).
 
-import { buildGlobalHealth, resolveLiveHealth } from "./health-serving.mjs";
+import { buildGlobalHealth, resolveLiveHealth } from "./health-serving.ts";
 
 export interface UnknownGlobalHealth {
   schema_version: 1;
@@ -43,7 +43,10 @@ export async function loadGlobalOperationalHealth(
     readHealthKv,
   }: {
     env: Env;
-    readHealthKv?: unknown;
+    readHealthKv?: (
+      env: Env,
+      key: string,
+    ) => Promise<Record<string, unknown> | null>;
   },
   {
     contractVersion,

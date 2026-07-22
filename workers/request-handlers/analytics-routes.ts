@@ -49,7 +49,7 @@ import {
   formatUptime,
   LEADERBOARD_BOARDS,
   resolveLiveEconomics,
-} from "../../src/health-serving.mjs";
+} from "../../src/health-serving.ts";
 import { DOMAIN_TAGS } from "../../src/domain-tags.ts";
 import {
   buildDomainOverview,
@@ -241,7 +241,7 @@ export async function handleTrajectory(
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
-      data.points,
+      data.points as unknown[],
       `subnet-${netuid}-trajectory`,
       "short",
       request,

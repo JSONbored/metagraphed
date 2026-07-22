@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
-import * as healthServing from "../src/health-serving.mjs";
+import * as healthServing from "../src/health-serving.ts";
 import {
   economicsQueryUrl,
   GET_ECONOMICS_MCP_TOOL,

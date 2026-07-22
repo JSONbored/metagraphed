@@ -7,7 +7,7 @@ import {
   formatTrajectory,
   loadSubnetTrajectory,
   LEADERBOARD_BOARDS,
-} from "../src/health-serving.mjs";
+} from "../src/health-serving.ts";
 import {
   syncSubnetSnapshotToPostgres,
   writeSubnetSnapshot,

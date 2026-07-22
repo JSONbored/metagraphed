@@ -264,7 +264,7 @@ import {
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
-} from "../src/health-serving.mjs";
+} from "../src/health-serving.ts";
 import {
   deriveNetuidGroupedAliases,
   derivePreviouslyKnownAs,

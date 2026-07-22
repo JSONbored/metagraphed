@@ -180,7 +180,7 @@ import {
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
-} from "./health-serving.mjs";
+} from "./health-serving.ts";
 import { loadSubnetProfile } from "./profiles-mcp.mjs";
 import {
   buildTopHoldersList,

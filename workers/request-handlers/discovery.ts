@@ -3,7 +3,7 @@ import { errorResponse, ifNoneMatchSatisfied, weakEtag } from "../http.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import { contractVersion, publishedAt } from "../responses.ts";
 import { KV_HEALTH_CURRENT } from "../../src/health-prober.mjs";
-import { subnetBadgeStatus } from "../../src/health-serving.mjs";
+import { subnetBadgeStatus } from "../../src/health-serving.ts";
 import {
   listToolDefinitions,
   listPromptDefinitions,
@@ -76,7 +76,10 @@ export async function handleBadgeSvgRequest(
   // Live overlay: prefer the fresh operational status from the 2-min cron
   // snapshot; fall back to the static badge artifact, then to "unavailable".
   const liveCurrent = await readHealthKv(env, KV_HEALTH_CURRENT);
-  const liveStatus = subnetBadgeStatus(liveCurrent, Number(netuid)) as {
+  const liveStatus = subnetBadgeStatus(
+    liveCurrent as Record<string, unknown> | null,
+    Number(netuid),
+  ) as {
     status: string;
   } | null;
   const available = Boolean(liveStatus || (artifact.ok && artifact.data));

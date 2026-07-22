@@ -5,7 +5,7 @@
 // on a tier miss, so it always returns the schema-stable empty shape.
 
 import { ANALYTICS_WINDOWS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
-import { formatRpcUsage } from "./health-serving.mjs";
+import { formatRpcUsage } from "./health-serving.ts";
 
 export async function loadRpcUsage({ window = "7d", observedAt = null } = {}) {
   const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";

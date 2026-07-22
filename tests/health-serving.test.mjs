@@ -20,7 +20,7 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
   summarizeRows,
-} from "../src/health-serving.mjs";
+} from "../src/health-serving.ts";
 import { computeReliability, scoreFromStats } from "../src/reliability.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";

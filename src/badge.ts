@@ -21,7 +21,7 @@
 //
 // Worker-computed image/svg+xml, read-only, edge-cached, CORS-open. Unknown
 // entities or missing data render an "n/a" badge (200) so an <img> never breaks.
-import { loadReliabilityAggregate } from "./health-serving.mjs";
+import { loadReliabilityAggregate } from "./health-serving.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 
 const BADGE_CACHE_SECONDS = 3600;

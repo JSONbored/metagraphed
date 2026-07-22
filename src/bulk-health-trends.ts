@@ -5,7 +5,7 @@
 // on a tier miss, so it always returns the schema-stable empty shape.
 
 import { HEALTH_TREND_WINDOWS } from "../workers/config.ts";
-import { formatBulkTrends } from "./health-serving.mjs";
+import { formatBulkTrends } from "./health-serving.ts";
 
 export async function loadBulkHealthTrends({
   observedAt = null,

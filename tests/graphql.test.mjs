@@ -21,7 +21,7 @@ import {
   maxDepthRule,
   schema as chainEventsSchema,
 } from "../src/graphql.mjs";
-import { LEADERBOARD_BOARDS } from "../src/health-serving.mjs";
+import { LEADERBOARD_BOARDS } from "../src/health-serving.ts";
 import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.ts";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.ts";

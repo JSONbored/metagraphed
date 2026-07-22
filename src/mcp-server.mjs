@@ -431,7 +431,7 @@ import {
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
-} from "./health-serving.mjs";
+} from "./health-serving.ts";
 import {
   buildNeuronDetail,
   buildSubnetMetagraph,

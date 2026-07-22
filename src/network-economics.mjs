@@ -4,7 +4,7 @@
 
 import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
-import { resolveLiveEconomics } from "./health-serving.mjs";
+import { resolveLiveEconomics } from "./health-serving.ts";
 
 const ECONOMICS_SORT_FIELDS = API_QUERY_COLLECTIONS.economics.sort_fields;
 const NULLABLE_STRING = { type: ["string", "null"] };

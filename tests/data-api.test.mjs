@@ -7772,7 +7772,7 @@ test("GET /api/v1/internal/subnet-identity-aliases: no netuids returns rows:[] w
 });
 
 // D1 retirement (2026-07-16, item 5 of the D1->Postgres cleanup):
-// src/health-serving.mjs's resolveLiveHealth KV-cold fallback.
+// src/health-serving.ts's resolveLiveHealth KV-cold fallback.
 test("GET /api/v1/internal/health-status-live: coerces BIGINT epoch-ms columns to numbers", async () => {
   // postgres.js returns BIGINT columns as strings (see numberOrNull's own
   // header comment) -- this route must coerce them before returning JSON, or

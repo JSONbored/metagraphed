@@ -19,7 +19,7 @@ import {
 } from "../src/ai-search.ts";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
-import { overlayCatalogIndex } from "../src/health-serving.mjs";
+import { overlayCatalogIndex } from "../src/health-serving.ts";
 
 const SEMANTIC_URL = "https://api.metagraph.sh/api/v1/search/semantic";
 const ASK_URL = "https://api.metagraph.sh/api/v1/ask";

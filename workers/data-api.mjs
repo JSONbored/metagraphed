@@ -270,7 +270,7 @@ import {
   formatRpcUsage,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
-} from "../src/health-serving.mjs";
+} from "../src/health-serving.ts";
 import {
   buildEconomicsTrends,
   parseHistoryWindow,
@@ -7019,7 +7019,7 @@ export default {
 
         // GET /api/v1/internal/health-status-live?since=<epoch-ms> (D1
         // retirement, 2026-07-16, item 5 of the D1->Postgres cleanup):
-        // src/health-serving.mjs's resolveLiveHealth reconstructs the "KV
+        // src/health-serving.ts's resolveLiveHealth reconstructs the "KV
         // health:current is cold" fallback from surface_status directly (no
         // client request to forward -- same "internal, no secret header"
         // shape as /api/v1/internal/compare-health above, since a read has no
