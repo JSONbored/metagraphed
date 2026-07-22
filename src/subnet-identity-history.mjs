@@ -11,7 +11,7 @@ import { encodeCursor, decodeCursor } from "./cursor.ts";
 import {
   sanitizeIdentityHistoryFields,
   sanitizeIdentityHistoryText,
-} from "./chain-identity-sanitize.mjs";
+} from "./chain-identity-sanitize.ts";
 import {
   clampLimit,
   clampOffset,

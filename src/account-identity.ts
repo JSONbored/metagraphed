@@ -14,7 +14,7 @@ import {
   nativeContactHandle,
   sanitizeIdentityHistoryLink,
   sanitizeIdentityHistoryText,
-} from "./chain-identity-sanitize.mjs";
+} from "./chain-identity-sanitize.ts";
 
 export const ACCOUNT_IDENTITY_INSERT_COLUMNS = [
   "account",
@@ -43,7 +43,7 @@ function toIso(ms: unknown): string | null {
 // account_identity is operator-controlled untrusted chain data, same as
 // subnet identity — sanitize at serve time with the same primitives
 // src/subnet-identity-history.mjs's sanitizeIdentityHistoryFields uses
-// (src/chain-identity-sanitize.mjs), mapped onto this table's field names
+// (src/chain-identity-sanitize.ts), mapped onto this table's field names
 // (url/github/image are links; discord is a contact handle; name/description/
 // additional are free text). Applied only when SERVING — the diff-tracking
 // hash (#4326) is computed over the raw staged values and is unaffected.

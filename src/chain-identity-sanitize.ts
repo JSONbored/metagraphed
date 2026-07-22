@@ -32,9 +32,9 @@ const PLACEHOLDER_IDENTITY_URL = /deprecated|username\/repo|example\.com/i;
 const CONTACT_HANDLE_PATTERN = /^@?[a-z0-9][a-z0-9._-]{1,63}(?:#\d{1,6})?$/i;
 const CONTACT_HANDLE_JUNK = /^(?:deprecated|none|null|n\/a|tbd|todo)$/i;
 
-export function isCredentialedUrl(value) {
+export function isCredentialedUrl(value: unknown): boolean {
   try {
-    const url = new URL(value);
+    const url = new URL(value as string);
     if (url.username || url.password) {
       return true;
     }
@@ -49,11 +49,11 @@ export function isCredentialedUrl(value) {
   }
 }
 
-export function isPlaceholderIdentityUrl(value) {
+export function isPlaceholderIdentityUrl(value: unknown): boolean {
   return typeof value === "string" && PLACEHOLDER_IDENTITY_URL.test(value);
 }
 
-export function normalizePublicUrl(value) {
+export function normalizePublicUrl(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
   }
@@ -93,9 +93,11 @@ export function normalizePublicUrl(value) {
   }
 }
 
-export function nativeContactHandle(value) {
+export function nativeContactHandle(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const cleaned = sanitizeChainText(value).text.replace(/\s+/g, " ").trim();
+  const cleaned = (sanitizeChainText(value).text as string)
+    .replace(/\s+/g, " ")
+    .trim();
   if (!cleaned || cleaned.length > 200) return null;
   if (/^[a-z][a-z0-9+.-]*:/i.test(cleaned)) {
     const normalized = normalizePublicUrl(cleaned);
@@ -112,7 +114,7 @@ export function nativeContactHandle(value) {
   return cleaned;
 }
 
-export function sanitizeIdentityHistoryLink(value) {
+export function sanitizeIdentityHistoryLink(value: unknown): string | null {
   const normalized = normalizePublicUrl(value);
   return normalized && !isPlaceholderIdentityUrl(normalized)
     ? normalized
@@ -127,11 +129,13 @@ export function sanitizeIdentityHistoryLink(value) {
 // fields are stored/served with sanitized-but-untrimmed spacing so the
 // "[scrubbed]" replacement stays visually distinguishable from the original
 // text; only alias-derived display names collapse that spacing.
-export function sanitizeIdentityHistoryText(value) {
+export function sanitizeIdentityHistoryText(value: unknown): string | null {
   return sanitizeChainText(value).text;
 }
 
-export function sanitizeIdentityHistoryFields(fields) {
+export function sanitizeIdentityHistoryFields<
+  T extends Record<string, unknown>,
+>(fields: T): T {
   if (!fields || typeof fields !== "object") return fields;
   return {
     ...fields,

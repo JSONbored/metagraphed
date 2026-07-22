@@ -8,7 +8,7 @@ import {
   sanitizeIdentityHistoryFields,
   sanitizeIdentityHistoryLink,
   sanitizeIdentityHistoryText,
-} from "../src/chain-identity-sanitize.mjs";
+} from "../src/chain-identity-sanitize.ts";
 
 describe("isPlaceholderIdentityUrl", () => {
   test("flags known on-chain junk stubs", () => {
