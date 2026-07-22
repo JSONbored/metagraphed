@@ -18,7 +18,7 @@
 // triples, NOT a generic "strip any outer array wrapping another array"
 // rule. That shape is structurally IDENTICAL to an AccountId32/MultiAddress/
 // H160/Hash newtype wrap (src/ss58.mjs, src/bytes.mjs,
-// src/indexer-rs-ethereum-decode.mjs's territory) -- unwrapping it
+// src/indexer-rs-ethereum-decode.ts's territory) -- unwrapping it
 // unconditionally here would silently corrupt those fields wherever this
 // module's dispatch and theirs might overlap. A BTreeSet's element count is
 // unbounded (0, 1, many), unlike a fixed-width byte/account wrap, but
@@ -79,7 +79,7 @@ function isReconstructedCall(value) {
 // True for a typed field descriptor ({name, type, value}) -- the shape
 // EVERY extrinsic's own top-level call_args is genuinely served as
 // (confirmed live 2026-07-12; D1's `[{name,type,value}]` shape was never
-// D1-only -- see src/indexer-rs-ethereum-decode.mjs's header for the same
+// D1-only -- see src/indexer-rs-ethereum-decode.ts's header for the same
 // correction). A nested call's own call_args, by contrast, arrives as a
 // flat {fieldName: value} object with no per-field type string (confirmed
 // live: a nested claim_root's call_args is `{"subnets": ...}`, not an array

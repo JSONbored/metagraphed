@@ -211,9 +211,9 @@ test("formatExtrinsic preserves a U256 value past Number.MAX_SAFE_INTEGER throug
   assert.equal(out.call_args.transaction.EIP1559.nonce, "69392");
 });
 
-test("formatExtrinsic extends the big-int-safe parse to EVERY call type, not just indexer-rs-ethereum-decode.mjs's dispatch table (fixed 2026-07-15, was previously scoped narrow)", () => {
+test("formatExtrinsic extends the big-int-safe parse to EVERY call type, not just indexer-rs-ethereum-decode.ts's dispatch table (fixed 2026-07-15, was previously scoped narrow)", () => {
   // An exhaustive live audit found the plain-JSON.parse rounding bug reaches
-  // far more call types than the handful indexer-rs-ethereum-decode.mjs
+  // far more call types than the handful indexer-rs-ethereum-decode.ts
   // names -- SubtensorModule.register's PoW nonce is exactly one instance of
   // a general problem, not a special case. parseJsonPreservingBigInts now
   // runs unconditionally in formatExtrinsic, so this out-of-scope call type

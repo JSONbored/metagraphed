@@ -1291,7 +1291,7 @@ function decodeStaticWord(
     case "uint64":
     case "uint128":
     case "uint256": {
-      // Decimal STRING via BigInt, matching src/indexer-rs-ethereum-decode.mjs's
+      // Decimal STRING via BigInt, matching src/indexer-rs-ethereum-decode.ts's
       // own U256 convention (ethers.js/web3.js/viem never represent these as a
       // plain JS number) -- uint64's max already exceeds MAX_SAFE_INTEGER.
       let value = 0n;
@@ -1318,7 +1318,7 @@ function readWord(bytes: Uint8Array, wordIndex: number): Uint8Array | null {
 // even of a narrow element type like uint8/uint16). Returns null on
 // truncated/malformed calldata rather than throwing or returning partial
 // data -- the same "decline rather than guess" contract every decoder in
-// src/indexer-rs-ethereum-decode.mjs already follows.
+// src/indexer-rs-ethereum-decode.ts already follows.
 export function decodeAbiArgs(
   argTypes: string[],
   argNames: string[],

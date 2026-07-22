@@ -13,7 +13,7 @@ import {
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { normalizePostgresValue } from "./scale-normalize.ts";
 import { decodePostgresCallArgs } from "./postgres-call-args.mjs";
-import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.mjs";
+import { decodeEthereumEvmCallArgs } from "./indexer-rs-ethereum-decode.ts";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { decodeBTreeSetFields } from "./postgres-collection-normalize.mjs";
 
@@ -126,7 +126,7 @@ export function formatExtrinsic(
       // early-return requires it to skip.
       //
       // u64/u128 precision: parseJsonPreservingBigInts now runs for EVERY
-      // extrinsic, not just the call types indexer-rs-ethereum-decode.mjs
+      // extrinsic, not just the call types indexer-rs-ethereum-decode.ts
       // decodes -- widening the #4692 review fix that was deliberately
       // scoped narrow at the time (see wrangler.jsonc's
       // METAGRAPH_EXTRINSICS_SOURCE comment for the original reasoning). An

@@ -7,7 +7,7 @@ import {
   decodeEvmWithdrawArgs,
   decodeSignatureFieldArgs,
   decodeEthereumEvmCallArgs,
-} from "../src/indexer-rs-ethereum-decode.mjs";
+} from "../src/indexer-rs-ethereum-decode.ts";
 import { decodePostgresCallArgs } from "../src/postgres-call-args.mjs";
 import { normalizePostgresValue } from "../src/scale-normalize.ts";
 

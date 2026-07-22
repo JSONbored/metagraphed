@@ -64,7 +64,7 @@ import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
 // instead. Accepts either; returns null for anything else (so a genuinely
 // malformed/negative/fractional limb correctly fails unwrapU256Limbs rather
 // than silently coercing).
-function toLimbBigInt(limb) {
+function toLimbBigInt(limb: unknown): bigint | null {
   if (typeof limb === "number") {
     return Number.isInteger(limb) && limb >= 0 ? BigInt(limb) : null;
   }
@@ -78,21 +78,21 @@ function toLimbBigInt(limb) {
 // little-endian u64 array ([[limb0,limb1,limb2,limb3]]). Limbs are u64
 // values (up to 2^64-1), so this can't reuse bytes.mjs's unwrapByteArray --
 // that caps individual elements at 0-255 for a genuine byte blob.
-function unwrapU256Limbs(value) {
+function unwrapU256Limbs(value: unknown): bigint[] | null {
   if (!Array.isArray(value) || value.length !== 1 || !Array.isArray(value[0])) {
     return null;
   }
   const limbs = value[0];
   if (limbs.length !== 4) return null;
   const bigLimbs = limbs.map(toLimbBigInt);
-  return bigLimbs.every((b) => b !== null) ? bigLimbs : null;
+  return bigLimbs.every((b): b is bigint => b !== null) ? bigLimbs : null;
 }
 
 /** 4-limb little-endian u64 array -> exact decimal string (see module header
  * for why this is a string, not a JS number). Returns `value` unchanged
  * (no-op) when the shape doesn't match -- safe on D1's own already-decoded
  * plain-number fields, since a JS number is never a 1-element array. */
-export function decodeU256Limbs(value) {
+export function decodeU256Limbs(value: unknown): unknown {
   const limbs = unwrapU256Limbs(value);
   if (!limbs) return value;
   const [l0, l1, l2, l3] = limbs;
@@ -104,7 +104,7 @@ export function decodeU256Limbs(value) {
  * unwrapByteArray (already length-agnostic; H160 is just a 20-byte case of
  * the same generic byte-blob shape #4689 already handles). Returns `value`
  * unchanged when the shape doesn't match. */
-export function decodeH160Bytes(value) {
+export function decodeH160Bytes(value: unknown): unknown {
   const bytes = unwrapByteArray(value);
   return bytes && bytes.length === 20 ? bytesToHex(bytes) : value;
 }
@@ -114,7 +114,7 @@ export function decodeH160Bytes(value) {
 // of 20. Not exported: only meaningful composed inside decodeEthereumTransactionPayload
 // below, unlike decodeH160Bytes which Requirement 3 names as its own
 // reusable unit.
-function decodeHash32Bytes(value) {
+function decodeHash32Bytes(value: unknown): unknown {
   const bytes = unwrapByteArray(value);
   return bytes && bytes.length === 32 ? bytesToHex(bytes) : value;
 }
@@ -123,7 +123,10 @@ function decodeHash32Bytes(value) {
  * single-key shorthand ({[name]: decodePayload(x)}). A no-op passthrough
  * (returns `value` unchanged) when the shape doesn't match -- safe on D1's
  * own {Name: value} shape or a plain scalar. */
-function decodeTupleVariantEnum(value, decodePayload) {
+function decodeTupleVariantEnum(
+  value: unknown,
+  decodePayload: (payload: unknown) => unknown,
+): unknown {
   if (!isEnumTreeNode(value) || value.values.length !== 1) return value;
   return { [value.name]: decodePayload(value.values[0]) };
 }
@@ -155,11 +158,13 @@ const U256_FIELDS = [
 // deliberately left untouched -- its own mojibake bug is D1's, out of scope
 // here (bytes.mjs's own header) -- `precompile_call` below is an ADDITIVE
 // field decoded from it, not a rewrite of it.
-function decodeEthereumTransactionPayload(payload) {
+function decodeEthereumTransactionPayload(payload: unknown): unknown {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return payload;
   }
-  const out = { ...payload };
+  const out: Record<string, unknown> = {
+    ...(payload as Record<string, unknown>),
+  };
   for (const field of U256_FIELDS) {
     if (field in out) out[field] = decodeU256Limbs(out[field]);
   }
@@ -167,10 +172,11 @@ function decodeEthereumTransactionPayload(payload) {
     out.action = decodeTupleVariantEnum(out.action, decodeH160Bytes);
   }
   if (out.signature && typeof out.signature === "object") {
+    const signature = out.signature as Record<string, unknown>;
     out.signature = {
-      ...out.signature,
-      r: decodeHash32Bytes(out.signature.r),
-      s: decodeHash32Bytes(out.signature.s),
+      ...signature,
+      r: decodeHash32Bytes(signature.r),
+      s: decodeHash32Bytes(signature.s),
     };
   }
   // Precompile call decode (#6725/#6727): only possible for a Call action --
@@ -179,7 +185,9 @@ function decodeEthereumTransactionPayload(payload) {
   // every other build* function here: null for a Create action, a non-
   // precompile `to`, or calldata too short to carry a 4-byte selector.
   const to =
-    out.action && typeof out.action === "object" ? out.action.Call : undefined;
+    out.action && typeof out.action === "object"
+      ? (out.action as Record<string, unknown>).Call
+      : undefined;
   const inputBytes = unwrapByteArray(out.input);
   out.precompile_call =
     typeof to === "string" && inputBytes
@@ -207,7 +215,7 @@ function decodeEthereumTransactionPayload(payload) {
 // replace a named argument within that array (or, defensively, a flat
 // object, since nothing else in this file distinguishes the two and a past
 // design intended to support both).
-function findCallArg(callArgs, fieldName) {
+function findCallArg(callArgs: unknown, fieldName: string): unknown {
   if (Array.isArray(callArgs)) {
     const descriptor = callArgs.find(
       (d) => d && typeof d === "object" && d.name === fieldName,
@@ -215,7 +223,7 @@ function findCallArg(callArgs, fieldName) {
     return descriptor ? descriptor.value : undefined;
   }
   if (callArgs && typeof callArgs === "object") {
-    return callArgs[fieldName];
+    return (callArgs as Record<string, unknown>)[fieldName];
   }
   return undefined;
 }
@@ -224,7 +232,11 @@ function findCallArg(callArgs, fieldName) {
 // for the same (callArgs, fieldName) pair, which requires callArgs to
 // already be an array or an object (see findCallArg above) -- no third
 // fallback needed.
-function withCallArg(callArgs, fieldName, newValue) {
+function withCallArg(
+  callArgs: unknown,
+  fieldName: string,
+  newValue: unknown,
+): unknown {
   if (Array.isArray(callArgs)) {
     return callArgs.map((d) =>
       d && typeof d === "object" && d.name === fieldName
@@ -232,14 +244,14 @@ function withCallArg(callArgs, fieldName, newValue) {
         : d,
     );
   }
-  return { ...callArgs, [fieldName]: newValue };
+  return { ...(callArgs as Record<string, unknown>), [fieldName]: newValue };
 }
 
 /** Ethereum.transact's call_args: decodes the `transaction` field's nested
  * EIP1559 payload (U256s, action's H160, signature's hash bytes). Returns
  * callArgs unchanged (same shape, `transaction` untouched) when the field
  * isn't found or isn't Postgres's enum-tree shape. */
-export function decodeEthereumTransactArgs(callArgs) {
+export function decodeEthereumTransactArgs(callArgs: unknown): unknown {
   const tx = findCallArg(callArgs, "transaction");
   if (!isEnumTreeNode(tx) || tx.values.length !== 1) return callArgs;
   return withCallArg(
@@ -251,7 +263,7 @@ export function decodeEthereumTransactArgs(callArgs) {
 
 /** EVM.withdraw's call_args: decodes `address` (H160) to hex. Returns
  * callArgs unchanged when the field isn't found. */
-export function decodeEvmWithdrawArgs(callArgs) {
+export function decodeEvmWithdrawArgs(callArgs: unknown): unknown {
   const address = findCallArg(callArgs, "address");
   if (address === undefined) return callArgs;
   return withCallArg(callArgs, "address", decodeH160Bytes(address));
@@ -268,7 +280,7 @@ export function decodeEvmWithdrawArgs(callArgs) {
  * a limb is small enough to look like a valid byte value, e.g. limbs
  * [1,0,0,0] (the real target value 1) rendered as hex "0x01000000"
  * (16,777,216) instead of decimal "1". */
-export function decodeDynamicFeeArgs(callArgs) {
+export function decodeDynamicFeeArgs(callArgs: unknown): unknown {
   const target = findCallArg(callArgs, "target");
   if (target === undefined) return callArgs;
   return withCallArg(callArgs, "target", decodeU256Limbs(target));
@@ -283,7 +295,7 @@ export function decodeDynamicFeeArgs(callArgs) {
 // Drand.write_pulse data: signature arrives as {name:"Some",
 // values:[{name:"Sr25519",...}]} pre-normalize, bare {name:"Sr25519",...}
 // after), so this only needs to handle the bare variant.
-function decodeSr25519SignatureValue(value) {
+function decodeSr25519SignatureValue(value: unknown): unknown {
   if (
     !isEnumTreeNode(value) ||
     value.name !== "Sr25519" ||
@@ -304,7 +316,7 @@ function decodeSr25519SignatureValue(value) {
 // output; falls back to plain hex (the same generic hash-like treatment
 // decodeHash32Bytes already gives EIP1559's r/s) when the enum shape doesn't
 // match, rather than leaving a bare hash-like field raw.
-function decodeSignatureLikeField(value) {
+function decodeSignatureLikeField(value: unknown): unknown {
   const enumDecoded = decodeSr25519SignatureValue(value);
   if (enumDecoded !== value) return enumDecoded;
   // Fallback for a bare (non-enum-wrapped) hash-like byte array. Length-
@@ -319,6 +331,12 @@ function decodeSignatureLikeField(value) {
   // shape here is safe to hex-encode regardless of exact length.
   const bytes = unwrapByteArray(value);
   return bytes && bytes.length > 0 ? bytesToHex(bytes) : value;
+}
+
+interface TypedFieldDescriptor {
+  name: string;
+  type: string;
+  value: unknown;
 }
 
 // Recursively finds every key literally named "signature"/"randomness"
@@ -338,19 +356,19 @@ function decodeSignatureLikeField(value) {
 // pattern of not cross-importing such a check between sibling decode modules
 // -- see postgres-call-args.mjs's identical isTypedFieldDescriptor and its
 // header comment for the rationale).
-function isTypedFieldDescriptor(value) {
-  return (
+function isTypedFieldDescriptor(value: unknown): value is TypedFieldDescriptor {
+  return Boolean(
     value &&
     typeof value === "object" &&
     !Array.isArray(value) &&
     Object.keys(value).length === 3 &&
-    typeof value.name === "string" &&
-    typeof value.type === "string" &&
-    "value" in value
+    typeof (value as Record<string, unknown>).name === "string" &&
+    typeof (value as Record<string, unknown>).type === "string" &&
+    "value" in value,
   );
 }
 
-function walkForSignatureFields(value) {
+function walkForSignatureFields(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(walkForSignatureFields);
   if (value && typeof value === "object") {
     // A typed-descriptor node carries its field name as the VALUE of its own
@@ -373,7 +391,7 @@ function walkForSignatureFields(value) {
       }
       return { ...value, value: walkForSignatureFields(value.value) };
     }
-    const out = {};
+    const out: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
       if (key === "signature" || key === "randomness") {
         out[key] = decodeSignatureLikeField(val);
@@ -393,11 +411,11 @@ function walkForSignatureFields(value) {
  * whatever depth they occur. A no-op on an already-decoded shape (a bare hex
  * string or a single-key `{Sr25519: "..."}` shorthand doesn't match either
  * decoder's own shape check). */
-export function decodeSignatureFieldArgs(callArgs) {
+export function decodeSignatureFieldArgs(callArgs: unknown): unknown {
   return walkForSignatureFields(callArgs);
 }
 
-const DECODERS = {
+const DECODERS: Record<string, (callArgs: unknown) => unknown> = {
   "Ethereum.transact": decodeEthereumTransactArgs,
   "EVM.withdraw": decodeEvmWithdrawArgs,
   "LimitOrders.execute_batched_orders": decodeSignatureFieldArgs,
@@ -410,7 +428,11 @@ const DECODERS = {
  * unconditionally in formatExtrinsic regardless of which tier produced the
  * row or what call it decoded, same contract as normalizePostgresValue
  * (#4690) and decodePostgresCallArgs (#4691). */
-export function decodeEthereumEvmCallArgs(callModule, callFunction, callArgs) {
+export function decodeEthereumEvmCallArgs(
+  callModule: unknown,
+  callFunction: unknown,
+  callArgs: unknown,
+): unknown {
   const decoder = DECODERS[`${callModule}.${callFunction}`];
   return decoder ? decoder(callArgs) : callArgs;
 }
