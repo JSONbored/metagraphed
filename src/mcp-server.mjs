@@ -227,7 +227,7 @@ import {
   GET_FEED_MCP_TOOL,
   GET_FEED_OUTPUT_SCHEMA,
   loadFeedItems,
-} from "./feed-mcp.mjs";
+} from "./feed-mcp.ts";
 import {
   GET_BUILD_INSTRUCTIONS,
   GET_BUILD_MCP_TOOL,

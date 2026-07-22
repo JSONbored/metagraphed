@@ -24,18 +24,26 @@ import {
   sortAndCap,
 } from "./feeds.mjs";
 import { loadChangelog } from "./changelog-mcp.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 
 export const FEED_KINDS = ["registry", "incidents", "gaps", "subnet"];
 const ENRICHMENT_QUEUE_ARTIFACT = "/metagraph/review/enrichment-queue.json";
 
-export function feedMcpError(code, message) {
-  const error = new Error(message);
+export interface FeedMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function feedMcpError(code: string, message: string): FeedMcpError {
+  const error = new Error(message) as FeedMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-export function requireKind(args) {
+export function requireKind(
+  args: Record<string, unknown> | null | undefined,
+): string {
   const value = args?.kind;
   if (typeof value !== "string" || !FEED_KINDS.includes(value)) {
     throw feedMcpError(
@@ -50,10 +58,13 @@ export function requireKind(args) {
 // and meaningless for the other three kinds, which have no per-subnet REST
 // variant -- reject it there rather than silently ignoring a param the caller
 // thinks is doing something.
-export function resolveNetuid(args, kind) {
+export function resolveNetuid(
+  args: Record<string, unknown> | null | undefined,
+  kind: string,
+): number | null {
   const value = args?.netuid;
   if (kind === "subnet") {
-    if (!Number.isInteger(value) || value < 0) {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
       throw feedMcpError(
         "invalid_params",
         "Argument `netuid` is required and must be a non-negative integer when kind is `subnet`.",
@@ -72,7 +83,10 @@ export function resolveNetuid(args, kind) {
 
 // Same strict ISO-8601 contract as the REST feed's ?since=/?until= (a bare
 // calendar date for `until` is inclusive of the whole UTC day).
-export function optionalTimestampMs(args, key) {
+export function optionalTimestampMs(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): number | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") {
@@ -91,7 +105,9 @@ export function optionalTimestampMs(args, key) {
   return ms;
 }
 
-export function optionalTag(args) {
+export function optionalTag(
+  args: Record<string, unknown> | null | undefined,
+): string | null {
   const value = args?.tag;
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") {
@@ -100,10 +116,12 @@ export function optionalTag(args) {
   return value;
 }
 
-export function resolveLimit(args) {
+export function resolveLimit(
+  args: Record<string, unknown> | null | undefined,
+): number {
   const value = args?.limit;
   if (value === undefined || value === null) return FEED_MAX_ITEMS;
-  if (!Number.isInteger(value) || value < 1) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
     throw feedMcpError(
       "invalid_params",
       `Argument \`limit\` must be an integer between 1 and ${FEED_MAX_ITEMS}.`,
@@ -112,20 +130,59 @@ export function resolveLimit(args) {
   return Math.min(value, FEED_MAX_ITEMS);
 }
 
+interface FeedMcpCtx {
+  env: Env;
+  readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+}
+
+interface FeedMcpDeps {
+  loadIncidents?: (ctx: FeedMcpCtx) => Promise<unknown>;
+  readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+}
+
 // A missing/unreadable changelog degrades to an empty registry feed, same as
 // the REST route's readData -- get_feed's "what changed" framing is about the
 // feed being empty, not the tool erroring out from under an agent.
-async function loadChangelogForFeed(ctx) {
+async function loadChangelogForFeed(ctx: FeedMcpCtx): Promise<unknown> {
   return loadChangelog(ctx).catch(() => null);
 }
 
-async function loadGapsQueueForFeed(ctx, { readArtifact } = {}) {
+async function loadGapsQueueForFeed(
+  ctx: FeedMcpCtx,
+  { readArtifact }: FeedMcpDeps = {},
+): Promise<unknown> {
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, ENRICHMENT_QUEUE_ARTIFACT);
   return result?.ok ? result.data : null;
 }
 
-export async function loadFeedItems(ctx, args, deps = {}) {
+export interface FeedItem {
+  id: string;
+  url: string;
+  title: string;
+  summary: string;
+  timestamp: string;
+  tags: string[];
+}
+
+export interface FeedResult {
+  kind: string;
+  netuid: number | null;
+  filters: {
+    tag: string | null;
+    since: unknown;
+    until: unknown;
+    limit: number;
+  };
+  returned: number;
+  items: FeedItem[];
+}
+
+export async function loadFeedItems(
+  ctx: FeedMcpCtx,
+  args: Record<string, unknown> | null | undefined,
+  deps: FeedMcpDeps = {},
+): Promise<FeedResult> {
   const kind = requireKind(args);
   const netuid = resolveNetuid(args, kind);
   const tag = optionalTag(args);
@@ -133,17 +190,17 @@ export async function loadFeedItems(ctx, args, deps = {}) {
   const untilMs = optionalTimestampMs(args, "until");
   const limit = resolveLimit(args);
 
-  let items;
+  let items: FeedItem[];
   if (kind === "registry") {
     items = registryItems(await loadChangelogForFeed(ctx));
   } else if (kind === "incidents") {
-    items = incidentItems(await deps.loadIncidents(ctx));
+    items = incidentItems(await deps.loadIncidents?.(ctx));
   } else if (kind === "gaps") {
     items = gapsItems(await loadGapsQueueForFeed(ctx, deps));
   } else {
     const [changelog, incidents] = await Promise.all([
       loadChangelogForFeed(ctx),
-      deps.loadIncidents(ctx),
+      deps.loadIncidents?.(ctx),
     ]);
     items = [
       ...registryItems(changelog, netuid),
