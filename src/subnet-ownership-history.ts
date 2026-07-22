@@ -14,15 +14,17 @@
 
 import { decodeChainEventArgs } from "./chain-event-args.ts";
 
+type Row = Record<string, unknown>;
+
 const EVENT_PALLET = "SubtensorModule";
 export const OWNERSHIP_CHANGE_EVENT_METHOD = "SubnetOwnerChanged";
 
-function numberOrNull(value) {
+function numberOrNull(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
-function isoOrNull(value) {
+function isoOrNull(value: unknown): string | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   const date = new Date(n);
@@ -33,11 +35,11 @@ function isoOrNull(value) {
 // transfer record. old_coldkey/new_coldkey are already in decodeChainEventArgs'
 // ACCOUNT_KEYS allowlist (added 2026-07-14 for the sibling ColdkeySwapped
 // event), so both resolve to SS58 addresses, never raw hex.
-function shapeOwnershipChange(row) {
+function shapeOwnershipChange(row: Row): Row {
   const decoded = decodeChainEventArgs(row.args, {
-    pallet: row.pallet,
-    method: row.method,
-  });
+    pallet: row.pallet as string,
+    method: row.method as string,
+  }) as Row | null;
   return {
     netuid: numberOrNull(decoded?.netuid),
     old_coldkey: decoded?.old_coldkey ?? null,
@@ -52,7 +54,10 @@ function shapeOwnershipChange(row) {
 // by block_number. Empty/absent rows -> the schema-stable empty-list shape,
 // never a 404 -- a subnet that has never changed hands is the common case,
 // not an error.
-export function buildSubnetOwnershipHistory(rows, netuid) {
+export function buildSubnetOwnershipHistory(
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+): Row {
   const changes = (rows ?? []).map(shapeOwnershipChange);
   return {
     schema_version: 1,

@@ -2,7 +2,7 @@
 // crowdloan-tracking epic #6717): every SubnetLeaseCreated /
 // SubnetLeaseTerminated event this subnet has had, decoded from the
 // account_events stream #6718 started capturing. Pure shaping over RAW
-// account_events rows -- mirrors src/subnet-ownership-history.mjs's own
+// account_events rows -- mirrors src/subnet-ownership-history.ts's own
 // "one row in, one record out" convention.
 //
 // SubnetLeaseDividendsDistributed / Contributed / Withdrew are deliberately

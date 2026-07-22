@@ -1,7 +1,7 @@
 // Community-contributable entity labels (#6737-#6740): pure shaping over the
 // baked entities.json artifact (registry/entities/<ss58>.json, one file per
 // address) plus a reverse join against the SAME chain_events SubnetOwnerChanged
-// stream src/subnet-ownership-history.mjs already shapes per-subnet -- this
+// stream src/subnet-ownership-history.ts already shapes per-subnet -- this
 // module pivots that stream by coldkey instead of by netuid. No new capture:
 // both inputs (the entity registry, the chain_events stream) already exist.
 //
@@ -81,7 +81,7 @@ interface OwnershipChangeRow {
 
 // One SubnetOwnerChanged chain_events row -> { netuid, old_coldkey,
 // new_coldkey, block_number, observed_at }, decoded exactly like
-// subnet-ownership-history.mjs's own shapeOwnershipChange.
+// subnet-ownership-history.ts's own shapeOwnershipChange.
 function decodeOwnershipChangeRow(
   row: Record<string, unknown>,
 ): OwnershipChangeRow {

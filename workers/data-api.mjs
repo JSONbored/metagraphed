@@ -56,7 +56,7 @@ import {
 import {
   buildSubnetOwnershipHistory,
   OWNERSHIP_CHANGE_EVENT_METHOD,
-} from "../src/subnet-ownership-history.mjs";
+} from "../src/subnet-ownership-history.ts";
 import { buildAccountEntities } from "../src/entity-labels.ts";
 import {
   buildSubnetLeaseHistory,
