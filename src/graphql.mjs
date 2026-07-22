@@ -213,7 +213,7 @@ import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { loadBlockChainEvents } from "./data-api-mcp.mjs";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
-import { buildChainYield } from "./chain-yield.mjs";
+import { buildChainYield } from "./chain-yield.ts";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
 import { loadSubnetBurn } from "./subnet-burn.mjs";
 import { loadSubnetLease } from "./subnet-lease.mjs";

@@ -62,7 +62,7 @@ function percentile(ascending: number[], p: number): number {
 // Conventional median of a NON-EMPTY ascending numeric array: the middle value for an odd count,
 // the mean of the two middle values for an even count (so [33, 100] -> 66.5, not the lower-middle 33
 // a nearest-rank p50 gives). The averaging form needs no odd/even branch — for an odd count the two
-// indices coincide and it returns that middle value unchanged. Matches median() in chain-yield.mjs /
+// indices coincide and it returns that middle value unchanged. Matches median() in chain-yield.ts /
 // subnet-yield.mjs so a `median` field is the same statistic across the API. Reached only after
 // stabilityDistribution's empty short-circuit.
 function median(ascending: number[]): number {

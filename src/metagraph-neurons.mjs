@@ -66,7 +66,7 @@ const RAO_PER_TAO = 1e9;
 const APY_SECONDS_PER_BLOCK = 12;
 // Calendar year, no leap-day adjustment -- a documented convention, not a
 // protocol-derived figure. No prior art for "a year" exists elsewhere in
-// this repo (src/chain-yield.mjs / src/subnet-yield.mjs are explicitly
+// this repo (src/chain-yield.ts / src/subnet-yield.mjs are explicitly
 // snapshot-only, never annualized) -- apy_estimate is the new precedent.
 const APY_SECONDS_PER_YEAR = 365 * 24 * 60 * 60; // 31,536,000
 
@@ -115,7 +115,7 @@ function roundTao(value) {
 // UID's stake_tao/emission_tao per hotkey (network-wide, unbounded) with plain
 // `+=` compounds rounding error across the accumulation even when each
 // individual value is itself exact (metagraphed#2922, mirrors the toRaoBig
-// pattern in src/chain-yield.mjs and the toRao helper proven in
+// pattern in src/chain-yield.ts and the toRao helper proven in
 // src/account-balance.mjs for #2070). Convert back to TAO only once, at the
 // very end. Callers always pass an already-finite numberOrZero()/roundTao()
 // result, so no isFinite guard here.
@@ -134,7 +134,7 @@ function round(value, dp = 6) {
 
 // 1 TAO = 1e9 rao; round yield-shaped outputs to that precision to shed
 // IEEE-754 noise below the rao floor while keeping small ratios meaningful.
-// Matches src/chain-yield.mjs / src/subnet-yield.mjs's own round9 exactly
+// Matches src/chain-yield.ts / src/subnet-yield.mjs's own round9 exactly
 // (apy_estimate is a sibling yield-shaped field, not a trust/take value, so
 // it uses this precision convention rather than round()'s 6dp default).
 function round9(value) {

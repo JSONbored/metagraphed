@@ -92,7 +92,7 @@ import {
   buildChainIdleStake,
   buildSubnetIdleStake,
 } from "../src/subnet-idle-stake.mjs";
-import { buildChainYield } from "../src/chain-yield.mjs";
+import { buildChainYield } from "../src/chain-yield.ts";
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,
@@ -8139,7 +8139,7 @@ export default {
         }
 
         // GET /api/v1/chain/yield (#4832 Tier 2): network-wide emission-yield
-        // distribution, mirroring src/chain-yield.mjs's loadChainYield.
+        // distribution, mirroring src/chain-yield.ts's loadChainYield.
         if (url.pathname === "/api/v1/chain/yield") {
           const rows = await sql`
           SELECT validator_permit, stake_tao, emission_tao, netuid, captured_at

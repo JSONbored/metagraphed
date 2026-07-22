@@ -23,7 +23,7 @@ function round(value, dp = 9) {
 // transfers) even when each individual value is itself exact, so convert each
 // addend to integer rao, sum the integers, and convert back once at the end.
 // Mirrors the toRaoBig/raoBigToTao pattern established in concentration.mjs /
-// chain-yield.mjs (#2933).
+// chain-yield.ts (#2933).
 function toRaoBig(tao) {
   // Guard the post-multiply value (not just `tao`): a huge-but-finite TAO amount
   // like Number.MAX_VALUE overflows `tao * 1e9` to Infinity, and BigInt(Infinity)

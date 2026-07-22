@@ -88,7 +88,7 @@ function percentile(ascending: number[], p: number): number {
 // the mean of the two middle values for an even count (so an even count returns the average of the
 // two middles, not the lower-middle a nearest-rank p50 gives). The averaging form needs no odd/even
 // branch — for an odd count the two indices coincide and it returns that middle value unchanged.
-// Matches median() in chain-yield.mjs / subnet-yield.mjs so a `median` field is the same statistic
+// Matches median() in chain-yield.ts / subnet-yield.mjs so a `median` field is the same statistic
 // across the API. Reached only after intensityDistribution's empty short-circuit.
 function median(ascending: number[]): number {
   const mid = (ascending.length - 1) / 2;

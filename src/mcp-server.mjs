@@ -528,7 +528,7 @@ import {
   parseSubnetPerformanceHistoryWindow,
 } from "./subnet-performance.mjs";
 import { buildChainPerformance } from "./chain-performance.ts";
-import { buildChainYield } from "./chain-yield.mjs";
+import { buildChainYield } from "./chain-yield.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,

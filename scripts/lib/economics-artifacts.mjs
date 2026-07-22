@@ -71,7 +71,7 @@ const RAO_PER_TAO = 1_000_000_000n;
 // a fixed 9-decimal (rao-precision) string, never a JS number, so neither
 // the summation nor the JSON serialization loses precision. Mirrors the
 // toRaoBig/raoBigToTao pattern used for per-entity sums elsewhere (e.g.
-// src/chain-yield.mjs), extended to a string output since -- unlike those
+// src/chain-yield.ts), extended to a string output since -- unlike those
 // per-entity totals -- this sum's magnitude is the whole reason this exists.
 // No negative-sign handling: total_stake_tao is a non-negative on-chain
 // quantity (matches the schema's own `minimum: 0`), so a negative sum is

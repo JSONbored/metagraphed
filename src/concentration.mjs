@@ -40,7 +40,7 @@ function roundRatio(value, dp = 6) {
 // thousands of network-wide stake_tao/emission_tao floats (per controlling
 // entity, or as a distribution total) with plain `+=` compounds rounding error
 // across the accumulation even when each individual value is itself exact
-// (metagraphed#2922, mirrors the toRaoBig pattern in src/chain-yield.mjs and
+// (metagraphed#2922, mirrors the toRaoBig pattern in src/chain-yield.ts and
 // src/metagraph-neurons.mjs). Convert back to TAO only once, at the very end.
 function toRaoBig(taoValue) {
   const n = typeof taoValue === "number" ? taoValue : Number(taoValue);

@@ -29,7 +29,7 @@ function roundTao(value) {
 const RAO_PER_TAO_BIG = 1_000_000_000n;
 
 // Exact rao-integer BigInt for one subnet's TAO value, for summation across every subnet
-// (#5290, mirrors toRaoBig/raoBigToTao in chain-yield.mjs and stake_sum_rao in
+// (#5290, mirrors toRaoBig/raoBigToTao in chain-yield.ts and stake_sum_rao in
 // neuron-history.mjs). Summing ~130 subnets' total_stake_tao with plain float `+=`
 // compounds error past the point a JSON number can represent exactly at network scale.
 function toRaoBig(tao) {

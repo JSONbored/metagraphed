@@ -4,7 +4,7 @@ import {
   buildChainYield,
   yieldDistribution,
   loadChainYield,
-} from "../src/chain-yield.mjs";
+} from "../src/chain-yield.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
