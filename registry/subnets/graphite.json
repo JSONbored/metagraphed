@@ -227,7 +227,7 @@
       "id": "sn-43-graphite-min-compute",
       "kind": "data-artifact",
       "name": "Graphite minimum compute requirements",
-      "notes": "Public no-auth min_compute.yml committed at the root of SN43 Graphite's official GraphiteAI/Graphite-Subnet repository — the minimum and recommended hardware specification (CPU, RAM, storage, OS, and network bandwidth) for running a Graphite miner or validator. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; a standalone machine-readable reference artifact distinct from the existing Graphite past-problems dataset and API surfaces.",
+      "notes": "Public no-auth min_compute.yml committed at the root of SN43 Graphite's official GraphiteAI/Graphite-Subnet repository \u2014 the minimum and recommended hardware specification (CPU, RAM, storage, OS, and network bandwidth) for running a Graphite miner or validator. Served read-only via raw.githubusercontent from the same official repo registered as the subnet's source-repo; a standalone machine-readable reference artifact distinct from the existing Graphite past-problems dataset and API surfaces.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -375,8 +375,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a hotkey-signed X-Signature header is also accepted for validators). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -401,8 +403,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a hotkey-signed X-Signature header is also accepted for validators). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -427,8 +431,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a hotkey-signed X-Signature header is also accepted for validators). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -453,8 +459,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a hotkey-signed X-Signature header is also accepted for validators). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -479,8 +487,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a hotkey-signed X-Signature header is also accepted for validators). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",

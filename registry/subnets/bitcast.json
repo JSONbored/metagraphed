@@ -420,8 +420,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -749,8 +751,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -778,8 +782,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1103,8 +1109,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1132,8 +1140,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1161,8 +1171,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1190,8 +1202,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1219,8 +1233,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1248,8 +1264,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1277,8 +1295,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1306,8 +1326,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1335,8 +1357,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1364,8 +1388,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1393,8 +1419,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1422,8 +1450,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1451,8 +1481,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1576,8 +1608,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1605,8 +1639,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1634,8 +1670,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1663,8 +1701,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1692,8 +1732,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1721,8 +1763,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1750,8 +1794,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1779,8 +1825,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1808,8 +1856,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1837,8 +1887,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1866,8 +1918,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1895,8 +1949,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1924,8 +1980,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1953,8 +2011,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1982,8 +2042,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2011,8 +2073,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2040,8 +2104,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2069,8 +2135,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2098,8 +2166,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2127,8 +2197,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2156,8 +2228,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2185,8 +2259,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2214,8 +2290,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2243,8 +2321,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2272,8 +2352,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2301,8 +2383,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2330,8 +2414,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2359,8 +2445,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2388,8 +2476,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2417,8 +2507,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2446,8 +2538,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2475,8 +2569,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2504,8 +2600,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2533,8 +2631,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2562,8 +2662,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2591,8 +2693,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2620,8 +2724,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2649,8 +2755,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2678,8 +2786,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2707,8 +2817,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2736,8 +2848,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2765,8 +2879,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2794,8 +2910,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2823,8 +2941,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2852,8 +2972,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2881,8 +3003,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2910,8 +3034,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2939,8 +3065,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2968,8 +3096,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -2997,8 +3127,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3026,8 +3158,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3055,8 +3189,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3084,8 +3220,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3113,8 +3251,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3142,8 +3282,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3171,8 +3313,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3200,8 +3344,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3229,8 +3375,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3258,8 +3406,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3287,8 +3437,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3316,8 +3468,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3345,8 +3499,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3374,8 +3530,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3403,8 +3561,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3432,8 +3592,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3461,8 +3623,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3490,8 +3654,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3519,8 +3685,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3548,8 +3716,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3577,8 +3747,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3606,8 +3778,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3635,8 +3809,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3664,8 +3840,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3693,8 +3871,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3722,8 +3902,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3751,8 +3933,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3780,8 +3964,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -3809,8 +3995,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "OpenAPI security accepts either X-API-Key (APIKeyHeader) or Bearer JWT (HTTPBearer). Live-verified 2026-07-21: anonymous GET / -> HTTP 403 requiring X-API-Key or Bearer token."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the X-API-Key header (a Bearer JWT via the Authorization header is also accepted). Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
