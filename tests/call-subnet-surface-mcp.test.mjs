@@ -113,6 +113,60 @@ const SCHEMA_DOCUMENT = {
   },
 };
 
+// #7686 (MCP execute Phase 3a) fixtures: a fully-documented bearer surface
+// (header location), an api-key surface (query location), a custom-scheme
+// surface (no generic mechanism), and a bearer surface missing
+// auth.location/auth.name (scheme is generic, but not documented enough).
+const BEARER_SURFACE = {
+  surface_id: "x:api:6",
+  netuid: 10,
+  kind: "subnet-api",
+  url: "https://x.example/admin",
+  auth_required: true,
+  auth: { scheme: "bearer", location: "header", name: "Authorization" },
+  probe: { method: "GET", enabled: true },
+};
+
+const API_KEY_QUERY_SURFACE = {
+  surface_id: "x:api:7",
+  netuid: 11,
+  kind: "subnet-api",
+  url: "https://x.example/billing",
+  auth_required: true,
+  auth: { scheme: "api-key", location: "query", name: "api_key" },
+  probe: { method: "GET", enabled: true },
+};
+
+const CUSTOM_AUTH_SURFACE = {
+  surface_id: "x:api:8",
+  netuid: 12,
+  kind: "subnet-api",
+  url: "https://x.example/custom",
+  auth_required: true,
+  auth: { scheme: "custom" },
+  probe: { method: "GET", enabled: true },
+};
+
+const INCOMPLETE_AUTH_SURFACE = {
+  surface_id: "x:api:9",
+  netuid: 13,
+  kind: "subnet-api",
+  url: "https://x.example/undocumented",
+  auth_required: true,
+  auth: { scheme: "bearer" },
+  probe: { method: "GET", enabled: true },
+};
+
+const DISABLED_PROBE_BEARER_SURFACE = {
+  surface_id: "x:api:10",
+  netuid: 14,
+  kind: "subnet-api",
+  url: "https://x.example/disabled-admin",
+  auth_required: true,
+  auth: { scheme: "bearer", location: "header", name: "Authorization" },
+  probe: { method: "GET", enabled: false },
+};
+
 const CATALOG = {
   surfaces: [
     NO_AUTH_SURFACE,
@@ -121,6 +175,11 @@ const CATALOG = {
     SCHEMA_SURFACE,
     NO_SCHEMA_SURFACE,
     SELF_SCHEMA_SURFACE,
+    BEARER_SURFACE,
+    API_KEY_QUERY_SURFACE,
+    CUSTOM_AUTH_SURFACE,
+    INCOMPLETE_AUTH_SURFACE,
+    DISABLED_PROBE_BEARER_SURFACE,
   ],
 };
 
@@ -626,6 +685,115 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       });
       assert.equal(result.isError, true);
       assert.match(result.content[0].text, /invalid_params/);
+    });
+  });
+
+  // #7686 (MCP execute Phase 3a): credential-passthrough eligibility + placement.
+  describe("credential passthrough (#7686)", () => {
+    test("a bearer surface with a credential injects it as the documented header", async () => {
+      let sentHeader;
+      const result = await callTool(
+        { surface_id: "x:api:6", credential: "Bearer abc123" },
+        async (url, init) => {
+          sentHeader = init.headers.Authorization;
+          return new Response("{}", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(sentHeader, "Bearer abc123");
+    });
+
+    test("an api-key surface with a credential injects it as the documented query param", async () => {
+      let requestedUrl;
+      const result = await callTool(
+        { surface_id: "x:api:7", credential: "abc123" },
+        async (url) => {
+          requestedUrl = String(url);
+          return new Response("{}", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(new URL(requestedUrl).searchParams.get("api_key"), "abc123");
+    });
+
+    test("no credential on an auth_required surface is still auth_required (Phase 1/2 unchanged)", async () => {
+      const result = await callTool({ surface_id: "x:api:6" });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /auth_required/);
+    });
+
+    test("a credential on a custom-scheme surface is credential_not_supported", async () => {
+      const result = await callTool({
+        surface_id: "x:api:8",
+        credential: "whatever",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
+    });
+
+    test("a credential on a bearer surface missing location/name is credential_not_supported", async () => {
+      const result = await callTool({
+        surface_id: "x:api:9",
+        credential: "whatever",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /credential_not_supported/);
+    });
+
+    test("a credential on a surface that doesn't require auth is invalid_params", async () => {
+      const result = await callTool({
+        surface_id: "x:api:1",
+        credential: "whatever",
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+    });
+
+    test("a credentialed call to an eligible surface still respects probe.enabled:false", async () => {
+      let fetched = false;
+      const result = await callTool(
+        { surface_id: "x:api:10", credential: "Bearer abc123" },
+        async () => {
+          fetched = true;
+          return new Response("{}", { status: 200 });
+        },
+      );
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /surface_unavailable/);
+      assert.equal(fetched, false);
+    });
+
+    test("a credentialed call to a schema-bearing surface still works with path/method (Phase 2 + 3 compose)", async () => {
+      let sentHeader;
+      let requestedUrl;
+      const result = await callTool(
+        {
+          surface_id: "x:api:6",
+          credential: "Bearer abc123",
+          path: "/admin",
+          method: "GET",
+        },
+        async (url, init) => {
+          requestedUrl = String(url);
+          sentHeader = init.headers.Authorization;
+          return new Response("{}", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      // x:api:6 has no captured schema, so this exercises the no_schema path
+      // -- credential eligibility is still validated before schema resolution.
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /no_schema/);
+      assert.equal(sentHeader, undefined);
+      assert.equal(requestedUrl, undefined);
     });
   });
 });

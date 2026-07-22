@@ -575,6 +575,218 @@ describe("callSubnetSurface", () => {
     assert.equal(calls, 2);
   });
 
+  test("credential: header location sets the named header", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          name: "Authorization",
+          value: "Bearer abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.headers.Authorization, "Bearer abc123");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential: query location merges a query param, distinct from the query option", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        query: { limit: 5 },
+        credential: {
+          location: "query",
+          name: "api_key",
+          value: "abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          const parsed = new URL(url);
+          assert.equal(parsed.searchParams.get("limit"), "5");
+          assert.equal(parsed.searchParams.get("api_key"), "abc123");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential: query location works with no query option supplied at all", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "query",
+          name: "api_key",
+          value: "abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          const parsed = new URL(url);
+          assert.equal(parsed.searchParams.get("api_key"), "abc123");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential: cookie location sets a Cookie header formatted name=value", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "cookie",
+          name: "session",
+          value: "abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.headers.cookie, "session=abc123");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential: an unrecognized location is silently ignored, never placed anywhere", async () => {
+    // callSubnetSurface only places a credential, it doesn't validate
+    // eligibility (the tool handler already restricts location to
+    // header/query/cookie before ever constructing this option) -- an
+    // unrecognized value should be a no-op, not a crash or a guess.
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "body", name: "x", value: "abc123" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(url, "https://example.com/api");
+          assert.equal(init.headers.x, undefined);
+          assert.equal(init.headers.cookie, undefined);
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential: applies to the surface's curated url with no path override (Phase 1 shape)", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "header", name: "X-Api-Key", value: "k" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(url, "https://example.com/api");
+          assert.equal(init.headers["X-Api-Key"], "k");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential: a header-location credential is preserved across a same-origin redirect", async () => {
+    let calls = 0;
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          name: "Authorization",
+          value: "Bearer abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          calls += 1;
+          if (url === "https://example.com/api") {
+            assert.equal(init.headers.Authorization, "Bearer abc123");
+            return new Response(null, {
+              status: 307,
+              headers: { location: "https://example.com/api/v2" },
+            });
+          }
+          assert.equal(init.headers.Authorization, "Bearer abc123");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(calls, 2);
+  });
+
+  test("credential: a header-location credential is stripped on a cross-origin redirect", async () => {
+    let calls = 0;
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          name: "Authorization",
+          value: "Bearer abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          calls += 1;
+          if (url === "https://example.com/api") {
+            assert.equal(init.headers.Authorization, "Bearer abc123");
+            return new Response(null, {
+              status: 307,
+              headers: { location: "https://other.example/api" },
+            });
+          }
+          assert.equal(url, "https://other.example/api");
+          assert.equal(init.headers.Authorization, undefined);
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(calls, 2);
+  });
+
+  test("credential: once stripped on a cross-origin hop, stays stripped on a further redirect back to the original origin", async () => {
+    let calls = 0;
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          name: "Authorization",
+          value: "Bearer abc123",
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          calls += 1;
+          if (url === "https://example.com/api") {
+            return new Response(null, {
+              status: 307,
+              headers: { location: "https://other.example/api" },
+            });
+          }
+          if (url === "https://other.example/api") {
+            assert.equal(init.headers.Authorization, undefined);
+            return new Response(null, {
+              status: 307,
+              headers: { location: "https://example.com/api/v2" },
+            });
+          }
+          assert.equal(url, "https://example.com/api/v2");
+          assert.equal(init.headers.Authorization, undefined);
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(calls, 3);
+  });
+
   test("without a path override, method falls back to Phase 1's probe-derived default even if a method option is set alone", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api", probe: { method: "HEAD" } },
