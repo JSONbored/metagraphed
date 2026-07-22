@@ -1,5 +1,5 @@
 // Substrate Twox64/Twox128 storage-key derivation (#6719). Every hardcoded
-// storage key elsewhere in this codebase (sudo-key.mjs, network-parameters.mjs,
+// storage key elsewhere in this codebase (sudo-key.mjs, network-parameters.ts,
 // subnet-burn.mjs, subnet-recycled.mjs) is a FIXED string precomputed offline
 // specifically because those pallet/item name prefixes never change and
 // twox128 needs XXHash64, not in Node's built-in crypto -- this module exists

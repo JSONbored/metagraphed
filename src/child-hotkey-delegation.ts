@@ -197,7 +197,7 @@ function readCompactU32(
 // u64 proportion (0..u64::MAX represents 0..100% of stake-weight, per the
 // pallet's own "Ensures sum(proportions) <= u64::MAX" invariant) -> a plain
 // 0..1 float. Split whole/remainder in BigInt space first for the same
-// precision reason src/network-parameters.mjs's u64f64ToFloat does.
+// precision reason src/network-parameters.ts's u64f64ToFloat does.
 const U64_SCALE = 2n ** 64n;
 function proportionToFraction(raw: bigint): number {
   const whole = raw / U64_SCALE;

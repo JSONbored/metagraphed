@@ -110,7 +110,7 @@ function rollForwardLock(row, now, unlockRate, maturityRate) {
 // One raw subnet_locks row -> {lockedMass, conviction} as JS numbers.
 // conviction_bits arrives as a Postgres NUMERIC (u128 decimal string) --
 // split whole/remainder in BigInt space before dividing (mirrors src/
-// network-parameters.mjs's u64f64ToFloat, generalized from u64 to u128 --
+// network-parameters.ts's u64f64ToFloat, generalized from u64 to u128 --
 // same precision reasoning: a naive Number(bits)/Number(2**64) routes the
 // numerator through double rounding before dividing at all).
 const U64F64_SCALE = 2n ** 64n;
@@ -203,7 +203,7 @@ export function buildSubnetConviction(
 //
 // Both are plain StorageValues -- twox128("SubtensorModule") ++
 // twox128(<item name>), no further hashing, hardcoded below (mirrors
-// sudo-key.mjs/network-parameters.mjs's own precedent, since twox128 needs
+// sudo-key.mjs/network-parameters.ts's own precedent, since twox128 needs
 // XXHash64, not in Node's built-in crypto). Both declared `ValueQuery` with
 // a compiled-in default (`StorageValue<_, u64, ValueQuery, DefaultXxxRate<T>>`
 // in lib.rs) -- IMPORTANT, confirmed live 2026-07-18: a raw state_getStorage
@@ -293,7 +293,7 @@ async function fetchCurrentBlock(timeoutMs) {
 // The three live values buildSubnetConviction's `now`/`unlockRate`/
 // `maturityRate` options need, fetched in parallel. Each is independently
 // null on its own RPC failure (schema-stable, never throws) -- mirrors
-// network-parameters.mjs's own loadNetworkParameters shape.
+// network-parameters.ts's own loadNetworkParameters shape.
 export async function fetchConvictionRates(
   timeoutMs = CONVICTION_RATES_RPC_TIMEOUT_MS,
 ) {

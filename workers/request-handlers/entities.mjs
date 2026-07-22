@@ -110,7 +110,7 @@ import {
 } from "../../src/child-hotkey-delegation.ts";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { H160_PATTERN, loadAddressMapping } from "../../src/address-mapping.ts";
-import { loadNetworkParameters } from "../../src/network-parameters.mjs";
+import { loadNetworkParameters } from "../../src/network-parameters.ts";
 import { loadRandomnessStatus } from "../../src/randomness.mjs";
 import {
   ENTITY_LABELS_ARTIFACT,

@@ -16244,7 +16244,7 @@ describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.mjs)", () => 
   });
 });
 
-describe("graphql — network_parameters (#6343, live chain RPC via network-parameters.mjs)", () => {
+describe("graphql — network_parameters (#6343, live chain RPC via network-parameters.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/network-parameters.test.mjs.
   function withFetchStub(stub, fn) {

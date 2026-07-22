@@ -43,7 +43,7 @@ const PENDING_CHILDKEY_COOLDOWN_STORAGE_KEY =
 
 // Decode a "0x"-prefixed, 16-hex-char (8-byte) little-endian u64 into a
 // BigInt. Returns null for anything else (malformed/short/absent result).
-function decodeLeU64(hex) {
+function decodeLeU64(hex: unknown): bigint | null {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{16}$/.test(hex)) {
     return null;
   }
@@ -57,7 +57,7 @@ function decodeLeU64(hex) {
 // BigInt rao -> Number TAO, split in BigInt space first to avoid float
 // precision loss (mirrors subnet-burn.mjs's / subnet-recycled.mjs's
 // identical conversion).
-function raoToTao(rao) {
+function raoToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
@@ -66,7 +66,7 @@ function raoToTao(rao) {
 // precision reason raoToTao does -- a naive Number(bits)/Number(2**64)
 // routes the numerator through double rounding before dividing at all.
 const U64F64_SCALE = 2n ** 64n;
-function u64f64ToFloat(bits) {
+function u64f64ToFloat(bits: bigint): number {
   const whole = bits / U64F64_SCALE;
   const remainder = bits % U64F64_SCALE;
   return Number(whole) + Number(remainder) / Number(U64F64_SCALE);
@@ -76,7 +76,10 @@ function u64f64ToFloat(bits) {
 // (non-ok response, timeout, malformed result); a genuinely unset storage
 // result (raw null) reads as a real 0n, not a failure -- mirrors subnet-
 // recycled.mjs's / subnet-burn.mjs's own unset-storage handling.
-async function fetchStorageU64(storageKey, timeoutMs) {
+async function fetchStorageU64(
+  storageKey: string,
+  timeoutMs: number,
+): Promise<bigint | null> {
   try {
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
@@ -90,7 +93,7 @@ async function fetchStorageU64(storageKey, timeoutMs) {
       }),
     });
     if (!rpcResp.ok) return null;
-    const rpcBody = await rpcResp.json();
+    const rpcBody = (await rpcResp.json()) as Record<string, unknown>;
     const raw = rpcBody?.result;
     const bits = decodeLeU64(raw);
     if (bits != null) return bits;
@@ -101,6 +104,14 @@ async function fetchStorageU64(storageKey, timeoutMs) {
   }
 }
 
+export interface NetworkParameters {
+  schema_version: 1;
+  tao_weight: number | null;
+  stake_threshold_tao: number | null;
+  pending_childkey_cooldown_blocks: number | null;
+  queried_at: string;
+}
+
 // Query the live global governance parameters. Uses METAGRAPH_CONTROL KV
 // (300s TTL) when present; each field is independently null on its own RPC
 // failure (schema-stable, never throws) -- three parallel reads against the
@@ -108,13 +119,17 @@ async function fetchStorageU64(storageKey, timeoutMs) {
 // this codebase already relies on elsewhere). Positive-caches only when all
 // three succeed, so a partial failure doesn't cache a stale-looking result
 // for the full TTL.
-export async function loadNetworkParameters(env) {
+export async function loadNetworkParameters(
+  env: Env,
+): Promise<NetworkParameters> {
   const cacheKey = "network:parameters";
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
     try {
-      const cached = await kv.get(cacheKey, { type: "json" });
+      const cached = await kv.get<NetworkParameters>(cacheKey, {
+        type: "json",
+      });
       if (cached) return cached;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
@@ -150,7 +165,7 @@ export async function loadNetworkParameters(env) {
     stakeThresholdTao != null &&
     pendingChildKeyCooldownBlocks != null;
 
-  const payload = {
+  const payload: NetworkParameters = {
     schema_version: 1,
     tao_weight: taoWeight,
     stake_threshold_tao: stakeThresholdTao,

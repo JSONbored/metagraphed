@@ -652,7 +652,7 @@ import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.mjs";
 import { loadSubnetBurn } from "./subnet-burn.mjs";
 import { loadSubnetLease } from "./subnet-lease.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
-import { loadNetworkParameters } from "./network-parameters.mjs";
+import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadRandomnessStatus } from "./randomness.mjs";
 import {
   ENTITY_LABELS_ARTIFACT,

@@ -12,7 +12,7 @@
 // Storage keys = twox128("Drand") ++ twox128(<item name>), no further
 // hashing (each is a StorageValue, not a map) -- computed via
 // src/twox-storage-key.ts's storageMapPrefix and hardcoded below, matching
-// network-parameters.mjs's own precedent of precomputing fixed pallet/item
+// network-parameters.ts's own precedent of precomputing fixed pallet/item
 // prefixes rather than hashing on every request (the pallet/item name never
 // changes). Cross-checked against that module's already-verified
 // twox-storage-key.mjs output at write time -- see tests/randomness.test.mjs.
@@ -31,7 +31,7 @@ const OLDEST_STORED_ROUND_STORAGE_KEY =
 
 // Decode a "0x"-prefixed, 16-hex-char (8-byte) little-endian u64 into a
 // BigInt. Returns null for anything else (malformed/short/absent result).
-// Byte-for-byte copy of network-parameters.mjs's own decodeLeU64, per this
+// Byte-for-byte copy of network-parameters.ts's own decodeLeU64, per this
 // codebase's per-module small-codec-helper convention.
 function decodeLeU64(hex) {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{16}$/.test(hex)) {
@@ -47,7 +47,7 @@ function decodeLeU64(hex) {
 // One raw state_getStorage read, decoded to a BigInt. null on any failure
 // (non-ok response, timeout, malformed result); a genuinely unset storage
 // result (raw null) reads as a real 0n, not a failure -- mirrors
-// network-parameters.mjs's own unset-storage handling.
+// network-parameters.ts's own unset-storage handling.
 async function fetchStorageU64(storageKey, timeoutMs) {
   try {
     const rpcResp = await fetch(FINNEY_RPC_URL, {
@@ -76,7 +76,7 @@ async function fetchStorageU64(storageKey, timeoutMs) {
 // Query the live randomness-beacon status. Uses METAGRAPH_CONTROL KV (30s
 // TTL) when present; each field is independently null on its own RPC
 // failure (schema-stable, never throws) -- two parallel reads against the
-// same endpoint, matching network-parameters.mjs's own batched-but-
+// same endpoint, matching network-parameters.ts's own batched-but-
 // independent-failure shape. Positive-caches only when both succeed, so a
 // partial failure doesn't cache a stale-looking result for the full TTL.
 export async function loadRandomnessStatus(env) {

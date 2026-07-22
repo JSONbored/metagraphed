@@ -107,7 +107,7 @@ function readU64LEBigInt(bytes, offset) {
 
 // BigInt rao/alpha (both u64 @ 1e9 precision) -> Number display units, split
 // in BigInt space first to avoid float precision loss (mirrors subnet-
-// burn.mjs's / network-parameters.mjs's identical conversion).
+// burn.mjs's / network-parameters.ts's identical conversion).
 function rawToDisplay(raw) {
   return Number(raw / 1_000_000_000n) + Number(raw % 1_000_000_000n) / 1e9;
 }
