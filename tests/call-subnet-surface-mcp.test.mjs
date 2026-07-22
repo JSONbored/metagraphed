@@ -10,6 +10,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.mjs";
 
 const NO_AUTH_SURFACE = {
   surface_id: "x:api:1",
@@ -794,6 +795,63 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /no_schema/);
       assert.equal(sentHeader, undefined);
       assert.equal(requestedUrl, undefined);
+    });
+  });
+
+  // #7687 (MCP execute Phase 3b): a credential must never appear in usage
+  // telemetry. usageEventProperties (src/usage-telemetry.mjs) is already a
+  // strict allowlist that never receives raw tool args -- this proves that
+  // holds for a real credentialed call, not just by reading the allowlist.
+  describe("credential never reaches usage telemetry (#7687)", () => {
+    test("a credentialed call_subnet_surface records only the allowlisted fields", async () => {
+      const of = globalThis.fetch;
+      globalThis.fetch = async () =>
+        new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      const recorded = [];
+      try {
+        const response = await handleMcpRequest(
+          new Request("https://metagraph.sh/mcp", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "tools/call",
+              params: {
+                name: "call_subnet_surface",
+                arguments: {
+                  surface_id: "x:api:6",
+                  credential: "Bearer super-secret-abc123",
+                },
+              },
+            }),
+          }),
+          { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+          {
+            ...deps,
+            executionCtx: { waitUntil: (p) => p },
+            recordUsageEvent: async (_env, event) => {
+              recorded.push(event);
+              return true;
+            },
+          },
+        );
+        await response.json();
+      } finally {
+        globalThis.fetch = of;
+      }
+      assert.equal(recorded.length, 1);
+      const serialized = JSON.stringify(recorded[0]);
+      assert.ok(!serialized.includes("super-secret-abc123"));
+      assert.deepEqual(Object.keys(recorded[0]).sort(), [
+        "durationMs",
+        "mcpTool",
+        "ok",
+      ]);
+      assert.equal(recorded[0].mcpTool, "call_subnet_surface");
     });
   });
 });
