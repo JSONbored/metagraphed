@@ -220,7 +220,7 @@ import {
   loadChangelog,
 } from "./changelog-mcp.ts";
 import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.mjs";
-import { decodeEvmPrecompileCall } from "./evm-precompiles.mjs";
+import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
 import { H160_PATTERN, loadAddressMapping } from "./address-mapping.ts";
 import {
   GET_FEED_INSTRUCTIONS,
@@ -11372,7 +11372,7 @@ export const MCP_TOOLS = [
     description:
       "Identify + decode a raw Ethereum.transact `to`/`input` pair against " +
       "Bittensor's 16 fixed-address EVM precompiles (epic #6725) -- the " +
-      "same registry src/evm-precompiles.mjs uses to add a `precompile_call` " +
+      "same registry src/evm-precompiles.ts uses to add a `precompile_call` " +
       "field onto captured Ethereum.transact calldata. precompile/address/" +
       "function are all null when `to` isn't one of the 16 known precompile " +
       "addresses (an ordinary contract call). When `to` IS a known " +

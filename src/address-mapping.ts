@@ -12,7 +12,7 @@
 // Substrate-native methods; eth_call is the Ethereum-native sibling on that
 // identical endpoint). Mirrors src/sudo-key.mjs's live-RPC + KV-cache shape.
 import { encodeAccountId32 } from "./ss58.ts";
-import { functionSelector } from "./evm-precompiles.mjs";
+import { functionSelector } from "./evm-precompiles.ts";
 
 const ADDRESS_MAPPING_PRECOMPILE_ADDRESS =
   "0x000000000000000000000000000000000000080c";

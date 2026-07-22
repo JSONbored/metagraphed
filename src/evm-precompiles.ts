@@ -33,7 +33,7 @@ const WORD_BYTES = 32;
 // own "0x" + ... construction, or a test fixture built the same way), so this
 // only ever strips that guaranteed prefix -- not a general hex-or-0x-hex
 // parser, same scoping note src/sudo-key.mjs's own hexToBytes carries.
-function hexToBytes(hex) {
+function hexToBytes(hex: string): Uint8Array {
   const clean = hex.slice(2);
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i += 1) {
@@ -42,7 +42,7 @@ function hexToBytes(hex) {
   return out;
 }
 
-function bytesToHexString(bytes) {
+function bytesToHexString(bytes: Uint8Array | number[]): string {
   return (
     "0x" +
     Array.from(bytes)
@@ -54,12 +54,28 @@ function bytesToHexString(bytes) {
 /** The real on-chain 4-byte function selector: keccak256(signature)[0:4],
  * exactly how Substrate's precompile_utils crate (and every Solidity ABI
  * encoder) derives it from a canonical `name(type1,type2)` signature. */
-export function functionSelector(signature) {
+export function functionSelector(signature: string): string {
   const hash = keccak_256(new TextEncoder().encode(signature));
   return bytesToHexString(hash.slice(0, 4));
 }
 
-export const EVM_PRECOMPILES = [
+export interface EvmPrecompileFunction {
+  name: string;
+  signature: string;
+  argTypes: string[];
+  argNames: string[];
+  selector?: string;
+}
+
+export interface EvmPrecompileEntry {
+  name: string;
+  index: number;
+  address: string;
+  source: string;
+  functions: EvmPrecompileFunction[];
+}
+
+export const EVM_PRECOMPILES: EvmPrecompileEntry[] = [
   {
     name: "AddressMapping",
     index: 2060,
@@ -1223,8 +1239,11 @@ export const EVM_PRECOMPILES = [
 // generated table above, so a signature transcription bug would show up as a
 // selector mismatch in tests rather than silently trusting a hand-typed hex
 // value.
-export const EVM_PRECOMPILE_BY_ADDRESS = new Map();
-const FUNCTION_BY_ADDRESS_AND_SELECTOR = new Map();
+export const EVM_PRECOMPILE_BY_ADDRESS = new Map<string, EvmPrecompileEntry>();
+const FUNCTION_BY_ADDRESS_AND_SELECTOR = new Map<
+  string,
+  EvmPrecompileFunction
+>();
 
 for (const precompile of EVM_PRECOMPILES) {
   const address = precompile.address.toLowerCase();
@@ -1237,7 +1256,9 @@ for (const precompile of EVM_PRECOMPILES) {
 
 /** Case-insensitive precompile lookup by H160 address, or undefined if
  * `address` isn't one of the 16 known precompile addresses. */
-export function findEvmPrecompile(address) {
+export function findEvmPrecompile(
+  address: unknown,
+): EvmPrecompileEntry | undefined {
   if (typeof address !== "string") return undefined;
   return EVM_PRECOMPILE_BY_ADDRESS.get(address.toLowerCase());
 }
@@ -1247,7 +1268,10 @@ export function findEvmPrecompile(address) {
 // extracted signature set: address, bool, bytes32, uint8/16/32/64/128/256 --
 // no bytes/string/tuple/struct params anywhere in the 16 precompiles).
 // Returns null on a type this table has never seen, rather than guessing.
-function decodeStaticWord(type, word) {
+function decodeStaticWord(
+  type: string,
+  word: Uint8Array,
+): string | number | boolean | null {
   switch (type) {
     case "address":
       return bytesToHexString(word.slice(12, 32));
@@ -1279,7 +1303,7 @@ function decodeStaticWord(type, word) {
   }
 }
 
-function readWord(bytes, wordIndex) {
+function readWord(bytes: Uint8Array, wordIndex: number): Uint8Array | null {
   const start = wordIndex * WORD_BYTES;
   const word = bytes.slice(start, start + WORD_BYTES);
   return word.length === WORD_BYTES ? word : null;
@@ -1295,9 +1319,13 @@ function readWord(bytes, wordIndex) {
 // truncated/malformed calldata rather than throwing or returning partial
 // data -- the same "decline rather than guess" contract every decoder in
 // src/indexer-rs-ethereum-decode.mjs already follows.
-export function decodeAbiArgs(argTypes, argNames, dataHex) {
+export function decodeAbiArgs(
+  argTypes: string[],
+  argNames: string[],
+  dataHex: string,
+): Record<string, unknown> | null {
   const bytes = hexToBytes(dataHex);
-  const args = {};
+  const args: Record<string, unknown> = {};
   for (let i = 0; i < argTypes.length; i += 1) {
     const type = argTypes[i];
     const name = argNames[i];
@@ -1347,7 +1375,18 @@ export function decodeAbiArgs(argTypes, argNames, dataHex) {
  * precompile with `function: null` rather than silently dropping the match --
  * still useful signal ("this called the Subnet precompile, function unknown")
  * even without arg-level decoding. */
-export function decodeEvmPrecompileCall(to, inputHex) {
+export interface EvmPrecompileCall {
+  precompile: string;
+  address: string;
+  function: string | null;
+  signature?: string;
+  args?: Record<string, unknown> | null;
+}
+
+export function decodeEvmPrecompileCall(
+  to: unknown,
+  inputHex: unknown,
+): EvmPrecompileCall | null {
   const precompile = findEvmPrecompile(to);
   if (!precompile) return null;
   if (typeof inputHex !== "string" || !/^0x[0-9a-fA-F]*$/.test(inputHex)) {

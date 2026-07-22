@@ -25,7 +25,7 @@ import {
 } from "../workers/mcp-session-hub.ts";
 import { SubnetStatusHub } from "../workers/subnet-status-hub.ts";
 import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
-import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.mjs";
+import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.ts";
 import {
   artifactFilePath,
   createLocalArtifactEnv,

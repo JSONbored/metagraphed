@@ -6,7 +6,7 @@ import {
   decodeEvmPrecompileCall,
   findEvmPrecompile,
   functionSelector,
-} from "../src/evm-precompiles.mjs";
+} from "../src/evm-precompiles.ts";
 
 function word(n) {
   return BigInt(n).toString(16).padStart(64, "0");

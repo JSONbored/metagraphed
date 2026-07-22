@@ -54,7 +54,7 @@
 // the numeric STRING that parser produces for a limb large enough to need it.
 import { isEnumTreeNode } from "./scale-normalize.ts";
 import { unwrapByteArray, bytesToHex } from "./bytes.ts";
-import { decodeEvmPrecompileCall } from "./evm-precompiles.mjs";
+import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
 
 // A single limb (u64, up to 2^64-1) as delivered by src/extrinsics.mjs's
 // parseJsonPreservingBigInts (#4692 review fix): most limbs are small enough
