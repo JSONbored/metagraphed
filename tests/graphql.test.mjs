@@ -16265,6 +16265,44 @@ describe("graphql — network_randomness (#6990, live chain RPC via randomness.m
   });
 });
 
+describe("graphql — randomness_status (#7649, get_randomness_status-aligned alias)", () => {
+  test("serves the same beacon snapshot as network_randomness through the delegate", async () => {
+    const env = {
+      METAGRAPH_CONTROL: {
+        get: async () => ({
+          schema_version: 1,
+          last_stored_round: 1200,
+          oldest_stored_round: 900,
+          stored_round_span: 301,
+          queried_at: "2026-07-20T00:00:00.000Z",
+        }),
+      },
+    };
+    const { status, body } = await gql(
+      "{ randomness_status { schema_version last_stored_round stored_round_span } network_randomness { last_stored_round } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const alias = body.data.randomness_status;
+    assert.equal(alias.schema_version, 1);
+    assert.equal(alias.last_stored_round, 1200);
+    assert.equal(alias.stored_round_span, 301);
+    // Alias equivalence on the same env.
+    assert.equal(
+      alias.last_stored_round,
+      body.data.network_randomness.last_stored_round,
+    );
+  });
+
+  test("is priced identically to network_randomness", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.randomness_status,
+      FIELD_COMPLEXITY.network_randomness,
+    );
+  });
+});
+
 describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs)", () => {
   function kvEnv(payload) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };

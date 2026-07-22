@@ -817,6 +817,8 @@ export const SDL = `
     network_parameters: NetworkParameters
     "Live drand randomness-beacon status read directly from chain via RPC (not the Postgres tier): the newest and oldest stored beacon rounds and the span between them. Each field is independently null on its own RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/network/randomness."
     network_randomness: NetworkRandomness
+    "The get_randomness_status-aligned name for the same live drand beacon snapshot (#7649): identical type, KV cache, and independently-null RPC-failure behavior as network_randomness — a thin alias so MCP tool names and GraphQL fields line up. Mirrors GET /api/v1/network/randomness."
+    randomness_status: NetworkRandomness
     "Live EVM (H160) -> Substrate (SS58) account-address mapping for a 20-byte 0x-prefixed hex address, resolved directly from chain via RPC (not the Postgres tier). ss58 is null when the address has no association or the RPC lookup fails, schema-stable, never a GraphQL error. Mirrors GET /api/v1/evm/address/{h160}."
     evm_address(h160: String!): EvmAddressMapping
     "Recent Sudo-pallet extrinsic feed (newest first): the chain's superuser governance calls, the same shape as the extrinsics feed with call_module fixed to Sudo (so no signer/call_module args). Mirrors GET /api/v1/sudo."
@@ -4360,6 +4362,7 @@ export const FIELD_COMPLEXITY = {
   sudo_key: LIVE_RPC_FIELD_COMPLEXITY,
   network_parameters: LIVE_RPC_FIELD_COMPLEXITY,
   network_randomness: LIVE_RPC_FIELD_COMPLEXITY,
+  randomness_status: LIVE_RPC_FIELD_COMPLEXITY,
   evm_address: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
@@ -10065,6 +10068,12 @@ const rootValue = {
     // Each round field stays independently null on RPC failure (schema-stable),
     // never a GraphQL error; schema_version/queried_at are always set.
     return loadRandomnessStatus(context.env);
+  },
+  // #7649: the get_randomness_status-aligned name for the same beacon snapshot
+  // -- a thin delegate so MCP tool names and GraphQL fields line up. Identical
+  // loader, KV cache, and independently-null RPC-failure behavior.
+  async randomness_status(_args, context) {
+    return rootValue.network_randomness(_args, context);
   },
   async evm_address({ h160 }, context) {
     // Same H160_PATTERN validation the REST route + MCP get_evm_address_mapping
