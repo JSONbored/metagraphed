@@ -266,7 +266,7 @@ import {
   buildAccountPrometheus,
   PROMETHEUS_WINDOWS,
   DEFAULT_PROMETHEUS_WINDOW,
-} from "../../src/account-prometheus.mjs";
+} from "../../src/account-prometheus.ts";
 import {
   buildAccountDeregistrations,
   DEREGISTRATION_WINDOWS,

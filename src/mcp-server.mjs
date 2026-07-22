@@ -561,7 +561,7 @@ import {
   buildAccountPrometheus,
   PROMETHEUS_WINDOWS,
   DEFAULT_PROMETHEUS_WINDOW,
-} from "./account-prometheus.mjs";
+} from "./account-prometheus.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,

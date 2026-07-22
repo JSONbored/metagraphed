@@ -224,7 +224,7 @@ import {
   PROMETHEUS_EVENT_KIND,
   PROMETHEUS_WINDOWS,
   DEFAULT_PROMETHEUS_WINDOW,
-} from "../src/account-prometheus.mjs";
+} from "../src/account-prometheus.ts";
 import {
   buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,

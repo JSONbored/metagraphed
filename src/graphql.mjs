@@ -294,7 +294,7 @@ import {
   DEFAULT_PROMETHEUS_WINDOW,
   PROMETHEUS_WINDOWS,
   buildAccountPrometheus,
-} from "./account-prometheus.mjs";
+} from "./account-prometheus.ts";
 import {
   DEFAULT_STAKE_FLOW_WINDOW,
   STAKE_FLOW_WINDOWS,

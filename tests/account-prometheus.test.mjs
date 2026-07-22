@@ -5,7 +5,7 @@ import {
   loadAccountPrometheus,
   PROMETHEUS_EVENT_KIND,
   DEFAULT_PROMETHEUS_WINDOW,
-} from "../src/account-prometheus.mjs";
+} from "../src/account-prometheus.ts";
 
 // One GROUP BY netuid row (announcement count + first/last observed epoch ms).
 function row(netuid, announcements, first, last) {
