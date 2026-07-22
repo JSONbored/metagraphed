@@ -4,7 +4,7 @@ import { describe, test } from "vitest";
 import {
   handleSavedQueryRequest,
   SAVED_QUERIES_PATH_PREFIX,
-} from "../workers/request-handlers/saved-queries.mjs";
+} from "../workers/request-handlers/saved-queries.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { SAVED_QUERY_HANDLERS } from "../src/saved-queries.mjs";
 

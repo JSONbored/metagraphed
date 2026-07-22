@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { contractStaleness } from "../workers/responses.mjs";
+import { contractStaleness } from "../workers/responses.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 const ARTIFACT_ROUTE = "https://metagraph.sh/api/v1/subnets";

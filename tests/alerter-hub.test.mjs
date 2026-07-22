@@ -8,7 +8,7 @@ import {
   ALERTER_HUB_TRIGGER_CACHE_TTL_MS,
   AlerterHub,
   deliverAlertMatch,
-} from "../workers/alerter-hub.mjs";
+} from "../workers/alerter-hub.ts";
 
 const INTERNAL_TOKEN = "test-internal-token";
 

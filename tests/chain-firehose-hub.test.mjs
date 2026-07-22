@@ -33,8 +33,8 @@ import {
   parseChainFirehoseTopics,
   validateChainEventsSubscribePayload,
   validateChainFirehoseIngestPayload,
-} from "../workers/chain-firehose-hub.mjs";
-import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.mjs";
+} from "../workers/chain-firehose-hub.ts";
+import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 
 // --- validateChainEventsSubscribePayload (#4983 security fix) -------------------
 //
@@ -1676,7 +1676,7 @@ test("broadcast: the ALERTER_HUB ping carries a bounded AbortSignal, so a slow/s
 });
 
 test("ALERTER_HUB_EVALUATE_TIMEOUT_MS is generous enough to cover AlerterHub's own worst-case refresh+delivery cycle", () => {
-  // Documents the reasoning, not just the number: workers/alerter-hub.mjs's
+  // Documents the reasoning, not just the number: workers/alerter-hub.ts's
   // own ALERT_TRIGGER_REFRESH_TIMEOUT_MS (4000) plus ALERT_DELIVERY_TIMEOUT_MS
   // (8000, but bounded-concurrency so one slow batch, not summed across every
   // match) should together stay comfortably under this ceiling.

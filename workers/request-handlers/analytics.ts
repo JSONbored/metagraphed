@@ -27,26 +27,28 @@ import {
   DEFAULT_ANALYTICS_WINDOW,
   MAX_INCIDENT_ROWS,
   resolveClientIp,
-} from "../config.mjs";
-import { parseLimitParam } from "../request-params.mjs";
-import { errorResponse, ifNoneMatchSatisfied } from "../http.mjs";
-import { csvRequested, csvResponse } from "../csv.mjs";
+} from "../config.ts";
+import { parseLimitParam } from "../request-params.ts";
+import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
+import { csvRequested, csvResponse } from "../csv.ts";
 import {
   contractVersion,
   envelopeResponse,
   publishedAt,
-} from "../responses.mjs";
+} from "../responses.ts";
 import {
   currentPostgresTierFallbackGeneration,
   tryPostgresTier,
-} from "../postgres-tier.mjs";
+} from "../postgres-tier.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import { formatGlobalIncidents } from "../../src/health-serving.mjs";
 import {
   applyQueryFilters,
   listQueryParamNames,
   paginationLinkHeader,
-} from "../list-query.mjs";
+  type Pagination,
+  type QueryError,
+} from "../list-query.ts";
 import {
   loadSubnetHealthTrends,
   loadSubnetIncidents,
@@ -120,22 +122,36 @@ import {
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
 } from "../../src/chain-alpha-volume.mjs";
 
+// The shape of the api.mjs-local in-isolate memoized KV read (see
+// configureAnalytics below) -- loose on the return value beyond `last_run_at`
+// since that field is the only one any handler in this file reads.
+type HealthMetaKvReader = (
+  env: Env,
+) => Promise<{ last_run_at?: string | null } | null>;
+
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
 // test still import it from there; injecting the stable function reference here
 // keeps the import acyclic. This is a one-time wiring of a stable function — not
 // the mutable fallback state, which is genuinely owned by this module below.
-let readHealthMetaKv = () => {
+/* v8 ignore start */
+let readHealthMetaKv: HealthMetaKvReader = () => {
   throw new Error("analytics handlers used before configureAnalytics()");
 };
+/* v8 ignore stop */
 
 // Called once at api.mjs module-init to wire the api.mjs-local KV reader.
-export function configureAnalytics(deps) {
+export function configureAnalytics(deps: {
+  readHealthMetaKv: HealthMetaKvReader;
+}) {
   readHealthMetaKv = deps.readHealthMetaKv;
 }
 
-function validateQueryParams(url, allowedParams) {
-  const seen = new Set();
+function validateQueryParams(
+  url: URL,
+  allowedParams: string[],
+): QueryError | null {
+  const seen = new Set<string>();
   for (const key of url.searchParams.keys()) {
     if (!allowedParams.includes(key)) {
       return {
@@ -170,11 +186,15 @@ function validateQueryParams(url, allowedParams) {
 //
 // A null/undefined value means the param is genuinely absent with no default
 // (e.g. an unset `call_module` filter), so it stays out of the key.
-function canonicalAnalyticsCacheRoute(url, resolved = {}) {
+function canonicalAnalyticsCacheRoute(
+  url: URL,
+  resolved: Record<string, unknown> = {},
+): string {
   const search = new URL("https://cache-key.invalid/").searchParams;
   search.set(
     ANALYTICS_WINDOW_PARAM,
-    resolved[ANALYTICS_WINDOW_PARAM] ?? DEFAULT_ANALYTICS_WINDOW,
+    (resolved[ANALYTICS_WINDOW_PARAM] as string | undefined) ??
+      DEFAULT_ANALYTICS_WINDOW,
   );
   for (const [param, value] of Object.entries(resolved)) {
     if (param === ANALYTICS_WINDOW_PARAM) continue;
@@ -185,7 +205,12 @@ function canonicalAnalyticsCacheRoute(url, resolved = {}) {
   return `${url.pathname}${query ? `?${query}` : ""}`;
 }
 
-function analyticsWindow(url, extraParams = []) {
+// Two-shape (not `ok`-tagged) union matching the original JS's `{label,days}` /
+// `{error}` return -- callers narrow via `"error" in result`, same convention as
+// ParamError-style returns elsewhere (workers/request-params.ts).
+type WindowResult = { label: string; days: number } | { error: QueryError };
+
+function analyticsWindow(url: URL, extraParams: string[] = []): WindowResult {
   const validationError = validateQueryParams(url, [
     ANALYTICS_WINDOW_PARAM,
     ...extraParams,
@@ -193,7 +218,10 @@ function analyticsWindow(url, extraParams = []) {
   if (validationError) return { error: validationError };
 
   const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
-  if (requested !== null && !ANALYTICS_WINDOWS[requested]) {
+  if (
+    requested !== null &&
+    !ANALYTICS_WINDOWS[requested as keyof typeof ANALYTICS_WINDOWS]
+  ) {
     return {
       error: {
         parameter: ANALYTICS_WINDOW_PARAM,
@@ -203,21 +231,27 @@ function analyticsWindow(url, extraParams = []) {
   }
 
   const label = requested || DEFAULT_ANALYTICS_WINDOW;
-  return { label, days: ANALYTICS_WINDOWS[label] };
+  return {
+    label,
+    days: ANALYTICS_WINDOWS[label as keyof typeof ANALYTICS_WINDOWS],
+  };
 }
 
 // Normalizes per-subnet health analytics URLs so a bare ?-free request and an
 // explicit ?window=7d request both resolve to the same edge-cache entry — mirrors
 // canonicalEconomicsTrendsCachePath in analytics-routes.mjs.
-export function canonicalHealthWindowCachePath(url) {
+export function canonicalHealthWindowCachePath(url: URL): string {
   const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
   if (validationError) return `${url.pathname}${url.search}`;
-  const { label, error } = analyticsWindow(url);
-  if (error) return `${url.pathname}${url.search}`;
-  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+  const windowResult = analyticsWindow(url);
+  if ("error" in windowResult) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${encodeURIComponent(windowResult.label)}`;
 }
 
-async function dataRateLimitResponse(request, env) {
+async function dataRateLimitResponse(
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
   if (!env.DATA_RATE_LIMITER?.limit) return null;
   const { success } = await env.DATA_RATE_LIMITER.limit({
     key: `data:${resolveClientIp(request)}`,
@@ -237,13 +271,17 @@ async function dataRateLimitResponse(request, env) {
   );
 }
 
-function analyticsQueryError(error) {
+function analyticsQueryError(error: QueryError): Response {
   return errorResponse("invalid_query", error.message, 400, {
     parameter: error.parameter,
   });
 }
 
-function validateEnumParam(url, parameter, allowedValues) {
+function validateEnumParam(
+  url: URL,
+  parameter: string,
+  allowedValues: readonly string[],
+): QueryError | null {
   const raw = url.searchParams.get(parameter);
   if (raw === null) return null;
   if (allowedValues.includes(raw)) return null;
@@ -256,12 +294,16 @@ function validateEnumParam(url, parameter, allowedValues) {
 // Enforce the declared `format` enum (json|csv). The per-handler allow-list only
 // gates the param NAME, not its value — without this a `?format=xml` would be
 // silently accepted, contradicting the contract's `enum: [json, csv]` (#2532).
-function validateFormatParam(url) {
+function validateFormatParam(url: URL): QueryError | null {
   return validateEnumParam(url, "format", ["json", "csv"]);
 }
 
 // Bound an optional free-text filter so an oversized value never reaches D1.
-function validateMaxLength(url, parameter, max) {
+function validateMaxLength(
+  url: URL,
+  parameter: string,
+  max: number,
+): QueryError | null {
   const raw = url.searchParams.get(parameter);
   if (raw !== null && raw.length > max) {
     return {
@@ -272,14 +314,18 @@ function validateMaxLength(url, parameter, max) {
   return null;
 }
 
-const D1_FALLBACK_RESPONSES = new WeakSet();
+const D1_FALLBACK_RESPONSES = new WeakSet<Response>();
 
-function markD1FallbackResponse(response) {
+function markD1FallbackResponse(response: Response): Response {
   D1_FALLBACK_RESPONSES.add(response);
   return response;
 }
 
-async function analyticsMeta(env, artifactPath, observedAt) {
+async function analyticsMeta(
+  env: Env,
+  artifactPath: string,
+  observedAt: unknown,
+) {
   return {
     artifact_path: artifactPath,
     cache: "short",
@@ -314,15 +360,23 @@ async function analyticsMeta(env, artifactPath, observedAt) {
 // a stale entry — identical to the overlay cache's `if (lastRunAt)` guard. The
 // cache is transparent: body/shape/headers are whatever buildResponse() produced;
 // only 200s are cached, never errors.
+// Loose, structural ExecutionContext -- every call site here either receives
+// the real Workers-runtime ExecutionContext or, from a handler invoked with no
+// ctx (e.g. a direct unit-test call), the `= {}` default; both only ever need
+// `waitUntil`, so a full ExecutionContext isn't required to satisfy this type.
+export interface EdgeCacheCtx {
+  waitUntil?: (promise: Promise<unknown>) => void;
+}
+
 export async function withEdgeCache(
-  request,
-  ctx,
-  env,
-  keyParts,
-  buildResponse,
-  cachePathAndSearch = null,
-  resolveCacheStamp = null,
-) {
+  request: Request,
+  ctx: EdgeCacheCtx | undefined,
+  env: Env,
+  keyParts: string,
+  buildResponse: (cacheRequest: Request) => Response | Promise<Response>,
+  cachePathAndSearch: string | null = null,
+  resolveCacheStamp: ((env: Env) => Promise<string | null>) | null = null,
+): Promise<Response> {
   const isHead = request.method === "HEAD";
   // Only opt HEAD into the GET cache path for handlers that accept the
   // normalized request. Legacy zero-arg builders may close over the original
@@ -332,14 +386,27 @@ export async function withEdgeCache(
   const cacheRequest = normalizesHead
     ? new Request(request, { method: "GET" })
     : request;
+  // `globalThis.caches` (not the bare `caches` global) so the optional
+  // chain actually guards: Node/vitest has no Cache API global at all,
+  // unlike the real Workers runtime where `caches` is always populated --
+  // the bare identifier's ambient `declare const caches: CacheStorage` types
+  // it as unconditionally present, which would be true at compile time but
+  // false at this test-runtime.
   const cache =
-    cacheRequest.method === "GET" ? globalThis.caches?.default : null;
+    cacheRequest.method === "GET"
+      ? (globalThis as { caches?: CacheStorage }).caches?.default
+      : null;
   // Cheap freshness read. On a hit this + the cache match is the whole request
   // (no D1 aggregation at all for the handler body).
   let stamp = null;
   if (cache) {
     if (typeof resolveCacheStamp === "function") {
+      // resolveCacheStamp is an override hook for a future bespoke-stamp
+      // need (see its own doc comment above) -- no call site passes one
+      // today, so this branch is genuinely unreachable right now.
+      /* v8 ignore start */
       stamp = await resolveCacheStamp(env);
+      /* v8 ignore stop */
     } else {
       stamp = (await readHealthMetaKv(env))?.last_run_at ?? null;
     }
@@ -357,7 +424,7 @@ export async function withEdgeCache(
     if (hit) {
       // Honour conditional requests against the cached body's weak ETag so
       // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
-      if (ifNoneMatchSatisfied(request, hit.headers.get("etag"))) {
+      if (ifNoneMatchSatisfied(request, hit.headers.get("etag") || "")) {
         return new Response(null, { status: 304, headers: hit.headers });
       }
       return normalizesHead
@@ -370,6 +437,7 @@ export async function withEdgeCache(
   // Never cache errors / non-200s (a cold Postgres tier still returns a 200
   // empty envelope; a 400 bad-window or 5xx must not be persisted).
   if (
+    cache &&
     cacheKey &&
     response.status === 200 &&
     !D1_FALLBACK_RESPONSES.has(response) &&
@@ -386,11 +454,11 @@ export async function withEdgeCache(
 // compact matrix feed for UI dashboards and agents, so it groups by netuid/day
 // instead of returning every surface series.
 export async function handleBulkHealthTrends(
-  request,
-  env,
-  url = new URL(request.url),
-  ctx = {},
-) {
+  request: Request,
+  env: Env,
+  url: URL = new URL(request.url),
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
   for (const key of url.searchParams.keys()) {
     return errorResponse(
       "invalid_query",
@@ -420,16 +488,20 @@ export async function handleBulkHealthTrends(
       // 2026-07-16, a full rolling window. See wrangler.jsonc's own comment on
       // this flag for the complete verification writeup.
       let isFallback = false;
-      let data = await tryPostgresTier(
+      let data = (await tryPostgresTier(
         env,
         cacheRequest,
         "METAGRAPH_HEALTH_SOURCE",
-      );
+      )) as Awaited<ReturnType<typeof loadBulkHealthTrends>>["data"] | null;
       if (!data) {
         isFallback = true;
+        // loadBulkHealthTrends is still .mjs (checkJs off): its destructured
+        // `{ observedAt = null } = {}` param infers as `{observedAt?: null}`,
+        // narrower than the real `string | null` runtime value -- cast past
+        // that inference gap rather than the (nonexistent) real constraint.
         const result = await loadBulkHealthTrends({
           observedAt: meta?.last_run_at || null,
-        });
+        } as unknown as Parameters<typeof loadBulkHealthTrends>[0]);
         data = result.data;
       }
       const response = await envelopeResponse(
@@ -457,7 +529,13 @@ export async function handleBulkHealthTrends(
 // never errors (mirrors the live-overlay fall-back philosophy). The query +
 // formatting live in loadSubnetHealthTrends (src/analytics-live.mjs) so the
 // get_subnet_health_trends MCP tool shares this exact read path (#2335).
-export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
+export async function handleHealthTrends(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
   // Reject unsupported query params (400) like every sibling analytics route
   // (percentiles/incidents/uptime/trajectory and the bulk trends route); this
   // route takes no params and returns all configured windows.
@@ -466,11 +544,11 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   return withEdgeCache(request, ctx, env, "trends", async (cacheRequest) => {
     // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
     let usedFallback = false;
-    let data = await tryPostgresTier(
+    let data = (await tryPostgresTier(
       env,
       cacheRequest,
       "METAGRAPH_HEALTH_SOURCE",
-    );
+    )) as Awaited<ReturnType<typeof loadSubnetHealthTrends>> | null;
     if (!data) {
       // Read through the shared d1All (rather than handing the loader the bare
       // db) so a failure is still logged + marked as a D1 fallback (the
@@ -482,7 +560,7 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
       const meta = await readHealthMetaKv(env);
       data = await loadSubnetHealthTrends(netuid, {
         observedAt: meta?.last_run_at || null,
-      });
+      } as unknown as Parameters<typeof loadSubnetHealthTrends>[1]);
     }
     const response = await envelopeResponse(
       cacheRequest,
@@ -507,14 +585,15 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
 // formatting live in loadSubnetPercentiles (src/analytics-live.mjs) so the
 // get_subnet_health_percentiles MCP tool shares this exact read path.
 export async function handleHealthPercentiles(
-  request,
-  env,
-  netuid,
-  url,
-  ctx = {},
-) {
-  const { label, error } = analyticsWindow(url);
-  if (error) return analyticsQueryError(error);
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   return withEdgeCache(
     request,
     ctx,
@@ -523,11 +602,11 @@ export async function handleHealthPercentiles(
     async (cacheRequest) => {
       // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
       let usedFallback = false;
-      let data = await tryPostgresTier(
+      let data = (await tryPostgresTier(
         env,
         cacheRequest,
         "METAGRAPH_HEALTH_SOURCE",
-      );
+      )) as Awaited<ReturnType<typeof loadSubnetPercentiles>> | null;
       if (!data) {
         // A Postgres-tier miss now falls straight through to the pure
         // formatter with no rows (never a live D1 query), so it's always
@@ -537,7 +616,7 @@ export async function handleHealthPercentiles(
         data = await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: meta?.last_run_at || null,
-        });
+        } as unknown as Parameters<typeof loadSubnetPercentiles>[1]);
       }
       const response = await envelopeResponse(
         cacheRequest,
@@ -559,14 +638,15 @@ export async function handleHealthPercentiles(
 
 // SLA + reconstructed downtime incidents per surface.
 export async function handleHealthIncidents(
-  request,
-  env,
-  netuid,
-  url,
-  ctx = {},
-) {
-  const { label, error } = analyticsWindow(url);
-  if (error) return analyticsQueryError(error);
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   return withEdgeCache(
     request,
     ctx,
@@ -575,11 +655,11 @@ export async function handleHealthIncidents(
     async (cacheRequest) => {
       // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
       let usedFallback = false;
-      let data = await tryPostgresTier(
+      let data = (await tryPostgresTier(
         env,
         cacheRequest,
         "METAGRAPH_HEALTH_SOURCE",
-      );
+      )) as Awaited<ReturnType<typeof loadSubnetIncidents>> | null;
       if (!data) {
         // A Postgres-tier miss now falls straight through to the pure
         // formatter with no rows (never a live D1 query), so it's always
@@ -589,7 +669,7 @@ export async function handleHealthIncidents(
         data = await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: meta?.last_run_at || null,
-        });
+        } as unknown as Parameters<typeof loadSubnetIncidents>[1]);
       }
       const response = await envelopeResponse(
         cacheRequest,
@@ -616,7 +696,10 @@ export async function handleHealthIncidents(
 // D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now (every
 // caller tries the Postgres tier first) -- this is only reached on a tier
 // miss, so it always returns the schema-stable empty payload.
-export async function loadGlobalIncidentsLedger(env, { label = "7d" } = {}) {
+export async function loadGlobalIncidentsLedger(
+  env: Env,
+  { label = "7d" }: { label?: string } = {},
+) {
   const meta = await readHealthMetaKv(env);
   const data = formatGlobalIncidents({
     window: label,
@@ -632,11 +715,16 @@ export async function loadGlobalIncidentsLedger(env, { label = "7d" } = {}) {
 // a 30-day incident list the way the sibling endpoint-incidents route already can.
 const GLOBAL_INCIDENTS_LIST_PARAMS = listQueryParamNames("incidents");
 
-export async function handleGlobalIncidents(request, env, url) {
-  const { label, error } = analyticsWindow(url, GLOBAL_INCIDENTS_LIST_PARAMS);
-  if (error) {
-    return analyticsQueryError(error);
+export async function handleGlobalIncidents(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, GLOBAL_INCIDENTS_LIST_PARAMS);
+  if ("error" in windowResult) {
+    return analyticsQueryError(windowResult.error);
   }
+  const { label } = windowResult;
   // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
   let isFallback = false;
   let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
@@ -657,10 +745,14 @@ export async function handleGlobalIncidents(request, env, url) {
   }
   // Pin the resolved window onto every page link so paging a non-default window
   // doesn't silently fall back to 7d (canonicalListSearch keeps only list params).
-  const link = paginationLinkHeader(url, transformed.meta.pagination, {
-    queryCollection: "incidents",
-    searchParams: { window: label },
-  });
+  const link = paginationLinkHeader(
+    url,
+    transformed.meta?.pagination as Pagination | null | undefined,
+    {
+      queryCollection: "incidents",
+      searchParams: { window: label },
+    },
+  );
   const response = await envelopeResponse(
     request,
     {
@@ -856,9 +948,15 @@ const CHAIN_TRANSFERS_CSV_COLUMNS = [
 // (epic #1986). Two independent GROUP-BY-day aggregations (extrinsics + blocks)
 // run in parallel and merge in the pure builder, so the route is schema-stable
 // (day_count:0, days:[]) on a cold store and never re-aggregates on an edge hit.
-export async function handleChainActivity(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainActivity(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   const csv = csvRequested(url, request);
@@ -874,15 +972,15 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
       // would always miss. Postgres → schema-stable empty stub, never a live
       // D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ??
+        )) as ReturnType<typeof buildChainActivity> | null) ??
         buildChainActivity({
           window: label,
           observedAt: meta?.last_run_at || null,
-        });
+        } as unknown as Parameters<typeof buildChainActivity>[0]);
       if (csv) {
         return csvResponse(
           data.days,
@@ -916,14 +1014,20 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
 // Extrinsic call-mix breakdown (#1989): counts + share per call_module (or
 // call_module/call_function). The share denominator is the full-window extrinsic
 // count read separately, so the truncated LIMIT tail never skews shares.
-export async function handleChainCalls(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, [
+export async function handleChainCalls(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, [
     "group_by",
     "limit",
     "call_module",
     "format",
   ]);
-  if (error) return analyticsQueryError(error);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   const groupByError = validateEnumParam(url, "group_by", [
@@ -931,11 +1035,12 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
     "module_function",
   ]);
   if (groupByError) return analyticsQueryError(groupByError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: 50,
     maxLimit: 100,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const groupBy = url.searchParams.get("group_by") || "module";
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
@@ -952,11 +1057,11 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
       // (never edge-cache a schema-stable empty payload).
       let usedFallback = false;
       const meta = await readHealthMetaKv(env);
-      let data = await tryPostgresTier(
+      let data = (await tryPostgresTier(
         env,
         cacheRequest,
         "METAGRAPH_EXTRINSICS_SOURCE",
-      );
+      )) as ReturnType<typeof buildChainCalls> | null;
       if (!data) {
         usedFallback = true;
         data = buildChainCalls({
@@ -965,7 +1070,7 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
           observedAt: meta?.last_run_at || null,
           total: 0,
           rows: [],
-        });
+        } as unknown as Parameters<typeof buildChainCalls>[0]);
       }
       if (csv) {
         const csvRes = await csvResponse(
@@ -1005,25 +1110,32 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
 // Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic
 // count over the window. The observed_at index bounds the scan to the hot window;
 // the aggregation is amortized behind the edge cache (runs only on a new snapshot).
-export async function handleChainSigners(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, [
+export async function handleChainSigners(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, [
     "limit",
     "call_module",
     "sort",
     "format",
   ]);
-  if (error) return analyticsQueryError(error);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   const sortError = validateEnumParam(url, "sort", CHAIN_SIGNERS_SORTS);
   if (sortError) return analyticsQueryError(sortError);
   // limit/call_module no longer feed a live D1 read (see the retirement note
   // below) but are still shape-validated so the REST contract stays stable.
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: 50,
     maxLimit: 100,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const sort = url.searchParams.get("sort") || "tx_count";
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
@@ -1039,17 +1151,17 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
       // the table is dropped in production, so a D1 query here would always
       // miss (#6013). Postgres → schema-stable empty stub, never a live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ??
+        )) as ReturnType<typeof buildChainSigners> | null) ??
         buildChainSigners({
           window: label,
           sort,
           observedAt: meta?.last_run_at || null,
           rows: [],
-        });
+        } as unknown as Parameters<typeof buildChainSigners>[0]);
       if (csv) {
         return csvResponse(
           data.signers,
@@ -1085,18 +1197,25 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 // window, the top senders + receivers by volume, and the top senders' share of total
 // volume (a concentration signal), from the account_events Transfer feed. The
 // network-level companion of /accounts/{ss58}/transfers + /counterparties.
-export async function handleChainTransfers(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainTransfers(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   // limit no longer feeds a live D1 read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   // HEAD probes are globally allowed for read-only API routes. Normalize them
@@ -1119,23 +1238,23 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        )) as ReturnType<typeof buildChainTransfers> | null) ??
         buildChainTransfers({
           window: label,
           observedAt: meta?.last_run_at || null,
-        });
+        } as unknown as Parameters<typeof buildChainTransfers>[0]);
       if (csv) {
         return csvResponse(
           [
-            ...data.top_senders.map((row) => ({
+            ...data.top_senders.map((row: Record<string, unknown>) => ({
               direction: "sender",
               ...row,
             })),
-            ...data.top_receivers.map((row) => ({
+            ...data.top_receivers.map((row: Record<string, unknown>) => ({
               direction: "receiver",
               ...row,
             })),
@@ -1170,20 +1289,27 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
 // volume or count over the window, from the same account_events Transfer feed as
 // /chain/transfers. Excludes malformed/self-transfer rows so every row represents
 // a real directed account corridor.
-export async function handleChainTransferPairs(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "sort", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainTransferPairs(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "sort", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const sortError = validateEnumParam(url, "sort", CHAIN_TRANSFER_PAIR_SORTS);
   if (sortError) return analyticsQueryError(sortError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   // limit no longer feeds a live D1 read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const sort = url.searchParams.get("sort") || "volume";
   const csv = csvRequested(url, request);
 
@@ -1203,16 +1329,16 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        )) as ReturnType<typeof buildChainTransferPairs> | null) ??
         buildChainTransferPairs({
           window: label,
           sort,
           observedAt: meta?.last_run_at || null,
-        });
+        } as unknown as Parameters<typeof buildChainTransferPairs>[0]);
       // CSV exports the row-shaped top corridors; the totals + top_pair_share
       // rollup stay JSON-only (mirrors chain-stake-flow / chain-weights).
       if (csv) {
@@ -1252,16 +1378,23 @@ export async function handleChainTransferPairs(request, env, url, ctx = {}) {
 // over the window from the account_events stream, with a network rollup and a net-flow
 // distribution. The network companion to /api/v1/subnets/{netuid}/stake-flow; edge-cached like
 // the sibling chain-transfers route (account_events-derived, analytics cron freshness).
-export async function handleChainStakeFlow(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainStakeFlow(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
     maxLimit: CHAIN_STAKE_FLOW_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
@@ -1281,11 +1414,15 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainStakeFlow([], { window: label, limit });
+        )) as ReturnType<typeof buildChainStakeFlow> | null) ??
+        buildChainStakeFlow([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainStakeFlow>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // net_flow_distribution stay JSON-only (mirrors chain-fees' top_fee_payers).
       if (csv) {
@@ -1322,7 +1459,7 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
 // to normalize into the key the way canonicalAnalyticsCacheRoute does for every windowed sibling.
 // `csv` is folded in directly (rather than string-concatenated after, like the windowed routes
 // do) so a bare request never produces a dangling "&format=csv" with no leading "?".
-function canonicalChainAlphaVolumeCacheRoute(url, csv) {
+function canonicalChainAlphaVolumeCacheRoute(url: URL, csv: boolean): string {
   const search = new URL("https://cache-key.invalid/").searchParams;
   const limitParam = url.searchParams.get("limit");
   if (limitParam !== null) search.set("limit", limitParam);
@@ -1338,16 +1475,22 @@ function canonicalChainAlphaVolumeCacheRoute(url, csv) {
 // (account_events-derived, analytics cron freshness). Fixed 24h window, no ?window= param --
 // mirrors handleSubnetAlphaVolume's own framing (#4339's scope: a canonical market-depth
 // figure, not a windowed analytics view).
-export async function handleChainAlphaVolume(request, env, url, ctx = {}) {
+export async function handleChainAlphaVolume(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
   const validationError = validateQueryParams(url, ["limit", "format"]);
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
     maxLimit: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
@@ -1367,11 +1510,14 @@ export async function handleChainAlphaVolume(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainAlphaVolume([], { limit });
+        )) as ReturnType<typeof buildChainAlphaVolume> | null) ??
+        buildChainAlphaVolume([], {
+          limit,
+        } as unknown as Parameters<typeof buildChainAlphaVolume>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // volume_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
@@ -1408,16 +1554,23 @@ export async function handleChainAlphaVolume(request, env, url, ctx = {}) {
 // window + limit params, HEAD probes normalized through the GET cache key so they cannot bypass
 // the edge cache and repeatedly force the network-wide aggregations, cache keyed on the analytics
 // cron freshness. The leaderboard is fixed to most-active-first (total WeightsSet events).
-export async function handleChainWeights(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainWeights(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_WEIGHTS_LIMIT_DEFAULT,
     maxLimit: CHAIN_WEIGHTS_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1435,11 +1588,15 @@ export async function handleChainWeights(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainWeights([], { window: label, limit });
+        )) as ReturnType<typeof buildChainWeights> | null) ??
+        buildChainWeights([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainWeights>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
@@ -1478,16 +1635,23 @@ export async function handleChainWeights(request, env, url, ctx = {}) {
 // limit params, HEAD probes normalized through the GET cache key so they cannot bypass the edge
 // cache and repeatedly force the network-wide aggregation. The leaderboard is fixed to
 // most-active-first (total WeightsSet events).
-export async function handleChainWeightSetters(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainWeightSetters(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
     maxLimit: CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1504,11 +1668,15 @@ export async function handleChainWeightSetters(request, env, url, ctx = {}) {
       // and the table is dropped in production, so a D1 query here would
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainWeightSetters([], null, { window: label, limit });
+        )) as ReturnType<typeof buildChainWeightSetters> | null) ??
+        buildChainWeightSetters([], null, {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainWeightSetters>[2]);
       if (csv) {
         return csvResponse(
           data.setters,
@@ -1543,16 +1711,23 @@ export async function handleChainWeightSetters(request, env, url, ctx = {}) {
 // window + limit params, HEAD probes normalized through the GET cache key so they cannot bypass
 // the edge cache and repeatedly force the network-wide aggregations, cache keyed on the analytics
 // cron freshness. The leaderboard is fixed to most-active-first (total AxonServed events).
-export async function handleChainServing(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainServing(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_SERVING_LIMIT_DEFAULT,
     maxLimit: CHAIN_SERVING_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1570,11 +1745,15 @@ export async function handleChainServing(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainServing([], { window: label, limit });
+        )) as ReturnType<typeof buildChainServing> | null) ??
+        buildChainServing([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainServing>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-weights).
       if (csv) {
@@ -1611,16 +1790,23 @@ export async function handleChainServing(request, env, url, ctx = {}) {
 // telemetry-endpoint companion to chain/serving (axon endpoints); same window + limit params, HEAD
 // probes normalized through the GET cache key so they cannot bypass the edge cache and repeatedly
 // force the network-wide aggregations. The leaderboard is fixed to most-active-first (total events).
-export async function handleChainPrometheus(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainPrometheus(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_PROMETHEUS_LIMIT_DEFAULT,
     maxLimit: CHAIN_PROMETHEUS_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1638,11 +1824,15 @@ export async function handleChainPrometheus(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainPrometheus([], { window: label, limit });
+        )) as ReturnType<typeof buildChainPrometheus> | null) ??
+        buildChainPrometheus([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainPrometheus>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1680,16 +1870,23 @@ export async function handleChainPrometheus(request, env, url, ctx = {}) {
 // axon-removals route; same window + limit params, HEAD probes normalized through the GET cache key
 // so they cannot bypass the edge cache and repeatedly force the network-wide aggregations. The
 // leaderboard is fixed to most-active-first (total AxonInfoRemoved events).
-export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainAxonRemovals(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
     maxLimit: CHAIN_AXON_REMOVALS_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1707,11 +1904,15 @@ export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainAxonRemovals([], { window: label, limit });
+        )) as ReturnType<typeof buildChainAxonRemovals> | null) ??
+        buildChainAxonRemovals([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainAxonRemovals>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1748,16 +1949,23 @@ export async function handleChainAxonRemovals(request, env, url, ctx = {}) {
 // window + limit params, HEAD probes normalized through the GET cache key so they cannot bypass the
 // edge cache and repeatedly force the network-wide aggregations, cache keyed on the analytics cron
 // freshness. The leaderboard is fixed to most-active-first (total NeuronRegistered events).
-export async function handleChainRegistrations(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainRegistrations(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
     maxLimit: CHAIN_REGISTRATIONS_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1775,11 +1983,15 @@ export async function handleChainRegistrations(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainRegistrations([], { window: label, limit });
+        )) as ReturnType<typeof buildChainRegistrations> | null) ??
+        buildChainRegistrations([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainRegistrations>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -1817,16 +2029,23 @@ export async function handleChainRegistrations(request, env, url, ctx = {}) {
 // normalized through the GET cache key so they cannot bypass the edge cache and repeatedly force the
 // network-wide aggregations, cache keyed on the analytics cron freshness. The leaderboard is fixed
 // to most-active-first (total NeuronDeregistered events).
-export async function handleChainDeregistrations(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainDeregistrations(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
     maxLimit: CHAIN_DEREGISTRATIONS_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1844,11 +2063,15 @@ export async function handleChainDeregistrations(request, env, url, ctx = {}) {
       // always miss (#6013). Postgres → schema-stable empty stub, never a
       // live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainDeregistrations([], { window: label, limit });
+        )) as ReturnType<typeof buildChainDeregistrations> | null) ??
+        buildChainDeregistrations([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainDeregistrations>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -1886,16 +2109,23 @@ export async function handleChainDeregistrations(request, env, url, ctx = {}) {
 // params, HEAD probes normalized through the GET cache key so they cannot bypass the edge cache and
 // repeatedly force the network-wide aggregations. The leaderboard is fixed to most-active-first
 // (total StakeMoved events).
-export async function handleChainStakeMoves(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainStakeMoves(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
     maxLimit: CHAIN_STAKE_MOVES_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1912,11 +2142,15 @@ export async function handleChainStakeMoves(request, env, url, ctx = {}) {
       // and the table is dropped in production, so a D1 query here would
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainStakeMoves([], { window: label, limit });
+        )) as ReturnType<typeof buildChainStakeMoves> | null) ??
+        buildChainStakeMoves([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainStakeMoves>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -1954,16 +2188,23 @@ export async function handleChainStakeMoves(request, env, url, ctx = {}) {
 // limit params, HEAD probes normalized through the GET cache key so they cannot bypass the edge cache
 // and repeatedly force the network-wide aggregations. The leaderboard is fixed to most-active-first
 // (total StakeTransferred events).
-export async function handleChainStakeTransfers(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "format"]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainStakeTransfers(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
     maxLimit: CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1980,11 +2221,15 @@ export async function handleChainStakeTransfers(request, env, url, ctx = {}) {
       // and the table is dropped in production, so a D1 query here would
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       const data =
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainStakeTransfers([], { window: label, limit });
+        )) as ReturnType<typeof buildChainStakeTransfers> | null) ??
+        buildChainStakeTransfers([], {
+          window: label,
+          limit,
+        } as unknown as Parameters<typeof buildChainStakeTransfers>[1]);
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-moves).
       if (csv) {
@@ -2019,20 +2264,23 @@ export async function handleChainStakeTransfers(request, env, url, ctx = {}) {
 // Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,
 // exact medians) plus a windowed top-fee-payer list. COALESCE keeps NULL
 // fees/tips out of the SUMs and medians.
-export async function handleChainFees(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, [
-    "limit",
-    "call_module",
-    "format",
-  ]);
-  if (error) return analyticsQueryError(error);
+export async function handleChainFees(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  const windowResult = analyticsWindow(url, ["limit", "call_module", "format"]);
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   // Optional pallet scope (applies to both the daily series and the payer list),
   // backed by idx_extrinsics_module_block.
   const callModuleError = validateMaxLength(url, "call_module", 100);
@@ -2048,20 +2296,20 @@ export async function handleChainFees(request, env, url, ctx = {}) {
       // #4909/#4772 D1 retirement: extrinsics' D1 write path is retired and
       // the table is dropped in production, so a D1 query here would always
       // miss. Postgres → schema-stable empty stub, never a live D1 read.
-      let data = null;
+      let data: ReturnType<typeof buildChainFees> | null = null;
       if (env.METAGRAPH_EXTRINSICS_SOURCE === "postgres" && env.DATA_API) {
         const limited = await dataRateLimitResponse(cacheRequest, env);
         if (limited) return limited;
-        data = await tryPostgresTier(
+        data = (await tryPostgresTier(
           env,
           cacheRequest,
           "METAGRAPH_EXTRINSICS_SOURCE",
-        );
+        )) as ReturnType<typeof buildChainFees> | null;
       }
       data ??= buildChainFees({
         window: label,
         observedAt: meta?.last_run_at || null,
-      });
+      } as unknown as Parameters<typeof buildChainFees>[0]);
       if (csv) {
         return csvResponse(
           data.daily,

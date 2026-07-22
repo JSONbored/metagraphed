@@ -7,7 +7,7 @@ import {
   BLOCK_PAGINATION,
   clampLimit,
   clampOffset,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 
 function toIso(ms) {

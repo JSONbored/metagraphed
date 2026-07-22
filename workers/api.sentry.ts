@@ -74,11 +74,22 @@ export {
 // change; only .fetch is rerouted through OAuthProvider.
 const oauthProvider = new OAuthProvider(buildOAuthProviderOptions(handler));
 const handlerWithOAuth = {
-  fetch: (request, env, ctx) => oauthProvider.fetch(request, env, ctx),
-  scheduled: (controller, env, ctx) => handler.scheduled(controller, env, ctx),
+  fetch: (request: Request, env: Env, ctx: ExecutionContext) =>
+    oauthProvider.fetch(request, env, ctx),
+  // Discards handleScheduled's (api.mjs, not yet converted) return value --
+  // it returns diagnostic objects for its own test suite's benefit; the real
+  // Workers runtime ignores scheduled()'s return value, and ExportedHandler's
+  // type expects `void | Promise<void>`.
+  scheduled: async (
+    controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> => {
+    await handler.scheduled(controller, env, ctx);
+  },
 };
 
-export default withSentry(
+export default withSentry<Env>(
   (env) => ({
     dsn: env.SENTRY_DSN,
     environment: env.SENTRY_ENVIRONMENT || "production",

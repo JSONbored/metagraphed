@@ -346,6 +346,27 @@ function isProseHeavy(relativePath) {
   return PROSE_HEAVY_SOFT_SKIP_PATHS.has(relativePath);
 }
 
+// `npm run types:workers` (TypeScript migration, metagraphed#7510/#7513) writes
+// these three via `wrangler types` -- verbatim Cloudflare Workers runtime type
+// declarations (Web Crypto's `CryptoKeyPair { publicKey; privateKey }`,
+// `URLPattern`'s `{ username; password; ... }` component-result shape, ...),
+// never hand-authored. Standard Web API vocabulary, not a real credential --
+// same rationale as isMirroredExternalSpec, but these can't be scoped by a
+// path-prefix regex the way a whole artifact directory can, since they live
+// alongside hand-written `workers/*.mjs`/`.ts` source. Re-running `wrangler
+// types` after a wrangler*.jsonc change can shift line numbers or add new
+// standard-library interfaces; if that adds a new soft-pattern false positive,
+// extend this set rather than loosen the underlying regex. Hard secret-value
+// patterns still apply.
+const GENERATED_WORKER_TYPES_PATHS = new Set([
+  "workers/worker-configuration.d.ts",
+  "workers/data-api.worker-configuration.d.ts",
+  "workers/registry-sync-api.worker-configuration.d.ts",
+]);
+function isGeneratedWorkerTypes(relativePath) {
+  return GENERATED_WORKER_TYPES_PATHS.has(relativePath);
+}
+
 // scripts/worker-test.mjs and deploy/wss-lb/test/*.test.mjs both, by
 // inspection, build their entire private/loopback-URL content out of two
 // classes: (a) an explicit "these must be rejected" array of unsafe URLs
@@ -445,7 +466,8 @@ async function runScan() {
       const skipSoft =
         isMirroredExternalSpec(relative) ||
         isSelfReferential(relative) ||
-        isProseHeavy(relative);
+        isProseHeavy(relative) ||
+        isGeneratedWorkerTypes(relative);
 
       if (isMirroredExternalFixture(relative)) {
         scanCapturedFixtureBody(relative, content);
@@ -475,6 +497,21 @@ async function runScan() {
             (pattern.name === "local absolute path" ||
               pattern.name === "private or loopback URL" ||
               pattern.name === "internal box or container identifier")
+          ) {
+            continue;
+          }
+          // "token-like assignment"'s regex can't distinguish a real quoted
+          // secret literal from a bare TypeScript interface member whose type
+          // reference name happens to be long enough -- a generated Web API
+          // type declaration's `fieldName: SomeLongTypeName;` matches the
+          // same shape, since the pattern's leading quote check is optional.
+          // Narrowing the shared regex to require a quote would risk missing
+          // a real unquoted secret elsewhere, so skip it only for these
+          // specific generated files instead, same as the self-referential
+          // skip above.
+          if (
+            isGeneratedWorkerTypes(relative) &&
+            pattern.name === "token-like assignment"
           ) {
             continue;
           }

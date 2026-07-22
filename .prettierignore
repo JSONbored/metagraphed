@@ -9,6 +9,12 @@ validate-route.json
 packages/*/dist
 packages/*/src/metagraphed-client.ts
 packages/contract/index.d.ts
+# wrangler-generated Env/runtime types (npm run types:workers) -- never
+# hand-edited, and wrangler's own output isn't prettier-formatted, so
+# regenerating would otherwise perpetually re-fail format:check.
+workers/worker-configuration.d.ts
+workers/data-api.worker-configuration.d.ts
+workers/registry-sync-api.worker-configuration.d.ts
 public/metagraph
 public/datasets
 public/.assetsignore

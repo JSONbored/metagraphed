@@ -24,7 +24,7 @@ import {
   clampLimit,
   clampOffset,
   FEED_PAGINATION,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 
 function stableStringify(value) {
   if (value === null || typeof value !== "object") {

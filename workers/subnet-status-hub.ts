@@ -21,15 +21,22 @@ import {
   parseSubnetStatusResourceUri,
 } from "../src/subnet-status-subscribe.mjs";
 
-// Pure helpers — unit-tested without spinning up the class.
+type NetuidIndex = Map<number, Set<string>>;
+type SessionIndex = Map<string, Set<number>>;
+
+// Pure helpers — unit-tested without spinning up the class. sessionId/netuid
+// are `unknown`: every caller feeds this parsed, untrusted request-body JSON,
+// so the runtime typeof/Number.isInteger guards below are load-bearing, not
+// redundant with the type system.
 export function addSessionSubscription(
-  byNetuid,
-  sessionByNetuid,
-  sessionId,
-  netuid,
-) {
+  byNetuid: NetuidIndex,
+  sessionByNetuid: SessionIndex,
+  sessionId: unknown,
+  netuid: unknown,
+): void {
   if (typeof sessionId !== "string" || sessionId.length === 0) return;
-  if (!Number.isInteger(netuid) || netuid < 0) return;
+  if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0)
+    return;
   let sessions = byNetuid.get(netuid);
   if (!sessions) {
     sessions = new Set();
@@ -45,13 +52,14 @@ export function addSessionSubscription(
 }
 
 export function removeSessionSubscription(
-  byNetuid,
-  sessionByNetuid,
-  sessionId,
-  netuid,
-) {
+  byNetuid: NetuidIndex,
+  sessionByNetuid: SessionIndex,
+  sessionId: unknown,
+  netuid: unknown,
+): void {
   if (typeof sessionId !== "string" || sessionId.length === 0) return;
-  if (!Number.isInteger(netuid) || netuid < 0) return;
+  if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0)
+    return;
   const sessions = byNetuid.get(netuid);
   if (sessions) {
     sessions.delete(sessionId);
@@ -64,7 +72,11 @@ export function removeSessionSubscription(
   }
 }
 
-export function removeSessionEverywhere(byNetuid, sessionByNetuid, sessionId) {
+export function removeSessionEverywhere(
+  byNetuid: NetuidIndex,
+  sessionByNetuid: SessionIndex,
+  sessionId: string,
+): void {
   const netuids = sessionByNetuid.get(sessionId);
   if (!netuids) return;
   for (const netuid of [...netuids]) {
@@ -72,17 +84,22 @@ export function removeSessionEverywhere(byNetuid, sessionByNetuid, sessionId) {
   }
 }
 
-export function serializeSubscriptionIndex(byNetuid) {
-  const out = {};
+export function serializeSubscriptionIndex(
+  byNetuid: NetuidIndex,
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
   for (const [netuid, sessions] of byNetuid) {
     out[String(netuid)] = [...sessions].sort();
   }
   return out;
 }
 
-export function hydrateSubscriptionIndex(stored) {
-  const byNetuid = new Map();
-  const sessionByNetuid = new Map();
+export function hydrateSubscriptionIndex(stored: unknown): {
+  byNetuid: NetuidIndex;
+  sessionByNetuid: SessionIndex;
+} {
+  const byNetuid: NetuidIndex = new Map();
+  const sessionByNetuid: SessionIndex = new Map();
   if (!stored || typeof stored !== "object") {
     return { byNetuid, sessionByNetuid };
   }
@@ -98,8 +115,14 @@ export function hydrateSubscriptionIndex(stored) {
   return { byNetuid, sessionByNetuid };
 }
 
-export class SubnetStatusHub {
-  constructor(state, env) {
+export class SubnetStatusHub implements DurableObject {
+  state: DurableObjectState;
+  env: Env;
+  byNetuid: NetuidIndex;
+  sessionByNetuid: SessionIndex;
+  hydrated: boolean;
+
+  constructor(state: DurableObjectState, env: Env) {
     this.state = state;
     this.env = env;
     this.byNetuid = new Map();
@@ -107,7 +130,7 @@ export class SubnetStatusHub {
     this.hydrated = false;
   }
 
-  async hydrate() {
+  async hydrate(): Promise<void> {
     if (this.hydrated) return;
     const stored = await this.state.storage.get(["byNetuid"]);
     const { byNetuid, sessionByNetuid } = hydrateSubscriptionIndex(
@@ -118,13 +141,13 @@ export class SubnetStatusHub {
     this.hydrated = true;
   }
 
-  async persist() {
+  async persist(): Promise<void> {
     await this.state.storage.put({
       byNetuid: serializeSubscriptionIndex(this.byNetuid),
     });
   }
 
-  async fetch(request) {
+  async fetch(request: Request): Promise<Response> {
     await this.hydrate();
     const url = new URL(request.url);
     if (url.pathname === "/mcp-subscribe" && request.method === "POST") {
@@ -145,8 +168,11 @@ export class SubnetStatusHub {
     return new Response("not found", { status: 404 });
   }
 
-  async handleSubscribe(request) {
-    const { sessionId, netuid } = await request.json();
+  async handleSubscribe(request: Request): Promise<Response> {
+    const { sessionId, netuid } = (await request.json()) as {
+      sessionId?: unknown;
+      netuid?: unknown;
+    };
     const n =
       typeof netuid === "number"
         ? netuid
@@ -159,7 +185,7 @@ export class SubnetStatusHub {
         headers: { "content-type": "application/json" },
       });
     }
-    if (!Number.isInteger(n) || n < 0) {
+    if (n === null || !Number.isInteger(n) || n < 0) {
       return new Response(JSON.stringify({ error: "netuid required" }), {
         status: 400,
         headers: { "content-type": "application/json" },
@@ -173,8 +199,11 @@ export class SubnetStatusHub {
     });
   }
 
-  async handleUnsubscribe(request) {
-    const { sessionId, netuid } = await request.json();
+  async handleUnsubscribe(request: Request): Promise<Response> {
+    const { sessionId, netuid } = (await request.json()) as {
+      sessionId?: unknown;
+      netuid?: unknown;
+    };
     if (typeof sessionId === "string" && Number.isInteger(netuid)) {
       removeSessionSubscription(
         this.byNetuid,
@@ -190,8 +219,8 @@ export class SubnetStatusHub {
     });
   }
 
-  async handleUnsubscribeSession(request) {
-    const { sessionId } = await request.json();
+  async handleUnsubscribeSession(request: Request): Promise<Response> {
+    const { sessionId } = (await request.json()) as { sessionId?: unknown };
     if (typeof sessionId === "string") {
       removeSessionEverywhere(this.byNetuid, this.sessionByNetuid, sessionId);
       await this.persist();
@@ -204,10 +233,14 @@ export class SubnetStatusHub {
 
   // Called by the health prober after a real status/surface diff. Pointer-
   // only notify per (session, uri); coalescing lives in McpSessionHub.
-  async handleNotifyChanged(request) {
-    const { netuids } = await request.json();
+  async handleNotifyChanged(request: Request): Promise<Response> {
+    const { netuids } = (await request.json()) as { netuids?: unknown };
     const list = Array.isArray(netuids)
-      ? [...new Set(netuids.filter((n) => Number.isInteger(n) && n >= 0))]
+      ? [
+          ...new Set(
+            netuids.filter((n): n is number => Number.isInteger(n) && n >= 0),
+          ),
+        ]
       : [];
     if (list.length === 0 || !this.env.MCP_SESSION_HUB) {
       return new Response(JSON.stringify({ ok: true, delivered: 0 }), {

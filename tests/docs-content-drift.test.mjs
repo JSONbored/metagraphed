@@ -24,13 +24,13 @@ import {
   MAX_STATE_QUERY_RESPONSE_BYTES,
   SAFE_RPC_METHODS,
   SAFE_RPC_STATE_QUERY_METHODS,
-} from "../workers/config.mjs";
+} from "../workers/config.ts";
 import {
   RPC_MAX_ATTEMPTS,
   RPC_PROXY_POOLS,
   RPC_RATE_LIMIT,
   STATE_QUERY_RATE_LIMIT,
-} from "../workers/request-handlers/rpc-proxy.mjs";
+} from "../workers/request-handlers/rpc-proxy.ts";
 
 const graphqlDocs = readFileSync("apps/ui/content/docs/graphql.mdx", "utf8");
 const rpcDocs = readFileSync("apps/ui/content/docs/rpc.mdx", "utf8");

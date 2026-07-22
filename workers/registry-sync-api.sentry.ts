@@ -25,9 +25,9 @@
 // (tests import the raw file only; only wrangler's build ever loads this
 // wrapper).
 import * as Sentry from "@sentry/cloudflare";
-import handler from "./registry-sync-api.mjs";
+import handler from "./registry-sync-api.ts";
 
-export default Sentry.withSentry(
+export default Sentry.withSentry<Env>(
   (env) => ({
     dsn: env.SENTRY_DSN,
     environment: env.SENTRY_ENVIRONMENT || "production",

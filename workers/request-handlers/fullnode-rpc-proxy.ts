@@ -27,23 +27,25 @@
 // is a lower-volume, paid/gated tier where correctness/freshness matters more
 // than shaving upstream calls, and it now carries a non-idempotent write
 // method -- a deliberate v1 scope cut, not an oversight.
-import { errorResponse } from "../http.mjs";
+import { errorResponse } from "../http.ts";
 import { validateApiKey } from "../../src/api-key-validation.mjs";
 import {
   orderSafeRpcEndpoints,
   proxyWithFailover,
   RPC_MAX_ATTEMPTS,
-} from "./rpc-proxy.mjs";
+  type RpcEndpoint,
+  type RpcHealthMap,
+} from "./rpc-proxy.ts";
 import {
   DENIED_RPC_PREFIXES,
   MAX_RPC_BODY_BYTES,
   resolveClientIp,
   SAFE_RPC_METHODS,
-} from "../config.mjs";
+} from "../config.ts";
 
 const FULLNODE_EXTRA_SAFE_METHODS = new Set(["author_submitExtrinsic"]);
 
-function isFullnodeSafeRpcMethod(method) {
+function isFullnodeSafeRpcMethod(method: string): boolean {
   if (method.startsWith("author_")) {
     return FULLNODE_EXTRA_SAFE_METHODS.has(method);
   }
@@ -58,7 +60,7 @@ function isFullnodeSafeRpcMethod(method) {
 // on why the breaker co-locates with its readers/writers). An ejected
 // public-pool endpoint must never influence this pool's ordering, or vice
 // versa.
-const FULLNODE_RPC_HEALTH = new Map();
+const FULLNODE_RPC_HEALTH: RpcHealthMap = new Map();
 
 // Bounds the cost of an unauthenticated caller guessing random keys (each
 // miss is a real KV-then-Postgres round trip via src/api-key-validation.mjs)
@@ -82,7 +84,16 @@ export const FULLNODE_RPC_GUESS_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // starved and one key can't be inflated by rotating source IPs. This is
 // DELIBERATELY still Cloudflare-native, not Unkey's own per-key ratelimits
 // -- see src/unkey-client.mjs's header comment for why.
-export const FULLNODE_RPC_TIER_RATE_LIMITS = {
+interface FullnodeRpcTierPolicy {
+  envVar: string;
+  limit: number;
+  windowSeconds: number;
+}
+
+export const FULLNODE_RPC_TIER_RATE_LIMITS: Record<
+  string,
+  FullnodeRpcTierPolicy
+> = {
   free: {
     envVar: "FULLNODE_RPC_RATE_LIMITER",
     limit: 300,
@@ -100,19 +111,23 @@ export const FULLNODE_RPC_TIER_RATE_LIMITS = {
   },
 };
 
-function rateLimitPolicyForTier(tier) {
+function rateLimitPolicyForTier(tier: string): FullnodeRpcTierPolicy {
   return (
-    FULLNODE_RPC_TIER_RATE_LIMITS[tier] || FULLNODE_RPC_TIER_RATE_LIMITS.free
+    FULLNODE_RPC_TIER_RATE_LIMITS[tier] ||
+    (FULLNODE_RPC_TIER_RATE_LIMITS.free as FullnodeRpcTierPolicy)
   );
 }
 
-function parseFullnodeOrigins(env) {
+function parseFullnodeOrigins(env: Env): {
+  pool: { endpoints: RpcEndpoint[] };
+  trustedOrigins: Set<string>;
+} {
   const raw = env?.FULLNODE_RPC_ORIGINS || "";
-  const trustedOrigins = new Set();
-  const endpoints = [];
+  const trustedOrigins = new Set<string>();
+  const endpoints: RpcEndpoint[] = [];
   for (const rawUrl of raw.split(",").map((entry) => entry.trim())) {
     if (!rawUrl) continue;
-    let parsed;
+    let parsed: URL;
     try {
       parsed = new URL(rawUrl);
     } catch {
@@ -129,7 +144,11 @@ function parseFullnodeOrigins(env) {
   return { pool: { endpoints }, trustedOrigins };
 }
 
-export async function handleFullnodeRpcProxyRequest(request, env, url) {
+export async function handleFullnodeRpcProxyRequest(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
   if (request.method !== "POST") {
     return errorResponse(
       "method_not_allowed",
@@ -172,7 +191,9 @@ export async function handleFullnodeRpcProxyRequest(request, env, url) {
   }
 
   const rateLimitPolicy = rateLimitPolicyForTier(auth.tier);
-  const rateLimiter = env[rateLimitPolicy.envVar];
+  const rateLimiter = (env as unknown as Record<string, RateLimit | undefined>)[
+    rateLimitPolicy.envVar
+  ];
   if (rateLimiter?.limit) {
     const { success } = await rateLimiter.limit({
       key: `fullnode-rpc:${auth.accountId}`,
@@ -211,8 +232,8 @@ export async function handleFullnodeRpcProxyRequest(request, env, url) {
     }
   }
 
-  let bodyText;
-  let rpcBody;
+  let bodyText: string;
+  let rpcBody: { method: string; [key: string]: unknown };
   try {
     bodyText = await request.text();
     if (new TextEncoder().encode(bodyText).length > MAX_RPC_BODY_BYTES) {

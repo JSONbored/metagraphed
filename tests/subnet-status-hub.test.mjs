@@ -8,7 +8,7 @@ import {
   removeSessionEverywhere,
   removeSessionSubscription,
   serializeSubscriptionIndex,
-} from "../workers/subnet-status-hub.mjs";
+} from "../workers/subnet-status-hub.ts";
 import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
 
 function createStubStorage(initial = {}) {

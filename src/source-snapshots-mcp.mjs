@@ -2,7 +2,7 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/source-snapshots.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 
 export const SOURCE_SNAPSHOTS_ARTIFACT = "/metagraph/source-snapshots.json";

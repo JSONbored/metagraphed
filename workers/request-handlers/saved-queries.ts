@@ -4,21 +4,25 @@
 // result with no fixed response shape across templates, the same "no static
 // artifact" category as /api/v1/graphql -- see workers/api.mjs's own comment
 // on why this sits outside the API_ROUTES/contracts.mjs registry.
-import { errorResponse } from "../http.mjs";
-import { dataResponse } from "../responses.mjs";
+import { errorResponse } from "../http.ts";
+import { dataResponse } from "../responses.ts";
 import { runSavedQuery } from "../../src/saved-queries.mjs";
 
 export const SAVED_QUERIES_PATH_PREFIX = "/api/v1/queries/";
 
-function paramsFromSearch(url) {
-  const params = {};
+function paramsFromSearch(url: URL): Record<string, string> {
+  const params: Record<string, string> = {};
   for (const [key, value] of url.searchParams) {
     params[key] = value;
   }
   return params;
 }
 
-export async function handleSavedQueryRequest(request, env, url) {
+export async function handleSavedQueryRequest(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
   if (!["GET", "HEAD"].includes(request.method)) {
     return errorResponse(
       "method_not_allowed",
@@ -42,11 +46,18 @@ export async function handleSavedQueryRequest(request, env, url) {
     const result = await runSavedQuery(env, queryId, paramsFromSearch(url));
     return dataResponse(env, result);
   } catch (error) {
-    if (error?.toolError) {
+    // runSavedQuery's own errors are savedQueryError() (src/saved-queries.mjs)
+    // -- a plain Error with `toolError`/`code` bolted on; that file is still
+    // .mjs (checkJs is off), so the thrown shape isn't statically visible
+    // here. Anything else (a genuine bug, not a caller-facing rejection) is
+    // rethrown unchanged.
+    const toolError = error as
+      { toolError?: boolean; code?: string; message?: string } | undefined;
+    if (toolError?.toolError) {
       return errorResponse(
-        error.code,
-        error.message,
-        error.code === "not_found" ? 404 : 400,
+        toolError.code as string,
+        toolError.message as string,
+        toolError.code === "not_found" ? 404 : 400,
       );
     }
     throw error;

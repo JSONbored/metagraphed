@@ -27,7 +27,7 @@ const SENTRY_RELEASES_PATH_TEMPLATE =
   "https://sentry.io/api/0/projects/{org}/{project}/releases/";
 // A bare 40-hex-char git SHA is what both a real deployment's workers/message
 // annotation (deploy-worker-with-sourcemaps.sh's --message) and a real
-// production Sentry release's version (workers/api.sentry.mjs's
+// production Sentry release's version (workers/api.sentry.ts's
 // `release: env.SENTRY_RELEASE || ...`) should contain. PR-preview deploys
 // (apps/ui/.github/workflows/ui-preview-deploy.yml) tag Sentry releases
 // "<sha>-preview" -- excluded so a preview build is never mistaken for what's
@@ -53,7 +53,7 @@ export function extractDeployedCommitSha(deploymentsJson) {
 
 // Fallback for a deployment whose workers/message annotation is absent or
 // not SHA-shaped (e.g. one predating the #7224 --message fix): @sentry/
-// cloudflare's withSentry() (workers/api.sentry.mjs) already tags every
+// cloudflare's withSentry() (workers/api.sentry.ts) already tags every
 // production error event with the real deployed commit SHA as its Sentry
 // release, independent of Cloudflare's own deployment bookkeeping. Sorts by
 // dateCreated rather than trusting response order, since that isn't

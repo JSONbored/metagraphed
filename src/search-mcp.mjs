@@ -4,7 +4,7 @@
 // blobs) — the same subnet/surface/provider corpus search_subnets reads but
 // without its subnet-only filter, and unlike list_search_index it keeps tokens.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 
 export const SEARCH_ARTIFACT = "/metagraph/search.json";

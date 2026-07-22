@@ -33,3 +33,43 @@ For every file in a batch:
 8. Run `npm run lint`, `npm run typecheck`, `npm run test:coverage`, and `npm run validate:types`
    locally — all must stay green, and the file's own coverage % must not regress.
 9. Do not touch any file outside the batch's explicit list in the same PR.
+
+## `workers/` specifics: typing `env` and Workers runtime globals
+
+Do **not** hand-roll an `Env` interface or reach for `@cloudflare/workers-types`. Wrangler generates
+accurate types directly from each `wrangler*.jsonc`'s actual bindings via `npm run types:workers`,
+which writes three committed, generated `.d.ts` files:
+
+- `workers/worker-configuration.d.ts` — full Workers runtime types (`Request`, `Response`,
+  `KVNamespace`, `R2Bucket`, `DurableObjectNamespace`, ...) plus the `api` Worker's `Env` bindings,
+  generated from `wrangler.jsonc`.
+- `workers/data-api.worker-configuration.d.ts` / `workers/registry-sync-api.worker-configuration.d.ts`
+  — `Env`-only (`--include-runtime=false`, to avoid ~14.7k lines of duplicate runtime-type
+  boilerplate per file), generated from `wrangler.data.jsonc` / `wrangler.registry.jsonc`.
+
+All three declare a global ambient `Env` interface; TypeScript's interface merging combines them into
+one superset covering every binding across all three Workers (`workers/http.mjs`-style leaf files are
+imported by more than one Worker, so a single shared `Env` is simpler than threading three distinct
+per-Worker types through shared files). This is a deliberate, known trade-off: a file can reference an
+`env.SOME_OTHER_WORKERS_BINDING` field that doesn't actually exist in its own Worker's real deployment
+without `tsc` catching it. Accept this — do not attempt to build separate precise per-Worker `Env`
+types for shared files; the complexity isn't worth it for what it would catch.
+
+Re-run `npm run types:workers` and commit the result whenever `wrangler*.jsonc`'s bindings change —
+same generated-artifact discipline as `packages/contract/index.d.ts`, never hand-edit these files.
+
+A field/const in Env not declared in any wrangler\*.jsonc `vars` block (a dashboard-set secret, a
+`wrangler secret put` value) needs a hand-written entry in `workers/env-extra.d.ts` instead — see that
+file's own header comment. Add fields there as you encounter a real `env.X` access that needs one;
+don't add one speculatively.
+
+**`setTimeout`/`clearTimeout` return-type gotcha:** this repo's root `tsconfig.json` has no `types`
+restriction (Phase 0), so `@types/node`'s global `setTimeout` (returning `NodeJS.Timeout`) and the
+Workers-generated one (returning `number`) are both ambient — TypeScript resolves the global
+`setTimeout`/`clearTimeout` to Node's versions repo-wide, even inside a `workers/` file that only ever
+actually runs under real Workers runtime (or under Vitest's Node-based test environment). Don't type a
+timer-handle field as `ReturnType<typeof setTimeout> | null` and expect it to round-trip cleanly through
+`clearTimeout` — a `Timeout | null` union doesn't cleanly match either of `clearTimeout`'s overloads even
+though each half individually would. Cast at the `clearTimeout(...)` call site instead
+(`as unknown as number`, with a one-line comment pointing back here) rather than fighting the global
+ambiguity file-by-file.

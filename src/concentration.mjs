@@ -5,7 +5,7 @@
 // distribution yields a schema-stable `null` block (never throws), matching the
 // live metagraph tiers the entity handlers already own.
 
-import { DAY_MS } from "../workers/config.mjs";
+import { DAY_MS } from "../workers/config.ts";
 
 // The neurons-tier columns the concentration handler reads — the D1 read contract
 // for buildConcentration (mirrors BLOCK_READ_COLUMNS / EXTRINSIC_READ_COLUMNS). Kept

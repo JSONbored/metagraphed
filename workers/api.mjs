@@ -14,8 +14,8 @@ import {
   canonicalListSearch,
   paginationLinkHeader,
   validateListQueryParams,
-} from "./list-query.mjs";
-import { csvRequested, csvResponse } from "./csv.mjs";
+} from "./list-query.ts";
+import { csvRequested, csvResponse } from "./csv.ts";
 import {
   apiHeaders,
   errorResponse,
@@ -23,21 +23,21 @@ import {
   ifNoneMatchSatisfied,
   weakEtag,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
-} from "./http.mjs";
+} from "./http.ts";
 import {
   latestPointer,
   logEvent,
   readArtifact,
   readHealthKv,
   readR2Object,
-} from "./storage.mjs";
+} from "./storage.ts";
 import {
   contractStaleness,
   contractVersion,
   dataResponse,
   envelopeResponse,
   publishedAt,
-} from "./responses.mjs";
+} from "./responses.ts";
 import {
   BADGE_SVG_PATTERN,
   homepageResponse,
@@ -45,7 +45,7 @@ import {
   mcpServerCardResponse,
   agentToolsResponse,
   handleBadgeSvgRequest,
-} from "./request-handlers/discovery.mjs";
+} from "./request-handlers/discovery.ts";
 import {
   configureAnalytics,
   handleBulkHealthTrends,
@@ -72,7 +72,7 @@ import {
   handleHealthPercentiles,
   handleHealthTrends,
   withEdgeCache,
-} from "./request-handlers/analytics.mjs";
+} from "./request-handlers/analytics.ts";
 import {
   handleSubnetMetagraph,
   handleNeuron,
@@ -201,7 +201,7 @@ import {
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
-} from "./request-handlers/analytics-routes.mjs";
+} from "./request-handlers/analytics-routes.ts";
 import {
   classifyUpstreamAttempt,
   configureRpcProxy,
@@ -220,8 +220,8 @@ import {
   RPC_POOL_ARTIFACT_TTL_MS,
   selectSafeRpcEndpoint,
   weightedPickEndpoint,
-} from "./request-handlers/rpc-proxy.mjs";
-import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-proxy.mjs";
+} from "./request-handlers/rpc-proxy.ts";
+import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-proxy.ts";
 import {
   buildChangeEvent,
   deliveryStoragePrefix,
@@ -270,15 +270,15 @@ import {
   derivePreviouslyKnownAs,
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.mjs";
-import { tryPostgresTier } from "./postgres-tier.mjs";
+import { tryPostgresTier } from "./postgres-tier.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
   ChainFirehoseHub,
-} from "./chain-firehose-hub.mjs";
-import { McpSessionHub } from "./mcp-session-hub.mjs";
-import { AlerterHub } from "./alerter-hub.mjs";
-import { SubnetStatusHub } from "./subnet-status-hub.mjs";
+} from "./chain-firehose-hub.ts";
+import { McpSessionHub } from "./mcp-session-hub.ts";
+import { AlerterHub } from "./alerter-hub.ts";
+import { SubnetStatusHub } from "./subnet-status-hub.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -292,7 +292,7 @@ import {
 import {
   handleSavedQueryRequest,
   SAVED_QUERIES_PATH_PREFIX,
-} from "./request-handlers/saved-queries.mjs";
+} from "./request-handlers/saved-queries.ts";
 import {
   aiEnabled,
   askQuestion,
@@ -394,7 +394,7 @@ import {
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
   WEBHOOK_TTL_SECONDS,
-} from "./config.mjs";
+} from "./config.ts";
 
 const RAW_ARTIFACT_ROUTES = PUBLIC_ARTIFACTS.filter((entry) =>
   entry.path.endsWith(".json"),
@@ -651,7 +651,7 @@ export {
   weightedPickEndpoint,
 };
 
-export { composeCompareData } from "./request-handlers/analytics-routes.mjs";
+export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 
 // Cron entrypoint. Cloudflare passes the exact cron string that fired in
 // `controller.cron`; the hourly trigger prunes the time-series, every other

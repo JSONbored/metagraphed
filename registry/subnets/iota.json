@@ -184,6 +184,408 @@
       "public_safe": true,
       "source_urls": ["https://iota.api.macrocosmos.ai/openapi.json"],
       "url": "https://iota.api.macrocosmos.ai/common/get_run_info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-9-iota-profiler-status",
+      "kind": "subnet-api",
+      "name": "IOTA orchestrator profiler status",
+      "notes": "Public no-auth GET /profiler/status on the IOTA SN9 orchestrator returning profiler state JSON. Live-verified 2026-07-21: HTTP 200 {\"running\":false,\"profiler_exists\":false}. Unlike /profiler/start and /profiler/stop write siblings, this read declares no signed-request headers in the registered OpenAPI schema and needs none.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/profiler/status"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-get-activations",
+      "kind": "subnet-api",
+      "name": "IOTA miner activations read",
+      "notes": "Epistula-signed orchestrator read on api.macrocosmos.ai (same non-bearer signing caveat as SN1 Apex, shared macrocosm-os codebase). Live-verified 2026-07-21: unsigned GET returns HTTP 422 listing the required request body, proving the route is real. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_activations"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-heartbeat",
+      "kind": "subnet-api",
+      "name": "IOTA miner heartbeat read",
+      "notes": "Epistula-signed orchestrator read on api.macrocosmos.ai (same non-bearer signing caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError Invalid SS58 address, proving signature auth is enforced. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/heartbeat"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-layer-state",
+      "kind": "subnet-api",
+      "name": "IOTA miner layer state read",
+      "notes": "Epistula-signed orchestrator read on api.macrocosmos.ai (same non-bearer signing caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError Invalid SS58 address. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/layer_state"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-all-layers-training",
+      "kind": "subnet-api",
+      "name": "IOTA miner all layers training read",
+      "notes": "Epistula-signed orchestrator read declared in the registered OpenAPI schema (metagraphed#7025). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError on the live orchestrator; some load-balanced backends may instead return HTTP 404. Registered with probe.enabled:false so intermittent 404s are not misreported as subnet health.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/all_layers_training"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-get-layer-optimizer-state",
+      "kind": "subnet-api",
+      "name": "IOTA miner layer optimizer state read",
+      "notes": "Epistula-signed orchestrator read declared in the registered OpenAPI schema (metagraphed#7025). Same load-balancer caveat as /miner/all_layers_training: live responses may be HTTP 400 EpistulaError or HTTP 404 depending on backend. Registered auth_required:true with probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_layer_optimizer_state"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-get-previous-partitions",
+      "kind": "subnet-api",
+      "name": "IOTA miner previous partitions read",
+      "notes": "Epistula-signed orchestrator read on api.macrocosmos.ai (same non-bearer signing caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 422 listing the required request body. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_previous_partitions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-get-partitions",
+      "kind": "subnet-api",
+      "name": "IOTA miner partitions read",
+      "notes": "Epistula-signed orchestrator read on api.macrocosmos.ai (same non-bearer signing caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError Invalid SS58 address. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_partitions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-get-weight-path-per-layer",
+      "kind": "subnet-api",
+      "name": "IOTA miner weight path per layer read",
+      "notes": "Epistula-signed orchestrator read on api.macrocosmos.ai (same non-bearer signing caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError Invalid SS58 address. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/get_weight_path_per_layer"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-notify-orchestrator-of-state-call",
+      "kind": "subnet-api",
+      "name": "IOTA miner notify orchestrator of state call read",
+      "notes": "Epistula-signed orchestrator read declared in the registered OpenAPI schema (metagraphed#7025). Same load-balancer caveat as /miner/all_layers_training: live responses may be HTTP 400 EpistulaError or HTTP 404 depending on backend. Registered auth_required:true with probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/notify_orchestrator_of_state_call"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-validator-get-validator-code",
+      "kind": "subnet-api",
+      "name": "IOTA validator code read",
+      "notes": "Epistula-signed orchestrator read on api.macrocosmos.ai (same non-bearer signing caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError Invalid SS58 address. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/validator/get_validator_code"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-common-get-merged-partitions",
+      "kind": "subnet-api",
+      "name": "IOTA common merged partitions read",
+      "notes": "Epistula-signed orchestrator read on api.macrocosmos.ai (same non-bearer signing caveat as SN1 Apex). Live-verified 2026-07-21: unsigned GET returns HTTP 400 EpistulaError Invalid SS58 address. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/common/get_merged_partitions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-common-get-run-epoch",
+      "kind": "subnet-api",
+      "name": "IOTA common run epoch read",
+      "notes": "Epistula-signed orchestrator read requiring a run_id query parameter. Live-verified 2026-07-21: unsigned GET without run_id returns HTTP 422 Field required for query.run_id. Registered with the fixed base URL (no query baked in) so call_subnet_surface can supply query params. auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/common/get_run_epoch"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-9-iota-miner-register-status-queue-id",
+      "kind": "subnet-api",
+      "name": "IOTA miner register status read",
+      "notes": "Epistula-signed orchestrator read with a path-parameterized queue_id. Live-verified 2026-07-21: GET with a placeholder queue id returns HTTP 400 EpistulaError Invalid SS58 address. Path template registered URI-encoded (%7Bqueue_id%7D). auth_required:true, probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "andriypolanski"
+      },
+      "source_urls": [
+        "https://iota.api.macrocosmos.ai/openapi.json",
+        "https://github.com/macrocosm-os/iota"
+      ],
+      "url": "https://iota.api.macrocosmos.ai/miner/register/status/%7Bqueue_id%7D"
     }
   ],
   "website_url": "https://iota.macrocosmos.ai/"

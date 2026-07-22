@@ -10,7 +10,7 @@
 // generically, so this is a schema-data fix; these tests are the regression.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { validateListQueryParams } from "../workers/list-query.mjs";
+import { validateListQueryParams } from "../workers/list-query.ts";
 
 function query(path) {
   return new URL(`https://api.metagraph.sh${path}`);

@@ -25,7 +25,7 @@ import {
   rollupSubnetStatus,
 } from "./health-probe-core.mjs";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   recordSubnetIdentityChanges,
   syncSubnetIdentityToPostgres,

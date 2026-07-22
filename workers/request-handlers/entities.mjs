@@ -17,7 +17,7 @@
 // straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.mjs";
+import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,
@@ -25,21 +25,21 @@ import {
   parseLimitParam,
   parseNonNegativeIntParam,
   parsePagination,
-} from "../request-params.mjs";
+} from "../request-params.ts";
 
-import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.mjs";
+import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.ts";
 import {
   contractVersion,
   envelopeResponse,
   publishedAt,
-} from "../responses.mjs";
-import { tryPostgresTier } from "../postgres-tier.mjs";
-import { csvRequested, csvResponse } from "../csv.mjs";
+} from "../responses.ts";
+import { tryPostgresTier } from "../postgres-tier.ts";
+import { csvRequested, csvResponse } from "../csv.ts";
 import {
   analyticsQueryError,
   markD1FallbackResponse,
   validateQueryParams,
-} from "./analytics.mjs";
+} from "./analytics.ts";
 import {
   buildGlobalValidators,
   buildSubnetMetagraph,
@@ -228,7 +228,7 @@ import {
 } from "../../src/subnet-ohlc.mjs";
 import { resolveLiveEconomics } from "../../src/health-serving.mjs";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
-import { readArtifact, readHealthKv } from "../storage.mjs";
+import { readArtifact, readHealthKv } from "../storage.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
   buildValidatorNominators,

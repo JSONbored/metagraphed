@@ -28,7 +28,7 @@ import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.mjs"
 import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";
 import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { resolveClientIp, DAY_MS } from "../workers/config.mjs";
+import { resolveClientIp, DAY_MS } from "../workers/config.ts";
 import {
   KV_ECONOMICS_CURRENT,
   KV_HEALTH_CURRENT,
@@ -8626,6 +8626,39 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
   });
 });
 
+describe("graphql — subnet_candidates (#7641, baked per-subnet candidate artifact)", () => {
+  test("resolves the baked per-subnet candidates artifact", async () => {
+    const env = fixtureEnv({
+      "/metagraph/candidates/5.json": {
+        netuid: 5,
+        candidates: [{ id: "cand-1", kind: "subnet-api" }],
+      },
+    });
+    const { status, body } = await gql("{ subnet_candidates(netuid: 5) }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_candidates.netuid, 5);
+    assert.equal(body.data.subnet_candidates.candidates[0].kind, "subnet-api");
+  });
+
+  test("degrades to null when no candidate artifact is baked, never an error", async () => {
+    const { status, body } = await gql("{ subnet_candidates(netuid: 999) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_candidates, null);
+  });
+
+  test("a negative netuid is a GraphQL error", async () => {
+    const { body } = await gql("{ subnet_candidates(netuid: -1) }");
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
+  test("is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_candidates, 5);
+  });
+});
+
 describe("graphql — subnet_performance_history (#6981, neuron_daily reward-distribution trend)", () => {
   function dataApi(response) {
     return { fetch: async () => response };
@@ -14758,6 +14791,76 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
   });
 });
 
+describe("graphql — subnet_health (#7640, live-cron overlay parity with REST + MCP)", () => {
+  const NETUID = 7;
+
+  test("subnet_health overlays the live per-surface card for the netuid", async () => {
+    const env = fixtureEnv(
+      {},
+      {
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            surfaces: [
+              {
+                surface_id: "7:subnet-api:x",
+                netuid: NETUID,
+                kind: "subnet-api",
+                provider: "x",
+                url: "https://x.example/api",
+                status: "ok",
+                classification: "live",
+                latency_ms: 120,
+                last_ok: "2026-06-13T00:00:00.000Z",
+                last_checked: "2026-06-13T00:05:00.000Z",
+              },
+            ],
+          },
+        },
+      },
+    );
+    const { status, body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}) }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const card = body.data.subnet_health;
+    assert.equal(card.netuid, NETUID);
+    assert.equal(card.surfaces.length, 1);
+    assert.equal(card.surfaces[0].status, "ok");
+    assert.equal(card.summary.surface_count, 1);
+    assert.equal(card.summary.status, "ok");
+    // loadSubnetReliability() returns null since D1 retirement -- the card still
+    // resolves, matching the get_subnet_health MCP tool's null-reliability path.
+    assert.equal(card.reliability, null);
+  });
+
+  test("subnet_health resolves the schema-stable unknown card when the live store is cold", async () => {
+    const { status, body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}) }`,
+      emptyEnv,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.subnet_health, {
+      schema_version: 1,
+      netuid: NETUID,
+      summary: { status: "unknown", surface_count: 0 },
+      operational_observed_at: null,
+      health_source: "unavailable",
+      reliability: null,
+      surfaces: [],
+    });
+  });
+
+  test("subnet_health rejects a negative netuid with BAD_USER_INPUT", async () => {
+    const { body } = await gql("{ subnet_health(netuid: -1) }", emptyEnv);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("subnet_health is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_health, 5);
+  });
+});
+
 describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", () => {
   const NETUID = 7;
 
@@ -16631,6 +16734,44 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
       FIELD_COMPLEXITY.registry_leaderboards,
       FIELD_COMPLEXITY.health_trends,
     );
+  });
+});
+
+describe("graphql — saved_query (#7642, curated saved-query templates)", () => {
+  test("runs a template through the shared executor and returns the {query_id, params, data} envelope", async () => {
+    const { status, body } = await gql(
+      `{ saved_query(id: "subnet-leaderboard", params: { limit: 5 }) }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const result = body.data.saved_query;
+    assert.equal(result.query_id, "subnet-leaderboard");
+    assert.equal(result.params.limit, 5);
+    assert.ok(result.data, "expected the executed template's data payload");
+  });
+
+  test("an unknown id is BAD_USER_INPUT listing the valid template ids", async () => {
+    const { status, body } = await gql(
+      `{ saved_query(id: "no-such-template") }`,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.match(body.errors[0].message, /no-such-template/);
+    assert.match(body.errors[0].message, /subnet-leaderboard/);
+    assert.equal(body.data?.saved_query ?? null, null);
+  });
+
+  test("an unknown param is BAD_USER_INPUT, not a silent default", async () => {
+    const { status, body } = await gql(
+      `{ saved_query(id: "subnet-leaderboard", params: { not_a_real_param: 1 }) }`,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.match(body.errors[0].message, /not_a_real_param/);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(FIELD_COMPLEXITY.saved_query, FIELD_COMPLEXITY.candidates);
   });
 });
 

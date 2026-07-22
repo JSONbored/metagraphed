@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
-import * as listQuery from "../workers/list-query.mjs";
+import * as listQuery from "../workers/list-query.ts";
 import {
   GET_SUBNET_PROFILE_MCP_TOOL,
   GET_SUBNET_PROFILE_OUTPUT_SCHEMA,

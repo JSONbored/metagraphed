@@ -97,7 +97,7 @@ export default defineConfig({
         "scripts/lib/{build-readiness,economics-artifacts,endpoint-artifacts,enrichment-queue-artifacts,formatting,readme-links}.{mjs,ts}",
       ],
       // The workers/*.sentry.mjs deploy-entry wrappers (metagraphed#6479;
-      // currently data-api.sentry.mjs + registry-sync-api.sentry.mjs --
+      // currently data-api.sentry.ts + registry-sync-api.sentry.ts --
       // workers/api.mjs's own Sentry wrapper hit that Worker's 1024 KiB
       // Cloudflare bundle ceiling, tracked separately, see #6479's own
       // follow-up) are deliberately coverage-invisible for the same reason

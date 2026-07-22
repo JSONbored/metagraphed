@@ -15,7 +15,7 @@
 // realtime firehose (ChainFirehoseHub, #4982) broadcasts a new chain event, or
 // when the health prober (#6034) detects a per-subnet health/status/surface
 // change via SubnetStatusHub. Every OTHER method on this server is unaffected
-// -- stateless POST, no session required. See workers/mcp-session-hub.mjs's
+// -- stateless POST, no session required. See workers/mcp-session-hub.ts's
 // own header comment for why this is a separate DO from ChainFirehoseHub, and
 // docs/realtime-firehose.md for the full architecture.
 //
@@ -40,15 +40,15 @@ import {
   isUsageTelemetryConfigured,
   recordUsageEvent,
 } from "./usage-telemetry.mjs";
-import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
-import { DAY_PATTERN } from "../workers/request-params.mjs";
-import { applyQueryFilters } from "../workers/list-query.mjs";
-import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
+import { DAY_PATTERN } from "../workers/request-params.ts";
+import { applyQueryFilters } from "../workers/list-query.ts";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   handleRpcProxyRequest,
   graphqlRateLimited,
-} from "../workers/request-handlers/rpc-proxy.mjs";
+} from "../workers/request-handlers/rpc-proxy.ts";
 import { handleGraphQLRequest } from "./graphql.mjs";
 import {
   isValidSubscriptionId,
@@ -62,7 +62,7 @@ import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.mjs";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,
-} from "../workers/mcp-session-hub.mjs";
+} from "../workers/mcp-session-hub.ts";
 import {
   buildSubnetStatusResourceUri,
   isSubscribableMcpResourceUri,
@@ -10331,7 +10331,7 @@ export const MCP_TOOLS = [
         );
       }
       if (!response.ok) {
-        // handleRpcProxyRequest's every error path goes through workers/http.mjs's
+        // handleRpcProxyRequest's every error path goes through workers/http.ts's
         // errorResponse(), which always populates error.code/error.message -- no
         // "malformed error body" case exists to guess a fallback for.
         throw toolError(payload.error.code, payload.error.message);
@@ -16239,7 +16239,7 @@ const MCP_STREAM_HUB_UNAVAILABLE_RESPONSE = new Response(null, {
 // GET /mcp -- the standalone SSE push channel a client opens (with the
 // Mcp-Session-Id minted at `initialize`) after a resources/subscribe call, to
 // receive notifications/resources/updated pushes. See
-// workers/mcp-session-hub.mjs's header comment for why this is a
+// workers/mcp-session-hub.ts's header comment for why this is a
 // bounded-duration stream rather than an indefinite hold, and why it is a
 // separate Durable Object from the realtime chain firehose. Every other MCP
 // method is POST-only and stateless; this is the one GET route.

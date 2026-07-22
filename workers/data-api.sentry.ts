@@ -27,7 +27,7 @@
 import * as Sentry from "@sentry/cloudflare";
 import handler from "./data-api.mjs";
 
-export default Sentry.withSentry(
+export default Sentry.withSentry<Env>(
   (env) => ({
     dsn: env.SENTRY_DSN,
     environment: env.SENTRY_ENVIRONMENT || "production",

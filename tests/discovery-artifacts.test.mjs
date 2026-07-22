@@ -12,7 +12,7 @@ import addFormats from "ajv-formats";
 import { repoRoot, loadSubnets } from "../scripts/lib.mjs";
 import { PRIMARY_DOMAIN } from "../src/contracts.mjs";
 import { MCP_REGISTRY_NAME, MCP_SERVER_INFO } from "../src/mcp-server.mjs";
-import { mcpServerCardResponse } from "../workers/request-handlers/discovery.mjs";
+import { mcpServerCardResponse } from "../workers/request-handlers/discovery.ts";
 
 const publicDir = path.join(repoRoot, "public");
 const readJson = async (rel) =>

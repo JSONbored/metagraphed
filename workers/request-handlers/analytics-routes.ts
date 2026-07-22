@@ -10,22 +10,22 @@
 // (`readHealthMetaKv`, `readEconomicsCurrentKv`) stay in api.mjs and are
 // injected once at module-init so this file never imports api.mjs back.
 
-import { UPTIME_WINDOWS } from "../config.mjs";
-import { tryPostgresTier } from "../postgres-tier.mjs";
-import { csvRequested, csvResponse } from "../csv.mjs";
-import { errorResponse } from "../http.mjs";
-import { readArtifact } from "../storage.mjs";
-import { contractVersion, envelopeResponse } from "../responses.mjs";
+import { UPTIME_WINDOWS } from "../config.ts";
+import { tryPostgresTier } from "../postgres-tier.ts";
+import { csvRequested, csvResponse } from "../csv.ts";
+import { errorResponse } from "../http.ts";
+import { readArtifact } from "../storage.ts";
+import { contractVersion, envelopeResponse } from "../responses.ts";
 import {
   analyticsMeta,
   analyticsQueryError,
   markD1FallbackResponse,
   validateQueryParams,
-} from "./analytics.mjs";
+} from "./analytics.ts";
 import {
   parseLimitParam,
   parseNonNegativeIntParam,
-} from "../request-params.mjs";
+} from "../request-params.ts";
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,
@@ -56,12 +56,25 @@ import {
   buildDomainSummary,
 } from "../../src/domain-summary.mjs";
 
-let readHealthMetaKv = () => {
+type HealthMetaKvReader = (
+  env: Env,
+) => Promise<{ last_run_at?: string | null } | null>;
+// Loose: readEconomicsCurrentKv's real return flows straight into
+// resolveLiveEconomics (still untyped .mjs) without this file ever reading
+// a field off it directly.
+type EconomicsCurrentKvReader = (env: Env) => Promise<unknown>;
+
+// Module-load-time placeholders, replaced by configureAnalyticsRoutes() at
+// Worker/test startup before any route handler runs -- a wiring bug, never a
+// reachable runtime path.
+/* v8 ignore start */
+let readHealthMetaKv: HealthMetaKvReader = () => {
   throw new Error("analytics routes used before configureAnalyticsRoutes()");
 };
-let readEconomicsCurrentKv = () => {
+let readEconomicsCurrentKv: EconomicsCurrentKvReader = () => {
   throw new Error("analytics routes used before configureAnalyticsRoutes()");
 };
+/* v8 ignore stop */
 
 const RESPONSE_FORMATS = ["json", "csv"];
 
@@ -110,24 +123,32 @@ const UPTIME_CSV_COLUMNS = [
   "status",
 ];
 
-function uptimeCsvRows(surfaces) {
-  return (Array.isArray(surfaces) ? surfaces : []).flatMap((surface) =>
-    (Array.isArray(surface?.days) ? surface.days : []).map((d) => ({
-      surface_id: surface.surface_id,
-      day: d.day,
-      samples: d.samples,
-      uptime_ratio: d.uptime_ratio,
-      avg_latency_ms: d.avg_latency_ms,
-      latency_sample_count: d.latency_sample_count,
-      p50: d.latency_ms?.p50 ?? null,
-      p95: d.latency_ms?.p95 ?? null,
-      p99: d.latency_ms?.p99 ?? null,
-      status: d.status,
-    })),
+function uptimeCsvRows(surfaces: unknown): Array<Record<string, unknown>> {
+  return (Array.isArray(surfaces) ? surfaces : []).flatMap(
+    (surface: Record<string, unknown>) =>
+      (Array.isArray(surface?.days) ? surface.days : []).map(
+        (d: Record<string, unknown>) => ({
+          surface_id: surface.surface_id,
+          day: d.day,
+          samples: d.samples,
+          uptime_ratio: d.uptime_ratio,
+          avg_latency_ms: d.avg_latency_ms,
+          latency_sample_count: d.latency_sample_count,
+          p50:
+            (d.latency_ms as Record<string, unknown> | undefined)?.p50 ?? null,
+          p95:
+            (d.latency_ms as Record<string, unknown> | undefined)?.p95 ?? null,
+          p99:
+            (d.latency_ms as Record<string, unknown> | undefined)?.p99 ?? null,
+          status: d.status,
+        }),
+      ),
   );
 }
 
-function validateFormatParam(url) {
+function validateFormatParam(
+  url: URL,
+): { parameter: string; message: string } | null {
   const raw = url.searchParams.get("format");
   if (raw === null && !url.searchParams.has("format")) return null;
   const normalized = String(raw || "").toLowerCase();
@@ -138,7 +159,11 @@ function validateFormatParam(url) {
   };
 }
 
-function economicsTrendsCacheVariant(url, request, canonicalPath) {
+function economicsTrendsCacheVariant(
+  url: URL,
+  request: Request | null,
+  canonicalPath: string,
+): string {
   const format = url.searchParams.get("format")?.toLowerCase();
   const wantsCsv =
     format === "csv" || (request != null && csvRequested(url, request));
@@ -147,7 +172,11 @@ function economicsTrendsCacheVariant(url, request, canonicalPath) {
   return `${canonicalPath}&format=csv`;
 }
 
-function trajectoryCacheVariant(url, request, canonicalPath) {
+function trajectoryCacheVariant(
+  url: URL,
+  request: Request | null,
+  canonicalPath: string,
+): string {
   const format = url.searchParams.get("format")?.toLowerCase();
   const wantsCsv =
     format === "csv" || (request != null && csvRequested(url, request));
@@ -155,7 +184,11 @@ function trajectoryCacheVariant(url, request, canonicalPath) {
   return `${canonicalPath}?format=csv`;
 }
 
-function uptimeCacheVariant(url, request, canonicalPath) {
+function uptimeCacheVariant(
+  url: URL,
+  request: Request | null,
+  canonicalPath: string,
+): string {
   const format = url.searchParams.get("format")?.toLowerCase();
   const wantsCsv =
     format === "csv" || (request != null && csvRequested(url, request));
@@ -164,16 +197,30 @@ function uptimeCacheVariant(url, request, canonicalPath) {
   return `${canonicalPath}&format=csv`;
 }
 
-export function configureAnalyticsRoutes(deps) {
+export function configureAnalyticsRoutes(deps: {
+  readHealthMetaKv: HealthMetaKvReader;
+  readEconomicsCurrentKv: EconomicsCurrentKvReader;
+}) {
   readHealthMetaKv = deps.readHealthMetaKv;
   readEconomicsCurrentKv = deps.readEconomicsCurrentKv;
 }
 
+interface LeaderboardProfilesProjection {
+  subnetMeta: Map<number, { slug: string | null; name: string | null }>;
+  mostComplete: Array<Record<string, unknown>>;
+  builtAt: number;
+}
+
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
-let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
+let leaderboardProfilesCache: LeaderboardProfilesProjection | null = null;
 
 // Week-over-week structural trajectory from daily snapshots.
-export async function handleTrajectory(request, env, netuid, url) {
+export async function handleTrajectory(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+): Promise<Response> {
   const validationError = validateQueryParams(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
@@ -183,11 +230,11 @@ export async function handleTrajectory(request, env, netuid, url) {
   // eliminated (2026-07-17): a tier miss now always falls through to the
   // schema-stable empty payload (never a live D1 query).
   let isFallback = false;
-  let data = await tryPostgresTier(
+  let data = (await tryPostgresTier(
     env,
     request,
     "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-  );
+  )) as ReturnType<typeof formatTrajectory> | null;
   if (!data) {
     isFallback = true;
     data = formatTrajectory({ netuid, rows: [] });
@@ -223,21 +270,28 @@ export async function handleTrajectory(request, env, netuid, url) {
 // emission share). Same source as the per-subnet trajectory; raw rows (not a GROUP
 // BY) so the weighted/median price is computed in the pure builder. Schema-stable
 // (day_count:0, days:[]) on a cold rollup. Bounded by ECONOMICS_TRENDS_ROW_CAP.
-export async function handleEconomicsTrends(request, env, url) {
+export async function handleEconomicsTrends(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
-  if (error) return analyticsQueryError(error);
+  const windowResult = parseHistoryWindow(url.searchParams.get("window")) as
+    | { label: string; days: number }
+    | { error: { parameter: string; message: string } };
+  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
+  const { label } = windowResult;
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
   // and same flip as handleTrajectory above. D1 fully eliminated (2026-07-17).
   let isFallback = false;
-  let data = await tryPostgresTier(
+  let data = (await tryPostgresTier(
     env,
     request,
     "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-  );
+  )) as Awaited<ReturnType<typeof loadEconomicsTrends>>["data"] | null;
   if (!data) {
     isFallback = true;
     const loaded = await loadEconomicsTrends({ windowLabel: label });
@@ -265,7 +319,12 @@ export async function handleEconomicsTrends(request, env, url) {
 }
 
 // Long-term daily uptime history for one subnet's operational surfaces.
-export async function handleUptime(request, env, netuid, url) {
+export async function handleUptime(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+): Promise<Response> {
   const validationError = validateQueryParams(url, [
     "window",
     "min_samples",
@@ -284,18 +343,23 @@ export async function handleUptime(request, env, netuid, url) {
   // Optional low-sample noise floor: drop day rows whose aggregated probe count
   // is below the threshold (a HAVING bound param), so sparse days (including
   // the SUM(samples)=0 'unknown' rows) can be excluded from availability charts.
-  const minSamples = parseNonNegativeIntParam(
+  const minSamplesResult = parseNonNegativeIntParam(
     url.searchParams.get("min_samples"),
     "min_samples",
   );
-  if (minSamples.error) return analyticsQueryError(minSamples.error);
+  if ("error" in minSamplesResult)
+    return analyticsQueryError(minSamplesResult.error);
   // #4832 gap-closure follow-up: reuses METAGRAPH_HEALTH_SOURCE (same table
   // as the bulk-trends/trends/percentiles/incidents routes in analytics.mjs,
   // flipped to "postgres" in wrangler.jsonc -- see that flag's own header
   // comment there). D1 fully eliminated (2026-07-17): a tier miss now always
   // falls through to the schema-stable empty payload (never a live D1 query).
   let isFallback = false;
-  let data = await tryPostgresTier(env, request, "METAGRAPH_HEALTH_SOURCE");
+  let data = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_HEALTH_SOURCE",
+  )) as ReturnType<typeof formatUptime> | null;
   if (!data) {
     isFallback = true;
     const healthMeta = await readHealthMetaKv(env);
@@ -305,7 +369,7 @@ export async function handleUptime(request, env, netuid, url) {
       observedAt: healthMeta?.last_run_at || null,
       rows: [],
       now: new Date().toISOString(),
-    });
+    } as unknown as Parameters<typeof formatUptime>[0]);
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
@@ -335,7 +399,10 @@ export async function handleUptime(request, env, netuid, url) {
 // Normalises the uptime URL so that a bare ?-free request and an explicit
 // ?window=90d request both resolve to the same edge-cache entry — mirrors
 // canonicalSubnetConcentrationHistoryCachePath in entities.mjs.
-export function canonicalUptimeCachePath(url, request = null) {
+export function canonicalUptimeCachePath(
+  url: URL,
+  request: Request | null = null,
+): string {
   const validationError = validateQueryParams(url, [
     "window",
     "min_samples",
@@ -351,13 +418,14 @@ export function canonicalUptimeCachePath(url, request = null) {
   // drops day rows below the threshold), so it MUST be part of the cache key.
   // Omitting it collides ?min_samples=100 (few rows) with ?min_samples=0 (all
   // rows) on one edge-cache entry, serving whichever was cached first for both.
-  const minSamples = parseNonNegativeIntParam(
+  const minSamplesResult = parseNonNegativeIntParam(
     url.searchParams.get("min_samples"),
     "min_samples",
   );
-  if (minSamples.error) return `${url.pathname}${url.search}`;
+  if ("error" in minSamplesResult) return `${url.pathname}${url.search}`;
   const params = [`window=${encodeURIComponent(windowParam)}`];
-  if (minSamples.value !== null) params.push(`min_samples=${minSamples.value}`);
+  if (minSamplesResult.value !== null)
+    params.push(`min_samples=${minSamplesResult.value}`);
   return uptimeCacheVariant(
     url,
     request,
@@ -368,23 +436,29 @@ export function canonicalUptimeCachePath(url, request = null) {
 // Normalises the economics-trends URL so that a bare ?-free request and an explicit
 // ?window=30d request both resolve to the same edge-cache entry — mirrors
 // canonicalSubnetHistoryCachePath in entities.mjs.
-export function canonicalEconomicsTrendsCachePath(url, request = null) {
+export function canonicalEconomicsTrendsCachePath(
+  url: URL,
+  request: Request | null = null,
+): string {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateFormatParam(url);
   if (formatError) return `${url.pathname}${url.search}`;
-  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
-  if (error) return `${url.pathname}${url.search}`;
+  const windowResult = parseHistoryWindow(url.searchParams.get("window"));
+  if ("error" in windowResult) return `${url.pathname}${url.search}`;
   return economicsTrendsCacheVariant(
     url,
     request,
-    `${url.pathname}?window=${encodeURIComponent(label)}`,
+    `${url.pathname}?window=${encodeURIComponent(windowResult.label)}`,
   );
 }
 
 // Normalises the per-subnet trajectory URL so JSON and CSV variants get distinct
 // edge-cache entries — mirrors canonicalEconomicsTrendsCachePath.
-export function canonicalTrajectoryCachePath(url, request = null) {
+export function canonicalTrajectoryCachePath(
+  url: URL,
+  request: Request | null = null,
+): string {
   const validationError = validateQueryParams(url, ["format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateFormatParam(url);
@@ -395,24 +469,27 @@ export function canonicalTrajectoryCachePath(url, request = null) {
 // Normalises the leaderboards URL so that a bare ?-free request and an explicit
 // ?limit=20 request both resolve to the same edge-cache entry — mirrors
 // canonicalCompareCachePath and canonicalUptimeCachePath.
-export function canonicalLeaderboardsCachePath(url) {
+export function canonicalLeaderboardsCachePath(url: URL): string {
   const validationError = validateQueryParams(url, ["board", "limit"]);
   if (validationError) return `${url.pathname}${url.search}`;
-  const parsedLimit = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
-  if (parsedLimit.error) {
+  const limitResult = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
+  if ("error" in limitResult) {
     return `${url.pathname}${url.search}`;
   }
   const board = url.searchParams.get("board");
   if (board && !LEADERBOARD_BOARDS.includes(board)) {
     return `${url.pathname}${url.search}`;
   }
-  const cap = parsedLimit.limit;
+  const cap = limitResult.limit;
   const params = [`limit=${cap}`];
   if (board) params.unshift(`board=${encodeURIComponent(board)}`);
   return `${url.pathname}?${params.join("&")}`;
 }
 
-async function leaderboardProfilesProjection(env, now = Date.now()) {
+async function leaderboardProfilesProjection(
+  env: Env,
+  now = Date.now(),
+): Promise<LeaderboardProfilesProjection> {
   if (
     leaderboardProfilesCache &&
     now - leaderboardProfilesCache.builtAt <= LEADERBOARD_PROFILES_TTL_MS
@@ -420,14 +497,17 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
     return leaderboardProfilesCache;
   }
   const artifact = await readArtifact(env, "/metagraph/profiles.json");
-  const profiles = artifact.ok ? artifact.data?.profiles || [] : [];
-  const subnetMeta = new Map();
-  const mostComplete = [];
+  const profiles: Array<Record<string, unknown>> = artifact.ok
+    ? (artifact.data as { profiles?: Array<Record<string, unknown>> })
+        ?.profiles || []
+    : [];
+  const subnetMeta: LeaderboardProfilesProjection["subnetMeta"] = new Map();
+  const mostComplete: LeaderboardProfilesProjection["mostComplete"] = [];
   for (const profile of profiles) {
     if (!Number.isInteger(profile.netuid)) continue;
-    subnetMeta.set(profile.netuid, {
-      slug: profile.slug ?? null,
-      name: profile.name ?? null,
+    subnetMeta.set(profile.netuid as number, {
+      slug: (profile.slug as string | null) ?? null,
+      name: (profile.name as string | null) ?? null,
     });
     mostComplete.push({
       netuid: profile.netuid,
@@ -445,17 +525,18 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
   return projection;
 }
 
-async function resolveEconomicsRows(env) {
-  const live = await resolveLiveEconomics({
-    readHealthKv: (e) => readEconomicsCurrentKv(e),
+async function resolveEconomicsRows(env: Env): Promise<unknown[]> {
+  const live = (await resolveLiveEconomics({
+    readHealthKv: (e: Env) => readEconomicsCurrentKv(e),
     env,
     contractVersion: contractVersion(env),
-  });
+  })) as { data?: { subnets?: unknown[] } } | null;
   if (Array.isArray(live?.data?.subnets)) return live.data.subnets;
   const artifact = await readArtifact(env, "/metagraph/economics.json");
-  return artifact.ok && Array.isArray(artifact.data?.subnets)
-    ? artifact.data.subnets
-    : [];
+  const artifactSubnets = artifact.ok
+    ? (artifact.data as { subnets?: unknown[] })?.subnets
+    : undefined;
+  return Array.isArray(artifactSubnets) ? artifactSubnets : [];
 }
 
 /**
@@ -473,9 +554,9 @@ async function resolveEconomicsRows(env) {
  * (Query.registry_leaderboards, #5661) reuses this exact projection.
  */
 export async function composeLeaderboardsData(
-  env,
-  { board = null, limit = 20 } = {},
-) {
+  env: Env,
+  { board = null, limit = 20 }: { board?: string | null; limit?: number } = {},
+): Promise<{ data: ReturnType<typeof formatLeaderboards> }> {
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
   const economicsRows = await resolveEconomicsRows(env);
 
@@ -491,11 +572,15 @@ export async function composeLeaderboardsData(
     reliabilityRows: [],
     economicsRows,
     subnetMeta,
-  });
+  } as unknown as Parameters<typeof formatLeaderboards>[0]);
   return { data };
 }
 
-export async function handleLeaderboards(request, env, url) {
+export async function handleLeaderboards(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
   const validationError = validateQueryParams(url, ["board", "limit"]);
   if (validationError) return analyticsQueryError(validationError);
   const requestedBoard = url.searchParams.get("board");
@@ -506,14 +591,14 @@ export async function handleLeaderboards(request, env, url) {
       400,
     );
   }
-  const parsedLimit = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
-  if (parsedLimit.error) {
-    return errorResponse("invalid_query", parsedLimit.error.message, 400);
+  const limitResult = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
+  if ("error" in limitResult) {
+    return errorResponse("invalid_query", limitResult.error.message, 400);
   }
 
   const { data } = await composeLeaderboardsData(env, {
     board: requestedBoard || null,
-    limit: parsedLimit.limit,
+    limit: limitResult.limit,
   });
   const response = await envelopeResponse(
     request,
@@ -535,7 +620,7 @@ export async function handleLeaderboards(request, env, url) {
   return markD1FallbackResponse(response);
 }
 
-export function canonicalCompareCachePath(url) {
+export function canonicalCompareCachePath(url: URL): string | null {
   if (validateQueryParams(url, ["netuids", "dimensions"])) return null;
   const requestedNetuids = parseCompareNetuids(url.searchParams.get("netuids"));
   if (!requestedNetuids) return null;
@@ -556,12 +641,22 @@ export function canonicalCompareCachePath(url) {
 // are intentionally not routed through here. It also normalizes the per-tier
 // Map join key: composeCompareData looks tiers up by numeric requested netuid,
 // so a string-typed row netuid ("7") must key on 7 or the tier drops to null.
-function coerceD1Number(value) {
+function coerceD1Number(value: unknown): unknown {
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
   if (trimmed === "") return value;
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : value;
+}
+
+interface CompareSubnetEntry {
+  netuid: number;
+  name: string | null;
+  slug: string | null;
+  found: boolean;
+  structure?: unknown;
+  economics?: unknown;
+  health?: unknown;
 }
 
 export function composeCompareData({
@@ -572,16 +667,24 @@ export function composeCompareData({
   economicsRows,
   healthRows,
   observedAt,
+}: {
+  requestedNetuids: number[];
+  dimensions: string[];
+  subnetMeta: Map<number, { name: string | null; slug: string | null }>;
+  structureRows: Array<Record<string, unknown>> | null | undefined;
+  economicsRows: Array<Record<string, unknown>> | null | undefined;
+  healthRows: Array<Record<string, unknown>> | null | undefined;
+  observedAt: unknown;
 }) {
   const includeStructure = dimensions.includes("structure");
   const includeEconomics = dimensions.includes("economics");
   const includeHealth = dimensions.includes("health");
 
-  const structureByNetuid = new Map();
+  const structureByNetuid = new Map<number, Record<string, unknown>>();
   for (const row of structureRows || []) {
     const netuid = coerceD1Number(row.netuid);
     if (!Number.isInteger(netuid)) continue;
-    structureByNetuid.set(netuid, {
+    structureByNetuid.set(netuid as number, {
       completeness_score: coerceD1Number(row.completeness_score),
       surface_count: coerceD1Number(row.surface_count),
       operational_interface_count: coerceD1Number(
@@ -589,11 +692,11 @@ export function composeCompareData({
       ),
     });
   }
-  const economicsByNetuid = new Map();
+  const economicsByNetuid = new Map<number, Record<string, unknown>>();
   for (const row of economicsRows || []) {
     const netuid = coerceD1Number(row.netuid);
     if (!Number.isInteger(netuid)) continue;
-    economicsByNetuid.set(netuid, {
+    economicsByNetuid.set(netuid as number, {
       registration_cost_tao: coerceD1Number(row.registration_cost_tao),
       registration_allowed: row.registration_allowed,
       open_slots: coerceD1Number(row.open_slots),
@@ -605,20 +708,20 @@ export function composeCompareData({
       miner_readiness: coerceD1Number(row.miner_readiness),
     });
   }
-  const healthByNetuid = new Map();
+  const healthByNetuid = new Map<number, Record<string, unknown>>();
   for (const row of healthRows || []) {
     const netuid = coerceD1Number(row.netuid);
     if (!Number.isInteger(netuid)) continue;
-    healthByNetuid.set(netuid, {
+    healthByNetuid.set(netuid as number, {
       surface_count: coerceD1Number(row.surface_count),
       ok_count: coerceD1Number(row.ok_count),
       avg_latency_ms: coerceD1Number(row.avg_latency_ms),
     });
   }
 
-  const subnets = requestedNetuids.map((netuid) => {
+  const subnets: CompareSubnetEntry[] = requestedNetuids.map((netuid) => {
     const meta = subnetMeta.get(netuid) || null;
-    const entry = {
+    const entry: CompareSubnetEntry = {
       netuid,
       name: meta?.name ?? null,
       slug: meta?.slug ?? null,
@@ -646,7 +749,11 @@ export function composeCompareData({
   };
 }
 
-export async function handleCompare(request, env, url) {
+export async function handleCompare(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
   const validationError = validateQueryParams(url, ["netuids", "dimensions"]);
   if (validationError) return analyticsQueryError(validationError);
 
@@ -664,7 +771,7 @@ export async function handleCompare(request, env, url) {
   const dimensionsRaw = url.searchParams.get("dimensions");
   const dimensions = parseCompareDimensions(dimensionsRaw);
   if (!dimensions) {
-    const tokens = dimensionsRaw.split(",").map((d) => d.trim());
+    const tokens = (dimensionsRaw || "").split(",").map((d) => d.trim());
     const unknown =
       tokens.find((d) => d === "") ??
       tokens.find((d) => !COMPARE_DIMENSIONS.includes(d));
@@ -697,7 +804,8 @@ export async function handleCompare(request, env, url) {
           new Request(pgUrl),
           "METAGRAPH_HEALTH_SOURCE",
         );
-        if (pgData) return pgData.rows;
+        if (pgData)
+          return pgData.rows as Array<Record<string, unknown>> | undefined;
         healthIsFallback = true;
         return [];
       })()
@@ -713,7 +821,7 @@ export async function handleCompare(request, env, url) {
     dimensions,
     subnetMeta,
     structureRows: mostComplete,
-    economicsRows,
+    economicsRows: economicsRows as Array<Record<string, unknown>> | null,
     healthRows,
     observedAt: meta?.last_run_at ?? null,
   });
@@ -741,14 +849,18 @@ export async function handleCompare(request, env, url) {
 // tier actually supplied economicsRows, matching network-economics.mjs's own
 // `data.captured_at` convention -- the domain rollup is only as fresh as the
 // economics side (subnets.json's own domain tags change far less often).
-async function domainSummaryInputs(env) {
-  const live = await resolveLiveEconomics({
-    readHealthKv: (e) => readEconomicsCurrentKv(e),
+async function domainSummaryInputs(env: Env): Promise<{
+  subnetRows: unknown[];
+  economicsRows: unknown[];
+  capturedAt: unknown;
+}> {
+  const live = (await resolveLiveEconomics({
+    readHealthKv: (e: Env) => readEconomicsCurrentKv(e),
     env,
     contractVersion: contractVersion(env),
-  });
-  let economicsRows = [];
-  let capturedAt = null;
+  })) as { data?: { subnets?: unknown[]; captured_at?: unknown } } | null;
+  let economicsRows: unknown[] = [];
+  let capturedAt: unknown = null;
   if (Array.isArray(live?.data?.subnets)) {
     economicsRows = live.data.subnets;
     // No `?? null` needed here: resolveLiveEconomics only ever returns a blob
@@ -757,16 +869,21 @@ async function domainSummaryInputs(env) {
     capturedAt = live.data.captured_at;
   } else {
     const artifact = await readArtifact(env, "/metagraph/economics.json");
-    if (artifact.ok && Array.isArray(artifact.data?.subnets)) {
-      economicsRows = artifact.data.subnets;
-      capturedAt = artifact.data.captured_at ?? null;
+    const artifactData = artifact.ok
+      ? (artifact.data as { subnets?: unknown[]; captured_at?: unknown })
+      : undefined;
+    if (Array.isArray(artifactData?.subnets)) {
+      economicsRows = artifactData.subnets;
+      capturedAt = artifactData.captured_at ?? null;
     }
   }
   const subnetsArtifact = await readArtifact(env, "/metagraph/subnets.json");
-  const subnetRows =
-    subnetsArtifact.ok && Array.isArray(subnetsArtifact.data?.subnets)
-      ? subnetsArtifact.data.subnets
-      : [];
+  const subnetsArtifactData = subnetsArtifact.ok
+    ? (subnetsArtifact.data as { subnets?: unknown[] })
+    : undefined;
+  const subnetRows = Array.isArray(subnetsArtifactData?.subnets)
+    ? subnetsArtifactData.subnets
+    : [];
   return { subnetRows, economicsRows, capturedAt };
 }
 
@@ -776,7 +893,10 @@ async function domainSummaryInputs(env) {
 // ?domain= on /api/v1/subnets. No new capture: pure composition of the
 // subnets index + economics tier, same registry+economics pattern
 // handleCompare uses above.
-export async function handleDomains(request, env) {
+export async function handleDomains(
+  request: Request,
+  env: Env,
+): Promise<Response> {
   const url = new URL(request.url);
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
@@ -807,7 +927,11 @@ export async function handleDomains(request, env) {
 // (src/contracts.mjs's `enumSchema(DOMAIN_TAGS)`), so an unknown tag is a
 // 400, not a 404 -- it's a malformed identifier against a known enum, not a
 // resource lookup miss.
-export async function handleDomainSummary(request, env, tag) {
+export async function handleDomainSummary(
+  request: Request,
+  env: Env,
+  tag: string,
+): Promise<Response> {
   const url = new URL(request.url);
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
@@ -843,7 +967,7 @@ export async function handleDomainSummary(request, env, tag) {
 // synthesized from the incoming /api/v1/compare/validators request the same
 // way handleCompare's own health branch above builds its internal request --
 // tryPostgresTier just forwards whatever Request it's given.
-function validatorDetailRequest(request, hotkey) {
+function validatorDetailRequest(request: Request, hotkey: string): Request {
   const pgUrl = new URL(request.url);
   pgUrl.pathname = `/api/v1/validators/${encodeURIComponent(hotkey)}`;
   pgUrl.search = "";
@@ -859,7 +983,11 @@ function validatorDetailRequest(request, hotkey) {
 // fallback contract handleValidatorDetail uses, and the identical
 // composeValidatorComparison projection so REST and MCP never drift. netuid is
 // optional subnet context, same as the MCP tool's own netuid arg.
-export async function handleCompareValidators(request, env, url) {
+export async function handleCompareValidators(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
   const validationError = validateQueryParams(url, ["hotkeys", "netuid"]);
   if (validationError) return analyticsQueryError(validationError);
 
@@ -878,20 +1006,21 @@ export async function handleCompareValidators(request, env, url) {
     url.searchParams.get("netuid"),
     "netuid",
   );
-  if (netuidResult.error) return analyticsQueryError(netuidResult.error);
+  if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
 
   // Sequential, not parallel -- matches compare_validators' own fan-out
   // pattern exactly (N individual get_validator_detail-shaped loads), rather
   // than diverging into a REST-only concurrency strategy.
-  const details = [];
-  let latestCapturedAt = null;
+  const details: Array<ReturnType<typeof buildValidatorDetail>> = [];
+  let latestCapturedAt: unknown = null;
   for (const hotkey of hotkeys) {
     const detail =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         env,
         validatorDetailRequest(request, hotkey),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildValidatorDetail([], hotkey);
+      )) as ReturnType<typeof buildValidatorDetail> | null) ??
+      buildValidatorDetail([], hotkey);
     details.push(detail);
     if (
       detail.captured_at &&
@@ -903,7 +1032,7 @@ export async function handleCompareValidators(request, env, url) {
 
   const data = composeValidatorComparison(details, {
     netuid: netuidResult.value,
-  });
+  } as unknown as Parameters<typeof composeValidatorComparison>[1]);
   return envelopeResponse(
     request,
     {

@@ -18,12 +18,12 @@ import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
 } from "../src/agent-tool-specs.mjs";
-import { ChainFirehoseHub } from "../workers/chain-firehose-hub.mjs";
+import { ChainFirehoseHub } from "../workers/chain-firehose-hub.ts";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   McpSessionHub,
-} from "../workers/mcp-session-hub.mjs";
-import { SubnetStatusHub } from "../workers/subnet-status-hub.mjs";
+} from "../workers/mcp-session-hub.ts";
+import { SubnetStatusHub } from "../workers/subnet-status-hub.ts";
 import { buildSubnetStatusResourceUri } from "../src/subnet-status-subscribe.mjs";
 import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.mjs";
 import {

@@ -50,7 +50,7 @@ vi.mock("postgres", () => ({
   },
 }));
 
-const { default: worker } = await import("../workers/registry-sync-api.mjs");
+const { default: worker } = await import("../workers/registry-sync-api.ts");
 
 const SECRET = "test-registry-sync-secret";
 

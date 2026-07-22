@@ -2,8 +2,20 @@ export const ARTIFACT_SIZE_BUDGETS = [
   budget("candidates.json", 4_500_000, 8_000_000),
   budget("review-queue.json", 4_500_000, 8_000_000),
   budget("verification/latest.json", 3_000_000, 5_000_000),
-  budget("surfaces.json", 1_500_000, 4_000_000),
-  budget("endpoints.json", 2_500_000, 5_000_000),
+  // METAGRAPHED-9/A (#stale-publish-pipeline): the registry's organic growth (new
+  // subnets/providers/endpoints from ongoing contributor PRs) pushed both actual
+  // sizes past the old fail_bytes ceiling (endpoints.json 5,271,281 >= 5,000,000;
+  // surfaces.json 4,020,869 >= 4,000,000), hard-failing publish-cloudflare.yml's
+  // validate:artifact-budgets step on every run since ~2026-07-17 -- the whole
+  // publish (R2 artifacts + the KV `latest` pointer) never reaches its upload
+  // step, so the live site kept serving that stale run indefinitely (this budget
+  // check has no partial-failure path; one over-budget artifact blocks every
+  // artifact). Raised with real headroom above current size, not just enough to
+  // clear it today, so ongoing registry growth doesn't reopen the same outage in
+  // a few weeks; still bounded well below "no budget at all" so a genuinely
+  // runaway artifact (a bug, not organic growth) still fails loudly.
+  budget("surfaces.json", 2_500_000, 6_000_000),
+  budget("endpoints.json", 4_000_000, 7_500_000),
   budget("providers/*/endpoints.json", 1_000_000, 3_000_000),
   budget("evidence-ledger.json", 1_000_000, 3_000_000),
   budget("health/history/*.json", 650_000, 1_250_000),

@@ -4,7 +4,9 @@
 // constants and nothing from api.mjs, so every request-handler module can share
 // these without an import cycle.
 import { CACHE_SECONDS, CONTRACT_VERSION } from "../src/contracts.mjs";
-import { JSON_CONTENT_TYPE } from "./config.mjs";
+import { JSON_CONTENT_TYPE } from "./config.ts";
+
+export type CacheProfile = "short" | "standard" | "static";
 
 // Custom response headers a cross-origin browser script is allowed to read.
 // The Fetch spec hides every non-safelisted header unless the server names it in
@@ -46,11 +48,11 @@ export const EXPOSED_RESPONSE_HEADERS_VALUE =
   EXPOSED_RESPONSE_HEADERS.join(", ");
 
 // Expose the canonical custom headers on a CORS-open response's Headers.
-export function exposeCustomResponseHeaders(headers) {
+export function exposeCustomResponseHeaders(headers: Headers): void {
   headers.set("access-control-expose-headers", EXPOSED_RESPONSE_HEADERS_VALUE);
 }
 
-export function apiHeaders(cacheProfile) {
+export function apiHeaders(cacheProfile: CacheProfile): Headers {
   const headers = new Headers();
   headers.set("access-control-allow-origin", "*");
   exposeCustomResponseHeaders(headers);
@@ -66,17 +68,17 @@ export function apiHeaders(cacheProfile) {
 }
 
 // Join link entries into an RFC 8288 header value: `<uri>; rel="…", …`.
-export function linkHeader(links) {
+export function linkHeader(links: Array<{ uri: string; rel: string }>): string {
   return links.map(({ uri, rel }) => `<${uri}>; rel="${rel}"`).join(", ");
 }
 
 export function errorResponse(
-  code,
-  message,
+  code: string,
+  message: string,
   status = 500,
-  meta = {},
-  extraHeaders = {},
-) {
+  meta: Record<string, unknown> = {},
+  extraHeaders: Record<string, string> = {},
+): Response {
   const headers = apiHeaders("short");
   // Errors must never be cached by shared/edge caches: a transient 5xx (e.g. an
   // R2 timeout) or a not-yet-published 404 would otherwise be served stale for
@@ -107,7 +109,7 @@ export function errorResponse(
   );
 }
 
-export async function weakEtag(body) {
+export async function weakEtag(body: string): Promise<string> {
   const encoded = new TextEncoder().encode(body);
   const digest = await crypto.subtle.digest("SHA-256", encoded);
   const hash = [...new Uint8Array(digest)]
@@ -118,13 +120,13 @@ export async function weakEtag(body) {
 
 // Strip the optional weak prefix so tags compare by opaque value alone:
 // If-None-Match uses weak comparison, so W/"x" and "x" are equivalent.
-function opaqueTag(tag) {
+function opaqueTag(tag: string): string {
   return tag.startsWith("W/") ? tag.slice(2) : tag;
 }
 
 // True when an If-None-Match precondition matches the current `etag` (caller
 // answers 304). Handles `*`, a comma-separated tag list, and weak validators.
-export function ifNoneMatchSatisfied(request, etag) {
+export function ifNoneMatchSatisfied(request: Request, etag: string): boolean {
   const header = request.headers.get("if-none-match");
   if (!header || !etag) return false;
   const current = opaqueTag(etag);

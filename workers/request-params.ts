@@ -12,7 +12,7 @@
 // Import-free apart from `clampInt`, so it stays a leaf the request handlers and
 // the src/* loaders can both depend on without a cycle.
 
-import { clampInt } from "./config.mjs";
+import { clampInt } from "./config.ts";
 
 // Absolute pagination ceilings, shared by every paginated route + tool. A page is
 // never larger than MAX_LIMIT rows, and OFFSET never seeks past MAX_OFFSET (deep
@@ -33,15 +33,30 @@ export const FEED_PAGINATION = {
 };
 export const BLOCK_PAGINATION = { defaultLimit: 50, maxLimit: 100 };
 
+export interface PaginationProfile {
+  defaultLimit?: number;
+  maxLimit?: number;
+}
+
+export interface ParamError {
+  error: { parameter: string; message: string };
+}
+
 // Clamp a raw limit (a query-param string or a tool-arg number) into
 // [MIN_LIMIT, maxLimit], falling back to defaultLimit when absent/blank/non-finite.
-export function clampLimit(raw, { defaultLimit, maxLimit = MAX_LIMIT } = {}) {
+export function clampLimit(
+  raw: string | number | null | undefined,
+  {
+    defaultLimit = DEFAULT_LIMIT,
+    maxLimit = MAX_LIMIT,
+  }: PaginationProfile = {},
+): number {
   return clampInt(raw, defaultLimit, MIN_LIMIT, maxLimit);
 }
 
 // Clamp a raw offset into [0, MAX_OFFSET], falling back to 0 when
 // absent/blank/non-finite.
-export function clampOffset(raw) {
+export function clampOffset(raw: string | number | null | undefined): number {
   return clampInt(raw, 0, 0, MAX_OFFSET);
 }
 
@@ -49,7 +64,10 @@ export function clampOffset(raw) {
 // clamped `offset`, and the raw opaque keyset `cursor` (or null) for the caller to
 // decode at its own arity. `options` is a page-size profile ({ defaultLimit,
 // maxLimit }), e.g. FEED_PAGINATION or BLOCK_PAGINATION.
-export function parsePagination(url, options = {}) {
+export function parsePagination(
+  url: URL,
+  options: PaginationProfile = {},
+): { limit: number; offset: number; cursor: string | null } {
   const params = url.searchParams;
   return {
     limit: clampLimit(params.get("limit"), options),
@@ -64,9 +82,9 @@ export function parsePagination(url, options = {}) {
 // leading zero) of at most maxLimit, else an { error } descriptor is returned for
 // the caller to surface via its query-error helper. Returns { limit } on success.
 export function parseLimitParam(
-  url,
-  { defaultLimit, maxLimit = MAX_LIMIT } = {},
-) {
+  url: URL,
+  { defaultLimit, maxLimit = MAX_LIMIT }: PaginationProfile = {},
+): { limit: number | undefined } | ParamError {
   const raw = url.searchParams.get("limit");
   if (raw === null) return { limit: defaultLimit };
   if (!/^[1-9]\d*$/.test(raw) || Number(raw) > maxLimit) {
@@ -91,7 +109,10 @@ export const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 // to bind into a `day >= ?` / `day <= ?` range.
 // Validate an optional non-negative integer query value. Absent/blank → { value:
 // null }; present-but-non-numeric → { error } for the caller to surface as 400.
-export function parseNonNegativeIntParam(raw, parameter) {
+export function parseNonNegativeIntParam(
+  raw: string | null,
+  parameter: string,
+): { value: number | null } | ParamError {
   if (raw === null || raw === "") return { value: null };
   if (!/^\d+$/.test(raw)) {
     return {
@@ -113,7 +134,9 @@ export function parseNonNegativeIntParam(raw, parameter) {
   return { value };
 }
 
-export function parseDateRange(url) {
+export function parseDateRange(
+  url: URL,
+): { from: string | null; to: string | null } | ParamError {
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
   if (from && !DAY_PATTERN.test(from)) {

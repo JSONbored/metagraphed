@@ -184,6 +184,110 @@
         "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/api/app-management.md"
       ],
       "url": "https://api.minotaursubnet.com/v1/apps/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-status",
+      "kind": "subnet-api",
+      "name": "minotaur app deployment status",
+      "notes": "GET /v1/apps/{app_id}/status -- per-app + per-chain deployment status (the deploy-poll target), listed in the official app-management doc's Reads table. Live-verified 2026-07-22 (~08:25 UTC) with a real app_id taken from the already-registered /v1/apps/ list: HTTP 200 JSON returning the app record + status, no credential required. Path-parameterized (percent-encoded template), so probe.enabled:false per the linked issue's own instruction.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-auth-nonce",
+      "kind": "subnet-api",
+      "name": "minotaur app auth-nonce read",
+      "notes": "GET /v1/apps/{app_id}/auth-nonce (optional deployer query param) -- issues the next single-use nonce used to sign app-management writes; necessarily callable without a credential, per the official doc and the linked issue. Live-verified 2026-07-22 (~08:25 UTC) with a real app_id: HTTP 200 JSON {app_id, deployer, next_nonce} both bare (defaults to the app's registered deployer) and with an explicit placeholder deployer query value. Path-parameterized, probe.enabled:false per the linked issue's instruction.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/auth-nonce"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Grouped under the signature-gated App-management auth class in the official app-management API doc's auth-model table (a publicly documented scheme, verifiable without holding any credential); live-verified rejected unauthenticated (HTTP 403) 2026-07-22 (~08:25 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-admin-state",
+      "kind": "subnet-api",
+      "name": "minotaur app operator state (auth-gated)",
+      "notes": "GET /v1/apps/{app_id}/admin-state -- full operator view (store record, live per-chain config, fee-settlement balances, registry status), listed in the official doc's Reads table under its signature-gated App-management auth class. Live-verified 2026-07-22 (~08:25 UTC) with a real app_id: HTTP 403 JSON rejected unauthenticated -- auth-gated in practice, exactly as the linked issue's own live test found. Registered auth_required:true, probe.enabled:false per the issue's instruction.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/admin-state"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Grouped under the signature-gated App-management auth class in the official app-management API doc's auth-model table (a publicly documented scheme, verifiable without holding any credential); live-verified rejected unauthenticated (HTTP 403) 2026-07-22 (~08:25 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-registry-calldata",
+      "kind": "subnet-api",
+      "name": "minotaur app registry calldata (auth-gated)",
+      "notes": "GET /v1/apps/{app_id}/deployments/{chain_id}/registry-calldata -- prepared transaction calldata for external signing, documented in the same signature-gated auth class as admin-state (deadline-bound reads). Live-verified 2026-07-22 (~08:25 UTC) with a real app_id and a real chain_id from the already-registered /v1/chains surface: HTTP 403 JSON rejected unauthenticated (stronger than the linked issue's own evidence, which did not spot-verify this route). Registered auth_required:true, probe.enabled:false per the issue's instruction.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": [
+        "https://raw.githubusercontent.com/subnet112/minotaur_subnet/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/deployments/%7Bchain_id%7D/registry-calldata"
     }
   ],
   "source_repo": "https://github.com/subnet112/minotaur_subnet",

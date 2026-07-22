@@ -5,7 +5,7 @@ import {
   csvRequested,
   csvResponse,
   rowsToCsv,
-} from "../workers/csv.mjs";
+} from "../workers/csv.ts";
 
 function url(search = "") {
   return new URL(`https://api.metagraph.sh/api/v1/subnets${search}`);

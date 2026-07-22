@@ -2,7 +2,7 @@
 // is mocked so the routing + response shaping are tested with no real DB — the live
 // Hyperdrive→Railway path is validated separately.
 import { beforeEach, test, expect, vi } from "vitest";
-import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.mjs";
+import { BLOCK_PAGINATION, MAX_OFFSET } from "../workers/request-params.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { formatSubnetHyperparams } from "../src/subnet-hyperparams.mjs";
 import { hyperparamsHash } from "../src/subnet-hyperparams-history.mjs";
@@ -4580,7 +4580,13 @@ test("GET /api/v1/accounts/:ss58/counterparties?counterparty= returns the relati
   });
   expect(body.relationship.counterparty).toBe("5Cold");
   expect(body.relationship.transfer_count).toBe(1);
-  expect(queryText()).toContain("(hotkey = ");
+  // METAGRAPHED-6/5: UNION ALL of two single-column-indexed legs, not a single
+  // `(hotkey = ? OR ...)` predicate neither idx_ae_kind_hotkey_observed nor
+  // idx_ae_kind_coldkey_observed can drive -- see the route's own comment.
+  const text = queryText();
+  expect(text).toContain("hotkey = ");
+  expect(text).toContain("UNION ALL");
+  expect(text).toContain("IS DISTINCT FROM");
 });
 
 test("GET /api/v1/accounts/:ss58/counterparties?counterparty= with no matching transfers returns an empty counterparties array", async () => {

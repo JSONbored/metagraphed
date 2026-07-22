@@ -19,13 +19,13 @@ import {
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
-} from "../workers/request-handlers/analytics-routes.mjs";
+} from "../workers/request-handlers/analytics-routes.ts";
 import { MCP_TOOLS } from "../src/mcp-server.mjs";
 import {
   unsupportedWindowMessage,
   HISTORY_WINDOWS,
 } from "../src/neuron-history.mjs";
-import { UPTIME_WINDOWS } from "../workers/config.mjs";
+import { UPTIME_WINDOWS } from "../workers/config.ts";
 
 const NETUID = 7;
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";

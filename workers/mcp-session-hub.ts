@@ -64,7 +64,7 @@ export const MCP_CHAIN_STREAM_RESOURCE_URI = "metagraph://chain/stream";
 // an arbitrarily large string.
 export const MCP_SESSION_ID_MAX_LENGTH = 128;
 
-export function isValidMcpSessionId(id) {
+export function isValidMcpSessionId(id: unknown): id is string {
   if (typeof id !== "string") return false;
   if (id.length === 0 || id.length > MCP_SESSION_ID_MAX_LENGTH) return false;
   return /^[\x21-\x7E]+$/.test(id);
@@ -84,7 +84,15 @@ export const MCP_SESSION_MAX_STREAM_DURATION_MS = 5 * 60 * 1000;
 // server MAY terminate at any time" spec allowance.
 export const MCP_SESSION_IDLE_TTL_MS = 30 * 60 * 1000;
 
-export function buildResourceUpdatedNotification(uri) {
+export interface ResourceUpdatedNotification {
+  jsonrpc: "2.0";
+  method: "notifications/resources/updated";
+  params: { uri: string };
+}
+
+export function buildResourceUpdatedNotification(
+  uri: string,
+): ResourceUpdatedNotification {
   return {
     jsonrpc: "2.0",
     method: "notifications/resources/updated",
@@ -92,12 +100,26 @@ export function buildResourceUpdatedNotification(uri) {
   };
 }
 
-export function formatMcpSseEvent(sequence, notification) {
+export function formatMcpSseEvent(
+  sequence: number,
+  notification: unknown,
+): string {
   return `id: ${sequence}\ndata: ${JSON.stringify(notification)}\n\n`;
 }
 
-export class McpSessionHub {
-  constructor(state, env) {
+export class McpSessionHub implements DurableObject {
+  state: DurableObjectState;
+  env: Env;
+  subscribedUris: Set<string>;
+  pendingUris: Set<string>;
+  sequence: number;
+  terminated: boolean;
+  streamController: ReadableStreamDefaultController | null;
+  streamCloseTimer: ReturnType<typeof setTimeout> | null;
+  hydrated: boolean;
+  sessionId: string | null;
+
+  constructor(state: DurableObjectState, env: Env) {
     this.state = state;
     this.env = env;
     this.subscribedUris = new Set();
@@ -115,22 +137,22 @@ export class McpSessionHub {
     this.sessionId = null;
   }
 
-  async hydrate() {
+  async hydrate(): Promise<void> {
     if (this.hydrated) return;
-    const stored = await this.state.storage.get([
-      "sessionId",
-      "subscribedUris",
-      "sequence",
-      "terminated",
-    ]);
-    this.sessionId = stored.get("sessionId") || null;
-    this.subscribedUris = new Set(stored.get("subscribedUris") || []);
-    this.sequence = stored.get("sequence") || 0;
-    this.terminated = stored.get("terminated") || false;
+    const stored = await this.state.storage.get<
+      string | string[] | number | boolean
+    >(["sessionId", "subscribedUris", "sequence", "terminated"]);
+    this.sessionId = (stored.get("sessionId") as string | undefined) || null;
+    this.subscribedUris = new Set(
+      (stored.get("subscribedUris") as string[] | undefined) || [],
+    );
+    this.sequence = (stored.get("sequence") as number | undefined) || 0;
+    this.terminated =
+      (stored.get("terminated") as boolean | undefined) || false;
     this.hydrated = true;
   }
 
-  async persist() {
+  async persist(): Promise<void> {
     await this.state.storage.put({
       sessionId: this.sessionId,
       subscribedUris: [...this.subscribedUris],
@@ -139,11 +161,11 @@ export class McpSessionHub {
     });
   }
 
-  async touch() {
+  async touch(): Promise<void> {
     await this.state.storage.setAlarm(Date.now() + MCP_SESSION_IDLE_TTL_MS);
   }
 
-  async fetch(request) {
+  async fetch(request: Request): Promise<Response> {
     await this.hydrate();
     const url = new URL(request.url);
 
@@ -177,8 +199,11 @@ export class McpSessionHub {
     return new Response("not found", { status: 404 });
   }
 
-  async handleSubscribe(request) {
-    const { sessionId, uri } = await request.json();
+  async handleSubscribe(request: Request): Promise<Response> {
+    const { sessionId, uri } = (await request.json()) as {
+      sessionId: string;
+      uri: string;
+    };
     this.sessionId = sessionId;
     const statusNetuid = parseSubnetStatusResourceUri(uri);
     if (uri !== MCP_CHAIN_STREAM_RESOURCE_URI && statusNetuid == null) {
@@ -216,8 +241,11 @@ export class McpSessionHub {
     });
   }
 
-  async handleUnsubscribe(request) {
-    const { sessionId, uri } = await request.json();
+  async handleUnsubscribe(request: Request): Promise<Response> {
+    const { sessionId, uri } = (await request.json()) as {
+      sessionId: string;
+      uri: string;
+    };
     this.sessionId = sessionId;
     const hadChain = this.subscribedUris.has(MCP_CHAIN_STREAM_RESOURCE_URI);
     const statusNetuid = parseSubnetStatusResourceUri(uri);
@@ -262,8 +290,8 @@ export class McpSessionHub {
   // events between reads collapses to one outstanding unread marker per uri,
   // not a growing queue, since resources/read always returns CURRENT state
   // regardless of how many events fired in between.
-  async handleNotify(request) {
-    const { uri } = await request.json();
+  async handleNotify(request: Request): Promise<Response> {
+    const { uri } = (await request.json()) as { uri: string };
     if (!this.subscribedUris.has(uri)) {
       return new Response(JSON.stringify({ ok: true, delivered: false }), {
         status: 200,
@@ -281,14 +309,14 @@ export class McpSessionHub {
     });
   }
 
-  deliverNow(uri) {
+  deliverNow(uri: string): void {
     this.sequence += 1;
     const frame = formatMcpSseEvent(
       this.sequence,
       buildResourceUpdatedNotification(uri),
     );
     try {
-      this.streamController.enqueue(new TextEncoder().encode(frame));
+      this.streamController?.enqueue(new TextEncoder().encode(frame));
       this.pendingUris.delete(uri);
     } catch {
       // stream already closed/errored -- leave it pending for the next open
@@ -296,7 +324,7 @@ export class McpSessionHub {
     }
   }
 
-  async handleTerminate(request) {
+  async handleTerminate(request: Request): Promise<Response> {
     // Prefer the request body's sessionId (an explicit client DELETE always
     // has one); fall back to the persisted value for alarm()'s self-
     // termination call, which has no caller to hand it one -- see the
@@ -304,7 +332,9 @@ export class McpSessionHub {
     // way. A client-supplied id is authority only after this object already
     // knows the session from resources/subscribe; otherwise DELETE must not
     // create/persist a tombstone for an arbitrary Durable Object name.
-    const { sessionId } = await request.json();
+    const { sessionId } = (await request.json()) as {
+      sessionId: string | null;
+    };
     if (!this.sessionId || (sessionId && sessionId !== this.sessionId)) {
       return new Response(JSON.stringify({ error: "session not found" }), {
         status: 404,
@@ -366,7 +396,7 @@ export class McpSessionHub {
     });
   }
 
-  async handleStream(url) {
+  async handleStream(url: URL): Promise<Response> {
     const sessionId = url.searchParams.get("sessionId");
     if (
       !this.sessionId ||
@@ -389,35 +419,39 @@ export class McpSessionHub {
       );
     }
     void this.touch();
-    const hub = this;
     const stream = new ReadableStream({
-      start(controller) {
-        hub.streamController = controller;
+      start: (controller) => {
+        this.streamController = controller;
         // Flush anything that arrived while no stream was open, coalesced
         // to one frame per uri (matches handleNotify's coalescing).
-        for (const uri of hub.pendingUris) {
-          hub.deliverNow(uri);
+        for (const uri of this.pendingUris) {
+          this.deliverNow(uri);
         }
-        hub.streamCloseTimer = setTimeout(() => {
+        this.streamCloseTimer = setTimeout(() => {
           try {
             controller.close();
           } catch {
             // already closed
           }
-          hub.streamController = null;
-          hub.streamCloseTimer = null;
+          this.streamController = null;
+          this.streamCloseTimer = null;
         }, MCP_SESSION_MAX_STREAM_DURATION_MS);
       },
-      cancel() {
+      cancel: () => {
         // clearTimeout(null) is a safe no-op, and this callback can only
         // ever run while the stream is still "readable" -- which by
         // construction means streamCloseTimer is already set (start() sets
         // it synchronously before returning control to any caller) -- so an
         // unconditional clear is simpler than a defensive guard that can
         // never see a falsy value.
-        hub.streamController = null;
-        clearTimeout(hub.streamCloseTimer);
-        hub.streamCloseTimer = null;
+        this.streamController = null;
+        // Cast needed because @types/node's global clearTimeout overloads
+        // (auto-included repo-wide since scripts/tests run under real Node)
+        // don't cleanly accept a `Timeout | null` union even though each
+        // half is individually valid -- see the workers/-specifics note in
+        // docs/typescript-migration-checklist.md.
+        clearTimeout(this.streamCloseTimer as unknown as number);
+        this.streamCloseTimer = null;
       },
     });
     void url; // reserved for a future Last-Event-ID replay-from-cursor read
@@ -438,7 +472,7 @@ export class McpSessionHub {
   // session the same way an explicit DELETE would, so
   // ChainFirehoseHub.mcpSubscribedSessions never accumulates dead sessions
   // just because a client never explicitly unsubscribed/terminated.
-  async alarm() {
+  async alarm(): Promise<void> {
     await this.hydrate();
     await this.handleTerminate(
       new Request("https://mcp-session-hub.internal/terminate", {

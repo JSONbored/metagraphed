@@ -8,20 +8,52 @@ import {
   API_QUERY_COLLECTIONS,
   SEARCH_TEXT_MAX_LENGTH,
 } from "../src/contracts.mjs";
-import { linkHeader } from "./http.mjs";
-import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.mjs";
+import { linkHeader } from "./http.ts";
+import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.ts";
 
 const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+export type Row = Record<string, unknown>;
+
+export interface QueryError {
+  parameter: string;
+  message: string;
+}
+
+export interface FilterSchema {
+  type?: string;
+  enum?: string[];
+  maxLength?: number;
+  pattern?: string;
+}
+
+export interface QueryCollectionConfig {
+  data_key: string;
+  filters?: Record<string, FilterSchema>;
+  csv_filters?: Record<string, string>;
+  array_filters?: Record<string, string[]>;
+  range_filters?: string[];
+  search_keys?: string[];
+  sort_fields?: string[];
+}
+
+export interface ApplyQueryFiltersResult {
+  data?: unknown;
+  meta?: Record<string, unknown>;
+  error?: QueryError;
+}
+
 export function applyQueryFilters(
-  data,
-  url,
-  queryCollection,
-  queryFilterNames = [],
-  { csvResponse = false } = {},
-) {
+  data: Record<string, unknown> | null | undefined,
+  url: URL,
+  queryCollection: string,
+  queryFilterNames: string[] = [],
+  { csvResponse = false }: { csvResponse?: boolean } = {},
+): ApplyQueryFiltersResult {
   const params = url.searchParams;
-  const config = API_QUERY_COLLECTIONS[queryCollection];
+  const config = (
+    API_QUERY_COLLECTIONS as Record<string, QueryCollectionConfig>
+  )[queryCollection];
   if (!config) {
     return { data, meta: {} };
   }
@@ -37,12 +69,14 @@ export function applyQueryFilters(
 }
 
 export function validateListQueryParams(
-  url,
-  queryCollection,
-  queryFilterNames = [],
-  { csvResponse = false } = {},
-) {
-  const config = API_QUERY_COLLECTIONS[queryCollection];
+  url: URL,
+  queryCollection: string,
+  queryFilterNames: string[] = [],
+  { csvResponse = false }: { csvResponse?: boolean } = {},
+): QueryError | null {
+  const config = (
+    API_QUERY_COLLECTIONS as Record<string, QueryCollectionConfig>
+  )[queryCollection];
   if (!config) {
     return null;
   }
@@ -53,19 +87,25 @@ export function validateListQueryParams(
   );
 }
 
-function listQueryConfig(config, queryFilterNames = []) {
+function listQueryConfig(
+  config: QueryCollectionConfig,
+  queryFilterNames: string[] = [],
+): QueryCollectionConfig {
   return {
     ...config,
     filters: Object.fromEntries(
       effectiveFilterNames(config, queryFilterNames).map((name) => [
         name,
-        config.filters[name],
+        (config.filters || {})[name],
       ]),
     ),
   };
 }
 
-function effectiveFilterNames(config, queryFilterNames = []) {
+function effectiveFilterNames(
+  config: QueryCollectionConfig,
+  queryFilterNames: string[] = [],
+): string[] {
   const filters = config.filters || {};
   return queryFilterNames.length > 0
     ? queryFilterNames.filter((name) => Object.hasOwn(filters, name))
@@ -78,17 +118,22 @@ function effectiveFilterNames(config, queryFilterNames = []) {
 // query and pins the resolved cursor + limit, so a client can walk pages without
 // rebuilding the request. Null when no relation applies (unpaged, single page,
 // or empty) so the caller omits the header.
-export function listQueryParamNames(queryCollection, queryFilterNames = []) {
-  const config = API_QUERY_COLLECTIONS[queryCollection];
+export function listQueryParamNames(
+  queryCollection: string,
+  queryFilterNames: string[] = [],
+): string[] {
+  const config = (
+    API_QUERY_COLLECTIONS as Record<string, QueryCollectionConfig>
+  )[queryCollection];
   if (!config) return [];
   return listQueryParamNamesForConfig(config, queryFilterNames);
 }
 
 function listQueryParamNamesForConfig(
-  config,
-  queryFilterNames = [],
-  { csvResponse = false } = {},
-) {
+  config: QueryCollectionConfig,
+  queryFilterNames: string[] = [],
+  { csvResponse = false }: { csvResponse?: boolean } = {},
+): string[] {
   const filterNames =
     queryFilterNames.length > 0
       ? effectiveFilterNames(config, queryFilterNames)
@@ -118,10 +163,10 @@ function listQueryParamNamesForConfig(
 }
 
 export function canonicalListSearch(
-  url,
-  queryCollection,
-  queryFilterNames = [],
-) {
+  url: URL,
+  queryCollection: string,
+  queryFilterNames: string[] = [],
+): string {
   const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
   for (const name of listQueryParamNames(queryCollection, queryFilterNames)) {
     const value = url.searchParams.get(name);
@@ -130,7 +175,24 @@ export function canonicalListSearch(
   return canonicalUrl.search;
 }
 
-export function paginationLinkHeader(url, pagination, options = {}) {
+export interface Pagination {
+  cursor: number;
+  limit: number;
+  next_cursor?: number | null;
+  total: number;
+}
+
+export interface PaginationLinkOptions {
+  queryCollection?: string;
+  queryFilterNames?: string[];
+  searchParams?: Record<string, unknown>;
+}
+
+export function paginationLinkHeader(
+  url: URL,
+  pagination: Pagination | null | undefined,
+  options: PaginationLinkOptions = {},
+): string | null {
   if (!pagination || typeof pagination.limit !== "number") {
     return null;
   }
@@ -142,7 +204,7 @@ export function paginationLinkHeader(url, pagination, options = {}) {
         options.queryFilterNames,
       )
     : url.search;
-  const pageUri = (offset) => {
+  const pageUri = (offset: number): string => {
     const target = new URL(url.href);
     target.search = canonicalSearch;
     for (const [name, value] of Object.entries(options.searchParams || {})) {
@@ -152,7 +214,7 @@ export function paginationLinkHeader(url, pagination, options = {}) {
     target.searchParams.set("limit", String(limit));
     return target.href;
   };
-  const links = [];
+  const links: Array<{ uri: string; rel: string }> = [];
   if (cursor > 0) {
     links.push({ uri: pageUri(0), rel: "first" });
     links.push({ uri: pageUri(Math.max(0, cursor - limit)), rel: "prev" });
@@ -169,11 +231,17 @@ export function paginationLinkHeader(url, pagination, options = {}) {
   return links.length > 0 ? linkHeader(links) : null;
 }
 
-function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
+function filterRows(
+  rows: Row[],
+  params: URLSearchParams,
+  keys: string[],
+  csvFilters: Record<string, string> = {},
+  arrayFilters: Record<string, string[]> = {},
+): Row[] {
   const csvWantedByKey = new Map(
     Object.keys(csvFilters)
       .filter((key) => params.has(key))
-      .map((key) => [key, new Set(params.get(key).split(","))]),
+      .map((key) => [key, new Set((params.get(key) as string).split(","))]),
   );
 
   return rows.filter((row) =>
@@ -181,7 +249,7 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
       if (!params.has(key)) {
         return true;
       }
-      const expected = params.get(key);
+      const expected = params.get(key) as string;
       // CSV membership filter (e.g. ?netuids=1,7,74 -> match row.netuid). Numeric
       // vocabulary - left case-sensitive (the issue scopes netuids out).
       const csvField = csvFilters[key];
@@ -197,11 +265,13 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
       // (e.g. ?domain=inference -> match row.categories or row.derived_categories).
       const arrayFields = arrayFilters[key];
       if (arrayFields) {
-        return arrayFields.some(
-          (field) =>
-            Array.isArray(row[field]) &&
-            row[field].map((v) => String(v).toLowerCase()).includes(expectedCi),
-        );
+        return arrayFields.some((field) => {
+          const fieldValue = row[field];
+          return (
+            Array.isArray(fieldValue) &&
+            fieldValue.map((v) => String(v).toLowerCase()).includes(expectedCi)
+          );
+        });
       }
       const value = row[key];
       // A row missing the filtered field can't satisfy a value filter — exclude
@@ -222,8 +292,13 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
 // F is absent / non-numeric can't satisfy a bound, so it is excluded once any
 // bound on F is set. Validation (validateListQuery) has already confirmed every
 // present min_/max_ param is a finite number, so Number() here is safe.
-function rangeFilterRows(rows, params, rangeFields) {
-  const bounds = [];
+function rangeFilterRows(
+  rows: Row[],
+  params: URLSearchParams,
+  rangeFields: string[] = [],
+): Row[] {
+  const bounds: Array<{ field: string; limit: number; kind: "min" | "max" }> =
+    [];
   for (const field of rangeFields) {
     const min = params.get(`min_${field}`);
     if (min !== null) bounds.push({ field, limit: Number(min), kind: "min" });
@@ -244,20 +319,25 @@ function rangeFilterRows(rows, params, rangeFields) {
   );
 }
 
-function applyListTransform(data, params, config, options = {}) {
+function applyListTransform(
+  data: Record<string, unknown>,
+  params: URLSearchParams,
+  config: QueryCollectionConfig,
+  options: { csvResponse?: boolean } = {},
+): ApplyQueryFiltersResult {
   const queryError = validateListQuery(params, config, options);
   if (queryError) {
     return { error: queryError };
   }
   const key = config.data_key;
-  const projection = parseProjection(params, data[key], key);
+  const projection = parseProjection(params, data[key] as Row[], key);
   if (projection.error) {
     return { error: projection.error };
   }
-  const filterKeys = Object.keys(config.filters);
+  const filterKeys = Object.keys(config.filters || {});
   const filtered = rangeFilterRows(
     filterRows(
-      searchRows(data[key], params, config.search_keys),
+      searchRows(data[key] as Row[], params, config.search_keys || []),
       params,
       filterKeys,
       config.csv_filters,
@@ -291,7 +371,11 @@ function applyListTransform(data, params, config, options = {}) {
   };
 }
 
-function searchRows(rows, params, keys) {
+function searchRows(
+  rows: Row[],
+  params: URLSearchParams,
+  keys: string[],
+): Row[] {
   const q = params.get("q");
   if (!q || keys.length === 0) {
     return rows;
@@ -317,7 +401,7 @@ function searchRows(rows, params, keys) {
   });
 }
 
-function sortRows(rows, params) {
+function sortRows(rows: Row[], params: URLSearchParams): Row[] {
   const key = params.get("sort");
   if (!key) {
     return rows;
@@ -329,8 +413,8 @@ function sortRows(rows, params) {
   // value coerces to "" and sorts *first* in ascending order, putting the least
   // complete rows at the top of the list — and flips to the end on desc, so the
   // same gap shuffles position just by toggling order.
-  const present = [];
-  const missing = [];
+  const present: Row[] = [];
+  const missing: Row[] = [];
   for (const row of rows) {
     const value = row == null ? undefined : row[key];
     if (value === null || value === undefined) {
@@ -342,20 +426,31 @@ function sortRows(rows, params) {
   present.sort((a, b) => {
     const cmp = compareValues(a[key], b[key]) * direction;
     if (cmp !== 0) return cmp;
-    if (a.netuid != null && b.netuid != null) return a.netuid - b.netuid;
+    if (a.netuid != null && b.netuid != null) {
+      return (a.netuid as number) - (b.netuid as number);
+    }
     return 0;
   });
   return [...present, ...missing];
 }
 
-function compareValues(a, b) {
+function compareValues(a: unknown, b: unknown): number {
   if (typeof a === "number" && typeof b === "number") {
     return a - b;
   }
   return String(a ?? "").localeCompare(String(b ?? ""));
 }
 
-function paginateRows(rows, params) {
+interface PaginatedRows {
+  cursor: number;
+  limit: number;
+  nextCursor: number | null;
+  order: "asc" | "desc";
+  rows: Row[];
+  sort: string | null;
+}
+
+function paginateRows(rows: Row[], params: URLSearchParams): PaginatedRows {
   const requestedLimit = integerParam(params.get("limit"));
   const requestedCursor = integerParam(params.get("cursor"));
   const shouldPage = requestedLimit !== null || requestedCursor !== null;
@@ -377,7 +472,11 @@ function paginateRows(rows, params) {
   };
 }
 
-function validateListQuery(params, config, { csvResponse = false } = {}) {
+function validateListQuery(
+  params: URLSearchParams,
+  config: QueryCollectionConfig,
+  { csvResponse = false }: { csvResponse?: boolean } = {},
+): QueryError | null {
   const allowedParams = new Set(
     listQueryParamNamesForConfig(config, [], { csvResponse }),
   );
@@ -443,11 +542,11 @@ function validateListQuery(params, config, { csvResponse = false } = {}) {
     };
   }
 
-  for (const [key, schema] of Object.entries(config.filters)) {
+  for (const [key, schema] of Object.entries(config.filters || {})) {
     if (!params.has(key)) {
       continue;
     }
-    const value = params.get(key);
+    const value = params.get(key) as string;
     if (schema.type === "integer" && integerParam(value) === null) {
       return {
         parameter: key,
@@ -483,7 +582,7 @@ function validateListQuery(params, config, { csvResponse = false } = {}) {
   // same searchTextSchema ceiling so an oversized query can't drive unbounded
   // per-term, per-row scan work in searchRows.
   if ((config.search_keys?.length || 0) > 0 && params.has("q")) {
-    const value = params.get("q");
+    const value = params.get("q") as string;
     if (value.length > SEARCH_TEXT_MAX_LENGTH) {
       return {
         parameter: "q",
@@ -520,12 +619,20 @@ function validateListQuery(params, config, { csvResponse = false } = {}) {
   return null;
 }
 
-function parseProjection(params, rows, dataKey) {
+interface ProjectionResult {
+  fields?: string[] | null;
+  error?: QueryError;
+}
+
+function parseProjection(
+  params: URLSearchParams,
+  rows: Row[],
+  dataKey: string,
+): ProjectionResult {
   if (!params.has("fields")) {
     return { fields: null };
   }
-  const requested = params
-    .get("fields")
+  const requested = (params.get("fields") as string)
     .split(",")
     .map((field) => field.trim())
     .filter((field) => field.length > 0);
@@ -571,7 +678,7 @@ function parseProjection(params, rows, dataKey) {
   return { fields };
 }
 
-function projectRows(rows, fields) {
+function projectRows(rows: Row[], fields: string[] | null | undefined): Row[] {
   if (!fields) {
     return rows;
   }
@@ -587,7 +694,7 @@ function projectRows(rows, fields) {
   });
 }
 
-function integerParam(value) {
+function integerParam(value: string | null): number | null {
   if (value === null || value === "") {
     return null;
   }
@@ -601,7 +708,7 @@ function integerParam(value) {
 // A finite decimal (optional sign, optional fraction) for range-filter bounds —
 // e.g. "5", "-3", "360.5". Rejects blanks, exponents, hex, and Infinity/NaN so a
 // bound is always a plain, predictable number. Returns the number or null.
-function numberParam(value) {
+function numberParam(value: string | null): number | null {
   if (value === null || !/^-?\d+(\.\d+)?$/.test(value)) {
     return null;
   }

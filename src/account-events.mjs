@@ -7,7 +7,7 @@ import {
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 
 // The SubtensorModule events the poller indexes — entity-relevant only, which
 // keeps volume ~1 MB/day (not ~100 MB/day). Kept in sync with fetch-events.py

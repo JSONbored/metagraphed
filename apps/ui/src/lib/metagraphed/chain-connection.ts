@@ -11,7 +11,7 @@
 // still fail the build even before it fails at runtime).
 //
 // Per ADR 0018 §2, this connects directly to a trusted, already-public RPC
-// endpoint (workers/config.mjs's TRUSTED_RPC_UPSTREAM_ORIGINS) -- signed
+// endpoint (workers/config.ts's TRUSTED_RPC_UPSTREAM_ORIGINS) -- signed
 // extrinsics never transit metagraphed's own backend.
 
 import type { ApiPromise } from "@polkadot/api";

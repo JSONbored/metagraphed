@@ -61,6 +61,14 @@ export function isBinaryOrGenerated(file) {
     file.endsWith(".gif") ||
     file.endsWith(".webp") ||
     file.endsWith(".ico") ||
-    file.startsWith("public/metagraph/")
+    file.startsWith("public/metagraph/") ||
+    // wrangler-generated Env/runtime types (npm run types:workers) -- never
+    // hand-edited (see .prettierignore/eslint.config.mjs's own carve-out for
+    // these same 3 files). Cloudflare's own public Workers AI model catalog
+    // now includes real, public model ids like "@cf/openai/gpt-oss-120b" that
+    // collide with the "provider-specific private model route" pattern above,
+    // which targets a DIFFERENT, actually-private internal route -- a false
+    // positive on Cloudflare's own generated content, not a real leak.
+    file.endsWith("worker-configuration.d.ts")
   );
 }

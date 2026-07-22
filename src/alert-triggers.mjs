@@ -20,7 +20,7 @@ import {
   isPublicWebhookUrl,
   timingSafeEqual,
 } from "./webhooks.mjs";
-import { CHAIN_FIREHOSE_TABLES } from "../workers/chain-firehose-hub.mjs";
+import { CHAIN_FIREHOSE_TABLES } from "../workers/chain-firehose-hub.ts";
 
 // Anti-abuse gate on trigger CREATION (public but shared-secret-gated,
 // mirroring METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN's exact role) -- every

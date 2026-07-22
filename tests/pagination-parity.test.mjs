@@ -14,7 +14,7 @@ import {
   FEED_PAGINATION,
   MAX_OFFSET,
   MIN_LIMIT,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 import { handleAccountHistory } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";

@@ -40,7 +40,19 @@ import {
 // triggerMatchesEvent's own metric lookups already treat a missing map
 // entry as "does not match" (fails closed), so an empty snapshot is a
 // genuinely safe default, not a placeholder that needs special-casing.
-function emptyMetricSnapshot() {
+export interface Trigger {
+  id: string;
+  channel: string;
+  condition?: unknown;
+  [key: string]: unknown;
+}
+
+export interface MetricSnapshot {
+  subnetAlphaPriceRank: Map<unknown, unknown>;
+  neuronImmunityCountdownBlocks: Map<unknown, unknown>;
+}
+
+function emptyMetricSnapshot(): MetricSnapshot {
   return {
     subnetAlphaPriceRank: new Map(),
     neuronImmunityCountdownBlocks: new Map(),
@@ -109,13 +121,15 @@ export const ALERT_TRIGGER_MATCH_WRITEBACK_TIMEOUT_MS = 3000;
 // failed" (a rejection), though both are treated identically for the
 // rate-limit rollback decision.
 export async function deliverAlertMatch(
-  trigger,
-  payload,
-  env,
-  fetchFn = fetch,
-  { resolveHostnames } = {},
-) {
-  let request;
+  trigger: Trigger,
+  payload: unknown,
+  env: Env,
+  fetchFn: typeof fetch = fetch,
+  {
+    resolveHostnames,
+  }: { resolveHostnames?: (host: string) => Promise<unknown> } = {},
+): Promise<boolean> {
+  let request: { url: string; init?: RequestInit } | null | undefined;
   switch (trigger.channel) {
     case "webhook":
       request = buildWebhookDeliveryRequest(trigger, payload, Date.now());
@@ -149,7 +163,7 @@ export async function deliverAlertMatch(
     const urlStatus = await resolvedWebhookUrlStatus(
       request.url,
       resolveHostnames ||
-        ((host) =>
+        ((host: string) =>
           resolveWebhookHostnamesWithDoh(host, { fetchImpl: fetchFn })),
     );
     if (urlStatus !== "ok") return false;
@@ -179,8 +193,23 @@ export async function deliverAlertMatch(
   return true;
 }
 
-export class AlerterHub {
-  constructor(state, env, { deliver = deliverAlertMatch } = {}) {
+export class AlerterHub implements DurableObject {
+  state: DurableObjectState;
+  env: Env;
+  deliver: typeof deliverAlertMatch;
+  triggers: Trigger[];
+  triggersLoadedAt: number;
+  metricSnapshot: MetricSnapshot;
+  loadingPromise: Promise<void> | null;
+  lastDeliveredAt: Map<string, number>;
+
+  constructor(
+    state: DurableObjectState,
+    env: Env,
+    {
+      deliver = deliverAlertMatch,
+    }: { deliver?: typeof deliverAlertMatch } = {},
+  ) {
     this.state = state;
     this.env = env;
     this.deliver = deliver;
@@ -207,13 +236,13 @@ export class AlerterHub {
     this.lastDeliveredAt = new Map();
   }
 
-  isTriggerCacheStale() {
+  isTriggerCacheStale(): boolean {
     return (
       Date.now() - this.triggersLoadedAt > ALERTER_HUB_TRIGGER_CACHE_TTL_MS
     );
   }
 
-  async ensureTriggersLoaded() {
+  async ensureTriggersLoaded(): Promise<void> {
     if (!this.isTriggerCacheStale()) return;
     if (!this.loadingPromise) {
       this.loadingPromise = this.refreshTriggers().finally(() => {
@@ -223,7 +252,7 @@ export class AlerterHub {
     return this.loadingPromise;
   }
 
-  async refreshTriggers() {
+  async refreshTriggers(): Promise<void> {
     if (!this.env.DATA_API || !this.env.ALERT_TRIGGERS_INTERNAL_TOKEN) {
       // Not provisioned on this deployment -- keep whatever was cached
       // before (possibly still empty). Never throw: a cold/unconfigured
@@ -243,7 +272,7 @@ export class AlerterHub {
         },
       );
       if (!upstream.ok) return;
-      const body = await upstream.json();
+      const body = (await upstream.json()) as { triggers?: Trigger[] };
       if (Array.isArray(body?.triggers)) {
         this.triggers = body.triggers;
         this.triggersLoadedAt = Date.now();
@@ -278,7 +307,7 @@ export class AlerterHub {
     }
   }
 
-  async refreshMetricSnapshot() {
+  async refreshMetricSnapshot(): Promise<void> {
     if (!this.env.DATA_API || !this.env.ALERT_TRIGGERS_INTERNAL_TOKEN) {
       return;
     }
@@ -294,12 +323,21 @@ export class AlerterHub {
         },
       );
       if (!upstream.ok) return;
-      const body = await upstream.json();
+      const body = (await upstream.json()) as {
+        subnets?: unknown;
+        immune_neurons?: unknown;
+        current_block?: unknown;
+      };
+      // buildDeregRiskSnapshot (src/dereg-risk.mjs, not yet converted -- Phase
+      // 3) has an untyped `= {}` default parameter, which TS infers as the
+      // exact empty-object type rather than a real parameter shape; cast
+      // through unknown at this one call site rather than widening its
+      // inferred signature repo-wide from here.
       this.metricSnapshot = buildDeregRiskSnapshot({
         economicsRows: body?.subnets,
         neuronRows: body?.immune_neurons,
         currentBlock: body?.current_block,
-      });
+      }) as unknown as MetricSnapshot;
     } catch {
       // Best-effort -- keep serving the stale (or empty) snapshot rather
       // than throwing out of evaluate(); a condition trigger just keeps
@@ -311,9 +349,16 @@ export class AlerterHub {
   // Pure decision given the CURRENT cache -- exported behavior is really
   // triggerMatchesEvent (src/alert-triggers.mjs, already unit-tested);
   // this just applies it across every cached trigger.
-  matchingTriggers(payload) {
+  matchingTriggers(payload: unknown): Trigger[] {
     return this.triggers.filter((trigger) =>
-      triggerMatchesEvent(trigger, payload, this.metricSnapshot),
+      // Same untyped-default-parameter cast as buildDeregRiskSnapshot above
+      // -- triggerMatchesEvent's 3rd parameter (src/alert-triggers.mjs, not
+      // yet converted) infers as an exact empty-object type.
+      triggerMatchesEvent(
+        trigger,
+        payload,
+        this.metricSnapshot as unknown as null | undefined,
+      ),
     );
   }
 
@@ -326,7 +371,7 @@ export class AlerterHub {
   // Never throws -- called from evaluate() alongside the delivery fan-out
   // via Promise.allSettled, and a write-back failure must never affect
   // evaluate()'s response or reject out of that call.
-  async writeBackMatchCounts(triggerIds) {
+  async writeBackMatchCounts(triggerIds: string[]): Promise<void> {
     if (
       !this.env.DATA_API ||
       !this.env.ALERT_TRIGGERS_INTERNAL_TOKEN ||
@@ -361,7 +406,12 @@ export class AlerterHub {
     }
   }
 
-  async evaluate(payload) {
+  async evaluate(payload: unknown): Promise<{
+    matched: number;
+    trigger_ids?: string[];
+    delivered?: number;
+    rate_limited?: number;
+  }> {
     await this.ensureTriggersLoaded();
     const matched = this.matchingTriggers(payload);
     if (matched.length === 0) return { matched: 0 };
@@ -371,12 +421,12 @@ export class AlerterHub {
     // actually attempt delivery -- coalescing a burst into one delivery
     // per window rather than dropping the burst's own visibility.
     const now = Date.now();
-    const toDeliver = [];
+    const toDeliver: Trigger[] = [];
     // #5023: the value each rate-limited-clearing trigger's lastDeliveredAt
     // entry held BEFORE this call's optimistic set below (undefined if it
     // had none) -- kept so a failed delivery can be rolled back to exactly
     // that prior state instead of just guessing "delete it".
-    const priorLastDeliveredAt = new Map();
+    const priorLastDeliveredAt = new Map<string, number | undefined>();
     let rateLimited = 0;
     for (const trigger of matched) {
       const prior = this.lastDeliveredAt.get(trigger.id);
@@ -405,7 +455,7 @@ export class AlerterHub {
     const deliveryPromise = mapBounded(
       toDeliver,
       ALERT_DELIVERY_CONCURRENCY,
-      async (trigger) => {
+      async (trigger: Trigger) => {
         // #5023: capture success/failure instead of relying on the old
         // implicit "resolved == succeeded" convention -- a REJECTED
         // deliver() (network error, delivery timeout) is treated
@@ -445,10 +495,10 @@ export class AlerterHub {
     };
   }
 
-  async fetch(request) {
+  async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/evaluate" && request.method === "POST") {
-      let payload;
+      let payload: unknown;
       try {
         payload = await request.json();
       } catch {

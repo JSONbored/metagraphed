@@ -1,4 +1,4 @@
-// Direct unit tests for workers/postgres-tier.mjs's tryPostgresTier -- every
+// Direct unit tests for workers/postgres-tier.ts's tryPostgresTier -- every
 // caller across workers/request-handlers/*.mjs shares this one function, so
 // its fallback branches (each of which now also bumps
 // currentPostgresTierFallbackGeneration() to invalidate an in-flight
@@ -9,7 +9,7 @@ import { test } from "vitest";
 import {
   currentPostgresTierFallbackGeneration,
   tryPostgresTier,
-} from "../workers/postgres-tier.mjs";
+} from "../workers/postgres-tier.ts";
 
 function dataApi(handler) {
   return { fetch: handler };

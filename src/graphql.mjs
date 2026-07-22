@@ -6,7 +6,7 @@ import {
   specifiedRules,
   validate,
 } from "graphql";
-import { readArtifact, readHealthKv } from "../workers/storage.mjs";
+import { readArtifact, readHealthKv } from "../workers/storage.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
 // and MCP already use) -- not a reimplementation.
@@ -31,8 +31,8 @@ import {
 // unchanged (same artifact read, filter, sort, and page logic REST and MCP
 // already use) -- not a reimplementation.
 import { loadProfilesList } from "./profiles-mcp.mjs";
-import { contractVersion } from "../workers/responses.mjs";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { contractVersion } from "../workers/responses.ts";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
 // routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
 // list_endpoint_incidents already call for MCP parity -- not a reimplementation.
@@ -155,14 +155,14 @@ import {
 import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
-} from "../workers/request-handlers/analytics.mjs";
+} from "../workers/request-handlers/analytics.ts";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 import { buildSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { buildChainIdentityHistory } from "./chain-identity-history.mjs";
 import {
@@ -173,8 +173,10 @@ import {
   mergeFreshness,
   mergeRpcEndpoints,
   overlayOverviewHealth,
+  loadSubnetReliability,
   overlayCatalogDetail,
   overlayCatalogIndex,
+  overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
@@ -187,7 +189,7 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
   TOP_HOLDERS_SORTS,
 } from "./top-holders.mjs";
-import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.mjs";
+import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
 import {
   COMPARE_VALIDATORS_MAX,
   loadCompareSubnets,
@@ -200,7 +202,7 @@ import {
   parseCompareNetuidList,
   parseUptimeWindow,
 } from "./analytics-live.mjs";
-import { UPTIME_WINDOWS } from "../workers/config.mjs";
+import { UPTIME_WINDOWS } from "../workers/config.ts";
 import {
   buildAccountExtrinsics,
   buildExtrinsic,
@@ -235,6 +237,9 @@ import {
   labelsForSs58,
 } from "./entity-labels.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
+// #7642: saved_query reuses the same maintainer-curated template executor the
+// GET /api/v1/queries/{id} route and run_saved_query MCP tool already share.
+import { runSavedQuery } from "./saved-queries.mjs";
 import { loadNetworkParameters } from "./network-parameters.mjs";
 import { loadRandomnessStatus } from "./randomness.mjs";
 import { loadAddressMapping, H160_PATTERN } from "./address-mapping.mjs";
@@ -339,7 +344,7 @@ import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   SS58_ADDRESS_PATTERN,
-} from "../workers/config.mjs";
+} from "../workers/config.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {
   CHAIN_SIGNERS_SORTS,
@@ -496,6 +501,8 @@ export const SDL = `
     subnet_health_incidents(netuid: Int!, window: String): SubnetHealthIncidents!
     "One subnet's per-surface latency percentiles (p50/p90/p95/p99) over a 7d/30d window (default 7d), computed live from the success-only health-probe history. The latency-distribution companion of subnet_health_incidents' availability view. A subnet with no probe history resolves to a schema-stable empty surfaces list, never null. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles."
     subnet_health_percentiles(netuid: Int!, window: String): SubnetHealthPercentiles!
+    "One subnet's current live operational-health card: the per-surface status/latency/last-ok rows from the latest ~15-minute cron probe (summarized into ok/degraded/failed/unknown counts) plus the cross-window reliability score. The at-a-glance base card completing the health family whose windowed views are subnet_health_trends/subnet_health_incidents/subnet_health_percentiles. A subnet with no live health data resolves to the same schema-stable unknown card (summary.status of unknown, empty surfaces), never null. Opaque JSON passed through verbatim, matching the get_subnet_health MCP/REST shape (the existing typed SubnetHealth is the flat health-list item, a different shape, so this base card is JSON like the sibling surfaces payloads). Mirrors GET /api/v1/subnets/{netuid}/health."
+    subnet_health(netuid: Int!): JSON
     "One subnet's rolling 24h alpha trading volume from the StakeAdded/StakeRemoved trade stream: buy/sell volume in alpha and TAO, trade counts, net flow, a buy-vs-sell sentiment ratio, and volume-to-market-cap ratio. A subnet with no trades resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/volume."
     subnet_volume(netuid: Int!): SubnetVolume!
     "The machine-readable AI-resources index: the copyable agent prompt (/agent.md), MCP server install metadata and tool listing, the Bittensor skill, llms.txt, OpenAPI, and links to the agent-facing APIs. Use it to bootstrap an agent integration before calling the catalog/search fields. Null when the index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_agent_resources MCP/REST shape. Mirrors GET /api/v1/agent-resources."
@@ -504,6 +511,8 @@ export const SDL = `
     curation: JSON
     "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state and page with limit/cursor, exactly like the REST route. Resolves to {items,total,next_cursor} as opaque JSON. Mirrors GET /api/v1/candidates."
     candidates(netuid: Int, kind: String, provider: String, state: String, limit: Int, cursor: String): JSON
+    "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}."
+    saved_query(id: String!, params: JSON): JSON
     "The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
     fixtures: JSON
     "The agent-callable service catalog: without a netuid, the global index of subnets exposing callable services; with one, that subnet's full per-service catalog. Both are overlaid with live health exactly as REST composes them. Null when the catalog has not been baked. Opaque JSON, matching the get_agent_catalog MCP/REST shape. Mirrors GET /api/v1/agent-catalog."
@@ -538,6 +547,8 @@ export const SDL = `
     subnet_gaps(netuid: Int!): JSON
     "One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_evidence MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/evidence."
     subnet_evidence(netuid: Int!): JSON
+    "One subnet's unpromoted candidate-surface queue — the baked per-subnet /metagraph/candidates/{netuid}.json artifact the REST route and get_subnet_candidates MCP tool read. Null when no candidate artifact has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim. Distinct from candidates(...) (the filterable network-wide candidate catalog). Mirrors GET /api/v1/subnets/{netuid}/candidates."
+    subnet_candidates(netuid: Int!): JSON
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
@@ -4245,9 +4256,11 @@ export const FIELD_COMPLEXITY = {
   subnet_uptime: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_percentiles: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_health: RELATIONSHIP_FIELD_COMPLEXITY,
   agent_resources: RELATIONSHIP_FIELD_COMPLEXITY,
   curation: RELATIONSHIP_FIELD_COMPLEXITY,
   candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  saved_query: RELATIONSHIP_FIELD_COMPLEXITY,
   fixtures: RELATIONSHIP_FIELD_COMPLEXITY,
   agent_catalog: RELATIONSHIP_FIELD_COMPLEXITY,
   freshness: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4266,6 +4279,7 @@ export const FIELD_COMPLEXITY = {
   subnet_event_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_evidence: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_candidates: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6207,6 +6221,28 @@ const rootValue = {
     return loadArtifact(context, "/metagraph/registry-summary.json");
   },
 
+  async saved_query({ id, params }, context) {
+    // #7642: the same maintainer-curated template executor the REST route and
+    // run_saved_query MCP tool share (src/saved-queries.mjs) -- template
+    // lookup, param coercion/validation, and execution are all its. Its
+    // not_found (unknown id) and invalid_params toolErrors map to
+    // BAD_USER_INPUT, matching this file's invalid-argument convention; any
+    // other executor failure surfaces as a normal GraphQL error.
+    try {
+      return await runSavedQuery(context.env, id, params ?? {});
+    } catch (err) {
+      if (
+        err?.toolError &&
+        (err.code === "not_found" || err.code === "invalid_params")
+      ) {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      throw err;
+    }
+  },
+
   source_health(_args, context) {
     // Same baked artifact the REST route + get_source_health MCP tool read.
     return loadArtifact(context, "/metagraph/source-health.json");
@@ -6790,6 +6826,19 @@ const rootValue = {
     // Same baked evidence artifact the REST route + get_subnet_evidence MCP
     // tool read; null when no record has been baked for this netuid.
     return loadArtifact(context, `/metagraph/evidence/${netuid}.json`);
+  },
+
+  async subnet_candidates({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same baked per-subnet candidates artifact the REST route +
+    // get_subnet_candidates MCP tool read (distinct from the network-wide
+    // candidates(...) catalog); null when no artifact has been baked for this
+    // netuid, matching subnet_gaps/subnet_evidence's cold-artifact convention.
+    return loadArtifact(context, `/metagraph/candidates/${netuid}.json`);
   },
 
   async subnet_health_incidents({ netuid, window }, context) {
@@ -9500,6 +9549,41 @@ const rootValue = {
       observed_at: data.observed_at ?? null,
       source: data.source ?? null,
       windows: data.windows ?? {},
+    };
+  },
+
+  async subnet_health({ netuid }, context) {
+    // Same non-negative netuid gate the other per-subnet resolvers use --
+    // GraphQL Int coercion rejects non-integers at parse time; a negative
+    // netuid is a BAD_USER_INPUT error, not a silent card.
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same live composition REST's subnet-health route (workers/api.mjs's
+    // subnet-health overlay) and the get_subnet_health MCP tool share: the
+    // latest ~15-minute cron snapshot (resolveLiveHealth) overlaid per subnet
+    // (overlaySubnetHealth), plus the cross-window reliability summary
+    // (loadSubnetReliability). A subnet with no live rows overlays to null, so
+    // it resolves to the identical schema-stable "unknown" card the MCP tool
+    // returns on a cold store -- never a GraphQL error. Nothing is re-derived.
+    const [live, reliability] = await Promise.all([
+      resolveLiveHealth({ readHealthKv, env: context.env }),
+      loadSubnetReliability(),
+    ]);
+    const overlaid = overlaySubnetHealth(null, live, netuid);
+    if (overlaid) {
+      return { ...overlaid, reliability };
+    }
+    return {
+      schema_version: 1,
+      netuid,
+      summary: { status: "unknown", surface_count: 0 },
+      operational_observed_at: null,
+      health_source: "unavailable",
+      reliability,
+      surfaces: [],
     };
   },
 

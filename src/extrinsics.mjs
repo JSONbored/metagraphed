@@ -4,12 +4,12 @@
 // + blocks, NOT Taostats. This module holds the load contract, the row→API
 // shaping, and the retention prune. Pure + exported for tests; the Worker runs
 // the D1 I/O.
-import { DAY_MS } from "../workers/config.mjs";
+import { DAY_MS } from "../workers/config.ts";
 import {
   BLOCK_PAGINATION,
   clampLimit,
   clampOffset,
-} from "../workers/request-params.mjs";
+} from "../workers/request-params.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { normalizePostgresValue } from "./scale-normalize.ts";
 import { decodePostgresCallArgs } from "./postgres-call-args.mjs";

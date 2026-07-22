@@ -16,7 +16,7 @@ import {
   buildResourceUpdatedNotification,
   formatMcpSseEvent,
   isValidMcpSessionId,
-} from "../workers/mcp-session-hub.mjs";
+} from "../workers/mcp-session-hub.ts";
 
 // --- isValidMcpSessionId ---------------------------------------------------------
 

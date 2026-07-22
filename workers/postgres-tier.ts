@@ -28,16 +28,20 @@
 // before a wider live-testing pass happened to notice).
 let postgresTierFallbackGeneration = 0;
 
-function markPostgresTierFallback() {
+function markPostgresTierFallback(): null {
   postgresTierFallbackGeneration += 1;
   return null;
 }
 
-export function currentPostgresTierFallbackGeneration() {
+export function currentPostgresTierFallbackGeneration(): number {
   return postgresTierFallbackGeneration;
 }
 
-export async function tryPostgresTier(env, request, flagName) {
+export async function tryPostgresTier(
+  env: Env,
+  request: Request,
+  flagName: keyof Env,
+): Promise<Record<string, unknown> | null> {
   if (env[flagName] !== "postgres") return null;
   if (!env.DATA_API) return markPostgresTierFallback();
   const upstreamRequest =
@@ -76,5 +80,5 @@ export async function tryPostgresTier(env, request, flagName) {
     );
     return markPostgresTierFallback();
   }
-  return body;
+  return body as Record<string, unknown>;
 }

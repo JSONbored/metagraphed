@@ -183,6 +183,32 @@
         "https://github.com/TensorUSD/subnet/blob/main/README.md"
       ],
       "url": "https://agent-api.tensorusd.com/health"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "The /api/openapi.json path returns HTTP 401 unauthenticated, confirming a real gated schema endpoint; the required credential/header format is not documented (the schema itself is unreadable without it)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-113-tensorusd-api-openapi",
+      "kind": "subnet-api",
+      "name": "TensorUSD SN113 backend API schema endpoint (auth-gated)",
+      "notes": "GET /api/openapi.json on api.tensorusd.com is a real, auth-gated backend OpenAPI schema endpoint -- distinct from the bare /openapi.json (404, already recorded in the existing gap_notes). It requires credentials to read, so the schema itself could not be captured (registered as subnet-api rather than openapi, since openapi-kind surfaces require a machine-readable schema). Live-verified 2026-07-22: GET https://api.tensorusd.com/api/openapi.json -> HTTP 401 (empty body); GET https://api.tensorusd.com/openapi.json -> HTTP 404 (confirms the distinct path). Registered with probe.enabled:false since it is not anonymously callable; worth re-probing with an API key to unlock full endpoint discovery.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorusd",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "lourincedaging0-commits"
+      },
+      "source_urls": ["https://api.tensorusd.com/api/openapi.json"],
+      "url": "https://api.tensorusd.com/api/openapi.json"
     }
   ],
   "website_url": "https://tensorusd.com/"

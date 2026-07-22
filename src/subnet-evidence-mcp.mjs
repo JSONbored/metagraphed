@@ -3,7 +3,7 @@
 // transforms as the REST route over the baked
 // /metagraph/evidence/{netuid}.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 
 const CLAIM_SORT_FIELDS = API_QUERY_COLLECTIONS.claims.sort_fields;

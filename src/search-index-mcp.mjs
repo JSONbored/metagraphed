@@ -2,7 +2,7 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/search-index.json artifact (slim documents without token blobs).
 
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 
 export const SEARCH_INDEX_ARTIFACT = "/metagraph/search-index.json";

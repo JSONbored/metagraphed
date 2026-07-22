@@ -27,12 +27,12 @@ import {
   handleChainWeights,
   handleChainWeightSetters,
   handleChainServing,
-} from "../workers/request-handlers/analytics.mjs";
+} from "../workers/request-handlers/analytics.ts";
 import { CHAIN_STAKE_FLOW_LIMIT_DEFAULT } from "../src/chain-stake-flow.mjs";
 import { CHAIN_WEIGHTS_LIMIT_DEFAULT } from "../src/chain-weights.mjs";
 import { CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } from "../src/chain-weight-setters.mjs";
 import { CHAIN_SERVING_LIMIT_DEFAULT } from "../src/chain-serving.mjs";
-import { tryPostgresTier } from "../workers/postgres-tier.mjs";
+import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import {
@@ -40,7 +40,7 @@ import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   DAY_MS,
-} from "../workers/config.mjs";
+} from "../workers/config.ts";
 
 configureAnalytics({
   readHealthMetaKv: async (env) => {
@@ -1914,7 +1914,7 @@ describe("chain analytics ?format=csv export", () => {
 // in production -- see wrangler.jsonc) since these read the same
 // extrinsics/blocks tables the Tier 1a routes already serve from Postgres;
 // no new flag-flip cycle needed. tryPostgresTier's own fallback contract is
-// unit-tested in workers/postgres-tier.mjs's own tests, so these just prove
+// unit-tested in workers/postgres-tier.ts's own tests, so these just prove
 // the wiring: a Postgres hit is served as-is with D1 never queried, and a
 // Postgres failure falls back to D1 with fallback-marking intact.
 describe("chain analytics extrinsics-derived: postgres tier wiring", () => {

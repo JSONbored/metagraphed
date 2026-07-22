@@ -21,7 +21,7 @@
 // + Workers VPC Service + Hyperdrive path already proven for reads).
 import postgres from "postgres";
 import { timingSafeEqual } from "../src/webhooks.mjs";
-import { resolveClientIp } from "./config.mjs";
+import { resolveClientIp } from "./config.ts";
 
 const TOKEN_HEADER = "x-registry-sync-token";
 const MAX_BODY_BYTES = 4_194_304; // 4 MiB -- the full registry is ~1.5k surfaces, comfortably under this
@@ -31,7 +31,48 @@ const MAX_ROWS_PER_KIND = 5_000;
 // 10/60s used by other shared-secret write routes.
 const RATE_LIMIT = { limit: 30, windowSeconds: 60 };
 
-function json(data, status = 200, extraHeaders = {}) {
+interface ProviderSyncRow {
+  id?: string;
+  overlay?: unknown;
+  source_commit?: string;
+}
+interface SubnetSyncRow {
+  netuid?: unknown;
+  slug?: string;
+  name?: string;
+  source?: string;
+  overlay?: unknown;
+  source_commit?: string;
+}
+interface PruneSurfacesRow {
+  subnet_netuid?: unknown;
+  current_surfaces?: unknown;
+  source_commit?: string;
+  authority_scope?: string;
+}
+interface DeleteSubnetRow {
+  netuid?: unknown;
+  source_commit?: string;
+}
+interface SurfaceSyncRow {
+  subnet_netuid?: unknown;
+  provider_id?: string | null;
+  surface_key?: string;
+  kind?: string;
+  url?: string;
+  authority?: string;
+  review_state?: string;
+  probe_eligible?: unknown;
+  public_safe?: unknown;
+  overlay?: unknown;
+  source_commit?: string;
+}
+
+function json(
+  data: unknown,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -41,12 +82,12 @@ function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
-function isValidRow(row) {
-  return row && typeof row === "object" && !Array.isArray(row);
+function isValidRow(row: unknown): row is Record<string, unknown> {
+  return Boolean(row) && typeof row === "object" && !Array.isArray(row);
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method !== "POST") {
       return json({ error: "method not allowed" }, 405);
     }
@@ -88,28 +129,43 @@ export default {
     if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) {
       return json({ error: `body exceeds ${MAX_BODY_BYTES} bytes` }, 413);
     }
-    let body;
+    let body: {
+      subnets?: unknown;
+      providers?: unknown;
+      surfaces?: unknown;
+      prune_surfaces?: unknown;
+      delete_subnets?: unknown;
+    };
     try {
       body = JSON.parse(raw);
     } catch {
       return json({ error: "body must be JSON" }, 400);
     }
-    const subnets = Array.isArray(body?.subnets) ? body.subnets : [];
-    const providers = Array.isArray(body?.providers) ? body.providers : [];
-    const surfaces = Array.isArray(body?.surfaces) ? body.surfaces : [];
-    const pruneSurfaces = Array.isArray(body?.prune_surfaces)
+    const subnets: SubnetSyncRow[] = Array.isArray(body?.subnets)
+      ? body.subnets
+      : [];
+    const providers: ProviderSyncRow[] = Array.isArray(body?.providers)
+      ? body.providers
+      : [];
+    const surfaces: SurfaceSyncRow[] = Array.isArray(body?.surfaces)
+      ? body.surfaces
+      : [];
+    const pruneSurfaces: PruneSurfacesRow[] = Array.isArray(
+      body?.prune_surfaces,
+    )
       ? body.prune_surfaces
       : [];
-    const deleteSubnets = Array.isArray(body?.delete_subnets)
+    const deleteSubnets: DeleteSubnetRow[] = Array.isArray(body?.delete_subnets)
       ? body.delete_subnets
       : [];
-    for (const [name, rows] of [
+    const rowGroups: Array<[string, unknown[]]> = [
       ["subnets", subnets],
       ["providers", providers],
       ["surfaces", surfaces],
       ["prune_surfaces", pruneSurfaces],
       ["delete_subnets", deleteSubnets],
-    ]) {
+    ];
+    for (const [name, rows] of rowGroups) {
       if (rows.length > MAX_ROWS_PER_KIND) {
         return json(
           { error: `at most ${MAX_ROWS_PER_KIND} ${name} rows per request` },
@@ -160,7 +216,7 @@ export default {
           if (!p.id || !p.overlay || !p.source_commit) continue;
           await sql`
           INSERT INTO providers (id, overlay, source_commit)
-          VALUES (${p.id}, ${sql.json(p.overlay)}, ${p.source_commit})
+          VALUES (${p.id}, ${sql.json(p.overlay as postgres.JSONValue)}, ${p.source_commit})
           ON CONFLICT (id) DO UPDATE SET
             overlay = EXCLUDED.overlay,
             source_commit = EXCLUDED.source_commit,
@@ -181,7 +237,7 @@ export default {
             continue;
           await sql`
           INSERT INTO subnets (netuid, slug, name, source, overlay, source_commit)
-          VALUES (${s.netuid}, ${s.slug}, ${s.name}, ${s.source || "community"}, ${sql.json(s.overlay)}, ${s.source_commit})
+          VALUES (${s.netuid as number}, ${s.slug}, ${s.name}, ${s.source || "community"}, ${sql.json(s.overlay as postgres.JSONValue)}, ${s.source_commit})
           ON CONFLICT (netuid) DO UPDATE SET
             slug = EXCLUDED.slug,
             name = EXCLUDED.name,
@@ -244,7 +300,7 @@ export default {
           } else {
             deleted = await sql`
               DELETE FROM surfaces
-              WHERE subnet_netuid = ${prune.subnet_netuid}
+              WHERE subnet_netuid = ${prune.subnet_netuid as number}
                 AND (NOT ${scopeToCommunity} OR authority = ${"community"})
               RETURNING id, subnet_netuid, overlay`;
           }
@@ -262,7 +318,7 @@ export default {
           if (writtenSubnetNetuids.has(deletion.netuid)) continue;
           const deletedSurfaces = await sql`
           DELETE FROM surfaces
-          WHERE subnet_netuid = ${deletion.netuid}
+          WHERE subnet_netuid = ${deletion.netuid as number}
           RETURNING id, subnet_netuid, overlay`;
           for (const row of deletedSurfaces) {
             await sql`
@@ -272,7 +328,7 @@ export default {
           }
           const deletedSubnets = await sql`
           DELETE FROM subnets
-          WHERE netuid = ${deletion.netuid}
+          WHERE netuid = ${deletion.netuid as number}
           RETURNING netuid`;
           summary.subnets_deleted += deletedSubnets.length;
         }
@@ -294,10 +350,10 @@ export default {
             overlay, source_commit
           )
           VALUES (
-            ${surf.subnet_netuid}, ${surf.provider_id ?? null}, ${surf.surface_key}, ${surf.kind}, ${surf.url},
+            ${surf.subnet_netuid as number}, ${surf.provider_id ?? null}, ${surf.surface_key}, ${surf.kind}, ${surf.url},
             ${surf.authority || "community"}, ${surf.review_state || "community-submitted"},
             ${Boolean(surf.probe_eligible)}, ${surf.public_safe !== false},
-            ${sql.json(surf.overlay)}, ${surf.source_commit}
+            ${sql.json(surf.overlay as postgres.JSONValue)}, ${surf.source_commit}
           )
           ON CONFLICT (subnet_netuid, kind, url) DO UPDATE SET
             provider_id = EXCLUDED.provider_id,
@@ -315,7 +371,7 @@ export default {
             const action = result[0].inserted ? "insert" : "update";
             await sql`
             INSERT INTO surface_history (subnet_netuid, action, overlay, source_commit)
-            VALUES (${surf.subnet_netuid}, ${action}, ${sql.json(surf.overlay)}, ${surf.source_commit})`;
+            VALUES (${surf.subnet_netuid as number}, ${action}, ${sql.json(surf.overlay as postgres.JSONValue)}, ${surf.source_commit})`;
             summary.surfaces_written += 1;
           }
         }

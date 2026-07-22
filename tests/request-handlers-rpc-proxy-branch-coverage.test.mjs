@@ -11,8 +11,8 @@ import {
   handleSurfaceVerify,
   proxyWithFailover,
   rpcCachePolicy,
-} from "../workers/request-handlers/rpc-proxy.mjs";
-import { MAX_STATE_QUERY_KEYS_PAGE_SIZE } from "../workers/config.mjs";
+} from "../workers/request-handlers/rpc-proxy.ts";
+import { MAX_STATE_QUERY_KEYS_PAGE_SIZE } from "../workers/config.ts";
 
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
 
@@ -959,6 +959,28 @@ describe("proxyWithFailover edge branches", () => {
     const text = await res.text();
     // Body is bounded to the 64 KiB classification limit, not the full 70 KiB.
     assert.equal(text.length, 64 * 1024);
+  });
+
+  test("a non-tee upstream body with malformed JSON still classifies as reachable", async () => {
+    // A plain response object (no body.tee), under the classification limit,
+    // whose body isn't valid JSON: JSON.parse throws, parsedBody stays null
+    // (not a thrown/status-derived transient signal) -- classifyUpstreamAttempt
+    // still reads it as a reachable success, matching the tee'd sibling path.
+    const fetchFn = scriptedFetch({
+      status: 200,
+      statusText: "OK",
+      headers: new Headers({ "content-type": "text/plain" }),
+      async text() {
+        return "not json";
+      },
+    });
+    const res = await proxyWithFailover([ep("a", SAFE_A)], {
+      ...base,
+      fetchFn,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "a");
+    assert.equal(await res.text(), "not json");
   });
 });
 

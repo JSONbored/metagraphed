@@ -39,7 +39,7 @@ import {
   EXPOSED_RESPONSE_HEADERS_VALUE,
   ifNoneMatchSatisfied,
   weakEtag,
-} from "../workers/http.mjs";
+} from "../workers/http.ts";
 
 const SITE_URL = "https://metagraph.sh";
 const API_URL = "https://api.metagraph.sh";

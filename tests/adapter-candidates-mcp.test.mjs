@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
-import * as listQuery from "../workers/list-query.mjs";
+import * as listQuery from "../workers/list-query.ts";
 import {
   ADAPTER_CANDIDATES_ARTIFACT,
   LIST_ADAPTER_CANDIDATES_INSTRUCTIONS,

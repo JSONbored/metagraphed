@@ -6,7 +6,7 @@ import {
   canonicalListSearch,
   paginationLinkHeader,
   validateListQueryParams,
-} from "../workers/list-query.mjs";
+} from "../workers/list-query.ts";
 
 function query(path) {
   return new URL(`https://api.metagraph.sh${path}`);

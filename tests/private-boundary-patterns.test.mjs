@@ -203,6 +203,16 @@ describe("isBinaryOrGenerated", () => {
     }
   });
 
+  test("skips wrangler-generated worker-configuration.d.ts files (all 3 workers)", () => {
+    for (const f of [
+      "workers/worker-configuration.d.ts",
+      "workers/data-api.worker-configuration.d.ts",
+      "workers/registry-sync-api.worker-configuration.d.ts",
+    ]) {
+      assert.equal(isBinaryOrGenerated(f), true, f);
+    }
+  });
+
   test("does not skip ordinary source/text files", () => {
     for (const f of [
       "src/graphql.mjs",

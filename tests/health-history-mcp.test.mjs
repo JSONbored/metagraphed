@@ -3,7 +3,7 @@ import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import { latestArtifactDate } from "../scripts/lib.mjs";
 import * as healthHistoryMcp from "../src/health-history-mcp.mjs";
-import * as listQuery from "../workers/list-query.mjs";
+import * as listQuery from "../workers/list-query.ts";
 import {
   GET_HEALTH_HISTORY_INSTRUCTIONS,
   GET_HEALTH_HISTORY_MCP_TOOL,
