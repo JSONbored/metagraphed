@@ -30,7 +30,7 @@ import {
 } from "../workers/request-handlers/analytics.ts";
 import { CHAIN_STAKE_FLOW_LIMIT_DEFAULT } from "../src/chain-stake-flow.ts";
 import { CHAIN_WEIGHTS_LIMIT_DEFAULT } from "../src/chain-weights.mjs";
-import { CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } from "../src/chain-weight-setters.mjs";
+import { CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } from "../src/chain-weight-setters.ts";
 import { CHAIN_SERVING_LIMIT_DEFAULT } from "../src/chain-serving.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";

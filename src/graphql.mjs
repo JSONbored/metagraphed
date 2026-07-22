@@ -416,7 +416,7 @@ import {
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
-} from "./chain-weight-setters.mjs";
+} from "./chain-weight-setters.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,

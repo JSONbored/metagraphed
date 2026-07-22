@@ -284,7 +284,7 @@ import {
   buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
-} from "../src/chain-weight-setters.mjs";
+} from "../src/chain-weight-setters.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
@@ -5933,10 +5933,10 @@ export default {
 
         // GET /api/v1/chain/weights/setters (#4832 Tier 2): network-wide
         // weight-setter leaderboard, mirroring
-        // src/chain-weight-setters.mjs's loadChainWeightSetters. The
+        // src/chain-weight-setters.ts's loadChainWeightSetters. The
         // setter-identity CASE expression here omits chain-weights' extra
         // `AND netuid IS NOT NULL` guard -- matches SETTER_IDENTITY in
-        // chain-weight-setters.mjs exactly, not chain-weights.mjs's own.
+        // chain-weight-setters.ts exactly, not chain-weights.mjs's own.
         const chainWeightSetters = url.pathname.match(
           /^\/api\/v1\/chain\/weights\/setters$/,
         );

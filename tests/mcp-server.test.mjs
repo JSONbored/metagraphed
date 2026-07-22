@@ -19,7 +19,7 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 import { buildChainStakeMoves } from "../src/chain-stake-moves.ts";
 import { buildChainStakeTransfers } from "../src/chain-stake-transfers.ts";
-import { buildChainWeightSetters } from "../src/chain-weight-setters.mjs";
+import { buildChainWeightSetters } from "../src/chain-weight-setters.ts";
 import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
 import { buildChainDeregistrations } from "../src/chain-deregistrations.ts";
 import { buildChainServing } from "../src/chain-serving.ts";

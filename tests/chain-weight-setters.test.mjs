@@ -5,7 +5,7 @@ import {
   CHAIN_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
-} from "../src/chain-weight-setters.mjs";
+} from "../src/chain-weight-setters.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
