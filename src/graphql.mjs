@@ -47,7 +47,7 @@ import { loadProviderEndpointsList } from "./provider-endpoints-mcp.mjs";
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
 // and page logic REST and MCP already use) -- not a reimplementation.
 import { loadAdapterCandidatesList } from "./adapter-candidates-mcp.ts";
-import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.mjs";
+import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.ts";
 import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.mjs";
 import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.mjs";
 import { loadReviewGapsList } from "./review-gaps-mcp.mjs";

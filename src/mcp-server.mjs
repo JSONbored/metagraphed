@@ -105,7 +105,7 @@ import {
   LIST_ENRICHMENT_EVIDENCE_MCP_TOOL,
   LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA,
   loadEnrichmentEvidenceList,
-} from "./enrichment-evidence-mcp.mjs";
+} from "./enrichment-evidence-mcp.ts";
 import {
   LIST_REVIEW_GAPS_INSTRUCTIONS,
   LIST_REVIEW_GAPS_MCP_TOOL,
