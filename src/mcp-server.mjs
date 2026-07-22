@@ -176,7 +176,7 @@ import {
   LIST_RPC_POOLS_MCP_TOOL,
   LIST_RPC_POOLS_OUTPUT_SCHEMA,
   loadRpcPoolsList,
-} from "./rpc-pools-mcp.mjs";
+} from "./rpc-pools-mcp.ts";
 import {
   LIST_ENDPOINT_INCIDENTS_INSTRUCTIONS,
   LIST_ENDPOINT_INCIDENTS_MCP_TOOL,

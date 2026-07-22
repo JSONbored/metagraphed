@@ -7,7 +7,8 @@
 // endpoint-pools-mcp.ts (the generalized sibling collection), which has no
 // live-overlay step of its own.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.mjs";
 import { overlayRpcPoolEligibility } from "./health-serving.ts";
@@ -17,14 +18,25 @@ export const RPC_POOLS_ARTIFACT = "/metagraph/rpc/pools.json";
 const POOL_SORT_FIELDS = API_QUERY_COLLECTIONS["rpc-pools"].sort_fields;
 const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"];
 
-export function rpcPoolsMcpError(code, message) {
-  const error = new Error(message);
+export interface RpcPoolsMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function rpcPoolsMcpError(
+  code: string,
+  message: string,
+): RpcPoolsMcpError {
+  const error = new Error(message) as RpcPoolsMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -36,7 +48,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -48,7 +64,10 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function optionalRangeBound(args, key) {
+function optionalRangeBound(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): number | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -60,7 +79,9 @@ function optionalRangeBound(args, key) {
   return value;
 }
 
-export function rpcPoolsQueryUrl(args) {
+export function rpcPoolsQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/rpc-pools");
   const id = optionalString(args, "id");
   if (id) url.searchParams.set("id", id);
@@ -89,32 +110,72 @@ export function rpcPoolsQueryUrl(args) {
     url.searchParams.set("max_endpoint_count", String(maxEndpoint));
   }
   if (args?.limit !== undefined) {
-    if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100) {
+    const limit = args.limit;
+    if (
+      typeof limit !== "number" ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 100
+    ) {
       throw rpcPoolsMcpError(
         "invalid_params",
         "limit must be an integer between 1 and 100.",
       );
     }
-    url.searchParams.set("limit", String(args.limit));
+    url.searchParams.set("limit", String(limit));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw rpcPoolsMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
-export async function loadRpcPoolsList(ctx, args, { readArtifact } = {}) {
+interface RpcPoolsMcpCtx {
+  env: Env;
+  readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  readHealthKv?: (
+    env: Env,
+    key: string,
+  ) => Promise<Record<string, unknown> | null>;
+}
+
+export interface RpcPoolsListResult {
+  generated_at: unknown;
+  notes: unknown;
+  source: unknown;
+  operational_observed_at: unknown;
+  pools: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
+export async function loadRpcPoolsList(
+  ctx: RpcPoolsMcpCtx,
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<RpcPoolsListResult> {
   const queryUrl = rpcPoolsQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, RPC_POOLS_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw rpcPoolsMcpError("not_found", "RPC pool snapshot unavailable.");
     }
@@ -131,20 +192,20 @@ export async function loadRpcPoolsList(ctx, args, { readArtifact } = {}) {
   // Live 15-minute cron overlay, matching REST's liveHealthOverlay for the
   // "rpc-pools" route id — applied before filtering so a live-derived field
   // like eligible_count reflects the current snapshot, not the baked one.
-  let overlaid = blob;
+  let overlaid = blob as Record<string, unknown>;
   const livePool = ctx.readHealthKv
     ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
     : null;
   if (
     livePool &&
     Array.isArray(livePool.endpoints) &&
-    Array.isArray(blob.pools)
+    Array.isArray(overlaid.pools)
   ) {
     overlaid = {
-      ...blob,
+      ...overlaid,
       source: "live-cron-prober",
       operational_observed_at: livePool.last_run_at || null,
-      pools: blob.pools.map((pool) =>
+      pools: (overlaid.pools as Row[]).map((pool) =>
         overlayRpcPoolEligibility(pool, livePool),
       ),
     };
@@ -154,9 +215,10 @@ export async function loadRpcPoolsList(ctx, args, { readArtifact } = {}) {
   if (transformed.error) {
     throw rpcPoolsMcpError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.pools) ? data.pools : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const rows = Array.isArray(data.pools) ? (data.pools as Row[]) : [];
   const rowLen = rows.length;
   return {
     generated_at: data.generated_at ?? null,

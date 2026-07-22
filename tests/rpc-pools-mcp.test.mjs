@@ -9,7 +9,7 @@ import {
   rpcPoolsMcpError,
   rpcPoolsQueryUrl,
   loadRpcPoolsList,
-} from "../src/rpc-pools-mcp.mjs";
+} from "../src/rpc-pools-mcp.ts";
 import { MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {
