@@ -60,7 +60,7 @@
       "id": "sn-126-poker44-data-artifact",
       "kind": "data-artifact",
       "name": "Poker44 shadow-training benchmark dataset",
-      "notes": "Public no-auth GET /api/v1/benchmark on api.poker44.net — the official Poker44 (SN126) benchmark dataset release endpoint documented in the subnet repo's docs/training-benchmark.md (GET /api/v1/benchmark, GET /api/v1/benchmark/releases). Returns JSON release metadata (observed releaseVersion v1.13, schemaVersion shadow-training-v1, 121 chunks / 29,680 hands, auto-release schedule); miners fetch the hand chunks from this endpoint. Same api.poker44.net host as the already-listed platform health surface.",
+      "notes": "Public no-auth GET /api/v1/benchmark on api.poker44.net \u2014 the official Poker44 (SN126) benchmark dataset release endpoint documented in the subnet repo's docs/training-benchmark.md (GET /api/v1/benchmark, GET /api/v1/benchmark/releases). Returns JSON release metadata (observed releaseVersion v1.13, schemaVersion shadow-training-v1, 121 chunks / 29,680 hands, auto-release schedule); miners fetch the hand chunks from this endpoint. Same api.poker44.net host as the already-listed platform health surface.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -85,7 +85,7 @@
       "id": "sn-126-poker44-dashboard",
       "kind": "dashboard",
       "name": "Poker44 live benchmark dashboard",
-      "notes": "Public no-auth Poker44 (SN126) web dashboard at poker44.net/dashboard — the 'Live Benchmark for Bot Detection' leaderboard showing per-round miner scores, validator fleet status, and cycle progress across the subnet's competition rounds. Served on the official poker44.net platform linked from the Poker44/Poker44-subnet README; distinct from the api.poker44.net JSON benchmark/health endpoints.",
+      "notes": "Public no-auth Poker44 (SN126) web dashboard at poker44.net/dashboard \u2014 the 'Live Benchmark for Bot Detection' leaderboard showing per-round miner scores, validator fleet status, and cycle progress across the subnet's competition rounds. Served on the official poker44.net platform linked from the Poker44/Poker44-subnet README; distinct from the api.poker44.net JSON benchmark/health endpoints.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -183,6 +183,52 @@
         "https://poker44.net/"
       ],
       "url": "https://poker44.net/Poker44_Whitepaper.pdf"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunks",
+      "kind": "data-artifact",
+      "name": "Poker44 benchmark chunks for a source date",
+      "notes": "Public no-auth GET /api/v1/benchmark/chunks?sourceDate=YYYY-MM-DD on api.poker44.net returning the paginated list of chunk metadata (chunkId, chunkHash, chunkIndex, handCount, batchCount, releasedAt) for a given release date. Documented as a standalone route in docs/training-benchmark.md (GET /api/v1/benchmark/chunks with optional limit param). Live-verified 2026-07-22: GET /api/v1/benchmark/chunks?sourceDate=2026-07-22&limit=1 returned HTTP 200 with chunk data (chunkId 0185b8b3-8fe5-40c3-aa2a-e3ab0fb7e45c). Register with the fixed base URL and probe.enabled:false (requires caller-supplied sourceDate query param).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-126-poker44-benchmark-chunk-item",
+      "kind": "data-artifact",
+      "name": "Poker44 single benchmark chunk by ID",
+      "notes": "Public no-auth GET /api/v1/benchmark/chunks/{chunkId} on api.poker44.net returning the full hand-history payload for a specific benchmark chunk (chunkHash, hand records with game_type, seats, streets, actions). Documented in docs/training-benchmark.md. Live-verified 2026-07-22: GET /api/v1/benchmark/chunks/0185b8b3-8fe5-40c3-aa2a-e3ab0fb7e45c returned HTTP 200. Register with the literal {chunkId} template and probe.enabled:false (path-param \u2014 no stable canonical chunk ID for the prober to use).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "poker44",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/Poker44/Poker44-subnet/blob/main/docs/training-benchmark.md"
+      ],
+      "url": "https://api.poker44.net/api/v1/benchmark/chunks/%7BchunkId%7D"
     }
   ],
   "website_url": "https://poker44.net/"
