@@ -271,7 +271,7 @@ import {
   buildAccountDeregistrations,
   DEREGISTRATION_WINDOWS,
   DEFAULT_DEREGISTRATION_WINDOW,
-} from "../../src/account-deregistrations.mjs";
+} from "../../src/account-deregistrations.ts";
 import {
   buildMovers,
   MOVERS_WINDOWS,
