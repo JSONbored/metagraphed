@@ -240,7 +240,7 @@ import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
-} from "../src/subnet-deregistrations.mjs";
+} from "../src/subnet-deregistrations.ts";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,

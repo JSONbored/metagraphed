@@ -8,25 +8,31 @@
 // (loadSubnetDeregistrations); the Worker adds the envelope. Null-safe: a cold store or a subnet
 // with no NeuronDeregistered events yields the zeroed card.
 
+type Row = Record<string, unknown>;
+type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The account_events kind emitted when a neuron is deregistered (evicted) from a subnet.
 export const DEREGISTRATION_EVENT_KIND = "NeuronDeregistered";
 
 // Supported windows (label -> days) + default, matching the sibling account_events routes.
-export const SUBNET_DEREGISTRATIONS_WINDOWS = { "7d": 7, "30d": 30 };
+export const SUBNET_DEREGISTRATIONS_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+};
 export const DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW = "7d";
 
 // Round a deregistrations-per-hotkey ratio to a stable 2dp precision. Always finite and
 // non-negative here (deregistrations / distinct hotkeys, with the divisor guarded below).
-function round(value, dp = 2) {
+function round(value: number, dp = 2): number {
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
 }
 
 // A non-negative whole count from a D1 COUNT() cell (number, numeric string, or null),
 // defaulting to 0 for anything non-finite or negative.
-function toCount(value) {
+function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
@@ -34,7 +40,7 @@ function toCount(value) {
 // Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
 // envelope's generated_at, the same way account-events does. Guards the JS Date range so a
 // finite but out-of-range epoch cannot throw a RangeError on the response.
-function toIso(value) {
+function toIso(value: unknown): string | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -46,7 +52,10 @@ function toIso(value) {
 // re-deregistration intensity (1.0 means each hotkey was deregistered once; higher means hotkeys
 // re-registered and were deregistered again). A subnet with no deregistered hotkeys has no defined
 // intensity (null), not a divide-by-zero.
-function deregistrationsPerHotkey(deregistrations, hotkeys) {
+function deregistrationsPerHotkey(
+  deregistrations: number,
+  hotkeys: number,
+): number | null {
   if (hotkeys <= 0) return null;
   return round(deregistrations / hotkeys);
 }
@@ -54,7 +63,11 @@ function deregistrationsPerHotkey(deregistrations, hotkeys) {
 // Shape one subnet's deregistration scorecard from the single-row account_events aggregate. `row`
 // carries deregistrations (COUNT(*)), distinct_deregistered_hotkeys (COUNT(DISTINCT hotkey)), and
 // newest_observed (MAX(observed_at)). Null-safe: a null/absent row yields the zeroed card.
-export function buildSubnetDeregistrations(row, netuid, { window } = {}) {
+export function buildSubnetDeregistrations(
+  row: Row | null | undefined,
+  netuid: unknown,
+  { window }: { window?: unknown } = {},
+): Row {
   const distinctDeregisteredHotkeys = toCount(
     row?.distinct_deregistered_hotkeys,
   );
@@ -81,10 +94,10 @@ export function buildSubnetDeregistrations(row, netuid, { window } = {}) {
 // hotkey, so COUNT(DISTINCT hotkey) is exact here. The handler resolves windowLabel/windowDays from
 // the window param. Cold/absent store -> the schema-stable zeroed card.
 export async function loadSubnetDeregistrations(
-  d1,
-  netuid,
-  { windowLabel, windowDays } = {},
-) {
+  d1: D1Runner,
+  netuid: unknown,
+  { windowLabel, windowDays }: { windowLabel?: unknown; windowDays: number },
+): Promise<Row> {
   const cutoff = Date.now() - windowDays * DAY_MS;
   const rows = await d1(
     "SELECT COUNT(*) AS deregistrations, COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys, " +

@@ -103,7 +103,7 @@ import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
-} from "./subnet-deregistrations.mjs";
+} from "./subnet-deregistrations.ts";
 import {
   buildSubnetServing,
   SUBNET_SERVING_WINDOWS,
