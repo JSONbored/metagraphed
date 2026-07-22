@@ -14,7 +14,7 @@ import {
   loadAccountHistory,
   ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   buildAccountTransfers,
-} from "../src/account-events.mjs";
+} from "../src/account-events.ts";
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
   for (const k of [

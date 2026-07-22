@@ -45,7 +45,7 @@ import {
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
-} from "../src/account-events.mjs";
+} from "../src/account-events.ts";
 import { buildAlphaVolume } from "../src/alpha-volume.mjs";
 import {
   buildSubnetOhlc,

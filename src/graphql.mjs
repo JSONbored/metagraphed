@@ -289,7 +289,7 @@ import {
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   buildBlockEvents,
-} from "./account-events.mjs";
+} from "./account-events.ts";
 import {
   DEFAULT_PROMETHEUS_WINDOW,
   PROMETHEUS_WINDOWS,

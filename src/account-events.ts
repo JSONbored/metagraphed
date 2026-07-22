@@ -99,12 +99,16 @@ export const INGESTED_EVENT_KINDS = [
   "ChildKeyTakeSet",
 ];
 
-export const SUBNET_EVENT_SUMMARY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const SUBNET_EVENT_SUMMARY_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 export const DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW = "30d";
 export const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT = 10;
 export const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX = 50;
 
-const EVENT_KIND_CATEGORIES = {
+const EVENT_KIND_CATEGORIES: Record<string, string> = {
   NeuronRegistered: "registration",
   NeuronDeregistered: "registration",
   NetworkAdded: "registration",
@@ -157,7 +161,7 @@ const EVENT_KIND_CATEGORIES = {
   ChildKeyTakeSet: "delegation",
 };
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   // D1 can return the INTEGER observed_at as a numeric string; coerce first, and
   // require n > 0 so a null/blank/zero/invalid cell stays null instead of epoch
   // 1970. Mirrors the toIso guards in blocks.mjs (#2708) and extrinsics.mjs
@@ -171,7 +175,7 @@ function toIso(ms) {
 
 // Coerce a block height or index cell to a non-negative integer, or null when
 // missing, non-finite, or negative — chain positions are never negative.
-function toBlockNumber(value) {
+function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -184,7 +188,7 @@ function toBlockNumber(value) {
 // in src/chain-analytics.mjs (which rounds the SAME signer-total-fee value for
 // /chain/signers + /chain/fees); kept null-preserving here because the activity
 // aggregate is null on a cold store, not 0.
-function toTaoOrNull(value) {
+function toTaoOrNull(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -192,28 +196,44 @@ function toTaoOrNull(value) {
   return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
 }
 
-function toTaoOrZero(value) {
+function toTaoOrZero(value: unknown): number {
   return toTaoOrNull(value) ?? 0;
 }
 
-function toCount(value) {
+function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
 }
 
-function eventKindCategory(kind) {
+function eventKindCategory(kind: string): string {
   return EVENT_KIND_CATEGORIES[kind] ?? "other";
 }
 
+export interface AccountEvent {
+  block_number: number | null;
+  event_index: number | null;
+  event_kind: string | null;
+  hotkey: string | null;
+  coldkey: string | null;
+  netuid: number | null;
+  uid: number | null;
+  amount_tao: number | null;
+  alpha_amount: number | null;
+  observed_at: string | null;
+  extrinsic_index: number | null;
+}
+
 // One D1 account_events row → a clean API event object (#1347 consumes this).
-export function formatAccountEvent(row) {
+export function formatAccountEvent(
+  row: Record<string, unknown> | null | undefined,
+): AccountEvent | null {
   if (!row || typeof row !== "object") return null;
   return {
     block_number: toBlockNumber(row.block_number),
     event_index: toBlockNumber(row.event_index),
-    event_kind: row.event_kind ?? null,
-    hotkey: row.hotkey ?? null,
-    coldkey: row.coldkey ?? null,
+    event_kind: (row.event_kind as string | null | undefined) ?? null,
+    hotkey: (row.hotkey as string | null | undefined) ?? null,
+    coldkey: (row.coldkey as string | null | undefined) ?? null,
     // Coerce netuid / uid (D1 INTEGER columns, can return as numeric strings)
     // through toBlockNumber so a bare `?? null` pass-through never leaks the
     // string form into the API payload. Same shape as the coercion applied to
@@ -236,13 +256,23 @@ export function formatAccountEvent(row) {
 
 // Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
 // must not pass through Boolean(), which treats any non-empty string as true.
-function toD1Flag(value) {
+function toD1Flag(value: unknown): boolean {
   return Number(value) === 1;
+}
+
+export interface AccountRegistrationEntry {
+  netuid: number | null;
+  uid: number | null;
+  stake_tao: number | null;
+  validator_permit: boolean;
+  active: boolean;
 }
 
 // One neurons-table row (subset) → an AccountRegistration: where this hotkey is
 // currently registered + staked (the live cross-subnet footprint).
-export function formatRegistration(row) {
+export function formatRegistration(
+  row: Record<string, unknown> | null | undefined,
+): AccountRegistrationEntry | null {
   if (!row || typeof row !== "object") return null;
   return {
     netuid: toBlockNumber(row.netuid),
@@ -251,6 +281,19 @@ export function formatRegistration(row) {
     validator_permit: toD1Flag(row.validator_permit),
     active: toD1Flag(row.active),
   };
+}
+
+export interface AccountActivityModuleCount {
+  call_module: string;
+  count: number;
+}
+
+export interface AccountActivity {
+  tx_count: number;
+  last_tx_block: number | null;
+  last_tx_at: string | null;
+  total_fee_tao: number | null;
+  modules_called: AccountActivityModuleCount[];
 }
 
 // Cross-subnet account summary: event-history aggregates (from account_events,
@@ -262,7 +305,10 @@ export function formatRegistration(row) {
 // only — an account queried by a key that did not sign won't line up with the
 // account_events aggregates (which match hotkey OR coldkey). Null-safe on a cold
 // store: tx_count 0, others null, modules_called [].
-export function formatAccountActivity(agg, modules) {
+export function formatAccountActivity(
+  agg: Record<string, unknown> | null | undefined,
+  modules: Array<Record<string, unknown>> | null | undefined,
+): AccountActivity {
   const a = agg || {};
   return {
     tx_count: toBlockNumber(a.tx_count) ?? 0,
@@ -272,16 +318,53 @@ export function formatAccountActivity(agg, modules) {
     modules_called: (modules || [])
       .filter((m) => m && m.call_module)
       .map((m) => ({
-        call_module: m.call_module,
+        call_module: m.call_module as string,
         count: toBlockNumber(m.count) ?? 0,
       })),
   };
 }
 
+export interface AccountSummaryEventKind {
+  kind: string;
+  count: number;
+}
+
+export interface AccountSummaryResult {
+  schema_version: 1;
+  ss58: string;
+  event_count: number;
+  subnet_count: number;
+  event_scan_capped: boolean;
+  first_block: number | null;
+  last_block: number | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  event_kinds: AccountSummaryEventKind[];
+  registrations: AccountRegistrationEntry[];
+  recent_events: AccountEvent[];
+  activity: AccountActivity;
+}
+
 export function buildAccountSummary(
-  ss58,
-  { agg, kinds, scanned, registrations, recent, activity, modules } = {},
-) {
+  ss58: string,
+  {
+    agg,
+    kinds,
+    scanned,
+    registrations,
+    recent,
+    activity,
+    modules,
+  }: {
+    agg?: Record<string, unknown> | null;
+    kinds?: Array<Record<string, unknown>> | null;
+    scanned?: unknown;
+    registrations?: Array<Record<string, unknown>> | null;
+    recent?: Array<Record<string, unknown>> | null;
+    activity?: Record<string, unknown> | null;
+    modules?: Array<Record<string, unknown>> | null;
+  } = {},
+): AccountSummaryResult {
   const a = agg || {};
   const eventCount = toBlockNumber(a.c) ?? 0;
   const scannedCount =
@@ -307,23 +390,48 @@ export function buildAccountSummary(
     last_seen_at: toIso(a.lo),
     event_kinds: (kinds || [])
       .filter((k) => k && k.kind)
-      .map((k) => ({ kind: k.kind, count: toBlockNumber(k.count) ?? 0 })),
+      .map((k) => ({
+        kind: k.kind as string,
+        count: toBlockNumber(k.count) ?? 0,
+      })),
     registrations: (registrations || [])
       .map(formatRegistration)
-      .filter(Boolean),
-    recent_events: (recent || []).map(formatAccountEvent).filter(Boolean),
+      .filter((r): r is AccountRegistrationEntry => Boolean(r)),
+    recent_events: (recent || [])
+      .map(formatAccountEvent)
+      .filter((e): e is AccountEvent => Boolean(e)),
     activity: formatAccountActivity(activity, modules),
   };
+}
+
+export interface AccountEventsResult {
+  schema_version: 1;
+  ss58: string;
+  event_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  events: AccountEvent[];
 }
 
 // Paginated event history for one account (newest first). next_cursor (#1851) is
 // the opaque keyset token for the next page, or null at end-of-window.
 export function buildAccountEvents(
-  rows,
-  ss58,
-  { limit, offset, nextCursor } = {},
-) {
-  const events = (rows || []).map(formatAccountEvent).filter(Boolean);
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: string,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    nextCursor?: string | null;
+  } = {},
+): AccountEventsResult {
+  const events = (rows || [])
+    .map(formatAccountEvent)
+    .filter((e): e is AccountEvent => Boolean(e));
   return {
     schema_version: 1,
     ss58,
@@ -335,15 +443,35 @@ export function buildAccountEvents(
   };
 }
 
+export interface SubnetEventsResult {
+  schema_version: 1;
+  netuid: number;
+  event_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  events: AccountEvent[];
+}
+
 // The first-party chain-event stream for one subnet (#1345 block explorer):
 // the same account_events rows, filtered by netuid instead of account. Mirrors
 // buildAccountEvents — newest-first, schema-stable zero for a cold/unknown subnet.
 export function buildSubnetEvents(
-  rows,
-  netuid,
-  { limit, offset, nextCursor } = {},
-) {
-  const events = (rows || []).map(formatAccountEvent).filter(Boolean);
+  rows: Array<Record<string, unknown>> | null | undefined,
+  netuid: number,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    nextCursor?: string | null;
+  } = {},
+): SubnetEventsResult {
+  const events = (rows || [])
+    .map(formatAccountEvent)
+    .filter((e): e is AccountEvent => Boolean(e));
   return {
     schema_version: 1,
     netuid,
@@ -355,7 +483,19 @@ export function buildSubnetEvents(
   };
 }
 
-function emptyCategory(category) {
+interface CategorySummary {
+  category: string;
+  event_count: number;
+  kind_count: number;
+  amount_tao: number;
+  alpha_amount: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+}
+
+function emptyCategory(category: string): CategorySummary {
   return {
     category,
     event_count: 0,
@@ -369,25 +509,58 @@ function emptyCategory(category) {
   };
 }
 
-function mergeObserved(existing, next, choose) {
+function mergeObserved(
+  existing: number | null,
+  next: unknown,
+  choose: (a: number, b: number) => number,
+): number | null {
   const nextValue = Number(next);
   if (!Number.isFinite(nextValue) || nextValue <= 0) return existing;
   if (existing == null) return nextValue;
   return choose(existing, nextValue);
 }
 
+export interface SubnetEventSummaryEventKind {
+  event_kind: string;
+  category: string;
+  event_count: number;
+  hotkey_count: number;
+  coldkey_count: number;
+  amount_tao: number;
+  alpha_amount: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_observed_at: string | null;
+  last_observed_at: string | null;
+}
+
+export interface SubnetEventSummaryResult {
+  schema_version: 1;
+  netuid: number;
+  window: string | null;
+  observed_at: string | null;
+  total_events: number;
+  kind_count: number;
+  category_count: number;
+  recent_event_count: number;
+  limit: number | null;
+  categories: CategorySummary[];
+  event_kinds: SubnetEventSummaryEventKind[];
+  recent_events: AccountEvent[];
+}
+
 // Windowed event summary for one subnet: compact kind/category counts plus a
 // small newest-first evidence slice. This complements /subnets/{netuid}/events,
 // which exposes the raw paginated feed.
 export function buildSubnetEventSummary(
-  kindRows,
-  recentRows,
-  netuid,
-  { window, limit } = {},
-) {
-  const eventKinds = [];
-  const categories = new Map();
-  let latestObserved = null;
+  kindRows: Array<Record<string, unknown>> | null | undefined,
+  recentRows: Array<Record<string, unknown>> | null | undefined,
+  netuid: number,
+  { window, limit }: { window?: string | null; limit?: number | null } = {},
+): SubnetEventSummaryResult {
+  const eventKinds: SubnetEventSummaryEventKind[] = [];
+  const categories = new Map<string, CategorySummary>();
+  let latestObserved: number | null = null;
   for (const row of Array.isArray(kindRows) ? kindRows : []) {
     const kind =
       typeof row?.event_kind === "string" && row.event_kind.length > 0
@@ -404,7 +577,7 @@ export function buildSubnetEventSummary(
       Math.min,
     );
     const lastObservedMs = mergeObserved(null, row.last_observed_at, Math.max);
-    const shaped = {
+    const shaped: SubnetEventSummaryEventKind = {
       event_kind: kind,
       category,
       event_count: eventCount,
@@ -468,7 +641,7 @@ export function buildSubnetEventSummary(
   );
   const recentEvents = (Array.isArray(recentRows) ? recentRows : [])
     .map(formatAccountEvent)
-    .filter(Boolean);
+    .filter((e): e is AccountEvent => Boolean(e));
   for (const event of recentEvents) {
     latestObserved = mergeObserved(
       latestObserved,
@@ -492,17 +665,29 @@ export function buildSubnetEventSummary(
   };
 }
 
+export interface BlockEventsResult {
+  schema_version: 1;
+  ref: unknown;
+  block_number: number | null;
+  event_count: number;
+  limit: number | null;
+  offset: number | null;
+  events: AccountEvent[];
+}
+
 // The decoded chain events in ONE block (#1852, block explorer): account_events
 // filtered by block_number, in natural read order (event_index ASC). Mirrors
 // buildBlockExtrinsics — ref is the original {ref} (numeric or 0x hash), so a
 // cold/unknown ref returns schema-stable block_number:null + events:[].
 export function buildBlockEvents(
-  rows,
-  ref,
-  blockNumber,
-  { limit, offset } = {},
-) {
-  const events = (rows || []).map(formatAccountEvent).filter(Boolean);
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ref: unknown,
+  blockNumber: number | null,
+  { limit, offset }: { limit?: number | null; offset?: number | null } = {},
+): BlockEventsResult {
+  const events = (rows || [])
+    .map(formatAccountEvent)
+    .filter((e): e is AccountEvent => Boolean(e));
   return {
     schema_version: 1,
     ref: ref ?? null,
@@ -514,9 +699,20 @@ export function buildBlockEvents(
   };
 }
 
+export interface AccountDay {
+  day: unknown;
+  netuid: number | null;
+  event_count: number | null;
+  event_kinds: string[];
+  first_block: number | null;
+  last_block: number | null;
+}
+
 // One account_events_daily row → a clean API day object (#1854). Splits the
 // event_kinds GROUP_CONCAT CSV back into an array.
-export function formatAccountDay(row) {
+export function formatAccountDay(
+  row: Record<string, unknown> | null | undefined,
+): AccountDay | null {
   if (!row || typeof row !== "object") return null;
   return {
     day: row.day ?? null,
@@ -536,16 +732,36 @@ export function formatAccountDay(row) {
   };
 }
 
+export interface AccountHistoryResult {
+  schema_version: 1;
+  ss58: string;
+  day_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  days: AccountDay[];
+}
+
 // The durable per-day activity series for one account (#1854), from the
 // account_events_daily rollup (hotkey-keyed). NOTE the rollup writes only
 // hotkey-attributed rows, so a coldkey-only ss58 returns zero days even when
 // /events shows activity — surfaced in the route comment + contract description.
 export function buildAccountHistory(
-  rows,
-  ss58,
-  { limit, offset, nextCursor } = {},
-) {
-  const days = (rows || []).map(formatAccountDay).filter(Boolean);
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: string,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    nextCursor?: string | null;
+  } = {},
+): AccountHistoryResult {
+  const days = (rows || [])
+    .map(formatAccountDay)
+    .filter((d): d is AccountDay => Boolean(d));
   return {
     schema_version: 1,
     ss58,
@@ -557,15 +773,47 @@ export function buildAccountHistory(
   };
 }
 
+export interface AccountSubnetsResult {
+  schema_version: 1;
+  ss58: string;
+  subnet_count: number;
+  subnets: AccountRegistrationEntry[];
+}
+
 // The subnets where this account's hotkey is currently registered.
-export function buildAccountSubnets(rows, ss58) {
-  const subnets = (rows || []).map(formatRegistration).filter(Boolean);
+export function buildAccountSubnets(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: string,
+): AccountSubnetsResult {
+  const subnets = (rows || [])
+    .map(formatRegistration)
+    .filter((s): s is AccountRegistrationEntry => Boolean(s));
   return {
     schema_version: 1,
     ss58,
     subnet_count: subnets.length,
     subnets,
   };
+}
+
+export interface AccountTransferEntry {
+  block_number: number | null;
+  event_index: number | null;
+  from: string | null;
+  to: string | null;
+  amount_tao: number | null;
+  direction: "sent" | "received" | null;
+  observed_at: string | null;
+}
+
+export interface AccountTransfersResult {
+  schema_version: 1;
+  ss58: string;
+  transfer_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  transfers: AccountTransferEntry[];
 }
 
 // Per-account native-TAO Transfer feed (#1850), newest first. Reshapes the
@@ -593,19 +841,29 @@ export function buildAccountSubnets(rows, ss58) {
 // to a row here. See src/account-stake-moves.mjs's header for the sibling
 // route this WAS enriched on (StakeMoved rows are netuid-scoped).
 export function buildAccountTransfers(
-  rows,
-  ss58,
-  { limit, offset, nextCursor, direction } = {},
-) {
-  const fixedDirection =
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: string,
+  {
+    limit,
+    offset,
+    nextCursor,
+    direction,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    nextCursor?: string | null;
+    direction?: string | null;
+  } = {},
+): AccountTransfersResult {
+  const fixedDirection: "sent" | "received" | null =
     direction === "sent" || direction === "received" ? direction : null;
-  const transfers = (rows || [])
+  const transfers: AccountTransferEntry[] = (rows || [])
     .filter((r) => r && typeof r === "object")
     .map((r) => ({
       block_number: toBlockNumber(r.block_number),
       event_index: toBlockNumber(r.event_index),
-      from: r.hotkey ?? null,
-      to: r.coldkey ?? null,
+      from: (r.hotkey as string | null | undefined) ?? null,
+      to: (r.coldkey as string | null | undefined) ?? null,
       amount_tao: toTaoOrNull(r.amount_tao),
       direction:
         fixedDirection ??
@@ -643,7 +901,16 @@ export const ACCOUNT_EVENT_SUMMARY_SCAN_CAP = 5000;
 // Postgres-only now (every caller tries the Postgres tier first) -- this is
 // only reached on a tier miss, so it always returns the schema-stable empty
 // shape. Clamps limit to 1-1000 (default 100); clamps offset to 0-1 000 000.
-export async function loadAccountHistory(ss58, { limit, offset } = {}) {
+export async function loadAccountHistory(
+  ss58: string,
+  {
+    limit,
+    offset,
+  }: {
+    limit?: string | number | null;
+    offset?: string | number | null;
+  } = {},
+): Promise<AccountHistoryResult> {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
   return buildAccountHistory([], ss58, {

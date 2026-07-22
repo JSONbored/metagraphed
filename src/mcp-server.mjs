@@ -458,7 +458,7 @@ import {
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
-} from "./account-events.mjs";
+} from "./account-events.ts";
 import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_WINDOWS,

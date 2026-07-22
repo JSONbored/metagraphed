@@ -8,7 +8,7 @@ import {
 } from "./event-kinds";
 
 describe("eventKindCategory", () => {
-  it("maps known kinds to the same categories as account-events.mjs", () => {
+  it("maps known kinds to the same categories as account-events.ts", () => {
     expect(eventKindCategory("StakeAdded")).toBe("stake");
     expect(eventKindCategory("AxonServed")).toBe("serving");
     expect(eventKindCategory("Transfer")).toBe("transfer");

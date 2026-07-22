@@ -8,7 +8,7 @@ import {
   formatAccountDay,
   buildAccountHistory,
   buildAccountTransfers,
-} from "../src/account-events.mjs";
+} from "../src/account-events.ts";
 
 describe("formatAccountEvent block_number fallback", () => {
   test("formatAccountEvent falls back block_number to null when nullish", () => {

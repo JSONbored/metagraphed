@@ -93,7 +93,7 @@ import {
   buildAccountTransfers,
   buildAccountSubnets,
   buildBlockEvents,
-} from "../../src/account-events.mjs";
+} from "../../src/account-events.ts";
 import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
 import { buildAccountPositions } from "../../src/account-nominator-positions.ts";
 import { buildAccountPositionHistory } from "../../src/account-position-history.ts";
