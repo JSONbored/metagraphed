@@ -23,7 +23,7 @@ import postgres from "postgres";
 import * as Sentry from "@sentry/cloudflare";
 import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.mjs";
 import { decodeCursor, encodeCursor } from "../src/cursor.ts";
-import { buildBlock, buildBlockFeed } from "../src/blocks.mjs";
+import { buildBlock, buildBlockFeed } from "../src/blocks.ts";
 import {
   buildExtrinsic,
   buildExtrinsicFeed,
@@ -3386,7 +3386,7 @@ function numberOrNull(v) {
   if (v == null) return null;
   // Blank Hyperdrive/Postgres cells coerce via Number("") → 0; trim rejects "" /
   // whitespace-only so absent indices/timestamps stay null (mirrors toBlockNumber
-  // in src/account-events.mjs and src/blocks.mjs).
+  // in src/account-events.mjs and src/blocks.ts).
   if (typeof v === "string" && v.trim() === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
@@ -3437,7 +3437,7 @@ async function resolveBlockNumberPg(sql, ref) {
   return numberOrNull(rows[0]?.block_number);
 }
 
-// The blocks/extrinsics SELECT column lists below must match src/blocks.mjs's
+// The blocks/extrinsics SELECT column lists below must match src/blocks.ts's
 // BLOCK_READ_COLUMNS / src/extrinsics.mjs's EXTRINSIC_READ_COLUMNS so
 // formatBlock/formatExtrinsic (reused unchanged, imported above) see the exact
 // same row shape from either sink. Written literally per query (not factored
@@ -4688,7 +4688,7 @@ export default {
         await sql`SET statement_timeout = '3000ms'`;
 
         // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
-        // feed, mirroring src/blocks.mjs's loadBlocks filter set exactly (author,
+        // feed, mirroring src/blocks.ts's loadBlocks filter set exactly (author,
         // spec_version, block_start/block_end, from/to, min_extrinsics/min_events,
         // cursor). The main Worker only calls this when its per-tier serving flag
         // is on and forwards the SAME request it already validated -- this route
@@ -4765,7 +4765,7 @@ export default {
         }
 
         // GET /api/v1/blocks/:ref — per-block detail + nearest stored neighbors,
-        // mirroring src/blocks.mjs's loadBlock. ref is a numeric block_number or a
+        // mirroring src/blocks.ts's loadBlock. ref is a numeric block_number or a
         // 0x block_hash (lowercased before binding, matching the D1 path's
         // case-insensitivity workaround).
         const blockRef = url.pathname.match(/^\/api\/v1\/blocks\/([^/]+)$/);

@@ -123,7 +123,7 @@ import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
 import { loadSubnetLease } from "../../src/subnet-lease.mjs";
 import { computeStakeQuote } from "../../src/stake-quote.mjs";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.mjs";
-import { buildBlock, buildBlockFeed } from "../../src/blocks.mjs";
+import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,

@@ -209,7 +209,7 @@ import {
   buildExtrinsicFeed,
   buildBlockExtrinsics,
 } from "./extrinsics.mjs";
-import { buildBlock, buildBlockFeed } from "./blocks.mjs";
+import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { loadBlockChainEvents } from "./data-api-mcp.mjs";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";

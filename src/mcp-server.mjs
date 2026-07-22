@@ -597,7 +597,7 @@ import {
   loadAccountChildren,
   loadAccountParents,
 } from "./child-hotkey-delegation.mjs";
-import { buildBlockFeed, buildBlock } from "./blocks.mjs";
+import { buildBlockFeed, buildBlock } from "./blocks.ts";
 import {
   buildExtrinsic,
   buildExtrinsicFeed,

@@ -14,7 +14,7 @@ import {
   readJson,
   repoRoot,
 } from "./lib.mjs";
-import { buildBlockFeed } from "../src/blocks.mjs";
+import { buildBlockFeed } from "../src/blocks.ts";
 import { buildExtrinsicFeed } from "../src/extrinsics.mjs";
 import { buildAccountEvents } from "../src/account-events.ts";
 import { buildSubnetMetagraph } from "../src/metagraph-neurons.mjs";

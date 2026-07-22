@@ -10,7 +10,12 @@ import {
 } from "../workers/request-params.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 
-function toIso(ms) {
+type D1Runner = (
+  sql: string,
+  params: unknown[],
+) => Promise<Array<Record<string, unknown>>>;
+
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -24,7 +29,7 @@ function toIso(ms) {
 // API payload (and break downstream arithmetic/comparisons). Mirrors the
 // `toBlockNumber` already applied in account-events.mjs / chain-analytics.mjs
 // and the `nullableInteger` coercion added to counterparties in #2414.
-function toBlockNumber(value) {
+function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -39,10 +44,10 @@ function toBlockNumber(value) {
 // SS58 string D1 has for the same rows. A bare `row.author ?? null` only
 // catches null/undefined, so it was serving the empty string as if it were
 // a decoded value -- present-looking but wrong, worse than an honest null.
-function toAuthorOrNull(value) {
+function toAuthorOrNull(value: unknown): string | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
-  return value;
+  return value as string;
 }
 
 // ---- Block API builders ----------------------------------------------------
@@ -50,8 +55,21 @@ function toAuthorOrNull(value) {
 export const BLOCK_READ_COLUMNS =
   "block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at";
 
+export interface BlockApi {
+  block_number: number | null;
+  block_hash: unknown;
+  parent_hash: unknown;
+  author: string | null;
+  extrinsic_count: number | null;
+  event_count: number | null;
+  spec_version: number | null;
+  observed_at: string | null;
+}
+
 // One D1 blocks row → a clean API block object. Null-safe on junk/sparse rows.
-export function formatBlock(row) {
+export function formatBlock(
+  row: Record<string, unknown> | null | undefined,
+): BlockApi | null {
   if (!row || typeof row !== "object") return null;
   return {
     block_number: toBlockNumber(row.block_number),
@@ -69,13 +87,25 @@ export function formatBlock(row) {
   };
 }
 
+export interface BlockDetail {
+  schema_version: 1;
+  ref: unknown;
+  block: BlockApi | null;
+  prev_block_number: number | null;
+  next_block_number: number | null;
+}
+
 // Per-block detail artifact. `block` is null when the ref didn't resolve (cold
 // store or unknown block) — schema-stable, never throws (mirrors the neuron
 // detail route's `neuron:null`). prev/next_block_number (#1853) are the nearest
 // STORED neighbors for chain-walk nav (the handler computes them, skipping pruned
 // gaps); both null when the block is null or at a window edge. parent_hash (on the
 // block object) already provides the backward hash edge.
-export function buildBlock(row, ref, { prev, next } = {}) {
+export function buildBlock(
+  row: Record<string, unknown> | null | undefined,
+  ref: unknown,
+  { prev, next }: { prev?: unknown; next?: unknown } = {},
+): BlockDetail {
   const block = formatBlock(row);
   return {
     schema_version: 1,
@@ -88,11 +118,33 @@ export function buildBlock(row, ref, { prev, next } = {}) {
   };
 }
 
+export interface BlockFeed {
+  schema_version: 1;
+  block_count: number;
+  limit: number | null;
+  offset: number | null;
+  next_cursor: string | null;
+  blocks: BlockApi[];
+}
+
 // Recent-block feed artifact (newest first). Null-safe on a cold/absent store
 // (returns a schema-stable zero). next_cursor (#1851) is the opaque keyset token
 // for the next page, or null at end-of-window; the caller computes it.
-export function buildBlockFeed(rows, { limit, offset, nextCursor } = {}) {
-  const blocks = (rows || []).map(formatBlock).filter(Boolean);
+export function buildBlockFeed(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  {
+    limit,
+    offset,
+    nextCursor,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    nextCursor?: string | null;
+  } = {},
+): BlockFeed {
+  const blocks = (rows || [])
+    .map(formatBlock)
+    .filter((block): block is BlockApi => Boolean(block));
   return {
     schema_version: 1,
     block_count: blocks.length,
@@ -113,6 +165,20 @@ export function buildBlockFeed(rows, { limit, offset, nextCursor } = {}) {
 // scans to prove an impossible empty result (mirrors handleBlocks / #1991).
 export const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
+export interface LoadBlocksOptions {
+  limit?: string | number | null;
+  offset?: string | number | null;
+  cursor?: unknown;
+  author?: string | null;
+  specVersion?: number | null;
+  blockStart?: number | null;
+  blockEnd?: number | null;
+  from?: number | null;
+  to?: number | null;
+  minExtrinsics?: number | null;
+  minEvents?: number | null;
+}
+
 // Recent-block feed (newest first) with keyset cursor support (#1851). A cursor
 // takes precedence over offset when present (WHERE block_number < ?). Optional
 // conjunctive filters mirror GET /api/v1/blocks (#1846/#1991): author,
@@ -120,7 +186,7 @@ export const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 // min_extrinsics/min_events floors. Inverted indexed ranges short-circuit to an
 // empty feed without querying D1.
 export async function loadBlocks(
-  d1,
+  d1: D1Runner,
   {
     limit,
     offset,
@@ -133,8 +199,8 @@ export async function loadBlocks(
     to,
     minExtrinsics,
     minEvents,
-  } = {},
-) {
+  }: LoadBlocksOptions = {},
+): Promise<BlockFeed> {
   const lim = clampLimit(limit, BLOCK_PAGINATION);
   const off = clampOffset(offset);
   if (
@@ -145,8 +211,8 @@ export async function loadBlocks(
   ) {
     return buildBlockFeed([], { limit: lim, offset: off, nextCursor: null });
   }
-  const conds = [];
-  const params = [];
+  const conds: string[] = [];
+  const params: unknown[] = [];
   if (author) {
     conds.push("author = ?");
     params.push(author);
@@ -181,7 +247,7 @@ export async function loadBlocks(
   }
   const cur = decodeCursor(cursor, 1);
   const useCursor = Boolean(cur);
-  if (useCursor) {
+  if (useCursor && cur) {
     conds.push("block_number < ?");
     params.push(cur[0]);
   }
@@ -195,7 +261,7 @@ export async function loadBlocks(
   }
   const rows = await d1(sql, params);
   const last = rows.length === lim ? rows[rows.length - 1] : null;
-  const nextCursor = last ? encodeCursor([last.block_number]) : null;
+  const nextCursor = last ? encodeCursor([last.block_number as number]) : null;
   return buildBlockFeed(rows, { limit: lim, offset: off, nextCursor });
 }
 
@@ -205,7 +271,7 @@ export async function loadBlocks(
 // REST route's strictBlockNumber guard (#2063/#2241); this shared MCP get_block
 // loader was the missed sibling. Kept local because src/ is a leaf and must not
 // import the worker request handler.
-function strictBlockNumber(ref) {
+function strictBlockNumber(ref: unknown): number | null {
   if (!/^\d+$/.test(String(ref))) return null;
   const value = Number(ref);
   return Number.isSafeInteger(value) ? value : null;
@@ -215,7 +281,10 @@ function strictBlockNumber(ref) {
 // stored neighbors (prev_block_number, next_block_number) for chain-walk nav
 // (#1853). Returns block:null when the ref is unknown or the store is cold —
 // never throws (schema-stable zero, mirrors the REST route).
-export async function loadBlock(d1, ref) {
+export async function loadBlock(
+  d1: D1Runner,
+  ref: unknown,
+): Promise<BlockDetail> {
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(String(ref));
   const blockNumber = isHash ? null : strictBlockNumber(ref);
   // A non-hash ref that isn't a strict, safe-integer block_number can never match
@@ -232,8 +301,8 @@ export async function loadBlock(d1, ref) {
   // loader was the missed sibling (the strict-ref guard #2314 left it case-naive).
   const param = isHash ? String(ref).toLowerCase() : blockNumber;
   const rows = await d1(sql, [param]);
-  let prev = null;
-  let next = null;
+  let prev: unknown = null;
+  let next: unknown = null;
   // Coerce the resolved anchor through the same helper formatBlock uses: D1 can
   // return the INTEGER block_number as a numeric string, and a bare
   // `Number.isInteger(rows[0]?.block_number)` guard is false for "1234", so the
