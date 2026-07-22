@@ -340,7 +340,7 @@ import {
 import {
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
   nominatorCountsByHotkey,
-} from "../src/validator-nominator-summary.mjs";
+} from "../src/validator-nominator-summary.ts";
 import { tempoByNetuid as buildTempoByNetuid } from "../src/subnet-tempo.mjs";
 import {
   NOMINATOR_POSITION_INSERT_COLUMNS,

@@ -6,6 +6,8 @@
 // (handleValidatorNominatorCountsSync), mirroring account-identity.mjs's role
 // for its own sync handler.
 
+type Row = Record<string, unknown>;
+
 export const VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS = [
   "hotkey",
   "nominator_count",
@@ -17,8 +19,10 @@ export const VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS = [
 // at serve time. Null-safe on a cold/absent table (returns an empty Map, so
 // every join lookup misses and nominator_count serves as null -- never
 // throws, mirrors overlayFeaturedValidators' cold-safety).
-export function nominatorCountsByHotkey(rows) {
-  const map = new Map();
+export function nominatorCountsByHotkey(
+  rows: Row[] | null | undefined,
+): Map<string, number> {
+  const map = new Map<string, number>();
   for (const row of Array.isArray(rows) ? rows : []) {
     const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
     if (!hotkey) continue;

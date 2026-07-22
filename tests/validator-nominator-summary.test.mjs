@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
   nominatorCountsByHotkey,
-} from "../src/validator-nominator-summary.mjs";
+} from "../src/validator-nominator-summary.ts";
 
 describe("nominatorCountsByHotkey", () => {
   test("builds a hotkey -> nominator_count Map from rows", () => {

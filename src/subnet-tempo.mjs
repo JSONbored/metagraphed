@@ -1,6 +1,6 @@
 // Subnet tempo lookup (#2551) -- netuid -> tempo(blocks), sourced from
 // subnet_hyperparams (migration 0036). Read/join lands here, mirroring
-// src/validator-nominator-summary.mjs's role for nominator_count; the read
+// src/validator-nominator-summary.ts's role for nominator_count; the read
 // path lives in workers/data-api.mjs (loadSubnetTempos), joined into
 // buildGlobalValidators/buildValidatorDetail's apy_estimate by netuid.
 
