@@ -2,21 +2,33 @@
 // GET /api/v1/subnets/{netuid}/profile. Artifact-backed list-query over
 // profiles.json and per-netuid profile detail snapshots.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 const PROFILES_SORT_FIELDS = API_QUERY_COLLECTIONS.profiles.sort_fields;
 const NULLABLE_STRING = { type: ["string", "null"] };
 const NULLABLE_INT = { type: ["integer", "null"] };
 
-export function profilesMcpError(code, message) {
-  const err = new Error(message);
+export interface ProfilesMcpError extends Error {
+  profilesMcp: true;
+  code: string;
+}
+
+export function profilesMcpError(
+  code: string,
+  message: string,
+): ProfilesMcpError {
+  const err = new Error(message) as ProfilesMcpError;
   err.code = code;
   err.profilesMcp = true;
   return err;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -28,7 +40,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -40,22 +56,25 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function clampLimit(value, fallback, max) {
+function clampLimit(value: unknown, fallback: number, max: number): number {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
 }
 
-export function profilesQueryUrl(args) {
+export function profilesQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/profiles");
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
       throw profilesMcpError(
         "invalid_params",
         "netuid must be a non-negative integer.",
       );
     }
-    url.searchParams.set("netuid", String(args.netuid));
+    url.searchParams.set("netuid", String(netuid));
   }
   const q = optionalString(args, "q");
   if (q) url.searchParams.set("q", q);
@@ -91,30 +110,63 @@ export function profilesQueryUrl(args) {
     url.searchParams.set("limit", String(clampLimit(args.limit, 100, 1000)));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw profilesMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
-export async function loadProfilesList(ctx, args, deps) {
+interface ProfilesMcpCtx {
+  env: Env;
+  readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+}
+
+export interface ProfilesListResult {
+  captured_at: unknown;
+  profiles: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
+export async function loadProfilesList(
+  ctx: ProfilesMcpCtx,
+  args: Record<string, unknown> | null | undefined,
+  deps: {
+    readOptionalArtifact: (
+      ctx: ProfilesMcpCtx,
+      path: string,
+    ) => Promise<unknown>;
+  },
+): Promise<ProfilesListResult> {
   const queryUrl = profilesQueryUrl(args);
   const blob = await deps.readOptionalArtifact(ctx, "/metagraph/profiles.json");
   if (!blob || typeof blob !== "object") {
     throw profilesMcpError("not_found", "Profiles snapshot unavailable.");
   }
-  const transformed = applyQueryFilters(blob, queryUrl, "profiles", []);
+  const transformed = applyQueryFilters(
+    blob as Record<string, unknown>,
+    queryUrl,
+    "profiles",
+    [],
+  );
   if (transformed.error) {
     throw profilesMcpError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const profiles = Array.isArray(data.profiles) ? data.profiles : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const profiles = Array.isArray(data.profiles) ? (data.profiles as Row[]) : [];
   const profileLen = profiles.length;
   return {
     captured_at: data.captured_at ?? null,
@@ -129,8 +181,14 @@ export async function loadProfilesList(ctx, args, deps) {
   };
 }
 
-export async function loadSubnetProfile(ctx, netuid, deps) {
-  if (!Number.isInteger(netuid) || netuid < 0) {
+export async function loadSubnetProfile(
+  ctx: ProfilesMcpCtx,
+  netuid: unknown,
+  deps: {
+    readArtifact: (ctx: ProfilesMcpCtx, path: string) => Promise<unknown>;
+  },
+): Promise<unknown> {
+  if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
     throw profilesMcpError(
       "invalid_params",
       "netuid must be a non-negative integer.",

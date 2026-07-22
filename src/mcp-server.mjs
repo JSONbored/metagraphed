@@ -254,7 +254,7 @@ import {
   LIST_PROFILES_OUTPUT_SCHEMA,
   loadProfilesList,
   loadSubnetProfile,
-} from "./profiles-mcp.mjs";
+} from "./profiles-mcp.ts";
 import {
   GET_HEALTH_HISTORY_INSTRUCTIONS,
   GET_HEALTH_HISTORY_MCP_TOOL,

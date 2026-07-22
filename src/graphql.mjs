@@ -30,7 +30,7 @@ import {
 // #6992: GraphQL parity for profiles, reusing list_profiles' own loader
 // unchanged (same artifact read, filter, sort, and page logic REST and MCP
 // already use) -- not a reimplementation.
-import { loadProfilesList } from "./profiles-mcp.mjs";
+import { loadProfilesList } from "./profiles-mcp.ts";
 import { contractVersion } from "../workers/responses.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
@@ -181,7 +181,7 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "./health-serving.ts";
-import { loadSubnetProfile } from "./profiles-mcp.mjs";
+import { loadSubnetProfile } from "./profiles-mcp.ts";
 import {
   buildTopHoldersList,
   DEFAULT_TOP_HOLDERS_SORT,
