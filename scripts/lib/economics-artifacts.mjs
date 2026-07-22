@@ -4,7 +4,7 @@
 // the output is byte-identical to the in-lib.mjs originals. Re-exported from
 // scripts/lib.mjs so existing importers keep their import paths unchanged.
 
-import { withAlphaPriceChanges } from "../../src/alpha-price-change.mjs";
+import { withAlphaPriceChanges } from "../../src/alpha-price-change.ts";
 
 // #1009: per-subnet validator + economic entity, derived from the chain
 // snapshot's `economics` block (validator/miner counts, stake, registration
