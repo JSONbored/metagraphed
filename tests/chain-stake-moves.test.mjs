@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
-} from "../src/chain-stake-moves.mjs";
+} from "../src/chain-stake-moves.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

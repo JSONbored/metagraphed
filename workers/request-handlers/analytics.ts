@@ -95,7 +95,7 @@ import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
   CHAIN_STAKE_MOVES_LIMIT_MAX,
-} from "../../src/chain-stake-moves.mjs";
+} from "../../src/chain-stake-moves.ts";
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,

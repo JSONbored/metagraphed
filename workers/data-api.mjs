@@ -308,7 +308,7 @@ import {
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
-} from "../src/chain-stake-moves.mjs";
+} from "../src/chain-stake-moves.ts";
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
@@ -6155,7 +6155,7 @@ export default {
         }
 
         // GET /api/v1/chain/stake-moves (#4832 Tier 2): network-wide
-        // StakeMoved leaderboard, mirroring src/chain-stake-moves.mjs's
+        // StakeMoved leaderboard, mirroring src/chain-stake-moves.ts's
         // loadChainStakeMoves. Distinct by the "coldkey" column (a stake
         // move is initiated by the owning account, not a specific hotkey).
         const chainStakeMoves = url.pathname.match(

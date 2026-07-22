@@ -318,7 +318,7 @@ import {
   CHAIN_STAKE_MOVES_LIMIT_MAX,
   CHAIN_STAKE_MOVES_WINDOWS,
   DEFAULT_CHAIN_STAKE_MOVES_WINDOW,
-} from "./chain-stake-moves.mjs";
+} from "./chain-stake-moves.ts";
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
