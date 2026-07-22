@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { csvValue, toCsv, buildDatasetExports } from "../scripts/datasets.mjs";
+import { csvValue, toCsv, buildDatasetExports } from "../scripts/datasets.ts";
 
 describe("csvValue", () => {
   test("RFC-4180 quotes commas, quotes, and newlines; doubles quotes", () => {

@@ -88,7 +88,7 @@ import {
   MCP_REGISTRY_META,
   listToolDefinitions,
 } from "../src/mcp-server.mjs";
-import { buildDatasetExports } from "./datasets.mjs";
+import { buildDatasetExports } from "./datasets.ts";
 import { buildChangelog } from "./changelog.ts";
 import {
   buildSurfaceAliasArtifact,

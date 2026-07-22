@@ -9,12 +9,14 @@
 // public-safe, already-redacted projections built upstream, so nothing
 // credentialed leaks into the exports.
 
+type Row = Record<string, unknown>;
+
 // RFC-4180: quote any field containing a comma, quote, or newline and double
 // embedded quotes; coerce null/undefined to empty; join arrays. Prefix text
 // cells that spreadsheet apps may interpret as formulas when opened from CSV.
 const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
 
-export function csvValue(value) {
+export function csvValue(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
@@ -29,7 +31,7 @@ export function csvValue(value) {
     : safeText;
 }
 
-export function toCsv(columns, rows) {
+export function toCsv(columns: string[], rows: Row[]): string {
   const header = columns.join(",");
   const body = rows.map((row) =>
     columns.map((column) => csvValue(row[column])).join(","),
@@ -92,25 +94,39 @@ const PROVIDER_COLUMNS = [
   "website_url",
 ];
 
-function pick(row, columns) {
-  const out = {};
+function pick(row: Row, columns: string[]): Row {
+  const out: Row = {};
   for (const column of columns) {
     out[column] = row[column] ?? null;
   }
   return out;
 }
 
-function surfaceRow(surface) {
+function surfaceRow(surface: Row): Row {
   return {
     ...pick(
       surface,
       SURFACE_COLUMNS.filter((column) => column !== "probe_status"),
     ),
-    probe_status: surface.probe?.status ?? null,
+    probe_status: (surface.probe as Row | undefined)?.status ?? null,
   };
 }
 
-const TABLES = [
+interface DatasetData {
+  subnets: Row[];
+  surfaces: Row[];
+  providers: Row[];
+}
+
+interface Table {
+  id: string;
+  title: string;
+  description: string;
+  columns: string[];
+  project: (data: DatasetData) => Row[];
+}
+
+const TABLES: Table[] = [
   {
     id: "subnets",
     title: "Subnets",
@@ -146,10 +162,19 @@ export function buildDatasetExports({
   publishedAt = null,
   contractVersion,
   hashJson = null,
-}) {
-  const data = { subnets, surfaces, providers };
-  const files = [];
-  const datasets = [];
+}: {
+  subnets: Row[];
+  surfaces: Row[];
+  providers: Row[];
+  generatedAt: unknown;
+  publishedAt?: unknown;
+  contractVersion: unknown;
+  hashJson?: ((value: unknown) => unknown) | null;
+}): Row {
+  const data: DatasetData = { subnets, surfaces, providers };
+  const files: { relativePath: string; contentType: string; body: string }[] =
+    [];
+  const datasets: Row[] = [];
 
   for (const table of TABLES) {
     const rows = table.project(data);
