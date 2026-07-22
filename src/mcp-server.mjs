@@ -75,7 +75,7 @@ import {
   GET_ECONOMICS_MCP_TOOL,
   GET_ECONOMICS_OUTPUT_SCHEMA,
   loadNetworkEconomics,
-} from "./network-economics.mjs";
+} from "./network-economics.ts";
 import {
   LIST_CURATION_INSTRUCTIONS,
   LIST_CURATION_MCP_TOOL,

@@ -2,7 +2,8 @@
 // Pure orchestration over resolveLiveEconomics + applyQueryFilters; MCP/REST
 // handlers keep tier precedence and envelope wiring.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
 import { resolveLiveEconomics } from "./health-serving.ts";
 
@@ -10,14 +11,25 @@ const ECONOMICS_SORT_FIELDS = API_QUERY_COLLECTIONS.economics.sort_fields;
 const NULLABLE_STRING = { type: ["string", "null"] };
 const NULLABLE_INT = { type: ["integer", "null"] };
 
-export function networkEconomicsError(code, message) {
-  const err = new Error(message);
+export interface NetworkEconomicsError extends Error {
+  networkEconomics: true;
+  code: string;
+}
+
+export function networkEconomicsError(
+  code: string,
+  message: string,
+): NetworkEconomicsError {
+  const err = new Error(message) as NetworkEconomicsError;
   err.code = code;
   err.networkEconomics = true;
   return err;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -29,7 +41,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -41,22 +57,25 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function clampLimit(value, fallback, max) {
+function clampLimit(value: unknown, fallback: number, max: number): number {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
 }
 
-export function economicsQueryUrl(args) {
+export function economicsQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/economics");
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
       throw networkEconomicsError(
         "invalid_params",
         "netuid must be a non-negative integer.",
       );
     }
-    url.searchParams.set("netuid", String(args.netuid));
+    url.searchParams.set("netuid", String(netuid));
   }
   const q = optionalString(args, "q");
   if (q) url.searchParams.set("q", q);
@@ -77,18 +96,55 @@ export function economicsQueryUrl(args) {
     url.searchParams.set("limit", String(clampLimit(args.limit, 100, 1000)));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw networkEconomicsError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
-export async function loadNetworkEconomics(ctx, args, deps) {
+interface NetworkEconomicsCtx {
+  env: Env;
+  readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  readHealthKv?: (
+    env: Env,
+    key: string,
+  ) => Promise<Record<string, unknown> | null>;
+}
+
+interface NetworkEconomicsDeps {
+  contractVersion: (ctx: NetworkEconomicsCtx) => unknown;
+  readOptionalArtifact: (
+    ctx: NetworkEconomicsCtx,
+    path: string,
+  ) => Promise<unknown>;
+}
+
+export interface NetworkEconomicsResult {
+  source: string;
+  captured_at: unknown;
+  network: unknown;
+  summary: unknown;
+  subnets: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
+export async function loadNetworkEconomics(
+  ctx: NetworkEconomicsCtx,
+  args: Record<string, unknown> | null | undefined,
+  deps: NetworkEconomicsDeps,
+): Promise<NetworkEconomicsResult> {
   // Validate/build the list-query URL before any tier I/O so invalid_params
   // (netuid, cursor, sort, …) never triggers live-KV or R2 reads.
   const queryUrl = economicsQueryUrl(args);
@@ -97,8 +153,8 @@ export async function loadNetworkEconomics(ctx, args, deps) {
     env: ctx.env,
     contractVersion: deps.contractVersion(ctx),
   });
-  let blob = live?.data;
-  let source = live?.source ?? null;
+  let blob: unknown = live?.data;
+  let source: string | null = live?.source ?? null;
   if (!blob) {
     blob = await deps.readOptionalArtifact(ctx, "/metagraph/economics.json");
     source = "r2-fallback";
@@ -106,13 +162,19 @@ export async function loadNetworkEconomics(ctx, args, deps) {
   if (!blob || typeof blob !== "object") {
     throw networkEconomicsError("not_found", "Economics snapshot unavailable.");
   }
-  const transformed = applyQueryFilters(blob, queryUrl, "economics", []);
+  const transformed = applyQueryFilters(
+    blob as Record<string, unknown>,
+    queryUrl,
+    "economics",
+    [],
+  );
   if (transformed.error) {
     throw networkEconomicsError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const subnets = Array.isArray(data.subnets) ? data.subnets : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const subnets = Array.isArray(data.subnets) ? (data.subnets as Row[]) : [];
   const subnetLen = subnets.length;
   return {
     source: source || "r2-fallback",

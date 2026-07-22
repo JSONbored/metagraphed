@@ -8,7 +8,7 @@ import {
   GET_ECONOMICS_OUTPUT_SCHEMA,
   loadNetworkEconomics,
   networkEconomicsError,
-} from "../src/network-economics.mjs";
+} from "../src/network-economics.ts";
 
 const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
 

@@ -846,7 +846,7 @@ export async function handleCompare(
 // -> categories/derived_categories) joined against the live economics tier
 // (netuid -> total_stake_tao/emission_share), mirroring resolveEconomicsRows'
 // own live-KV-first/R2-fallback precedence. `captured_at` comes from whichever
-// tier actually supplied economicsRows, matching network-economics.mjs's own
+// tier actually supplied economicsRows, matching network-economics.ts's own
 // `data.captured_at` convention -- the domain rollup is only as fresh as the
 // economics side (subnets.json's own domain tags change far less often).
 async function domainSummaryInputs(env: Env): Promise<{
