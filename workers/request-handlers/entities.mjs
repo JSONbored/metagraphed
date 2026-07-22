@@ -139,7 +139,7 @@ import {
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
-import { buildChainPerformance } from "../../src/chain-performance.mjs";
+import { buildChainPerformance } from "../../src/chain-performance.ts";
 import { buildChainYield } from "../../src/chain-yield.mjs";
 import {
   buildChainIdleStake,

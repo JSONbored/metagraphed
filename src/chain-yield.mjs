@@ -1,7 +1,7 @@
 // Network-wide emission yield: the emission-per-stake RETURN RATE over EVERY
 // subnet's neurons from the live `neurons` D1 tier, summarized as a distribution
 // (no per-UID list — the network analog of the per-subnet yield scorecard in
-// subnet-yield.mjs). The return-rate companion to chain-performance.mjs: that
+// subnet-yield.mjs). The return-rate companion to chain-performance.ts: that
 // measures how CONCENTRATED the rewards are and how the 0..1 trust scores spread,
 // while this measures how efficiently stake earns emission across the whole
 // network and how that return is distributed across all neurons at once. Every

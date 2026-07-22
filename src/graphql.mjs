@@ -396,7 +396,7 @@ import {
   buildChainFees,
   buildChainSigners,
 } from "./chain-analytics.ts";
-import { buildChainPerformance } from "./chain-performance.mjs";
+import { buildChainPerformance } from "./chain-performance.ts";
 import { buildChainConcentration } from "./concentration.mjs";
 import {
   DEFAULT_NOMINATOR_SORT,

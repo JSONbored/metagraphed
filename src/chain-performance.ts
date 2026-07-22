@@ -24,19 +24,24 @@ const SCORE_PERCENTILES = [10, 25, 50, 75, 90];
 // Round a score/mean to 6 dp so JSON never carries a long floating-point tail.
 // Callers only ever pass finite values (finiteValues drops non-finite cells and
 // scoreDistribution guards count > 0), so no null-guard is needed here.
-function round(value) {
+function round(value: number): number {
   const factor = 1e6;
   return Math.round(value * factor) / factor;
 }
 
-function epochMsStamp(ms) {
+interface CaptureStamp {
+  ms: number;
+  value: string;
+}
+
+function epochMsStamp(ms: number): CaptureStamp | null {
   if (!Number.isFinite(ms) || ms <= 0) return null;
   const date = new Date(ms);
   if (!Number.isFinite(date.getTime())) return null;
   return { ms, value: date.toISOString() };
 }
 
-function captureStamp(value) {
+function captureStamp(value: unknown): CaptureStamp | null {
   if (value == null) return null;
   if (typeof value === "string") {
     if (/^\d+$/.test(value)) {
@@ -56,8 +61,8 @@ function captureStamp(value) {
 // a real observation (a neuron with zero trust IS part of the spread), so only
 // null/NaN/blank cells are dropped — the `count` reflects the neurons that carry
 // a score.
-function finiteValues(values) {
-  const out = [];
+function finiteValues(values: unknown[]): number[] {
+  const out: number[] = [];
   for (const raw of values) {
     // trim() catches whitespace-only cells too, not just the exact empty string
     // (Number(" ") === 0, which would count an absent score as a real 0).
@@ -71,21 +76,29 @@ function finiteValues(values) {
 // Nearest-rank percentile over a non-empty ascending array (rank = ceil(p/100 · n),
 // 1-based), matching the subnet-yield / health-percentile convention. Only called
 // after scoreDistribution has established count > 0, so the array is never empty.
-function percentile(ascending, p) {
+function percentile(ascending: number[], p: number): number {
   const rank = Math.max(1, Math.ceil((p / 100) * ascending.length));
   return ascending[rank - 1];
+}
+
+export interface ScoreDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  max: number;
+  [key: `p${number}`]: number;
 }
 
 // Distribution summary for one 0..1 score column, or `null` when no neuron carries
 // a finite value (cold store / empty network / all-null column). count/mean plus
 // the SCORE_PERCENTILES spread and the min/max, all rounded to a stable precision.
-export function scoreDistribution(values) {
+export function scoreDistribution(values: unknown[]): ScoreDistribution | null {
   const finite = finiteValues(Array.isArray(values) ? values : []);
   const count = finite.length;
   if (count === 0) return null;
   const ascending = [...finite].sort((a, b) => a - b);
   const total = finite.reduce((sum, v) => sum + v, 0);
-  const summary = {
+  const summary: ScoreDistribution = {
     count,
     mean: round(total / count),
     min: round(ascending[0]),
@@ -107,12 +120,28 @@ export function scoreDistribution(values) {
 // plus `subnet_count` (subnets the snapshot spans) and neuron/validator/active
 // counts. Null-safe on junk/sparse rows — an empty array yields a schema-stable
 // zero (every metric block null).
-export function buildChainPerformance(rows) {
+export interface ChainPerformanceResult {
+  schema_version: 1;
+  subnet_count: number;
+  neuron_count: number;
+  validator_count: number;
+  active_count: number;
+  captured_at: string | null;
+  incentive: unknown;
+  dividends: unknown;
+  trust: ScoreDistribution | null;
+  consensus: ScoreDistribution | null;
+  validator_trust: ScoreDistribution | null;
+}
+
+export function buildChainPerformance(
+  rows: Array<Record<string, unknown>> | null | undefined,
+): ChainPerformanceResult {
   const list = Array.isArray(rows) ? rows : [];
-  let capturedAt = null;
+  let capturedAt: CaptureStamp | null = null;
   let validatorCount = 0;
   let activeCount = 0;
-  const netuids = new Set();
+  const netuids = new Set<number>();
   for (const row of list) {
     const captured = captureStamp(row?.captured_at);
     if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
@@ -154,7 +183,12 @@ export function buildChainPerformance(rows) {
 // Shared D1 loader (mirrors handleChainPerformance + loadChainConcentration): read
 // EVERY subnet's neurons in one pass, no netuid filter, and shape them into the
 // network performance artifact. Exported for the MCP tool.
-export async function loadChainPerformance(d1) {
+export async function loadChainPerformance(
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
+): Promise<ChainPerformanceResult> {
   const rows = await d1(
     `SELECT ${CHAIN_PERFORMANCE_READ_COLUMNS} FROM neurons`,
     [],

@@ -87,7 +87,7 @@ import {
   PERFORMANCE_HISTORY_WINDOWS,
   DEFAULT_PERFORMANCE_HISTORY_WINDOW,
 } from "../src/subnet-performance.mjs";
-import { buildChainPerformance } from "../src/chain-performance.mjs";
+import { buildChainPerformance } from "../src/chain-performance.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
@@ -8107,7 +8107,7 @@ export default {
         }
 
         // GET /api/v1/chain/performance (#4832 Tier 2): network-wide reward-flow
-        // & trust-spread, mirroring src/chain-performance.mjs's loadChainPerformance.
+        // & trust-spread, mirroring src/chain-performance.ts's loadChainPerformance.
         if (url.pathname === "/api/v1/chain/performance") {
           const rows = await sql`
           SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, netuid, captured_at

@@ -4,7 +4,7 @@ import {
   buildChainPerformance,
   scoreDistribution,
   loadChainPerformance,
-} from "../src/chain-performance.mjs";
+} from "../src/chain-performance.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
