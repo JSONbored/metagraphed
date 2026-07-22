@@ -135,7 +135,7 @@ import {
   LIST_SUBNET_EVIDENCE_MCP_TOOL,
   LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
   loadSubnetEvidenceList,
-} from "./subnet-evidence-mcp.mjs";
+} from "./subnet-evidence-mcp.ts";
 import {
   LIST_EVIDENCE_INSTRUCTIONS,
   LIST_EVIDENCE_MCP_TOOL,
