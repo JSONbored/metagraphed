@@ -147,7 +147,7 @@ import {
   LIST_SEARCH_INDEX_MCP_TOOL,
   LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
   loadSearchIndexList,
-} from "./search-index-mcp.mjs";
+} from "./search-index-mcp.ts";
 import {
   LIST_SEARCH_INSTRUCTIONS,
   LIST_SEARCH_MCP_TOOL,
