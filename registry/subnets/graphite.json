@@ -262,6 +262,636 @@
       "public_safe": true,
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/graph/data"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-signup",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 customer signup (POST, public)",
+      "notes": "POST /api/v1/signup -- how a customer obtains free API access, per the subnet's own OpenAPI schema. Live-verified 2026-07-22 (~08:17 UTC): an unauthenticated POST with an empty JSON body reaches the handler and returns HTTP 400 JSON asking for a valid email (live input validation, no auth gate). probe.enabled:false: the registry probe pipeline only supports GET/HEAD (the linked issue asks for probe.enabled:true for this group, but the probe schema cannot represent a POST operation).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/signup"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-graph-subgraph",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 public subgraph query",
+      "notes": "GET /api/v1/graph/subgraph (query focus, hops, from_date, to_date) -- genuinely public, matching its public schema tag. Live-verified 2026-07-22 (~08:17 UTC): bare GET returns HTTP 422 JSON naming the required focus query field (live validation, not auth); with focus=test returns HTTP 404 entity-not-found. probe.enabled:false since the probe pipeline has no per-surface query-param injection for required params (the linked issue asks for probe.enabled:true for this group; a bare unparameterized probe cannot return 2xx here).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/graph/subgraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-admin-check",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 admin check (POST, public)",
+      "notes": "POST /api/v1/admin/check -- reachable without any credential. Live-verified 2026-07-22 (~08:17 UTC): an unauthenticated POST with an empty JSON body returns HTTP 200 JSON with a boolean ok flag (false). probe.enabled:false: the registry probe pipeline only supports GET/HEAD (the linked issue asks for probe.enabled:true for this group, but the probe schema cannot represent a POST operation).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/admin/check"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-billing-checkout",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 billing checkout (POST, public)",
+      "notes": "POST /api/v1/billing/checkout -- payment-provider checkout entry point, publicly reachable. Live-verified 2026-07-22 (~08:17 UTC): an unauthenticated POST with an empty JSON body returns HTTP 400 JSON asking for a valid email (live input validation, no auth gate). probe.enabled:false: the registry probe pipeline only supports GET/HEAD (the linked issue asks for probe.enabled:true for this group, but the probe schema cannot represent a POST operation).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/billing/checkout"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-billing-webhook",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 billing webhook (POST, public)",
+      "notes": "POST /api/v1/billing/webhook -- publicly reachable callback endpoint that is only meaningful for the payment provider's own signed callbacks. Live-verified 2026-07-22 (~08:17 UTC): an unauthenticated POST returns HTTP 400 JSON rejecting the payload signature (a payload-integrity check, not a credential gate). probe.enabled:false: the registry probe pipeline only supports GET/HEAD (the linked issue asks for probe.enabled:true for this group, but the probe schema cannot represent a POST operation).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/billing/webhook"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-deltas-score",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 delta scoring (write, auth-gated)",
+      "notes": "POST /api/v1/deltas/score -- validator-facing scoring submission (write/mutation operation). The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the accepted credential types. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/deltas/score"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-deltas-merge",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 delta merge (write, auth-gated)",
+      "notes": "POST /api/v1/deltas/merge -- validator-facing merge operation (write/mutation operation). The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the accepted credential types. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/deltas/merge"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-miners-contributions",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 miner contributions (auth-gated)",
+      "notes": "GET /api/v1/miners/contributions -- validator-facing contribution listing. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the accepted credential types. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/miners/contributions"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-tasks-contribute",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 contribution tasks (auth-gated)",
+      "notes": "GET /api/v1/tasks/contribute (query sector) -- validator-facing task feed. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the accepted credential types. Verified with and without the sector query param (same 401). probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/tasks/contribute"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Validator-facing operation. The subnet's own OpenAPI schema declares no security scheme, but the live API enforces a credential header and its HTTP 401 response body itself documents the two accepted credential types, so the scheme is publicly verifiable without holding any credential. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-tasks-verify",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 verification tasks (auth-gated)",
+      "notes": "GET /api/v1/tasks/verify -- validator-facing verification task feed. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the accepted credential types. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/tasks/verify"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-graph-stats",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 graph stats (auth-gated)",
+      "notes": "GET /api/v1/graph/stats -- knowledge-graph statistics. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/graph/stats"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-graph-underserved",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 underserved graph areas (auth-gated)",
+      "notes": "GET /api/v1/graph/underserved -- underserved-area listing. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/graph/underserved"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-graph-query",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 graph query (auth-gated)",
+      "notes": "GET /api/v1/graph/query (query entity_type, sector, ticker, limit, verified_only) -- filtered graph query. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/graph/query"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-entity-by-id",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 entity lookup (auth-gated)",
+      "notes": "GET /api/v1/entities/{entity_id} -- single-entity lookup (path-parameterized; URL registered with the percent-encoded template per the registry URI format). Verified with a placeholder id. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/entities/%7Bentity_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-entity-relationships",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 entity relationships (auth-gated)",
+      "notes": "GET /api/v1/entities/{entity_id}/relationships -- per-entity relationship listing. Verified with a placeholder id. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/entities/%7Bentity_id%7D/relationships"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-entity-facts",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 entity facts (auth-gated)",
+      "notes": "GET /api/v1/entities/{entity_id}/facts -- per-entity fact listing. Verified with a placeholder id. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/entities/%7Bentity_id%7D/facts"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-search",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 entity search (auth-gated)",
+      "notes": "GET /api/v1/search (query q, type, sector, limit, verified_only) -- knowledge-graph search. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/search"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-graph-path",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 graph path (auth-gated)",
+      "notes": "GET /api/v1/graph/path (query source, target, max_depth) -- path-finding between two entities. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/graph/path"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-graph-exposure",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 graph exposure (auth-gated)",
+      "notes": "GET /api/v1/graph/exposure (query entity) -- exposure analysis. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/graph/exposure"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-graph-compare",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 graph compare (auth-gated)",
+      "notes": "GET /api/v1/graph/compare (query a, b) -- two-entity comparison. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/graph/compare"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Customer knowledge-query operation. The schema declares no security scheme, but the live API enforces a credential header; its HTTP 401 response documents the requirement and points to the subnet's public /portal page where free customer access is issued (also reachable via the public signup route registered above). Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-chat",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 chat (POST, auth-gated)",
+      "notes": "POST /api/v1/chat -- conversational query interface (write-shape POST operation). The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/chat"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Operator/admin management operation. The schema declares no security scheme, but the live API enforces a credential header, documented by its own HTTP 401 response body. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-admin-keys",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 admin credential management (auth-gated)",
+      "notes": "GET /api/v1/admin/keys lists issued customer credentials; the sibling POST on this exact URL creates one. Both operations share one URL, so this single surface represents the path per the registry's one-surface-per-URL rule (duplicate-URL check); both methods were individually live-verified rejected unauthenticated (HTTP 401). The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/admin/keys"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Operator/admin management operation. The schema declares no security scheme, but the live API enforces a credential header, documented by its own HTTP 401 response body. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-admin-key-delete",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 admin credential revocation (write, auth-gated)",
+      "notes": "DELETE /api/v1/admin/keys/{key} -- removes an issued customer credential (write/mutation operation, path-parameterized; URL registered with the percent-encoded template). Verified with a placeholder value. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/admin/keys/%7Bkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Operator/admin management operation. The schema declares no security scheme, but the live API enforces a credential header, documented by its own HTTP 401 response body. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-admin-usage",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 admin usage lookup (auth-gated)",
+      "notes": "GET /api/v1/admin/usage/{key} -- per-credential usage accounting (path-parameterized; URL registered with the percent-encoded template). Verified with a placeholder value. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/admin/usage/%7Bkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "api-key",
+        "scopes_note": "Operator/admin management operation. The schema declares no security scheme, but the live API enforces a credential header, documented by its own HTTP 401 response body. Live-verified enforced 2026-07-22 (~08:17 UTC)."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-43-graphite-admin-validator-revoke",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 validator revocation (write, auth-gated)",
+      "notes": "POST /api/v1/admin/validator/revoke -- operator-side validator revocation (write/mutation operation). The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://api.graphite-ai.net/openapi.json"],
+      "url": "https://api.graphite-ai.net/api/v1/admin/validator/revoke"
     }
   ],
   "website_url": "https://graphite-ai.net/"
