@@ -4,7 +4,7 @@ import {
   buildDeregRiskSnapshot,
   neuronImmunityCountdownBlocks,
   subnetAlphaPriceRank,
-} from "../src/dereg-risk.mjs";
+} from "../src/dereg-risk.ts";
 
 describe("subnetAlphaPriceRank", () => {
   test("ranks subnets by alpha_price_tao descending, 1 = highest price", () => {

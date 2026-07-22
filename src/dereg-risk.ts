@@ -20,19 +20,21 @@
 // non-finite alpha_price_tao is excluded entirely (never assigned a rank),
 // so a condition referencing it degrades to "no snapshot entry" (never
 // matches) rather than a fabricated rank of 0 or similar.
-export function subnetAlphaPriceRank(economicsRows) {
+export function subnetAlphaPriceRank(
+  economicsRows: Array<Record<string, unknown>> | null | undefined,
+): Map<number, number> {
   const ranked = (economicsRows || [])
     .filter(
-      (row) =>
+      (row): row is { netuid: number; alpha_price_tao: number } =>
         Number.isInteger(row?.netuid) &&
         // typeof-guarded before Number(): Number(null) === 0 (finite), which
         // would otherwise rank a genuinely-absent price as a real zero price.
         typeof row?.alpha_price_tao === "number" &&
-        Number.isFinite(row.alpha_price_tao),
+        Number.isFinite(row.alpha_price_tao as number),
     )
     .map((row) => ({ netuid: row.netuid, price: row.alpha_price_tao }))
     .sort((a, b) => b.price - a.price);
-  const rankByNetuid = new Map();
+  const rankByNetuid = new Map<number, number>();
   ranked.forEach((entry, index) => {
     rankByNetuid.set(entry.netuid, index + 1);
   });
@@ -50,8 +52,11 @@ export function subnetAlphaPriceRank(economicsRows) {
 // zero/gone negative (expired since the row's own snapshot was captured),
 // contributes no entry -- never a zero/negative countdown that a `lte`
 // condition could wrongly treat as "still counting down".
-export function neuronImmunityCountdownBlocks(rows, currentBlock) {
-  const countdownByKey = new Map();
+export function neuronImmunityCountdownBlocks(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  currentBlock: number | undefined,
+): Map<string, number> {
+  const countdownByKey = new Map<string, number>();
   if (!Number.isFinite(currentBlock)) return countdownByKey;
   for (const row of rows || []) {
     if (
@@ -61,11 +66,19 @@ export function neuronImmunityCountdownBlocks(rows, currentBlock) {
     ) {
       continue;
     }
-    const countdown = row.immunity_expires_at_block - currentBlock;
+    // Number.isFinite(currentBlock) already returned above if it weren't a
+    // finite number, so this is safe past that guard.
+    const countdown =
+      (row.immunity_expires_at_block as number) - (currentBlock as number);
     if (countdown <= 0) continue;
     countdownByKey.set(`${row.netuid}:${row.hotkey}`, countdown);
   }
   return countdownByKey;
+}
+
+export interface DeregRiskSnapshot {
+  subnetAlphaPriceRank: Map<number, number>;
+  neuronImmunityCountdownBlocks: Map<string, number>;
 }
 
 // Convenience wrapper composing both metrics into the exact snapshot shape
@@ -74,7 +87,11 @@ export function buildDeregRiskSnapshot({
   economicsRows,
   neuronRows,
   currentBlock,
-} = {}) {
+}: {
+  economicsRows?: Array<Record<string, unknown>> | null;
+  neuronRows?: Array<Record<string, unknown>> | null;
+  currentBlock?: number;
+} = {}): DeregRiskSnapshot {
   return {
     subnetAlphaPriceRank: subnetAlphaPriceRank(economicsRows),
     neuronImmunityCountdownBlocks: neuronImmunityCountdownBlocks(

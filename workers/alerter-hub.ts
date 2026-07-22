@@ -24,7 +24,7 @@ import {
   triggerMatchesEvent,
   type EvaluatorAlertTrigger,
 } from "../src/alert-triggers.ts";
-import { buildDeregRiskSnapshot } from "../src/dereg-risk.mjs";
+import { buildDeregRiskSnapshot } from "../src/dereg-risk.ts";
 import {
   mapBounded,
   resolvedWebhookUrlStatus,
@@ -341,16 +341,11 @@ export class AlerterHub implements DurableObject {
         immune_neurons?: unknown;
         current_block?: unknown;
       };
-      // buildDeregRiskSnapshot (src/dereg-risk.mjs, not yet converted -- Phase
-      // 3) has an untyped `= {}` default parameter, which TS infers as the
-      // exact empty-object type rather than a real parameter shape; cast
-      // through unknown at this one call site rather than widening its
-      // inferred signature repo-wide from here.
       this.metricSnapshot = buildDeregRiskSnapshot({
-        economicsRows: body?.subnets,
-        neuronRows: body?.immune_neurons,
-        currentBlock: body?.current_block,
-      }) as unknown as MetricSnapshot;
+        economicsRows: body?.subnets as Array<Record<string, unknown>>,
+        neuronRows: body?.immune_neurons as Array<Record<string, unknown>>,
+        currentBlock: body?.current_block as number,
+      });
     } catch {
       // Best-effort -- keep serving the stale (or empty) snapshot rather
       // than throwing out of evaluate(); a condition trigger just keeps

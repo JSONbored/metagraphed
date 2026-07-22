@@ -65,7 +65,7 @@ const MAX_EMAIL_LENGTH = 254; // RFC 5321 §4.5.3.1.3
 // Both metrics below are scoped by the SAME payload fields fixed-field
 // matching already reads (netuid, hotkey) -- a condition does not carry its
 // own separate scope, it narrows whichever event already matched. See
-// src/dereg-risk.mjs for how each metric is actually computed into the
+// src/dereg-risk.ts for how each metric is actually computed into the
 // snapshot triggerMatchesEvent reads from below.
 export const ALERT_CONDITION_METRICS = new Set([
   // This subnet's rank by alpha_price_tao among all subnets (1 = highest

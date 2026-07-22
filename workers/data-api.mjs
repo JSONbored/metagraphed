@@ -3839,7 +3839,7 @@ async function handleAlertTriggersMatchedWriteback(request, env) {
 }
 
 // Internal-only: the #6747 evaluator's METRIC cache-refresh scan -- the raw
-// rows AlerterHub.refreshTriggers() feeds into src/dereg-risk.mjs's
+// rows AlerterHub.refreshTriggers() feeds into src/dereg-risk.ts's
 // buildDeregRiskSnapshot to build the in-memory Maps triggerMatchesEvent's
 // condition check reads from. Gated the SAME way as the active-list/
 // writeback routes above (same ALERT_TRIGGERS_INTERNAL_TOKEN secret, a
