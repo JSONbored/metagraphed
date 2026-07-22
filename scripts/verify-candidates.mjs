@@ -17,7 +17,7 @@ import {
 import {
   classifyHttpProbe,
   isContentMismatch,
-} from "./http-probe-classification.mjs";
+} from "./http-probe-classification.ts";
 import {
   optionalHttpStatus,
   preservePreviousGithubMetadata,

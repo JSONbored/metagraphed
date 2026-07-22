@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   classifyHttpProbe,
   isContentMismatch,
-} from "../scripts/http-probe-classification.mjs";
+} from "../scripts/http-probe-classification.ts";
 
 describe("isContentMismatch", () => {
   test("never a mismatch without a candidate or on a non-ok probe", () => {

@@ -1,6 +1,34 @@
 import { isJsonContentType } from "./lib.mjs";
 
-export function classifyHttpProbe(probe, candidate = null) {
+type Row = Record<string, unknown>;
+
+export type HttpProbeClassification =
+  | "unsafe"
+  | "unsupported"
+  | "timeout"
+  | "content-mismatch"
+  | "redirected"
+  | "live"
+  | "rate-limited"
+  | "auth-required"
+  | "dead"
+  | "transient";
+
+interface Probe {
+  unsafe_url?: boolean;
+  private_redirect_blocked?: boolean;
+  error?: string;
+  error_class?: string;
+  redirect_target?: string;
+  status_code: number;
+  ok?: boolean;
+  content_type?: string | null;
+}
+
+export function classifyHttpProbe(
+  probe: Probe,
+  candidate: Row | null = null,
+): HttpProbeClassification {
   if (probe.unsafe_url || probe.private_redirect_blocked) {
     return "unsafe";
   }
@@ -41,7 +69,10 @@ export function classifyHttpProbe(probe, candidate = null) {
   return "unsupported";
 }
 
-export function isContentMismatch(probe, candidate) {
+export function isContentMismatch(
+  probe: Probe,
+  candidate: Row | null,
+): boolean {
   if (!candidate || !probe.ok) {
     return false;
   }
@@ -59,7 +90,7 @@ export function isContentMismatch(probe, candidate) {
   return false;
 }
 
-function isMachineReadableApiContentType(contentType) {
+function isMachineReadableApiContentType(contentType: unknown): boolean {
   const normalized = String(contentType || "").toLowerCase();
   return (
     normalized.includes("json") ||

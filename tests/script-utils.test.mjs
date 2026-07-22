@@ -85,7 +85,7 @@ import {
   renderEndpointOpsBrief,
 } from "../scripts/endpoint-ops-brief.ts";
 import { generateBaselineOverlaySet } from "../scripts/generated-overlays.ts";
-import { classifyHttpProbe } from "../scripts/http-probe-classification.mjs";
+import { classifyHttpProbe } from "../scripts/http-probe-classification.ts";
 import {
   optionalHttpStatus,
   preservePreviousGithubMetadata,
