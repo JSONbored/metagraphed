@@ -144,6 +144,309 @@
         "https://github.com/ippcteam/SN21-adtao/blob/main/scripts/train_example_model.py"
       ],
       "url": "https://raw.githubusercontent.com/ippcteam/SN21-adtao/main/data/training/training_episodes.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-21-adtao-epoch-verification",
+      "kind": "subnet-api",
+      "name": "AdTAO epoch verification",
+      "notes": "Public no-auth chain-derived scoring-commitment read for one epoch, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 409 {\"detail\":\"9.C.2 post-scoring artifact for epoch_id=1 is not yet visible in RevealedCommitments for this validator ...\"} — a real epoch-state explanation, not an auth error. Path parameter in percent-encoded brace form; probe disabled (needs a real epoch id).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/epochs/%7Bepoch_id%7D/verification"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-21-adtao-epoch-commitment",
+      "kind": "subnet-api",
+      "name": "AdTAO epoch commitment",
+      "notes": "Public no-auth per-epoch commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} — a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/epochs/%7Bepoch_id%7D/commitment"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-21-adtao-epoch-episode-commitment",
+      "kind": "subnet-api",
+      "name": "AdTAO epoch episode-commitment",
+      "notes": "Public no-auth per-epoch episode-commitment read, taking an {epoch_id} path parameter. Live-verified 2026-07-21 with epoch_id=1: HTTP 404 {\"detail\":\"Epoch 1 not found\"} — a genuine epoch lookup, no auth gate. Probe disabled (needs a real epoch id).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/epochs/%7Bepoch_id%7D/episode-commitment"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-21-adtao-epoch-scores",
+      "kind": "subnet-api",
+      "name": "AdTAO epoch scores (retired redirect)",
+      "notes": "Documented-but-retired per-epoch scores read. Still declared in the registered schema and unauthenticated, but live-verified 2026-07-21 as functionally retired: HTTP 501 {\"detail\":\"GET /1/scores is no longer served via this API under the two-binary validator architecture. Use GET /1/verification for the chain-derived scoring commitment...\"}. Registered because it is real, documented surface, explicitly flagged here as a dead-end redirect rather than active data. Probe disabled.",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/epochs/%7Bepoch_id%7D/scores"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+      },
+      "id": "sn-21-adtao-episodes",
+      "kind": "subnet-api",
+      "name": "AdTAO epoch episodes",
+      "notes": "Per-miner validator read. The registered schema declares no security block for this operation, but live-verified 2026-07-21: an unauthenticated GET /v1/epochs/{epoch_id}/episodes returns HTTP 422 naming a required per-miner identity request header (`X-Miner-` prefix) as missing, so it is gated in practice. Registered auth_required:true with probe disabled (not anonymously callable, unlike what the bare schema suggests).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/epochs/%7Bepoch_id%7D/episodes"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+      },
+      "id": "sn-21-adtao-episode-detail",
+      "kind": "subnet-api",
+      "name": "AdTAO epoch episode detail",
+      "notes": "Per-miner validator read. The registered schema declares no security block for this operation, but live-verified 2026-07-21: an unauthenticated GET /v1/epochs/{epoch_id}/episodes/{episode_id} returns HTTP 422 naming a required per-miner identity request header (`X-Miner-` prefix) as missing, so it is gated in practice. Registered auth_required:true with probe disabled (not anonymously callable, unlike what the bare schema suggests).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/epochs/%7Bepoch_id%7D/episodes/%7Bepisode_id%7D"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+      },
+      "id": "sn-21-adtao-episodes-batch",
+      "kind": "subnet-api",
+      "name": "AdTAO epoch episodes batch",
+      "notes": "Per-miner validator read. The registered schema declares no security block for this operation, but live-verified 2026-07-21: an unauthenticated GET /v1/epochs/{epoch_id}/episodes_batch returns HTTP 422 naming a required per-miner identity request header (`X-Miner-` prefix) as missing, so it is gated in practice. Registered auth_required:true with probe disabled (not anonymously callable, unlike what the bare schema suggests).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/epochs/%7Bepoch_id%7D/episodes_batch"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+      },
+      "id": "sn-21-adtao-my-predictions",
+      "kind": "subnet-api",
+      "name": "AdTAO epoch miner predictions",
+      "notes": "Per-miner validator read. The registered schema declares no security block for this operation, but live-verified 2026-07-21: an unauthenticated GET /v1/epochs/{epoch_id}/my-predictions returns HTTP 422 naming a required per-miner identity request header (`X-Miner-` prefix) as missing, so it is gated in practice. Registered auth_required:true with probe disabled (not anonymously callable, unlike what the bare schema suggests).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/epochs/%7Bepoch_id%7D/my-predictions"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+      },
+      "id": "sn-21-adtao-training-episodes-api",
+      "kind": "subnet-api",
+      "name": "AdTAO training episodes feed",
+      "notes": "Per-miner validator read. The registered schema declares no security block for this operation, but live-verified 2026-07-21: an unauthenticated GET /training/episodes returns HTTP 422 naming a required per-miner identity request header (`X-Miner-` prefix) as missing, so it is gated in practice. Registered auth_required:true with probe disabled (not anonymously callable, unlike what the bare schema suggests). Accepts page / page_size query parameters; registered with the fixed base URL, no query baked in.",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/training/episodes"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+      },
+      "id": "sn-21-adtao-training-summary",
+      "kind": "subnet-api",
+      "name": "AdTAO training summary",
+      "notes": "Per-miner validator read. The registered schema declares no security block for this operation, but live-verified 2026-07-21: an unauthenticated GET /training/summary returns HTTP 422 naming a required per-miner identity request header (`X-Miner-` prefix) as missing, so it is gated in practice. Registered auth_required:true with probe disabled (not anonymously callable, unlike what the bare schema suggests).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/training/summary"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Per-miner identity header required by the validator API; no bearer token."
+      },
+      "id": "sn-21-adtao-registration-status",
+      "kind": "subnet-api",
+      "name": "AdTAO miner registration status",
+      "notes": "Per-miner validator read. The registered schema declares no security block for this operation, but live-verified 2026-07-21: an unauthenticated GET /v1/registration-status returns HTTP 422 naming a required per-miner identity request header (`X-Miner-` prefix) as missing, so it is gated in practice. Registered auth_required:true with probe disabled (not anonymously callable, unlike what the bare schema suggests).",
+      "probe": {
+        "enabled": false,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "provider": "adtao",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "shin-core"
+      },
+      "source_urls": [
+        "https://validator.adtao.io/openapi.json",
+        "https://github.com/ippcteam/SN21-adtao"
+      ],
+      "url": "https://validator.adtao.io/v1/registration-status"
     }
   ],
   "website_url": "https://adtao.io/"
