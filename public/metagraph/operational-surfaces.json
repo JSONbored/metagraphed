@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 586,
+  "surface_count": 613,
   "surfaces": [
     {
       "auth_required": false,
@@ -317,6 +317,96 @@
       "surface_id": "sn-2-inference-labs-subnet-api",
       "surface_key": "srf-43c3b9147fb895e6",
       "url": "https://sn2-api.inferencelabs.com/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 3,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "surface_id": "sn-3-templar-grafana-datasources",
+      "surface_key": "srf-4c51118658a40ee8",
+      "url": "https://grafana.tplr.ai/api/datasources"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 3,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "surface_id": "sn-3-templar-grafana-frontend-settings",
+      "surface_key": "srf-5fa188cc55f9a845",
+      "url": "https://grafana.tplr.ai/api/frontend/settings"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 3,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "surface_id": "sn-3-templar-grafana-org",
+      "surface_key": "srf-1cd0a1bde6ae26ad",
+      "url": "https://grafana.tplr.ai/api/org"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 3,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "surface_id": "sn-3-templar-grafana-plugins",
+      "surface_key": "srf-21bd5a8db44a0fdb",
+      "url": "https://grafana.tplr.ai/api/plugins"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 3,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "surface_id": "sn-3-templar-grafana-search",
+      "surface_key": "srf-189746ae66f84d74",
+      "url": "https://grafana.tplr.ai/api/search"
     },
     {
       "auth_required": false,
@@ -4928,6 +5018,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-agents-count",
+      "surface_key": "srf-5bb00c4284cf5282",
+      "url": "https://bitsec.ai/api/agents/count"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "subnet-api",
       "netuid": 60,
@@ -5069,6 +5177,24 @@
       "surface_id": "sn-60-bitsec-jobs-leaderboard",
       "surface_key": "srf-2a62c0072d8ed3f1",
       "url": "https://bitsec.ai/api/jobs/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 60,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "subnet_name": "Bitsec",
+      "subnet_slug": "sn-60",
+      "surface_id": "sn-60-bitsec-jobs-leaderboard-old",
+      "surface_key": "srf-30204abb0dcb4c02",
+      "url": "https://bitsec.ai/api/jobs/leaderboard_old"
     },
     {
       "auth_required": false,
@@ -5523,6 +5649,24 @@
     {
       "auth_required": false,
       "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 64,
+      "probe": {
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "surface_id": "sn-64-chutes-chutes-miner-means",
+      "surface_key": "srf-37e58972b80a6526",
+      "url": "https://api.chutes.ai/chutes/miner_means"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
       "kind": "data-artifact",
       "netuid": 64,
       "probe": {
@@ -5681,6 +5825,24 @@
       "surface_id": "sn-64-chutes-instances-reconciliation-csv",
       "surface_key": "srf-5c1193939beecd2f",
       "url": "https://api.chutes.ai/instances/reconciliation_csv"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 64,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "subnet_name": "Chutes",
+      "subnet_slug": "sn-64",
+      "surface_id": "sn-64-chutes-invocations-exports-recent",
+      "surface_key": "srf-11809f0e85bc1cdb",
+      "url": "https://api.chutes.ai/invocations/exports/recent"
     },
     {
       "auth_required": false,
@@ -6257,6 +6419,222 @@
       "surface_id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
       "surface_key": "srf-1216a921c8908de5",
       "url": "https://www.metanova-labs.ai/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-briefs",
+      "surface_key": "srf-66eb8d50ac033e96",
+      "url": "https://api.heraldmedia.ai/briefs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-disputes-list",
+      "surface_key": "srf-42a8309aac7a8175",
+      "url": "https://api.heraldmedia.ai/disputes"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-funding-list",
+      "surface_key": "srf-018ffe447129ba2b",
+      "url": "https://api.heraldmedia.ai/funding"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-health",
+      "surface_key": "srf-0f2639d6d0bdece4",
+      "url": "https://api.heraldmedia.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-public-articles",
+      "surface_key": "srf-103100954d8ff095",
+      "url": "https://api.heraldmedia.ai/public/articles"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-public-leaderboard",
+      "surface_key": "srf-22eef61e2706d300",
+      "url": "https://api.heraldmedia.ai/public/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-public-stats",
+      "surface_key": "srf-a2f76ecceabdd79d",
+      "url": "https://api.heraldmedia.ai/public/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-ready",
+      "surface_key": "srf-4cc75af0bb152577",
+      "url": "https://api.heraldmedia.ai/ready"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-registry-outlets",
+      "surface_key": "srf-f2ada799c8670be8",
+      "url": "https://api.heraldmedia.ai/registry/outlets.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-reporting-export",
+      "surface_key": "srf-18e12a6eec69d67f",
+      "url": "https://api.heraldmedia.ai/reporting/export"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-validator-briefs-v2",
+      "surface_key": "srf-55799a28e55d9ff2",
+      "url": "https://api.heraldmedia.ai/api/v2/validator/briefs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 69,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "herald",
+      "public_safe": true,
+      "subnet_name": "ain",
+      "subnet_slug": "ain",
+      "surface_id": "sn-69-ain-api-validator-registry-v3",
+      "surface_key": "srf-95cfcd2f17678058",
+      "url": "https://api.heraldmedia.ai/api/v3/validator/registry"
     },
     {
       "auth_required": false,
@@ -7690,6 +8068,60 @@
         "method": "GET",
         "timeout_ms": 10000
       },
+      "provider": "bitcast",
+      "public_safe": true,
+      "subnet_name": "Bitcast",
+      "subnet_slug": "sn-93",
+      "surface_id": "sn-93-bitcast-get-api-v2-admin-competitor-platforms",
+      "surface_key": "srf-fddc49c5a86bc1cc",
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/competitor-platforms"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 93,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "subnet_name": "Bitcast",
+      "subnet_slug": "sn-93",
+      "surface_id": "sn-93-bitcast-get-api-v2-admin-orgs",
+      "surface_key": "srf-cff845d9c3eee582",
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/orgs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 93,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast",
+      "public_safe": true,
+      "subnet_name": "Bitcast",
+      "subnet_slug": "sn-93",
+      "surface_id": "sn-93-bitcast-get-api-v2-admin-watchlist",
+      "surface_key": "srf-534cc776474f5dfb",
+      "url": "https://bitcast-api.bitcast.network/api/v2/admin/watchlist"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 93,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "bitcast-network",
       "public_safe": true,
       "subnet_name": "Bitcast",
@@ -8095,6 +8527,42 @@
       "url": "https://models.actual.inc/index.json"
     },
     {
+      "auth_required": true,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 96,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "subnet_name": "Verathos",
+      "subnet_slug": "sn-96",
+      "surface_id": "sn-96-verathos-api-api-conversations",
+      "surface_key": "srf-eac0e554cae0d0d3",
+      "url": "https://verathos.ai/api/conversations/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 96,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "subnet_name": "Verathos",
+      "subnet_slug": "sn-96",
+      "surface_id": "sn-96-verathos-api-install-sh",
+      "surface_key": "srf-9f3ef0a446c40477",
+      "url": "https://verathos.ai/install.sh"
+    },
+    {
       "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
@@ -8399,6 +8867,24 @@
       "surface_id": "sn-96-verathos-usage-timeseries",
       "surface_key": "srf-a16547b4afbcd563",
       "url": "https://api.verathos.ai/v1/network/usage-timeseries"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 96,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "verathos",
+      "public_safe": true,
+      "subnet_name": "Verathos",
+      "subnet_slug": "sn-96",
+      "surface_id": "sn-96-verathos-v1-miner-debug-help",
+      "surface_key": "srf-797e2f03188fbfe3",
+      "url": "https://api.verathos.ai/v1/miner-debug/help"
     },
     {
       "auth_required": false,
