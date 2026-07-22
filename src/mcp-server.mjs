@@ -68,7 +68,7 @@ import {
   isSubscribableMcpResourceUri,
   listSubscribableMcpResourceClasses,
   parseSubnetStatusResourceUri,
-} from "./subnet-status-subscribe.mjs";
+} from "./subnet-status-subscribe.ts";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
 import {
   GET_ECONOMICS_INSTRUCTIONS,

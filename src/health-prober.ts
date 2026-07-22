@@ -39,7 +39,7 @@ import {
 import {
   diffChangedSubnetNetuids,
   notifySubnetStatusChanged,
-} from "./subnet-status-subscribe.mjs";
+} from "./subnet-status-subscribe.ts";
 
 // Re-export so existing importers (workers/api.mjs, mcp-server, discovery) keep
 // resolving the KV health keys through the prober; the names now live in kv-keys.
