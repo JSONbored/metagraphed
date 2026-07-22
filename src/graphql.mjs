@@ -242,7 +242,7 @@ import { loadSudoKey } from "./sudo-key.mjs";
 import { runSavedQuery } from "./saved-queries.mjs";
 import { loadNetworkParameters } from "./network-parameters.mjs";
 import { loadRandomnessStatus } from "./randomness.mjs";
-import { loadAddressMapping, H160_PATTERN } from "./address-mapping.mjs";
+import { loadAddressMapping, H160_PATTERN } from "./address-mapping.ts";
 import {
   DEFAULT_GLOBAL_VALIDATOR_SORT,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,

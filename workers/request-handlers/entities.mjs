@@ -109,10 +109,7 @@ import {
   loadAccountParents,
 } from "../../src/child-hotkey-delegation.mjs";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
-import {
-  H160_PATTERN,
-  loadAddressMapping,
-} from "../../src/address-mapping.mjs";
+import { H160_PATTERN, loadAddressMapping } from "../../src/address-mapping.ts";
 import { loadNetworkParameters } from "../../src/network-parameters.mjs";
 import { loadRandomnessStatus } from "../../src/randomness.mjs";
 import {

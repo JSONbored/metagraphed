@@ -6,7 +6,7 @@ import {
   ADDRESS_MAPPING_RPC_TIMEOUT_MS,
   H160_PATTERN,
   loadAddressMapping,
-} from "../src/address-mapping.mjs";
+} from "../src/address-mapping.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 function req(path) {

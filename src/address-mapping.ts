@@ -32,7 +32,7 @@ export const H160_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 // regex, so this only ever strips that guaranteed prefix -- not a general
 // hex-or-0x-hex parser, same scoping note src/sudo-key.mjs's own hexToBytes
 // carries.
-function hexToBytes(hex) {
+function hexToBytes(hex: string): Uint8Array {
   const clean = hex.slice(2);
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i += 1) {
@@ -41,12 +41,22 @@ function hexToBytes(hex) {
   return out;
 }
 
+export interface AddressMappingResult {
+  schema_version: 1;
+  h160: string;
+  ss58: string | null;
+  queried_at: string;
+}
+
 // Query the live H160 -> SS58 mapping for one address. Uses METAGRAPH_CONTROL
 // KV (1h TTL, same binding as loadSudoKey/loadAccountBalance) when present;
 // ss58 is null on RPC failure only -- into_account_id is a total function
 // (every H160 maps to SOME AccountId), so unlike loadSudoKey there is no
 // legitimate "unset" case to distinguish from failure.
-export async function loadAddressMapping(env, h160) {
+export async function loadAddressMapping(
+  env: Env,
+  h160: string,
+): Promise<AddressMappingResult> {
   const normalized = h160.toLowerCase();
   const cacheKey = `evm-address-mapping:${normalized}`;
   const kv = env?.METAGRAPH_CONTROL;
@@ -54,14 +64,14 @@ export async function loadAddressMapping(env, h160) {
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as AddressMappingResult;
     } catch {
       // KV read failure is non-fatal -- fall through to the live RPC.
     }
   }
 
   const queriedAt = new Date().toISOString();
-  let ss58 = null;
+  let ss58: string | null = null;
   let rpcOk = false;
 
   try {
@@ -82,7 +92,7 @@ export async function loadAddressMapping(env, h160) {
       }),
     });
     if (rpcResp.ok) {
-      const rpcBody = await rpcResp.json();
+      const rpcBody: { result?: unknown } = await rpcResp.json();
       const raw = rpcBody?.result;
       if (typeof raw === "string" && /^0x[0-9a-fA-F]{64}$/.test(raw)) {
         ss58 = encodeAccountId32(hexToBytes(raw), FINNEY_SS58_PREFIX);
@@ -93,7 +103,7 @@ export async function loadAddressMapping(env, h160) {
     // RPC fetch failed -- ss58 stays null.
   }
 
-  const payload = {
+  const payload: AddressMappingResult = {
     schema_version: 1,
     h160: normalized,
     ss58,

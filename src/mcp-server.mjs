@@ -221,7 +221,7 @@ import {
 } from "./changelog-mcp.mjs";
 import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.mjs";
 import { decodeEvmPrecompileCall } from "./evm-precompiles.mjs";
-import { H160_PATTERN, loadAddressMapping } from "./address-mapping.mjs";
+import { H160_PATTERN, loadAddressMapping } from "./address-mapping.ts";
 import {
   GET_FEED_INSTRUCTIONS,
   GET_FEED_MCP_TOOL,
