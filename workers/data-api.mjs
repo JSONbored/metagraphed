@@ -6641,7 +6641,7 @@ export default {
 
         // GET /api/v1/health/trends (#4832 gap-closure): all-subnet 7d/30d
         // daily uptime + latency matrix from the daily rollup, mirroring
-        // src/bulk-health-trends.mjs's loadBulkHealthTrends. Reads
+        // src/bulk-health-trends.ts's loadBulkHealthTrends. Reads
         // surface_uptime_daily -- populated by the health-uptime-rollup-sync
         // write route (#4885), not surface_checks -- so this route stays
         // cheap regardless of the raw window's size.

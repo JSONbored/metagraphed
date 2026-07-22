@@ -40,7 +40,7 @@ import {
   currentPostgresTierFallbackGeneration,
   tryPostgresTier,
 } from "../postgres-tier.ts";
-import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
+import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
 import { formatGlobalIncidents } from "../../src/health-serving.mjs";
 import {
   applyQueryFilters,
@@ -495,13 +495,9 @@ export async function handleBulkHealthTrends(
       )) as Awaited<ReturnType<typeof loadBulkHealthTrends>>["data"] | null;
       if (!data) {
         isFallback = true;
-        // loadBulkHealthTrends is still .mjs (checkJs off): its destructured
-        // `{ observedAt = null } = {}` param infers as `{observedAt?: null}`,
-        // narrower than the real `string | null` runtime value -- cast past
-        // that inference gap rather than the (nonexistent) real constraint.
         const result = await loadBulkHealthTrends({
           observedAt: meta?.last_run_at || null,
-        } as unknown as Parameters<typeof loadBulkHealthTrends>[0]);
+        });
         data = result.data;
       }
       const response = await envelopeResponse(

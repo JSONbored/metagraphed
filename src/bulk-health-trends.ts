@@ -7,8 +7,13 @@
 import { HEALTH_TREND_WINDOWS } from "../workers/config.ts";
 import { formatBulkTrends } from "./health-serving.mjs";
 
-export async function loadBulkHealthTrends({ observedAt = null } = {}) {
-  const windows = {};
+export async function loadBulkHealthTrends({
+  observedAt = null,
+}: { observedAt?: string | null } = {}): Promise<{
+  data: Record<string, unknown>;
+  rows: unknown[];
+}> {
+  const windows: Record<string, unknown[]> = {};
   for (const label of Object.keys(HEALTH_TREND_WINDOWS)) {
     windows[label] = [];
   }

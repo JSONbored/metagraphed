@@ -462,7 +462,7 @@ import {
   CHAIN_TRANSFER_PAIR_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
 } from "./chain-transfer-pairs.mjs";
-import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
+import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
