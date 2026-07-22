@@ -53,6 +53,43 @@ function buildRequestUrl(baseUrl, query) {
   return url.toString();
 }
 
+// metagraphed#7687 (MCP execute Phase 3b): a query-location credential is,
+// unavoidably, part of the request URL itself -- unlike a header/cookie
+// credential (which never appears in any response field, this module never
+// echoes request headers back), the URL is exactly what this module DOES
+// return to the caller on both success and some failure paths. Only a
+// query-location credential is ever redacted here; header/cookie placement
+// has nothing in the URL to redact.
+const REDACTED_CREDENTIAL_PLACEHOLDER = "<redacted>";
+function redactQueryCredential(url, credential) {
+  if (!url || credential?.location !== "query") return url;
+  // No try/catch: `url` here is always the output of an earlier `new URL()`
+  // call within this same module (buildRequestUrl, or safetyCheckedFetch's
+  // own redirect-target construction) -- by the time it reaches here it has
+  // already been proven parseable, so a second parse can't newly fail.
+  const parsed = new URL(url);
+  if (!parsed.searchParams.has(credential.name)) return url;
+  parsed.searchParams.set(credential.name, REDACTED_CREDENTIAL_PLACEHOLDER);
+  return parsed.toString();
+}
+
+// Regardless of credential location, scrub the raw value out of any
+// free-form error string this module returns -- the underlying fetch
+// implementation's own error text (network/timeout/DNS failures) is outside
+// this module's control, and some implementations echo the request URL (or
+// occasionally other request details) into it.
+function redactCredentialValue(text, credential) {
+  if (!text || !credential?.value) return text;
+  return text.split(credential.value).join(REDACTED_CREDENTIAL_PLACEHOLDER);
+}
+
+/**
+ * @typedef {object} CallSubnetSurfaceCredential
+ * @property {"header" | "query" | "cookie"} location Where to place the credential -- mirrors the surface's own `auth.location`. The CALLER (call_subnet_surface's tool handler) is responsible for validating the surface's auth.scheme is generically supported (bearer/api-key) and auth.location/auth.name are both present BEFORE ever passing this; this function only places the value, it does not validate eligibility.
+ * @property {string} name Header name, query-parameter name, or cookie name -- the surface's own `auth.name`.
+ * @property {string} value The credential value exactly as supplied by the caller, inserted verbatim (never reformatted against `auth.value_format` -- the caller is expected to have already formatted it, e.g. "Bearer <token>").
+ */
+
 /**
  * @typedef {object} CallSubnetSurfaceCredential
  * @property {"header" | "query" | "cookie"} location Where to place the credential -- mirrors the surface's own `auth.location`. The CALLER (call_subnet_surface's tool handler) is responsible for validating the surface's auth.scheme is generically supported (bearer/api-key) and auth.location/auth.name are both present BEFORE ever passing this; this function only places the value, it does not validate eligibility.
@@ -153,7 +190,31 @@ export async function callSubnetSurface(surface, options) {
     isUnsafeUrl,
     timeoutMs,
   });
-  if (!fetched.ok) return fetched;
+  if (!fetched.ok) {
+    // metagraphed#7687: a query-location credential (extraHeaders never
+    // echoes back on any path, but a query param is part of the URL itself)
+    // must never appear in a URL this function hands back, including a
+    // blocked-redirect's own target -- redact it here, at the one place
+    // that knows both the credential and every URL field that could carry
+    // it, rather than trusting every caller to remember to scrub it.
+    // error is scrubbed too, regardless of credential location: some fetch
+    // implementations embed the request URL (or occasionally headers) in
+    // their own thrown error text, and that's outside this module's control.
+    return {
+      ...fetched,
+      ...(fetched.redirect_target
+        ? {
+            redirect_target: redactQueryCredential(
+              fetched.redirect_target,
+              credential,
+            ),
+          }
+        : {}),
+      ...(fetched.error
+        ? { error: redactCredentialValue(fetched.error, credential) }
+        : {}),
+    };
+  }
 
   const { response, latencyMs, redirectTarget } = fetched;
   const contentType = response.headers.get("content-type") || null;
@@ -187,7 +248,7 @@ export async function callSubnetSurface(surface, options) {
     status_code: response.status,
     content_type: contentType,
     latency_ms: latencyMs,
-    url: redirectTarget || requestUrl,
+    url: redactQueryCredential(redirectTarget || requestUrl, credential),
     body,
     truncated: raw.truncated,
     ...(parseError ? { parse_error: parseError } : {}),
