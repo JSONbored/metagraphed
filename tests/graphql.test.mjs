@@ -13188,7 +13188,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     assert.deepEqual(body.data.economics_trends.days, []);
   });
 
-  // D1 fully eliminated (2026-07-17): loadEconomicsTrends (src/economics-trends.mjs)
+  // D1 fully eliminated (2026-07-17): loadEconomicsTrends (src/economics-trends.ts)
   // no longer takes a d1 argument and always returns the schema-stable empty
   // shape -- even a "warm" D1 mock (real rows) must not change the response.
   test("no Postgres tier flag: never queries D1, returns a schema-stable empty series", async () => {

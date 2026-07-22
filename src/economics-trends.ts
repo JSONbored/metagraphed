@@ -13,7 +13,9 @@ import {
 // ~129 subnets × 365 days ≈ 47k rows for `all`; generous but finite.
 export const ECONOMICS_TRENDS_ROW_CAP = 60000;
 
-export function parseEconomicsTrendsWindow(window) {
+export function parseEconomicsTrendsWindow(
+  window: unknown,
+): { label: string; days: number } | null {
   const parsed = parseHistoryWindow(
     window === undefined || window === null ? DEFAULT_HISTORY_WINDOW : window,
   );
@@ -21,7 +23,12 @@ export function parseEconomicsTrendsWindow(window) {
   return parsed;
 }
 
-export async function loadEconomicsTrends({ windowLabel } = {}) {
+export async function loadEconomicsTrends({
+  windowLabel,
+}: { windowLabel?: string } = {}): Promise<{
+  data: Record<string, unknown>;
+  rows: unknown[];
+}> {
   const data = buildEconomicsTrends([], { window: windowLabel, capped: false });
   return { data, rows: [] };
 }

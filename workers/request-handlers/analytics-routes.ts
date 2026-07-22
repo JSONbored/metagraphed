@@ -30,7 +30,7 @@ import {
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "../../src/neuron-history.mjs";
-import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
+import { loadEconomicsTrends } from "../../src/economics-trends.ts";
 import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
@@ -299,7 +299,7 @@ export async function handleEconomicsTrends(
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
-      data.days,
+      data.days as unknown[],
       "economics-trends",
       "short",
       request,

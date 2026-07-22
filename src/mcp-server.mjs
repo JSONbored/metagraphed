@@ -337,7 +337,7 @@ import {
 import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
-} from "./economics-trends.mjs";
+} from "./economics-trends.ts";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,

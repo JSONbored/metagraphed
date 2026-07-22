@@ -275,7 +275,7 @@ import {
   buildEconomicsTrends,
   parseHistoryWindow,
 } from "../src/neuron-history.mjs";
-import { ECONOMICS_TRENDS_ROW_CAP } from "../src/economics-trends.mjs";
+import { ECONOMICS_TRENDS_ROW_CAP } from "../src/economics-trends.ts";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
@@ -7162,7 +7162,7 @@ export default {
         // GET /api/v1/economics/trends?window= (#4832 gap-closure):
         // network-wide daily economics time series, mirroring
         // workers/request-handlers/analytics-routes.mjs's handleEconomicsTrends
-        // via src/economics-trends.mjs's loadEconomicsTrends. A malformed
+        // via src/economics-trends.ts's loadEconomicsTrends. A malformed
         // window degrades to "all" (no cutoff) rather than erroring -- the
         // D1-side handler already rejects it before ever reaching this route
         // in the real request path, same convention as the uptime route's

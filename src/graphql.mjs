@@ -358,7 +358,7 @@ import {
   unsupportedWindowMessage,
 } from "./neuron-history.mjs";
 import { buildValidatorHistory } from "./validator-history.mjs";
-import { loadEconomicsTrends } from "./economics-trends.mjs";
+import { loadEconomicsTrends } from "./economics-trends.ts";
 import {
   DEFAULT_MOVERS_SORT,
   DEFAULT_MOVERS_WINDOW,
