@@ -1,8 +1,8 @@
 // README subnet-catalog rendering helpers, extracted verbatim from
-// scripts/generate-registry-readme-section.mjs (#6247 testability decomposition).
+// scripts/generate-registry-readme-section.ts (#6247 testability decomposition).
 // Pure functions over plain overlay objects/strings (loadOverlays is the only
 // I/O boundary), so the catalog logic is unit-testable without invoking the CLI.
-// scripts/generate-registry-readme-section.mjs is now a thin wrapper that imports
+// scripts/generate-registry-readme-section.ts is now a thin wrapper that imports
 // from here — mirrors the scripts/lib/readme-links.mjs / scripts/lib.mjs split.
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -91,7 +91,7 @@ export function renderCatalog(overlays) {
     "",
     ...items,
     "",
-    `<sub>Auto-generated from the curated overlays in \`registry/subnets/\` by \`scripts/generate-registry-readme-section.mjs\` — enrich a subnet (one PR) and it appears here. Not the live list; browse + monitor everything at [metagraph.sh](${SITE}).</sub>`,
+    `<sub>Auto-generated from the curated overlays in \`registry/subnets/\` by \`scripts/generate-registry-readme-section.ts\` — enrich a subnet (one PR) and it appears here. Not the live list; browse + monitor everything at [metagraph.sh](${SITE}).</sub>`,
   ].join("\n");
 }
 

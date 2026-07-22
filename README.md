@@ -259,7 +259,7 @@ Refreshed weekly by [`.github/workflows/gittensor-impact.yml`](.github/workflows
 - **[Astrid](https://metagraph.sh/subnets/127)** `SN127` — `trading-strategies` · [site](https://astrid.global/) · [repo](https://github.com/astridintelligence/sn-127)
 - **[ByteLeap](https://metagraph.sh/subnets/128)** `SN128` — `compute` · [site](https://byteleap.ai/) · [repo](https://github.com/byteleapai/byteleap-Validator)
 
-<sub>Auto-generated from the curated overlays in `registry/subnets/` by `scripts/generate-registry-readme-section.mjs` — enrich a subnet (one PR) and it appears here. Not the live list; browse + monitor everything at [metagraph.sh](https://metagraph.sh).</sub>
+<sub>Auto-generated from the curated overlays in `registry/subnets/` by `scripts/generate-registry-readme-section.ts` — enrich a subnet (one PR) and it appears here. Not the live list; browse + monitor everything at [metagraph.sh](https://metagraph.sh).</sub>
 
 <!-- END:REGISTRY-CATALOG -->
 

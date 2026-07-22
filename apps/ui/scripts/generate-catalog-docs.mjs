@@ -1,7 +1,7 @@
 // Generates content/docs/catalog.mdx from the curated subnet overlays
 // (#6634, follow-on from #1652's "catalog / resources sections generated
 // from registry artifacts" acceptance line, never actually built). Reuses
-// the exact same rendering helpers scripts/generate-registry-readme-section.mjs
+// the exact same rendering helpers scripts/generate-registry-readme-section.ts
 // already uses for the README's own catalog section (scripts/lib/readme-catalog.mjs)
 // so the two never drift apart on what counts as "curated" or how a subnet
 // entry renders -- one source, two destinations (README + this docs page).

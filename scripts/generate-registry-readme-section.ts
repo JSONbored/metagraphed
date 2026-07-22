@@ -14,8 +14,8 @@
 // The pure catalog-rendering helpers live in scripts/lib/readme-catalog.mjs (#6247);
 // this file is a thin CLI wrapper over them.
 //
-//   node scripts/generate-registry-readme-section.mjs           # write README.md
-//   node scripts/generate-registry-readme-section.mjs --check    # verify up-to-date
+//   node scripts/generate-registry-readme-section.ts           # write README.md
+//   node scripts/generate-registry-readme-section.ts --check    # verify up-to-date
 
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -28,7 +28,7 @@ import {
 
 const README_PATH = path.join(repoRoot, "README.md");
 
-function main() {
+function main(): void {
   const check = process.argv.includes("--check");
   const overlays = loadOverlays();
   const catalog = renderCatalog(overlays);
