@@ -14,7 +14,7 @@
 // on the hotkey. Only 7d/30d windows are supported (matching the sibling chain/subnet weight-setter
 // routes): WeightsSet fires every tempo, so a 90d window would be an unbounded row scan.
 
-import { WEIGHTS_EVENT_KIND } from "./chain-weights.mjs";
+import { WEIGHTS_EVENT_KIND } from "./chain-weights.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

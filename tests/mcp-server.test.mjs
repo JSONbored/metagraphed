@@ -27,7 +27,7 @@ import { buildChainPrometheus } from "../src/chain-prometheus.ts";
 import { buildChainRegistrations } from "../src/chain-registrations.ts";
 import { buildChainStakeFlow } from "../src/chain-stake-flow.ts";
 import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
-import { buildChainWeights } from "../src/chain-weights.mjs";
+import { buildChainWeights } from "../src/chain-weights.ts";
 import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
 import { buildChainTransfers } from "../src/chain-transfers.ts";
 import { buildChainCalls } from "../src/chain-analytics.ts";

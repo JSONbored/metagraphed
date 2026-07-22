@@ -279,7 +279,7 @@ import { ECONOMICS_TRENDS_ROW_CAP } from "../src/economics-trends.mjs";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
-} from "../src/chain-weights.mjs";
+} from "../src/chain-weights.ts";
 import {
   buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
@@ -5889,7 +5889,7 @@ export default {
         }
 
         // GET /api/v1/chain/weights (#4832 Tier 2): network-wide WeightsSet
-        // leaderboard + rollup, mirroring src/chain-weights.mjs's
+        // leaderboard + rollup, mirroring src/chain-weights.ts's
         // loadChainWeights. window/limit are resolved from the shared
         // ANALYTICS_WINDOWS/DEFAULT_ANALYTICS_WINDOW (workers/config.mjs) --
         // the same set every chain-* module's own WINDOWS constant
@@ -5936,7 +5936,7 @@ export default {
         // src/chain-weight-setters.ts's loadChainWeightSetters. The
         // setter-identity CASE expression here omits chain-weights' extra
         // `AND netuid IS NOT NULL` guard -- matches SETTER_IDENTITY in
-        // chain-weight-setters.ts exactly, not chain-weights.mjs's own.
+        // chain-weight-setters.ts exactly, not chain-weights.ts's own.
         const chainWeightSetters = url.pathname.match(
           /^\/api\/v1\/chain\/weights\/setters$/,
         );

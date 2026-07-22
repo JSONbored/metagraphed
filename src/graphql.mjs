@@ -374,7 +374,7 @@ import {
   CHAIN_WEIGHTS_WINDOWS,
   DEFAULT_CHAIN_WEIGHTS_WINDOW,
   buildChainWeights,
-} from "./chain-weights.mjs";
+} from "./chain-weights.ts";
 import {
   CHAIN_SERVING_LIMIT_DEFAULT,
   CHAIN_SERVING_LIMIT_MAX,
