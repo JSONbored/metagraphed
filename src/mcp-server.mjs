@@ -566,7 +566,7 @@ import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
-} from "./account-registrations.mjs";
+} from "./account-registrations.ts";
 import {
   buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,

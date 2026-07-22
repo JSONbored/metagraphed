@@ -312,7 +312,7 @@ import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
-} from "./account-registrations.mjs";
+} from "./account-registrations.ts";
 import {
   buildAccountDeregistrations,
   DEREGISTRATION_WINDOWS,

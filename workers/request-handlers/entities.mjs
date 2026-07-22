@@ -251,7 +251,7 @@ import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
-} from "../../src/account-registrations.mjs";
+} from "../../src/account-registrations.ts";
 import {
   buildAccountServing,
   SERVING_WINDOWS,

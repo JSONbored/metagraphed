@@ -191,7 +191,7 @@ import {
   REGISTRATION_EVENT_KIND,
   REGISTRATION_WINDOWS,
   DEFAULT_REGISTRATION_WINDOW,
-} from "../src/account-registrations.mjs";
+} from "../src/account-registrations.ts";
 import {
   buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
