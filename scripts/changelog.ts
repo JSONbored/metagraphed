@@ -1,6 +1,6 @@
 // Changelog diff — extracted from build-artifacts.mjs (#1003) so both the build
 // (which emits an empty placeholder) and the publish-time real diff
-// (scripts/build-changelog.mjs) share one implementation. Pure functions, no
+// (scripts/build-changelog.ts) share one implementation. Pure functions, no
 // build side effects.
 //
 // Once subnets/coverage are R2-only there is no committed baseline at BUILD
@@ -10,20 +10,20 @@
 
 type Row = Record<string, unknown>;
 
-interface ArtifactEntry {
+export interface ArtifactEntry {
   path: string;
   hash: string;
   [key: string]: unknown;
 }
 
-interface SubnetEntry {
+export interface SubnetEntry {
   netuid: number;
   name: string;
   slug: string;
   [key: string]: unknown;
 }
 
-interface CoverageSnapshot {
+export interface CoverageSnapshot {
   candidate_count: number;
   curated_overlay_count: number;
   native_only_count: number;

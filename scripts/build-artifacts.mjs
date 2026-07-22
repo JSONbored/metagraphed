@@ -2523,7 +2523,7 @@ const currentArtifactDigests = await collectArtifactDigests({
 // subnets/coverage are R2-only (#1003), so there is no committed baseline at
 // build time — previousSubnets/previousCoverage resolve to null and this emits
 // an EMPTY placeholder changelog. The real "since last publish" diff is computed
-// by scripts/build-changelog.mjs at publish time against the previous R2 publish.
+// by scripts/build-changelog.ts at publish time against the previous R2 publish.
 const changelogArtifact = buildChangelog({
   contractVersion,
   currentArtifacts: currentArtifactDigests,

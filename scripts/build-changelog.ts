@@ -15,13 +15,20 @@
 
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { buildChangelog } from "./changelog.ts";
+import {
+  buildChangelog,
+  type ArtifactEntry,
+  type CoverageSnapshot,
+  type SubnetEntry,
+} from "./changelog.ts";
 import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.mjs";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 
+type Row = Record<string, unknown>;
+
 const dryRun = process.argv.includes("--dry-run");
 
-function wranglerBin() {
+function wranglerBin(): string {
   return (
     process.env.METAGRAPH_WRANGLER_BIN ||
     path.join(
@@ -35,7 +42,7 @@ function wranglerBin() {
 
 // Read a JSON object from R2 `latest/` via the same wrangler call r2-upload uses.
 // Returns null on any failure (missing object, no creds, parse error).
-function getRemoteR2Json(bucketName, key) {
+function getRemoteR2Json(bucketName: string, key: string): Row | null {
   const result = spawnSync(
     wranglerBin(),
     ["r2", "object", "get", `${bucketName}/${key}`, "--remote", "--pipe"],
@@ -51,7 +58,7 @@ function getRemoteR2Json(bucketName, key) {
   }
 }
 
-async function readStagedJson(relativePath) {
+async function readStagedJson(relativePath: string): Promise<Row | null> {
   try {
     return await readJson(artifactFilePath(relativePath));
   } catch {
@@ -59,13 +66,16 @@ async function readStagedJson(relativePath) {
   }
 }
 
-function manifestDigests(manifest) {
-  return (manifest?.artifacts || [])
+function manifestDigests(manifest: Row | null | undefined): ArtifactEntry[] {
+  return ((manifest?.artifacts as Row[] | undefined) || [])
     .filter((entry) => entry?.path)
-    .map((entry) => ({ path: entry.path, hash: entry.sha256 }));
+    .map((entry) => ({
+      path: entry.path as string,
+      hash: entry.sha256 as string,
+    }));
 }
 
-async function main() {
+async function main(): Promise<void> {
   // The build's placeholder — reuse its stamping so the real changelog keeps the
   // same generated_at/contract_version markers. Its presence also confirms a build ran.
   const placeholder = await readStagedJson("changelog.json");
@@ -78,7 +88,7 @@ async function main() {
   // R2-tier, matching the full latest/r2-manifest.json we diff against. The
   // compact public/ manifest excludes R2-tier, which would mis-report every
   // R2-only artifact as "removed".
-  let stagedManifest;
+  let stagedManifest: Row | null;
   try {
     stagedManifest = await readJson(
       path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
@@ -86,7 +96,7 @@ async function main() {
   } catch {
     stagedManifest = null;
   }
-  const bucket = stagedManifest?.bucket_name;
+  const bucket = stagedManifest?.bucket_name as string | undefined;
   if (!bucket) {
     console.log(
       "build-changelog: no staged r2-manifest bucket; leaving placeholder.",
@@ -112,32 +122,38 @@ async function main() {
     contractVersion: placeholder.contract_version,
     generatedAt: placeholder.generated_at,
     currentArtifacts: manifestDigests(stagedManifest),
-    currentCoverage: currentCoverage || {},
-    currentSubnets: { subnets: currentSubnets?.subnets || [] },
+    currentCoverage: (currentCoverage || {}) as unknown as CoverageSnapshot,
+    currentSubnets: {
+      subnets: (currentSubnets?.subnets as SubnetEntry[] | undefined) || [],
+    },
     previousArtifacts: manifestDigests(previousManifest),
-    previousCoverage: previousCoverage || null,
+    previousCoverage: (previousCoverage ||
+      null) as unknown as CoverageSnapshot | null,
     previousSubnets: previousSubnets
-      ? { subnets: previousSubnets.subnets || [] }
+      ? {
+          subnets: (previousSubnets.subnets as SubnetEntry[] | undefined) || [],
+        }
       : null,
   });
+  const summary = changelog.summary as Row;
 
   if (dryRun) {
     console.log(
       "build-changelog (dry-run) — diff vs previous R2 publish:",
-      JSON.stringify(changelog.summary, null, 2),
+      JSON.stringify(summary, null, 2),
     );
     return;
   }
 
   await writeJson(artifactFilePath("changelog.json"), changelog);
   console.log(
-    `build-changelog: wrote real diff (subnets +${changelog.summary.netuid_added_count}/-${changelog.summary.netuid_removed_count}, ${changelog.summary.artifact_modified_count} artifacts modified).`,
+    `build-changelog: wrote real diff (subnets +${summary.netuid_added_count}/-${summary.netuid_removed_count}, ${summary.artifact_modified_count} artifacts modified).`,
   );
 }
 
 main().catch((error) => {
   // Never fail the publish over the change feed.
   console.warn(
-    `build-changelog: failed, leaving the placeholder changelog in place: ${error?.message ?? error}`,
+    `build-changelog: failed, leaving the placeholder changelog in place: ${(error as Error)?.message ?? error}`,
   );
 });

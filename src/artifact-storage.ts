@@ -373,7 +373,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // rollup. Non-reproducible (live-enriched), so they drove the bulk-refresh
   // reproducibility wall (#998). Now R2-only; the changelog's "since last
   // publish" diff is computed at publish time against the previous R2 publish
-  // (scripts/build-changelog.mjs), not a committed baseline.
+  // (scripts/build-changelog.ts), not a committed baseline.
   /^subnets\.json$/,
   /^coverage\.json$/,
   /^coverage-depth\.json$/,
