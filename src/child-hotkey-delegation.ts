@@ -3,7 +3,7 @@
 // to it (as parents), per subnet, with the take rate charged. We already
 // serve the BOUNDS (take-ratio limits, cooldown periods as hyperparameters)
 // but not this live graph itself. Directly analogous to
-// src/validator-nominators.mjs's already-shipped shape, just reading a
+// src/validator-nominators.ts's already-shipped shape, just reading a
 // different pair of storage maps.
 //
 // Storage (pallets/subtensor/src/lib.rs, fetched from opentensor/subtensor's

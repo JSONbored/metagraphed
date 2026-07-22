@@ -145,7 +145,7 @@ import {
   NOMINATOR_SORTS,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-} from "../src/validator-nominators.mjs";
+} from "../src/validator-nominators.ts";
 import {
   buildAccountWeightSetters,
   WEIGHTS_EVENT_KIND,

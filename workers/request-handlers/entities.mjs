@@ -232,7 +232,7 @@ import {
   NOMINATOR_WINDOWS,
   DEFAULT_NOMINATOR_WINDOW,
   NOMINATOR_SORTS,
-} from "../../src/validator-nominators.mjs";
+} from "../../src/validator-nominators.ts";
 import { buildValidatorHistory } from "../../src/validator-history.ts";
 import {
   buildAccountStakeMoves,

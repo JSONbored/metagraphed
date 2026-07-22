@@ -404,7 +404,7 @@ import {
   buildValidatorNominators,
   NOMINATOR_SORTS,
   NOMINATOR_WINDOWS,
-} from "./validator-nominators.mjs";
+} from "./validator-nominators.ts";
 import {
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,

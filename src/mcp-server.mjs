@@ -669,7 +669,7 @@ import {
   DEFAULT_NOMINATOR_SORT,
   NOMINATOR_LIMIT_DEFAULT,
   NOMINATOR_LIMIT_MAX,
-} from "./validator-nominators.mjs";
+} from "./validator-nominators.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
 
 // Protocol versions we understand, newest first. We echo the client's requested
