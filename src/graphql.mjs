@@ -201,7 +201,7 @@ import {
   parseCompareDimensionList,
   parseCompareNetuidList,
   parseUptimeWindow,
-} from "./analytics-live.mjs";
+} from "./analytics-live.ts";
 import { UPTIME_WINDOWS } from "../workers/config.ts";
 import {
   buildAccountExtrinsics,

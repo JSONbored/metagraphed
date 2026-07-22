@@ -364,7 +364,7 @@ import {
   composeCompareData,
   profilesProjectionFromRows,
   COMPARE_VALIDATORS_MAX,
-} from "./analytics-live.mjs";
+} from "./analytics-live.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,

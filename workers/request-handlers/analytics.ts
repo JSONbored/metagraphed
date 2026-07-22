@@ -53,7 +53,7 @@ import {
   loadSubnetHealthTrends,
   loadSubnetIncidents,
   loadSubnetPercentiles,
-} from "../../src/analytics-live.mjs";
+} from "../../src/analytics-live.ts";
 import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.mjs";
 import {
   buildChainActivity,

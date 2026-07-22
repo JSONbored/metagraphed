@@ -19,7 +19,7 @@ import {
   parseCompareNetuids,
   parseUptimeWindow,
   profilesProjectionFromRows,
-} from "../src/analytics-live.mjs";
+} from "../src/analytics-live.ts";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 

@@ -26,14 +26,24 @@ export { composeCompareData };
 export const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
 
-export function profilesProjectionFromRows(profiles) {
-  const subnetMeta = new Map();
-  const mostComplete = [];
+export interface SubnetMetaEntry {
+  slug: string | null;
+  name: string | null;
+}
+
+export function profilesProjectionFromRows(
+  profiles: Array<Record<string, unknown>> | null | undefined,
+): {
+  subnetMeta: Map<number, SubnetMetaEntry>;
+  mostComplete: Array<Record<string, unknown>>;
+} {
+  const subnetMeta = new Map<number, SubnetMetaEntry>();
+  const mostComplete: Array<Record<string, unknown>> = [];
   for (const profile of profiles || []) {
     if (!Number.isInteger(profile.netuid)) continue;
-    subnetMeta.set(profile.netuid, {
-      slug: profile.slug ?? null,
-      name: profile.name ?? null,
+    subnetMeta.set(profile.netuid as number, {
+      slug: (profile.slug as string | null | undefined) ?? null,
+      name: (profile.name as string | null | undefined) ?? null,
     });
     mostComplete.push({
       netuid: profile.netuid,
@@ -47,8 +57,10 @@ export function profilesProjectionFromRows(profiles) {
   return { subnetMeta, mostComplete };
 }
 
-export function growthRowsFromSamples(growthSamples) {
-  const growthByNetuid = new Map();
+export function growthRowsFromSamples(
+  growthSamples: Array<Record<string, unknown>> | null | undefined,
+): Array<{ netuid: number; delta: number | null }> {
+  const growthByNetuid = new Map<number, { first: unknown; last: unknown }>();
   for (const row of growthSamples || []) {
     // D1 can hand the INTEGER netuid back as a numeric string on this GROUP BY
     // read path; the emitted netuid keys the integer-keyed subnetMeta map in
@@ -92,10 +104,16 @@ export function growthRowsFromSamples(growthSamples) {
   }));
 }
 
-export function parseCompareNetuids(netuidsRaw) {
-  if (!netuidsRaw || !COMPARE_NETUIDS_PATTERN.test(netuidsRaw)) return null;
-  const requestedNetuids = [];
-  const seenNetuids = new Set();
+export function parseCompareNetuids(netuidsRaw: unknown): number[] | null {
+  if (
+    typeof netuidsRaw !== "string" ||
+    !netuidsRaw ||
+    !COMPARE_NETUIDS_PATTERN.test(netuidsRaw)
+  ) {
+    return null;
+  }
+  const requestedNetuids: number[] = [];
+  const seenNetuids = new Set<number>();
   for (const part of netuidsRaw.split(",")) {
     const netuid = Number(part);
     if (seenNetuids.has(netuid)) continue;
@@ -105,10 +123,10 @@ export function parseCompareNetuids(netuidsRaw) {
   return requestedNetuids;
 }
 
-export function parseCompareNetuidList(netuids) {
+export function parseCompareNetuidList(netuids: unknown): number[] | null {
   if (!Array.isArray(netuids) || netuids.length === 0) return null;
-  const requestedNetuids = [];
-  const seenNetuids = new Set();
+  const requestedNetuids: number[] = [];
+  const seenNetuids = new Set<number>();
   for (const value of netuids) {
     if (!Number.isInteger(value) || value < 0) return null;
     if (seenNetuids.has(value)) continue;
@@ -126,10 +144,16 @@ export const COMPARE_VALIDATORS_MAX = 16;
 const COMPARE_HOTKEYS_PATTERN =
   /^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$/;
 
-export function parseCompareHotkeys(hotkeysRaw) {
-  if (!hotkeysRaw || !COMPARE_HOTKEYS_PATTERN.test(hotkeysRaw)) return null;
-  const hotkeys = [];
-  const seen = new Set();
+export function parseCompareHotkeys(hotkeysRaw: unknown): string[] | null {
+  if (
+    typeof hotkeysRaw !== "string" ||
+    !hotkeysRaw ||
+    !COMPARE_HOTKEYS_PATTERN.test(hotkeysRaw)
+  ) {
+    return null;
+  }
+  const hotkeys: string[] = [];
+  const seen = new Set<string>();
   for (const part of hotkeysRaw.split(",")) {
     if (seen.has(part)) continue;
     seen.add(part);
@@ -138,10 +162,10 @@ export function parseCompareHotkeys(hotkeysRaw) {
   return hotkeys;
 }
 
-export function parseCompareHotkeyList(hotkeys) {
+export function parseCompareHotkeyList(hotkeys: unknown): string[] | null {
   if (!Array.isArray(hotkeys) || hotkeys.length === 0) return null;
-  const result = [];
-  const seen = new Set();
+  const result: string[] = [];
+  const seen = new Set<string>();
   for (const value of hotkeys) {
     if (typeof value !== "string" || !SS58_ADDRESS_PATTERN.test(value)) {
       return null;
@@ -154,14 +178,18 @@ export function parseCompareHotkeyList(hotkeys) {
   return result;
 }
 
-export function parseCompareDimensions(dimensionsRaw) {
+export function parseCompareDimensions(
+  dimensionsRaw: unknown,
+): string[] | null {
   if (dimensionsRaw === null || dimensionsRaw === undefined) {
     return COMPARE_DIMENSIONS;
   }
   return compareDimensionsFromTokens(String(dimensionsRaw).split(","));
 }
 
-export function parseCompareDimensionList(dimensions) {
+export function parseCompareDimensionList(
+  dimensions: unknown,
+): string[] | null {
   if (dimensions === undefined || dimensions === null) {
     return COMPARE_DIMENSIONS;
   }
@@ -169,15 +197,17 @@ export function parseCompareDimensionList(dimensions) {
   return compareDimensionsFromTokens(dimensions);
 }
 
-function compareDimensionsFromTokens(tokens) {
-  const requested = [];
+function compareDimensionsFromTokens(tokens: unknown[]): string[] | null {
+  const requested: string[] = [];
   for (const token of tokens) {
     const trimmed = String(token).trim();
     if (trimmed === "") return null;
     requested.push(trimmed);
   }
-  const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
-  if (unknown !== undefined) return null;
+  const unknownDimension = requested.find(
+    (d) => !COMPARE_DIMENSIONS.includes(d),
+  );
+  if (unknownDimension !== undefined) return null;
   return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
 }
 
@@ -185,17 +215,24 @@ function compareDimensionsFromTokens(tokens) {
 // (REST/GraphQL/MCP all try the Postgres tier first) -- this loader is only
 // reached on a tier miss, so it always returns the schema-stable empty shape.
 export async function loadSubnetUptime(
-  netuid,
-  { window = "90d", observedAt = null, now = null } = {},
-) {
+  netuid: number,
+  {
+    window = "90d",
+    observedAt = null,
+    now = null,
+  }: { window?: string; observedAt?: unknown; now?: string | null } = {},
+): Promise<unknown> {
   const windowParam = Object.hasOwn(UPTIME_WINDOWS, window) ? window : "90d";
+  // formatUptime (health-serving.mjs, not yet converted) infers its
+  // observedAt/now default-param types as exactly `null` from their `= null`
+  // defaults -- the untyped-default-parameter inference gap.
   return formatUptime({
     netuid,
     window: windowParam,
     observedAt,
     rows: [],
     now: now || new Date().toISOString(),
-  });
+  } as unknown as Parameters<typeof formatUptime>[0]);
 }
 
 // One subnet's 7d/30d uptime + latency trend per operational surface, over the
@@ -205,10 +242,10 @@ export async function loadSubnetUptime(
 // D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now; this
 // loader is only reached on a Postgres-tier miss, so every window is empty.
 export async function loadSubnetHealthTrends(
-  netuid,
-  { observedAt = null } = {},
-) {
-  const windows = {};
+  netuid: number,
+  { observedAt = null }: { observedAt?: unknown } = {},
+): Promise<Record<string, unknown>> {
+  const windows: Record<string, unknown[]> = {};
   for (const label of Object.keys(HEALTH_TREND_WINDOWS)) {
     windows[label] = [];
   }
@@ -224,9 +261,12 @@ export async function loadSubnetHealthTrends(
 // D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now; this
 // loader is only reached on a Postgres-tier miss, so rows are always empty.
 export async function loadSubnetPercentiles(
-  netuid,
-  { window = "7d", observedAt = null } = {},
-) {
+  netuid: number,
+  {
+    window = "7d",
+    observedAt = null,
+  }: { window?: string; observedAt?: unknown } = {},
+): Promise<Record<string, unknown>> {
   const windowParam = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
   return formatPercentiles({
     netuid,
@@ -246,9 +286,12 @@ export async function loadSubnetPercentiles(
 // D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now; this
 // loader is only reached on a Postgres-tier miss, so both row sets are empty.
 export async function loadSubnetIncidents(
-  netuid,
-  { window = "7d", observedAt = null } = {},
-) {
+  netuid: number,
+  {
+    window = "7d",
+    observedAt = null,
+  }: { window?: string; observedAt?: unknown } = {},
+): Promise<Record<string, unknown>> {
   const windowParam = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
   return formatIncidents({
     netuid,
@@ -265,7 +308,7 @@ export async function loadSubnetIncidents(
 export async function loadGlobalIncidents({
   windowLabel = "7d",
   observedAt = null,
-} = {}) {
+}: { windowLabel?: string; observedAt?: unknown } = {}): Promise<unknown> {
   return formatGlobalIncidents({
     window: windowLabel,
     observedAt,
@@ -285,7 +328,13 @@ export async function loadRegistryLeaderboards({
   board = null,
   limit = null,
   observedAt = null,
-} = {}) {
+}: {
+  profiles?: Array<Record<string, unknown>>;
+  economicsRows?: Array<Record<string, unknown>>;
+  board?: unknown;
+  limit?: unknown;
+  observedAt?: unknown;
+} = {}): Promise<unknown> {
   const { subnetMeta, mostComplete } = profilesProjectionFromRows(profiles);
   return formatLeaderboards({
     board,
@@ -310,7 +359,13 @@ export async function loadCompareSubnets({
   netuids,
   dimensions = COMPARE_DIMENSIONS,
   observedAt = null,
-} = {}) {
+}: {
+  profiles?: Array<Record<string, unknown>>;
+  economicsRows?: Array<Record<string, unknown>>;
+  netuids: number[] | null | undefined;
+  dimensions?: string[];
+  observedAt?: unknown;
+}): Promise<unknown> {
   if (!Array.isArray(netuids) || netuids.length === 0) {
     return composeCompareData({
       requestedNetuids: [],
@@ -343,17 +398,23 @@ export async function loadCompareSubnets({
 // handleChainCalls / handleChainFees / handleChainActivity and
 // src/mcp-server.mjs's get_chain_calls tool for the call sites.
 
-export function parseAnalyticsWindow(window) {
+export function parseAnalyticsWindow(
+  window: unknown,
+): { label: string; days: number } | null {
   if (window === null || window === undefined) {
     return { label: "7d", days: ANALYTICS_WINDOWS["7d"] };
   }
-  if (!Object.hasOwn(ANALYTICS_WINDOWS, window)) return null;
+  if (typeof window !== "string" || !Object.hasOwn(ANALYTICS_WINDOWS, window)) {
+    return null;
+  }
   return { label: window, days: ANALYTICS_WINDOWS[window] };
 }
 
-export function parseUptimeWindow(window) {
+export function parseUptimeWindow(window: unknown): string | null {
   if (window === null || window === undefined) {
     return "90d";
   }
-  return Object.hasOwn(UPTIME_WINDOWS, window) ? window : null;
+  return typeof window === "string" && Object.hasOwn(UPTIME_WINDOWS, window)
+    ? window
+    : null;
 }

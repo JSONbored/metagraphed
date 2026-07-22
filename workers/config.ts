@@ -24,7 +24,10 @@ export const ACCOUNT_EVENTS_ROLLUP_CRON = "17 * * * *";
 // /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
   /^\/metagraph\/health\/(?:latest\.json|summary\.json|subnets\/\d+\.json)$/;
-export const HEALTH_TREND_WINDOWS = { "7d": 7, "30d": 30 };
+export const HEALTH_TREND_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+};
 export const BULK_TRENDS_PATH_PATTERN = /^\/api\/v1\/health\/trends$/;
 export const TRENDS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/health\/trends$/;
@@ -346,10 +349,10 @@ export const EXTRINSIC_DETAIL_PATH_PATTERN =
 // file defer their real validation to the handler rather than the regex.
 export const DOMAIN_SUMMARY_PATH_PATTERN =
   /^\/api\/v1\/domains\/([a-z-]+)\/summary$/;
-export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
+export const UPTIME_WINDOWS: Record<string, number> = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;
-export const ANALYTICS_WINDOWS = { "7d": 7, "30d": 30 };
+export const ANALYTICS_WINDOWS: Record<string, number> = { "7d": 7, "30d": 30 };
 export const DEFAULT_ANALYTICS_WINDOW = "7d";
 export const ANALYTICS_WINDOW_PARAM = "window";
 export const RPC_USAGE_BUCKETS = {

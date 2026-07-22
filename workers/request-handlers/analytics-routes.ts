@@ -38,7 +38,7 @@ import {
   parseCompareDimensions,
   parseCompareHotkeys,
   parseCompareNetuids,
-} from "../../src/analytics-live.mjs";
+} from "../../src/analytics-live.ts";
 import {
   buildValidatorDetail,
   composeValidatorComparison,
