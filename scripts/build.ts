@@ -91,7 +91,7 @@ function revertDeployOwnedArtifactsIfChanged(): void {
   // `schemas:snapshot` step, committed directly to its own PR. A blanket
   // revert of the whole array used to stomp that legitimate commit back to
   // origin/main just because r2-manifest.json also showed dirty in the same
-  // build, which guaranteed ci-verify-submitted-artifacts.mjs would always
+  // build, which guaranteed ci-verify-submitted-artifacts.ts would always
   // see committed != rebuilt and fail that PR's `checks` job.
   if (productionBuild) {
     return;
@@ -190,7 +190,7 @@ function productionSteps(): Step[] {
     // surface is skipped (the step always exits 0), so a flaky surface never
     // blocks the publish. Without this step the index is empty and get_fixture
     // returns nothing.
-    nodeStep("capture-fixtures", "scripts/capture-fixtures.mjs", "--write"),
+    nodeStep("capture-fixtures", "scripts/capture-fixtures.ts", "--write"),
     nodeStep("build-artifacts", "scripts/build-artifacts.mjs"),
     nodeStep("probes-smoke", "scripts/probes-smoke.mjs", {
       METAGRAPH_WRITE_PROBE_RESULTS: "1",

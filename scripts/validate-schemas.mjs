@@ -359,7 +359,7 @@ async function artifactValidationTargets() {
           : (
               await listJsonFiles(templatedArtifactDirectory(artifact.id))
             ).filter(
-              // capture-fixtures.mjs writes this report/summary file alongside
+              // capture-fixtures.ts writes this report/summary file alongside
               // the real per-surface fixture-detail records in the same
               // directory (build-artifacts.mjs already excludes it the same
               // way when reading fixtures back in) -- it has no request/
