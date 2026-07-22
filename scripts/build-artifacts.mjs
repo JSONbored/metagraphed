@@ -97,7 +97,7 @@ import {
 import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
-} from "./artifact-budgets.mjs";
+} from "./artifact-budgets.ts";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,

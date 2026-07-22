@@ -1,4 +1,10 @@
-export const ARTIFACT_SIZE_BUDGETS = [
+interface ArtifactBudget {
+  path: string;
+  warn_bytes: number;
+  fail_bytes: number;
+}
+
+export const ARTIFACT_SIZE_BUDGETS: ArtifactBudget[] = [
   budget("candidates.json", 4_500_000, 8_000_000),
   budget("review-queue.json", 4_500_000, 8_000_000),
   budget("verification/latest.json", 3_000_000, 5_000_000),
@@ -33,7 +39,20 @@ export const ARTIFACT_SIZE_BUDGETS = [
 
 const DEFAULT_BUDGET = budget("*", 250_000, 1_000_000);
 
-export function evaluateArtifactBudgets(artifactSizes) {
+interface ArtifactSize {
+  path: string;
+  size_bytes: number;
+}
+
+interface ArtifactBudgetResult extends ArtifactSize {
+  warn_bytes: number;
+  fail_bytes: number;
+  status: "ok" | "warn" | "fail";
+}
+
+export function evaluateArtifactBudgets(
+  artifactSizes: ArtifactSize[],
+): ArtifactBudgetResult[] {
   return artifactSizes.map((artifact) => {
     const configured = budgetForArtifact(artifact.path);
     const status =
@@ -52,7 +71,11 @@ export function evaluateArtifactBudgets(artifactSizes) {
   });
 }
 
-export function summarizeArtifactBudgets(results) {
+export function summarizeArtifactBudgets(results: ArtifactBudgetResult[]): {
+  fail_count: number;
+  ok_count: number;
+  warn_count: number;
+} {
   return {
     fail_count: results.filter((result) => result.status === "fail").length,
     ok_count: results.filter((result) => result.status === "ok").length,
@@ -60,14 +83,14 @@ export function summarizeArtifactBudgets(results) {
   };
 }
 
-function budgetForArtifact(path) {
+function budgetForArtifact(path: string): ArtifactBudget {
   return (
     ARTIFACT_SIZE_BUDGETS.find((entry) => budgetMatches(entry.path, path)) ||
     DEFAULT_BUDGET
   );
 }
 
-function budgetMatches(pattern, path) {
+function budgetMatches(pattern: string, path: string): boolean {
   if (pattern === path) {
     return true;
   }
@@ -84,7 +107,11 @@ function budgetMatches(pattern, path) {
   return new RegExp(`^${regexSource}$`).test(path);
 }
 
-function budget(path, warnBytes, failBytes) {
+function budget(
+  path: string,
+  warnBytes: number,
+  failBytes: number,
+): ArtifactBudget {
   return {
     path,
     warn_bytes: warnBytes,

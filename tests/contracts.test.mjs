@@ -17,7 +17,7 @@ import {
   compileRoutePattern,
 } from "../src/contracts.mjs";
 import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.ts";
-import { evaluateArtifactBudgets } from "../scripts/artifact-budgets.mjs";
+import { evaluateArtifactBudgets } from "../scripts/artifact-budgets.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 
 describe("artifact lifecycle status (#6358)", () => {

@@ -9,7 +9,7 @@ import {
   ARTIFACT_SIZE_BUDGETS,
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
-} from "../scripts/artifact-budgets.mjs";
+} from "../scripts/artifact-budgets.ts";
 import {
   buildEndpointResourceArtifact,
   buildEndpointPoolArtifact,

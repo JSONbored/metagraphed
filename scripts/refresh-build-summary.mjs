@@ -3,7 +3,7 @@ import path from "node:path";
 import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
-} from "./artifact-budgets.mjs";
+} from "./artifact-budgets.ts";
 import {
   buildTimestamp,
   repoRoot,
