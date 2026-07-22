@@ -323,6 +323,3664 @@
       "public_safe": true,
       "source_urls": ["https://lium.io/api/openapi.json"],
       "url": "https://lium.io/api/watchtower/digest"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-banned-machines",
+      "kind": "subnet-api",
+      "name": "Lium admin banned machines",
+      "notes": "Get All Banned Machines operation on the Lium Backend API (GET, POST /admin/banned-machines), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/admin/banned-machines"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-banned-machines-ban-id",
+      "kind": "subnet-api",
+      "name": "Lium admin banned machines ban id",
+      "notes": "Remove Banned Machine operation on the Lium Backend API (DELETE, GET, PATCH /admin/banned-machines/{ban_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/admin/banned-machines/%7Bban_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-custom-referral-links",
+      "kind": "subnet-api",
+      "name": "Lium admin custom referral links",
+      "notes": "Get All Custom Referral Links operation on the Lium Backend API (GET, POST /admin/custom-referral-links), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/admin/custom-referral-links"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-custom-referral-links-link-id",
+      "kind": "subnet-api",
+      "name": "Lium admin custom referral links link id",
+      "notes": "Deactivate Custom Referral Link operation on the Lium Backend API (DELETE, GET, PATCH /admin/custom-referral-links/{link_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/admin/custom-referral-links/%7Blink_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-custom-referral-links-stats",
+      "kind": "subnet-api",
+      "name": "Lium admin custom referral links stats",
+      "notes": "Get All Link Stats operation on the Lium Backend API (GET /admin/custom-referral-links/stats), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/admin/custom-referral-links/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-admin-custom-referral-links-validate-code",
+      "kind": "subnet-api",
+      "name": "Lium admin custom referral links validate code",
+      "notes": "Validate Custom Referral Link operation on the Lium Backend API (POST /admin/custom-referral-links/validate/{code}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/admin/custom-referral-links/validate/%7Bcode%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-admin-expiring-credit-grants",
+      "kind": "subnet-api",
+      "name": "Lium admin expiring credit grants",
+      "notes": "Get Expiring Credit Grants operation on the Lium Backend API (GET, POST /admin/expiring-credit-grants), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/admin/expiring-credit-grants"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-auth-github-login",
+      "kind": "subnet-api",
+      "name": "Lium auth github login",
+      "notes": "Login With Github operation on the Lium Backend API (POST /auth/github-login), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/auth/github-login"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-auth-github-login-complete",
+      "kind": "subnet-api",
+      "name": "Lium auth github login complete",
+      "notes": "Github Login Complete operation on the Lium Backend API (POST /auth/github-login-complete), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/auth/github-login-complete"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-auth-google-login",
+      "kind": "subnet-api",
+      "name": "Lium auth google login",
+      "notes": "Login With Google operation on the Lium Backend API (POST /auth/google-login), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/auth/google-login"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-auth-google-login-complete",
+      "kind": "subnet-api",
+      "name": "Lium auth google login complete",
+      "notes": "Google Login Complete operation on the Lium Backend API (POST /auth/google-login-complete), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/auth/google-login-complete"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-auth-logout",
+      "kind": "subnet-api",
+      "name": "Lium auth logout",
+      "notes": "Logout operation on the Lium Backend API (POST /auth/logout), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/auth/logout"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-auth-resend-verify-email",
+      "kind": "subnet-api",
+      "name": "Lium auth resend verify email",
+      "notes": "Resend Verify Email operation on the Lium Backend API (POST /auth/resend-verify-email), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/auth/resend-verify-email"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-auth-verify-email",
+      "kind": "subnet-api",
+      "name": "Lium auth verify email",
+      "notes": "Verify Email operation on the Lium Backend API (POST /auth/verify-email), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/auth/verify-email"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-configs",
+      "kind": "subnet-api",
+      "name": "Lium backup configs",
+      "notes": "List backup configurations operation on the Lium Backend API (GET, POST /backup-configs), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-configs"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-configs-config-id",
+      "kind": "subnet-api",
+      "name": "Lium backup configs config id",
+      "notes": "Delete backup configuration operation on the Lium Backend API (DELETE, PUT /backup-configs/{config_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-configs/%7Bconfig_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-configs-pod-pod-id",
+      "kind": "subnet-api",
+      "name": "Lium backup configs pod pod id",
+      "notes": "Get backup configuration operation on the Lium Backend API (GET /backup-configs/pod/{pod_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-configs/pod/%7Bpod_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs",
+      "kind": "subnet-api",
+      "name": "Lium backup logs",
+      "notes": "Get all backup logs operation on the Lium Backend API (GET /backup-logs/), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-logs/"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-backup-log-id",
+      "kind": "subnet-api",
+      "name": "Lium backup logs backup log id",
+      "notes": "Get backup log operation on the Lium Backend API (GET /backup-logs/{backup_log_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-logs/%7Bbackup_log_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-backup-log-id-progress",
+      "kind": "subnet-api",
+      "name": "Lium backup logs backup log id progress",
+      "notes": "Update backup progress operation on the Lium Backend API (PUT /backup-logs/{backup_log_id}/progress), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-logs/%7Bbackup_log_id%7D/progress"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-bulk-delete",
+      "kind": "subnet-api",
+      "name": "Lium backup logs bulk delete",
+      "notes": "Bulk delete backup logs (async) operation on the Lium Backend API (POST /backup-logs/bulk-delete), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-logs/bulk-delete"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-bulk-delete-status-task-id",
+      "kind": "subnet-api",
+      "name": "Lium backup logs bulk delete status task id",
+      "notes": "Poll bulk delete task status operation on the Lium Backend API (GET /backup-logs/bulk-delete/status/{task_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-logs/bulk-delete/status/%7Btask_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-log-id",
+      "kind": "subnet-api",
+      "name": "Lium backup logs log id",
+      "notes": "Delete backup log operation on the Lium Backend API (DELETE /backup-logs/{log_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-logs/%7Blog_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-backup-logs-pod-pod-id",
+      "kind": "subnet-api",
+      "name": "Lium backup logs pod pod id",
+      "notes": "Get backup logs operation on the Lium Backend API (GET /backup-logs/pod/{pod_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/backup-logs/pod/%7Bpod_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-billing-billing-history-mineronchain-account",
+      "kind": "subnet-api",
+      "name": "Lium billing billing history miner onchain-account",
+      "notes": "Get the billing history for a provider operation on the Lium Backend API (GET /billing/billing-history/{mineronchain-account}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/billing/billing-history/%7Bminer_coldkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-billing-billing-info-for-users",
+      "kind": "subnet-api",
+      "name": "Lium billing billing info for users",
+      "notes": "Get the billing info for a user operation on the Lium Backend API (GET /billing/billing-info-for-users), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/billing/billing-info-for-users"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-billing-billing-per-day",
+      "kind": "subnet-api",
+      "name": "Lium billing billing per day",
+      "notes": "Get the billing info per day operation on the Lium Backend API (GET /billing/billing-per-day), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/billing/billing-per-day"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-bookmark",
+      "kind": "subnet-api",
+      "name": "Lium bookmark",
+      "notes": "Get bookmarked providers operation on the Lium Backend API (GET /bookmark), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/bookmark"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-bookmark-executors",
+      "kind": "subnet-api",
+      "name": "Lium bookmark executors",
+      "notes": "Get nodes from bookmarked providers operation on the Lium Backend API (GET /bookmark/executors), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/bookmark/executors"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-bookmark-mineroperator-account",
+      "kind": "subnet-api",
+      "name": "Lium bookmark miner operator-account",
+      "notes": "Remove provider bookmark operation on the Lium Backend API (DELETE, POST /bookmark/{mineroperator-account}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/bookmark/%7Bminer_hotkey%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-cli-auth-approve",
+      "kind": "subnet-api",
+      "name": "Lium cli auth approve",
+      "notes": "Approve Cli Auth Session operation on the Lium Backend API (POST /cli-auth/approve), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/cli-auth/approve"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-cli-auth-init",
+      "kind": "subnet-api",
+      "name": "Lium cli auth init",
+      "notes": "Init Cli Auth Session operation on the Lium Backend API (POST /cli-auth/init), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/cli-auth/init"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-cli-auth-poll-session-id",
+      "kind": "subnet-api",
+      "name": "Lium cli auth poll session id",
+      "notes": "Poll Cli Auth Session operation on the Lium Backend API (GET /cli-auth/poll/{session_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/cli-auth/poll/%7Bsession_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-coinbase-create-charge",
+      "kind": "subnet-api",
+      "name": "Lium coinbase create charge",
+      "notes": "Create Charge operation on the Lium Backend API (POST /coinbase/create-charge), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/coinbase/create-charge"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-coinbase-webhook",
+      "kind": "subnet-api",
+      "name": "Lium coinbase webhook",
+      "notes": "Webhooks operation on the Lium Backend API (POST /coinbase/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/coinbase/webhook"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-crypto-wallets",
+      "kind": "subnet-api",
+      "name": "Lium crypto wallets",
+      "notes": "List Crypto Wallets operation on the Lium Backend API (GET, POST /crypto-wallets), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/crypto-wallets"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-crypto-wallets-wallet-id",
+      "kind": "subnet-api",
+      "name": "Lium crypto wallets wallet id",
+      "notes": "Delete Crypto Wallet operation on the Lium Backend API (DELETE /crypto-wallets/{wallet_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/crypto-wallets/%7Bwallet_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-crypto-wallets-wallet-id-set-default",
+      "kind": "subnet-api",
+      "name": "Lium crypto wallets wallet id set default",
+      "notes": "Set Default Crypto Wallet operation on the Lium Backend API (PUT /crypto-wallets/{wallet_id}/set-default), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/crypto-wallets/%7Bwallet_id%7D/set-default"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-db-chat-chat",
+      "kind": "subnet-api",
+      "name": "Lium db chat chat",
+      "notes": "Chat with DB - Streaming (Admin only) operation on the Lium Backend API (POST /db-chat/chat), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/db-chat/chat"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-db-chat-clear",
+      "kind": "subnet-api",
+      "name": "Lium db chat clear",
+      "notes": "Clear chat history (Admin only) operation on the Lium Backend API (POST /db-chat/clear), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/db-chat/clear"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-db-chat-history",
+      "kind": "subnet-api",
+      "name": "Lium db chat history",
+      "notes": "Get chat history (Admin only) operation on the Lium Backend API (GET /db-chat/history), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/db-chat/history"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-docker-authentication",
+      "kind": "subnet-api",
+      "name": "Lium docker authentication",
+      "notes": "List operation on the Lium Backend API (GET, POST /docker-authentication/), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/docker-credentials/"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-docker-authentication-docker-auth-identifier",
+      "kind": "subnet-api",
+      "name": "Lium docker authentication docker authentication id",
+      "notes": "Delete operation on the Lium Backend API (DELETE, GET, PUT /docker-authentication/{docker-auth-identifier}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/docker-credentials/%7Bdocker_credential_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-executors",
+      "kind": "subnet-api",
+      "name": "Lium executors",
+      "notes": "Get all available nodes operation on the Lium Backend API (GET /executors), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Live-verified 2026-07-22: GET /executors -> HTTP 200 application/json (list of available executors with machine names and pricing). Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/executors"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-executors-default-docker-image",
+      "kind": "subnet-api",
+      "name": "Lium executors default docker image",
+      "notes": "Get default docker image of node operation on the Lium Backend API (GET /executors/default-docker-image), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/executors/default-docker-image"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-executors-deployment-estimate",
+      "kind": "subnet-api",
+      "name": "Lium executors deployment estimate",
+      "notes": "Estimate deployment time operation on the Lium Backend API (GET /executors/deployment-estimate), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/executors/deployment-estimate"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-executors-executor-uuid-hardware-utilization",
+      "kind": "subnet-api",
+      "name": "Lium executors executor uuid hardware utilization",
+      "notes": "Get CPU and other hardware utilization for a node operation on the Lium Backend API (GET /executors/{executor_uuid}/hardware-utilization), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/executors/%7Bexecutor_uuid%7D/hardware-utilization"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-executors-executor-uuid-rent",
+      "kind": "subnet-api",
+      "name": "Lium executors executor uuid rent",
+      "notes": "Rent node operation on the Lium Backend API (POST /executors/{executor_uuid}/rent), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/executors/%7Bexecutor_uuid%7D/rent"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-feedbacks",
+      "kind": "subnet-api",
+      "name": "Lium feedbacks",
+      "notes": "Get User Feedbacks operation on the Lium Backend API (GET, POST /feedbacks), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/feedbacks"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-feedbacks-feedback-id",
+      "kind": "subnet-api",
+      "name": "Lium feedbacks feedback id",
+      "notes": "Delete Feedback operation on the Lium Backend API (DELETE, GET, PUT /feedbacks/{feedback_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/feedbacks/%7Bfeedback_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-gpu-allocation",
+      "kind": "subnet-api",
+      "name": "Lium gpu allocation",
+      "notes": "Gpu Allocation operation on the Lium Backend API (POST /gpu-allocation), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/gpu-allocation"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-keys",
+      "kind": "subnet-api",
+      "name": "Lium keys",
+      "notes": "List authentication operation on the Lium Backend API (GET, POST /keys), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/keys"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-keys-access-identifier",
+      "kind": "subnet-api",
+      "name": "Lium keys authentication id",
+      "notes": "Delete authentication operation on the Lium Backend API (DELETE, GET, PUT /keys/{access-identifier}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/keys/%7Bapi_key_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-locations-country-codes",
+      "kind": "subnet-api",
+      "name": "Lium locations country codes",
+      "notes": "Find Templates operation on the Lium Backend API (GET /locations/country_codes), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/locations/country_codes"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-machine-requests",
+      "kind": "subnet-api",
+      "name": "Lium machine requests",
+      "notes": "List all machine requests by user operation on the Lium Backend API (GET, POST /machine-requests), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/machine-requests"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-machine-requests-request-id",
+      "kind": "subnet-api",
+      "name": "Lium machine requests request id",
+      "notes": "Close a request operation on the Lium Backend API (DELETE, GET, PUT /machine-requests/{request_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-machine-requests-request-id-achieve",
+      "kind": "subnet-api",
+      "name": "Lium machine requests request id achieve",
+      "notes": "Achieve a request operation on the Lium Backend API (POST /machine-requests/{request_id}/achieve), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D/achieve"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-machine-requests-request-id-executors",
+      "kind": "subnet-api",
+      "name": "Lium machine requests request id executors",
+      "notes": "Get nodes assigned to machine request operation on the Lium Backend API (GET /machine-requests/{request_id}/executors), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/machine-requests/%7Brequest_id%7D/executors"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-machines-estimate",
+      "kind": "subnet-api",
+      "name": "Lium machines estimate",
+      "notes": "Get GPU reward estimate operation on the Lium Backend API (GET /machines/estimate), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/machines/estimate"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-nowpayments-create-invoice",
+      "kind": "subnet-api",
+      "name": "Lium nowpayments create invoice",
+      "notes": "Create Invoice operation on the Lium Backend API (POST /nowpayments/create-invoice), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/nowpayments/create-invoice"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-nowpayments-currencies",
+      "kind": "subnet-api",
+      "name": "Lium nowpayments currencies",
+      "notes": "Get Currencies operation on the Lium Backend API (GET /nowpayments/currencies), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/nowpayments/currencies"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-nowpayments-webhook",
+      "kind": "subnet-api",
+      "name": "Lium nowpayments webhook",
+      "notes": "Nowpayments Webhook operation on the Lium Backend API (POST /nowpayments/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/nowpayments/webhook"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-payouts",
+      "kind": "subnet-api",
+      "name": "Lium payouts",
+      "notes": "Get User Payouts operation on the Lium Backend API (GET /payouts), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/payouts"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-payouts-payout-id",
+      "kind": "subnet-api",
+      "name": "Lium payouts payout id",
+      "notes": "Get Payout Details operation on the Lium Backend API (GET /payouts/{payout_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/payouts/%7Bpayout_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods",
+      "kind": "subnet-api",
+      "name": "Lium pods",
+      "notes": "Get all pods operation on the Lium Backend API (GET /pods), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-22: an unauthenticated GET returns HTTP 401, confirming the gate is real rather than schema-only.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-id",
+      "kind": "subnet-api",
+      "name": "Lium pods id",
+      "notes": "Delete pod operation on the Lium Backend API (DELETE, GET, PATCH, PUT /pods/{id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bid%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-id-discord-channel",
+      "kind": "subnet-api",
+      "name": "Lium pods id discord channel",
+      "notes": "Create pod Discord support channel operation on the Lium Backend API (POST /pods/{id}/discord-channel), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bid%7D/discord-channel"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-id-install-jupyter",
+      "kind": "subnet-api",
+      "name": "Lium pods id install jupyter",
+      "notes": "Install Jupyter for a pod operation on the Lium Backend API (POST /pods/{id}/install-jupyter), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bid%7D/install-jupyter"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-id-like",
+      "kind": "subnet-api",
+      "name": "Lium pods id like",
+      "notes": "Toggle like/unlike a pod operation on the Lium Backend API (POST /pods/{id}/like), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bid%7D/like"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-id-multiple-ssh-keys",
+      "kind": "subnet-api",
+      "name": "Lium pods id multiple ssh keys",
+      "notes": "Add SSH keys to pod operation on the Lium Backend API (POST /pods/{id}/multiple-ssh-keys), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bid%7D/multiple-ssh-keys"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-id-reboot",
+      "kind": "subnet-api",
+      "name": "Lium pods id reboot",
+      "notes": "Reboot pod operation on the Lium Backend API (POST /pods/{id}/reboot), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bid%7D/reboot"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-id-schedule-removal",
+      "kind": "subnet-api",
+      "name": "Lium pods id schedule removal",
+      "notes": "Delete scheduled removal of a pod operation on the Lium Backend API (DELETE, POST /pods/{id}/schedule-removal), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bid%7D/schedule-removal"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-id-switch-template",
+      "kind": "subnet-api",
+      "name": "Lium pods id switch template",
+      "notes": "Switch template operation on the Lium Backend API (PUT /pods/{id}/switch-template), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bid%7D/switch-template"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-pod-id-backup",
+      "kind": "subnet-api",
+      "name": "Lium pods pod id backup",
+      "notes": "Trigger backup pod operation on the Lium Backend API (POST /pods/{pod_id}/backup), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/backup"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-pod-id-feedback",
+      "kind": "subnet-api",
+      "name": "Lium pods pod id feedback",
+      "notes": "Create feedback for a pod operation on the Lium Backend API (POST /pods/{pod_id}/feedback), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/feedback"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-pods-pod-id-gpu-utilization",
+      "kind": "subnet-api",
+      "name": "Lium pods pod id gpu utilization",
+      "notes": "Get GPU utilization for a specific pod operation on the Lium Backend API (GET /pods/{pod_id}/gpu-utilization), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/gpu-utilization"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-pod-id-logs",
+      "kind": "subnet-api",
+      "name": "Lium pods pod id logs",
+      "notes": "Stream container logs operation on the Lium Backend API (GET /pods/{pod_id}/logs), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bpod_id%7D/logs"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-pod-uuid-restore",
+      "kind": "subnet-api",
+      "name": "Lium pods pod uuid restore",
+      "notes": "Start restore process operation on the Lium Backend API (POST /pods/{pod_uuid}/restore), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bpod_uuid%7D/restore"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods-pod-uuid-restore-logs",
+      "kind": "subnet-api",
+      "name": "Lium pods pod uuid restore logs",
+      "notes": "Get restore logs operation on the Lium Backend API (GET /pods/{pod_uuid}/restore-logs), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods/%7Bpod_uuid%7D/restore-logs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-provider-stats-mineroperator-account",
+      "kind": "subnet-api",
+      "name": "Lium provider stats miner operator-account",
+      "notes": "Get comprehensive statistics for a provider operation on the Lium Backend API (GET /provider-stats/{mineroperator-account}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/provider-stats/%7Bminer_hotkey%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-provider-stats-mineroperator-account-executors",
+      "kind": "subnet-api",
+      "name": "Lium provider stats miner operator-account executors",
+      "notes": "Get nodes for a provider operation on the Lium Backend API (GET /provider-stats/{mineroperator-account}/executors), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/provider-stats/%7Bminer_hotkey%7D/executors"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-history",
+      "kind": "subnet-api",
+      "name": "Lium referrals history",
+      "notes": "Get Referral History operation on the Lium Backend API (GET /referrals/history), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/referrals/history"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-my-code",
+      "kind": "subnet-api",
+      "name": "Lium referrals my code",
+      "notes": "Get My Referral Code operation on the Lium Backend API (GET /referrals/my-code), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/referrals/my-code"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-pending-payouts",
+      "kind": "subnet-api",
+      "name": "Lium referrals pending payouts",
+      "notes": "Get Pending Payouts operation on the Lium Backend API (GET /referrals/pending-payouts), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/referrals/pending-payouts"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-program-info",
+      "kind": "subnet-api",
+      "name": "Lium referrals program info",
+      "notes": "Get Referral Program Info operation on the Lium Backend API (GET /referrals/program-info), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/referrals/program-info"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-stats",
+      "kind": "subnet-api",
+      "name": "Lium referrals stats",
+      "notes": "Get Referral Stats operation on the Lium Backend API (GET /referrals/stats), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/referrals/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-validate-code",
+      "kind": "subnet-api",
+      "name": "Lium referrals validate code",
+      "notes": "Validate Referral Code operation on the Lium Backend API (POST /referrals/validate/{code}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/referrals/validate/%7Bcode%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-referrals-withdraw",
+      "kind": "subnet-api",
+      "name": "Lium referrals withdraw",
+      "notes": "Withdraw Referral Rewards operation on the Lium Backend API (POST /referrals/withdraw), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/referrals/withdraw"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-restore-logs-restore-log-id-progress",
+      "kind": "subnet-api",
+      "name": "Lium restore logs restore log id progress",
+      "notes": "Update restore progress operation on the Lium Backend API (PUT /restore-logs/{restore_log_id}/progress), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/restore-logs/%7Brestore_log_id%7D/progress"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-root",
+      "kind": "subnet-api",
+      "name": "Lium root",
+      "notes": "Health Check operation on the Lium Backend API (GET /), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Live-verified 2026-07-22: GET / -> HTTP 200 application/json (\"Hello world\" service banner). Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-sleep-seconds",
+      "kind": "subnet-api",
+      "name": "Lium sleep seconds",
+      "notes": "Sleep Endpoint operation on the Lium Backend API (GET /sleep/{seconds}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/sleep/%7Bseconds%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-ssh-keys",
+      "kind": "subnet-api",
+      "name": "Lium ssh keys",
+      "notes": "Find My Ssh Keys operation on the Lium Backend API (GET, POST /ssh-keys), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/ssh-keys"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-ssh-keys-id",
+      "kind": "subnet-api",
+      "name": "Lium ssh keys id",
+      "notes": "Delete operation on the Lium Backend API (DELETE, GET, PUT /ssh-keys/{id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/ssh-keys/%7Bid%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-stablecoin-webhook",
+      "kind": "subnet-api",
+      "name": "Lium stablecoin webhook",
+      "notes": "Crypto Transfer Webhook operation on the Lium Backend API (POST /stablecoin/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stablecoin/webhook"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-connect-account",
+      "kind": "subnet-api",
+      "name": "Lium stripe connect account",
+      "notes": "Create Connect Account operation on the Lium Backend API (POST /stripe/connect/account), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stripe/connect/account"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-connect-onboarding-link",
+      "kind": "subnet-api",
+      "name": "Lium stripe connect onboarding link",
+      "notes": "Create Onboarding Link operation on the Lium Backend API (POST /stripe/connect/onboarding-link), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stripe/connect/onboarding-link"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-connect-supported-countries",
+      "kind": "subnet-api",
+      "name": "Lium stripe connect supported countries",
+      "notes": "Get Supported Countries operation on the Lium Backend API (GET /stripe/connect/supported-countries), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stripe/connect/supported-countries"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-create-checkout-session",
+      "kind": "subnet-api",
+      "name": "Lium stripe create checkout session",
+      "notes": "Create Checkout Session operation on the Lium Backend API (POST /stripe/create-checkout-session), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stripe/create-checkout-session"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-invoices-invoice-id",
+      "kind": "subnet-api",
+      "name": "Lium stripe invoices invoice id",
+      "notes": "Get Invoice operation on the Lium Backend API (GET /stripe/invoices/{invoice_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stripe/invoices/%7Binvoice_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-payments-payment-methods",
+      "kind": "subnet-api",
+      "name": "Lium stripe payments payment methods",
+      "notes": "List Payment Methods operation on the Lium Backend API (GET, POST /stripe/payments/payment-methods), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stripe/payments/payment-methods"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-payments-payment-methods-payment-method-id",
+      "kind": "subnet-api",
+      "name": "Lium stripe payments payment methods payment method id",
+      "notes": "Delete Payment Method operation on the Lium Backend API (DELETE /stripe/payments/payment-methods/{payment_method_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stripe/payments/payment-methods/%7Bpayment_method_id%7D"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-stripe-webhook",
+      "kind": "subnet-api",
+      "name": "Lium stripe webhook",
+      "notes": "Stripe Webhook operation on the Lium Backend API (POST /stripe/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/stripe/webhook"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-tao-create-transfer",
+      "kind": "subnet-api",
+      "name": "Lium tao create transfer",
+      "notes": "Create Transfer operation on the Lium Backend API (POST /tao/create-transfer), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/tao/create-transfer"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-tao-webhook",
+      "kind": "subnet-api",
+      "name": "Lium tao webhook",
+      "notes": "Webhook operation on the Lium Backend API (POST /tao/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/tao/webhook"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-templates",
+      "kind": "subnet-api",
+      "name": "Lium templates",
+      "notes": "Find Templates operation on the Lium Backend API (GET, POST /templates), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Live-verified 2026-07-22: GET /templates -> HTTP 200 application/json (list of published pod templates). Public, no-auth and fixed-URL, so its probe is enabled.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/templates"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-templates-id",
+      "kind": "subnet-api",
+      "name": "Lium templates id",
+      "notes": "Delete Template operation on the Lium Backend API (DELETE, GET, PUT /templates/{id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/templates/%7Bid%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-tmc-pay-create-invoice",
+      "kind": "subnet-api",
+      "name": "Lium tmc pay create invoice",
+      "notes": "Create Invoice operation on the Lium Backend API (POST /tmc-pay/create-invoice), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/tmc-pay/create-invoice"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-tmc-pay-currencies",
+      "kind": "subnet-api",
+      "name": "Lium tmc pay currencies",
+      "notes": "Get Currencies operation on the Lium Backend API (GET /tmc-pay/currencies), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/tmc-pay/currencies"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-tmc-pay-webhook",
+      "kind": "subnet-api",
+      "name": "Lium tmc pay webhook",
+      "notes": "Tmc Pay Webhook operation on the Lium Backend API (POST /tmc-pay/webhook), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/tmc-pay/webhook"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-transactions",
+      "kind": "subnet-api",
+      "name": "Lium transactions",
+      "notes": "Get all pods operation on the Lium Backend API (GET /transactions), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/transactions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-users",
+      "kind": "subnet-api",
+      "name": "Lium users",
+      "notes": "Signup operation on the Lium Backend API (POST /users), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-users-get-ip",
+      "kind": "subnet-api",
+      "name": "Lium users get ip",
+      "notes": "Get Client Ip Endpoint operation on the Lium Backend API (GET /users/get-ip), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/get-ip"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-users-login",
+      "kind": "subnet-api",
+      "name": "Lium users login",
+      "notes": "Login operation on the Lium Backend API (POST /users/login), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/login"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me",
+      "kind": "subnet-api",
+      "name": "Lium users me",
+      "notes": "Delete User operation on the Lium Backend API (DELETE, GET, PUT /users/me), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-auto-top-up",
+      "kind": "subnet-api",
+      "name": "Lium users me auto top up",
+      "notes": "Get Auto Top Up operation on the Lium Backend API (GET, PUT /users/me/auto-top-up), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/auto-top-up"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-discord",
+      "kind": "subnet-api",
+      "name": "Lium users me discord",
+      "notes": "Disconnect Discord operation on the Lium Backend API (DELETE /users/me/discord), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/discord"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-discord-callback",
+      "kind": "subnet-api",
+      "name": "Lium users me discord callback",
+      "notes": "Connect Discord Callback operation on the Lium Backend API (GET /users/me/discord/callback), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/discord/callback"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-discord-oauth-url",
+      "kind": "subnet-api",
+      "name": "Lium users me discord oauth url",
+      "notes": "Get Discord Oauth Url operation on the Lium Backend API (GET /users/me/discord/oauth-url), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/discord/oauth-url"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-events",
+      "kind": "subnet-api",
+      "name": "Lium users me events",
+      "notes": "Get Events operation on the Lium Backend API (GET /users/me/events), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/events"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-low-balance-threshold",
+      "kind": "subnet-api",
+      "name": "Lium users me low balance threshold",
+      "notes": "Get Low Balance Threshold operation on the Lium Backend API (GET, PUT /users/me/low-balance-threshold), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/low-balance-threshold"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-notification",
+      "kind": "subnet-api",
+      "name": "Lium users me notification",
+      "notes": "Get Notification Setting operation on the Lium Backend API (GET, PUT /users/me/notification), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/notification"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-preference",
+      "kind": "subnet-api",
+      "name": "Lium users me preference",
+      "notes": "Get User Preference operation on the Lium Backend API (GET /users/me/preference), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/preference"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-preference-default-template",
+      "kind": "subnet-api",
+      "name": "Lium users me preference default template",
+      "notes": "Clear Default Template operation on the Lium Backend API (DELETE /users/me/preference/default-template), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/preference/default-template"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-referral-payout-method",
+      "kind": "subnet-api",
+      "name": "Lium users me referral payout method",
+      "notes": "Update Referral Payout Method operation on the Lium Backend API (PUT /users/me/referral-payout-method), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/referral-payout-method"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-transfer-credit-history",
+      "kind": "subnet-api",
+      "name": "Lium users me transfer credit history",
+      "notes": "Get Transfer Credit History operation on the Lium Backend API (GET /users/me/transfer-credit-history), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/transfer-credit-history"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-transfer-credits",
+      "kind": "subnet-api",
+      "name": "Lium users me transfer credits",
+      "notes": "Transfer Credits operation on the Lium Backend API (POST /users/me/transfer-credits), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/transfer-credits"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-me-transfer-history",
+      "kind": "subnet-api",
+      "name": "Lium users me transfer history",
+      "notes": "Get Transfer History operation on the Lium Backend API (GET /users/me/transfer-history), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/me/transfer-history"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-presigned-url",
+      "kind": "subnet-api",
+      "name": "Lium users presigned url",
+      "notes": "Generate Presigned Url operation on the Lium Backend API (POST /users/presigned-url), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/presigned-url"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-users-request-reset-password",
+      "kind": "subnet-api",
+      "name": "Lium users request reset password",
+      "notes": "Request Reset Password operation on the Lium Backend API (POST /users/request-reset-password), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/request-reset-password"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-users-reset-password",
+      "kind": "subnet-api",
+      "name": "Lium users reset password",
+      "notes": "Reset Password operation on the Lium Backend API (POST /users/reset-password), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares no security on it; registered with the probe disabled and no auth requirement asserted without evidence (not individually probed beyond the sampled routes).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/reset-password"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-search",
+      "kind": "subnet-api",
+      "name": "Lium users search",
+      "notes": "Search Users operation on the Lium Backend API (GET /users/search), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-22: an unauthenticated GET returns HTTP 401, confirming the gate is real rather than schema-only.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/search"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-validator-validatoroperator-account-executor-health-check",
+      "kind": "subnet-api",
+      "name": "Lium validator validator operator-account executor health check",
+      "notes": "Check Executor Health operation on the Lium Backend API (POST /validator/{validatoroperator-account}/executor-health-check), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/validator/%7Bvalidator_hotkey%7D/executor-health-check"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-validator-validatoroperator-account-executors",
+      "kind": "subnet-api",
+      "name": "Lium validator validator operator-account executors",
+      "notes": "Get Executors operation on the Lium Backend API (POST /validator/{validatoroperator-account}/executors), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/validator/%7Bvalidator_hotkey%7D/executors"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-validator-validatoroperator-account-latest-set-weights",
+      "kind": "subnet-api",
+      "name": "Lium validator validator operator-account latest set weights",
+      "notes": "Get Latest Set Weights operation on the Lium Backend API (GET, POST /validator/{validatoroperator-account}/latest-set-weights), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Path-parameterized, so there is no single fixed callable URL; the template is registered per the registry's catalog-everything policy (Phase 2).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/validator/%7Bvalidator_hotkey%7D/latest-set-weights"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes",
+      "kind": "subnet-api",
+      "name": "Lium volumes",
+      "notes": "Get all available volumes operation on the Lium Backend API (GET, POST /volumes), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/volumes"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes-cost-summary",
+      "kind": "subnet-api",
+      "name": "Lium volumes cost summary",
+      "notes": "Get aggregated cost summary operation on the Lium Backend API (GET /volumes/cost-summary), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/volumes/cost-summary"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes-costs",
+      "kind": "subnet-api",
+      "name": "Lium volumes costs",
+      "notes": "Get volume cost breakdown operation on the Lium Backend API (GET /volumes/costs), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/volumes/costs"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes-volume-id",
+      "kind": "subnet-api",
+      "name": "Lium volumes volume id",
+      "notes": "Delete a volume operation on the Lium Backend API (DELETE, GET, PUT /volumes/{volume_id}), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/volumes/%7Bvolume_id%7D"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-volumes-volume-id-current-stats",
+      "kind": "subnet-api",
+      "name": "Lium volumes volume id current stats",
+      "notes": "Get current volume size and file count operation on the Lium Backend API (GET /volumes/{volume_id}/current-stats), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. The spec declares a bearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/volumes/%7Bvolume_id%7D/current-stats"
     }
   ],
   "source_repo": "https://github.com/Datura-ai/lium-io"
