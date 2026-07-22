@@ -950,6 +950,24 @@
       },
       "source_urls": ["https://api.all-ways.io/swagger-json"],
       "url": "https://api.all-ways.io/treasury/churn"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-data-artifact",
+      "kind": "data-artifact",
+      "name": "Allways swap-manager contract metadata",
+      "notes": "Public no-auth ink! smart-contract metadata (source hash, contract spec, storage layout, and type registry) for Allways' on-chain swap_manager contract, committed in the subnet's official source repository (entrius/allways, the registered SN7 source-repo). Machine-readable JSON emitted by cargo-contract; describes the SOL-BTC swap-settlement contract the SN7 network operates against. Live-verified 2026-07-22: HTTP 200, ~155 KB JSON.",
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "philluiz2323"
+      },
+      "source_urls": [
+        "https://github.com/entrius/allways/blob/0f30f597642f573b37953799a616cb04de5cba7a/allways/metadata/allways_swap_manager.json"
+      ],
+      "url": "https://raw.githubusercontent.com/entrius/allways/0f30f597642f573b37953799a616cb04de5cba7a/allways/metadata/allways_swap_manager.json"
     }
   ],
   "website_url": "https://all-ways.io/"
