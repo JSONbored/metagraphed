@@ -509,9 +509,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
+        "scheme": "api-key",
         "location": "header",
-        "scopes_note": "Requires a hotkey-signed request (X-Hotkey, X-Timestamp, X-Signature headers); administrative routes additionally accept an X-Admin-Token. No static API key or bearer token is accepted for standard use."
+        "name": "X-Admin-Token",
+        "scopes_note": "Requires an X-Admin-Token header (confirmed live: an unauthenticated request returns HTTP 401 \"invalid admin token\"). No bearer token or hotkey-signed request is accepted for this route."
       },
       "auth_required": true,
       "authority": "community",
@@ -536,9 +537,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
+        "scheme": "signature",
         "location": "header",
-        "scopes_note": "Requires a hotkey-signed request (X-Hotkey, X-Timestamp, X-Signature headers); administrative routes additionally accept an X-Admin-Token. No static API key or bearer token is accepted for standard use."
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"],
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey. No static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
