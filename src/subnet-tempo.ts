@@ -4,13 +4,17 @@
 // path lives in workers/data-api.mjs (loadSubnetTempos), joined into
 // buildGlobalValidators/buildValidatorDetail's apy_estimate by netuid.
 
+type Row = Record<string, unknown>;
+
 // netuid -> tempo Map built from a Postgres query result, for
 // accumulateApyRow (src/metagraph-neurons.ts) to annualize each subnet
 // membership's emission_tao. Null-safe on a cold/absent table (returns an
 // empty Map, so every lookup misses and apy_estimate serves as null) --
 // never throws, mirrors nominatorCountsByHotkey's cold-safety.
-export function tempoByNetuid(rows) {
-  const map = new Map();
+export function tempoByNetuid(
+  rows: Row[] | null | undefined,
+): Map<number, number> {
+  const map = new Map<number, number>();
   for (const row of Array.isArray(rows) ? rows : []) {
     const netuid = nonNegativeInt(row?.netuid);
     // tempo=0 would divide-by-zero into an infinite epochsPerYear downstream
@@ -27,7 +31,7 @@ export function tempoByNetuid(rows) {
 // duplicated locally rather than imported since that one isn't exported and
 // this module should stay independently testable/importable without pulling
 // in metagraph-neurons.ts's whole surface.
-function nonNegativeInt(value) {
+function nonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);

@@ -1,7 +1,7 @@
 import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 
-import { tempoByNetuid } from "../src/subnet-tempo.mjs";
+import { tempoByNetuid } from "../src/subnet-tempo.ts";
 
 describe("tempoByNetuid", () => {
   test("builds a netuid -> tempo Map from rows", () => {
