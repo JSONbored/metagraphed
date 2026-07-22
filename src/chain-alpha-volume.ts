@@ -70,7 +70,7 @@ function percentile(ascending: number[], p: number): number {
 
 // Conventional median of a NON-EMPTY ascending numeric array: the middle value for an odd
 // count, the mean of the two middle values for an even count. Mirrors chain-stake-flow.ts's
-// median (itself matching subnet-yield.mjs / chain-yield.ts), applied to total_volume_tao.
+// median (itself matching subnet-yield.ts / chain-yield.ts), applied to total_volume_tao.
 function median(ascending: number[]): number {
   const mid = (ascending.length - 1) / 2;
   return roundUnit(

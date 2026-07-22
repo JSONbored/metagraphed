@@ -521,7 +521,7 @@ import {
   buildSubnetYield,
   buildSubnetYieldHistory,
   parseSubnetYieldHistoryWindow,
-} from "./subnet-yield.mjs";
+} from "./subnet-yield.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,

@@ -139,7 +139,7 @@ import {
   buildSubnetYieldHistory,
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
-} from "./subnet-yield.mjs";
+} from "./subnet-yield.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,

@@ -85,7 +85,7 @@ function percentile(ascending: number[], p: number): number {
 // Conventional median of a 0..1 score column: the middle value for an odd count,
 // the average of the two middle values for an even count — NOT the nearest-rank
 // p50, which returns the lower-middle for an even count (e.g. [0.2, 0.8] -> 0.2).
-// Matches the median() subnet-yield.mjs uses for median_yield (its test asserts it
+// Matches the median() subnet-yield.ts uses for median_yield (its test asserts it
 // "averages the two middle values ... not lower-middle"), so a field named
 // *_median reports the same statistic across both modules. Callers pass a raw
 // column array (dayRows.map(...)); returns null when no neuron carries a finite value.

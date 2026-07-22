@@ -52,7 +52,7 @@ function stabilityScore(retention: number): number {
 }
 
 // Nearest-rank percentile of a NON-EMPTY ascending numeric array (deterministic, no
-// interpolation) — mirrors src/subnet-yield.mjs. Only called from stabilityDistribution,
+// interpolation) — mirrors src/subnet-yield.ts. Only called from stabilityDistribution,
 // which short-circuits an empty score set to null before reaching here.
 function percentile(ascending: number[], p: number): number {
   const rank = Math.ceil((p / 100) * ascending.length);
@@ -63,7 +63,7 @@ function percentile(ascending: number[], p: number): number {
 // the mean of the two middle values for an even count (so [33, 100] -> 66.5, not the lower-middle 33
 // a nearest-rank p50 gives). The averaging form needs no odd/even branch — for an odd count the two
 // indices coincide and it returns that middle value unchanged. Matches median() in chain-yield.ts /
-// subnet-yield.mjs so a `median` field is the same statistic across the API. Reached only after
+// subnet-yield.ts so a `median` field is the same statistic across the API. Reached only after
 // stabilityDistribution's empty short-circuit.
 function median(ascending: number[]): number {
   const mid = (ascending.length - 1) / 2;

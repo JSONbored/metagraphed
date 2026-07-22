@@ -190,7 +190,7 @@ describe("buildTurnover", () => {
   });
 
   test("blank uid cells are skipped (not counted as uid 0)", () => {
-    // Mirrors the blank-cell guard in subnet-yield.mjs (#3022): Number("") is 0.
+    // Mirrors the blank-cell guard in subnet-yield.ts (#3022): Number("") is 0.
     for (const blank of ["", "   "]) {
       const data = buildTurnover(
         [

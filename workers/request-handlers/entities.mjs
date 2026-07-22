@@ -72,7 +72,7 @@ import {
   buildSubnetYield,
   buildSubnetYieldHistory,
   parseSubnetYieldHistoryWindow,
-} from "../../src/subnet-yield.mjs";
+} from "../../src/subnet-yield.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,

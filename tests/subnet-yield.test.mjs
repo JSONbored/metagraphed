@@ -6,7 +6,7 @@ import {
   loadSubnetYield,
   parseSubnetYieldHistoryWindow,
   buildSubnetYieldHistory,
-} from "../src/subnet-yield.mjs";
+} from "../src/subnet-yield.ts";
 
 const apiComponents = JSON.parse(
   readFileSync(

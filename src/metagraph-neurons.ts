@@ -69,7 +69,7 @@ const RAO_PER_TAO = 1e9;
 const APY_SECONDS_PER_BLOCK = 12;
 // Calendar year, no leap-day adjustment -- a documented convention, not a
 // protocol-derived figure. No prior art for "a year" exists elsewhere in
-// this repo (src/chain-yield.ts / src/subnet-yield.mjs are explicitly
+// this repo (src/chain-yield.ts / src/subnet-yield.ts are explicitly
 // snapshot-only, never annualized) -- apy_estimate is the new precedent.
 const APY_SECONDS_PER_YEAR = 365 * 24 * 60 * 60; // 31,536,000
 
@@ -137,7 +137,7 @@ function round(value: unknown, dp = 6): number | null {
 
 // 1 TAO = 1e9 rao; round yield-shaped outputs to that precision to shed
 // IEEE-754 noise below the rao floor while keeping small ratios meaningful.
-// Matches src/chain-yield.ts / src/subnet-yield.mjs's own round9 exactly
+// Matches src/chain-yield.ts / src/subnet-yield.ts's own round9 exactly
 // (apy_estimate is a sibling yield-shaped field, not a trust/take value, so
 // it uses this precision convention rather than round()'s 6dp default).
 function round9(value: unknown): number | null {

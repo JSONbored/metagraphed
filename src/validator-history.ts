@@ -33,7 +33,7 @@ function roundTaoOrNull(v: unknown): number | null {
 
 // emission / stake scaled to a per-1000-TAO reward rate for that day -- null
 // when stake is zero/absent (the rate is undefined with nothing staked),
-// mirroring the yield-metric null convention in src/subnet-yield.mjs.
+// mirroring the yield-metric null convention in src/subnet-yield.ts.
 function rewardsPer1000Tao(
   stakeTao: number | null,
   emissionTao: number | null,

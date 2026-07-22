@@ -340,7 +340,7 @@ describe("buildSubnetPerformanceHistory", () => {
     // An even neuron count: nearest-rank p50 would return the lower-middle value
     // (e.g. trust [0.2, 0.8] -> 0.2), but a field named *_median must be the
     // conventional median = average of the two middle values, matching the
-    // median subnet-yield.mjs reports for median_yield.
+    // median subnet-yield.ts reports for median_yield.
     const day = (over) => ({
       snapshot_date: "2026-06-20",
       incentive: 0.1,

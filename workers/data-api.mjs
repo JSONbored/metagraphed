@@ -99,7 +99,7 @@ import {
   YIELD_HISTORY_ROW_CAP,
   YIELD_HISTORY_WINDOWS,
   DEFAULT_YIELD_HISTORY_WINDOW,
-} from "../src/subnet-yield.mjs";
+} from "../src/subnet-yield.ts";
 import { buildAccountPortfolio } from "../src/account-portfolio.ts";
 import {
   buildNeuronHistory,
@@ -8148,7 +8148,7 @@ export default {
         }
 
         // GET /api/v1/subnets/:netuid/yield (#4832 Tier 2): one subnet's
-        // emission-yield distribution, mirroring src/subnet-yield.mjs's
+        // emission-yield distribution, mirroring src/subnet-yield.ts's
         // loadSubnetYield.
         const subnetYield = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/yield$/,
@@ -8572,7 +8572,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/yield/history?window= (#4832 Tier 2b):
         // per-day emission-yield distribution trend, mirroring
-        // src/subnet-yield.mjs's buildSubnetYieldHistory.
+        // src/subnet-yield.ts's buildSubnetYieldHistory.
         const yieldHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/yield\/history$/,
         );

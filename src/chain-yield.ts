@@ -1,7 +1,7 @@
 // Network-wide emission yield: the emission-per-stake RETURN RATE over EVERY
 // subnet's neurons from the live `neurons` D1 tier, summarized as a distribution
 // (no per-UID list — the network analog of the per-subnet yield scorecard in
-// subnet-yield.mjs). The return-rate companion to chain-performance.ts: that
+// subnet-yield.ts). The return-rate companion to chain-performance.ts: that
 // measures how CONCENTRATED the rewards are and how the 0..1 trust scores spread,
 // while this measures how efficiently stake earns emission across the whole
 // network and how that return is distributed across all neurons at once. Every
@@ -27,7 +27,7 @@ function round9(value: unknown): number {
 
 // A finite TAO cell, or null when absent/blank/non-numeric. Blank D1 cells coerce via
 // Number("") → 0; skip those rows rather than fabricating zero-stake neurons or
-// zero-yield readings (mirrors subnet-yield.mjs / metagraph-neurons.ts).
+// zero-yield readings (mirrors subnet-yield.ts / metagraph-neurons.ts).
 function nullableTao(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
