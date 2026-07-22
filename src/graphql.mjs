@@ -350,7 +350,7 @@ import {
   CHAIN_SIGNERS_SORTS,
   CHAIN_SIGNERS_LIMIT_DEFAULT,
   CHAIN_SIGNERS_LIMIT_MAX,
-} from "./chain-query-loaders.mjs";
+} from "./chain-query-loaders.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,

@@ -368,7 +368,7 @@ import {
   buildChainFees,
   buildChainSigners,
 } from "../src/chain-analytics.ts";
-import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
+import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 
 // metagraphed#6769: a caught write/query failure (logged via console.error,
 // converted to a clean error response) never reached Sentry -- only an
@@ -6415,7 +6415,7 @@ export default {
 
         // GET /api/v1/chain/signers (#4832 gap-closure, extrinsics-derived
         // cluster): windowed most-active-account leaderboard, mirroring
-        // src/chain-query-loaders.mjs's loadChainSigners. sort/call_module are
+        // src/chain-query-loaders.ts's loadChainSigners. sort/call_module are
         // already validated D1-side before this route is ever reached. A
         // separate freshness query is needed (unlike totals-style routes
         // above) because the grouped rows below carry last_tx_block, not a

@@ -269,7 +269,7 @@ import {
 } from "./concentration.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
-import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.mjs";
+import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {

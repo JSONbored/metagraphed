@@ -54,7 +54,7 @@ import {
   loadSubnetIncidents,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.ts";
-import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.mjs";
+import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.ts";
 import {
   buildChainActivity,
   buildChainCalls,
