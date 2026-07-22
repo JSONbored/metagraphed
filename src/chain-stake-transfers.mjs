@@ -60,7 +60,7 @@ function coerceEpochMs(value) {
   // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
   // toIso's new Date(n).toISOString() throw a RangeError, which would 500 the whole
   // stake-transfers endpoint on a single corrupt observed_at cell. Drop it to null,
-  // mirroring the getTime() range guard chain-stake-flow.mjs added in #3016.
+  // mirroring the getTime() range guard chain-stake-flow.ts added in #3016.
   return Number.isFinite(new Date(n).getTime()) ? n : null;
 }
 

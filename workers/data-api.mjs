@@ -316,7 +316,7 @@ import {
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
-} from "../src/chain-stake-flow.mjs";
+} from "../src/chain-stake-flow.ts";
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
@@ -1202,7 +1202,7 @@ async function handleRollupAccountEventsDaily(request, env) {
         // account_events_daily above, scoped to just the two stake-flow
         // kinds and grouped by account instead of (hotkey, netuid). Both
         // StakeAdded and StakeRemoved carry a positive amount_tao (see
-        // src/chain-stake-flow.mjs's own header), so net = added - removed.
+        // src/chain-stake-flow.ts's own header), so net = added - removed.
         await sql`
           INSERT INTO wallet_flow_daily (coldkey, day, net_flow_tao, gross_in_tao, gross_out_tao, updated_at)
           SELECT
@@ -6231,7 +6231,7 @@ export default {
 
         // GET /api/v1/chain/stake-flow (#4832 Tier 2): network-wide
         // cross-subnet capital flow (StakeAdded - StakeRemoved), mirroring
-        // src/chain-stake-flow.mjs's loadChainStakeFlow. A single
+        // src/chain-stake-flow.ts's loadChainStakeFlow. A single
         // GROUP BY netuid, event_kind query, no cold-store guard branch --
         // matches the D1 loader exactly.
         const chainStakeFlow = url.pathname.match(

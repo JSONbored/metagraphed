@@ -66,7 +66,7 @@ const iso = (ms) => {
   // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
   // new Date(ms).toISOString() throw a RangeError, which would tear down the whole
   // prober run on a single corrupt checked_at_ms/last_ok_ms cell. Drop it to null,
-  // mirroring the getTime() range guard chain-stake-flow.mjs added in #3016.
+  // mirroring the getTime() range guard chain-stake-flow.ts added in #3016.
   const d = new Date(ms);
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 };

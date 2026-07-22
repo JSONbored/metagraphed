@@ -25,7 +25,7 @@ export const DEFAULT_CHAIN_STAKE_FLOW_WINDOW = "7d";
 // rao floor; round every TAO output to rao precision (the same rounding the sibling scorecards
 // apply). A non-finite sum can only arise from a malformed direct call — coerce it to 0.
 const RAO_PER_TAO = 1e9;
-function roundTao(value) {
+function roundTao(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * RAO_PER_TAO) / RAO_PER_TAO;
@@ -33,13 +33,13 @@ function roundTao(value) {
 
 // Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number,
 // defaulting to 0.
-function toNumber(value) {
+function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 // A finite TAO aggregate cell, or null when absent/blank/non-numeric.
-function nullableTao(value) {
+function nullableTao(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
@@ -50,7 +50,7 @@ function nullableTao(value) {
 // blank/whitespace-only string explicitly so neither is silently coerced to subnet 0
 // (Number(null), Number(""), and Number("  ") all === 0); a malformed direct row must be
 // skipped, never counted as netuid 0.
-function normalizedNetuid(value) {
+function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
@@ -59,28 +59,33 @@ function normalizedNetuid(value) {
 
 // Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
 // envelope's generated_at, the same way account-events does.
-function coerceEpochMs(value) {
+function coerceEpochMs(value: unknown): number | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   return Number.isFinite(new Date(n).getTime()) ? n : null;
 }
 
-function toIso(value) {
+function toIso(value: unknown): string | null {
   const n = coerceEpochMs(value);
   return n == null ? null : new Date(n).toISOString();
 }
 
+export type ChainStakeFlowDirection = "inflow" | "outflow" | "balanced";
+
 // A coarse direction label from net vs gross flow: |net| below 5% of gross reads as churn
 // (capital cycling both ways) rather than a directional move; gross 0 (no flow) is balanced.
-function classifyDirection(net, gross) {
+function classifyDirection(
+  net: number,
+  gross: number,
+): ChainStakeFlowDirection {
   if (gross <= 0) return "balanced";
   if (Math.abs(net) / gross < 0.05) return "balanced";
   return net > 0 ? "inflow" : "outflow";
 }
 
 // Nearest-rank percentile of a NON-EMPTY ascending numeric array (net flow can be negative).
-function percentile(ascending, p) {
+function percentile(ascending: number[], p: number): number {
   const rank = Math.ceil((p / 100) * ascending.length);
   return ascending[Math.min(rank, ascending.length) - 1];
 }
@@ -91,15 +96,26 @@ function percentile(ascending, p) {
 // averaging form needs no odd/even branch — for an odd count the two indices coincide and it returns
 // that middle value unchanged. Matches median() in chain-yield.mjs / subnet-yield.mjs so a `median`
 // field is the same statistic across the API. Reached only after netFlowDistribution's empty short-circuit.
-function median(ascending) {
+function median(ascending: number[]): number {
   const mid = (ascending.length - 1) / 2;
   return roundTao((ascending[Math.floor(mid)] + ascending[Math.ceil(mid)]) / 2);
+}
+
+export interface NetFlowDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  p25: number;
+  median: number;
+  p75: number;
+  p90: number;
+  max: number;
 }
 
 // Spread of the per-subnet net flow across every subnet in the window: count, mean, and
 // min / p25 / median / p75 / p90 / max (TAO). Null when no subnet moved stake — lets a caller
 // read the flow as a distribution (how lopsided the network's capital movement is).
-function netFlowDistribution(values) {
+function netFlowDistribution(values: number[]): NetFlowDistribution | null {
   if (values.length === 0) return null;
   const ascending = [...values].sort((a, b) => a - b);
   const sum = ascending.reduce((total, value) => total + value, 0);
@@ -122,18 +138,62 @@ function netFlowDistribution(values) {
 // subnet that moved stake in the window (the aggregate's rows) — subnets with no StakeAdded/
 // StakeRemoved events are absent from account_events and so are not represented, which the
 // route/schema advertise as "active stake-flow subnets". Null-safe: no rows yields the empty block.
+export interface ChainStakeFlowSubnet {
+  netuid: number;
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+  direction: ChainStakeFlowDirection;
+}
+
+export interface ChainStakeFlowNetwork {
+  total_staked_tao: number;
+  total_unstaked_tao: number;
+  net_flow_tao: number;
+  gross_flow_tao: number;
+  stake_events: number;
+  unstake_events: number;
+  gaining: number;
+  losing: number;
+  flat: number;
+}
+
+export interface ChainStakeFlowResult {
+  schema_version: 1;
+  window: string | null;
+  observed_at: string | null;
+  subnet_count: number;
+  network: ChainStakeFlowNetwork;
+  net_flow_distribution: NetFlowDistribution | null;
+  subnets: ChainStakeFlowSubnet[];
+}
+
 export function buildChainStakeFlow(
-  rows,
-  { window, limit = CHAIN_STAKE_FLOW_LIMIT_DEFAULT } = {},
-) {
+  rows: Array<Record<string, unknown>> | null | undefined,
+  {
+    window,
+    limit = CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+  }: { window?: string | null; limit?: number } = {},
+): ChainStakeFlowResult {
   const list = Array.isArray(rows) ? rows : [];
   const flooredLimit = Math.floor(Number(limit));
   const normalizedLimit = Number.isFinite(flooredLimit)
     ? Math.max(0, Math.min(flooredLimit, CHAIN_STAKE_FLOW_LIMIT_MAX))
     : CHAIN_STAKE_FLOW_LIMIT_DEFAULT;
 
-  const perNetuid = new Map();
-  let newestObserved = null;
+  const perNetuid = new Map<
+    number,
+    {
+      staked: number;
+      unstaked: number;
+      stakeEvents: number;
+      unstakeEvents: number;
+    }
+  >();
+  let newestObserved: number | null = null;
   for (const row of list) {
     const netuid = normalizedNetuid(row?.netuid);
     if (netuid == null) continue;
@@ -168,7 +228,7 @@ export function buildChainStakeFlow(
     }
   }
 
-  const subnets = [];
+  const subnets: ChainStakeFlowSubnet[] = [];
   let totalStaked = 0;
   let totalUnstaked = 0;
   let totalStakeEvents = 0;
@@ -205,7 +265,7 @@ export function buildChainStakeFlow(
     (a, b) => b.net_flow_tao - a.net_flow_tao || a.netuid - b.netuid,
   );
 
-  const network = {
+  const network: ChainStakeFlowNetwork = {
     total_staked_tao: roundTao(totalStaked),
     total_unstaked_tao: roundTao(totalUnstaked),
     net_flow_tao: roundTao(totalStaked - totalUnstaked),

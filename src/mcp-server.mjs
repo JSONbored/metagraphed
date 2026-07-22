@@ -292,7 +292,7 @@ import {
   CHAIN_STAKE_FLOW_LIMIT_MAX,
   CHAIN_STAKE_FLOW_WINDOWS,
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
-} from "./chain-stake-flow.mjs";
+} from "./chain-stake-flow.ts";
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,

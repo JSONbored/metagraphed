@@ -28,7 +28,7 @@ export const CHAIN_ALPHA_VOLUME_LIMIT_MAX = 100;
 
 // 1 TAO/alpha = 1e9 rao. Summing many already-rounded per-subnet totals can still accumulate
 // IEEE-754 noise below the rao floor; round every network-rollup output to rao precision,
-// mirroring alpha-volume.mjs's own roundUnit / chain-stake-flow.mjs's roundTao.
+// mirroring alpha-volume.mjs's own roundUnit / chain-stake-flow.ts's roundTao.
 const RAO_PER_UNIT = 1e9;
 function roundUnit(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
@@ -39,7 +39,7 @@ function roundUnit(value: number): number {
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null AND a
 // blank/whitespace-only string explicitly so neither is silently coerced to subnet 0
 // (Number(null), Number(""), and Number("  ") all === 0); a malformed direct row must be
-// skipped, never counted as netuid 0. Mirrors chain-stake-flow.mjs's normalizedNetuid.
+// skipped, never counted as netuid 0. Mirrors chain-stake-flow.ts's normalizedNetuid.
 function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
@@ -48,7 +48,7 @@ function normalizedNetuid(value: unknown): number | null {
 }
 
 // Newest epoch-ms observed_at, or null when not finite/absent — rendered as ISO for the
-// envelope's observed_at, mirroring chain-stake-flow.mjs's coerceEpochMs.
+// envelope's observed_at, mirroring chain-stake-flow.ts's coerceEpochMs.
 function coerceEpochMs(value: unknown): number | null {
   if (value == null) return null;
   const n = Number(value);
@@ -62,14 +62,14 @@ function toIso(value: unknown): string | null {
 }
 
 // Nearest-rank percentile of a NON-EMPTY ascending numeric array. Mirrors
-// chain-stake-flow.mjs's percentile, applied here to total_volume_tao instead of net flow.
+// chain-stake-flow.ts's percentile, applied here to total_volume_tao instead of net flow.
 function percentile(ascending: number[], p: number): number {
   const rank = Math.ceil((p / 100) * ascending.length);
   return ascending[Math.min(rank, ascending.length) - 1];
 }
 
 // Conventional median of a NON-EMPTY ascending numeric array: the middle value for an odd
-// count, the mean of the two middle values for an even count. Mirrors chain-stake-flow.mjs's
+// count, the mean of the two middle values for an even count. Mirrors chain-stake-flow.ts's
 // median (itself matching subnet-yield.mjs / chain-yield.mjs), applied to total_volume_tao.
 function median(ascending: number[]): number {
   const mid = (ascending.length - 1) / 2;
@@ -92,7 +92,7 @@ export interface VolumeDistribution {
 // Spread of per-subnet total_volume_tao across every subnet with volume in the window: count,
 // mean, and min / p25 / median / p75 / p90 / max (TAO). Null when no subnet had volume — lets a
 // caller read how concentrated (or spread out) the network's market activity is. Mirrors
-// chain-stake-flow.mjs's netFlowDistribution, applied to total_volume_tao instead of net flow.
+// chain-stake-flow.ts's netFlowDistribution, applied to total_volume_tao instead of net flow.
 function volumeDistribution(values: number[]): VolumeDistribution | null {
   if (values.length === 0) return null;
   const ascending = [...values].sort((a, b) => a - b);
@@ -120,7 +120,7 @@ function volumeDistribution(values: number[]): VolumeDistribution | null {
 // broken by netuid ascending). `limit` caps the leaderboard; the network rollup, subnet_count, and
 // distribution cover every subnet that had volume (the aggregate's rows) — subnets with no
 // StakeAdded/StakeRemoved events are absent from account_events and so are not represented, the
-// same "active" contract chain-stake-flow.mjs advertises. Null-safe: no rows yields the empty
+// same "active" contract chain-stake-flow.ts advertises. Null-safe: no rows yields the empty
 // block, never throws.
 export interface ChainAlphaVolumeNetwork {
   buy_volume_alpha: number;
@@ -164,7 +164,7 @@ export function buildChainAlphaVolume(
     // Only a StakeAdded/StakeRemoved row is volume: skip any other kind BEFORE creating a
     // bucket so a non-volume row (only reachable via a malformed direct call — the loader's SQL
     // already filters to these two kinds) never materializes an inactive all-zero subnet,
-    // mirroring chain-stake-flow.mjs's own guard.
+    // mirroring chain-stake-flow.ts's own guard.
     const kind = row?.event_kind;
     if (kind !== STAKE_ADDED_KIND && kind !== STAKE_REMOVED_KIND) continue;
     const bucket = perNetuid.get(netuid) ?? [];

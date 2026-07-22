@@ -26,7 +26,7 @@ import path from "node:path";
 import {
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
-} from "../src/chain-stake-flow.mjs";
+} from "../src/chain-stake-flow.ts";
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 

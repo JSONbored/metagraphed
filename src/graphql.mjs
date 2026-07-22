@@ -432,7 +432,7 @@ import {
   CHAIN_STAKE_FLOW_LIMIT_MAX,
   CHAIN_STAKE_FLOW_WINDOWS,
   DEFAULT_CHAIN_STAKE_FLOW_WINDOW,
-} from "./chain-stake-flow.mjs";
+} from "./chain-stake-flow.ts";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
