@@ -312,7 +312,7 @@ import {
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
-} from "../src/chain-stake-transfers.mjs";
+} from "../src/chain-stake-transfers.ts";
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
@@ -6193,7 +6193,7 @@ export default {
 
         // GET /api/v1/chain/stake-transfers (#4832 Tier 2): network-wide
         // StakeTransferred leaderboard, mirroring
-        // src/chain-stake-transfers.mjs's loadChainStakeTransfers.
+        // src/chain-stake-transfers.ts's loadChainStakeTransfers.
         // Distinct by the "coldkey" column -- a stake transfer moves stake
         // between owning accounts.
         const chainStakeTransfers = url.pathname.match(

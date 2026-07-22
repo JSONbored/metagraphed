@@ -100,7 +100,7 @@ import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
-} from "../../src/chain-stake-transfers.mjs";
+} from "../../src/chain-stake-transfers.ts";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
