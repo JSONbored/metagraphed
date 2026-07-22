@@ -224,7 +224,7 @@
       "id": "sn-96-verathos-examples",
       "kind": "example",
       "name": "Verathos code examples",
-      "notes": "Official Verathos examples — OpenAI-compatible, streaming, and x402 client quickstarts.",
+      "notes": "Official Verathos examples \u2014 OpenAI-compatible, streaming, and x402 client quickstarts.",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -668,7 +668,7 @@
       "url": "https://verathos.ai/api/auth/register",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -694,7 +694,7 @@
       "url": "https://verathos.ai/api/auth/login",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -720,7 +720,7 @@
       "url": "https://verathos.ai/api/auth/create-key",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -773,7 +773,7 @@
       "url": "https://verathos.ai/api/deposits/address",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -799,7 +799,7 @@
       "url": "https://verathos.ai/api/deposits/withdraw",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -825,7 +825,7 @@
       "url": "https://verathos.ai/api/deposits/balance",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -851,7 +851,7 @@
       "url": "https://verathos.ai/api/models/load",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -877,7 +877,7 @@
       "url": "https://verathos.ai/api/models/unload",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -903,7 +903,7 @@
       "url": "https://verathos.ai/api/models/refresh",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -929,7 +929,7 @@
       "url": "https://verathos.ai/api/chat/%7Bconversation_id%7D",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -955,7 +955,7 @@
       "url": "https://verathos.ai/api/conversations/",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -981,7 +981,7 @@
       "url": "https://verathos.ai/api/conversations/%7Bconversation_id%7D",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1007,7 +1007,7 @@
       "url": "https://verathos.ai/api/conversations/claim",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1077,7 +1077,7 @@
       "url": "https://api.verathos.ai/capacity/audit/v1/receipt",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1103,7 +1103,7 @@
       "url": "https://api.verathos.ai/capacity/audit/v1/proof",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1195,7 +1195,7 @@
       "url": "https://api.verathos.ai/v1/auth/challenge",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1221,7 +1221,7 @@
       "url": "https://api.verathos.ai/v1/auth/register",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1247,7 +1247,7 @@
       "url": "https://api.verathos.ai/v1/auth/login",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1273,7 +1273,7 @@
       "url": "https://api.verathos.ai/v1/auth/keys",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1299,7 +1299,7 @@
       "url": "https://api.verathos.ai/v1/api-keys",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1325,7 +1325,7 @@
       "url": "https://api.verathos.ai/v1/auth/wallet",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1351,7 +1351,7 @@
       "url": "https://api.verathos.ai/v1/api-keys/%7Bkey_hash%7D",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1377,7 +1377,7 @@
       "url": "https://api.verathos.ai/v1/admin/x402/stats",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1403,7 +1403,7 @@
       "url": "https://api.verathos.ai/v1/admin/sponsored-keys",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1429,7 +1429,7 @@
       "url": "https://api.verathos.ai/v1/balance",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1455,7 +1455,7 @@
       "url": "https://api.verathos.ai/v1/usage",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1481,7 +1481,7 @@
       "url": "https://api.verathos.ai/v1/user/me",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1507,7 +1507,7 @@
       "url": "https://api.verathos.ai/v1/user/deposit-address",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1533,7 +1533,7 @@
       "url": "https://api.verathos.ai/v1/user/withdraw",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1559,7 +1559,7 @@
       "url": "https://api.verathos.ai/v1/chat/completions",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1585,7 +1585,7 @@
       "url": "https://api.verathos.ai/v1/tee/chat/completions",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1611,7 +1611,7 @@
       "url": "https://api.verathos.ai/v1/tee/chat/completions/stream",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     },
     {
@@ -1637,7 +1637,7 @@
       "url": "https://api.verathos.ai/v1/debug/chat/completions",
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Registered auth_required:true per metagraphed#7108 full-API-parity policy despite undeclared OpenAPI security."
+        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
       }
     }
   ],

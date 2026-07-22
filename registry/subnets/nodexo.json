@@ -76,7 +76,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Console workflows may require account sign-in; exact credential mechanism is not publicly documented."
+        "scopes_note": "May require account sign-in; the exact credential mechanism is not publicly documented by the subnet."
       },
       "auth_required": true,
       "authority": "official",

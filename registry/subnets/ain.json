@@ -534,7 +534,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -560,7 +560,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -586,7 +586,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -612,7 +612,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -638,7 +638,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -664,7 +664,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -690,7 +690,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -716,7 +716,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -742,7 +742,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -768,7 +768,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -794,7 +794,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -820,7 +820,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -846,7 +846,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -872,7 +872,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -898,7 +898,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -924,7 +924,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -950,7 +950,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
@@ -976,7 +976,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Derived from the subnet's own OpenAPI schema (the operation declares a service header parameter; enforced in practice, live-verified HTTP 401 unauthenticated on this API). Exact header/credential format not documented beyond the schema."
+        "scopes_note": "Requires a credential header that is not fully documented by the subnet's own API schema. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",

@@ -101,7 +101,7 @@
         "https://github.com/swarm-subnet/swarm/blob/main/swarm/validator/backend_api.py"
       ],
       "url": "https://api.swarm124.com/leaderboard",
-      "notes": "Public no-auth GET /leaderboard — ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
+      "notes": "Public no-auth GET /leaderboard \u2014 ranked miner model leaderboard (rank, model id, uid, benchmark score) for SN124 Swarm. Served on the same api.swarm124.com host as the subnet's registered health API; the endpoint is defined in the subnet's backend API module."
     },
     {
       "auth_required": false,
@@ -191,14 +191,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires per-request signed headers via swarm/validator/backend_api.py (_sign_request / _get_signed / _post_signed). Not a bearer/API-key scheme."
+        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-124-swarm-validators-next-task",
       "kind": "subnet-api",
       "name": "Swarm validators next-task",
-      "notes": "Auth-gated GET /validators/next-task on api.swarm124.com — long-poll for the next authorized evaluation task. Called via _get_signed in the official swarm/validator/backend_api.py client. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 426 (non-2xx gate; matches the issue's own live-verified 426 observation).",
+      "notes": "Auth-gated GET /validators/next-task on api.swarm124.com \u2014 long-poll for the next authorized evaluation task. Called via _get_signed in the official swarm/validator/backend_api.py client. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 426 (non-2xx gate; matches the issue's own live-verified 426 observation).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -219,14 +219,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires per-request signed headers via swarm/validator/backend_api.py (_sign_request / _get_signed / _post_signed). Not a bearer/API-key scheme."
+        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-124-swarm-validators-sync",
       "kind": "subnet-api",
       "name": "Swarm validators sync",
-      "notes": "Auth-gated GET /validators/sync on api.swarm124.com — current weights, re-eval queue, and authoritative benchmark epoch. Called via _get_signed in the official swarm/validator/backend_api.py client. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 422 (non-2xx gate; matches the issue's own live-verified 422 observation).",
+      "notes": "Auth-gated GET /validators/sync on api.swarm124.com \u2014 current weights, re-eval queue, and authoritative benchmark epoch. Called via _get_signed in the official swarm/validator/backend_api.py client. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 422 (non-2xx gate; matches the issue's own live-verified 422 observation).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -247,14 +247,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires per-request signed headers via swarm/validator/backend_api.py (_sign_request / _get_signed / _post_signed). Not a bearer/API-key scheme."
+        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-124-swarm-validators-events",
       "kind": "sse",
       "name": "Swarm validators events stream",
-      "notes": "Auth-gated GET /validators/events on api.swarm124.com — server-sent events stream for validator backend updates. Called via signed GET in the official swarm/validator/backend_api.py client (same signed-header gate as sync/next-task). Registered kind:sse per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 422 (non-2xx gate).",
+      "notes": "Auth-gated GET /validators/events on api.swarm124.com \u2014 server-sent events stream for validator backend updates. Called via signed GET in the official swarm/validator/backend_api.py client (same signed-header gate as sync/next-task). Registered kind:sse per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22: unsigned GET returns HTTP 422 (non-2xx gate).",
       "probe": {
         "enabled": false,
         "expect": "sse",
@@ -275,14 +275,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires per-request signed headers via swarm/validator/backend_api.py (_sign_request / _get_signed / _post_signed). Not a bearer/API-key scheme."
+        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-124-swarm-validators-seed-scores",
       "kind": "subnet-api",
       "name": "Swarm validators seed-scores",
-      "notes": "Auth-gated POST /validators/seed-scores on api.swarm124.com — stream per-seed scores for the active task. Called via _post_signed in the official swarm/validator/backend_api.py client. POST-only — probe.method stays GET with probe.enabled:false (schema probe methods are GET/HEAD/JSON-RPC/WSS-RPC only). Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 426 (non-2xx gate).",
+      "notes": "Auth-gated POST /validators/seed-scores on api.swarm124.com \u2014 stream per-seed scores for the active task. Called via _post_signed in the official swarm/validator/backend_api.py client. POST-only \u2014 probe.method stays GET with probe.enabled:false (schema probe methods are GET/HEAD/JSON-RPC/WSS-RPC only). Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 426 (non-2xx gate).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -303,14 +303,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires per-request signed headers via swarm/validator/backend_api.py (_sign_request / _get_signed / _post_signed). Not a bearer/API-key scheme."
+        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-124-swarm-validators-heartbeat",
       "kind": "subnet-api",
       "name": "Swarm validators heartbeat",
-      "notes": "Auth-gated POST /validators/heartbeat on api.swarm124.com. Called via _post_signed in the official swarm/validator/backend_api.py client. POST-only — probe.method stays GET with probe.enabled:false (schema probe methods are GET/HEAD/JSON-RPC/WSS-RPC only). Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 422 (non-2xx gate).",
+      "notes": "Auth-gated POST /validators/heartbeat on api.swarm124.com. Called via _post_signed in the official swarm/validator/backend_api.py client. POST-only \u2014 probe.method stays GET with probe.enabled:false (schema probe methods are GET/HEAD/JSON-RPC/WSS-RPC only). Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 422 (non-2xx gate).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -331,14 +331,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires per-request signed headers via swarm/validator/backend_api.py (_sign_request / _get_signed / _post_signed). Not a bearer/API-key scheme."
+        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-124-swarm-validators-epoch-publish",
       "kind": "subnet-api",
       "name": "Swarm validators epoch publish",
-      "notes": "Auth-gated POST /validators/epoch/publish on api.swarm124.com. Called via _post_signed in the official swarm/validator/backend_api.py client. POST-only — probe.method stays GET with probe.enabled:false (schema probe methods are GET/HEAD/JSON-RPC/WSS-RPC only). Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 422 (non-2xx gate).",
+      "notes": "Auth-gated POST /validators/epoch/publish on api.swarm124.com. Called via _post_signed in the official swarm/validator/backend_api.py client. POST-only \u2014 probe.method stays GET with probe.enabled:false (schema probe methods are GET/HEAD/JSON-RPC/WSS-RPC only). Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22: unsigned POST returns HTTP 422 (non-2xx gate).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -359,14 +359,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires per-request signed headers via swarm/validator/backend_api.py (_sign_request / _get_signed / _post_signed). Not a bearer/API-key scheme."
+        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-124-swarm-validators-task-result",
       "kind": "subnet-api",
       "name": "Swarm validators task result",
-      "notes": "Auth-gated POST /validators/tasks/{id}/result on api.swarm124.com — submit aggregated task result. Called via _post_signed in the official swarm/validator/backend_api.py client. Path-param template uses URI-encoded braces (%7B...%7D) for schema uri format. POST-only — probe.method stays GET with probe.enabled:false (schema probe methods are GET/HEAD/JSON-RPC/WSS-RPC only). Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22 with placeholder id: unsigned POST returns HTTP 426 (non-2xx gate).",
+      "notes": "Auth-gated POST /validators/tasks/{id}/result on api.swarm124.com \u2014 submit aggregated task result. Called via _post_signed in the official swarm/validator/backend_api.py client. Path-param template uses URI-encoded braces (%7B...%7D) for schema uri format. POST-only \u2014 probe.method stays GET with probe.enabled:false (schema probe methods are GET/HEAD/JSON-RPC/WSS-RPC only). Registered per metagraphed#7132 remaining deliverable with auth_required:true. Live-verified 2026-07-22 with placeholder id: unsigned POST returns HTTP 426 (non-2xx gate).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -387,14 +387,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires per-request signed headers via swarm/validator/backend_api.py (_sign_request / _get_signed / _post_signed). Not a bearer/API-key scheme."
+        "scopes_note": "Requires a signed request using custom headers; not a bearer token or API key. Contact the subnet operator for signing details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-124-swarm-validators-private-artifact",
       "kind": "subnet-api",
       "name": "Swarm validators private model artifact",
-      "notes": "Auth-gated GET /validators/models/{model_hash}/private-artifact on api.swarm124.com — fetch a miner private model artifact for evaluation. Called via _get_signed in the official swarm/validator/backend_api.py client. Path-param template uses URI-encoded braces (%7B...%7D) for schema uri format. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22 with placeholder hash: unsigned GET returns HTTP 426 (non-2xx gate).",
+      "notes": "Auth-gated GET /validators/models/{model_hash}/private-artifact on api.swarm124.com \u2014 fetch a miner private model artifact for evaluation. Called via _get_signed in the official swarm/validator/backend_api.py client. Path-param template uses URI-encoded braces (%7B...%7D) for schema uri format. Registered per metagraphed#7132 remaining deliverable with auth_required:true, probe.enabled:false. Live-verified 2026-07-22 with placeholder hash: unsigned GET returns HTTP 426 (non-2xx gate).",
       "probe": {
         "enabled": false,
         "expect": "any",

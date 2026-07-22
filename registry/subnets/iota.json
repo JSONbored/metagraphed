@@ -109,7 +109,7 @@
       "id": "sn-9-iota-openapi",
       "kind": "openapi",
       "name": "IOTA orchestrator API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai — documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo. Live-verified 2026-07-21: GET returns OpenAPI 3.1.0 JSON (title FastAPI).",
+      "notes": "Machine-readable OpenAPI 3.1 schema (title: FastAPI) for the IOTA SN9 orchestrator, served publicly at iota.api.macrocosmos.ai \u2014 documents the miner registration/activation/weight-submission routes and GET /healthcheck. The SN9 companion to the merged SN1 apex.api.macrocosmos.ai orchestrator API; Macrocosmos operates subnet 9 per the official IOTA source repo. Live-verified 2026-07-21: GET returns OpenAPI 3.1.0 JSON (title FastAPI).",
       "provider": "macrocosmos",
       "public_safe": true,
       "review": {
@@ -213,7 +213,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -242,7 +242,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -271,7 +271,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -300,7 +300,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -329,7 +329,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -358,7 +358,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -387,7 +387,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -416,7 +416,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -445,7 +445,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -474,7 +474,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -503,7 +503,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -532,7 +532,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",
@@ -561,7 +561,7 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "The subnet's own OpenAPI spec declares no securitySchemes, but orchestrator reads reject unauthenticated calls with HTTP 400 EpistulaError naming an invalid SS58 address (live-checked 2026-07-21 on sibling miner, validator, and common routes). Non-bearer signed-request headers; exact header names not documented in the spec."
+        "scopes_note": "Requires a Bittensor Epistula-protocol signed request proving control of a registered hotkey; no static API key or bearer token is accepted."
       },
       "auth_required": true,
       "authority": "community",

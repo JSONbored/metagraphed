@@ -289,7 +289,7 @@
       "id": "sn-64-chutes-sdk-examples",
       "kind": "example",
       "name": "Chutes code examples",
-      "notes": "Official Chutes examples — model invocation quickstarts (Chroma, DeepSeek R1).",
+      "notes": "Official Chutes examples \u2014 model invocation quickstarts (Chroma, DeepSeek R1).",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -512,7 +512,7 @@
       "id": "sn-64-chutes-node-availability",
       "kind": "data-artifact",
       "name": "Chutes GPU node availability",
-      "notes": "Public no-auth JSON of live GPU node availability on the Chutes platform — provisioned vs idle node counts per GPU model (3090, 4090, 5090, a100, h100, ...); GET /nodes/ in the OpenAPI spec. A live operational feed, distinct from the static /nodes/supported hardware catalog and the subnet's other data-artifacts.",
+      "notes": "Public no-auth JSON of live GPU node availability on the Chutes platform \u2014 provisioned vs idle node counts per GPU model (3090, 4090, 5090, a100, h100, ...); GET /nodes/ in the OpenAPI spec. A live operational feed, distinct from the static /nodes/supported hardware catalog and the subnet's other data-artifacts.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -703,7 +703,7 @@
       "id": "sn-64-chutes-miner-scores-api",
       "kind": "subnet-api",
       "name": "Chutes miner scores API",
-      "notes": "Public no-auth GET /miner/scores on api.chutes.ai — Chutes-computed per-miner scoring breakdown (raw and normalized bounty/compute values) for SN64 Chutes. Declared as a no-auth route (security: none) in the official Chutes OpenAPI spec on the same api.chutes.ai gateway that hosts the subnet's registered surfaces.",
+      "notes": "Public no-auth GET /miner/scores on api.chutes.ai \u2014 Chutes-computed per-miner scoring breakdown (raw and normalized bounty/compute values) for SN64 Chutes. Declared as a no-auth route (security: none) in the official Chutes OpenAPI spec on the same api.chutes.ai gateway that hosts the subnet's registered surfaces.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -725,7 +725,7 @@
       "id": "sn-64-chutes-miner-stats-api",
       "kind": "subnet-api",
       "name": "Chutes miner stats API",
-      "notes": "Public no-auth GET /miner/stats on api.chutes.ai — Chutes-computed per-miner instance and compute statistics (rolling instance counts and utilization windows) for SN64 Chutes. Declared as a no-auth route (security: none) in the official Chutes OpenAPI spec on the same api.chutes.ai gateway that hosts the subnet's registered surfaces.",
+      "notes": "Public no-auth GET /miner/stats on api.chutes.ai \u2014 Chutes-computed per-miner instance and compute statistics (rolling instance counts and utilization windows) for SN64 Chutes. Declared as a no-auth route (security: none) in the official Chutes OpenAPI spec on the same api.chutes.ai gateway that hosts the subnet's registered surfaces.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -909,7 +909,7 @@
       "id": "sn-64-chutes-chutes-miner-means",
       "kind": "subnet-api",
       "name": "Chutes GET chutes miner means",
-      "notes": "GET /chutes/miner_means on api.chutes.ai — public, no auth declared in the OpenAPI schema. Per-chute mean scoring summary across miners. Live-verified 2026-07-21: HTTP 200 text/html (a rendered outlier-index page, not JSON — probe.expect:\"html\" accordingly), same result with a JSON accept header. Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /chutes/miner_means on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema. Per-chute mean scoring summary across miners. Live-verified 2026-07-21: HTTP 200 text/html (a rendered outlier-index page, not JSON \u2014 probe.expect:\"html\" accordingly), same result with a JSON accept header. Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -931,7 +931,7 @@
       "id": "sn-64-chutes-guess-vllm-config",
       "kind": "subnet-api",
       "name": "Chutes GET guess vllm config",
-      "notes": "GET /guess/vllm_config on api.chutes.ai — public, no auth declared in the OpenAPI schema. Required query: model. Live-verified 2026-07-21: an unparameterized request returns HTTP 400 {\"error\":\"$.query.model: required parameter missing\"} — a clean validation error listing the required field, not an auth error. probe.enabled:false is the safer default: an auto-probe with no query params would just 400. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /guess/vllm_config on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema. Required query: model. Live-verified 2026-07-21: an unparameterized request returns HTTP 400 {\"error\":\"$.query.model: required parameter missing\"} \u2014 a clean validation error listing the required field, not an auth error. probe.enabled:false is the safer default: an auto-probe with no query params would just 400. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -953,7 +953,7 @@
       "id": "sn-64-chutes-invocations-exports-recent",
       "kind": "subnet-api",
       "name": "Chutes GET invocations exports recent",
-      "notes": "GET /invocations/exports/recent on api.chutes.ai — public, no auth declared in the OpenAPI schema; optional hotkey/limit query params. Live-verified 2026-07-21: HTTP 500 Internal Server Error — a real endpoint currently live-erroring, registered with probe.enabled:true so the probe reports the real status (same handling as the Targon healthz precedent, per the issue's own scope note). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /invocations/exports/recent on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema; optional hotkey/limit query params. Live-verified 2026-07-21: HTTP 500 Internal Server Error \u2014 a real endpoint currently live-erroring, registered with probe.enabled:true so the probe reports the real status (same handling as the Targon healthz precedent, per the issue's own scope note). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -975,7 +975,7 @@
       "id": "sn-64-chutes-misc-hf-repo-info",
       "kind": "subnet-api",
       "name": "Chutes GET misc hf repo info",
-      "notes": "GET /misc/hf_repo_info on api.chutes.ai — public, no auth declared in the OpenAPI schema. Required query: repo_id. Live-verified 2026-07-21: an unparameterized request returns HTTP 400 {\"error\":\"$.query.repo_id: required parameter missing\"} — a clean validation error listing the required field, not an auth error. probe.enabled:false is the safer default: an auto-probe with no query params would just 400. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /misc/hf_repo_info on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema. Required query: repo_id. Live-verified 2026-07-21: an unparameterized request returns HTTP 400 {\"error\":\"$.query.repo_id: required parameter missing\"} \u2014 a clean validation error listing the required field, not an auth error. probe.enabled:false is the safer default: an auto-probe with no query params would just 400. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -997,7 +997,7 @@
       "id": "sn-64-chutes-audit-download",
       "kind": "subnet-api",
       "name": "Chutes GET audit download",
-      "notes": "GET /audit/download on api.chutes.ai — public, no auth declared in the OpenAPI schema. Required query: path. Live-verified 2026-07-21: an unparameterized request returns HTTP 400 {\"error\":\"$.query.path: required parameter missing\"} — a clean validation error listing the required field, not an auth error. probe.enabled:false is the safer default: an auto-probe with no query params would just 400. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7077). Complements the already-registered sn-64-chutes-audit-log surface.",
+      "notes": "GET /audit/download on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema. Required query: path. Live-verified 2026-07-21: an unparameterized request returns HTTP 400 {\"error\":\"$.query.path: required parameter missing\"} \u2014 a clean validation error listing the required field, not an auth error. probe.enabled:false is the safer default: an auto-probe with no query params would just 400. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7077). Complements the already-registered sn-64-chutes-audit-log surface.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1019,7 +1019,7 @@
       "id": "sn-64-chutes-misc-proxy",
       "kind": "subnet-api",
       "name": "Chutes GET misc proxy",
-      "notes": "GET /misc/proxy on api.chutes.ai — public, no auth declared in the OpenAPI schema. Required query: url (optional stream). Live-verified 2026-07-21: an unparameterized request returns HTTP 400 {\"error\":\"$.query.url: required parameter missing\"}. This is a raw outbound-fetch passthrough — registered for schema parity per the issue's own itemized scope, with probe deliberately disabled and flagged for awareness rather than auto-probing (per the issue's own note). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /misc/proxy on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema. Required query: url (optional stream). Live-verified 2026-07-21: an unparameterized request returns HTTP 400 {\"error\":\"$.query.url: required parameter missing\"}. This is a raw outbound-fetch passthrough \u2014 registered for schema parity per the issue's own itemized scope, with probe deliberately disabled and flagged for awareness rather than auto-probing (per the issue's own note). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1041,7 +1041,7 @@
       "id": "sn-64-chutes-chutes-miner-means-chuteid",
       "kind": "subnet-api",
       "name": "Chutes GET chutes miner means by chute_id",
-      "notes": "GET /chutes/miner_means/{chute_id} on api.chutes.ai — public, no auth declared in the OpenAPI schema; per-chute detail view of the miner-means summary. Live-verified 2026-07-21 with a placeholder id: HTTP 200 text/html (a rendered per-chute metrics page), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /chutes/miner_means/{chute_id} on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema; per-chute detail view of the miner-means summary. Live-verified 2026-07-21 with a placeholder id: HTTP 200 text/html (a rendered per-chute metrics page), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "html",
@@ -1063,7 +1063,7 @@
       "id": "sn-64-chutes-chutes-miner-means-chuteid-ext",
       "kind": "subnet-api",
       "name": "Chutes GET chutes miner means by chute_id by ext",
-      "notes": "GET /chutes/miner_means/{chute_id}.{ext} on api.chutes.ai — public, no auth declared in the OpenAPI schema; machine-readable export of the per-chute miner-means detail. Live-verified 2026-07-21 with a placeholder id and .csv: HTTP 200 text/csv with a header row, confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /chutes/miner_means/{chute_id}.{ext} on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema; machine-readable export of the per-chute miner-means detail. Live-verified 2026-07-21 with a placeholder id and .csv: HTTP 200 text/csv with a header row, confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -1085,7 +1085,7 @@
       "id": "sn-64-chutes-invocations-exports-dated",
       "kind": "subnet-api",
       "name": "Chutes GET invocations exports by year month day hour",
-      "notes": "GET /invocations/exports/{year}/{month}/{day}/{hour_format} on api.chutes.ai — public, no auth declared in the OpenAPI schema; historical invocation export by date. Live-verified 2026-07-21 with placeholder values: HTTP 400 {\"detail\":\"Invalid format: 00\"} — a clean validation error, confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /invocations/exports/{year}/{month}/{day}/{hour_format} on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema; historical invocation export by date. Live-verified 2026-07-21 with placeholder values: HTTP 400 {\"detail\":\"Invalid format: 00\"} \u2014 a clean validation error, confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1107,7 +1107,7 @@
       "id": "sn-64-chutes-miner-unique-chute-history-byhotkey",
       "kind": "subnet-api",
       "name": "Chutes GET miner unique chute history",
-      "notes": "GET /miner/unique_chute_history/{hotkey} on api.chutes.ai — public, no auth declared in the OpenAPI schema; per-miner unique-chute history. Live-verified 2026-07-21 with a placeholder value: HTTP 404 {\"detail\":\"Miner test-value not found in metagraph.\"} — a clean not-found lookup, confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /miner/unique_chute_history/{hotkey} on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema; per-miner unique-chute history. Live-verified 2026-07-21 with a placeholder value: HTTP 404 {\"detail\":\"Miner test-value not found in metagraph.\"} \u2014 a clean not-found lookup, confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1129,7 +1129,7 @@
       "id": "sn-64-chutes-logos-logoid-extension",
       "kind": "subnet-api",
       "name": "Chutes GET logos by logo_id by extension",
-      "notes": "GET /logos/{logo_id}.{extension} on api.chutes.ai — public, no auth declared in the OpenAPI schema; logo image asset lookup. Live-verified 2026-07-21 with a placeholder value: HTTP 400 path-parameter validation error listing the required params, confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "GET /logos/{logo_id}.{extension} on api.chutes.ai \u2014 public, no auth declared in the OpenAPI schema; logo image asset lookup. Live-verified 2026-07-21 with a placeholder value: HTTP 400 path-parameter validation error listing the required params, confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -1355,15 +1355,17 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The schema declares a required authorization header parameter directly on this operation instead of an OpenAPI security block — functionally auth-gated (verified live)."
+        "scheme": "api-key",
+        "scopes_note": "Requires an API key in the Authorization header. Contact the subnet operator to obtain a key.",
+        "location": "header",
+        "name": "Authorization"
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-64-chutes-miner-instance-logs",
       "kind": "subnet-api",
       "name": "Chutes GET miner instance logs",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /miner/instance_logs on api.chutes.ai. The schema declares no security block here but marks its authorization header parameter required:true — functionally auth-gated. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 stating the required authorization header parameter is missing, confirming enforcement. Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /miner/instance_logs on api.chutes.ai. The schema declares no security block here but marks its authorization header parameter required:true \u2014 functionally auth-gated. Live-verified 2026-07-21: an unauthenticated request returns HTTP 400 stating the required authorization header parameter is missing, confirming enforcement. Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1389,7 +1391,7 @@
       "id": "sn-64-chutes-chutes-chuteidorname",
       "kind": "subnet-api",
       "name": "Chutes GET chutes by chute_id_or_name",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /chutes/{chute_id_or_name} on api.chutes.ai — chute detail. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 404 {\"detail\":\"Chute not found, or does not belong to you\"} — an ownership-scoped lookup answers with a clean not-found for an unknown name, confirming the route is real; registered auth_required:true per the schema's security declaration. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /chutes/{chute_id_or_name} on api.chutes.ai \u2014 chute detail. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 404 {\"detail\":\"Chute not found, or does not belong to you\"} \u2014 an ownership-scoped lookup answers with a clean not-found for an unknown name, confirming the route is real; registered auth_required:true per the schema's security declaration. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1415,7 +1417,7 @@
       "id": "sn-64-chutes-chutes-chuteidorname-evidence",
       "kind": "subnet-api",
       "name": "Chutes GET chutes by chute_id_or_name evidence",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /chutes/{chute_id_or_name}/evidence on api.chutes.ai — TEE attestation evidence for a chute; required query: nonce. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value and ?nonce=1: HTTP 404 {\"detail\":\"Chute not found\"} — a clean not-found lookup, confirming the route is real; registered auth_required:true per the schema's security declaration. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /chutes/{chute_id_or_name}/evidence on api.chutes.ai \u2014 TEE attestation evidence for a chute; required query: nonce. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value and ?nonce=1: HTTP 404 {\"detail\":\"Chute not found\"} \u2014 a clean not-found lookup, confirming the route is real; registered auth_required:true per the schema's security declaration. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1441,7 +1443,7 @@
       "id": "sn-64-chutes-users-useridorusername-balance",
       "kind": "subnet-api",
       "name": "Chutes GET users by user_id_or_username balance",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /users/{user_id_or_username}/balance on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} — the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /users/{user_id_or_username}/balance on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} \u2014 the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1467,7 +1469,7 @@
       "id": "sn-64-chutes-users-userid-usage",
       "kind": "subnet-api",
       "name": "Chutes GET users by user_id usage",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /users/{user_id}/usage on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} — the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /users/{user_id}/usage on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} \u2014 the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1493,7 +1495,7 @@
       "id": "sn-64-chutes-instances-instanceid-evidence",
       "kind": "subnet-api",
       "name": "Chutes GET instances by instance_id evidence",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /instances/{instance_id}/evidence on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} — the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077). Required query: nonce (included in the live check).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /instances/{instance_id}/evidence on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} \u2014 the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077). Required query: nonce (included in the live check).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1519,7 +1521,7 @@
       "id": "sn-64-chutes-instances-instanceid-logs",
       "kind": "subnet-api",
       "name": "Chutes GET instances by instance_id logs",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /instances/{instance_id}/logs on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} — the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /instances/{instance_id}/logs on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} \u2014 the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1545,7 +1547,7 @@
       "id": "sn-64-chutes-servers-serverid",
       "kind": "subnet-api",
       "name": "Chutes GET servers by server_id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /servers/{server_id} on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Invalid nonce!\"} — the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /servers/{server_id} on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Invalid nonce!\"} \u2014 the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1597,7 +1599,7 @@
       "id": "sn-64-chutes-jobs-jobid",
       "kind": "subnet-api",
       "name": "Chutes GET jobs by job_id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs/{job_id} on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} — the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs/{job_id} on api.chutes.ai. The OpenAPI schema declares APIKeyHeader security on this operation. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"detail\":\"Can't find a user with that api key in our db :(\"} \u2014 the auth gate answers, confirming the route is real and gated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7077).",
       "probe": {
         "enabled": false,
         "expect": "json",

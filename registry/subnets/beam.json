@@ -230,7 +230,7 @@
       "id": "sn-105-beam-auth-me",
       "kind": "subnet-api",
       "name": "Beam GET auth me",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /auth/me on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /auth/me on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -256,7 +256,7 @@
       "id": "sn-105-beam-auth-keys",
       "kind": "subnet-api",
       "name": "Beam GET auth keys",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /auth/keys on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /auth/keys on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -282,7 +282,7 @@
       "id": "sn-105-beam-clients",
       "kind": "subnet-api",
       "name": "Beam GET clients",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /clients on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /clients on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -308,7 +308,7 @@
       "id": "sn-105-beam-destinations",
       "kind": "subnet-api",
       "name": "Beam GET destinations",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /destinations on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /destinations on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -334,7 +334,7 @@
       "id": "sn-105-beam-transfers",
       "kind": "subnet-api",
       "name": "Beam GET transfers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /transfers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /transfers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -360,7 +360,7 @@
       "id": "sn-105-beam-orchestrators-pending-transfers",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators pending transfers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/pending-transfers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/pending-transfers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -386,7 +386,7 @@
       "id": "sn-105-beam-orchestrators-workers",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators workers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/workers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/workers on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -405,14 +405,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires validator signature headers per the live 401 response; the mechanism is not documented in the OpenAPI schema (which declares no per-operation security)."
+        "scopes_note": "Requires validator signature headers; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-105-beam-validator-epoch-summary-latest-epoch",
       "kind": "subnet-api",
       "name": "Beam GET Validator epoch summary latest epoch",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /Validator/epoch-summary/latest-epoch on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"missing validator signature headers\"} — a validator-signature scheme, not the schema's apiKey header. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /Validator/epoch-summary/latest-epoch on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"missing validator signature headers\"} \u2014 a validator-signature scheme, not the schema's apiKey header. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -438,7 +438,7 @@
       "id": "sn-105-beam-jobs",
       "kind": "subnet-api",
       "name": "Beam GET jobs",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice — live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -464,7 +464,7 @@
       "id": "sn-105-beam-internal-routing-live",
       "kind": "subnet-api",
       "name": "Beam GET internal routing live",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /internal/routing/live on beamcore.b1m.ai — query param: pool. Live-verified 2026-07-21: a bare unauthenticated request returns HTTP 401 {\"error\":\"unauthorized\"}, and ?pool=x returns HTTP 400 FST_ERR_VALIDATION listing the allowed pool values — both consistent with a live, gated route. Registered auth_required:true per this file's own gap_notes finding, flagged for a contributor with a credential to confirm with a real pool value. Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /internal/routing/live on beamcore.b1m.ai \u2014 query param: pool. Live-verified 2026-07-21: a bare unauthenticated request returns HTTP 401 {\"error\":\"unauthorized\"}, and ?pool=x returns HTTP 400 FST_ERR_VALIDATION listing the allowed pool values \u2014 both consistent with a live, gated route. Registered auth_required:true per this file's own gap_notes finding, flagged for a contributor with a credential to confirm with a real pool value. Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -490,7 +490,7 @@
       "id": "sn-105-beam-clients-clientid",
       "kind": "subnet-api",
       "name": "Beam GET clients by client_id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /clients/{client_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /clients/{client_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} \u2014 the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -516,7 +516,7 @@
       "id": "sn-105-beam-destinations-destinationid",
       "kind": "subnet-api",
       "name": "Beam GET destinations by destination_id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /destinations/{destination_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /destinations/{destination_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} \u2014 the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -542,7 +542,7 @@
       "id": "sn-105-beam-orchestrators-orchestratorid",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators by orchestrator_id",
-      "notes": "GET /orchestrators/{orchestrator_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder id: HTTP 404 {\"error\":\"orchestrator not found\"} — a clean not-found lookup answers before any auth challenge, confirming the route is real. Registered auth_required:true per the issue's grouping of this path-param sibling with the fixed auth-gated group (metagraphed#7116), flagged for confirmation with a real id. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "GET /orchestrators/{orchestrator_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder id: HTTP 404 {\"error\":\"orchestrator not found\"} \u2014 a clean not-found lookup answers before any auth challenge, confirming the route is real. Registered auth_required:true per the issue's grouping of this path-param sibling with the fixed auth-gated group (metagraphed#7116), flagged for confirmation with a real id. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -568,7 +568,7 @@
       "id": "sn-105-beam-orchestrators-orchestratorid-workers",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators by orchestrator_id workers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/workers on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/workers on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} \u2014 the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -594,7 +594,7 @@
       "id": "sn-105-beam-orchestrators-orchestratorid-pending-transfers",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators by orchestrator_id pending transfers",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/pending-transfers on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/pending-transfers on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} \u2014 the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -620,7 +620,7 @@
       "id": "sn-105-beam-orchestrators-orchestratorid-assignments",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators by orchestrator_id assignments",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/assignments on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/assignments on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} \u2014 the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -646,7 +646,7 @@
       "id": "sn-105-beam-orchestrators-orchestratorid-tasks",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators by orchestrator_id tasks",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/tasks on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/{orchestrator_id}/tasks on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} \u2014 the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -672,7 +672,7 @@
       "id": "sn-105-beam-orchestrators-prism-scores-orchuid",
       "kind": "subnet-api",
       "name": "Beam GET orchestrators prism scores by orch_uid",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/prism-scores/{orch_uid} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /orchestrators/prism-scores/{orch_uid} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} \u2014 the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -698,7 +698,7 @@
       "id": "sn-105-beam-workers-workerid",
       "kind": "subnet-api",
       "name": "Beam GET workers by worker_id",
-      "notes": "GET /workers/{worker_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder id: HTTP 404 {\"error\":\"worker not found\"} — a clean not-found lookup answers before any auth challenge, confirming the route is real. Registered auth_required:true per the issue's grouping of this path-param sibling with the fixed auth-gated group (metagraphed#7116), flagged for confirmation with a real id. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "GET /workers/{worker_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder id: HTTP 404 {\"error\":\"worker not found\"} \u2014 a clean not-found lookup answers before any auth challenge, confirming the route is real. Registered auth_required:true per the issue's grouping of this path-param sibling with the fixed auth-gated group (metagraphed#7116), flagged for confirmation with a real id. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -717,14 +717,14 @@
     {
       "auth": {
         "scheme": "custom",
-        "scopes_note": "Requires validator signature headers per the live 401 response; the mechanism is not documented in the OpenAPI schema (which declares no per-operation security)."
+        "scopes_note": "Requires validator signature headers; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-105-beam-validators-weights-epoch",
       "kind": "subnet-api",
       "name": "Beam GET validators weights by epoch",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /validators/weights/{epoch} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"missing validator signature headers\"} — same validator-signature scheme as the Validator epoch-summary route, not the schema's apiKey header. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /validators/weights/{epoch} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"missing validator signature headers\"} \u2014 same validator-signature scheme as the Validator epoch-summary route, not the schema's apiKey header. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -750,7 +750,7 @@
       "id": "sn-105-beam-jobs-jobid",
       "kind": "subnet-api",
       "name": "Beam GET jobs by job_id",
-      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs/{job_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} — the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs/{job_id} on beamcore.b1m.ai. Live-verified 2026-07-21 with a placeholder value: HTTP 401 {\"error\":\"authentication required\"} \u2014 the auth gate answers first, confirming the route is real and gated. Path-param sibling of the fixed auth-gated group this file's own gap_notes already enumerated. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -776,7 +776,7 @@
       "id": "sn-105-beam-logs-stream-source",
       "kind": "sse",
       "name": "Beam GET logs stream by source",
-      "notes": "SSE log stream: GET /logs/stream/{source} on beamcore.b1m.ai — the path-parameterized stream this file's own gap_notes already mention. Live-verified 2026-07-21 with a placeholder value: HTTP 404 {\"error\":\"Unknown log source: test-source\"} — a clean validation error, confirming the route is real. Registered auth_required:true per the issue's grouping of the path-param siblings with the auth-gated group (metagraphed#7116), flagged for confirmation with a real source. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
+      "notes": "SSE log stream: GET /logs/stream/{source} on beamcore.b1m.ai \u2014 the path-parameterized stream this file's own gap_notes already mention. Live-verified 2026-07-21 with a placeholder value: HTTP 404 {\"error\":\"Unknown log source: test-source\"} \u2014 a clean validation error, confirming the route is real. Registered auth_required:true per the issue's grouping of the path-param siblings with the auth-gated group (metagraphed#7116), flagged for confirmation with a real source. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7116).",
       "probe": {
         "enabled": false,
         "expect": "sse",

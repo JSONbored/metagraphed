@@ -3813,7 +3813,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_tao: 1000 }]);
   });
 
-  test("validators: sort and limit args are forwarded as query params to the Postgres tier", async () => {
+  test("validators: sort is forwarded to the Postgres tier; limit is always the REST max window", async () => {
     let capturedUrl;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
@@ -3823,7 +3823,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
           return Response.json({
             schema_version: 1,
             sort: "uid_count",
-            limit: 5,
+            limit: 100,
             captured_at: null,
             block_number: null,
             validator_count: 0,
@@ -3835,10 +3835,10 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     await gql('{ validators(sort: "uid_count", limit: 5) { total } }', env);
     assert.equal(capturedUrl.pathname, "/api/v1/validators");
     assert.equal(capturedUrl.searchParams.get("sort"), "uid_count");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
   });
 
-  test("validators: an omitted limit forwards the default limit to the Postgres tier", async () => {
+  test("validators: an omitted GraphQL limit still fetches the REST max window from the Postgres tier", async () => {
     let capturedUrl;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
@@ -3848,7 +3848,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
           return Response.json({
             schema_version: 1,
             sort: "subnet_count",
-            limit: 20,
+            limit: 100,
             captured_at: null,
             block_number: null,
             validator_count: 0,
@@ -3859,7 +3859,54 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     await gql("{ validators { total } }", env);
     assert.equal(capturedUrl.searchParams.get("sort"), "subnet_count");
-    assert.equal(capturedUrl.searchParams.get("limit"), "20");
+    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+  });
+
+  test("validators: paginate with a hotkey cursor", async () => {
+    const payload = {
+      schema_version: 1,
+      sort: "subnet_count",
+      limit: 100,
+      captured_at: null,
+      block_number: null,
+      validator_count: 2,
+      validators: [
+        {
+          hotkey: "5Alpha",
+          featured: false,
+          subnet_count: 2,
+          subnets: [],
+        },
+        {
+          hotkey: "5Beta",
+          featured: false,
+          subnet_count: 1,
+          subnets: [],
+        },
+      ],
+    };
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json(payload),
+      },
+    };
+    const first = await gql(
+      "{ validators(limit: 1) { items { hotkey } total next_cursor } }",
+      env,
+    );
+    assert.equal(first.status, 200);
+    assert.equal(first.body.data.validators.total, 2);
+    assert.equal(first.body.data.validators.items[0].hotkey, "5Alpha");
+    assert.equal(first.body.data.validators.next_cursor, "5Alpha");
+
+    const second = await gql(
+      '{ validators(limit: 1, cursor: "5Alpha") { items { hotkey } next_cursor } }',
+      env,
+    );
+    assert.equal(second.status, 200);
+    assert.equal(second.body.data.validators.items[0].hotkey, "5Beta");
+    assert.equal(second.body.data.validators.next_cursor, null);
   });
 
   test("validators: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
