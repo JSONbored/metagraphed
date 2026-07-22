@@ -16634,6 +16634,44 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
   });
 });
 
+describe("graphql — saved_query (#7642, curated saved-query templates)", () => {
+  test("runs a template through the shared executor and returns the {query_id, params, data} envelope", async () => {
+    const { status, body } = await gql(
+      `{ saved_query(id: "subnet-leaderboard", params: { limit: 5 }) }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const result = body.data.saved_query;
+    assert.equal(result.query_id, "subnet-leaderboard");
+    assert.equal(result.params.limit, 5);
+    assert.ok(result.data, "expected the executed template's data payload");
+  });
+
+  test("an unknown id is BAD_USER_INPUT listing the valid template ids", async () => {
+    const { status, body } = await gql(
+      `{ saved_query(id: "no-such-template") }`,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.match(body.errors[0].message, /no-such-template/);
+    assert.match(body.errors[0].message, /subnet-leaderboard/);
+    assert.equal(body.data?.saved_query ?? null, null);
+  });
+
+  test("an unknown param is BAD_USER_INPUT, not a silent default", async () => {
+    const { status, body } = await gql(
+      `{ saved_query(id: "subnet-leaderboard", params: { not_a_real_param: 1 }) }`,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.match(body.errors[0].message, /not_a_real_param/);
+  });
+
+  test("is priced at the relationship-field complexity weight", () => {
+    assert.equal(FIELD_COMPLEXITY.saved_query, FIELD_COMPLEXITY.candidates);
+  });
+});
+
 describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => {
   const HP_FIELDS =
     "kappa_ratio immunity_period tempo registration_allowed min_burn_tao bonds_moving_avg_raw liquid_alpha_enabled min_childkey_take_ratio";

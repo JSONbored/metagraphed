@@ -235,6 +235,9 @@ import {
   labelsForSs58,
 } from "./entity-labels.mjs";
 import { loadSudoKey } from "./sudo-key.mjs";
+// #7642: saved_query reuses the same maintainer-curated template executor the
+// GET /api/v1/queries/{id} route and run_saved_query MCP tool already share.
+import { runSavedQuery } from "./saved-queries.mjs";
 import { loadNetworkParameters } from "./network-parameters.mjs";
 import { loadRandomnessStatus } from "./randomness.mjs";
 import { loadAddressMapping, H160_PATTERN } from "./address-mapping.mjs";
@@ -504,6 +507,8 @@ export const SDL = `
     curation: JSON
     "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state and page with limit/cursor, exactly like the REST route. Resolves to {items,total,next_cursor} as opaque JSON. Mirrors GET /api/v1/candidates."
     candidates(netuid: Int, kind: String, provider: String, state: String, limit: Int, cursor: String): JSON
+    "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}."
+    saved_query(id: String!, params: JSON): JSON
     "The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
     fixtures: JSON
     "The agent-callable service catalog: without a netuid, the global index of subnets exposing callable services; with one, that subnet's full per-service catalog. Both are overlaid with live health exactly as REST composes them. Null when the catalog has not been baked. Opaque JSON, matching the get_agent_catalog MCP/REST shape. Mirrors GET /api/v1/agent-catalog."
@@ -4248,6 +4253,7 @@ export const FIELD_COMPLEXITY = {
   agent_resources: RELATIONSHIP_FIELD_COMPLEXITY,
   curation: RELATIONSHIP_FIELD_COMPLEXITY,
   candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  saved_query: RELATIONSHIP_FIELD_COMPLEXITY,
   fixtures: RELATIONSHIP_FIELD_COMPLEXITY,
   agent_catalog: RELATIONSHIP_FIELD_COMPLEXITY,
   freshness: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6205,6 +6211,28 @@ const rootValue = {
     // Degrades to null when cold instead of erroring, matching every other
     // artifact-backed resolver here.
     return loadArtifact(context, "/metagraph/registry-summary.json");
+  },
+
+  async saved_query({ id, params }, context) {
+    // #7642: the same maintainer-curated template executor the REST route and
+    // run_saved_query MCP tool share (src/saved-queries.mjs) -- template
+    // lookup, param coercion/validation, and execution are all its. Its
+    // not_found (unknown id) and invalid_params toolErrors map to
+    // BAD_USER_INPUT, matching this file's invalid-argument convention; any
+    // other executor failure surfaces as a normal GraphQL error.
+    try {
+      return await runSavedQuery(context.env, id, params ?? {});
+    } catch (err) {
+      if (
+        err?.toolError &&
+        (err.code === "not_found" || err.code === "invalid_params")
+      ) {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      throw err;
+    }
   },
 
   source_health(_args, context) {
