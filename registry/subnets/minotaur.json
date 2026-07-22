@@ -82,7 +82,7 @@
       "id": "sn-112-minotaur-app-dashboard",
       "kind": "dashboard",
       "name": "Minotaur App dashboard",
-      "notes": "Public no-auth Minotaur App web dashboard for SN112 (intent signing + quorum settlement), served on the official minotaursubnet.com domain (same host as the registered api.minotaursubnet.com health surface) and linked from the official docs at docs.minotaursubnet.com. Document title 'Minotaur App — Sign intents. Settle through quorum.'; wallet actions require signing but the dashboard itself loads without auth (verified HTTP 200).",
+      "notes": "Public no-auth Minotaur App web dashboard for SN112 (intent signing + quorum settlement), served on the official minotaursubnet.com domain (same host as the registered api.minotaursubnet.com health surface) and linked from the official docs at docs.minotaursubnet.com. Document title 'Minotaur App \u2014 Sign intents. Settle through quorum.'; wallet actions require signing but the dashboard itself loads without auth (verified HTTP 200).",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -116,7 +116,9 @@
       },
       "provider": "minotaur",
       "public_safe": true,
-      "source_urls": ["https://github.com/subnet112/minotaur_subnet"],
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet"
+      ],
       "url": "https://minotaursubnet.com/"
     },
     {
@@ -134,7 +136,9 @@
       },
       "provider": "minotaur",
       "public_safe": true,
-      "source_urls": ["https://github.com/subnet112/minotaur_subnet"],
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet"
+      ],
       "url": "https://github.com/subnet112/minotaur_subnet"
     },
     {
@@ -184,6 +188,110 @@
         "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/api/app-management.md"
       ],
       "url": "https://api.minotaursubnet.com/v1/apps/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-status",
+      "kind": "subnet-api",
+      "name": "Minotaur app deployment status",
+      "notes": "GET /v1/apps/{app_id}/status on api.minotaursubnet.com \u2014 per-app + per-chain deployment status (the deploy-poll target). Path-parameterized on {app_id}; no auth required despite the doc grouping reads under the app-management auth class. Live-verified 2026-07-22: GET /v1/apps/app_0867cdd4effd/status \u2192 HTTP 200 JSON (app record with status field). Register with {app_id} template, auth_required:false, probe.enabled:false (path-param).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-auth-nonce",
+      "kind": "subnet-api",
+      "name": "Minotaur app wallet-auth nonce",
+      "notes": "GET /v1/apps/{app_id}/auth-nonce on api.minotaursubnet.com \u2014 issues the next single-use nonce for signing wallet-auth writes; necessarily unauthenticated (pre-auth bootstrap step). Accepts optional deployer query param. Live-verified 2026-07-22: GET /v1/apps/app_0867cdd4effd/auth-nonce?deployer=0x...dEaD \u2192 HTTP 200 JSON {\"app_id\":\"...\",\"deployer\":\"...\",\"next_nonce\":1}. probe.enabled:false (path-param URL; also requires deployer query param for meaningful data).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/auth-nonce"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Documented as requiring an admin key or wallet signature (wallet-auth class). Live-verified 2026-07-22: unauthenticated GET \u2192 HTTP 403 {\"detail\":\"Unauthorized: admin key or wallet signature required\"}. No static bearer token; credential format is a signed request per the app-management auth scheme documented in the official API doc."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-admin-state",
+      "kind": "subnet-api",
+      "name": "Minotaur app admin/operator state (auth-gated)",
+      "notes": "GET /v1/apps/{app_id}/admin-state on api.minotaursubnet.com \u2014 full operator view (store record, live per-chain config, fee-settlement balances, AppRegistry status). Requires admin key or wallet signature (wallet-auth class). Live-verified 2026-07-22: unauthenticated GET /v1/apps/app_0867cdd4effd/admin-state \u2192 HTTP 403 {\"detail\":\"Unauthorized: admin key or wallet signature required\"}. probe.enabled:false.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/admin-state"
+    },
+    {
+      "auth": {
+        "scheme": "custom",
+        "scopes_note": "Same wallet-auth class as admin-state \u2014 admin key or wallet signature required. Live-verified 2026-07-22: unauthenticated GET \u2192 HTTP 403 (same auth gate). No static bearer token; credential format is a signed request per the app-management auth scheme documented in the official API doc."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-112-minotaur-app-registry-calldata",
+      "kind": "subnet-api",
+      "name": "Minotaur app on-chain registry calldata (auth-gated)",
+      "notes": "GET /v1/apps/{app_id}/deployments/{chain_id}/registry-calldata on api.minotaursubnet.com \u2014 prepared registerApp/revokeApp calldata for external signing, deadline-bound. Requires admin key or wallet signature (same wallet-auth class as admin-state). Live-verified 2026-07-22: unauthenticated GET \u2192 HTTP 403 (same auth gate). Not spot-verified with valid credentials; registered per the official API doc and confirmed live at the route level. probe.enabled:false (path-param on both {app_id} and {chain_id}).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minotaur",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/develop/docs/api/app-management.md"
+      ],
+      "url": "https://api.minotaursubnet.com/v1/apps/%7Bapp_id%7D/deployments/%7Bchain_id%7D/registry-calldata"
     }
   ],
   "source_repo": "https://github.com/subnet112/minotaur_subnet",
