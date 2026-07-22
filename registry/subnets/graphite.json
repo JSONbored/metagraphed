@@ -280,7 +280,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/signup"
@@ -302,7 +302,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/graph/subgraph"
@@ -324,7 +324,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/admin/check"
@@ -346,7 +346,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/billing/checkout"
@@ -368,7 +368,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/billing/webhook"
@@ -394,7 +394,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/deltas/score"
@@ -420,7 +420,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/deltas/merge"
@@ -446,7 +446,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/miners/contributions"
@@ -472,7 +472,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/tasks/contribute"
@@ -498,7 +498,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/tasks/verify"
@@ -524,7 +524,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/graph/stats"
@@ -550,7 +550,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/graph/underserved"
@@ -576,7 +576,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/graph/query"
@@ -602,7 +602,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/entities/%7Bentity_id%7D"
@@ -628,7 +628,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/entities/%7Bentity_id%7D/relationships"
@@ -654,7 +654,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/entities/%7Bentity_id%7D/facts"
@@ -680,7 +680,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/search"
@@ -706,7 +706,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/graph/path"
@@ -732,7 +732,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/graph/exposure"
@@ -758,7 +758,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/graph/compare"
@@ -784,7 +784,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/chat"
@@ -810,7 +810,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/admin/keys"
@@ -836,7 +836,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/admin/keys/%7Bkey%7D"
@@ -862,7 +862,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/admin/usage/%7Bkey%7D"
@@ -888,7 +888,7 @@
       "public_safe": true,
       "review": {
         "state": "community-submitted",
-        "submitted_by": "carlh7777"
+        "submitted_by": "tryeverything24"
       },
       "source_urls": ["https://api.graphite-ai.net/openapi.json"],
       "url": "https://api.graphite-ai.net/api/v1/admin/validator/revoke"

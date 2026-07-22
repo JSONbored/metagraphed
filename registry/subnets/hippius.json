@@ -130,6 +130,7 @@
       "id": "sn-75-hippius-openapi",
       "kind": "openapi",
       "name": "Hippius API (OpenAPI)",
+      "notes": ". Live-verified 2026-07-22: GET returns Swagger 2.0 JSON (title Hippius API).",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -311,6 +312,712 @@
       },
       "source_urls": ["https://api.hippius.com/swagger.json"],
       "url": "https://api.hippius.com/api/storage-control/health/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api",
+      "kind": "subnet-api",
+      "name": "Hippius billing subscriptions",
+      "notes": "Account billing subscriptions.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/billing/subscriptions/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com",
+      "kind": "subnet-api",
+      "name": "Hippius billing transactions",
+      "notes": "Account billing transaction history.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/billing/transactions/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-2",
+      "kind": "subnet-api",
+      "name": "Hippius Stripe subscription plans",
+      "notes": "Stripe subscription-plan catalog for the caller's account.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/billing/stripe/subscription-plans/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-3",
+      "kind": "subnet-api",
+      "name": "Hippius Stripe active subscription",
+      "notes": "The caller's active Stripe subscription.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/billing/stripe/active-subscription/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-4",
+      "kind": "subnet-api",
+      "name": "Hippius credits balance",
+      "notes": "Account credit balance.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/billing/credits/balance/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-5",
+      "kind": "subnet-api",
+      "name": "Hippius billing substrate address",
+      "notes": "The account's Substrate billing address.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/billing/substrate-address/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-6",
+      "kind": "subnet-api",
+      "name": "Hippius billing subscription detail",
+      "notes": "Path-param template (id) — per-subscription detail; same auth gate as the verified /billing/subscriptions/ collection.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/billing/subscriptions/%7Bid%7D/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-7",
+      "kind": "subnet-api",
+      "name": "Hippius VM instances",
+      "notes": "The caller's VM instance fleet (distinct from the public /vm/flavors/ catalog).",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/infrastructure/vm/instances/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-8",
+      "kind": "subnet-api",
+      "name": "Hippius VM instance detail",
+      "notes": "Path-param template (instance_id) — per-instance detail; same auth gate as the verified /vm/instances/ collection.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/infrastructure/vm/instances/%7Binstance_id%7D/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-9",
+      "kind": "subnet-api",
+      "name": "Hippius VM images",
+      "notes": "The caller's VM image list.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/infrastructure/vm/images/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-10",
+      "kind": "subnet-api",
+      "name": "Hippius VM applications",
+      "notes": "The caller's VM application deployments.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/infrastructure/vm/applications/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-11",
+      "kind": "subnet-api",
+      "name": "Hippius certificates",
+      "notes": "The account's TLS certificates.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/infrastructure/certificates/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-12",
+      "kind": "subnet-api",
+      "name": "Hippius object-store buckets",
+      "notes": "The account's object-storage buckets.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/objectstore/buckets/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-13",
+      "kind": "subnet-api",
+      "name": "Hippius bucket objects",
+      "notes": "Path-param template (name) — objects in a bucket; same auth gate as the verified /objectstore/buckets/ collection.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/objectstore/buckets/%7Bname%7D/objects/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-14",
+      "kind": "subnet-api",
+      "name": "Hippius object-store ACL",
+      "notes": "Object-storage access-control entries.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/objectstore/acl/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-15",
+      "kind": "subnet-api",
+      "name": "Hippius object-store master tokens",
+      "notes": "Object-storage master access tokens.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/objectstore/master-tokens/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-16",
+      "kind": "subnet-api",
+      "name": "Hippius object-store sub tokens",
+      "notes": "Object-storage scoped sub tokens.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/objectstore/sub-tokens/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-17",
+      "kind": "subnet-api",
+      "name": "Hippius container-registry repositories",
+      "notes": "The account's container-registry repositories (distinct from the public /registry/health/ and /registry/plans/).",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/registry/repositories/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-18",
+      "kind": "subnet-api",
+      "name": "Hippius container-registry account",
+      "notes": "Container-registry account identity.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/registry/me/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-19",
+      "kind": "subnet-api",
+      "name": "Hippius container-registry keys",
+      "notes": "Container-registry access keys.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/registry/keys/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-20",
+      "kind": "subnet-api",
+      "name": "Hippius container-registry usage",
+      "notes": "Container-registry usage metrics.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/registry/usage/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-21",
+      "kind": "subnet-api",
+      "name": "Hippius container-registry events",
+      "notes": "Container-registry event log.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/registry/events/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-22",
+      "kind": "subnet-api",
+      "name": "Hippius storage-control files",
+      "notes": "The account's storage-control files (distinct from the public /storage-control/health/).",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/storage-control/files/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-23",
+      "kind": "subnet-api",
+      "name": "Hippius storage-control uploads",
+      "notes": "Storage-control upload records.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/storage-control/uploads/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-24",
+      "kind": "subnet-api",
+      "name": "Hippius storage-control profile summary",
+      "notes": "Storage-control account profile summary.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/storage-control/profile-summary/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-25",
+      "kind": "subnet-api",
+      "name": "Hippius network topology",
+      "notes": "The account's private-network topology.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/network/topology/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-26",
+      "kind": "subnet-api",
+      "name": "Hippius network account",
+      "notes": "Private-network account identity.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/network/me/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-27",
+      "kind": "subnet-api",
+      "name": "Hippius network peers",
+      "notes": "Private-network peers.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/network/peers/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-28",
+      "kind": "subnet-api",
+      "name": "Hippius user account",
+      "notes": "The caller's account identity.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/users/me/"
+    },
+    {
+      "auth": {
+        "location": "header",
+        "name": "Authorization",
+        "scheme": "bearer",
+        "scopes_note": "The subnet's OpenAPI schema (swagger.json) declares a global security: [{Bearer: []}]. Auth here is empirically confirmed, not schema-derived: live-verified 2026-07-22 that an unauthenticated GET returns HTTP 401 {\"detail\":\"Authentication credentials were not provided.\"} (Django REST Framework). Per #7088.",
+        "value_format": "Bearer <token>"
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-29",
+      "kind": "subnet-api",
+      "name": "Hippius user profile",
+      "notes": "The caller's user profile.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/user-profile/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-subnet-api-api-hippius-com-30",
+      "kind": "subnet-api",
+      "name": "Hippius container-registry namespace check",
+      "notes": "Public namespace-availability check; required query param `name`. Live-verified 2026-07-22: a bare GET returns HTTP 400 {\"error\":\"name parameter is required\"} (reaches the handler with no auth), NOT the 401 the rest of /registry/* returns — so it is public, correcting #7088's auth-gated classification.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "michiot05"
+      },
+      "source_urls": ["https://api.hippius.com/swagger.json"],
+      "url": "https://api.hippius.com/api/registry/namespaces/check/"
     }
   ],
   "website_url": "https://hippius.com/"
