@@ -16513,6 +16513,82 @@ describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs
   });
 });
 
+describe("graphql — evm_address_mapping (#7648, get_evm_address_mapping name parity)", () => {
+  function kvEnv(payload) {
+    return { METAGRAPH_CONTROL: { get: async () => payload } };
+  }
+  const H160 = "0x1234567890abcdef1234567890abcdef12345678";
+
+  test("resolves the h160 -> ss58 mapping under the MCP tool name", async () => {
+    const env = kvEnv({
+      schema_version: 1,
+      h160: H160,
+      ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      queried_at: "2026-07-22T00:00:00.000Z",
+    });
+    const { status, body } = await gql(
+      `{ evm_address_mapping(h160: "${H160}") { schema_version h160 ss58 queried_at } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.evm_address_mapping;
+    assert.equal(r.schema_version, 1);
+    assert.equal(r.h160, H160);
+    assert.equal(r.ss58, "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+    assert.ok(r.queried_at);
+  });
+
+  test("an unresolved mapping resolves with null ss58, never a GraphQL error", async () => {
+    const env = kvEnv({
+      schema_version: 1,
+      h160: H160,
+      ss58: null,
+      queried_at: "2026-07-22T00:00:00.000Z",
+    });
+    const { status, body } = await gql(
+      `{ evm_address_mapping(h160: "${H160}") { h160 ss58 } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.evm_address_mapping.ss58, null);
+  });
+
+  test("a malformed h160 is a GraphQL BAD_USER_INPUT error, not a card", async () => {
+    const { body } = await gql(
+      '{ evm_address_mapping(h160: "not-an-address") { ss58 } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/h160/i.test(body.errors[0].message));
+    assert.equal(body.errors[0].extensions?.code, "BAD_USER_INPUT");
+    assert.equal(body.data?.evm_address_mapping ?? null, null);
+  });
+
+  test("returns the same payload as evm_address for the same address", async () => {
+    const payload = {
+      schema_version: 1,
+      h160: H160,
+      ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      queried_at: "2026-07-22T00:00:00.000Z",
+    };
+    const { body } = await gql(
+      `{ a: evm_address(h160: "${H160}") { schema_version h160 ss58 queried_at }
+         b: evm_address_mapping(h160: "${H160}") { schema_version h160 ss58 queried_at } }`,
+      kvEnv(payload),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.b, body.data.a);
+  });
+
+  test("evm_address_mapping is weighted exactly like evm_address", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.evm_address_mapping,
+      FIELD_COMPLEXITY.evm_address,
+    );
+  });
+});
+
 describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.mjs)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-recycled.test.mjs.
