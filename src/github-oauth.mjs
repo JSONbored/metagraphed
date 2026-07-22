@@ -45,6 +45,11 @@ const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_USER_API_URL = "https://api.github.com/user";
 
+// Single source of truth for the OAuth-gated API route, shared by
+// buildOAuthProviderOptions' apiRoute and isAnonymousMcpRequest below so the
+// two can never drift apart.
+const MCP_API_ROUTE = "/mcp";
+
 // Mirrors wallet-auth.mjs's WALLET_CHALLENGE_TTL_SECONDS: long enough for a
 // human to complete a GitHub login popup, short enough that an intercepted
 // nonce is worthless soon after.
@@ -77,12 +82,22 @@ export const UNUSED_DEFAULT_HANDLER = {
  */
 export function buildOAuthProviderOptions(defaultHandler) {
   return {
-    apiRoute: "/mcp",
+    apiRoute: MCP_API_ROUTE,
     // Authenticated /mcp gets identical behavior to anonymous /mcp today --
     // this only makes a validated GitHub identity available via ctx.props
-    // for future use (metagraphed#7151's stated scope). Anonymous/IP-rate-
-    // limited access is unaffected: a request with no/invalid token falls
-    // through to defaultHandler below, same as every other route.
+    // for future use (metagraphed#7151's stated scope). apiHandler only ever
+    // runs once OAuthProvider itself has already accepted a valid Bearer
+    // token, so it's a pure pass-through to defaultHandler; it is NOT what
+    // keeps anonymous /mcp working -- see isAnonymousMcpRequest below for why
+    // that guard has to live at the entrypoint, one layer
+    // OUTSIDE OAuthProvider.fetch() entirely, and this comment's own former
+    // claim ("a request with no/invalid token falls through to defaultHandler
+    // below") for the incident that guard fixes: OAuthProvider's
+    // apiRoute/apiHandler machinery unconditionally 401s a request with no
+    // Bearer token BEFORE apiHandler is ever reached (confirmed directly
+    // against node_modules/@cloudflare/workers-oauth-provider/dist/
+    // oauth-provider.js, not just its .d.ts) -- there is no library-level
+    // "authenticate if present, else fall through" option.
     apiHandler: {
       fetch: (request, env, ctx) => defaultHandler.fetch(request, env, ctx),
     },
@@ -95,6 +110,27 @@ export function buildOAuthProviderOptions(defaultHandler) {
       resource_name: "metagraphed",
     },
   };
+}
+
+/**
+ * True when `request` targets the OAuth-gated /mcp route with no Bearer
+ * Authorization header -- the one case @cloudflare/workers-oauth-provider's
+ * apiRoute/apiHandler machinery cannot serve anonymously (see
+ * buildOAuthProviderOptions' apiHandler comment for the confirmed library
+ * behavior). The real entrypoint (workers/api.sentry.ts) routes a true result
+ * DIRECTLY to the plain handler, bypassing oauthProvider.fetch() entirely, so
+ * an anonymous MCP client gets byte-identical behavior to before GitHub OAuth
+ * (metagraphed#7151) was added. Every other path -- /authorize, /oauth/token,
+ * /oauth/register, OAuthProvider's own discovery endpoints, and /mcp WITH a
+ * Bearer token -- still needs the real oauthProvider.fetch() dispatch, so
+ * this stays narrowly scoped to exactly the one route/no-token combination,
+ * not a blanket "no Authorization header" bypass.
+ */
+export function isAnonymousMcpRequest(request) {
+  return (
+    new URL(request.url).pathname === MCP_API_ROUTE &&
+    !request.headers.get("Authorization")?.startsWith("Bearer ")
+  );
 }
 
 // Real production helpers resolver -- lazy-imports the package so no test
