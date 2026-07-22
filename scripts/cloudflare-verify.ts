@@ -7,24 +7,26 @@ import {
   stripJsonComments,
 } from "./lib.mjs";
 
+type Row = Record<string, unknown>;
+
 const configPath = path.join(repoRoot, "wrangler.jsonc");
 const assetsIgnorePath = path.join(repoRoot, "public/.assetsignore");
 const rawConfig = await fs.readFile(configPath, "utf8");
-const config = JSON.parse(stripJsonComments(rawConfig));
+const config: Row = JSON.parse(stripJsonComments(rawConfig));
 const assetsIgnore = await fs.readFile(assetsIgnorePath, "utf8");
-const manifest = await readJson(
+const manifest: Row = await readJson(
   path.join(repoRoot, "public/metagraph/r2-manifest.json"),
 );
-const contracts = await readJson(
+const contracts: Row = await readJson(
   path.join(repoRoot, "public/metagraph/contracts.json"),
 );
-const apiIndex = await readJson(
+const apiIndex: Row = await readJson(
   path.join(repoRoot, "public/metagraph/api-index.json"),
 );
-const errors = [];
-const warnings = [];
+const errors: string[] = [];
+const warnings: string[] = [];
 const kvBinding = Array.isArray(config.kv_namespaces)
-  ? config.kv_namespaces.find(
+  ? (config.kv_namespaces as Row[]).find(
       (namespace) => namespace.binding === "METAGRAPH_CONTROL",
     )
   : null;
@@ -46,34 +48,41 @@ check(config.name === "metagraphed", "wrangler name must be metagraphed");
 // so api.mjs and api.sentry.mjs may each independently still be .mjs or
 // already be .ts depending on migration progress.
 check(
-  ["workers/api.mjs", "workers/api.ts"].includes(config.main) ||
-    ["workers/api.sentry.mjs", "workers/api.sentry.ts"].includes(config.main),
+  ["workers/api.mjs", "workers/api.ts"].includes(config.main as string) ||
+    ["workers/api.sentry.mjs", "workers/api.sentry.ts"].includes(
+      config.main as string,
+    ),
   "wrangler main must point to workers/api.(mjs|ts) or its Sentry deploy-entry wrapper, workers/api.sentry.(mjs|ts)",
 );
 check(Boolean(config.compatibility_date), "compatibility_date is required");
 check(
   Array.isArray(config.compatibility_flags) &&
-    config.compatibility_flags.includes("nodejs_compat"),
+    (config.compatibility_flags as string[]).includes("nodejs_compat"),
   "nodejs_compat flag is required",
 );
 check(
-  config.assets?.directory === "./public",
+  (config.assets as Row | undefined)?.directory === "./public",
   "assets.directory must be ./public",
 );
-check(config.assets?.binding === "ASSETS", "ASSETS binding is required");
 check(
-  Array.isArray(config.assets?.run_worker_first) &&
-    config.assets.run_worker_first.includes("/api/*"),
+  (config.assets as Row | undefined)?.binding === "ASSETS",
+  "ASSETS binding is required",
+);
+check(
+  Array.isArray((config.assets as Row | undefined)?.run_worker_first) &&
+    ((config.assets as Row).run_worker_first as string[]).includes("/api/*"),
   "API routes must run Worker first",
 );
 check(
-  Array.isArray(config.assets?.run_worker_first) &&
-    config.assets.run_worker_first.includes("/rpc/*"),
+  Array.isArray((config.assets as Row | undefined)?.run_worker_first) &&
+    ((config.assets as Row).run_worker_first as string[]).includes("/rpc/*"),
   "RPC routes must run Worker first",
 );
 check(
-  Array.isArray(config.assets?.run_worker_first) &&
-    config.assets.run_worker_first.includes("/metagraph/*"),
+  Array.isArray((config.assets as Row | undefined)?.run_worker_first) &&
+    ((config.assets as Row).run_worker_first as string[]).includes(
+      "/metagraph/*",
+    ),
   "Metagraph artifact routes must run Worker first for CORS, cache headers, and R2 fallback",
 );
 check(
@@ -81,17 +90,24 @@ check(
   "public/.assetsignore must block OS metadata uploads",
 );
 check(
-  ["true", "false"].includes(config.vars?.METAGRAPH_ENABLE_RPC_PROXY),
+  ["true", "false"].includes(
+    (config.vars as Row | undefined)?.METAGRAPH_ENABLE_RPC_PROXY as string,
+  ),
   "RPC proxy enable flag must be explicitly 'true' or 'false'",
 );
 check(
-  config.vars?.METAGRAPH_R2_LATEST_PREFIX === "latest/",
+  (config.vars as Row | undefined)?.METAGRAPH_R2_LATEST_PREFIX === "latest/",
   "R2 latest prefix must default to latest/",
 );
-check(config.observability?.enabled === true, "observability must be enabled");
+check(
+  (config.observability as Row | undefined)?.enabled === true,
+  "observability must be enabled",
+);
 check(
   Array.isArray(config.r2_buckets) &&
-    config.r2_buckets.some((bucket) => bucket.binding === "METAGRAPH_ARCHIVE"),
+    (config.r2_buckets as Row[]).some(
+      (bucket) => bucket.binding === "METAGRAPH_ARCHIVE",
+    ),
   "METAGRAPH_ARCHIVE R2 binding is required",
 );
 check(
@@ -99,12 +115,14 @@ check(
   "R2 manifest bucket binding must match Worker binding",
 );
 check(
-  manifest.artifact_count === manifest.artifacts.length,
+  manifest.artifact_count === (manifest.artifacts as unknown[]).length,
   "R2 manifest artifact count must match artifacts length",
 );
 check(
-  manifest.artifacts.every(
-    (artifact) => artifact.sha256 && artifact.path?.startsWith("/metagraph/"),
+  (manifest.artifacts as Row[]).every(
+    (artifact) =>
+      artifact.sha256 &&
+      (artifact.path as string | undefined)?.startsWith("/metagraph/"),
   ),
   "R2 manifest artifacts must include sha256 and /metagraph paths",
 );
@@ -169,11 +187,11 @@ console.log(
     status: "passed",
     warnings,
     r2_artifact_count: manifest.artifact_count,
-    api_route_count: apiIndex.routes.length,
+    api_route_count: (apiIndex.routes as unknown[]).length,
   }),
 );
 
-function check(condition, message) {
+function check(condition: unknown, message: string): void {
   if (!condition) {
     errors.push(message);
   }

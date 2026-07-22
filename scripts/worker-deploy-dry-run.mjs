@@ -20,7 +20,7 @@ check(config.name === "metagraphed", "wrangler name must be metagraphed");
 // wrapped or not," not a literal string pin to one exact filename. Accepts
 // both .mjs and .ts spellings of each -- the TypeScript migration
 // (metagraphed#7510) converts workers/ file by file. Mirrors the same check
-// in cloudflare-verify.mjs.
+// in cloudflare-verify.ts.
 check(
   ["workers/api.mjs", "workers/api.ts"].includes(config.main) ||
     ["workers/api.sentry.mjs", "workers/api.sentry.ts"].includes(config.main),
