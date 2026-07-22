@@ -8,7 +8,7 @@ import {
   GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
   agentResourcesToolError,
   loadAgentResources,
-} from "../src/agent-resources-mcp.mjs";
+} from "../src/agent-resources-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_RESOURCES = {

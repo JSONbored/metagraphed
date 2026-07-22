@@ -245,7 +245,7 @@ import {
   GET_AGENT_RESOURCES_MCP_TOOL,
   GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
   loadAgentResources,
-} from "./agent-resources-mcp.mjs";
+} from "./agent-resources-mcp.ts";
 import {
   GET_SUBNET_PROFILE_MCP_TOOL,
   GET_SUBNET_PROFILE_OUTPUT_SCHEMA,

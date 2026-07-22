@@ -257,7 +257,7 @@ import {
   overlayFeaturedValidators,
 } from "./metagraph-neurons.mjs";
 import { buildAlphaVolume } from "./alpha-volume.mjs";
-import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.mjs";
+import { AGENT_RESOURCES_ARTIFACT } from "./agent-resources-mcp.ts";
 import { CURATION_ARTIFACT } from "./curation-mcp.mjs";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";

@@ -2,20 +2,41 @@
 // Serves the baked /metagraph/agent-resources.json artifact (copyable agent,
 // MCP install metadata, skill/OpenAPI links, and the agent-facing API index).
 
+import type { StorageReadResult } from "../workers/storage.ts";
+
 export const AGENT_RESOURCES_ARTIFACT = "/metagraph/agent-resources.json";
 
-export function agentResourcesToolError(code, message) {
-  const error = new Error(message);
+export interface AgentResourcesToolError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function agentResourcesToolError(
+  code: string,
+  message: string,
+): AgentResourcesToolError {
+  const error = new Error(message) as AgentResourcesToolError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-export async function loadAgentResources(ctx, { readArtifact } = {}) {
+export async function loadAgentResources(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<unknown> {
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, AGENT_RESOURCES_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw agentResourcesToolError(
         "not_found",
