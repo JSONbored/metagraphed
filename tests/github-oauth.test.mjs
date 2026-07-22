@@ -7,10 +7,10 @@ import {
   isAnonymousMcpRequest,
   OAUTH_PENDING_TTL_SECONDS,
   UNUSED_DEFAULT_HANDLER,
-} from "../src/github-oauth.mjs";
+} from "../src/github-oauth.ts";
 
 // @cloudflare/workers-oauth-provider's real runtime file imports
-// "cloudflare:workers" at module scope (see src/github-oauth.mjs's own
+// "cloudflare:workers" at module scope (see src/github-oauth.ts's own
 // header) -- can't load in plain Node. vi.mock replaces module RESOLUTION
 // itself, so this fake is used instead and the real package is never
 // touched, even by the production (no deps.getHelpers override) code path

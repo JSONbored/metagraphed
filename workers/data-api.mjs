@@ -4121,7 +4121,7 @@ async function handleWalletVerify(request, env) {
 }
 
 // GitHub OAuth account upsert (metagraphed#7151) -- reached ONLY via the
-// DATA_API service binding from src/github-oauth.mjs's callback handler,
+// DATA_API service binding from src/github-oauth.ts's callback handler,
 // never directly from a browser/MCP client (this Worker has no public route
 // or workers.dev subdomain -- wrangler.data.jsonc's own "workers_dev": false,
 // same posture the wallet routes above already rely on). The GitHub identity

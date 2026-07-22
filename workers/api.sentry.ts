@@ -45,7 +45,7 @@ import handler from "./api.mjs";
 import {
   buildOAuthProviderOptions,
   isAnonymousMcpRequest,
-} from "../src/github-oauth.mjs";
+} from "../src/github-oauth.ts";
 // wrangler.jsonc's "main" now points at THIS file, so wrangler looks for
 // every Durable Object binding's class as a named export from here, not
 // from api.mjs -- confirmed by a real `wrangler deploy --dry-run` failure
@@ -72,7 +72,7 @@ export {
 // apiHandler is ever reached -- there is no library-level "authenticate if
 // present, else fall through to defaultHandler" option (confirmed against
 // node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js
-// directly, not just its .d.ts); see src/github-oauth.mjs's
+// directly, not just its .d.ts); see src/github-oauth.ts's
 // buildOAuthProviderOptions/isAnonymousMcpRequest comments for the full
 // story. Every other path -- /authorize, /oauth/token, /oauth/register,
 // OAuthProvider's own discovery endpoints, and /mcp WITH a Bearer token --

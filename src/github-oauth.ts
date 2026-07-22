@@ -41,6 +41,16 @@
 // `deps.getHelpers` for exactly this reason -- tests inject a fake helpers
 // object and never touch the real package at all, same shape as
 // usage-telemetry.mjs's injectable `deps.fetch`.
+//
+// The package's real TYPES (as opposed to its runtime) have no
+// cloudflare:workers dependency, so `import type` below is safe at module
+// scope -- type-only imports are fully erased and carry no runtime cost.
+import type {
+  AuthRequest,
+  OAuthHelpers,
+  OAuthProviderOptions,
+} from "@cloudflare/workers-oauth-provider";
+
 const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_USER_API_URL = "https://api.github.com/user";
@@ -66,6 +76,14 @@ export const UNUSED_DEFAULT_HANDLER = {
     new Response("not used outside OAuthProvider.fetch()", { status: 500 }),
 };
 
+interface DefaultHandler {
+  fetch: (
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ) => Response | Promise<Response>;
+}
+
 /**
  * Options shared by the real OAuthProvider instance (workers/api.sentry.mjs,
  * the deploy entrypoint) and by getOAuthApi() calls from this Worker's own
@@ -80,7 +98,9 @@ export const UNUSED_DEFAULT_HANDLER = {
  * that only need those helpers pass UNUSED_DEFAULT_HANDLER: it's
  * structurally required by the library's types but dead weight there.
  */
-export function buildOAuthProviderOptions(defaultHandler) {
+export function buildOAuthProviderOptions(
+  defaultHandler: DefaultHandler,
+): OAuthProviderOptions<Env> {
   return {
     apiRoute: MCP_API_ROUTE,
     // Authenticated /mcp gets identical behavior to anonymous /mcp today --
@@ -109,7 +129,7 @@ export function buildOAuthProviderOptions(defaultHandler) {
     resourceMetadata: {
       resource_name: "metagraphed",
     },
-  };
+  } as OAuthProviderOptions<Env>;
 }
 
 /**
@@ -126,7 +146,7 @@ export function buildOAuthProviderOptions(defaultHandler) {
  * this stays narrowly scoped to exactly the one route/no-token combination,
  * not a blanket "no Authorization header" bypass.
  */
-export function isAnonymousMcpRequest(request) {
+export function isAnonymousMcpRequest(request: Request): boolean {
   return (
     new URL(request.url).pathname === MCP_API_ROUTE &&
     !request.headers.get("Authorization")?.startsWith("Bearer ")
@@ -144,26 +164,31 @@ export function isAnonymousMcpRequest(request) {
 // deps.getHelpers precisely so their own logic stays fully covered without
 // this function ever running in a test.
 /* v8 ignore start */
-async function defaultGetOAuthHelpers(env) {
+async function defaultGetOAuthHelpers(env: Env): Promise<OAuthHelpers> {
   const { getOAuthApi } = await import("@cloudflare/workers-oauth-provider");
   return getOAuthApi(buildOAuthProviderOptions(UNUSED_DEFAULT_HANDLER), env);
 }
 /* v8 ignore stop */
 
-function randomNonce() {
+function randomNonce(): string {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/**
- * @typedef {object} GithubOAuthDeps
- * @property {(env: object) => Promise<object>} [getHelpers] Injectable OAuthHelpers resolver (tests).
- * @property {typeof fetch} [fetch] Injectable fetch, for the GitHub API calls + DATA_API hop (tests).
- */
+interface GithubOAuthDeps {
+  // Injectable OAuthHelpers resolver (tests).
+  getHelpers?: (env: Env) => Promise<OAuthHelpers>;
+  // Injectable fetch, for the GitHub API calls + DATA_API hop (tests).
+  fetch?: typeof fetch;
+}
 
 /** GET /authorize -- parse the incoming OAuth request, stash it, hand off to GitHub. */
-export async function handleAuthorizeRequest(request, env, deps = {}) {
+export async function handleAuthorizeRequest(
+  request: Request,
+  env: Env,
+  deps: GithubOAuthDeps = {},
+): Promise<Response> {
   if (!env.OAUTH_KV) {
     return new Response("oauth is not provisioned on this deployment", {
       status: 503,
@@ -176,12 +201,12 @@ export async function handleAuthorizeRequest(request, env, deps = {}) {
   }
   const getHelpers = deps.getHelpers ?? defaultGetOAuthHelpers;
   const helpers = await getHelpers(env);
-  let authRequest;
+  let authRequest: AuthRequest;
   try {
     authRequest = await helpers.parseAuthRequest(request);
   } catch (err) {
     return new Response(
-      `invalid authorization request: ${err?.message ?? "unknown error"}`,
+      `invalid authorization request: ${(err as Error)?.message ?? "unknown error"}`,
       { status: 400 },
     );
   }
@@ -205,7 +230,11 @@ export async function handleAuthorizeRequest(request, env, deps = {}) {
 }
 
 /** GET /oauth/callback/github -- GitHub's redirect back after the user authorizes. */
-export async function handleGithubOAuthCallback(request, env, deps = {}) {
+export async function handleGithubOAuthCallback(
+  request: Request,
+  env: Env,
+  deps: GithubOAuthDeps = {},
+): Promise<Response> {
   if (
     !env.OAUTH_KV ||
     !env.GITHUB_OAUTH_CLIENT_ID ||
@@ -232,7 +261,7 @@ export async function handleGithubOAuthCallback(request, env, deps = {}) {
   // (browser back-button, a proxy retrying the GET) can't complete twice
   // against the same pending request.
   await env.OAUTH_KV.delete(pendingKey);
-  let authRequest;
+  let authRequest: AuthRequest;
   try {
     authRequest = JSON.parse(pendingRaw);
   } catch {
@@ -259,7 +288,7 @@ export async function handleGithubOAuthCallback(request, env, deps = {}) {
   if (!tokenResponse.ok) {
     return new Response("github token exchange failed", { status: 502 });
   }
-  const tokenBody = await tokenResponse.json();
+  const tokenBody = (await tokenResponse.json()) as Record<string, unknown>;
   const githubAccessToken = tokenBody?.access_token;
   if (typeof githubAccessToken !== "string" || !githubAccessToken) {
     return new Response("github token exchange returned no access_token", {
@@ -279,7 +308,7 @@ export async function handleGithubOAuthCallback(request, env, deps = {}) {
       status: 502,
     });
   }
-  const githubUser = await userResponse.json();
+  const githubUser = (await userResponse.json()) as Record<string, unknown>;
   const githubUserId = githubUser?.id;
   const githubLogin = githubUser?.login;
   if (
@@ -311,7 +340,7 @@ export async function handleGithubOAuthCallback(request, env, deps = {}) {
   if (!upsertResponse.ok) {
     return new Response("account storage failed", { status: 502 });
   }
-  const account = await upsertResponse.json();
+  const account = (await upsertResponse.json()) as Record<string, unknown>;
 
   const getHelpers = deps.getHelpers ?? defaultGetOAuthHelpers;
   const helpers = await getHelpers(env);

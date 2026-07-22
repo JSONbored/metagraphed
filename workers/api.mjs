@@ -288,7 +288,7 @@ import { handleGraphQLRequest } from "../src/graphql.mjs";
 import {
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
-} from "../src/github-oauth.mjs";
+} from "../src/github-oauth.ts";
 import {
   handleSavedQueryRequest,
   SAVED_QUERIES_PATH_PREFIX,
@@ -1561,7 +1561,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // GitHub OAuth (metagraphed#7151): the two routes @cloudflare/workers-
   // oauth-provider's own authorizeEndpoint deliberately leaves to
-  // application code (see src/github-oauth.mjs's header). GET-only --
+  // application code (see src/github-oauth.ts's header). GET-only --
   // both are browser-redirect targets, never called by a client library
   // directly.
   if (request.method === "GET" && url.pathname === "/authorize") {
