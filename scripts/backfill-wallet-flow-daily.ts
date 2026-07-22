@@ -1,6 +1,6 @@
 // One-off (idempotent, safe to re-run) historical backfill of Postgres's
 // wallet_flow_daily rollup (#6886/#6887) for the range before this table
-// existed. Unlike scripts/backfill-account-events-daily-postgres.mjs (which
+// existed. Unlike scripts/backfill-account-events-daily-postgres.ts (which
 // copies frozen D1 rows for a gap Postgres itself can no longer recompute),
 // this table has no prior D1 equivalent and no gap in its source: account_events
 // has been the live, continuously-written Postgres record of every StakeAdded/
