@@ -8626,6 +8626,39 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
   });
 });
 
+describe("graphql — subnet_candidates (#7641, baked per-subnet candidate artifact)", () => {
+  test("resolves the baked per-subnet candidates artifact", async () => {
+    const env = fixtureEnv({
+      "/metagraph/candidates/5.json": {
+        netuid: 5,
+        candidates: [{ id: "cand-1", kind: "subnet-api" }],
+      },
+    });
+    const { status, body } = await gql("{ subnet_candidates(netuid: 5) }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_candidates.netuid, 5);
+    assert.equal(body.data.subnet_candidates.candidates[0].kind, "subnet-api");
+  });
+
+  test("degrades to null when no candidate artifact is baked, never an error", async () => {
+    const { status, body } = await gql("{ subnet_candidates(netuid: 999) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_candidates, null);
+  });
+
+  test("a negative netuid is a GraphQL error", async () => {
+    const { body } = await gql("{ subnet_candidates(netuid: -1) }");
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
+  test("is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_candidates, 5);
+  });
+});
+
 describe("graphql — subnet_performance_history (#6981, neuron_daily reward-distribution trend)", () => {
   function dataApi(response) {
     return { fetch: async () => response };

@@ -538,6 +538,8 @@ export const SDL = `
     subnet_gaps(netuid: Int!): JSON
     "One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_evidence MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/evidence."
     subnet_evidence(netuid: Int!): JSON
+    "One subnet's unpromoted candidate-surface queue — the baked per-subnet /metagraph/candidates/{netuid}.json artifact the REST route and get_subnet_candidates MCP tool read. Null when no candidate artifact has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim. Distinct from candidates(...) (the filterable network-wide candidate catalog). Mirrors GET /api/v1/subnets/{netuid}/candidates."
+    subnet_candidates(netuid: Int!): JSON
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
@@ -4266,6 +4268,7 @@ export const FIELD_COMPLEXITY = {
   subnet_event_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_evidence: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_candidates: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6790,6 +6793,19 @@ const rootValue = {
     // Same baked evidence artifact the REST route + get_subnet_evidence MCP
     // tool read; null when no record has been baked for this netuid.
     return loadArtifact(context, `/metagraph/evidence/${netuid}.json`);
+  },
+
+  async subnet_candidates({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // Same baked per-subnet candidates artifact the REST route +
+    // get_subnet_candidates MCP tool read (distinct from the network-wide
+    // candidates(...) catalog); null when no artifact has been baked for this
+    // netuid, matching subnet_gaps/subnet_evidence's cold-artifact convention.
+    return loadArtifact(context, `/metagraph/candidates/${netuid}.json`);
   },
 
   async subnet_health_incidents({ netuid, window }, context) {
