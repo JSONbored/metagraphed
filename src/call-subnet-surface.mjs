@@ -93,9 +93,28 @@ export async function callSubnetSurface(surface, options) {
   const timeoutMs = Number.isFinite(surface?.probe?.timeout_ms)
     ? surface.probe.timeout_ms
     : 10_000;
-  const baseUrl = path
-    ? new URL(path, new URL(surface.url).origin).toString()
-    : surface.url;
+  let baseUrl = surface.url;
+  if (path) {
+    const surfaceOrigin = new URL(surface.url).origin;
+    // A caller-supplied path like "//attacker.com" starts with "/" (passing
+    // matchSchemaOperation's own format check, and its segment-splitting
+    // treats it the same as "/attacker.com" since both produce the same
+    // non-empty segments) but new URL() treats a leading "//" as a
+    // protocol-relative reference, resolving to an entirely different host --
+    // never this surface's own. matchSchemaOperation validates the SHAPE of
+    // path against the schema; only this origin check validates WHERE the
+    // resolved request actually goes, so it's the authoritative guard
+    // regardless of what string tricked schema matching into a false match.
+    const resolved = new URL(path, surfaceOrigin);
+    if (resolved.origin !== surfaceOrigin) {
+      return {
+        ok: false,
+        error: "path resolved outside the surface's own origin",
+        path_origin_mismatch: true,
+      };
+    }
+    baseUrl = resolved.toString();
+  }
   const requestUrl = buildRequestUrl(baseUrl, query);
 
   const fetched = await safetyCheckedFetch(requestUrl, {

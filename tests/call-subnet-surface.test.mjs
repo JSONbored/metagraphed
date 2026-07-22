@@ -415,6 +415,60 @@ describe("callSubnetSurface", () => {
     assert.equal(result.ok, true);
   });
 
+  test("path override: a protocol-relative path (//host) is rejected, never resolved to a foreign origin", async () => {
+    let fetched = false;
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "//attacker.example",
+        method: "GET",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => {
+          fetched = true;
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.path_origin_mismatch, true);
+    assert.equal(fetched, false);
+  });
+
+  test("path override: a scheme-qualified absolute path is rejected, never resolved to a foreign origin", async () => {
+    let fetched = false;
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "https://attacker.example/x",
+        method: "GET",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => {
+          fetched = true;
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.path_origin_mismatch, true);
+    assert.equal(fetched, false);
+  });
+
+  test("path override: a same-origin path with an extra leading slash still resolves to the surface's own host", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "//example.com/users",
+        method: "GET",
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          assert.equal(url, "https://example.com/users");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
   test("POST with a body sends it with the given content-type", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/openapi.json" },
