@@ -260,7 +260,7 @@ import {
   GET_HEALTH_HISTORY_MCP_TOOL,
   GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
   loadHealthHistory,
-} from "./health-history-mcp.mjs";
+} from "./health-history-mcp.ts";
 import {
   buildChainConcentration,
   buildConcentration,

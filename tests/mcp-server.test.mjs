@@ -11,7 +11,7 @@ import {
   handleMcpRequest,
 } from "../src/mcp-server.mjs";
 import * as profilesMcp from "../src/profiles-mcp.mjs";
-import * as healthHistoryMcp from "../src/health-history-mcp.mjs";
+import * as healthHistoryMcp from "../src/health-history-mcp.ts";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
 import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";

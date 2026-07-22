@@ -63,7 +63,7 @@ import { loadContracts } from "./contracts-mcp.ts";
 // #7431: GraphQL parity for GET /api/v1/build, reusing loadBuildSummary that
 // MCP get_build already calls -- not a reimplementation.
 import { loadBuildSummary } from "./build-mcp.ts";
-import { loadHealthHistory } from "./health-history-mcp.mjs";
+import { loadHealthHistory } from "./health-history-mcp.ts";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_WINDOWS,

@@ -3,7 +3,7 @@
 // health/history snapshots with health-surfaces filters.
 
 import { DAY_PATTERN } from "../workers/request-params.ts";
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 const HEALTH_SURFACE_SORT_FIELDS =
@@ -11,14 +11,22 @@ const HEALTH_SURFACE_SORT_FIELDS =
 const NULLABLE_STRING = { type: ["string", "null"] };
 const NULLABLE_INT = { type: ["integer", "null"] };
 
-export function healthHistoryMcpError(code, message) {
-  const err = new Error(message);
+export interface HealthHistoryMcpError extends Error {
+  healthHistoryMcp: true;
+  code: string;
+}
+
+export function healthHistoryMcpError(
+  code: string,
+  message: string,
+): HealthHistoryMcpError {
+  const err = new Error(message) as HealthHistoryMcpError;
   err.code = code;
   err.healthHistoryMcp = true;
   return err;
 }
 
-function requireDate(date) {
+function requireDate(date: unknown): string {
   if (typeof date !== "string" || !DAY_PATTERN.test(date.trim())) {
     throw healthHistoryMcpError(
       "invalid_params",
@@ -28,7 +36,10 @@ function requireDate(date) {
   return date.trim();
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -40,7 +51,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -52,22 +67,25 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function clampLimit(value, fallback, max) {
+function clampLimit(value: unknown, fallback: number, max: number): number {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
 }
 
-export function healthHistoryQueryUrl(args) {
+export function healthHistoryQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/health-history");
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
       throw healthHistoryMcpError(
         "invalid_params",
         "netuid must be a non-negative integer.",
       );
     }
-    url.searchParams.set("netuid", String(args.netuid));
+    url.searchParams.set("netuid", String(netuid));
   }
   const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
   if (kind) url.searchParams.set("kind", kind);
@@ -91,18 +109,38 @@ export function healthHistoryQueryUrl(args) {
     url.searchParams.set("limit", String(clampLimit(args.limit, 100, 1000)));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    const cursor = args.cursor;
+    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
       throw healthHistoryMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
       );
     }
-    url.searchParams.set("cursor", String(args.cursor));
+    url.searchParams.set("cursor", String(cursor));
   }
   return url;
 }
 
-export async function loadHealthHistory(ctx, args, deps) {
+export interface HealthHistoryResult {
+  date: unknown;
+  summary: unknown;
+  surfaces: Row[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
+export async function loadHealthHistory(
+  ctx: unknown,
+  args: Record<string, unknown> | null | undefined,
+  deps: {
+    readArtifact: (ctx: unknown, artifactPath: string) => Promise<unknown>;
+  },
+): Promise<HealthHistoryResult> {
   const date = requireDate(args?.date);
   const queryUrl = healthHistoryQueryUrl(args);
   const blob = await deps.readArtifact(
@@ -115,13 +153,19 @@ export async function loadHealthHistory(ctx, args, deps) {
       `No health-history snapshot for ${date}.`,
     );
   }
-  const transformed = applyQueryFilters(blob, queryUrl, "health-surfaces", []);
+  const transformed = applyQueryFilters(
+    blob as Record<string, unknown>,
+    queryUrl,
+    "health-surfaces",
+    [],
+  );
   if (transformed.error) {
     throw healthHistoryMcpError("invalid_params", transformed.error.message);
   }
-  const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const surfaces = Array.isArray(data.surfaces) ? data.surfaces : [];
+  const data = transformed.data as Record<string, unknown>;
+  const meta = transformed.meta as Record<string, unknown>;
+  const page = (meta.pagination as Record<string, unknown>) || {};
+  const surfaces = Array.isArray(data.surfaces) ? (data.surfaces as Row[]) : [];
   const surfaceLen = surfaces.length;
   return {
     date: data.date ?? date,
