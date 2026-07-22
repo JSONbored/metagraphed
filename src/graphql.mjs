@@ -188,7 +188,7 @@ import {
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
   TOP_HOLDERS_SORTS,
-} from "./top-holders.mjs";
+} from "./top-holders.ts";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
 import {
   COMPARE_VALIDATORS_MAX,

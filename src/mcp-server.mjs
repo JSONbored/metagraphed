@@ -633,7 +633,7 @@ import {
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
-} from "./top-holders.mjs";
+} from "./top-holders.ts";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";

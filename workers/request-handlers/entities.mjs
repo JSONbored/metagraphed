@@ -65,7 +65,7 @@ import {
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
-} from "../../src/top-holders.mjs";
+} from "../../src/top-holders.ts";
 import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.ts";
 import {

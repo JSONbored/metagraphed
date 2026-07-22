@@ -18,6 +18,8 @@
 // account_events_daily); unlike free_tao/delegated_tao, net flow is signed
 // (a real net outflow is negative), so it gets its own signed-number guard.
 
+type Row = Record<string, unknown>;
+
 export const TOP_HOLDERS_SORTS = [
   "total_tao",
   "free_tao",
@@ -30,7 +32,7 @@ export const DEFAULT_TOP_HOLDERS_SORT = "total_tao";
 export const TOP_HOLDERS_LIMIT_DEFAULT = 20;
 export const TOP_HOLDERS_LIMIT_MAX = 100;
 
-function toIso(ms) {
+function toIso(ms: unknown): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -38,23 +40,35 @@ function toIso(ms) {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function numberOrZero(value) {
+function numberOrZero(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 // Net flow can be genuinely negative (net outflow) -- numberOrZero's >= 0
 // guard would silently clamp a real outflow to 0, which is wrong here.
-function numberOrZeroSigned(value) {
+function numberOrZeroSigned(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function buildTopHoldersEntry(row) {
+interface TopHoldersEntry {
+  ss58: string;
+  free_tao: number;
+  delegated_tao: number;
+  total_tao: number;
+  net_flow_7d: number;
+  net_flow_30d: number;
+  net_flow_90d: number;
+  last_updated: string | null;
+  [key: string]: unknown;
+}
+
+function buildTopHoldersEntry(row: Row): TopHoldersEntry {
   const freeTao = numberOrZero(row?.free_tao);
   const delegatedTao = numberOrZero(row?.delegated_tao);
   return {
-    ss58: row.ss58,
+    ss58: row.ss58 as string,
     free_tao: freeTao,
     delegated_tao: delegatedTao,
     total_tao: freeTao + delegatedTao,
@@ -72,9 +86,12 @@ function buildTopHoldersEntry(row) {
  * aggregate -- into a paginated, sortable leaderboard. Null-safe: no rows
  * (cold store) yields a schema-stable empty leaderboard. */
 export function buildTopHoldersList(
-  rows,
-  { sort = DEFAULT_TOP_HOLDERS_SORT, limit = TOP_HOLDERS_LIMIT_DEFAULT } = {},
-) {
+  rows: Row[] | null | undefined,
+  {
+    sort = DEFAULT_TOP_HOLDERS_SORT,
+    limit = TOP_HOLDERS_LIMIT_DEFAULT,
+  }: { sort?: string; limit?: unknown } = {},
+): Row {
   const normalizedSort = TOP_HOLDERS_SORTS.includes(sort)
     ? sort
     : DEFAULT_TOP_HOLDERS_SORT;
@@ -83,13 +100,13 @@ export function buildTopHoldersList(
     ? Math.max(0, Math.min(flooredLimit, TOP_HOLDERS_LIMIT_MAX))
     : TOP_HOLDERS_LIMIT_DEFAULT;
 
-  let latestCapturedAt = null;
+  let latestCapturedAt: number | null = null;
   const accounts = (Array.isArray(rows) ? rows : [])
     .filter((row) => typeof row?.ss58 === "string" && row.ss58.length > 0)
     .map((row) => {
       const capturedAt =
         row?.captured_at == null ? null : Number(row.captured_at);
-      if (Number.isFinite(capturedAt) && capturedAt > 0) {
+      if (capturedAt != null && Number.isFinite(capturedAt) && capturedAt > 0) {
         if (latestCapturedAt == null || capturedAt > latestCapturedAt) {
           latestCapturedAt = capturedAt;
         }
@@ -98,7 +115,8 @@ export function buildTopHoldersList(
     })
     .sort(
       (a, b) =>
-        b[normalizedSort] - a[normalizedSort] || a.ss58.localeCompare(b.ss58),
+        (b[normalizedSort] as number) - (a[normalizedSort] as number) ||
+        a.ss58.localeCompare(b.ss58),
     );
 
   return {

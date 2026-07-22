@@ -136,7 +136,7 @@ import {
   buildTopHoldersList,
   DEFAULT_TOP_HOLDERS_SORT,
   TOP_HOLDERS_LIMIT_DEFAULT,
-} from "../src/top-holders.mjs";
+} from "../src/top-holders.ts";
 import { decodeChainEventArgs } from "../src/chain-event-args.ts";
 import {
   buildValidatorNominators,
@@ -5060,7 +5060,7 @@ export default {
 
         // GET /api/v1/accounts/top-holders?sort=&limit= (#6741/#6743): the
         // balance-based top-holder leaderboard, mirroring
-        // src/top-holders.mjs's buildTopHoldersList. FULL OUTER JOIN so an
+        // src/top-holders.ts's buildTopHoldersList. FULL OUTER JOIN so an
         // account with real free balance but no delegated position (or vice
         // versa) still appears -- neither source alone is a complete account
         // list. Checked here, before the generic /api/v1/accounts/:ss58
