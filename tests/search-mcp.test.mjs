@@ -10,7 +10,7 @@ import {
   loadSearchList,
   searchMcpError,
   searchQueryUrl,
-} from "../src/search-mcp.mjs";
+} from "../src/search-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";

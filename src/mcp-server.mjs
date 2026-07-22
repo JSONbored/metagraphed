@@ -153,7 +153,7 @@ import {
   LIST_SEARCH_MCP_TOOL,
   LIST_SEARCH_OUTPUT_SCHEMA,
   loadSearchList,
-} from "./search-mcp.mjs";
+} from "./search-mcp.ts";
 import {
   LIST_SOURCE_SNAPSHOTS_INSTRUCTIONS,
   LIST_SOURCE_SNAPSHOTS_MCP_TOOL,
