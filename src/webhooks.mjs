@@ -7,7 +7,7 @@
 // They perform NO I/O — KV and fetch are injected by callers — so every branch
 // is unit-testable. Runs unchanged on the Workers runtime and Node 22 (both
 // expose Web Crypto + TextEncoder + URL).
-import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
+import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
 
 export const WEBHOOK_KV_PREFIX = "webhooks:sub:";
 // Per-(subscription, event) delivery state for at-least-once redelivery: a failed

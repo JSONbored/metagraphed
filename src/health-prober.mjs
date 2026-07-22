@@ -24,7 +24,7 @@ import {
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
 } from "./health-probe-core.ts";
-import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
+import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   recordSubnetIdentityChanges,

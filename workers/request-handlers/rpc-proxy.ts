@@ -53,7 +53,7 @@ import {
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../../src/health-prober.mjs";
-import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.mjs";
+import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.ts";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.ts";
 import { loadRpcUsage } from "../../src/rpc-usage-loader.mjs";
 import { tryPostgresTier } from "../postgres-tier.ts";
@@ -1384,7 +1384,7 @@ export function isPrivateOrLocalHostname(hostname: string): boolean {
   // ::ffff:100.64.0.1 becomes ::ffff:6440:1 in `new URL(...).hostname`), so a
   // dotted-quad string-prefix match against that value never fires on the real
   // request path. Parse the embedded v4 the same way src/webhooks.mjs and
-  // src/health-probe-core.ts already do (via the shared src/ip-safety.mjs
+  // src/health-probe-core.ts already do (via the shared src/ip-safety.ts
   // leaf) and re-check it against the same private-range policy.
   const embedded = ipv6EmbeddedIpv4(host);
   return embedded ? isPrivateIpv4Octets(embedded) : false;

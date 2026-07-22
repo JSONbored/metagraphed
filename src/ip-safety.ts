@@ -17,7 +17,7 @@
 // Parse an IPv6 literal to its 16 bytes, or null if it is not a valid IPv6
 // address. Handles "::" zero-compression and an optional trailing dotted-quad
 // IPv4 (the standard x:x:x:x:x:x:d.d.d.d notation). A zone id (%eth0) is ignored.
-export function ipv6ToBytes(value) {
+export function ipv6ToBytes(value: unknown): number[] | null {
   let host = String(value || "")
     .trim()
     .toLowerCase();
@@ -29,10 +29,10 @@ export function ipv6ToBytes(value) {
   const halves = host.split("::");
   if (halves.length > 2) return null;
 
-  const parseGroups = (segment) => {
+  const parseGroups = (segment: string): number[] | null => {
     if (segment === "") return [];
     const parts = segment.split(":");
-    const bytes = [];
+    const bytes: number[] = [];
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       if (part.includes(".")) {
@@ -74,11 +74,12 @@ export function ipv6ToBytes(value) {
 // compatible / 6to4 / NAT64 forms, or null when the address embeds no IPv4 the
 // caller should re-check. `::` and `::1` embed 0.0.0.0 / 0.0.0.1, which a v4
 // private-range check already rejects, so they need no special-casing here.
-export function ipv6EmbeddedIpv4(value) {
+export function ipv6EmbeddedIpv4(value: unknown): number[] | null {
   const bytes = ipv6ToBytes(value);
   if (!bytes) return null;
-  const isZero = (start, end) => bytes.slice(start, end).every((b) => b === 0);
-  const v4At = (i) => bytes.slice(i, i + 4);
+  const isZero = (start: number, end: number) =>
+    bytes.slice(start, end).every((b) => b === 0);
+  const v4At = (i: number) => bytes.slice(i, i + 4);
 
   // IPv4-mapped ::ffff:0:0/96
   if (isZero(0, 10) && bytes[10] === 0xff && bytes[11] === 0xff)

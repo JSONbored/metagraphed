@@ -225,7 +225,7 @@ describe("isPrivateOrLocalHostname — CGNAT parity (#2312/#2313)", () => {
     );
   });
 
-  // ipv6EmbeddedIpv4 (src/ip-safety.mjs) recognizes three other textual forms
+  // ipv6EmbeddedIpv4 (src/ip-safety.ts) recognizes three other textual forms
   // that tunnel an IPv4 address inside IPv6 besides the ::ffff: mapped one
   // exercised above; pin each so the RPC guard is verified for every form it
   // now claims to handle, not just the mapped one.

@@ -8,7 +8,7 @@
 // URL, TextEncoder). The classification + scoring logic is lifted verbatim from
 // the historical build so artifacts stay byte-stable after the extraction
 // (writeJson sorts keys via stableStringify, so only VALUES must match).
-import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
+import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
 
 export const SUBTENSOR_PROBE_CALLS = [
   {
