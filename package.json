@@ -70,7 +70,7 @@
     "validate:readme-catalog": "node scripts/generate-registry-readme-section.mjs --check",
     "readme:catalog": "node scripts/generate-registry-readme-section.mjs",
     "validate:adapters": "node scripts/validate-adapters.mjs",
-    "assert:probe-health": "node scripts/assert-published-probe-health.mjs",
+    "assert:probe-health": "node scripts/assert-published-probe-health.ts",
     "validate:intake": "node scripts/validate-intake.mjs",
     "validate:private-boundary": "node scripts/validate-private-boundary.mjs",
     "validate:workflows": "node scripts/validate-workflows.mjs",

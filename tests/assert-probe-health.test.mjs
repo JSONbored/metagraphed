@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { assessProbeHealth } from "../scripts/assert-published-probe-health.mjs";
+import { assessProbeHealth } from "../scripts/assert-published-probe-health.ts";
 
 describe("assessProbeHealth (publish guard)", () => {
   test("passes for a real probe run with ok surfaces", () => {

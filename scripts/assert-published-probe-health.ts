@@ -14,11 +14,27 @@ import { fileURLToPath } from "node:url";
 
 const HEALTH_PATH = "dist/metagraph-r2/metagraph/health/latest.json";
 
-export function assessProbeHealth(health) {
+interface ProbeHealthArtifact {
+  probe_finished_at?: unknown;
+  surfaces?: unknown;
+}
+
+interface ProbeHealthAssessment {
+  finishedAt: string;
+  okCount: number;
+  total: number;
+  problems: string[];
+}
+
+export function assessProbeHealth(
+  health: ProbeHealthArtifact | null | undefined,
+): ProbeHealthAssessment {
   const finishedAt = String(health?.probe_finished_at || "");
   const surfaces = Array.isArray(health?.surfaces) ? health.surfaces : [];
-  const okCount = surfaces.filter((s) => s && s.status === "ok").length;
-  const problems = [];
+  const okCount = surfaces.filter(
+    (s) => s && (s as Record<string, unknown>).status === "ok",
+  ).length;
+  const problems: string[] = [];
   if (!finishedAt || finishedAt.startsWith("1970")) {
     problems.push(
       `probe_finished_at is epoch/empty (${finishedAt || "unset"})`,
@@ -30,7 +46,7 @@ export function assessProbeHealth(health) {
   return { finishedAt, okCount, total: surfaces.length, problems };
 }
 
-function main() {
+function main(): number {
   if (!existsSync(HEALTH_PATH)) {
     // Operational health is now live-only (served from KV/D1; no static
     // health/latest.json is built or published), so there is nothing to guard
@@ -40,11 +56,13 @@ function main() {
     );
     return 0;
   }
-  let health;
+  let health: ProbeHealthArtifact;
   try {
     health = JSON.parse(readFileSync(HEALTH_PATH, "utf8"));
   } catch (error) {
-    console.error(`::error::${HEALTH_PATH} is unreadable: ${error.message}`);
+    console.error(
+      `::error::${HEALTH_PATH} is unreadable: ${(error as Error).message}`,
+    );
     return 1;
   }
   const { finishedAt, okCount, total, problems } = assessProbeHealth(health);
