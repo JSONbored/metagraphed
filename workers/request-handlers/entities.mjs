@@ -163,7 +163,7 @@ import {
   buildTurnover,
   buildTurnoverChanges,
   turnoverChangeDetail,
-} from "../../src/turnover.mjs";
+} from "../../src/turnover.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,

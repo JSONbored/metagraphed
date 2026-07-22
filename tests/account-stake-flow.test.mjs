@@ -190,7 +190,7 @@ describe("buildAccountStakeFlow", () => {
   });
 
   test("skips blank netuid cells instead of coercing to subnet 0", () => {
-    // Mirrors the blank-cell guard in turnover.mjs (#3026): Number("") is 0.
+    // Mirrors the blank-cell guard in turnover.ts (#3026): Number("") is 0.
     for (const blank of ["", "   "]) {
       const d = buildAccountStakeFlow([added(blank, 100), added(1, 25)], ADDR);
       assert.equal(

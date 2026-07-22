@@ -113,7 +113,7 @@ import {
   buildTurnover,
   buildTurnoverChanges,
   turnoverChangeDetail,
-} from "../src/turnover.mjs";
+} from "../src/turnover.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_WINDOWS,
@@ -8644,7 +8644,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/turnover?window=&changes= (#4832 Tier
         // 2b): validator-set & registration churn between one subnet's window
-        // boundary snapshots, mirroring src/turnover.mjs's loadSubnetTurnover.
+        // boundary snapshots, mirroring src/turnover.ts's loadSubnetTurnover.
         const turnoverMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/turnover$/,
         );

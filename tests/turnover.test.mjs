@@ -4,7 +4,7 @@ import {
   buildTurnover,
   buildTurnoverChanges,
   loadSubnetTurnover,
-} from "../src/turnover.mjs";
+} from "../src/turnover.ts";
 
 describe("buildTurnover", () => {
   test("two distinct snapshot dates still compute a real score (the #6352 guard is not over-broad)", () => {

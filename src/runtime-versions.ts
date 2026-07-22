@@ -96,7 +96,7 @@ export function buildRuntimeVersionHistory(
 // reading. GROUP BY resolves the MIN(block_number) per version, then the
 // outer ORDER BY sorts those group-boundary rows into a single ascending
 // timeline — the same "boundary-point aggregate, not every row" shape as
-// loadTurnoverBoundaryRows (src/turnover.mjs), applied to a nullable column
+// loadTurnoverBoundaryRows (src/turnover.ts), applied to a nullable column
 // instead of a dated snapshot table.
 const RUNTIME_TRANSITIONS_SQL =
   "SELECT spec_version, MIN(block_number) AS block_number, MIN(observed_at) AS observed_at FROM blocks WHERE spec_version IS NOT NULL GROUP BY spec_version ORDER BY block_number ASC";

@@ -4,6 +4,9 @@
 // the Worker does the D1 reads + envelope. Null-safe: a cold store / single
 // snapshot yields a schema-stable zero (never throws), matching the live tiers.
 
+type Row = Record<string, unknown>;
+type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
 // The neuron_daily columns the turnover handler reads — its D1 read contract
 // (mirrors BLOCK_READ_COLUMNS / CONCENTRATION_READ_COLUMNS). A bare `hotkey`
 // column name is public metagraph vocabulary, not a secret; kept in src/ next to
@@ -17,7 +20,7 @@ export const TURNOVER_READ_COLUMNS =
 // for the badge (#1796): a set that actually churned must never report a flawless
 // `retention: 1`. Only a genuine ratio of exactly 1 (nothing rotated) keeps the
 // perfect value; any sub-1 ratio clamps to the largest dp-decimal value below 1.
-function round(value, dp = 4) {
+function round(value: number, dp = 4): number {
   const factor = 10 ** dp;
   const rounded = Math.round(value * factor) / factor;
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
@@ -26,7 +29,7 @@ function round(value, dp = 4) {
 // Jaccard similarity |A∩B| / |A∪B| — the retained fraction across two sets. Two
 // empty sets are defined as 1 (nothing to lose ⇒ perfectly retained); past that
 // guard at least one set is non-empty, so the union is always > 0.
-function jaccard(setA, setB) {
+function jaccard(setA: Set<string>, setB: Set<string>): number {
   if (setA.size === 0 && setB.size === 0) return 1;
   let intersection = 0;
   for (const item of setA) if (setB.has(item)) intersection += 1;
@@ -35,8 +38,8 @@ function jaccard(setA, setB) {
 
 // The set of hotkeys holding a validator permit in one snapshot (a validator is
 // identified by its hotkey — the key that votes — not its UID slot).
-function validatorHotkeys(rows) {
-  const set = new Set();
+function validatorHotkeys(rows: Row[]): Set<string> {
+  const set = new Set<string>();
   for (const row of rows) {
     const hotkey = row?.hotkey;
     if (
@@ -50,7 +53,7 @@ function validatorHotkeys(rows) {
   return set;
 }
 
-function normalizedUid(value) {
+function normalizedUid(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -60,8 +63,8 @@ function normalizedUid(value) {
 
 // UID → hotkey map for one snapshot (rows with a real hotkey). A UID whose hotkey
 // changes between snapshots was deregistered + re-registered to a new owner.
-function uidHotkeyMap(rows) {
-  const map = new Map();
+function uidHotkeyMap(rows: Row[]): Map<number, string> {
+  const map = new Map<number, string>();
   for (const row of rows) {
     const uid = normalizedUid(row?.uid);
     const hotkey = row?.hotkey;
@@ -72,8 +75,13 @@ function uidHotkeyMap(rows) {
   return map;
 }
 
-function validatorHotkeyMap(rows) {
-  const map = new Map();
+interface ValidatorDetail {
+  hotkey: string;
+  uid: number | null;
+}
+
+function validatorHotkeyMap(rows: Row[]): Map<string, ValidatorDetail> {
+  const map = new Map<string, ValidatorDetail>();
   for (const row of rows) {
     const hotkey = row?.hotkey;
     if (
@@ -87,7 +95,7 @@ function validatorHotkeyMap(rows) {
   return map;
 }
 
-function sortValidatorDetails(rows) {
+function sortValidatorDetails(rows: ValidatorDetail[]): ValidatorDetail[] {
   return rows.sort((a, b) => a.hotkey.localeCompare(b.hotkey));
 }
 
@@ -114,9 +122,9 @@ const EMPTY_TURNOVER_CHANGES = {
   neurons_start: 0,
   neurons_end: 0,
   uid_reassignment_count: 0,
-  validators_entered: [],
-  validators_exited: [],
-  uid_reassignments: [],
+  validators_entered: [] as ValidatorDetail[],
+  validators_exited: [] as ValidatorDetail[],
+  uid_reassignments: [] as Row[],
 };
 
 // Compare a subnet's start-of-window vs end-of-window neuron_daily snapshots into a
@@ -125,10 +133,18 @@ const EMPTY_TURNOVER_CHANGES = {
 // data, no resolvable boundary dates, or a single snapshot date, yields the
 // schema-stable empty block.
 export function buildTurnover(
-  rows,
-  netuid,
-  { window, startDate, endDate } = {},
-) {
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+  {
+    window,
+    startDate,
+    endDate,
+  }: {
+    window?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+  } = {},
+): Row {
   const list = Array.isArray(rows) ? rows : [];
   const base = {
     schema_version: 1,
@@ -220,10 +236,18 @@ export function buildTurnover(
 // and which UID slots were reassigned to a different hotkey between the boundary
 // snapshots.
 export function buildTurnoverChanges(
-  rows,
-  netuid,
-  { window, startDate, endDate } = {},
-) {
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+  {
+    window,
+    startDate,
+    endDate,
+  }: {
+    window?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+  } = {},
+): Row {
   const list = Array.isArray(rows) ? rows : [];
   const base = {
     schema_version: 1,
@@ -267,14 +291,14 @@ export function buildTurnoverChanges(
 
   const startMap = uidHotkeyMap(startRows);
   const endMap = uidHotkeyMap(endRows);
-  const reassignments = [];
+  const reassignments: Row[] = [];
   for (const [uid, fromHotkey] of startMap) {
     const toHotkey = endMap.get(uid);
     if (toHotkey != null && toHotkey !== fromHotkey) {
       reassignments.push({ uid, from_hotkey: fromHotkey, to_hotkey: toHotkey });
     }
   }
-  reassignments.sort((a, b) => a.uid - b.uid);
+  reassignments.sort((a, b) => (a.uid as number) - (b.uid as number));
 
   return {
     ...base,
@@ -292,7 +316,7 @@ export function buildTurnoverChanges(
   };
 }
 
-export function turnoverChangeDetail(changes) {
+export function turnoverChangeDetail(changes: Row): Row {
   return {
     validators_entered_count: changes.validators_entered_count,
     validators_exited_count: changes.validators_exited_count,
@@ -303,10 +327,14 @@ export function turnoverChangeDetail(changes) {
   };
 }
 
-async function loadTurnoverBoundaryRows(d1, netuid, { windowDays }) {
+async function loadTurnoverBoundaryRows(
+  d1: D1Runner,
+  netuid: number,
+  { windowDays }: { windowDays?: number | null },
+): Promise<{ startDate: string | null; endDate: string | null; rows: Row[] }> {
   let boundsSql =
     "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
-  const boundsParams = [netuid];
+  const boundsParams: unknown[] = [netuid];
   if (windowDays != null) {
     // Anchor the window to the newest stored snapshot for this subnet, not the
     // worker wall clock — a lagging/restored D1 store still compares its real
@@ -317,8 +345,8 @@ async function loadTurnoverBoundaryRows(d1, netuid, { windowDays }) {
     boundsParams.push(`-${windowDays} days`, netuid);
   }
   const bounds = await d1(boundsSql, boundsParams);
-  const startDate = bounds[0]?.start_date ?? null;
-  const endDate = bounds[0]?.end_date ?? null;
+  const startDate = (bounds[0]?.start_date as string | undefined) ?? null;
+  const endDate = (bounds[0]?.end_date as string | undefined) ?? null;
   const rows =
     startDate == null || endDate == null
       ? []
@@ -334,10 +362,18 @@ async function loadTurnoverBoundaryRows(d1, netuid, { windowDays }) {
 // to the subnet's newest stored day for finite windows), read exactly those two
 // days' rows, shape with buildTurnover. Cold D1 → comparable:false.
 export async function loadSubnetTurnover(
-  d1,
-  netuid,
-  { windowLabel, windowDays, includeChanges = false },
-) {
+  d1: D1Runner,
+  netuid: number,
+  {
+    windowLabel,
+    windowDays,
+    includeChanges = false,
+  }: {
+    windowLabel?: string;
+    windowDays?: number | null;
+    includeChanges?: boolean;
+  },
+): Promise<Row> {
   const { startDate, endDate, rows } = await loadTurnoverBoundaryRows(
     d1,
     netuid,

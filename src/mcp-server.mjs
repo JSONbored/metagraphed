@@ -516,7 +516,7 @@ import {
   buildTurnover,
   buildTurnoverChanges,
   turnoverChangeDetail,
-} from "./turnover.mjs";
+} from "./turnover.ts";
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,

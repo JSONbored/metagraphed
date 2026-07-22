@@ -25,7 +25,7 @@ export const CHAIN_TURNOVER_LIMIT_MAX = 100;
 
 // Round a retention ratio (a finite 0..1 jaccard result) to a stable precision WITHOUT
 // letting a sub-perfect ratio round up to an exact 1 — the same anti-overstatement invariant
-// src/turnover.mjs enforces: a set that actually churned must never report a flawless 1.
+// src/turnover.ts enforces: a set that actually churned must never report a flawless 1.
 function round(value: number, dp = 4): number {
   const factor = 10 ** dp;
   const rounded = Math.round(value * factor) / factor;

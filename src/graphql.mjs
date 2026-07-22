@@ -389,7 +389,7 @@ import {
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "./chain-turnover.ts";
-import { buildTurnover } from "./turnover.mjs";
+import { buildTurnover } from "./turnover.ts";
 import {
   buildChainActivity,
   buildChainCalls,
