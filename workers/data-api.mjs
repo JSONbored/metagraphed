@@ -70,7 +70,7 @@ import {
 import {
   buildBlocksSummary,
   BLOCKS_SUMMARY_SCAN_CAP,
-} from "../src/blocks-summary.mjs";
+} from "../src/blocks-summary.ts";
 import { buildRuntimeVersionHistory } from "../src/runtime-versions.mjs";
 import {
   buildConcentration,

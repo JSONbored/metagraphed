@@ -533,7 +533,7 @@ import {
   buildChainIdleStake,
   buildSubnetIdleStake,
 } from "./subnet-idle-stake.mjs";
-import { buildBlocksSummary } from "./blocks-summary.mjs";
+import { buildBlocksSummary } from "./blocks-summary.ts";
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,

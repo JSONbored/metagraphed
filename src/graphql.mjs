@@ -211,7 +211,7 @@ import {
 } from "./extrinsics.mjs";
 import { buildBlock, buildBlockFeed } from "./blocks.mjs";
 import { loadBlockChainEvents } from "./data-api-mcp.mjs";
-import { buildBlocksSummary } from "./blocks-summary.mjs";
+import { buildBlocksSummary } from "./blocks-summary.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import { buildChainYield } from "./chain-yield.mjs";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
