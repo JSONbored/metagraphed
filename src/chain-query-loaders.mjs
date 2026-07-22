@@ -3,7 +3,7 @@
 // the #4772 D1 retirement -- the `extrinsics` D1 table was fully dropped, so
 // that fallback always hit an empty table. Postgres is the sole live tier now
 // (workers/data-api.mjs); a cold/absent tier falls back to
-// buildChainSigners([...]) directly (./chain-analytics.mjs), never D1.
+// buildChainSigners([...]) directly (./chain-analytics.ts), never D1.
 
 export const CHAIN_SIGNERS_SORTS = ["tx_count", "total_fee_tao"];
 export const CHAIN_SIGNERS_LIMIT_DEFAULT = 50;

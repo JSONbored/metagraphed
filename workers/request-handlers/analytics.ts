@@ -60,7 +60,7 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "../../src/chain-analytics.mjs";
+} from "../../src/chain-analytics.ts";
 import {
   CHAIN_TRANSFER_PAIR_SORTS,
   buildChainTransferPairs,

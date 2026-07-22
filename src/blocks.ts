@@ -27,7 +27,7 @@ function toIso(ms: unknown): string | null {
 // non-finite, or negative. D1 can return an INTEGER column as a numeric string,
 // so a bare `row.block_number ?? null` would silently leak the string into the
 // API payload (and break downstream arithmetic/comparisons). Mirrors the
-// `toBlockNumber` already applied in account-events.mjs / chain-analytics.mjs
+// `toBlockNumber` already applied in account-events.mjs / chain-analytics.ts
 // and the `nullableInteger` coercion added to counterparties in #2414.
 function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;

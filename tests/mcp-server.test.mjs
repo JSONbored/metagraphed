@@ -30,7 +30,7 @@ import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
 import { buildChainWeights } from "../src/chain-weights.mjs";
 import { buildChainTransferPairs } from "../src/chain-transfer-pairs.mjs";
 import { buildChainTransfers } from "../src/chain-transfers.mjs";
-import { buildChainCalls } from "../src/chain-analytics.mjs";
+import { buildChainCalls } from "../src/chain-analytics.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.mjs";
 import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.mjs";
 

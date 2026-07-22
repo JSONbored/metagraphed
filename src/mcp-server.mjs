@@ -347,7 +347,7 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "./chain-analytics.mjs";
+} from "./chain-analytics.ts";
 import {
   loadCompareSubnets,
   loadGlobalIncidents,

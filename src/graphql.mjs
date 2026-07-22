@@ -395,7 +395,7 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "./chain-analytics.mjs";
+} from "./chain-analytics.ts";
 import { buildChainPerformance } from "./chain-performance.mjs";
 import { buildChainConcentration } from "./concentration.mjs";
 import {

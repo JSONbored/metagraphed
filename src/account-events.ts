@@ -185,7 +185,7 @@ function toBlockNumber(value: unknown): number | null {
 
 // Round a TAO sum to rao precision (9 dp), preserving null — so a D1 SUM(fee_tao)
 // never leaks accumulated IEEE-754 float noise into the payload. Mirrors `toTao`
-// in src/chain-analytics.mjs (which rounds the SAME signer-total-fee value for
+// in src/chain-analytics.ts (which rounds the SAME signer-total-fee value for
 // /chain/signers + /chain/fees); kept null-preserving here because the activity
 // aggregate is null on a cold store, not 0.
 function toTaoOrNull(value: unknown): number | null {

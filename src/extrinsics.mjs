@@ -47,7 +47,7 @@ function toIso(ms) {
 // return an INTEGER column as a numeric string, so a bare `?? null` pass-through
 // would silently leak the string into the API payload and break downstream
 // arithmetic/comparisons. Mirrors the `toBlockNumber` already applied in
-// account-events.mjs / chain-analytics.mjs and the `toBlockNumber` added to
+// account-events.mjs / chain-analytics.ts and the `toBlockNumber` added to
 // blocks.mjs in #2435.
 function toChainPosition(value) {
   if (value == null) return null;

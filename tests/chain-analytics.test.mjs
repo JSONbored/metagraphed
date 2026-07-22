@@ -5,7 +5,7 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "../src/chain-analytics.mjs";
+} from "../src/chain-analytics.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

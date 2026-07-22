@@ -223,7 +223,7 @@ describe("metagraph-neurons builders", () => {
     // emission_tao must be rounded to 1e-9 (rao) precision so a noisy REAL
     // D1 cell (e.g. 22.1234567894) does not leak accumulated IEEE-754 noise
     // into the API payload. Mirrors toTaoOrNull in account-events.mjs and
-    // roundTao in chain-analytics.mjs.
+    // roundTao in chain-analytics.ts.
     const n = formatNeuron({
       stake_tao: "22.1234567894",
       emission_tao: "1000.50000000004",
@@ -256,7 +256,7 @@ describe("metagraph-neurons builders", () => {
   });
 
   test("formatNeuron rejects blank integer cells that coerce to 0 (not uid/block 0)", () => {
-    // Mirrors the blank-cell guard in chain-analytics.mjs (#3019): Number("") is 0.
+    // Mirrors the blank-cell guard in chain-analytics.ts (#3019): Number("") is 0.
     for (const blank of ["", "   "]) {
       const n = formatNeuron({
         uid: blank,

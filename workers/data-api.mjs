@@ -367,7 +367,7 @@ import {
   buildChainCalls,
   buildChainFees,
   buildChainSigners,
-} from "../src/chain-analytics.mjs";
+} from "../src/chain-analytics.ts";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
 
 // metagraphed#6769: a caught write/query failure (logged via console.error,

@@ -6,7 +6,7 @@
 // Coerce a D1 aggregate cell (COUNT/SUM can come back as a number, a numeric
 // string, or null) to a non-negative integer; anything unparseable → 0 so the
 // payload is always schema-stable.
-function toCount(value) {
+function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0;
 }
@@ -14,7 +14,7 @@ function toCount(value) {
 // Round a ratio to 4 dp without trailing float noise (0.99186… → 0.9919).
 // Sub-perfect ratios that would round up to 1.0 are clamped to 0.9999 so a
 // near-perfect day is never reported as a perfect success rate.
-function round4(value) {
+function round4(value: number): number {
   const rounded = Math.round(value * 1e4) / 1e4;
   return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
@@ -22,13 +22,13 @@ function round4(value) {
 // Coerce a D1 fee/tip cell (TAO float, numeric string, or null) to a finite
 // non-negative number rounded to 9 dp (rao precision), so SUM float noise and
 // NULL fees never leak into the payload.
-function toTao(value) {
+function toTao(value: unknown): number {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.round(n * 1e9) / 1e9;
 }
 
-function toNullableTao(value) {
+function toNullableTao(value: unknown): number | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 1e9) / 1e9;
@@ -36,12 +36,39 @@ function toNullableTao(value) {
 
 // Coerce a block-height cell to a non-negative integer, or null when the value is
 // missing, non-finite, or negative — block numbers are never negative on-chain.
-function toBlockNumber(value) {
+function toBlockNumber(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+}
+
+interface DayBucket {
+  day: string;
+  block_count: number;
+  extrinsic_count: number;
+  event_count: number;
+  successful_extrinsics: number;
+  unique_signers: number;
+}
+
+export interface ChainActivityDay {
+  day: string;
+  block_count: number;
+  extrinsic_count: number;
+  event_count: number;
+  successful_extrinsics: number;
+  success_rate: number | null;
+  unique_signers: number;
+}
+
+export interface ChainActivityResult {
+  schema_version: 1;
+  window: string;
+  observed_at: string | null;
+  day_count: number;
+  days: ChainActivityDay[];
 }
 
 // Merge the two per-UTC-day aggregations (extrinsics tier + blocks tier) into one
@@ -54,9 +81,14 @@ export function buildChainActivity({
   observedAt = null,
   extrinsicRows = [],
   blockRows = [],
-}) {
-  const byDay = new Map();
-  const ensure = (day) => {
+}: {
+  window: string;
+  observedAt?: string | null;
+  extrinsicRows?: Array<Record<string, unknown>>;
+  blockRows?: Array<Record<string, unknown>>;
+}): ChainActivityResult {
+  const byDay = new Map<string, DayBucket>();
+  const ensure = (day: string): DayBucket => {
     let row = byDay.get(day);
     if (!row) {
       row = {
@@ -89,7 +121,7 @@ export function buildChainActivity({
   const days = [...byDay.values()]
     // newest UTC day first; ISO 'YYYY-MM-DD' sorts lexicographically = chronologically.
     .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
-    .map((row) => ({
+    .map((row): ChainActivityDay => ({
       day: row.day,
       block_count: row.block_count,
       extrinsic_count: row.extrinsic_count,
@@ -113,6 +145,23 @@ export function buildChainActivity({
   };
 }
 
+export interface ChainCall {
+  call_module: string;
+  call_function: string | null;
+  count: number;
+  share: number | null;
+}
+
+export interface ChainCallsResult {
+  schema_version: 1;
+  window: string;
+  group_by: string;
+  observed_at: string | null;
+  total_extrinsics: number;
+  call_count: number;
+  calls: ChainCall[];
+}
+
 // Extrinsic call-mix breakdown (#1989): counts + share of each call_module (or
 // call_module/call_function pair) over the window. `total` is the FULL-window
 // extrinsic count (computed separately, pre-LIMIT) so shares stay honest even
@@ -123,9 +172,15 @@ export function buildChainCalls({
   observedAt = null,
   total = 0,
   rows = [],
-}) {
+}: {
+  window: string;
+  groupBy?: string;
+  observedAt?: string | null;
+  total?: number;
+  rows?: Array<Record<string, unknown>>;
+}): ChainCallsResult {
   const totalExtrinsics = toCount(total);
-  const calls = (Array.isArray(rows) ? rows : [])
+  const calls: ChainCall[] = (Array.isArray(rows) ? rows : [])
     .filter(
       (r) =>
         r &&
@@ -137,7 +192,7 @@ export function buildChainCalls({
     .map((r) => {
       const count = toCount(r.count);
       return {
-        call_module: r.call_module,
+        call_module: r.call_module as string,
         call_function:
           groupBy === "module_function" && typeof r.call_function === "string"
             ? r.call_function
@@ -157,6 +212,23 @@ export function buildChainCalls({
   };
 }
 
+export interface ChainSigner {
+  signer: string;
+  tx_count: number;
+  total_fee_tao: number;
+  total_tip_tao: number;
+  last_tx_block: number | null;
+}
+
+export interface ChainSignersResult {
+  schema_version: 1;
+  window: string;
+  sort: "tx_count" | "total_fee_tao";
+  observed_at: string | null;
+  signer_count: number;
+  signers: ChainSigner[];
+}
+
 // Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic
 // count over the window, with their total fees/tips and newest signed block.
 export function buildChainSigners({
@@ -164,12 +236,17 @@ export function buildChainSigners({
   sort = "tx_count",
   observedAt = null,
   rows = [],
-}) {
+}: {
+  window: string;
+  sort?: string;
+  observedAt?: string | null;
+  rows?: Array<Record<string, unknown>>;
+}): ChainSignersResult {
   const sortBy = sort === "total_fee_tao" ? "total_fee_tao" : "tx_count";
-  const signers = (Array.isArray(rows) ? rows : [])
+  const signers: ChainSigner[] = (Array.isArray(rows) ? rows : [])
     .filter((r) => r && typeof r.signer === "string" && r.signer.length > 0)
     .map((r) => ({
-      signer: r.signer,
+      signer: r.signer as string,
       tx_count: toCount(r.tx_count),
       total_fee_tao: toTao(r.total_fee_tao),
       total_tip_tao: toTao(r.total_tip_tao),
@@ -185,6 +262,33 @@ export function buildChainSigners({
   };
 }
 
+export interface ChainFeesDay {
+  day: string;
+  extrinsic_count: number;
+  total_fee_tao: number;
+  avg_fee_tao: number | null;
+  median_fee_tao: number | null;
+  total_tip_tao: number;
+  avg_tip_tao: number | null;
+  median_tip_tao: number | null;
+}
+
+export interface ChainFeesPayer {
+  signer: string;
+  total_fee_tao: number;
+  total_tip_tao: number;
+  extrinsic_count: number;
+}
+
+export interface ChainFeesResult {
+  schema_version: 1;
+  window: string;
+  observed_at: string | null;
+  day_count: number;
+  daily: ChainFeesDay[];
+  top_fee_payers: ChainFeesPayer[];
+}
+
 // Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,
 // exact SQL-computed medians) plus a windowed top-fee-payer list. avg_*_tao and
 // median_*_tao guard the zero-denominator (a day with no extrinsics → null).
@@ -194,8 +298,17 @@ export function buildChainFees({
   dailyRows = [],
   medianRows = [],
   payerRows = [],
-}) {
-  const mediansByDay = new Map();
+}: {
+  window: string;
+  observedAt?: string | null;
+  dailyRows?: Array<Record<string, unknown>>;
+  medianRows?: Array<Record<string, unknown>>;
+  payerRows?: Array<Record<string, unknown>>;
+}): ChainFeesResult {
+  const mediansByDay = new Map<
+    string,
+    { fee: number | null; tip: number | null }
+  >();
   for (const r of Array.isArray(medianRows) ? medianRows : []) {
     if (!r || typeof r.day !== "string") continue;
     mediansByDay.set(r.day, {
@@ -204,15 +317,15 @@ export function buildChainFees({
     });
   }
 
-  const daily = (Array.isArray(dailyRows) ? dailyRows : [])
+  const daily: ChainFeesDay[] = (Array.isArray(dailyRows) ? dailyRows : [])
     .filter((r) => r && typeof r.day === "string")
     .map((r) => {
       const extrinsicCount = toCount(r.extrinsic_count);
       const totalFee = toTao(r.total_fee_tao);
       const totalTip = toTao(r.total_tip_tao);
-      const medians = mediansByDay.get(r.day);
+      const medians = mediansByDay.get(r.day as string);
       return {
-        day: r.day,
+        day: r.day as string,
         extrinsic_count: extrinsicCount,
         total_fee_tao: totalFee,
         avg_fee_tao:
@@ -226,10 +339,12 @@ export function buildChainFees({
     })
     .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
 
-  const topFeePayers = (Array.isArray(payerRows) ? payerRows : [])
+  const topFeePayers: ChainFeesPayer[] = (
+    Array.isArray(payerRows) ? payerRows : []
+  )
     .filter((r) => r && typeof r.signer === "string" && r.signer.length > 0)
     .map((r) => ({
-      signer: r.signer,
+      signer: r.signer as string,
       total_fee_tao: toTao(r.total_fee_tao),
       total_tip_tao: toTao(r.total_tip_tao),
       extrinsic_count: toCount(r.extrinsic_count),
