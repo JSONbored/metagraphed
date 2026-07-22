@@ -8,7 +8,7 @@
 // separate routes: callers doing capital/validator-ops planning need all
 // three together, and they share the same freshness profile (governance-
 // adjustable, changes rarely, not chain-derived per-block state like
-// subnet-burn.mjs's Burn(netuid)).
+// subnet-burn.ts's Burn(netuid)).
 //
 // Storage keys = twox128("SubtensorModule") ++ twox128(<item name>), no
 // further hashing (each is a StorageValue, not a map) -- hardcoded below,
@@ -55,7 +55,7 @@ function decodeLeU64(hex: unknown): bigint | null {
 }
 
 // BigInt rao -> Number TAO, split in BigInt space first to avoid float
-// precision loss (mirrors subnet-burn.mjs's / subnet-recycled.mjs's
+// precision loss (mirrors subnet-burn.ts's / subnet-recycled.mjs's
 // identical conversion).
 function raoToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
@@ -75,7 +75,7 @@ function u64f64ToFloat(bits: bigint): number {
 // One raw state_getStorage read, decoded to a BigInt. null on any failure
 // (non-ok response, timeout, malformed result); a genuinely unset storage
 // result (raw null) reads as a real 0n, not a failure -- mirrors subnet-
-// recycled.mjs's / subnet-burn.mjs's own unset-storage handling.
+// recycled.mjs's / subnet-burn.ts's own unset-storage handling.
 async function fetchStorageU64(
   storageKey: string,
   timeoutMs: number,

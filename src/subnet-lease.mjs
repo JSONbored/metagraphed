@@ -2,7 +2,7 @@
 // tracking epic #6717): whether a subnet is currently under a lease (via
 // #6718's register_leased_network extrinsic + a crowdloan) and, if so, the
 // lease's terms and accumulated-but-undistributed alpha dividends.
-// Live-RPC + KV-cache route, same shape as subnet-burn.mjs/network-
+// Live-RPC + KV-cache route, same shape as subnet-burn.ts/network-
 // parameters.mjs -- current chain state, not a historical event stream (see
 // subnet-lease-history.mjs for that).
 //
@@ -30,7 +30,7 @@
 // part of #6719's scope.
 //
 // twox64ConcatU16StorageKey/twox64ConcatU32StorageKey (src/twox-storage-
-// key.mjs) compute the per-request map-key suffix; unlike subnet-burn.mjs's
+// key.mjs) compute the per-request map-key suffix; unlike subnet-burn.ts's
 // single hardcoded prefix, this file needs three different item prefixes so
 // they're computed via that shared module rather than each hardcoded here.
 
@@ -41,7 +41,7 @@ import {
   twox64ConcatU32StorageKey,
 } from "./twox-storage-key.ts";
 
-export const SUBNET_LEASE_KV_TTL = 120; // seconds -- same freshness profile as subnet-burn.mjs
+export const SUBNET_LEASE_KV_TTL = 120; // seconds -- same freshness profile as subnet-burn.ts
 export const SUBNET_LEASE_NEGATIVE_KV_TTL = 10; // seconds
 export const SUBNET_LEASE_RPC_TIMEOUT_MS = 5000;
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";

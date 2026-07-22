@@ -215,7 +215,7 @@ import { buildBlocksSummary } from "./blocks-summary.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
 import { buildChainYield } from "./chain-yield.ts";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.mjs";
-import { loadSubnetBurn } from "./subnet-burn.mjs";
+import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.mjs";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.ts";
 import { loadAccountRootClaim } from "./account-root-claim.ts";

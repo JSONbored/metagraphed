@@ -16525,7 +16525,7 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
   });
 });
 
-describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.mjs)", () => {
+describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-burn.test.mjs.
   function withFetchStub(stub, fn) {

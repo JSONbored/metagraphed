@@ -1,6 +1,6 @@
 // Substrate Twox64/Twox128 storage-key derivation (#6719). Every hardcoded
 // storage key elsewhere in this codebase (sudo-key.mjs, network-parameters.ts,
-// subnet-burn.mjs, subnet-recycled.mjs) is a FIXED string precomputed offline
+// subnet-burn.ts, subnet-recycled.mjs) is a FIXED string precomputed offline
 // specifically because those pallet/item name prefixes never change and
 // twox128 needs XXHash64, not in Node's built-in crypto -- this module exists
 // because subnet leasing's storage maps (#6719) are Twox64Concat-hashed on
@@ -201,7 +201,7 @@ export function twox64Concat(keyBytes: Uint8Array): Uint8Array {
 // u16 SCALE encoding: little-endian, 2 bytes. Same convention as subnet-
 // burn.mjs's own netuidStorageKeySuffix, duplicated rather than imported
 // (this codebase's established self-contained-module convention for small
-// codec helpers -- see subnet-burn.mjs's own comment on why).
+// codec helpers -- see subnet-burn.ts's own comment on why).
 export function u16LeBytes(n: number): Uint8Array {
   return new Uint8Array([n & 0xff, (n >> 8) & 0xff]);
 }

@@ -262,7 +262,7 @@ async function rpcCall(method, params, timeoutMs) {
 }
 
 // Unlike an OptionQuery item elsewhere in this codebase (e.g. Burn(netuid)
-// in subnet-burn.mjs, where "unset" is a real, meaningful 0), both
+// in subnet-burn.ts, where "unset" is a real, meaningful 0), both
 // UnlockRate and MaturityRate are ValueQuery -- raw-unset storage means
 // "use the compiled default", not "the value is zero" (see module header).
 // A zero decay-rate constant would be a serious correctness bug here: it

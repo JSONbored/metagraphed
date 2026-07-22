@@ -42,7 +42,7 @@ const BURN_STORAGE_KEY_PREFIX =
 // recycled.mjs's own helper, duplicated rather than imported (self-contained
 // file convention this codebase already uses for account-balance.mjs/
 // sudo-key.mjs's own decode helpers).
-function netuidStorageKeySuffix(netuid) {
+function netuidStorageKeySuffix(netuid: number): string {
   const lo = (netuid % 256).toString(16).padStart(2, "0");
   const hi = Math.floor(netuid / 256)
     .toString(16)
@@ -52,7 +52,7 @@ function netuidStorageKeySuffix(netuid) {
 
 // Decode a "0x"-prefixed, 16-hex-char (8-byte) little-endian u64 into a
 // BigInt. Returns null for anything else (malformed/short/absent result).
-function decodeLeU64(hex) {
+function decodeLeU64(hex: unknown): bigint | null {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{16}$/.test(hex)) {
     return null;
   }
@@ -65,9 +65,11 @@ function decodeLeU64(hex) {
 
 // BigInt rao -> Number TAO, split in BigInt space first to avoid float
 // precision loss (mirrors subnet-recycled.mjs's identical conversion).
-function raoToTao(rao) {
+function raoToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
+
+type Row = Record<string, unknown>;
 
 // Query the live current burn/registration cost for one subnet. Uses
 // METAGRAPH_CONTROL KV (120s TTL, same binding as loadSubnetRecycled/
@@ -75,7 +77,7 @@ function raoToTao(rao) {
 // result (schema-stable, never throws). A subnet with a genuinely zero burn
 // cost reads back the chain's own 0x00...0 ValueQuery default, decoding to a
 // real 0, not null.
-export async function loadSubnetBurn(env, netuid) {
+export async function loadSubnetBurn(env: Env, netuid: number): Promise<Row> {
   if (!isU16Netuid(netuid)) {
     throw new RangeError("netuid must be an integer in the u16 range 0..65535");
   }
@@ -86,14 +88,14 @@ export async function loadSubnetBurn(env, netuid) {
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as Row;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
   }
 
   const queriedAt = new Date().toISOString();
-  let burnTao = null;
+  let burnTao: number | null = null;
   let rpcOk = false;
 
   try {
@@ -110,7 +112,7 @@ export async function loadSubnetBurn(env, netuid) {
       }),
     });
     if (rpcResp.ok) {
-      const rpcBody = await rpcResp.json();
+      const rpcBody = (await rpcResp.json()) as Row;
       const raw = rpcBody?.result;
       const rao = decodeLeU64(raw);
       if (rao != null) {
@@ -127,7 +129,7 @@ export async function loadSubnetBurn(env, netuid) {
     // RPC fetch failed — burn_tao stays null.
   }
 
-  const payload = {
+  const payload: Row = {
     schema_version: 1,
     netuid,
     burn_tao: burnTao,

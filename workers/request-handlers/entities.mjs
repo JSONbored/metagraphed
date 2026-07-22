@@ -119,7 +119,7 @@ import {
   labelsForSs58,
 } from "../../src/entity-labels.ts";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
-import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
+import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadSubnetLease } from "../../src/subnet-lease.mjs";
 import { computeStakeQuote } from "../../src/stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
