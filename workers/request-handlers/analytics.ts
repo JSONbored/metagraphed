@@ -90,7 +90,7 @@ import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
-} from "../../src/chain-deregistrations.mjs";
+} from "../../src/chain-deregistrations.ts";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,

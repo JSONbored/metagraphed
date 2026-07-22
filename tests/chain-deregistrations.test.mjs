@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
-} from "../src/chain-deregistrations.mjs";
+} from "../src/chain-deregistrations.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

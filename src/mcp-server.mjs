@@ -383,7 +383,7 @@ import {
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
   CHAIN_DEREGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
-} from "./chain-deregistrations.mjs";
+} from "./chain-deregistrations.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,

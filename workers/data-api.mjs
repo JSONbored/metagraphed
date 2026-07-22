@@ -304,7 +304,7 @@ import {
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
-} from "../src/chain-deregistrations.mjs";
+} from "../src/chain-deregistrations.ts";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
@@ -6120,7 +6120,7 @@ export default {
 
         // GET /api/v1/chain/deregistrations (#4832 Tier 2): network-wide
         // NeuronDeregistered leaderboard, mirroring
-        // src/chain-deregistrations.mjs's loadChainDeregistrations.
+        // src/chain-deregistrations.ts's loadChainDeregistrations.
         const chainDeregistrations = url.pathname.match(
           /^\/api\/v1\/chain\/deregistrations$/,
         );

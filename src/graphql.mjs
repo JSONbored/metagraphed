@@ -77,7 +77,7 @@ import {
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
-} from "./chain-deregistrations.mjs";
+} from "./chain-deregistrations.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_WINDOWS,
