@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { artifactFilePath, stableStringify } from "./lib.mjs";
 
+type Row = Record<string, unknown>;
+
 const args = new Set(process.argv.slice(2));
 const jsonMode = args.has("--json");
 const limit = positiveInt(valueAfter("--limit"), 12);
@@ -16,7 +18,9 @@ if (isCliEntrypoint()) {
   }
 }
 
-export async function loadCurationSnapshot({ limit = 12 } = {}) {
+export async function loadCurationSnapshot({
+  limit = 12,
+}: { limit?: number } = {}): Promise<Row> {
   const [
     coverage,
     profileCompleteness,
@@ -33,11 +37,12 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
     readArtifact("review/enrichment-targets.json"),
   ]);
 
-  const profiles = profileCompleteness.profiles || [];
-  const priorities = gapPriorities.priorities || [];
-  const adapters = adapterCandidates.candidates || [];
-  const queue = enrichmentQueue.queue || [];
-  const targets = enrichmentTargets.targets || [];
+  const profiles = (profileCompleteness.profiles as Row[]) || [];
+  const priorities = (gapPriorities.priorities as Row[]) || [];
+  const adapters = (adapterCandidates.candidates as Row[]) || [];
+  const queue = (enrichmentQueue.queue as Row[]) || [];
+  const targets = (enrichmentTargets.targets as Row[]) || [];
+  const profileSummary = profileCompleteness.summary as Row | undefined;
 
   return {
     schema_version: 1,
@@ -54,14 +59,13 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
     },
     profile_summary: {
       average_completeness_score:
-        profileCompleteness.summary?.average_completeness_score ?? null,
-      by_level: profileCompleteness.summary?.by_profile_level || {},
-      critical_gap_counts:
-        profileCompleteness.summary?.critical_gap_counts || {},
+        profileSummary?.average_completeness_score ?? null,
+      by_level: profileSummary?.by_profile_level || {},
+      critical_gap_counts: profileSummary?.critical_gap_counts || {},
       identity_promotion_candidate_count:
-        profileCompleteness.summary?.identity_promotion_candidate_count ?? null,
+        profileSummary?.identity_promotion_candidate_count ?? null,
       native_identity_unpromoted_count:
-        profileCompleteness.summary?.native_identity_unpromoted_count ?? null,
+        profileSummary?.native_identity_unpromoted_count ?? null,
     },
     enrichment_summary: enrichmentQueue.summary || {},
     enrichment_target_summary: enrichmentTargets.summary || {},
@@ -95,9 +99,13 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
   };
 }
 
-export function renderCurationBrief(snapshot) {
-  const enrichmentSummary = snapshot.enrichment_summary || {};
-  const enrichmentQueue = snapshot.enrichment_queue || [];
+export function renderCurationBrief(snapshot: Row): string {
+  const enrichmentSummary = (snapshot.enrichment_summary as Row) || {};
+  const enrichmentQueue = (snapshot.enrichment_queue as Row[]) || [];
+  const coverage = snapshot.coverage as Row;
+  const profileSummary = snapshot.profile_summary as Row;
+  const enrichmentTargetSummary = snapshot.enrichment_target_summary as
+    Row | undefined;
   const lines = [
     "# Metagraphed Curation Brief",
     "",
@@ -105,34 +113,34 @@ export function renderCurationBrief(snapshot) {
     "",
     "## Coverage",
     "",
-    `- Active Finney netuids: ${snapshot.coverage.active_netuids}`,
-    `- Application subnets: ${snapshot.coverage.application_subnets}`,
-    `- Curated overlays: ${snapshot.coverage.curated_overlays}`,
-    `- Native-only entries: ${snapshot.coverage.native_only}`,
-    `- Published surfaces/endpoints: ${snapshot.coverage.surfaces}`,
-    `- Probed surfaces: ${snapshot.coverage.probed_surfaces}`,
-    `- Candidate surfaces: ${snapshot.coverage.candidates}`,
-    `- Average profile completeness: ${snapshot.profile_summary.average_completeness_score ?? "unknown"}`,
-    `- Profile levels: ${formatCounts(snapshot.profile_summary.by_level)}`,
-    `- Identity promotion candidates: ${snapshot.profile_summary.identity_promotion_candidate_count ?? "unknown"}`,
-    `- Native identity with unpromoted live links: ${snapshot.profile_summary.native_identity_unpromoted_count ?? "unknown"}`,
-    `- Critical gaps: ${formatCounts(snapshot.profile_summary.critical_gap_counts)}`,
+    `- Active Finney netuids: ${coverage.active_netuids}`,
+    `- Application subnets: ${coverage.application_subnets}`,
+    `- Curated overlays: ${coverage.curated_overlays}`,
+    `- Native-only entries: ${coverage.native_only}`,
+    `- Published surfaces/endpoints: ${coverage.surfaces}`,
+    `- Probed surfaces: ${coverage.probed_surfaces}`,
+    `- Candidate surfaces: ${coverage.candidates}`,
+    `- Average profile completeness: ${profileSummary.average_completeness_score ?? "unknown"}`,
+    `- Profile levels: ${formatCounts(profileSummary.by_level as Row)}`,
+    `- Identity promotion candidates: ${profileSummary.identity_promotion_candidate_count ?? "unknown"}`,
+    `- Native identity with unpromoted live links: ${profileSummary.native_identity_unpromoted_count ?? "unknown"}`,
+    `- Critical gaps: ${formatCounts(profileSummary.critical_gap_counts as Row)}`,
     "",
     "## Best Direct PR Targets",
     "",
     "Submit one public-safe candidate at a time with `npm run surface:add`. Official docs, websites, source repos, OpenAPI/schema URLs, public subnet APIs, dashboards, SDKs, examples, and data artifacts are the best auto-review candidates.",
     "",
-    `- Enrichment queue lanes: ${formatCounts(enrichmentSummary.lane_counts)}`,
-    `- Evidence actions: ${formatCounts(enrichmentSummary.evidence_action_counts)}`,
+    `- Enrichment queue lanes: ${formatCounts(enrichmentSummary.lane_counts as Row)}`,
+    `- Evidence actions: ${formatCounts(enrichmentSummary.evidence_action_counts as Row)}`,
     `- Direct-submission targets: ${enrichmentSummary.direct_submission_count ?? "unknown"}`,
     `- Maintainer-review targets: ${enrichmentSummary.maintainer_review_count ?? "unknown"}`,
     `- Manual-review-required targets: ${enrichmentSummary.manual_review_required_count ?? "unknown"}`,
-    `- Target-pack kinds: ${formatCounts(snapshot.enrichment_target_summary?.by_kind)}`,
+    `- Target-pack kinds: ${formatCounts(enrichmentTargetSummary?.by_kind as Row)}`,
     "",
     ...numberedRows(
       enrichmentQueue,
       (row) =>
-        `SN${row.netuid} ${row.name} - ${row.lane}; ${row.evidence_action || "unknown-action"}; priority ${row.priority_score}; ${row.recommended_action}; target kinds: ${row.direct_submission_kinds.join(", ") || "n/a"}; candidates: ${formatCandidateSamples(row)}`,
+        `SN${row.netuid} ${row.name} - ${row.lane}; ${row.evidence_action || "unknown-action"}; priority ${row.priority_score}; ${row.recommended_action}; target kinds: ${(row.direct_submission_kinds as string[]).join(", ") || "n/a"}; candidates: ${formatCandidateSamples(row)}`,
     ),
     "",
     "## Contributor Target Pack",
@@ -140,7 +148,7 @@ export function renderCurationBrief(snapshot) {
     "These rows are copyable contribution targets. Surface candidates can usually be submitted directly with the command template; adapter, provider, base-layer, and status-review work still routes to manual review.",
     "",
     ...numberedRows(
-      snapshot.enrichment_targets || [],
+      (snapshot.enrichment_targets as Row[]) || [],
       (row) =>
         `SN${row.netuid} ${row.name} - ${row.target_type}${row.kind ? `/${row.kind}` : ""}; ${row.target_action}; priority ${row.priority_score}; auto-review ${row.auto_review_candidate ? "yes" : "no"}; ${row.candidate_command || row.contribution_prompt}`,
     ),
@@ -148,9 +156,9 @@ export function renderCurationBrief(snapshot) {
     "## Lowest Profile Completeness",
     "",
     ...numberedRows(
-      snapshot.lowest_completeness,
+      snapshot.lowest_completeness as Row[],
       (row) =>
-        `SN${row.netuid} ${row.name} - score ${row.completeness_score}; ${row.suggested_next_action}; gaps: ${row.gaps.join(", ")}`,
+        `SN${row.netuid} ${row.name} - score ${row.completeness_score}; ${row.suggested_next_action}; gaps: ${(row.gaps as string[]).join(", ")}`,
     ),
     "",
     "## Highest Maintainer Review Priorities",
@@ -158,9 +166,9 @@ export function renderCurationBrief(snapshot) {
     "These entries already have candidate or surface evidence but need stronger maintainer review, official-source confirmation, or adapter consideration.",
     "",
     ...numberedRows(
-      snapshot.highest_gap_priority,
+      snapshot.highest_gap_priority as Row[],
       (row) =>
-        `SN${row.netuid} ${row.name} - priority ${row.priority_score}; ${row.suggested_next_action}; missing: ${row.missing_kinds.join(", ")}`,
+        `SN${row.netuid} ${row.name} - priority ${row.priority_score}; ${row.suggested_next_action}; missing: ${(row.missing_kinds as string[]).join(", ")}`,
     ),
     "",
     "## Adapter Candidate Queue",
@@ -168,14 +176,14 @@ export function renderCurationBrief(snapshot) {
     "Adapters are for subnets with enough API/schema/data surface to justify subnet-specific normalized metrics.",
     "",
     ...numberedRows(
-      snapshot.adapter_candidates,
+      snapshot.adapter_candidates as Row[],
       (row) =>
-        `SN${row.netuid} ${row.name} - score ${row.adapter_score}; ${row.suggested_adapter || "adapter"}; kinds: ${row.surface_kinds.join(", ")}; ${row.suggested_next_action || "review adapter fit"}`,
+        `SN${row.netuid} ${row.name} - score ${row.adapter_score}; ${row.suggested_adapter || "adapter"}; kinds: ${(row.surface_kinds as string[]).join(", ")}; ${row.suggested_next_action || "review adapter fit"}`,
     ),
     "",
     "## Manual Review Targets",
     "",
-    ...snapshot.manual_review_kinds.map((kind) => `- ${kind}`),
+    ...(snapshot.manual_review_kinds as string[]).map((kind) => `- ${kind}`),
     "",
     "Health, uptime, latency, incidents, and pool eligibility stay probe-derived only. Contributor reports can trigger review or re-probes, but they cannot set observed health.",
   ];
@@ -183,7 +191,7 @@ export function renderCurationBrief(snapshot) {
   return `${lines.join("\n")}\n`;
 }
 
-function enrichmentTargetBriefRow(target) {
+function enrichmentTargetBriefRow(target: Row): Row {
   return {
     auto_review_candidate: target.auto_review_candidate,
     candidate_command: target.candidate_command,
@@ -197,7 +205,7 @@ function enrichmentTargetBriefRow(target) {
   };
 }
 
-function profileBriefRow(profile) {
+function profileBriefRow(profile: Row): Row {
   return {
     netuid: profile.netuid,
     name: profile.name,
@@ -211,7 +219,7 @@ function profileBriefRow(profile) {
   };
 }
 
-function priorityBriefRow(priority) {
+function priorityBriefRow(priority: Row): Row {
   return {
     netuid: priority.netuid,
     name: priority.name,
@@ -227,7 +235,7 @@ function priorityBriefRow(priority) {
   };
 }
 
-function adapterBriefRow(candidate) {
+function adapterBriefRow(candidate: Row): Row {
   return {
     netuid: candidate.netuid,
     name: candidate.name,
@@ -242,7 +250,7 @@ function adapterBriefRow(candidate) {
   };
 }
 
-function enrichmentBriefRow(entry) {
+function enrichmentBriefRow(entry: Row): Row {
   return {
     netuid: entry.netuid,
     name: entry.name,
@@ -261,14 +269,14 @@ function enrichmentBriefRow(entry) {
   };
 }
 
-function numberedRows(rows, formatter) {
+function numberedRows(rows: Row[], formatter: (row: Row) => string): string[] {
   if (rows.length === 0) {
     return ["No rows available."];
   }
   return rows.map((row, index) => `${index + 1}. ${formatter(row)}`);
 }
 
-function formatCounts(counts) {
+function formatCounts(counts: Row | null | undefined): string {
   const entries = Object.entries(counts || {});
   if (entries.length === 0) {
     return "none";
@@ -276,10 +284,10 @@ function formatCounts(counts) {
   return entries.map(([key, value]) => `${key} ${value}`).join(", ");
 }
 
-function formatCandidateSamples(row) {
-  const live = row.sample_live_candidate_ids || [];
-  const target = row.sample_target_candidate_ids || [];
-  const stale = row.sample_stale_candidate_ids || [];
+function formatCandidateSamples(row: Row): string {
+  const live = (row.sample_live_candidate_ids as string[]) || [];
+  const target = (row.sample_target_candidate_ids as string[]) || [];
+  const stale = (row.sample_stale_candidate_ids as string[]) || [];
   if (live.length > 0) {
     return `live ${live.join(", ")}`;
   }
@@ -292,7 +300,7 @@ function formatCandidateSamples(row) {
   return "n/a";
 }
 
-async function readArtifact(relativePath) {
+async function readArtifact(relativePath: string): Promise<Row> {
   // Resolve by storage tier: git-tier artifacts (coverage.json,
   // review/profile-completeness.json) live in public/metagraph; the R2-only
   // enrichment-queue artifacts (gap-priorities, adapter-candidates,
@@ -303,7 +311,7 @@ async function readArtifact(relativePath) {
   try {
     return JSON.parse(await readFile(filePath, { encoding: "utf8" }));
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       throw new Error(
         `Curation brief artifact not found: ${relativePath}. Run \`npm run build\` ` +
           `first — the enrichment-queue artifacts are generated into the R2 staging ` +
@@ -316,18 +324,18 @@ async function readArtifact(relativePath) {
   }
 }
 
-function valueAfter(flag) {
+function valueAfter(flag: string): string | null {
   const values = process.argv.slice(2);
   const index = values.indexOf(flag);
   return index === -1 ? null : values[index + 1];
 }
 
-function positiveInt(value, fallback) {
+function positiveInt(value: unknown, fallback: number): number {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function isCliEntrypoint() {
+function isCliEntrypoint(): boolean {
   return process.argv[1]
     ? import.meta.url === pathToFileURL(process.argv[1]).href
     : false;

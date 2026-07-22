@@ -78,7 +78,7 @@ import {
   schemaDetailArtifactRelativePath,
 } from "../src/artifact-storage.ts";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
-import { renderCurationBrief } from "../scripts/curation-brief.mjs";
+import { renderCurationBrief } from "../scripts/curation-brief.ts";
 import {
   MissingEndpointArtifactsError,
   missingEndpointArtifactDetails,
