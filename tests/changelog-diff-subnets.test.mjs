@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { diffSubnets } from "../scripts/changelog.mjs";
+import { diffSubnets } from "../scripts/changelog.ts";
 
 describe("diffSubnets", () => {
   test("classifies added and removed subnets by netuid", () => {

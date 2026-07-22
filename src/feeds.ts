@@ -189,7 +189,7 @@ export function registryItems(
 
   // changelog.subnets is { added: [...], removed: [...], renamed: [...] }.
   // added/removed entries are { netuid, name, slug }; renamed entries are
-  // { netuid, before, after } (see scripts/changelog.mjs diffSubnets).
+  // { netuid, before, after } (see scripts/changelog.ts diffSubnets).
   const subnets = (c.subnets ?? {}) as Record<string, unknown>;
   for (const change of ["added", "removed", "renamed"]) {
     const entries = (subnets[change] as unknown[]) || [];

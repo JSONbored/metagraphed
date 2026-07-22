@@ -15,7 +15,7 @@
 
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { buildChangelog } from "./changelog.mjs";
+import { buildChangelog } from "./changelog.ts";
 import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.mjs";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 

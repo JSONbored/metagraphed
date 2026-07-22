@@ -8,6 +8,29 @@
 // (not an everything-added one). The publish step then recomputes it against
 // the previous R2 publish and overwrites the staged copy before upload.
 
+type Row = Record<string, unknown>;
+
+interface ArtifactEntry {
+  path: string;
+  hash: string;
+  [key: string]: unknown;
+}
+
+interface SubnetEntry {
+  netuid: number;
+  name: string;
+  slug: string;
+  [key: string]: unknown;
+}
+
+interface CoverageSnapshot {
+  candidate_count: number;
+  curated_overlay_count: number;
+  native_only_count: number;
+  surface_count: number;
+  [key: string]: unknown;
+}
+
 export function buildChangelog({
   contractVersion,
   currentArtifacts,
@@ -17,7 +40,16 @@ export function buildChangelog({
   previousArtifacts,
   previousCoverage,
   previousSubnets,
-}) {
+}: {
+  contractVersion: unknown;
+  currentArtifacts: ArtifactEntry[];
+  currentCoverage: CoverageSnapshot;
+  currentSubnets: { subnets?: SubnetEntry[] };
+  generatedAt: unknown;
+  previousArtifacts?: ArtifactEntry[] | null;
+  previousCoverage?: CoverageSnapshot | null;
+  previousSubnets?: { subnets?: SubnetEntry[] } | null;
+}): Row {
   const previousArtifactList = previousArtifacts || [];
   const previousMap = new Map(
     previousArtifactList.map((artifact) => [artifact.path, artifact]),
@@ -90,7 +122,10 @@ export function buildChangelog({
   };
 }
 
-export function diffSubnets(previousSubnets, currentSubnets) {
+export function diffSubnets(
+  previousSubnets: SubnetEntry[],
+  currentSubnets: SubnetEntry[],
+): { added: Row[]; removed: Row[]; renamed: Row[] } {
   const previousByNetuid = new Map(
     previousSubnets.map((subnet) => [subnet.netuid, subnet]),
   );
@@ -115,24 +150,27 @@ export function diffSubnets(previousSubnets, currentSubnets) {
     .filter(
       (subnet) =>
         previousByNetuid.has(subnet.netuid) &&
-        previousByNetuid.get(subnet.netuid).name !== subnet.name,
+        previousByNetuid.get(subnet.netuid)?.name !== subnet.name,
     )
     .map((subnet) => ({
       netuid: subnet.netuid,
-      before: previousByNetuid.get(subnet.netuid).name,
+      before: previousByNetuid.get(subnet.netuid)?.name,
       after: subnet.name,
     }));
 
   return { added, removed, renamed };
 }
 
-function delta(before, after) {
+function delta(
+  before: unknown,
+  after: unknown,
+): { before: number; after: number; delta: number } | null {
   if (!Number.isFinite(before) || !Number.isFinite(after)) {
     return null;
   }
   return {
-    before,
-    after,
-    delta: after - before,
+    before: before as number,
+    after: after as number,
+    delta: (after as number) - (before as number),
   };
 }

@@ -89,7 +89,7 @@ import {
   listToolDefinitions,
 } from "../src/mcp-server.mjs";
 import { buildDatasetExports } from "./datasets.mjs";
-import { buildChangelog } from "./changelog.mjs";
+import { buildChangelog } from "./changelog.ts";
 import {
   buildSurfaceAliasArtifact,
   SURFACE_ALIASES_RELATIVE_PATH,
