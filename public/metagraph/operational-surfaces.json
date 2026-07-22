@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 613,
+  "surface_count": 617,
   "surfaces": [
     {
       "auth_required": false,
@@ -1199,6 +1199,24 @@
       "surface_id": "sn-9-iota-metrics",
       "surface_key": "srf-08b192cbe61bfd12",
       "url": "https://iota.api.macrocosmos.ai/metrics"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 9,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "subnet_name": "iota",
+      "subnet_slug": "sn-9",
+      "surface_id": "sn-9-iota-profiler-status",
+      "surface_key": "srf-b42930b84b3e9d23",
+      "url": "https://iota.api.macrocosmos.ai/profiler/status"
     },
     {
       "auth_required": false,
@@ -3852,6 +3870,24 @@
       "kind": "subnet-api",
       "netuid": 46,
       "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "zipcode",
+      "public_safe": true,
+      "subnet_name": "Zipcode",
+      "subnet_slug": "sn-46",
+      "surface_id": "sn-46-zipcode-api-docs",
+      "surface_key": "srf-8c7d21d0dfede149",
+      "url": "https://zipcode.ai/api/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 46,
+      "probe": {
         "expect": "json",
         "method": "GET",
         "timeout_ms": 10000
@@ -4261,6 +4297,24 @@
       "url": "https://lium.io/api/executors/stats"
     },
     {
+      "auth_required": true,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-executors",
+      "surface_key": "srf-cc685aa77a0f734d",
+      "url": "https://lium.io/api/executors"
+    },
+    {
       "auth_required": false,
       "authority": "official",
       "kind": "subnet-api",
@@ -4406,6 +4460,24 @@
     },
     {
       "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-root",
+      "surface_key": "srf-c27814da8fc343a3",
+      "url": "https://lium.io/api/"
+    },
+    {
+      "auth_required": false,
       "authority": "official",
       "kind": "data-artifact",
       "netuid": 51,
@@ -4421,6 +4493,24 @@
       "surface_id": "sn-51-lium-shared-config",
       "surface_key": "srf-954ff71349dd122b",
       "url": "https://lium.io/api/v1/shared-config"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 51,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "surface_id": "sn-51-lium-templates",
+      "surface_key": "srf-c20144c8bbc4d3dd",
+      "url": "https://lium.io/api/templates"
     },
     {
       "auth_required": false,
@@ -4439,24 +4529,6 @@
       "surface_id": "sn-51-lium-watchtower-digest",
       "surface_key": "srf-5a150cecf0d7b930",
       "url": "https://lium.io/api/watchtower/digest"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "kind": "subnet-api",
-      "netuid": 51,
-      "probe": {
-        "expect": "any",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "opentensor",
-      "public_safe": true,
-      "subnet_name": "lium.io",
-      "subnet_slug": "sn-51",
-      "surface_id": "sn-51-website-common-api",
-      "surface_key": "srf-c27814da8fc343a3",
-      "url": "https://lium.io/api"
     },
     {
       "auth_required": false,
