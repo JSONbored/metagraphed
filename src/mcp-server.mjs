@@ -341,7 +341,7 @@ import {
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
-} from "./counterparties.mjs";
+} from "./counterparties.ts";
 import {
   buildChainActivity,
   buildChainCalls,

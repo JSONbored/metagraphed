@@ -338,7 +338,7 @@ import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
-} from "./counterparties.mjs";
+} from "./counterparties.ts";
 import { KV_HEALTH_META, KV_HEALTH_RPC_POOL } from "./kv-keys.ts";
 import {
   ANALYTICS_WINDOWS,

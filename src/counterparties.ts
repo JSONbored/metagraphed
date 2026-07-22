@@ -12,7 +12,7 @@ export const COUNTERPARTY_RELATIONSHIP_SCAN_CAP = 5000;
 
 // Round a TAO sum to rao precision so accumulated float error never leaks a long
 // tail into the JSON.
-function round(value, dp = 9) {
+function round(value: number, dp = 9): number {
   if (!Number.isFinite(value)) return 0;
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
@@ -24,7 +24,7 @@ function round(value, dp = 9) {
 // addend to integer rao, sum the integers, and convert back once at the end.
 // Mirrors the toRaoBig/raoBigToTao pattern established in concentration.ts /
 // chain-yield.ts (#2933).
-function toRaoBig(tao) {
+function toRaoBig(tao: number): bigint {
   // Guard the post-multiply value (not just `tao`): a huge-but-finite TAO amount
   // like Number.MAX_VALUE overflows `tao * 1e9` to Infinity, and BigInt(Infinity)
   // throws — so clamp a non-finite rao to 0n, preserving the old round()-based
@@ -34,11 +34,11 @@ function toRaoBig(tao) {
   return Number.isFinite(rao) ? BigInt(rao) : 0n;
 }
 
-function raoBigToTao(rao) {
+function raoBigToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
-function nullableNumber(value) {
+function nullableNumber(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -46,7 +46,7 @@ function nullableNumber(value) {
   return Number.isFinite(n) ? round(n) : null;
 }
 
-function nullableInteger(value) {
+function nullableInteger(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -54,7 +54,7 @@ function nullableInteger(value) {
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
 }
 
-function nullableTimestamp(value) {
+function nullableTimestamp(value: unknown): number | null {
   if (value == null) return null;
   // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
   if (typeof value === "string" && value.trim() === "") return null;
@@ -64,9 +64,37 @@ function nullableTimestamp(value) {
   return Number.isFinite(date.getTime()) ? n : null;
 }
 
-function toIso(value) {
+function toIso(value: unknown): string | null {
   const n = nullableTimestamp(value);
   return n == null ? null : new Date(n).toISOString();
+}
+
+export interface Counterparty {
+  address: string;
+  sent_tao: number;
+  received_tao: number;
+  net_tao: number;
+  transfer_count: number;
+  last_block: number | null;
+}
+
+export interface CounterpartiesResult {
+  schema_version: 1;
+  ss58: string;
+  counterparty_count: number;
+  transfers_scanned: number;
+  scan_capped: boolean;
+  total_sent_tao: number;
+  total_received_tao: number;
+  counterparties: Counterparty[];
+}
+
+interface PartyEntry {
+  address: string;
+  sentRao: bigint;
+  receivedRao: bigint;
+  count: number;
+  lastBlock: number | null;
 }
 
 // Aggregate an account's Transfer rows into per-counterparty fund flow: for each
@@ -74,9 +102,13 @@ function toIso(value) {
 // sent (account = from) or received (account = to). Returns the top-`limit`
 // counterparties by total volume (sent + received), each with net flow, count, and
 // last block, plus a summary over the full scanned set. Null-safe.
-export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
+export function buildCounterparties(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: string,
+  { limit = 20 }: { limit?: number } = {},
+): CounterpartiesResult {
   const list = Array.isArray(rows) ? rows : [];
-  const byParty = new Map();
+  const byParty = new Map<string, PartyEntry>();
   let totalSentRao = 0n;
   let totalReceivedRao = 0n;
   for (const row of list) {
@@ -86,7 +118,7 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
     const isReceiver = to === ss58;
     // The counterparty is the side that ISN'T this account. Skip self-transfers
     // (both sides the account) and rows missing the other side's address.
-    let party = null;
+    let party: string | null = null;
     if (isSender && !isReceiver && typeof to === "string" && to.length > 0) {
       party = to;
     } else if (
@@ -127,7 +159,7 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
     byParty.set(party, entry);
   }
 
-  const ranked = [...byParty.values()]
+  const ranked: Counterparty[] = [...byParty.values()]
     .map((entry) => ({
       address: entry.address,
       sent_tao: raoBigToTao(entry.sentRao),
@@ -159,23 +191,52 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
   };
 }
 
+export interface CounterpartyTransfer {
+  block_number: number | null;
+  event_index: number | null;
+  netuid: number | null;
+  from: unknown;
+  to: unknown;
+  amount_tao: number;
+  direction: "sent" | "received";
+  observed_at: string | null;
+}
+
+export interface CounterpartyRelationshipResult {
+  schema_version: 1;
+  ss58: string;
+  counterparty: string;
+  transfer_count: number;
+  transfers_scanned: number;
+  scan_capped: boolean;
+  total_sent_tao: number;
+  total_received_tao: number;
+  net_tao: number;
+  first_block: number | null;
+  last_block: number | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  limit: number;
+  transfers: CounterpartyTransfer[];
+}
+
 // Drill into ONE account/counterparty relationship. The handler reads a bounded
 // newest-first pair scan; this builder summarizes that scan and returns the first
 // `limit` transfer rows as evidence, preserving the account-relative direction.
 export function buildCounterpartyRelationship(
-  rows,
-  ss58,
-  counterparty,
-  { limit = 50 } = {},
-) {
+  rows: Array<Record<string, unknown>> | null | undefined,
+  ss58: string,
+  counterparty: string,
+  { limit = 50 }: { limit?: number } = {},
+): CounterpartyRelationshipResult {
   const list = Array.isArray(rows) ? rows : [];
-  const transfers = [];
+  const transfers: CounterpartyTransfer[] = [];
   let totalSentRao = 0n;
   let totalReceivedRao = 0n;
-  let firstBlock = null;
-  let lastBlock = null;
-  let firstObserved = null;
-  let lastObserved = null;
+  let firstBlock: number | null = null;
+  let lastBlock: number | null = null;
+  let firstObserved: number | null = null;
+  let lastObserved: number | null = null;
 
   for (const row of list) {
     if (ss58 === counterparty) continue;

@@ -5,7 +5,7 @@ import {
   buildCounterpartyRelationship,
   COUNTERPARTIES_SCAN_CAP,
   COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
-} from "../src/counterparties.mjs";
+} from "../src/counterparties.ts";
 
 const ME = "ME";
 
@@ -832,6 +832,6 @@ describe("buildCounterparties — regressions", () => {
 
 // loadCounterparties/loadCounterpartyRelationship (the D1-querying
 // account_events readers) were deleted (2026-07-17, D1 fully eliminated) --
-// see src/counterparties.mjs's own comment. buildCounterparties/
+// see src/counterparties.ts's own comment. buildCounterparties/
 // buildCounterpartyRelationship coverage above already exercises the same
 // rollup/relationship logic directly against hand-built rows.

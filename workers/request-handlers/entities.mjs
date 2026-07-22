@@ -158,7 +158,7 @@ import {
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
-} from "../../src/counterparties.mjs";
+} from "../../src/counterparties.ts";
 import {
   buildTurnover,
   buildTurnoverChanges,

@@ -245,7 +245,7 @@ import {
   buildCounterparties,
   buildCounterpartyRelationship,
   COUNTERPARTIES_SCAN_CAP,
-} from "../src/counterparties.mjs";
+} from "../src/counterparties.ts";
 import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,

@@ -517,7 +517,7 @@ test("buildChainSigners nulls non-finite and negative last_tx_block", () => {
 });
 
 test("buildChainSigners nulls blank and missing last_tx_block cells (not block 0)", () => {
-  // Mirrors the blank-cell guard in counterparties.mjs (#3008): Number("") is 0.
+  // Mirrors the blank-cell guard in counterparties.ts (#3008): Number("") is 0.
   for (const bad of [null, undefined, "", "   "]) {
     const out = buildChainSigners({
       window: "7d",
