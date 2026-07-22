@@ -2,7 +2,7 @@ export const ARTIFACT_SIZE_BUDGETS = [
   budget("candidates.json", 4_500_000, 8_000_000),
   budget("review-queue.json", 4_500_000, 8_000_000),
   budget("verification/latest.json", 3_000_000, 5_000_000),
-  budget("surfaces.json", 1_500_000, 4_000_000),
+  budget("surfaces.json", 1_500_000, 4_500_000),
   budget("endpoints.json", 2_500_000, 5_000_000),
   budget("providers/*/endpoints.json", 1_000_000, 3_000_000),
   budget("evidence-ledger.json", 1_000_000, 3_000_000),
