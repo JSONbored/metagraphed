@@ -239,7 +239,7 @@ import {
 import { loadSudoKey } from "./sudo-key.mjs";
 // #7642: saved_query reuses the same maintainer-curated template executor the
 // GET /api/v1/queries/{id} route and run_saved_query MCP tool already share.
-import { runSavedQuery } from "./saved-queries.mjs";
+import { runSavedQuery } from "./saved-queries.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadRandomnessStatus } from "./randomness.ts";
 import { loadAddressMapping, H160_PATTERN } from "./address-mapping.ts";
@@ -6226,7 +6226,7 @@ const rootValue = {
 
   async saved_query({ id, params }, context) {
     // #7642: the same maintainer-curated template executor the REST route and
-    // run_saved_query MCP tool share (src/saved-queries.mjs) -- template
+    // run_saved_query MCP tool share (src/saved-queries.ts) -- template
     // lookup, param coercion/validation, and execution are all its. Its
     // not_found (unknown id) and invalid_params toolErrors map to
     // BAD_USER_INPUT, matching this file's invalid-argument convention; any

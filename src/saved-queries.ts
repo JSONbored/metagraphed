@@ -20,14 +20,44 @@ import {
   CHAIN_REGISTRATIONS_LIMIT_MAX,
 } from "./chain-registrations.ts";
 
-export function savedQueryError(code, message) {
-  const error = new Error(message);
+type Row = Record<string, unknown>;
+
+export interface SavedQueryError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function savedQueryError(
+  code: string,
+  message: string,
+): SavedQueryError {
+  const error = new Error(message) as SavedQueryError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-export const SAVED_QUERY_TEMPLATES = [
+interface SavedQueryParamSpec {
+  name: string;
+  type: "string" | "integer";
+  required: boolean;
+  default?: unknown;
+  minimum?: number;
+  maximum?: number;
+  enum?: string[];
+  description: string;
+}
+
+interface SavedQueryTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  params: SavedQueryParamSpec[];
+  notes: string;
+}
+
+export const SAVED_QUERY_TEMPLATES: SavedQueryTemplate[] = [
   {
     id: "subnet-leaderboard",
     name: "Subnet leaderboard",
@@ -102,32 +132,47 @@ export const SAVED_QUERY_TEMPLATES = [
 // service binding, which routes on pathname), so a fixed internal origin is
 // fine here -- there is no real incoming request to borrow one from when this
 // runs from an MCP tool call.
-function internalTierRequest(pathname, params) {
+function internalTierRequest(
+  pathname: string,
+  params: URLSearchParams,
+): Request {
   const url = new URL(pathname, "https://internal.metagraphed.workers/");
   url.search = params.toString();
   return new Request(url);
 }
 
-export const SAVED_QUERY_HANDLERS = {
+type SavedQueryHandler = (env: Env, params: Row) => Promise<unknown>;
+
+export const SAVED_QUERY_HANDLERS: Record<string, SavedQueryHandler> = {
   async "subnet-leaderboard"(env, { board, limit }) {
-    const { data } = await composeLeaderboardsData(env, { board, limit });
+    const { data } = await composeLeaderboardsData(env, {
+      board: board as string | null | undefined,
+      limit: limit as number | undefined,
+    });
     return data;
   },
   async "chain-registrations-window"(env, { window, limit }) {
     const tierParams = new URLSearchParams();
-    tierParams.set("window", window);
+    tierParams.set("window", String(window));
     tierParams.set("limit", String(limit));
     return (
       (await tryPostgresTier(
         env,
         internalTierRequest("/api/v1/chain/registrations", tierParams),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildChainRegistrations([], { window, limit })
+      )) ??
+      buildChainRegistrations([], {
+        window: window as string,
+        limit: limit as number,
+      })
     );
   },
 };
 
-function coerceAndValidateParams(template, rawParams) {
+function coerceAndValidateParams(
+  template: SavedQueryTemplate,
+  rawParams: Row | null | undefined,
+): Row {
   const input = rawParams && typeof rawParams === "object" ? rawParams : {};
   const known = new Set(template.params.map((spec) => spec.name));
   for (const key of Object.keys(input)) {
@@ -139,7 +184,7 @@ function coerceAndValidateParams(template, rawParams) {
       );
     }
   }
-  const validated = {};
+  const validated: Row = {};
   for (const spec of template.params) {
     const raw = input[spec.name];
     if (raw === undefined || raw === null || raw === "") {
@@ -188,11 +233,17 @@ function coerceAndValidateParams(template, rawParams) {
   return validated;
 }
 
-export function findSavedQueryTemplate(queryId) {
+export function findSavedQueryTemplate(
+  queryId: string,
+): SavedQueryTemplate | undefined {
   return SAVED_QUERY_TEMPLATES.find((template) => template.id === queryId);
 }
 
-export async function runSavedQuery(env, queryId, rawParams) {
+export async function runSavedQuery(
+  env: Env,
+  queryId: string,
+  rawParams: Row | null | undefined,
+): Promise<Row> {
   const template = findSavedQueryTemplate(queryId);
   if (!template) {
     throw savedQueryError(
@@ -212,7 +263,10 @@ export async function runSavedQuery(env, queryId, rawParams) {
 // exercise the throw branch directly with a deliberately-drifted registry --
 // the real call below still runs it at import time, so a genuine drift still
 // fails every cold start and every test that imports this module.
-export function assertSavedQueryRegistryIntegrity(templates, handlers) {
+export function assertSavedQueryRegistryIntegrity(
+  templates: SavedQueryTemplate[],
+  handlers: Record<string, SavedQueryHandler>,
+): void {
   const templateIds = templates.map((t) => t.id);
   const handlerIds = Object.keys(handlers);
   const templateIdSet = new Set(templateIds);
@@ -223,7 +277,7 @@ export function assertSavedQueryRegistryIntegrity(templates, handlers) {
     ![...templateIdSet].every((id) => handlerIdSet.has(id));
   if (drifted) {
     throw new Error(
-      "src/saved-queries.mjs: SAVED_QUERY_TEMPLATES and SAVED_QUERY_HANDLERS " +
+      "src/saved-queries.ts: SAVED_QUERY_TEMPLATES and SAVED_QUERY_HANDLERS " +
         "have drifted -- every template id must have exactly one matching " +
         `handler. templates=[${templateIds.join(", ")}] ` +
         `handlers=[${handlerIds.join(", ")}]`,

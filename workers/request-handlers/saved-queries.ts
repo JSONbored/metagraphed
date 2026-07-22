@@ -1,12 +1,12 @@
 // GET /api/v1/queries/{id}: run one maintainer-curated saved-query template
 // (epic #6755/#6757) -- the REST mirror of the run_saved_query MCP tool, both
-// backed by src/saved-queries.mjs's shared runSavedQuery(). A live per-request
+// backed by src/saved-queries.ts's shared runSavedQuery(). A live per-request
 // result with no fixed response shape across templates, the same "no static
 // artifact" category as /api/v1/graphql -- see workers/api.mjs's own comment
 // on why this sits outside the API_ROUTES/contracts.mjs registry.
 import { errorResponse } from "../http.ts";
 import { dataResponse } from "../responses.ts";
-import { runSavedQuery } from "../../src/saved-queries.mjs";
+import { runSavedQuery } from "../../src/saved-queries.ts";
 
 export const SAVED_QUERIES_PATH_PREFIX = "/api/v1/queries/";
 
@@ -46,7 +46,7 @@ export async function handleSavedQueryRequest(
     const result = await runSavedQuery(env, queryId, paramsFromSearch(url));
     return dataResponse(env, result);
   } catch (error) {
-    // runSavedQuery's own errors are savedQueryError() (src/saved-queries.mjs)
+    // runSavedQuery's own errors are savedQueryError() (src/saved-queries.ts)
     // -- a plain Error with `toolError`/`code` bolted on; that file is still
     // .mjs (checkJs is off), so the thrown shape isn't statically visible
     // here. Anything else (a genuine bug, not a caller-facing rejection) is

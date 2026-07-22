@@ -219,7 +219,7 @@ import {
   GET_CHANGELOG_OUTPUT_SCHEMA,
   loadChangelog,
 } from "./changelog-mcp.ts";
-import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.mjs";
+import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.ts";
 import { decodeEvmPrecompileCall } from "./evm-precompiles.ts";
 import { H160_PATTERN, loadAddressMapping } from "./address-mapping.ts";
 import {
