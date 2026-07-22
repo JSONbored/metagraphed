@@ -626,7 +626,7 @@ import {
   DEFAULT_ACCOUNTS_LIST_SORT,
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
-} from "./accounts-list.mjs";
+} from "./accounts-list.ts";
 import {
   buildTopHoldersList,
   TOP_HOLDERS_SORTS,

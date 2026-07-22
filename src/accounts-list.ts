@@ -47,7 +47,7 @@ export const ACCOUNTS_LIST_LIMIT_MAX = 100;
 // routes already exist for the full per-subnet breakdown of one account.
 const ACCOUNTS_LIST_SUBNET_LIMIT = 10;
 
-function toIso(ms) {
+function toIso(ms: number | null): string | null {
   if (ms == null) return null;
   const n = Number(ms);
   /* v8 ignore next -- defensive: both call sites only ever pass null or an
@@ -58,19 +58,19 @@ function toIso(ms) {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function numberOrZero(value) {
+function numberOrZero(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
-function nonNegativeInt(value) {
+function nonNegativeInt(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function roundTao(value) {
+function roundTao(value: unknown): number {
   return Math.round(numberOrZero(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
@@ -79,14 +79,14 @@ function roundTao(value) {
 // rationale (metagraphed#2922): summing many already-rounded per-UID
 // stake_tao/emission_tao values per hotkey with plain `+=` compounds
 // float error across the accumulation even when each input is exact.
-function toRaoBig(tao) {
+function toRaoBig(tao: number): bigint {
   return BigInt(Math.round(tao * RAO_PER_TAO));
 }
-function raoBigToTao(rao) {
+function raoBigToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
-function round(value, dp = 6) {
+function round(value: number | null, dp = 6): number | null {
   /* v8 ignore next -- defensive: this module's one caller (applyStakeDominance)
      only ever divides a numberOrZero() result by an already-Number.isFinite-
      and->0-checked denominator, so this branch is provably unreachable today. */
@@ -95,14 +95,50 @@ function round(value, dp = 6) {
   return Math.round(value * factor) / factor;
 }
 
-function primaryColdkey(coldkeys) {
+function primaryColdkey(coldkeys: Map<string, number>): string | null {
   const ranked = [...coldkeys.entries()].sort(
     (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
   );
   return ranked[0]?.[0] ?? null;
 }
 
-function buildAccountEntry(entry) {
+export interface AccountsListSubnetEntry {
+  netuid: number;
+  uid: number;
+  stake_tao: number;
+  emission_tao: number;
+}
+
+interface AccountAccumulator {
+  hotkey: string;
+  coldkeys: Map<string, number>;
+  netuids: Set<number>;
+  uidCount: number;
+  validatorCount: number;
+  stakeTotalRao: bigint;
+  emissionTotalRao: bigint;
+  latestCapturedAt: number | null;
+  latestBlockNumber: number | null;
+  subnets: AccountsListSubnetEntry[];
+}
+
+export interface AccountsListEntry {
+  hotkey: string;
+  coldkey: string | null;
+  coldkey_count: number;
+  subnet_count: number;
+  uid_count: number;
+  validator_count: number;
+  miner_count: number;
+  total_stake_tao: number;
+  total_emission_tao: number;
+  latest_captured_at: string | null;
+  latest_block_number: number | null;
+  subnets: AccountsListSubnetEntry[];
+  stake_dominance?: number | null;
+}
+
+function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
   const subnets = entry.subnets
     .sort(
       (a, b) =>
@@ -132,7 +168,9 @@ function buildAccountEntry(entry) {
 // network's registered stake sits behind this one hotkey" figure. Sums the
 // already-rounded per-account totals (rao-precision, see buildAccountEntry),
 // mirroring buildGlobalValidators' applyStakeDominance exactly.
-function applyStakeDominance(accounts) {
+function applyStakeDominance(
+  accounts: AccountsListEntry[],
+): AccountsListEntry[] {
   const networkStakeRao = accounts.reduce(
     (sum, entry) => sum + toRaoBig(entry.total_stake_tao),
     0n,
@@ -149,18 +187,28 @@ function applyStakeDominance(accounts) {
   }));
 }
 
-const ACCOUNTS_LIST_SORT_FIELDS = {
+const ACCOUNTS_LIST_SORT_FIELDS: Record<string, string> = {
   total_stake: "total_stake_tao",
   total_emission: "total_emission_tao",
   last_active: "latest_block_number",
 };
 
-function accountSortValue(row, key) {
+function accountSortValue(row: AccountsListEntry, key: string): number {
   const field = ACCOUNTS_LIST_SORT_FIELDS[key] ?? key;
-  const value = row?.[field];
+  const value = (row as unknown as Record<string, unknown>)[field];
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : Number.NEGATIVE_INFINITY;
+}
+
+export interface AccountsListResult {
+  schema_version: 1;
+  sort: string;
+  limit: number;
+  captured_at: string | null;
+  block_number: number | null;
+  account_count: number;
+  accounts: AccountsListEntry[];
 }
 
 // Shape every currently-registered hotkey's cross-subnet footprint into a
@@ -169,12 +217,12 @@ function accountSortValue(row, key) {
 // buildGlobalValidators' job). Null-safe: no rows (cold store) yields a
 // schema-stable empty leaderboard.
 export function buildAccountsList(
-  rows,
+  rows: Array<Record<string, unknown>> | null | undefined,
   {
     sort = DEFAULT_ACCOUNTS_LIST_SORT,
     limit = ACCOUNTS_LIST_LIMIT_DEFAULT,
-  } = {},
-) {
+  }: { sort?: string; limit?: number | string } = {},
+): AccountsListResult {
   const normalizedSort = ACCOUNTS_LIST_SORTS.includes(sort)
     ? sort
     : DEFAULT_ACCOUNTS_LIST_SORT;
@@ -186,9 +234,9 @@ export function buildAccountsList(
     ? Math.max(0, Math.min(flooredLimit, ACCOUNTS_LIST_LIMIT_MAX))
     : ACCOUNTS_LIST_LIMIT_DEFAULT;
 
-  const accountsByHotkey = new Map();
-  let latestCapturedAt = null;
-  let latestBlockNumber = null;
+  const accountsByHotkey = new Map<string, AccountAccumulator>();
+  let latestCapturedAt: number | null = null;
+  let latestBlockNumber: number | null = null;
 
   for (const row of Array.isArray(rows) ? rows : []) {
     const hotkey =
@@ -233,7 +281,7 @@ export function buildAccountsList(
     if (isValidator) entry.validatorCount += 1;
     entry.stakeTotalRao += toRaoBig(stake);
     entry.emissionTotalRao += toRaoBig(emission);
-    if (Number.isFinite(capturedAt) && capturedAt > 0) {
+    if (capturedAt != null && Number.isFinite(capturedAt) && capturedAt > 0) {
       if (
         entry.latestCapturedAt == null ||
         capturedAt > entry.latestCapturedAt ||
@@ -287,12 +335,15 @@ export function buildAccountsList(
 // pattern as loadGlobalValidators. `d1` is a (sql, params) => Promise<rows[]>
 // runner; a cold/unbound DB returns [] -> a schema-stable empty leaderboard.
 export async function loadAccountsList(
-  d1,
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
   {
     sort = DEFAULT_ACCOUNTS_LIST_SORT,
     limit = ACCOUNTS_LIST_LIMIT_DEFAULT,
-  } = {},
-) {
+  }: { sort?: string; limit?: number | string } = {},
+): Promise<AccountsListResult> {
   const rows = await d1(
     "SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, " +
       "stake_tao, block_number, captured_at FROM neurons " +

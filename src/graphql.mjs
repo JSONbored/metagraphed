@@ -275,7 +275,7 @@ import {
   ACCOUNTS_LIST_SORTS,
   DEFAULT_ACCOUNTS_LIST_SORT,
   buildAccountsList,
-} from "./accounts-list.mjs";
+} from "./accounts-list.ts";
 import {
   buildAccountEvents,
   buildSubnetEvents,
