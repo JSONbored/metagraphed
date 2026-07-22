@@ -79,7 +79,7 @@
     "migrate:dry-run": "node scripts/apply-migrations.ts --dry-run",
     "openapi:generate": "node scripts/generate-openapi.ts --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.ts",
-    "types:generate": "node scripts/generate-types.mjs",
+    "types:generate": "node scripts/generate-types.ts",
     "surface:add": "node scripts/surface-add.mjs",
     "subnet:new": "node scripts/subnet-new.mjs",
     "enrich:issues": "node scripts/enrichment-issues.ts --write",

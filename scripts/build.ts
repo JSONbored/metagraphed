@@ -148,7 +148,7 @@ function localSteps(): Step[] {
     // r2-manifest: build the non-default network registries (testnet) into the
     // R2 staging tree so they're picked up by the manifest + upload.
     nodeStep("build-network-registries", "scripts/build-network-registry.ts"),
-    nodeStep("generate-types", "scripts/generate-types.mjs"),
+    nodeStep("generate-types", "scripts/generate-types.ts"),
     nodeStep("generate-client", "scripts/generate-client.ts", "--write"),
     nodeStep("r2-manifest", "scripts/r2-manifest.mjs", "--write"),
   ];
@@ -204,7 +204,7 @@ function productionSteps(): Step[] {
     ),
     // After the final build-artifacts (R2 staging wipe) and before r2-manifest.
     nodeStep("build-network-registries", "scripts/build-network-registry.ts"),
-    nodeStep("generate-types", "scripts/generate-types.mjs"),
+    nodeStep("generate-types", "scripts/generate-types.ts"),
     nodeStep("generate-client", "scripts/generate-client.ts", "--write"),
     // Reads registry-summary.json (just rewritten by build-artifacts above)
     // for live stats and renders the /og.png card into the same R2 staging

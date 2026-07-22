@@ -18,7 +18,7 @@ const result = spawnSync(
     encoding: "utf8",
     // The generated .d.ts is ~1 MiB and grows with every route; the default 1 MiB
     // stdout cap would SIGTERM the child (ENOBUFS). Match the 32 MiB buffer the
-    // build's generate-types.mjs uses so the type check keeps working.
+    // build's generate-types.ts uses so the type check keeps working.
     maxBuffer: 32 * 1024 * 1024,
   },
 );
