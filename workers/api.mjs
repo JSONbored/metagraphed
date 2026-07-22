@@ -242,7 +242,7 @@ import {
 import {
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,
-} from "../src/alert-triggers.mjs";
+} from "../src/alert-triggers.ts";
 import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,

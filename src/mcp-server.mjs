@@ -58,7 +58,7 @@ import {
   summarizeDeliveryRecords,
   WEBHOOK_REDELIVERY_LIST_LIMIT,
 } from "./webhooks.mjs";
-import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.mjs";
+import { ALERT_TRIGGER_OWNER_TOKEN_HEADER } from "./alert-triggers.ts";
 import {
   MCP_CHAIN_STREAM_RESOURCE_URI,
   isValidMcpSessionId,

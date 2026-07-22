@@ -22,7 +22,7 @@
 // is a real, deliberate v1 scope cut, not an oversight -- worth adding if
 // a receiver-authenticity requirement ever surfaces.
 import { isPublicWebhookUrl } from "./webhooks.mjs";
-import { isValidAlertDestination } from "./alert-triggers.mjs";
+import { isValidAlertDestination } from "./alert-triggers.ts";
 
 // At most one delivery per trigger per this window; a burst of matching
 // events within it still updates match tracking (#4984 issue's own

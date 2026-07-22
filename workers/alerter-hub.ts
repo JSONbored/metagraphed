@@ -20,7 +20,10 @@
 // shell that actually calls fetch) -- this class only decides WHICH
 // triggers matched AND whether a match should actually be delivered right
 // now (burst rate-limiting), never how each channel's request is shaped.
-import { triggerMatchesEvent } from "../src/alert-triggers.mjs";
+import {
+  triggerMatchesEvent,
+  type EvaluatorAlertTrigger,
+} from "../src/alert-triggers.ts";
 import { buildDeregRiskSnapshot } from "../src/dereg-risk.mjs";
 import {
   mapBounded,
@@ -361,13 +364,14 @@ export class AlerterHub implements DurableObject {
   // this just applies it across every cached trigger.
   matchingTriggers(payload: unknown): Trigger[] {
     return this.triggers.filter((trigger) =>
-      // Same untyped-default-parameter cast as buildDeregRiskSnapshot above
-      // -- triggerMatchesEvent's 3rd parameter (src/alert-triggers.mjs, not
-      // yet converted) infers as an exact empty-object type.
+      // this.triggers is fetched straight from the active-triggers response
+      // (built server-side via evaluatorAlertTriggerView), so it already has
+      // EvaluatorAlertTrigger's shape at runtime even though Trigger's own
+      // index signature doesn't statically expose it.
       triggerMatchesEvent(
-        trigger,
-        payload,
-        this.metricSnapshot as unknown as null | undefined,
+        trigger as unknown as EvaluatorAlertTrigger,
+        payload as Record<string, unknown> | null | undefined,
+        this.metricSnapshot,
       ),
     );
   }

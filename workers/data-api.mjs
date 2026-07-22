@@ -485,7 +485,7 @@ import {
   isValidAlertTriggerId,
   ownerAlertTriggerView,
   validateAlertTriggerInput,
-} from "../src/alert-triggers.mjs";
+} from "../src/alert-triggers.ts";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,

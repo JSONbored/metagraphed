@@ -85,7 +85,11 @@ export const ALERT_CONDITION_OPERATORS = new Set([
   "eq",
 ]);
 
-function compareAlertCondition(value, operator, threshold) {
+function compareAlertCondition(
+  value: number,
+  operator: string,
+  threshold: number,
+): boolean {
   switch (operator) {
     case "lt":
       return value < threshold;
@@ -104,10 +108,28 @@ function compareAlertCondition(value, operator, threshold) {
   }
 }
 
+export interface AlertConditionInput {
+  metric: string;
+  operator: string;
+  threshold: number;
+}
+
+interface ValidationOk<T> {
+  ok: true;
+  value: T;
+}
+interface ValidationError {
+  ok: false;
+  error: string;
+}
+type ValidationResult<T> = ValidationOk<T> | ValidationError;
+
 // Validates the optional `condition` sub-object of a create/update body.
 // `undefined` (the field wasn't provided) is valid and yields `null` --
 // distinct from a present-but-malformed condition, which is rejected.
-function validateAlertCondition(input) {
+function validateAlertCondition(
+  input: unknown,
+): ValidationResult<AlertConditionInput | null> {
   if (input === undefined) return { ok: true, value: null };
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return {
@@ -115,22 +137,20 @@ function validateAlertCondition(input) {
       error: "`condition`, when provided, must be an object.",
     };
   }
-  if (!ALERT_CONDITION_METRICS.has(input.metric)) {
+  const obj = input as Record<string, unknown>;
+  if (!ALERT_CONDITION_METRICS.has(obj.metric as string)) {
     return {
       ok: false,
       error: `\`condition.metric\` must be one of: ${[...ALERT_CONDITION_METRICS].join(", ")}.`,
     };
   }
-  if (!ALERT_CONDITION_OPERATORS.has(input.operator)) {
+  if (!ALERT_CONDITION_OPERATORS.has(obj.operator as string)) {
     return {
       ok: false,
       error: `\`condition.operator\` must be one of: ${[...ALERT_CONDITION_OPERATORS].join(", ")}.`,
     };
   }
-  if (
-    typeof input.threshold !== "number" ||
-    !Number.isFinite(input.threshold)
-  ) {
+  if (typeof obj.threshold !== "number" || !Number.isFinite(obj.threshold)) {
     return {
       ok: false,
       error: "`condition.threshold` must be a finite number.",
@@ -139,11 +159,16 @@ function validateAlertCondition(input) {
   return {
     ok: true,
     value: {
-      metric: input.metric,
-      operator: input.operator,
-      threshold: input.threshold,
+      metric: obj.metric as string,
+      operator: obj.operator as string,
+      threshold: obj.threshold,
     },
   };
+}
+
+interface AlertMetricSnapshot {
+  subnetAlphaPriceRank?: Map<unknown, unknown>;
+  neuronImmunityCountdownBlocks?: Map<unknown, unknown>;
 }
 
 // Reads the current value of one condition's metric for the event payload
@@ -151,7 +176,11 @@ function validateAlertCondition(input) {
 // has no entry for this netuid/hotkey (metric genuinely inapplicable right
 // now, e.g. a neuron outside its immunity window), which triggerMatchesEvent
 // treats as "does not match", never as a thrown error.
-function readConditionMetric(metric, payload, metricSnapshot) {
+function readConditionMetric(
+  metric: string,
+  payload: Record<string, unknown> | null | undefined,
+  metricSnapshot: AlertMetricSnapshot | null | undefined,
+): number | null {
   if (metric === "subnet_alpha_price_rank") {
     const rank = metricSnapshot?.subnetAlphaPriceRank?.get(payload?.netuid);
     return typeof rank === "number" ? rank : null;
@@ -179,7 +208,10 @@ const TELEGRAM_CHAT_ID_PATTERN = /^(-?\d{1,15}|@[A-Za-z0-9_]{5,32})$/;
 const DISCORD_WEBHOOK_PATTERN =
   /^https:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/;
 
-export function isValidAlertDestination(channel, destination) {
+export function isValidAlertDestination(
+  channel: unknown,
+  destination: unknown,
+): boolean {
   if (typeof destination !== "string" || destination.length === 0) return false;
   if (destination.length > MAX_DESTINATION_LENGTH) return false;
   switch (channel) {
@@ -199,107 +231,122 @@ export function isValidAlertDestination(channel, destination) {
   }
 }
 
+export interface AlertTriggerValidated {
+  name: string | null;
+  tableFilter: string[] | null;
+  netuid: number | null;
+  eventKind: string | null;
+  account: string | null;
+  minAmountTao: number | null;
+  condition: AlertConditionInput | null;
+  channel: string;
+  destination: string;
+}
+
 // Validates a create/update request body into the exact shape the Postgres
 // write path binds. Every condition field is optional on input (undefined),
 // but at least one of netuid/event_kind/account/min_amount_tao is required --
 // a trigger with none of them would match every event on every table, which
 // is always technically legal per-field but almost certainly a mistake (and
 // an unbounded-delivery-volume footgun for the trigger's own owner).
-export function validateAlertTriggerInput(input) {
+export function validateAlertTriggerInput(
+  input: unknown,
+): ValidationResult<AlertTriggerValidated> {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { ok: false, error: "Request body must be a JSON object." };
   }
-  if (!ALERT_CHANNELS.has(input.channel)) {
+  const body = input as Record<string, unknown>;
+  if (!ALERT_CHANNELS.has(body.channel as string)) {
     return {
       ok: false,
       error: `\`channel\` must be one of ${[...ALERT_CHANNELS].join(", ")}.`,
     };
   }
-  if (!isValidAlertDestination(input.channel, input.destination)) {
+  if (!isValidAlertDestination(body.channel, body.destination)) {
     return {
       ok: false,
-      error: `\`destination\` is not a valid ${input.channel} target.`,
+      error: `\`destination\` is not a valid ${String(body.channel)} target.`,
     };
   }
 
-  let name = null;
-  if (input.name !== undefined) {
-    if (typeof input.name !== "string" || input.name.length > MAX_NAME_LENGTH) {
+  let name: string | null = null;
+  if (body.name !== undefined) {
+    if (typeof body.name !== "string" || body.name.length > MAX_NAME_LENGTH) {
       return {
         ok: false,
         error: `\`name\`, when provided, must be a string up to ${MAX_NAME_LENGTH} characters.`,
       };
     }
-    name = input.name;
+    name = body.name;
   }
 
-  let tableFilter = null;
-  if (input.table_filter !== undefined) {
+  let tableFilter: string[] | null = null;
+  if (body.table_filter !== undefined) {
     if (
-      !Array.isArray(input.table_filter) ||
-      input.table_filter.length === 0 ||
-      !input.table_filter.every((table) => CHAIN_FIREHOSE_TABLES.has(table))
+      !Array.isArray(body.table_filter) ||
+      body.table_filter.length === 0 ||
+      !body.table_filter.every((table) => CHAIN_FIREHOSE_TABLES.has(table))
     ) {
       return {
         ok: false,
         error: `\`table_filter\`, when provided, must be a non-empty array drawn from ${[...CHAIN_FIREHOSE_TABLES].join(", ")}.`,
       };
     }
-    tableFilter = [...new Set(input.table_filter)];
+    tableFilter = [...new Set(body.table_filter)];
   }
 
-  let netuid = null;
-  if (input.netuid !== undefined) {
+  let netuid: number | null = null;
+  if (body.netuid !== undefined) {
     if (
-      !Number.isInteger(input.netuid) ||
-      input.netuid < 0 ||
-      input.netuid > 65535
+      !Number.isInteger(body.netuid) ||
+      (body.netuid as number) < 0 ||
+      (body.netuid as number) > 65535
     ) {
       return {
         ok: false,
         error: "`netuid`, when provided, must be an integer 0-65535.",
       };
     }
-    netuid = input.netuid;
+    netuid = body.netuid as number;
   }
 
-  let eventKind = null;
-  if (input.event_kind !== undefined) {
+  let eventKind: string | null = null;
+  if (body.event_kind !== undefined) {
     if (
-      typeof input.event_kind !== "string" ||
-      !input.event_kind ||
-      input.event_kind.length > MAX_EVENT_KIND_LENGTH
+      typeof body.event_kind !== "string" ||
+      !body.event_kind ||
+      body.event_kind.length > MAX_EVENT_KIND_LENGTH
     ) {
       return {
         ok: false,
         error: `\`event_kind\`, when provided, must be a non-empty string up to ${MAX_EVENT_KIND_LENGTH} characters.`,
       };
     }
-    eventKind = input.event_kind;
+    eventKind = body.event_kind;
   }
 
-  let account = null;
-  if (input.account !== undefined) {
+  let account: string | null = null;
+  if (body.account !== undefined) {
     if (
-      typeof input.account !== "string" ||
-      !input.account ||
-      input.account.length > MAX_ACCOUNT_LENGTH
+      typeof body.account !== "string" ||
+      !body.account ||
+      body.account.length > MAX_ACCOUNT_LENGTH
     ) {
       return {
         ok: false,
         error: `\`account\`, when provided, must be a non-empty string up to ${MAX_ACCOUNT_LENGTH} characters.`,
       };
     }
-    account = input.account;
+    account = body.account;
   }
 
-  let minAmountTao = null;
-  if (input.min_amount_tao !== undefined) {
+  let minAmountTao: number | null = null;
+  if (body.min_amount_tao !== undefined) {
     if (
-      typeof input.min_amount_tao !== "number" ||
-      !Number.isFinite(input.min_amount_tao) ||
-      input.min_amount_tao < 0 ||
-      input.min_amount_tao > MIN_AMOUNT_TAO_CEILING
+      typeof body.min_amount_tao !== "number" ||
+      !Number.isFinite(body.min_amount_tao) ||
+      body.min_amount_tao < 0 ||
+      body.min_amount_tao > MIN_AMOUNT_TAO_CEILING
     ) {
       return {
         ok: false,
@@ -307,10 +354,10 @@ export function validateAlertTriggerInput(input) {
           "`min_amount_tao`, when provided, must be a non-negative finite number.",
       };
     }
-    minAmountTao = input.min_amount_tao;
+    minAmountTao = body.min_amount_tao;
   }
 
-  const conditionResult = validateAlertCondition(input.condition);
+  const conditionResult = validateAlertCondition(body.condition);
   if (!conditionResult.ok) return conditionResult;
   const condition = conditionResult.value;
 
@@ -338,10 +385,23 @@ export function validateAlertTriggerInput(input) {
       account,
       minAmountTao,
       condition,
-      channel: input.channel,
-      destination: input.destination,
+      channel: body.channel as string,
+      destination: body.destination as string,
     },
   };
+}
+
+export interface EvaluatorAlertTrigger {
+  id: string;
+  name: unknown;
+  tableFilter: string[] | null;
+  netuid: number | null;
+  eventKind: string | null;
+  account: string | null;
+  minAmountTao: number | null;
+  condition: AlertConditionInput | null;
+  channel: unknown;
+  destination: unknown;
 }
 
 // Evaluate one active trigger against a firehose broadcast payload (the SAME
@@ -357,9 +417,16 @@ export function validateAlertTriggerInput(input) {
 // cold on a fresh evaluator) fails closed -- it never matches -- rather than
 // throwing or silently skipping the condition check, so a stale/missing
 // snapshot can only under-fire, never over-fire, a predicate trigger.
-export function triggerMatchesEvent(trigger, payload, metricSnapshot = null) {
+export function triggerMatchesEvent(
+  trigger: EvaluatorAlertTrigger,
+  payload: Record<string, unknown> | null | undefined,
+  metricSnapshot: AlertMetricSnapshot | null = null,
+): boolean {
   if (!payload || typeof payload !== "object") return false;
-  if (trigger.tableFilter && !trigger.tableFilter.includes(payload.table)) {
+  if (
+    trigger.tableFilter &&
+    !trigger.tableFilter.includes(payload.table as string)
+  ) {
     return false;
   }
   if (trigger.netuid !== null && payload.netuid !== trigger.netuid) {
@@ -412,11 +479,14 @@ export function triggerMatchesEvent(trigger, payload, metricSnapshot = null) {
 // capability to anyone holding it), so every single-trigger route
 // (GET/PATCH/DELETE) requires the owner_token, not just PATCH/DELETE --
 // there is no "public" trigger view.
-export function generateAlertTriggerOwnerToken() {
+export function generateAlertTriggerOwnerToken(): string {
   return generateSecret();
 }
 
-export function isValidAlertOwnerToken(provided, stored) {
+export function isValidAlertOwnerToken(
+  provided: unknown,
+  stored: unknown,
+): boolean {
   return (
     typeof provided === "string" &&
     provided.length > 0 &&
@@ -426,9 +496,29 @@ export function isValidAlertOwnerToken(provided, stored) {
   );
 }
 
+export interface OwnerAlertTriggerView {
+  id: string;
+  name: unknown;
+  table_filter: unknown;
+  netuid: unknown;
+  event_kind: unknown;
+  account: unknown;
+  min_amount_tao: number | null;
+  condition: unknown;
+  channel: unknown;
+  destination: unknown;
+  active: boolean;
+  created_at: unknown;
+  updated_at: unknown;
+  last_matched_at: unknown;
+  match_count: unknown;
+}
+
 // Strips owner_token before a record is returned to its owner. Every other
 // field is safe to echo back to whoever already proved ownership.
-export function ownerAlertTriggerView(record) {
+export function ownerAlertTriggerView(
+  record: Record<string, unknown> | null | undefined,
+): OwnerAlertTriggerView | null {
   if (!record || typeof record !== "object") return null;
   return {
     id: String(record.id),
@@ -458,20 +548,22 @@ export function ownerAlertTriggerView(record) {
 // triggerMatchesEvent's field names (camelCase, matching validateAlertTriggerInput's
 // `value`). Includes `name` (#4984 Part 3) so delivery message formatting
 // can reference it without a second Postgres read.
-export function evaluatorAlertTriggerView(record) {
+export function evaluatorAlertTriggerView(
+  record: Record<string, unknown> | null | undefined,
+): EvaluatorAlertTrigger | null {
   if (!record || typeof record !== "object") return null;
   return {
     id: String(record.id),
     name: record.name ?? null,
-    tableFilter: record.table_filter ?? null,
-    netuid: record.netuid ?? null,
-    eventKind: record.event_kind ?? null,
-    account: record.account ?? null,
+    tableFilter: (record.table_filter as string[] | undefined) ?? null,
+    netuid: (record.netuid as number | undefined) ?? null,
+    eventKind: (record.event_kind as string | undefined) ?? null,
+    account: (record.account as string | undefined) ?? null,
     minAmountTao:
       record.min_amount_tao === undefined || record.min_amount_tao === null
         ? null
         : Number(record.min_amount_tao),
-    condition: record.condition ?? null,
+    condition: (record.condition as AlertConditionInput | undefined) ?? null,
     channel: record.channel,
     destination: record.destination,
   };
@@ -481,6 +573,6 @@ export function evaluatorAlertTriggerView(record) {
 // query. Accepts the string form (route params are always strings) and
 // rejects anything that isn't a plain, non-negative integer literal (no
 // leading zeros beyond "0" itself, no sign, no whitespace).
-export function isValidAlertTriggerId(id) {
+export function isValidAlertTriggerId(id: unknown): boolean {
   return /^(0|[1-9]\d*)$/.test(String(id));
 }
