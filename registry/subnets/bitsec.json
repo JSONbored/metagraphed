@@ -497,8 +497,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -523,8 +526,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -549,8 +555,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -575,8 +584,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -601,8 +613,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -627,8 +642,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -653,8 +671,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -679,8 +700,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -705,8 +729,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -731,8 +758,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -757,8 +787,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a credential in the authorization header; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "bearer",
+        "scopes_note": "Requires a Bearer token in the Authorization header (confirmed live: a well-formed \"Bearer <token>\" progresses past the missing-header check to an invalid-token-format error). No hotkey-signed request or API key is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
