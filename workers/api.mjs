@@ -299,7 +299,7 @@ import {
   runEmbeddingSync,
   semanticSearch,
   withinRateLimit,
-} from "../src/ai-search.mjs";
+} from "../src/ai-search.ts";
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_ROOT_CLAIM_PATH_PATTERN,

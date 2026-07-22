@@ -16,7 +16,7 @@ import {
   semanticSearch,
   askQuestion,
   SEMANTIC_MAX_QUERY_LENGTH,
-} from "../src/ai-search.mjs";
+} from "../src/ai-search.ts";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { overlayCatalogIndex } from "../src/health-serving.mjs";

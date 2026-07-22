@@ -11,7 +11,7 @@ import path from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { handleRequest } from "../workers/api.mjs";
-import { EMBED_MODEL } from "../src/ai-search.mjs";
+import { EMBED_MODEL } from "../src/ai-search.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.mjs";
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });

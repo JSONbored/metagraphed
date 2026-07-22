@@ -617,7 +617,7 @@ import {
   SEMANTIC_TYPES,
   semanticSearch,
   withinRateLimit,
-} from "./ai-search.mjs";
+} from "./ai-search.ts";
 import { keywordScore, queryTerms } from "./keyword-search.mjs";
 import { KV_HEALTH_META } from "./kv-keys.ts";
 import {
