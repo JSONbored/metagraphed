@@ -218,7 +218,7 @@ import {
   buildSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
-} from "../src/subnet-axon-removals.mjs";
+} from "../src/subnet-axon-removals.ts";
 import {
   buildAccountPrometheus,
   PROMETHEUS_EVENT_KIND,

@@ -113,7 +113,7 @@ import {
   buildSubnetAxonRemovals,
   SUBNET_AXON_REMOVALS_WINDOWS,
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
-} from "./subnet-axon-removals.mjs";
+} from "./subnet-axon-removals.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
