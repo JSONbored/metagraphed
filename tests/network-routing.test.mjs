@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { beforeAll, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv, repoRoot } from "../scripts/lib.mjs";
-import { buildNetworkRegistry } from "../scripts/build-network-registry.mjs";
+import { buildNetworkRegistry } from "../scripts/build-network-registry.ts";
 
 const ORIGIN = "https://api.metagraph.sh";
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";

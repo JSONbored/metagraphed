@@ -32,10 +32,17 @@ import {
   writeJson,
 } from "./lib.mjs";
 
+type Row = Record<string, unknown>;
+
+interface NetworkRegistryConfig {
+  prefix: string;
+  snapshotPath: string;
+}
+
 // Non-default networks whose committed native snapshot, when present, is built
 // into an R2-only registry under metagraph/{prefix}/…. mainnet (finney) is built
 // by the main build-artifacts pipeline, not here.
-export const NETWORK_REGISTRIES = [
+export const NETWORK_REGISTRIES: NetworkRegistryConfig[] = [
   {
     prefix: "testnet",
     snapshotPath: "registry/native/test-subnets.json",
@@ -55,7 +62,7 @@ const EXPECTED_GAP_KINDS = [
   "data-artifact",
 ];
 
-function nativeSlug(subnet) {
+function nativeSlug(subnet: Row): string {
   const quality = nativeNameQuality(subnet);
   const nativeName =
     typeof subnet.raw_name === "string" ? subnet.raw_name : subnet.name || null;
@@ -67,21 +74,22 @@ function nativeSlug(subnet) {
 
 // Native-only equivalent of mergeSubnet(nativeSubnet, undefined): no overlay, so
 // surfaces/candidates/curation are empty and identity comes purely from chain.
-function buildNativeSubnet(nativeSubnet, snapshot) {
+function buildNativeSubnet(nativeSubnet: Row, snapshot: Row): Row {
   const nameQuality = nativeNameQuality(nativeSubnet);
   const nativeName =
     typeof nativeSubnet.raw_name === "string"
       ? nativeSubnet.raw_name
       : nativeSubnet.name || null;
+  const chainIdentity = nativeSubnet.chain_identity as Row | undefined;
   const sourceRepo = backfilledIdentityUrl(
     undefined,
-    nativeSubnet.chain_identity?.github_repo,
+    chainIdentity?.github_repo,
   );
   const websiteUrl = backfilledIdentityUrl(
     undefined,
-    nativeSubnet.chain_identity?.subnet_url,
+    chainIdentity?.subnet_url,
   );
-  const supportedKinds = new Set();
+  const supportedKinds = new Set<string>();
   if (sourceRepo) supportedKinds.add("source-repo");
   if (websiteUrl) supportedKinds.add("website");
 
@@ -93,8 +101,7 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
     coverage_level: "native-only",
     curation_level: "native",
     dashboard_url: null,
-    description:
-      cleanDescription(nativeSubnet.chain_identity?.description) || null,
+    description: cleanDescription(chainIdentity?.description) || null,
     docs_url: null,
     gaps: {
       missing_kinds: EXPECTED_GAP_KINDS.filter(
@@ -104,7 +111,13 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
       gap_notes: [],
     },
     mechanism_count: nativeSubnet.mechanism_count,
-    name: nativeDisplayName(nativeSubnet, `Subnet ${nativeSubnet.netuid}`),
+    // nativeDisplayName's fallback param is inferred as `null | undefined` from
+    // its untyped scripts/lib/formatting.mjs default value (`= null`), not
+    // `string` -- cast until Phase 4 batch 7 converts that file.
+    name: (nativeDisplayName as (subnet: Row, fallback?: string) => string)(
+      nativeSubnet,
+      `Subnet ${nativeSubnet.netuid}`,
+    ),
     native_name: nativeName,
     native_name_quality: nameQuality,
     native_slug: nativeSlug(nativeSubnet),
@@ -116,9 +129,9 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
       existence: {
         authority: "native-chain",
         captured_at: snapshot.captured_at,
-        method: snapshot.source.method,
+        method: (snapshot.source as Row | undefined)?.method,
         network: snapshot.network,
-        source_kind: snapshot.source.kind,
+        source_kind: (snapshot.source as Row | undefined)?.kind,
       },
       identity: {
         display_name_source:
@@ -128,10 +141,7 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
       interface_metadata: "none",
     },
     lifecycle: subnetLifecycle(nativeSubnet),
-    logo_url: backfilledIdentityUrl(
-      undefined,
-      nativeSubnet.chain_identity?.logo_url,
-    ),
+    logo_url: backfilledIdentityUrl(undefined, chainIdentity?.logo_url),
     registered_at_block: nativeSubnet.registered_at_block,
     slug: `sn-${nativeSubnet.netuid}`,
     source_repo: sourceRepo,
@@ -157,21 +167,23 @@ function buildNativeSubnet(nativeSubnet, snapshot) {
 // chainIdentity is the raw on-chain identity for the same netuid: the contact
 // fields (issue #344) are index-only, so they are computed here rather than
 // carried on the full subnet record (which the per-subnet detail embeds).
-function buildIndexEntry(subnet, chainIdentity) {
+function buildIndexEntry(subnet: Row, chainIdentity: Row | undefined): Row {
   const discordContact = nativeContactHandle(chainIdentity?.discord);
+  const curation = subnet.curation as Row;
+  const gaps = subnet.gaps as Row;
   return {
     block: subnet.block,
     candidate_count: subnet.candidate_count,
     categories: subnet.categories,
     contact_present: Boolean(chainIdentity?.contact_present),
     coverage_level: subnet.coverage_level,
-    curation_level: subnet.curation.level,
+    curation_level: curation.level,
     dashboard_url: subnet.dashboard_url,
     description: subnet.description,
     discord: discordContact,
     discord_url: nativeContactUrl(discordContact),
     docs_url: subnet.docs_url,
-    gap_count: subnet.gaps.missing_kinds.length,
+    gap_count: (gaps.missing_kinds as unknown[]).length,
     lifecycle: subnet.lifecycle,
     logo_url: subnet.logo_url,
     mechanism_count: subnet.mechanism_count,
@@ -194,7 +206,11 @@ function buildIndexEntry(subnet, chainIdentity) {
   };
 }
 
-function buildCoverage(subnets, snapshot, generatedAt) {
+function buildCoverage(
+  subnets: Row[],
+  snapshot: Row,
+  generatedAt: string,
+): Row {
   const rootCount = subnets.filter((s) => s.subnet_type === "root").length;
   return {
     schema_version: SCHEMA_VERSION,
@@ -229,16 +245,19 @@ function buildCoverage(subnets, snapshot, generatedAt) {
 }
 
 // Builds + writes the network registry. Returns the per-artifact write summary.
-export async function buildNetworkRegistry({ prefix, snapshotPath }) {
-  const snapshot = await readJson(snapshotPath);
+export async function buildNetworkRegistry({
+  prefix,
+  snapshotPath,
+}: NetworkRegistryConfig): Promise<Row> {
+  const snapshot = (await readJson(snapshotPath)) as Row;
   const generatedAt = buildTimestamp();
-  const subnets = snapshot.subnets
+  const subnets = (snapshot.subnets as Row[])
     .map((nativeSubnet) => buildNativeSubnet(nativeSubnet, snapshot))
-    .sort((a, b) => a.netuid - b.netuid);
+    .sort((a, b) => (a.netuid as number) - (b.netuid as number));
   const chainIdentityByNetuid = new Map(
-    snapshot.subnets.map((nativeSubnet) => [
+    (snapshot.subnets as Row[]).map((nativeSubnet) => [
       nativeSubnet.netuid,
-      nativeSubnet.chain_identity,
+      nativeSubnet.chain_identity as Row | undefined,
     ]),
   );
 
@@ -298,7 +317,7 @@ if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const summaries = [];
+  const summaries: Row[] = [];
   for (const net of NETWORK_REGISTRIES) {
     const snapshotPath = path.join(repoRoot, net.snapshotPath);
     if (!existsSync(snapshotPath)) {
