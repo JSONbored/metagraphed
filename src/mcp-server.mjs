@@ -165,7 +165,7 @@ import {
   LIST_SURFACES_MCP_TOOL,
   LIST_SURFACES_OUTPUT_SCHEMA,
   loadSurfacesList,
-} from "./surfaces-mcp.mjs";
+} from "./surfaces-mcp.ts";
 import {
   LIST_ENDPOINT_POOLS_INSTRUCTIONS,
   LIST_ENDPOINT_POOLS_MCP_TOOL,

@@ -2,7 +2,8 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/surfaces.json artifact.
 
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
 
 export const SURFACES_ARTIFACT = "/metagraph/surfaces.json";
@@ -11,14 +12,25 @@ const SURFACE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["curated-surfaces"].sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
 
-export function surfacesMcpError(code, message) {
-  const error = new Error(message);
+export interface SurfacesMcpError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function surfacesMcpError(
+  code: string,
+  message: string,
+): SurfacesMcpError {
+  const error = new Error(message) as SurfacesMcpError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-function optionalString(args, key) {
+function optionalString(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -30,7 +42,11 @@ function optionalString(args, key) {
   return value.trim();
 }
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(
+  args: Record<string, unknown> | null | undefined,
+  key: string,
+  allowed: string[],
+): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -42,10 +58,12 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-export function surfacesQueryUrl(args) {
+export function surfacesQueryUrl(
+  args: Record<string, unknown> | null | undefined,
+): URL {
   const url = new URL("https://mcp.internal/surfaces");
   if (args?.netuid !== undefined) {
-    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+    if (!Number.isInteger(args.netuid) || (args.netuid as number) < 0) {
       throw surfacesMcpError(
         "invalid_params",
         "netuid must be a non-negative integer.",
@@ -64,7 +82,11 @@ export function surfacesQueryUrl(args) {
   const fields = optionalString(args, "fields");
   if (fields) url.searchParams.set("fields", fields);
   if (args?.limit !== undefined) {
-    if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > 100) {
+    if (
+      !Number.isInteger(args.limit) ||
+      (args.limit as number) < 1 ||
+      (args.limit as number) > 100
+    ) {
       throw surfacesMcpError(
         "invalid_params",
         "limit must be an integer between 1 and 100.",
@@ -73,7 +95,7 @@ export function surfacesQueryUrl(args) {
     url.searchParams.set("limit", String(args.limit));
   }
   if (args?.cursor !== undefined) {
-    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+    if (!Number.isInteger(args.cursor) || (args.cursor as number) < 0) {
       throw surfacesMcpError(
         "invalid_params",
         "cursor must be a non-negative integer.",
@@ -84,12 +106,37 @@ export function surfacesQueryUrl(args) {
   return url;
 }
 
-export async function loadSurfacesList(ctx, args, { readArtifact } = {}) {
+interface SurfacesListResult {
+  generated_at: unknown;
+  schema_version: unknown;
+  surfaces: unknown[];
+  total: unknown;
+  returned: unknown;
+  limit: unknown;
+  cursor: unknown;
+  next_cursor: unknown;
+  sort: unknown;
+  order: unknown;
+}
+
+export async function loadSurfacesList(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  args: Record<string, unknown> | null | undefined,
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<SurfacesListResult> {
   const queryUrl = surfacesQueryUrl(args);
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, SURFACES_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw surfacesMcpError(
         "not_found",
@@ -101,7 +148,7 @@ export async function loadSurfacesList(ctx, args, { readArtifact } = {}) {
       `Could not load ${SURFACES_ARTIFACT} (${code}).`,
     );
   }
-  const blob = result.data;
+  const blob = result.data as Row | null | undefined;
   if (!blob || typeof blob !== "object") {
     throw surfacesMcpError(
       "not_found",
@@ -113,12 +160,14 @@ export async function loadSurfacesList(ctx, args, { readArtifact } = {}) {
     throw surfacesMcpError("invalid_params", transformed.error.message);
   }
   const { data, meta } = transformed;
-  const page = meta.pagination || {};
-  const rows = Array.isArray(data.surfaces) ? data.surfaces : [];
+  const page = ((meta ?? {}).pagination || {}) as Row;
+  const rows = Array.isArray((data as Row).surfaces)
+    ? ((data as Row).surfaces as unknown[])
+    : [];
   const rowLen = rows.length;
   return {
-    generated_at: data.generated_at ?? null,
-    schema_version: data.schema_version ?? null,
+    generated_at: (data as Row).generated_at ?? null,
+    schema_version: (data as Row).schema_version ?? null,
     surfaces: rows,
     total: page.total ?? rowLen,
     returned: page.returned ?? rowLen,

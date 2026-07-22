@@ -10,7 +10,7 @@ import {
   loadSurfacesList,
   surfacesMcpError,
   surfacesQueryUrl,
-} from "../src/surfaces-mcp.mjs";
+} from "../src/surfaces-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {
