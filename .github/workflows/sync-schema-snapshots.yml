@@ -8,7 +8,7 @@ name: Sync schema snapshots
 # explains why: a new openapi surface legitimately adds a not-captured
 # placeholder, so a one-file community surface PR shouldn't have to re-run
 # live network fetches. That exclusion is correct, but it also means nothing
-# was actually keeping the committed copy fresh: `scripts/build.mjs`
+# was actually keeping the committed copy fresh: `scripts/build.ts`
 # unconditionally auto-reverts this file (see DEPLOY_OWNED_ARTIFACTS in
 # scripts/lib.mjs) after every local/CI build, and no other workflow ever
 # calls scripts/snapshot-openapi.mjs directly or commits the result back to
@@ -26,7 +26,7 @@ name: Sync schema snapshots
 #
 # Regenerating this file means calling scripts/snapshot-openapi.mjs
 # directly (via its `schemas:snapshot` npm alias) -- NOT `npm run build`,
-# which goes through scripts/build.mjs and would just auto-revert this
+# which goes through scripts/build.ts and would just auto-revert this
 # exact file back to what's already committed, silently no-op-ing every run.
 #
 # Daily, not hourly: unlike operational-surfaces.json (fed by the health-

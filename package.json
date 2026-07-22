@@ -21,7 +21,7 @@
   ],
   "scripts": {
     "validate": "node scripts/validate.mjs",
-    "build": "node scripts/build.mjs",
+    "build": "node scripts/build.ts",
     "build:artifacts": "node scripts/build-artifacts.mjs",
     "pipeline:check": "node scripts/pipeline.mjs --check",
     "pipeline:refresh": "node scripts/pipeline.mjs --refresh",

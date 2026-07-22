@@ -6,12 +6,24 @@ import {
   stableStringify,
 } from "./lib.mjs";
 
+interface Step {
+  name: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+interface StepResult {
+  name: string;
+  status: "passed" | "failed";
+  elapsed_ms: number;
+}
+
 const productionBuild = isProductionPublishBuild();
 const startedAt = new Date().toISOString();
 const effectiveBuildTimestamp =
   process.env.METAGRAPH_BUILD_TIMESTAMP || (productionBuild ? startedAt : null);
 const steps = productionBuild ? productionSteps() : localSteps();
-const results = [];
+const results: StepResult[] = [];
 
 for (const step of steps) {
   const started = performance.now();
@@ -61,7 +73,7 @@ console.log(
 
 revertDeployOwnedArtifactsIfChanged();
 
-function revertDeployOwnedArtifactsIfChanged() {
+function revertDeployOwnedArtifactsIfChanged(): void {
   // A real publish run (productionBuild) is expected to update these files —
   // leave them alone in that context. Everywhere else (plain local/CI validate
   // build), r2-manifest.json is inherently non-deterministic build output
@@ -84,7 +96,10 @@ function revertDeployOwnedArtifactsIfChanged() {
   if (productionBuild) {
     return;
   }
-  const dirty = dirtyTrackedPaths(DEPLOY_OWNED_ARTIFACTS, process.cwd());
+  const dirty: string[] = dirtyTrackedPaths(
+    DEPLOY_OWNED_ARTIFACTS,
+    process.cwd(),
+  );
   if (dirty.length === 0) {
     return;
   }
@@ -123,7 +138,7 @@ function revertDeployOwnedArtifactsIfChanged() {
   );
 }
 
-function localSteps() {
+function localSteps(): Step[] {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.ts", "--write"),
     nodeStep("build-artifacts", "scripts/build-artifacts.mjs", {
@@ -139,7 +154,7 @@ function localSteps() {
   ];
 }
 
-function productionSteps() {
+function productionSteps(): Step[] {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.ts", "--write"),
     // Refresh the finney native chain snapshot fresh each publish (ADR 0006
@@ -201,19 +216,24 @@ function productionSteps() {
   ];
 }
 
-function nodeStep(name, script, ...argsOrEnv) {
+function nodeStep(
+  name: string,
+  script: string,
+  ...argsOrEnv: (string | Record<string, string>)[]
+): Step {
+  const last = argsOrEnv.at(-1);
   const env =
-    typeof argsOrEnv.at(-1) === "object" && !Array.isArray(argsOrEnv.at(-1))
-      ? argsOrEnv.pop()
+    typeof last === "object" && !Array.isArray(last)
+      ? (argsOrEnv.pop() as Record<string, string>)
       : {};
   return {
     name,
-    args: [script, ...argsOrEnv],
+    args: [script, ...(argsOrEnv as string[])],
     env,
   };
 }
 
-function isProductionPublishBuild() {
+function isProductionPublishBuild(): boolean {
   if (process.env.METAGRAPH_PRODUCTION_BUILD === "1") {
     return true;
   }
