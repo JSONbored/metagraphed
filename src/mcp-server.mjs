@@ -538,7 +538,7 @@ import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-} from "./chain-identity-history.mjs";
+} from "./chain-identity-history.ts";
 import {
   buildStakeFlow,
   STAKE_FLOW_WINDOWS,

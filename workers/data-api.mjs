@@ -361,7 +361,7 @@ import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-} from "../src/chain-identity-history.mjs";
+} from "../src/chain-identity-history.ts";
 import {
   buildChainActivity,
   buildChainCalls,
@@ -8262,7 +8262,7 @@ export default {
 
         // GET /api/v1/chain/identity-history?limit= (#4832 gap-closure):
         // network-wide identity-change feed across EVERY subnet, mirroring
-        // src/chain-identity-history.mjs's loadChainIdentityHistory -- no
+        // src/chain-identity-history.ts's loadChainIdentityHistory -- no
         // netuid filter, unlike the per-subnet route above.
         const chainIdentityHistory = url.pathname.match(
           /^\/api\/v1\/chain\/identity-history$/,

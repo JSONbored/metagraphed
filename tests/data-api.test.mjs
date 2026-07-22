@@ -7230,7 +7230,7 @@ test("GET /api/v1/chain/transfer-pairs: an empty totals row falls back to null",
 });
 
 // #4832 gap-closure: chain-wide identity-change feed, mirroring
-// src/chain-identity-history.mjs's loadChainIdentityHistory -- no netuid
+// src/chain-identity-history.ts's loadChainIdentityHistory -- no netuid
 // filter, single query, reusing METAGRAPH_SUBNET_IDENTITY_SOURCE (same
 // table as the per-subnet identity-history route already tested above).
 test("GET /api/v1/chain/identity-history returns the network-wide feed", async () => {
