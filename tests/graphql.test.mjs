@@ -14729,6 +14729,75 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 });
 
+describe("graphql — subnet_health (#7640, live base card)", () => {
+  // No last_run_at: resolveLiveHealth treats a missing/unparseable stamp as
+  // fresh (documented back-compat), keeping this fixture independent of the
+  // 25-minute freshness window rather than pinning a clock.
+  const LIVE = {
+    surfaces: [
+      {
+        netuid: 7,
+        surface_id: "sn-7-allways-api",
+        kind: "subnet-api",
+        provider: "allways",
+        url: "https://api.all-ways.io/health",
+        status: "ok",
+        classification: "live",
+        latency_ms: 120,
+        last_checked: "2026-07-22T00:00:00.000Z",
+        last_ok: "2026-07-22T00:00:00.000Z",
+      },
+      { netuid: 8, surface_id: "other", status: "failed" },
+    ],
+  };
+
+  test("composes the live health card for the subnet, matching REST/MCP", async () => {
+    const env = fixtureEnv({}, { kv: { [KV_HEALTH_CURRENT]: LIVE } });
+    const { status, body } = await gql(
+      "{ subnet_health(netuid: 7) { schema_version summary operational_observed_at surfaces reliability } }",
+      env,
+    );
+    assert.equal(status, 200);
+    const card = body.data.subnet_health;
+    // Only this subnet's surfaces are overlaid (netuid 8 is filtered out).
+    assert.equal(card.surfaces.length, 1);
+    assert.equal(card.surfaces[0].surface_id, "sn-7-allways-api");
+    assert.equal(card.surfaces[0].status, "ok");
+    assert.ok(card.summary);
+  });
+
+  test("a cold health store resolves to the schema-stable unknown card, never null or an error", async () => {
+    const { status, body } = await gql(
+      "{ subnet_health(netuid: 7) { schema_version netuid summary health_source surfaces } }",
+      emptyEnv,
+    );
+    assert.equal(status, 200);
+    assert.ok(!body.errors, "cold store must not be a GraphQL error");
+    const card = body.data.subnet_health;
+    assert.equal(card.schema_version, 1);
+    assert.equal(card.netuid, 7);
+    assert.equal(card.health_source, "unavailable");
+    assert.deepEqual(card.surfaces, []);
+    assert.equal(card.summary.status, "unknown");
+  });
+
+  test("a negative netuid is a BAD_USER_INPUT error", async () => {
+    const { body } = await gql(
+      "{ subnet_health(netuid: -1) { schema_version } }",
+      emptyEnv,
+    );
+    assert.ok(body.errors?.length);
+    assert.equal(body.errors[0].extensions?.code, "BAD_USER_INPUT");
+  });
+
+  test("FIELD_COMPLEXITY weights it like its subnet_health_* siblings", () => {
+    assert.equal(
+      FIELD_COMPLEXITY.subnet_health,
+      FIELD_COMPLEXITY.subnet_health_trends,
+    );
+  });
+});
+
 describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallback)", () => {
   const NETUID = 3;
 

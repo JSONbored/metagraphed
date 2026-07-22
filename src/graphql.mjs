@@ -169,10 +169,12 @@ import {
   buildGlobalHealth,
   formatLeaderboards,
   LEADERBOARD_BOARDS,
+  loadSubnetReliability,
   loadSubnetTrajectory,
   mergeFreshness,
   mergeRpcEndpoints,
   overlayOverviewHealth,
+  overlaySubnetHealth,
   overlayCatalogDetail,
   overlayCatalogIndex,
   resolveLiveEconomics,
@@ -488,6 +490,8 @@ export const SDL = `
     subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
     "Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving."
     subnet_serving(netuid: Int!, window: String): SubnetServing!
+    "One subnet's current live operational-health card: the per-surface probe rows (status, classification, latency, last_checked/last_ok) plus the summary rollup and the subnet's reliability scores, composed from the live health-probe KV exactly as REST and the get_subnet_health MCP tool do. The un-windowed base card of the subnet_health_trends/incidents/percentiles family. A subnet with no live health data resolves to a schema-stable unknown card (summary.status 'unknown', empty surfaces), never null or a GraphQL error; a negative netuid is a BAD_USER_INPUT error. Mirrors GET /api/v1/subnets/{netuid}/health."
+    subnet_health(netuid: Int!): SubnetHealthCard!
     "One subnet's uptime + success-only latency trend windows (7d/30d) from the live health-probe history: per-window samples, uptime_ratio, latency sample count, and the per-surface uptime/latency series. A subnet with no probe history resolves to a schema-stable zeroed-windows card, never null. Mirrors GET /api/v1/subnets/{netuid}/health/trends."
     subnet_health_trends(netuid: Int!): SubnetHealthTrends!
     "One subnet's long-term daily uptime history for its operational surfaces from the live surface_uptime_daily rollup: per-surface day series, window-wide uptime ratios, and reliability scores for the requested window (90d or 1y, default 90d). Optional min_samples drops day rows whose daily probe count is below the threshold (including zero-sample 'unknown' days). A subnet with no history resolves to a schema-stable empty card (surfaces []), never null. Mirrors GET /api/v1/subnets/{netuid}/uptime."
@@ -2150,6 +2154,21 @@ export const SDL = `
     health_source: String
     scope: String
     subnets: [SubnetHealth!]!
+  }
+
+  "One subnet's current live operational-health card for GET /api/v1/subnets/{netuid}/health: the summary rollup, per-surface probe rows, and reliability scores composed from the live health-probe KV. Distinct from SubnetHealth (the flat per-subnet status counts embedded in list/overview cards)."
+  type SubnetHealthCard {
+    schema_version: Int
+    contract_version: String
+    generated_at: String
+    netuid: Int
+    slug: String
+    name: String
+    summary: JSON
+    operational_observed_at: String
+    health_source: String
+    reliability: JSON
+    surfaces: [JSON!]!
   }
 
   type SubnetHealth {
@@ -4234,6 +4253,7 @@ export const FIELD_COMPLEXITY = {
   subnet_registrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_deregistrations: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_serving: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_health: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_uptime: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_health_incidents: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -9446,6 +9466,38 @@ const rootValue = {
       observed_at: data.observed_at ?? null,
       source: data.source ?? null,
       windows: data.windows ?? {},
+    };
+  },
+
+  // #7640: the un-windowed base card of the subnet_health_* family. Reuses the
+  // exact live-health composition REST and the get_subnet_health MCP tool share
+  // -- loadLiveHealth (this file's resolveLiveHealth wrapper, the same one
+  // subnetBadgeStatus reads) + loadSubnetReliability, overlaid by
+  // overlaySubnetHealth -- so no health computation is duplicated here. A cold
+  // health store yields the same schema-stable "unknown" card the MCP tool
+  // returns, never null or a GraphQL error.
+  async subnet_health({ netuid }, context) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const [live, reliability] = await Promise.all([
+      loadLiveHealth(context),
+      loadSubnetReliability(),
+    ]);
+    const overlaid = overlaySubnetHealth(null, live, netuid);
+    if (overlaid) {
+      return { ...overlaid, reliability };
+    }
+    return {
+      schema_version: 1,
+      netuid,
+      summary: { status: "unknown", surface_count: 0 },
+      operational_observed_at: null,
+      health_source: "unavailable",
+      reliability,
+      surfaces: [],
     };
   },
 
