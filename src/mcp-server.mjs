@@ -188,7 +188,7 @@ import {
   LIST_PROVIDER_ENDPOINTS_MCP_TOOL,
   LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
   loadProviderEndpointsList,
-} from "./provider-endpoints-mcp.mjs";
+} from "./provider-endpoints-mcp.ts";
 import {
   LIST_PROVIDERS_INSTRUCTIONS,
   LIST_PROVIDERS_MCP_TOOL,

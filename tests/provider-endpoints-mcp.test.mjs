@@ -11,7 +11,7 @@ import {
   providerEndpointsArtifactPath,
   providerEndpointsMcpError,
   providerEndpointsQueryUrl,
-} from "../src/provider-endpoints-mcp.mjs";
+} from "../src/provider-endpoints-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 
 const SAMPLE_BLOB = {

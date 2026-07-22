@@ -42,7 +42,7 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.ts";
 // #7175: GraphQL parity for GET /api/v1/providers/{slug}/endpoints, reusing the
 // same loadProviderEndpointsList that MCP list_provider_endpoints already calls
 // (#3289) -- not a reimplementation.
-import { loadProviderEndpointsList } from "./provider-endpoints-mcp.mjs";
+import { loadProviderEndpointsList } from "./provider-endpoints-mcp.ts";
 // #7167: GraphQL parity for the /api/v1/review/* contributor-review family,
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
 // and page logic REST and MCP already use) -- not a reimplementation.
