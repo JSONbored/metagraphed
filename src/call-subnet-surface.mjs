@@ -54,12 +54,20 @@ function buildRequestUrl(baseUrl, query) {
 }
 
 /**
+ * @typedef {object} CallSubnetSurfaceCredential
+ * @property {"header" | "query" | "cookie"} location Where to place the credential -- mirrors the surface's own `auth.location`. The CALLER (call_subnet_surface's tool handler) is responsible for validating the surface's auth.scheme is generically supported (bearer/api-key) and auth.location/auth.name are both present BEFORE ever passing this; this function only places the value, it does not validate eligibility.
+ * @property {string} name Header name, query-parameter name, or cookie name -- the surface's own `auth.name`.
+ * @property {string} value The credential value exactly as supplied by the caller, inserted verbatim (never reformatted against `auth.value_format` -- the caller is expected to have already formatted it, e.g. "Bearer <token>").
+ */
+
+/**
  * @typedef {object} CallSubnetSurfaceOptions
  * @property {Record<string, string | number | boolean>} [query] Query params merged onto the effective base URL.
  * @property {string} [path] MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER (call_subnet_surface's tool handler) is responsible for confirming this path is declared in the surface's captured schema via matchSchemaOperation BEFORE ever passing it here; this function does not validate it. When present, the request URL is this surface's own origin (never the OpenAPI document's own `servers[]` host) joined with this path, not `surface.url`.
  * @property {string} [method] Overrides the surface's probe-derived method (Phase 1 default). Ignored unless `path` is also set.
  * @property {string} [body] MCP execute Phase 2c (#7675) request body, already serialized to a string by the caller -- this function never serializes or validates it, only sends it as-is. Ignored unless `path` is also set; GET/HEAD never send a body regardless.
  * @property {string} [contentType] The `content-type` header to send alongside `body`. Ignored when `body` is not set.
+ * @property {CallSubnetSurfaceCredential} [credential] MCP execute Phase 3a (#7686) caller-supplied credential to attach to the request. Unlike `body`/`method`, this applies regardless of whether `path` is set -- it attaches to whichever URL is already being called (the surface's own curated `url`, Phase 1, or a schema-validated `path` override, Phase 2), it never changes URL/path resolution itself.
  * @property {typeof fetch} [fetchImpl] Injectable fetch (tests; also threaded into isUnsafeUrl's own DoH lookups).
  * @property {(url: string) => Promise<boolean>} isUnsafeUrl Required -- the same DNS-rebinding-aware guard verify_integration uses (workerResolvedUrlSafetyGuard).
  */
@@ -75,11 +83,29 @@ export async function callSubnetSurface(surface, options) {
     method: methodOverride,
     body: requestBody,
     contentType: requestContentType,
+    credential,
     fetchImpl = fetch,
     isUnsafeUrl,
   } = options ?? {};
   if (typeof isUnsafeUrl !== "function") {
     throw new Error("callSubnetSurface requires options.isUnsafeUrl");
+  }
+  // Placed before URL/header construction so a query-location credential
+  // becomes part of the query object buildRequestUrl() merges below, and a
+  // header/cookie-location credential is ready to hand to safetyCheckedFetch.
+  let effectiveQuery = query;
+  const extraHeaders = {};
+  if (credential) {
+    if (credential.location === "query") {
+      effectiveQuery = {
+        ...(query || {}),
+        [credential.name]: credential.value,
+      };
+    } else if (credential.location === "header") {
+      extraHeaders[credential.name] = credential.value;
+    } else if (credential.location === "cookie") {
+      extraHeaders.cookie = `${credential.name}=${credential.value}`;
+    }
   }
   const method =
     path && methodOverride
@@ -115,13 +141,14 @@ export async function callSubnetSurface(surface, options) {
     }
     baseUrl = resolved.toString();
   }
-  const requestUrl = buildRequestUrl(baseUrl, query);
+  const requestUrl = buildRequestUrl(baseUrl, effectiveQuery);
 
   const fetched = await safetyCheckedFetch(requestUrl, {
     method,
     ...(canHaveBody && requestBody !== undefined
       ? { body: requestBody, contentType: requestContentType }
       : {}),
+    extraHeaders,
     fetchImpl,
     isUnsafeUrl,
     timeoutMs,
@@ -298,6 +325,7 @@ async function safetyCheckedFetch(
     timeoutMs,
     body,
     contentType,
+    extraHeaders,
     redirectCount = 0,
   },
 ) {
@@ -317,6 +345,7 @@ async function safetyCheckedFetch(
         ...(body !== undefined && contentType
           ? { "content-type": contentType }
           : {}),
+        ...(extraHeaders || {}),
       },
       ...(body !== undefined ? { body } : {}),
       redirect: "manual",
@@ -340,6 +369,16 @@ async function safetyCheckedFetch(
           status_code: response.status,
         };
       }
+      // metagraphed#7686: extraHeaders may carry a caller's credential
+      // (Authorization/api-key/Cookie) -- forwarding it across an origin
+      // boundary would hand it to a host the caller never authorized,
+      // exactly the class of leak real HTTP clients guard against by
+      // stripping Authorization on a cross-origin redirect. This code
+      // manually re-issues each hop (redirect: "manual"), so that stripping
+      // doesn't happen for free; drop extraHeaders the moment the redirect
+      // target's origin differs from the current hop's, and it stays
+      // dropped for every hop after (a stripped call never receives it back).
+      const sameOrigin = new URL(redirectTarget).origin === new URL(url).origin;
       return safetyCheckedFetch(redirectTarget, {
         method,
         fetchImpl,
@@ -347,6 +386,7 @@ async function safetyCheckedFetch(
         timeoutMs,
         body,
         contentType,
+        extraHeaders: sameOrigin ? extraHeaders : undefined,
         redirectCount: redirectCount + 1,
       });
     }

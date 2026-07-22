@@ -11063,6 +11063,11 @@ export const MCP_TOOLS = [
           description:
             'Media type for `body`, e.g. "application/json". Must be one the matched operation declares. Optional when the operation declares application/json or exactly one media type.',
         },
+        credential: {
+          type: "string",
+          description:
+            'Credential for an auth_required surface, already formatted per the surface\'s auth.value_format (e.g. "Bearer <token>", "Apikey <key>" -- fetch it first with list_subnet_apis/get_api_schema). Only surfaces with auth.scheme bearer or api-key AND both auth.location/auth.name documented accept this; anything else (custom scheme, or an incompletely-documented one) is rejected. This tool never obtains a credential on your behalf -- you must already hold a working one. Never stored, logged, or reused past this single call.',
+        },
       },
       required: ["surface_id"],
       additionalProperties: false,
@@ -11133,11 +11138,43 @@ export const MCP_TOOLS = [
           `No catalogued surface with id, key, or deprecated id "${args.surface_id}".`,
         );
       }
-      if (surface.auth_required) {
+      const hasCredentialArg =
+        typeof args?.credential === "string" && args.credential.length > 0;
+      if (hasCredentialArg && !surface.auth_required) {
         throw toolError(
-          "auth_required",
-          "This surface requires a credential this tool does not yet support (MCP execute Phase 3). Use list_subnet_apis / how_do_i_call to see how to call it directly.",
+          "invalid_params",
+          "`credential` was supplied but this surface does not require one.",
         );
+      }
+      let credentialPlacement;
+      if (surface.auth_required) {
+        if (!hasCredentialArg) {
+          throw toolError(
+            "auth_required",
+            "This surface requires a credential. Supply `credential` (see this tool's description for the required format), or use list_subnet_apis / how_do_i_call to see how to call it directly.",
+          );
+        }
+        const scheme = surface.auth?.scheme;
+        if (scheme !== "bearer" && scheme !== "api-key") {
+          throw toolError(
+            "credential_not_supported",
+            `This surface's auth scheme ("${scheme || "undocumented"}") is not one this tool can attach a credential to (only bearer/api-key are supported). Use list_subnet_apis / how_do_i_call to see how to call it directly.`,
+          );
+        }
+        const location = surface.auth?.location;
+        const name = surface.auth?.name;
+        if (
+          !name ||
+          (location !== "header" &&
+            location !== "query" &&
+            location !== "cookie")
+        ) {
+          throw toolError(
+            "credential_not_supported",
+            "This surface's auth mechanism (location/name) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
+          );
+        }
+        credentialPlacement = { location, name, value: args.credential };
       }
       if (surface.probe?.enabled === false) {
         throw toolError(
@@ -11236,6 +11273,7 @@ export const MCP_TOOLS = [
         method: hasPath ? normalizedMethod : undefined,
         body: requestBody,
         contentType: requestContentType,
+        credential: credentialPlacement,
         fetchImpl: globalThis.fetch,
         isUnsafeUrl: workerResolvedUrlSafetyGuard({
           fetchImpl: globalThis.fetch,
