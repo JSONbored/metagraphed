@@ -332,7 +332,7 @@ import {
   buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "./account-stake-moves.mjs";
+} from "./account-stake-moves.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import {

@@ -26,27 +26,31 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const STAKE_MOVED_EVENT_KIND = "StakeMoved";
-export const ACCOUNT_STAKE_MOVES_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const ACCOUNT_STAKE_MOVES_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 export const DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW = "30d";
 
-function roundConcentration(value) {
+function roundConcentration(value: number): number {
   const rounded = Math.round(value * 10000) / 10000;
   return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 
-function toCount(value) {
+function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
-function normalizedNetuid(value) {
+function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
 }
 
-function coerceEpochMs(value) {
+function coerceEpochMs(value: unknown): number | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -54,14 +58,14 @@ function coerceEpochMs(value) {
   return Number.isFinite(date.getTime()) ? n : null;
 }
 
-function toIso(value) {
+function toIso(value: unknown): string | null {
   const n = coerceEpochMs(value);
   return n == null ? null : new Date(n).toISOString();
 }
 
 // UTC YYYY-MM-DD for an epoch-ms timestamp — matches subnet_snapshots.snapshot_date's
 // own "YYYY-MM-DD (UTC)" convention (migrations/0002_analytics.sql) exactly.
-function utcDateFromMs(ms) {
+function utcDateFromMs(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
@@ -69,20 +73,48 @@ function utcDateFromMs(ms) {
 // rounding: this is a single stored snapshot value passed through, not a SUM
 // accumulating float noise (unlike the amount aggregates elsewhere in this
 // file), so there's no rao-precision cleanup to do.
-function nullablePrice(value) {
+function nullablePrice(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
+export interface AccountStakeMoveSubnet {
+  netuid: number;
+  movements: number;
+  first_moved_at: string | null;
+  last_moved_at: string | null;
+  price_tao_at_last_move: number | null;
+}
+
+export interface AccountStakeMovesResult {
+  schema_version: 1;
+  address: string;
+  window: string | null;
+  total_movements: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountStakeMoveSubnet[];
+}
+
 export function buildAccountStakeMoves(
-  rows,
-  address,
-  { window, priceByNetuidDate } = {},
-) {
+  rows: Array<Record<string, unknown>> | null | undefined,
+  address: string,
+  {
+    window,
+    priceByNetuidDate,
+  }: {
+    window?: string | null;
+    priceByNetuidDate?: Map<string, number> | null;
+  } = {},
+): AccountStakeMovesResult {
   const list = Array.isArray(rows) ? rows : [];
-  const perSubnet = new Map();
+  const perSubnet = new Map<
+    number,
+    { movements: number; firstMs: number | null; lastMs: number | null }
+  >();
   for (const row of list) {
     const netuid = normalizedNetuid(row?.netuid);
     if (netuid == null) continue;
@@ -110,7 +142,7 @@ export function buildAccountStakeMoves(
 
   let totalMovements = 0;
   let squares = 0;
-  const subnets = [];
+  const subnets: AccountStakeMoveSubnet[] = [];
   for (const [netuid, bucket] of perSubnet) {
     totalMovements += bucket.movements;
     squares += bucket.movements * bucket.movements;
@@ -157,10 +189,15 @@ export function buildAccountStakeMoves(
 }
 
 export async function loadAccountStakeMoves(
-  d1,
-  address,
-  { windowLabel = DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW } = {},
-) {
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
+  address: string,
+  {
+    windowLabel = DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+  }: { windowLabel?: string } = {},
+): Promise<{ data: AccountStakeMovesResult; generatedAt: string | null }> {
   const days =
     ACCOUNT_STAKE_MOVES_WINDOWS[windowLabel] ??
     ACCOUNT_STAKE_MOVES_WINDOWS[DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW];
@@ -172,7 +209,7 @@ export async function loadAccountStakeMoves(
       "WHERE coldkey = ? AND event_kind = ? AND observed_at >= ? GROUP BY netuid",
     [address, STAKE_MOVED_EVENT_KIND, cutoff],
   );
-  let latestObserved = null;
+  let latestObserved: number | null = null;
   for (const row of Array.isArray(rows) ? rows : []) {
     const observed = coerceEpochMs(row?.last_observed);
     if (
@@ -199,9 +236,15 @@ export async function loadAccountStakeMoves(
 // That query is a deliberately engineered UNION-of-seeks (idx_account_events_
 // coldkey) kept untouched here rather than risk its index-seek behavior
 // under D1/SQLite's query planner. Returns a Map keyed "netuid:YYYY-MM-DD".
-async function loadAlphaPricesForLastMoves(d1, rows) {
-  const netuids = new Set();
-  const dates = new Set();
+async function loadAlphaPricesForLastMoves(
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
+  rows: Array<Record<string, unknown>> | null | undefined,
+): Promise<Map<string, number>> {
+  const netuids = new Set<number>();
+  const dates = new Set<string>();
   for (const row of Array.isArray(rows) ? rows : []) {
     const netuid = normalizedNetuid(row?.netuid);
     const lastMs = coerceEpochMs(row?.last_observed);
@@ -209,7 +252,7 @@ async function loadAlphaPricesForLastMoves(d1, rows) {
     netuids.add(netuid);
     dates.add(utcDateFromMs(lastMs));
   }
-  const map = new Map();
+  const map = new Map<string, number>();
   if (netuids.size === 0 || dates.size === 0) return map;
   const netuidList = [...netuids];
   const dateList = [...dates];

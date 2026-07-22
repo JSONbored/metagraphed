@@ -5,7 +5,7 @@ import {
   loadAccountStakeMoves,
   STAKE_MOVED_EVENT_KIND,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "../src/account-stake-moves.mjs";
+} from "../src/account-stake-moves.ts";
 
 function row(netuid, movements, first, last) {
   return {

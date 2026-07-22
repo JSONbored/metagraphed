@@ -174,7 +174,7 @@ import {
   STAKE_MOVED_EVENT_KIND,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "../src/account-stake-moves.mjs";
+} from "../src/account-stake-moves.ts";
 import {
   buildSubnetStakeMoves,
   SUBNET_STAKE_MOVES_WINDOWS,

@@ -551,7 +551,7 @@ import {
   buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "./account-stake-moves.mjs";
+} from "./account-stake-moves.ts";
 import {
   buildAccountAxonRemovals,
   AXON_REMOVAL_WINDOWS,

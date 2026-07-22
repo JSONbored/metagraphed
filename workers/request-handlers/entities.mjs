@@ -241,7 +241,7 @@ import {
   buildAccountStakeMoves,
   ACCOUNT_STAKE_MOVES_WINDOWS,
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
-} from "../../src/account-stake-moves.mjs";
+} from "../../src/account-stake-moves.ts";
 import {
   buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
