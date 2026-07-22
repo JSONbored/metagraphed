@@ -21,7 +21,7 @@ import * as Sentry from "@sentry/node";
 // integrations don't mark the active session crashed before exiting
 // (confirmed by reading node_modules/@sentry/node-core's actual source --
 // same finding scripts/observability.mjs's own header documents), and unlike
-// scripts/chain-firehose-relay.mjs this server has no single top-level
+// scripts/chain-firehose-relay.ts this server has no single top-level
 // main().catch() boundary every crash funnels through (any of its event
 // handlers -- the HTTP server, the WS upgrade handler, the refresh/heartbeat
 // intervals -- could throw directly to the process level), so this module
@@ -103,14 +103,14 @@ export async function endSessionAndFlush() {
 export const NO_UPSTREAM_REPORT_THRESHOLD = 50;
 export const NO_UPSTREAM_REPORT_INTERVAL_MS = 5 * 60 * 1000;
 
-// Pure state-transition function -- same design as chain-firehose-relay.mjs's
+// Pure state-transition function -- same design as chain-firehose-relay.ts's
 // computeDropWindowUpdate, for the same reason: a client-connect storm during
 // a real upstream-pool outage could reject many clients per second (every
 // concurrent reconnect attempt), and naive per-rejection capture would blow
 // through the free-tier Sentry event quota and then be silently sampled away
 // by Sentry itself -- the opposite of the point. Holds no module-level
 // mutable state itself; the caller (server.mjs) owns the actual window
-// variable, the same split chain-firehose-relay.mjs's own comment explains.
+// variable, the same split chain-firehose-relay.ts's own comment explains.
 export function computeNoUpstreamWindowUpdate(
   window,
   network,

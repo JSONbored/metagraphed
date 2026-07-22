@@ -30,7 +30,7 @@ GIT_REF="main"
 
 # A FIXED path, not mktemp's random suffix -- unlike the other clone-at-
 # runtime entrypoints, the Docker HEALTHCHECK directive (see the Dockerfile)
-# execs `node <path>/scripts/chain-firehose-relay.mjs --healthcheck`
+# execs `node <path>/scripts/chain-firehose-relay.ts --healthcheck`
 # directly, baked into the image at build time, so the clone location must
 # be a fixed, known path. The `rm -rf` immediately below (not the other
 # entrypoints' mktemp-then-copy pattern) is what keeps this safe to
@@ -61,5 +61,5 @@ fi
 : "${SENTRY_RELEASE:=$(git rev-parse HEAD)}"
 export SENTRY_RELEASE
 
-echo "entrypoint: node scripts/chain-firehose-relay.mjs (release ${SENTRY_RELEASE})"
-exec node scripts/chain-firehose-relay.mjs
+echo "entrypoint: node scripts/chain-firehose-relay.ts (release ${SENTRY_RELEASE})"
+exec node scripts/chain-firehose-relay.ts

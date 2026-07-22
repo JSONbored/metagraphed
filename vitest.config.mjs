@@ -101,7 +101,7 @@ export default defineConfig({
       // workers/api.mjs's own Sentry wrapper hit that Worker's 1024 KiB
       // Cloudflare bundle ceiling, tracked separately, see #6479's own
       // follow-up) are deliberately coverage-invisible for the same reason
-      // chain-firehose-relay.mjs is: @sentry/cloudflare's withSentry()
+      // chain-firehose-relay.ts is: @sentry/cloudflare's withSentry()
       // requires real Cloudflare Workers runtime primitives
       // (AsyncLocalStorage-based context propagation via workerd) that
       // don't exist in this plain-Node vitest environment -- confirmed

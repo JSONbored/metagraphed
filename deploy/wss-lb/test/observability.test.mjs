@@ -53,7 +53,7 @@ test("computeNoUpstreamWindowUpdate: tracks the most recently affected network",
 });
 
 test("computeNoUpstreamWindowUpdate: two independent windows never leak state into one another", () => {
-  // Regression test for the same class of bug chain-firehose-relay.mjs's own
+  // Regression test for the same class of bug chain-firehose-relay.ts's own
   // computeDropWindowUpdate test suite guards against: passing `null` must
   // always mean "a genuinely fresh window," never a stale value from a prior
   // call, since this function deliberately holds no module-level state itself.

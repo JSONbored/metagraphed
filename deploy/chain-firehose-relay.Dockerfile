@@ -3,12 +3,12 @@
 # own Postgres chain_firehose_outbox table, forwards each to the Cloudflare
 # Durable Object ingest endpoint (#4982). Only ever UPDATEs rows it has
 # itself claimed, never in indexer-rs's critical path -- see
-# scripts/chain-firehose-relay.mjs's own header comment for why this is safe
+# scripts/chain-firehose-relay.ts's own header comment for why this is safe
 # by construction, unlike the retired streamer (docs/adr/0014).
 #
 # Clone-at-runtime, like metagraph-fetch.Dockerfile/data-refresh-node.Dockerfile
 # /economics-refresh.Dockerfile: this image holds no copy of
-# chain-firehose-relay.mjs itself (see scripts/chain-firehose-relay-entrypoint.sh).
+# chain-firehose-relay.ts itself (see scripts/chain-firehose-relay-entrypoint.sh).
 # metagraphed-infra used to track a second, independently-drifting copy of
 # this file (metagraphed#6451); the entrypoint now clones the real one from
 # GitHub at container start instead. The Ansible `chain-firehose-relay` role
@@ -50,4 +50,4 @@ ENTRYPOINT ["./entrypoint.sh"]
 # turns `docker inspect`'s resulting health status into a Prometheus-visible
 # metric -- Docker's HEALTHCHECK alone has no alerting of its own.
 HEALTHCHECK --interval=60s --timeout=5s --start-period=30s --retries=3 \
-  CMD ["node", "/tmp/repo/scripts/chain-firehose-relay.mjs", "--healthcheck"]
+  CMD ["node", "/tmp/repo/scripts/chain-firehose-relay.ts", "--healthcheck"]

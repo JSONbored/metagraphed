@@ -33,12 +33,14 @@
 // header comment.
 //
 // Run: DATABASE_URL=... CHAIN_FIREHOSE_INGEST_URL=... \
-//      CHAIN_FIREHOSE_SYNC_SECRET=... node scripts/chain-firehose-relay.mjs
+//      CHAIN_FIREHOSE_SYNC_SECRET=... node scripts/chain-firehose-relay.ts
 
 import { writeFileSync, statSync } from "node:fs";
 import postgres from "postgres";
 import { closeSession } from "@sentry/core";
 import * as Sentry from "@sentry/node";
+
+type Row = Record<string, unknown>;
 
 // Reports to the consolidated `metagraphed` Sentry project. Silently no-ops
 // if SENTRY_DSN is unset, matching this relay's own best-effort design.
@@ -57,7 +59,7 @@ import * as Sentry from "@sentry/node";
 // periodically, don't spam" shape as roles/validator-ops/watchdog.py's own
 // re-alert logic in metagraphed-infra. Exported for direct testing rather
 // than only indirectly via main()'s own /* v8 ignore */ boundary.
-export function initSentry() {
+export function initSentry(): void {
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return;
   Sentry.init({
@@ -92,13 +94,26 @@ export function initSentry() {
 // Closes the process-lifetime session as a healthy exit. Called from the
 // graceful SIGTERM/SIGINT shutdown path once the poll loop has actually
 // stopped -- see main()'s own shutdown() closure.
-export async function endSessionAndFlush() {
+export async function endSessionAndFlush(): Promise<void> {
   Sentry.endSession();
   await Sentry.flush(2000);
 }
 
 export const CHAIN_FIREHOSE_DROP_REPORT_THRESHOLD = 500;
 export const CHAIN_FIREHOSE_DROP_REPORT_INTERVAL_MS = 5 * 60 * 1000;
+
+interface DropWindow {
+  startedAt: number;
+  count: number;
+}
+
+interface DropWindowUpdate {
+  report: boolean;
+  count: number;
+  elapsedMs: number;
+  lastStatus: number | undefined;
+  nextWindow: DropWindow | null;
+}
 
 // Pure state-transition function: given the current drop-reporting window
 // (or null, before any drops this run) and a new batch's drop count, returns
@@ -114,11 +129,11 @@ export const CHAIN_FIREHOSE_DROP_REPORT_INTERVAL_MS = 5 * 60 * 1000;
 // unless every test carefully reset it first, which is exactly the bug this
 // design avoids.
 export function computeDropWindowUpdate(
-  window,
-  count,
-  lastStatus,
-  now = Date.now(),
-) {
+  window: DropWindow | null | undefined,
+  count: number,
+  lastStatus: number | undefined,
+  now: number = Date.now(),
+): DropWindowUpdate {
   const startedAt = window?.startedAt ?? now;
   const totalCount = (window?.count ?? 0) + count;
   const elapsedMs = now - startedAt;
@@ -140,7 +155,7 @@ export function computeDropWindowUpdate(
 // least tens of seconds long -- see CHAIN_FIREHOSE_DEFAULT_RATE_LIMIT_PAUSE_MS),
 // so unlike drops this is safe to capture directly, one event per pause,
 // with no separate aggregation window needed.
-export function reportRateLimitPause(pauseMs) {
+export function reportRateLimitPause(pauseMs: number): void {
   Sentry.captureMessage(
     `chain-firehose-relay: rate limited by the ingest endpoint, pausing ${pauseMs}ms`,
     { level: "warning", extra: { pauseMs } },
@@ -183,7 +198,7 @@ export const HEARTBEAT_FILE = "/tmp/chain-firehose-relay-heartbeat";
 // behavior the poll loop is supposed to do.
 export const HEARTBEAT_STALE_MS = 10 * 60 * 1000;
 
-export function touchHeartbeat(path = HEARTBEAT_FILE) {
+export function touchHeartbeat(path: string = HEARTBEAT_FILE): void {
   // Best-effort -- a heartbeat-write failure must never crash the relay's
   // actual job (forwarding payloads). Falls back to letting the
   // HEALTHCHECK go unhealthy (visible) rather than silently swallowing a
@@ -196,10 +211,10 @@ export function touchHeartbeat(path = HEARTBEAT_FILE) {
 }
 
 export function isHeartbeatFresh(
-  path = HEARTBEAT_FILE,
-  now = Date.now(),
-  maxAgeMs = HEARTBEAT_STALE_MS,
-) {
+  path: string = HEARTBEAT_FILE,
+  now: number = Date.now(),
+  maxAgeMs: number = HEARTBEAT_STALE_MS,
+): boolean {
   try {
     return now - statSync(path).mtimeMs < maxAgeMs;
   } catch {
@@ -258,7 +273,10 @@ export const CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S = 960;
 // under-throttling-of-the-rate-limit's-true-headroom bug batching exists to
 // fix (pacing to 960 ROWS/min regardless of batch size caps effective
 // throughput at the pre-batching rate, defeating the entire point of #6672).
-export function computeBatchPaceDelayMs(requestCount, elapsedMs) {
+export function computeBatchPaceDelayMs(
+  requestCount: number,
+  elapsedMs: number,
+): number {
   if (requestCount <= 0) return 0;
   const targetMs =
     (requestCount / CHAIN_FIREHOSE_SAFE_FORWARD_RATE_PER_60S) * 60_000;
@@ -325,8 +343,8 @@ export const CHAIN_FIREHOSE_INGEST_BATCH_SIZE = 10;
 // Splits `items` into consecutive groups of at most `size`, preserving
 // order. Pure and tiny -- kept separate from forwardBatch below so the
 // grouping itself is directly testable without a fetch mock.
-export function chunkRows(items, size) {
-  const chunks = [];
+export function chunkRows<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
     chunks.push(items.slice(i, i + size));
   }
@@ -339,9 +357,13 @@ export function chunkRows(items, size) {
 // into a minimal container (deploy/chain-firehose-relay.Dockerfile's own
 // comment: "a single small ESM file + one npm dependency"); pulling in `src/`
 // would grow that deploy surface for a ~15-line utility.
-export async function mapBounded(items, concurrency, fn) {
+export async function mapBounded<T, R>(
+  items: T[] | null | undefined,
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
   const list = [...(items || [])];
-  const results = new Array(list.length);
+  const results: R[] = new Array(list.length);
   let cursor = 0;
   const worker = async () => {
     while (cursor < list.length) {
@@ -358,10 +380,18 @@ export async function mapBounded(items, concurrency, fn) {
   return results;
 }
 
+interface RelayConfig {
+  databaseUrl: string;
+  syncSecret: string;
+  ingestUrl: string;
+}
+
 // Validates the process env this relay needs. Throws (rather than returning
 // a result object) so a misconfigured deploy fails loudly at startup instead
 // of silently no-op'ing -- there's no partial-config mode worth degrading to.
-export function parseRelayConfig(env) {
+export function parseRelayConfig(
+  env: Record<string, string | undefined>,
+): RelayConfig {
   const databaseUrl = env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required");
@@ -378,12 +408,12 @@ export function parseRelayConfig(env) {
 // Exponential backoff, capped -- attempt is 0-indexed (the first retry after
 // an initial failed attempt).
 export function computeBackoffDelayMs(
-  attempt,
+  attempt: number,
   {
     baseMs = CHAIN_FIREHOSE_BACKOFF_BASE_MS,
     maxMs = CHAIN_FIREHOSE_BACKOFF_MAX_MS,
-  } = {},
-) {
+  }: { baseMs?: number; maxMs?: number } = {},
+): number {
   return Math.min(baseMs * 2 ** attempt, maxMs);
 }
 
@@ -394,14 +424,18 @@ export function computeBackoffDelayMs(
 // the backoff schedule is unit-testable without real waits; `onRetry` is
 // invoked (with the caught error and 0-indexed attempt) before each backoff
 // so the caller can log the transient failure it just absorbed.
-export async function runQueryWithRetry(
-  operation,
+export async function runQueryWithRetry<T>(
+  operation: () => Promise<T>,
   {
     maxAttempts = CHAIN_FIREHOSE_MAX_QUERY_ATTEMPTS,
-    sleepImpl = (ms) => new Promise((r) => setTimeout(r, ms)),
+    sleepImpl = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
     onRetry,
+  }: {
+    maxAttempts?: number;
+    sleepImpl?: (ms: number) => Promise<void>;
+    onRetry?: (error: unknown, attempt: number) => void;
   } = {},
-) {
+): Promise<T> {
   for (let attempt = 0; ; attempt += 1) {
     try {
       return await operation();
@@ -433,7 +467,9 @@ export const CHAIN_FIREHOSE_DEFAULT_RATE_LIMIT_PAUSE_MS = 65 * 1000;
 // 2026-07 incident: 429s were retried with the same short generic backoff
 // as any other failure, so the relay kept re-triggering the same rate limit
 // indefinitely instead of ever recovering).
-export function parseRetryAfterMs(headerValue) {
+export function parseRetryAfterMs(
+  headerValue: string | null | undefined,
+): number | null {
   if (!headerValue) return null;
   const seconds = Number(headerValue);
   if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
@@ -444,6 +480,12 @@ export function parseRetryAfterMs(headerValue) {
   return null;
 }
 
+interface ForwardResult {
+  ok: boolean;
+  status: number;
+  retryAfterMs?: number;
+}
+
 // Forwards one payload to the hub's ingest endpoint. `fetchImpl` is injected
 // so this is testable without a real network call -- the poll loop below is
 // the only caller in production. `payload` is the JSON-serialized string
@@ -452,10 +494,10 @@ export function parseRetryAfterMs(headerValue) {
 // on the result when the response actually carried a retry-after header
 // (i.e. never on a 2xx) -- keeps the common-case return shape unchanged.
 export async function forwardChainFirehoseNotification(
-  payload,
-  { ingestUrl, syncSecret },
-  fetchImpl = fetch,
-) {
+  payload: string,
+  { ingestUrl, syncSecret }: Pick<RelayConfig, "ingestUrl" | "syncSecret">,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ForwardResult> {
   const abortController = new AbortController();
   const timeout = setTimeout(
     () => abortController.abort(),
@@ -474,7 +516,7 @@ export async function forwardChainFirehoseNotification(
     const retryAfterMs = parseRetryAfterMs(
       response.headers?.get?.("retry-after"),
     );
-    const result = {
+    const result: ForwardResult = {
       ok: response.ok,
       status: response.status,
       ...(retryAfterMs !== null && { retryAfterMs }),
@@ -496,16 +538,21 @@ export async function forwardChainFirehoseNotification(
 // own retries, which is the actual fix for the thundering-herd failure mode
 // (see forwardBatch's own comment).
 export async function forwardWithRetry(
-  payload,
-  config,
+  payload: string,
+  config: Pick<RelayConfig, "ingestUrl" | "syncSecret">,
   {
     fetchImpl = fetch,
-    sleepImpl = (ms) => new Promise((r) => setTimeout(r, ms)),
+    sleepImpl = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
     onDrop,
     onRateLimited,
+  }: {
+    fetchImpl?: typeof fetch;
+    sleepImpl?: (ms: number) => Promise<void>;
+    onDrop?: (payload: string, status: number | undefined) => void;
+    onRateLimited?: (pauseMs: number) => void;
   } = {},
-) {
-  let result;
+): Promise<boolean> {
+  let result: ForwardResult | undefined;
   for (
     let attempt = 0;
     attempt < CHAIN_FIREHOSE_MAX_FORWARD_ATTEMPTS;
@@ -551,6 +598,12 @@ export async function forwardWithRetry(
   return false;
 }
 
+interface ForwardBatchResult {
+  forwarded: number;
+  dropped: number;
+  rateLimitedForMs?: number;
+}
+
 // Forwards every row in a claimed batch, grouped into CHAIN_FIREHOSE_INGEST_BATCH_SIZE-sized
 // chunks (#6672) with bounded concurrency across chunks (see
 // CHAIN_FIREHOSE_FORWARD_CONCURRENCY's own comment for why this isn't
@@ -582,10 +635,19 @@ export async function forwardWithRetry(
 // test needing CHAIN_FIREHOSE_INGEST_BATCH_SIZE-many rows), not a knob main()
 // ever overrides in production.
 export async function forwardBatch(
-  rows,
-  config,
-  { chunkSize = CHAIN_FIREHOSE_INGEST_BATCH_SIZE, ...options } = {},
-) {
+  rows: Row[],
+  config: Pick<RelayConfig, "ingestUrl" | "syncSecret">,
+  {
+    chunkSize = CHAIN_FIREHOSE_INGEST_BATCH_SIZE,
+    ...options
+  }: {
+    chunkSize?: number;
+    fetchImpl?: typeof fetch;
+    sleepImpl?: (ms: number) => Promise<void>;
+    onDrop?: (payload: unknown, status: number | undefined) => void;
+    onRateLimited?: (pauseMs: number) => void;
+  } = {},
+): Promise<ForwardBatchResult> {
   let rateLimitedForMs = 0;
   const chunks = chunkRows(rows, chunkSize);
   const chunkResults = await mapBounded(
@@ -630,12 +692,12 @@ export async function forwardBatch(
    other standalone deploy/-tier process in this repo (e.g. deploy/wss-lb,
    tested via `node --test` instead) -- see that config's own comment for the
    convention. */
-async function main() {
+async function main(): Promise<void> {
   initSentry();
   const config = parseRelayConfig(process.env);
   const sql = postgres(config.databaseUrl);
   let shuttingDown = false;
-  let dropWindow = null; // owned here, not module-level -- see computeDropWindowUpdate's own comment
+  let dropWindow: DropWindow | null = null; // owned here, not module-level -- see computeDropWindowUpdate's own comment
 
   const shutdown = async () => {
     shuttingDown = true;
@@ -651,8 +713,12 @@ async function main() {
   // (ms) the caller should sleep before the NEXT poll if this batch hit the
   // ingest endpoint's rate limit -- see forwardBatch's own comment for why
   // this is the actual fix, not just per-row retry backoff.
-  async function pollOnce() {
-    const rows = await runQueryWithRetry(
+  async function pollOnce(): Promise<{
+    claimed: number;
+    requestCount: number;
+    rateLimitedForMs: number;
+  }> {
+    const rows: Row[] = await runQueryWithRetry(
       () => sql`
       UPDATE chain_firehose_outbox
       SET delivered_at = now()
@@ -675,7 +741,7 @@ async function main() {
     if (rows.length === 0)
       return { claimed: 0, requestCount: 0, rateLimitedForMs: 0 };
     let droppedInBatch = 0;
-    let lastDropStatus;
+    let lastDropStatus: number | undefined;
     const result = await forwardBatch(rows, config, {
       onDrop: (_payload, status) => {
         droppedInBatch += 1;
@@ -716,7 +782,7 @@ async function main() {
     };
   }
 
-  async function cleanupOnce() {
+  async function cleanupOnce(): Promise<void> {
     const cutoff = new Date(Date.now() - CHAIN_FIREHOSE_OUTBOX_RETENTION_MS);
     await runQueryWithRetry(
       () => sql`

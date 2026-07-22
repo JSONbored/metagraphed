@@ -1,4 +1,4 @@
-// Unit tests for scripts/chain-firehose-relay.mjs's pure logic (#4981,
+// Unit tests for scripts/chain-firehose-relay.ts's pure logic (#4981,
 // #5027, ADR 0015). The long-running poll/cleanup loop (main()) needs a real
 // Postgres connection and process lifecycle and is intentionally excluded
 // from vitest.config.mjs's coverage.include (matching deploy/wss-lb's
@@ -66,7 +66,7 @@ import {
   reportRateLimitPause,
   runQueryWithRetry,
   touchHeartbeat,
-} from "../scripts/chain-firehose-relay.mjs";
+} from "../scripts/chain-firehose-relay.ts";
 import { CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE } from "../workers/chain-firehose-hub.ts";
 
 // #6672: this script deploys standalone (see CHAIN_FIREHOSE_INGEST_BATCH_SIZE's
