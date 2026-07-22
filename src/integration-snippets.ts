@@ -11,32 +11,39 @@
 // value PLACEHOLDER derived from the spec's securitySchemes or curated — and
 // only falls back to a scheme-type guess when no structured detail is present.
 
+interface AuthCredential {
+  location: "header" | "query" | "cookie";
+  name: string;
+  value: string;
+}
+
 // Resolve the structured per-surface auth (#746) into a snippet-ready credential:
 // { location: "header"|"query"|"cookie", name, value-placeholder }. Returns null
 // for no auth or an unsafe placeholder (a placeholder must never break snippet
 // quoting, and is never a real secret). The surface schema's auth.location enum is
 // header|query|cookie — a cookie credential is rendered as a Cookie header below.
-function authFromDetail(auth) {
+function authFromDetail(auth: unknown): AuthCredential | null {
   if (!auth || typeof auth !== "object") return null;
-  const scheme = String(auth.scheme || "").toLowerCase();
+  const authObj = auth as Record<string, unknown>;
+  const scheme = String(authObj.scheme || "").toLowerCase();
   if (scheme === "none") return null;
-  const location =
-    auth.location === "query"
+  const location: AuthCredential["location"] =
+    authObj.location === "query"
       ? "query"
-      : auth.location === "cookie"
+      : authObj.location === "cookie"
         ? "cookie"
         : "header";
   const name =
-    typeof auth.name === "string" && auth.name
-      ? auth.name
+    typeof authObj.name === "string" && authObj.name
+      ? authObj.name
       : location === "query"
         ? "api_key"
         : location === "cookie"
           ? "session"
           : "Authorization";
   const value =
-    typeof auth.value_format === "string" && auth.value_format
-      ? auth.value_format
+    typeof authObj.value_format === "string" && authObj.value_format
+      ? authObj.value_format
       : scheme === "api-key"
         ? "YOUR_API_KEY"
         : scheme === "basic"
@@ -46,7 +53,10 @@ function authFromDetail(auth) {
   return { location, name, value };
 }
 
-function authHeaderForSchemes(schemes) {
+function authHeaderForSchemes(schemes: unknown): {
+  name: string;
+  value: string;
+} {
   const types = new Set(
     (Array.isArray(schemes) ? schemes : []).map((scheme) =>
       String(scheme).toLowerCase(),
@@ -70,11 +80,11 @@ function authHeaderForSchemes(schemes) {
 // A validated public URL never contains a quote/backtick/newline (normalizePublicUrl
 // rejects credentials and percent-encodes the rest), but guard anyway so a snippet
 // string can never break out of its quoting.
-function isSnippetSafeUrl(url) {
+function isSnippetSafeUrl(url: unknown): url is string {
   return typeof url === "string" && url.length > 0 && !/['"`\\\s]/.test(url);
 }
 
-function isCredentialSafeUrl(url) {
+function isCredentialSafeUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     return parsed.protocol === "https:" || parsed.protocol === "wss:";
@@ -83,7 +93,7 @@ function isCredentialSafeUrl(url) {
   }
 }
 
-function encodeQueryCredentialPart(value) {
+function encodeQueryCredentialPart(value: string): string | null {
   try {
     return encodeURIComponent(value);
   } catch (error) {
@@ -92,8 +102,16 @@ function encodeQueryCredentialPart(value) {
   }
 }
 
+export interface ServiceSnippets {
+  curl: string;
+  python: string;
+  typescript: string;
+}
+
 // Returns { curl, python, typescript } or null when there is no usable base_url.
-export function generateServiceSnippets(service) {
+export function generateServiceSnippets(
+  service: Record<string, unknown> | null | undefined,
+): ServiceSnippets | null {
   const url = service?.base_url;
   if (!isSnippetSafeUrl(url)) return null;
   // Prefer the structured auth detail; fall back to the scheme-type guess only
@@ -101,12 +119,15 @@ export function generateServiceSnippets(service) {
   // authoritative — including an explicit scheme:"none" (→ no credential). Auth
   // is only ever attached over a credential-safe (https/wss) transport.
   const hasStructuredAuth = service?.auth && typeof service.auth === "object";
-  const auth = !isCredentialSafeUrl(url)
+  const auth: AuthCredential | null = !isCredentialSafeUrl(url)
     ? null
     : hasStructuredAuth
       ? authFromDetail(service.auth)
       : service?.auth_required
-        ? { location: "header", ...authHeaderForSchemes(service?.auth_schemes) }
+        ? {
+            location: "header",
+            ...authHeaderForSchemes(service?.auth_schemes),
+          }
         : null;
 
   // Header credentials go in the request headers; query credentials go on the URL.

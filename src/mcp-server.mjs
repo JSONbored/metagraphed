@@ -398,7 +398,7 @@ import {
   CHAIN_SERVING_WINDOWS,
   DEFAULT_CHAIN_SERVING_WINDOW,
 } from "./chain-serving.ts";
-import { generateServiceSnippets } from "./integration-snippets.mjs";
+import { generateServiceSnippets } from "./integration-snippets.ts";
 import {
   KV_HEALTH_RPC_POOL,
   workerResolvedUrlSafetyGuard,

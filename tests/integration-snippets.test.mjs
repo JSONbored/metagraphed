@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { generateServiceSnippets } from "../src/integration-snippets.mjs";
+import { generateServiceSnippets } from "../src/integration-snippets.ts";
 
 describe("generateServiceSnippets (#351)", () => {
   test("no-auth service: plain GET in all three languages", () => {

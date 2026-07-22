@@ -7,7 +7,7 @@ import {
   mapLimit,
   rollupSubnetStatus,
 } from "../src/health-probe-core.ts";
-import { generateServiceSnippets } from "../src/integration-snippets.mjs";
+import { generateServiceSnippets } from "../src/integration-snippets.ts";
 import {
   githubSignalsForSubnet,
   loadGithubSignals,
