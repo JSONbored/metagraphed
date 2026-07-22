@@ -11138,10 +11138,14 @@ export const MCP_TOOLS = [
         }),
       });
       if (!result.ok) {
-        if (result.unsafe_url || result.private_redirect_blocked) {
+        if (
+          result.unsafe_url ||
+          result.private_redirect_blocked ||
+          result.path_origin_mismatch
+        ) {
           throw toolError(
             "forbidden",
-            "This surface's URL is not safe to call (private/loopback address or an unsafe redirect target).",
+            "This surface's URL is not safe to call (private/loopback address, an unsafe redirect target, or a path that resolves outside the surface's own origin).",
           );
         }
         if (result.error?.startsWith("unsupported content-type")) {

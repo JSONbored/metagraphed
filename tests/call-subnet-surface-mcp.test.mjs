@@ -379,6 +379,31 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.match(result.content[0].text, /auth_required/);
     });
 
+    test("a path resolving outside the surface's own origin is rejected as forbidden, never fetched", async () => {
+      let fetched = false;
+      const result = await callTool(
+        {
+          surface_id: "x:api:4",
+          // Matches the declared /users/{id} template's shape (2 segments,
+          // literal "users" first) -- matchSchemaOperation approves it, but
+          // the leading "//" makes new URL() treat "users" as the target
+          // host instead of a path segment on the surface's own origin.
+          path: "//users/attacker.example",
+          method: "GET",
+        },
+        async () => {
+          fetched = true;
+          return new Response("{}", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /forbidden/);
+      assert.equal(fetched, false);
+    });
+
     test("without path/method, a schema-bearing surface still uses its own curated url (Phase 1 unchanged)", async () => {
       let requestedUrl;
       const result = await callTool({ surface_id: "x:api:4" }, async (url) => {
