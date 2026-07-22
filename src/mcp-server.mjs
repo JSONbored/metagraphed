@@ -532,7 +532,7 @@ import { buildChainYield } from "./chain-yield.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "./subnet-idle-stake.mjs";
+} from "./subnet-idle-stake.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import {
   buildChainIdentityHistory,

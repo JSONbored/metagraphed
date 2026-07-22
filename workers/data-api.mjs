@@ -91,7 +91,7 @@ import { buildChainPerformance } from "../src/chain-performance.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "../src/subnet-idle-stake.mjs";
+} from "../src/subnet-idle-stake.ts";
 import { buildChainYield } from "../src/chain-yield.ts";
 import {
   buildSubnetYield,

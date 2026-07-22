@@ -9,17 +9,19 @@
 // dividends/stake_tao columns -- zero new capture, mirrors src/alpha-
 // volume.mjs's own "already-captured rows, no new polling" convention.
 
+type Row = Record<string, unknown>;
+
 // 1 TAO = 1e9 rao. Sum in rao-integer BigInt space, not float space --
 // summing potentially thousands of neurons' stake_tao (network-wide) with
 // plain `+=` compounds rounding error across the accumulation even when
 // each individual value is itself exact (mirrors src/concentration.ts's
 // own toRaoBig/raoBigToTao, a deliberate byte-for-byte copy per this
 // codebase's per-module rounding-helper convention).
-function toRaoBig(taoValue) {
+function toRaoBig(taoValue: unknown): bigint {
   const n = Number(taoValue);
   return Number.isFinite(n) ? BigInt(Math.round(n * 1e9)) : 0n;
 }
-function raoBigToTao(rao) {
+function raoBigToTao(rao: bigint): number {
   return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
 }
 
@@ -30,13 +32,13 @@ function raoBigToTao(rao) {
 // epoch (D1/Postgres often hand back a BIGINT column as a string), or an
 // ISO string; anything else (or a non-positive/non-finite epoch) is not a
 // real timestamp and is ignored.
-function epochMsStamp(ms) {
+function epochMsStamp(ms: number): { ms: number; value: string } | null {
   if (!Number.isFinite(ms) || ms <= 0) return null;
   const date = new Date(ms);
   if (!Number.isFinite(date.getTime())) return null;
   return { ms, value: date.toISOString() };
 }
-function captureStamp(value) {
+function captureStamp(value: unknown): { ms: number; value: string } | null {
   if (value == null) return null;
   if (typeof value === "string") {
     if (/^\d+$/.test(value)) return epochMsStamp(Number(value));
@@ -46,8 +48,8 @@ function captureStamp(value) {
   if (typeof value === "number") return epochMsStamp(value);
   return null;
 }
-function newestCapturedAt(rows) {
-  let newest = null;
+function newestCapturedAt(rows: Row[]): string | null {
+  let newest: { ms: number; value: string } | null = null;
   for (const row of rows) {
     const stamp = captureStamp(row?.captured_at);
     if (stamp && (newest == null || stamp.ms > newest.ms)) newest = stamp;
@@ -60,7 +62,7 @@ function newestCapturedAt(rows) {
 // nothing), regardless of WHY dividends are zero (no permit, or a permit
 // with a currently-zero weight-setting output -- both collapse to the same
 // observable from a delegator's perspective).
-function isIdle(row) {
+function isIdle(row: Row | null | undefined): boolean {
   // Explicit null/undefined check BEFORE coercion: Number(null) === 0
   // (finite), which would otherwise treat a genuinely-missing/uncaptured
   // dividends value as a real zero (a hotkey earning nothing) rather than
@@ -74,7 +76,10 @@ function isIdle(row) {
 // One subnet's idle-stake scorecard. Null-safe: an empty/cold neurons tier
 // yields a schema-stable zero (never throws), matching the sibling live
 // tiers (concentration, performance).
-export function buildSubnetIdleStake(rows, netuid) {
+export function buildSubnetIdleStake(
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+): Row {
   const list = Array.isArray(rows) ? rows : [];
   let idleStakeRao = 0n;
   let idleNeuronCount = 0;
@@ -97,9 +102,12 @@ export function buildSubnetIdleStake(rows, netuid) {
 // idle_stake_tao descending, plus the network total -- mirrors src/chain-
 // alpha-volume.mjs's own per-subnet-groupby-then-rollup shape over src/
 // alpha-volume.mjs's per-subnet scorecard.
-export function buildChainIdleStake(rows) {
+export function buildChainIdleStake(rows: Row[] | null | undefined): Row {
   const list = Array.isArray(rows) ? rows : [];
-  const bySubnet = new Map();
+  const bySubnet = new Map<
+    number,
+    { neuronCount: number; idleNeuronCount: number; idleStakeRao: bigint }
+  >();
   for (const row of list) {
     const netuid = Number(row?.netuid);
     if (!Number.isInteger(netuid)) continue;

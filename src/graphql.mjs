@@ -420,7 +420,7 @@ import {
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "./subnet-idle-stake.mjs";
+} from "./subnet-idle-stake.ts";
 import {
   buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,

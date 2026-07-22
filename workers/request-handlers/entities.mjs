@@ -144,7 +144,7 @@ import { buildChainYield } from "../../src/chain-yield.ts";
 import {
   buildChainIdleStake,
   buildSubnetIdleStake,
-} from "../../src/subnet-idle-stake.mjs";
+} from "../../src/subnet-idle-stake.ts";
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
