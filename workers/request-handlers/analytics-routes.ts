@@ -64,12 +64,17 @@ type HealthMetaKvReader = (
 // a field off it directly.
 type EconomicsCurrentKvReader = (env: Env) => Promise<unknown>;
 
+// Module-load-time placeholders, replaced by configureAnalyticsRoutes() at
+// Worker/test startup before any route handler runs -- a wiring bug, never a
+// reachable runtime path.
+/* v8 ignore start */
 let readHealthMetaKv: HealthMetaKvReader = () => {
   throw new Error("analytics routes used before configureAnalyticsRoutes()");
 };
 let readEconomicsCurrentKv: EconomicsCurrentKvReader = () => {
   throw new Error("analytics routes used before configureAnalyticsRoutes()");
 };
+/* v8 ignore stop */
 
 const RESPONSE_FORMATS = ["json", "csv"];
 

@@ -96,9 +96,11 @@ type HealthMetaKvReader = (
 // test still import it from there; injecting the stable function reference here
 // keeps the import acyclic — the same wiring analytics.mjs uses for the same
 // helper.
+/* v8 ignore start */
 let readHealthMetaKv: HealthMetaKvReader = () => {
   throw new Error("rpc-proxy handlers used before configureRpcProxy()");
 };
+/* v8 ignore stop */
 
 // Called once at api.mjs module-init to wire the api.mjs-local KV reader.
 export function configureRpcProxy(deps: {
@@ -685,8 +687,9 @@ export async function handleRpcProxyRequest(
       // "body-read-error" handling above) -- this sibling tee branch failing
       // independently at this point isn't reachable in practice. Kept for the
       // same reason the pre-existing cache-classification catch below is.
-      /* v8 ignore next */
+      /* v8 ignore start */
       sizeCheck = null;
+      /* v8 ignore stop */
     }
     if (sizeCheck?.truncated) {
       return errorResponse(
@@ -717,7 +720,13 @@ export async function handleRpcProxyRequest(
   } catch {
     // Classification is best-effort: a flaky upstream body should not turn a
     // proxied response into a Worker exception while cache inspection is active.
+    // Not reliably triggerable from a test: proxyWithFailover's own tee/inspect
+    // step (see its sibling ignore-next above) already intercepts a body-read
+    // failure on the SAME underlying stream before this second, independent
+    // clone+read ever runs.
+    /* v8 ignore start */
     return new Response(response.body, { status: response.status, headers });
+    /* v8 ignore stop */
   }
   if (!inspect.truncated) {
     let parsed = null;

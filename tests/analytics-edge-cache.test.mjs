@@ -275,6 +275,47 @@ describe("analytics edge cache", () => {
     assert.equal(cache.putKeys.length, 1, "HEAD hit must not re-put");
   });
 
+  test("a conditional GET against a warm cache entry honors If-None-Match with a 304", async () => {
+    // withEdgeCache's cache-hit path re-checks If-None-Match against the
+    // cached response's own weak ETag (mirrors envelopeResponse's conditional
+    // handling) so a polling agent still gets a 304 from a warm cache, not a
+    // fresh 200 body every poll.
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const calls = [];
+    const env = postgresTierEnv(calls);
+    const target =
+      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d";
+
+    const warm = await handleRequest(new Request(target), env, ctx);
+    assert.equal(warm.status, 200);
+    const etag = warm.headers.get("etag");
+    assert.ok(etag, "cached response advertises an etag");
+    const callsAfterWarm = calls.length;
+
+    const conditional = await handleRequest(
+      new Request(target, { headers: { "if-none-match": etag } }),
+      env,
+      ctx,
+    );
+    assert.equal(conditional.status, 304);
+    assert.equal(await conditional.text(), "");
+    assert.equal(
+      calls.length,
+      callsAfterWarm,
+      "a cache-hit 304 must not re-run the Postgres tier call",
+    );
+
+    // A non-matching validator still gets the full cached 200 body.
+    const mismatch = await handleRequest(
+      new Request(target, { headers: { "if-none-match": '"stale"' } }),
+      env,
+      ctx,
+    );
+    assert.equal(mismatch.status, 200);
+  });
+
   test("INVARIANT: a different window and a different netuid key separately", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

@@ -114,7 +114,11 @@ export async function handleBadgeSvgRequest(
     `public, max-age=${maxAge}, stale-while-revalidate=300`,
   );
   headers.set("etag", await weakEtag(svg));
-  if (ifNoneMatchSatisfied(request, headers.get("etag") || "")) {
+  // etag is always just set above (weakEtag never returns empty), so the
+  // `|| ""` fallback -- satisfying ifNoneMatchSatisfied's `string` param
+  // against Headers.get's `string | null` -- is provably unreachable.
+  const etag = /* v8 ignore next */ headers.get("etag") || "";
+  if (ifNoneMatchSatisfied(request, etag)) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : svg, {
@@ -241,9 +245,12 @@ function discoveryHeaders(contentType: string): Headers {
   headers.set("access-control-allow-origin", "*");
   headers.set("content-type", contentType);
   headers.set("x-content-type-options", "nosniff");
+  // CACHE_SECONDS.static (src/contracts.mjs) is a hardcoded literal 600, never
+  // falsy, so the `|| 600` fallback is provably unreachable.
+  const staticMaxAge = /* v8 ignore next */ CACHE_SECONDS.static || 600;
   headers.set(
     "cache-control",
-    `public, max-age=${CACHE_SECONDS.static || 600}, stale-while-revalidate=300`,
+    `public, max-age=${staticMaxAge}, stale-while-revalidate=300`,
   );
   headers.set("vary", "Accept-Encoding");
   headers.set("link", DISCOVERY_LINK_HEADER);
@@ -402,7 +409,11 @@ export async function mcpServerCardResponse(
   const body = `${JSON.stringify(card, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");
   headers.set("etag", await weakEtag(body));
-  if (ifNoneMatchSatisfied(request, headers.get("etag") || "")) {
+  // etag is always just set above (weakEtag never returns empty), so the
+  // `|| ""` fallback -- satisfying ifNoneMatchSatisfied's `string` param
+  // against Headers.get's `string | null` -- is provably unreachable.
+  const etag = /* v8 ignore next */ headers.get("etag") || "";
+  if (ifNoneMatchSatisfied(request, etag)) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {
@@ -433,7 +444,11 @@ export async function agentToolsResponse(
   const body = `${JSON.stringify(data, null, 2)}\n`;
   const headers = discoveryHeaders("application/json");
   headers.set("etag", await weakEtag(body));
-  if (ifNoneMatchSatisfied(request, headers.get("etag") || "")) {
+  // etag is always just set above (weakEtag never returns empty), so the
+  // `|| ""` fallback -- satisfying ifNoneMatchSatisfied's `string` param
+  // against Headers.get's `string | null` -- is provably unreachable.
+  const etag = /* v8 ignore next */ headers.get("etag") || "";
+  if (ifNoneMatchSatisfied(request, etag)) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {

@@ -113,6 +113,58 @@ describe("discovery conditional requests", () => {
     assert.match(res.headers.get("cache-control"), /max-age=60/);
   });
 
+  function badgeArchiveEnv(netuid, data) {
+    // health/badges/*.json is R2-only (src/artifact-storage.mjs's
+    // R2_ONLY_PATTERNS), so readArtifact resolves it via METAGRAPH_ARCHIVE,
+    // not ASSETS. No METAGRAPH_CONTROL binding -> latestR2Key falls back to
+    // the bare "latest/" prefix (workers/storage.ts's latestPointer).
+    return {
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          if (key === `latest/health/badges/${netuid}.json`) {
+            return { json: async () => data };
+          }
+          return null;
+        },
+      },
+    };
+  }
+
+  test("badge SVG falls back to defaults when the static artifact has no label/message/color", async () => {
+    // No live KV overlay + a static artifact whose badge JSON is a bare {}:
+    // every `badge.field || fallback` in the handler must fire
+    // (SN<netuid>/unknown/lightgrey).
+    const url = "https://api.metagraph.sh/metagraph/health/badges/9.svg";
+    const env = badgeArchiveEnv(9, {});
+    const res = await handleBadgeSvgRequest(
+      new Request(url),
+      env,
+      new URL(url),
+    );
+    assert.equal(res.status, 200);
+    const svg = await res.text();
+    assert.match(svg, /SN9/); // badge.label fallback
+    assert.match(svg, /unknown/); // badge.message fallback
+    assert.match(svg, /#9f9f9f/); // badge.color fallback -> "lightgrey" -> its hex
+    assert.match(res.headers.get("cache-control"), /max-age=300/); // artifact.ok+data → "available"
+  });
+
+  test("badge SVG maps an unmapped static-artifact color to the neutral lightgrey hex", async () => {
+    // The static artifact's own `color` field can be any string (it's baked
+    // by a separate build step, not validated against BADGE_COLOR_HEX) --
+    // an unrecognized value must render the neutral fill, not `undefined`.
+    const url = "https://api.metagraph.sh/metagraph/health/badges/10.svg";
+    const env = badgeArchiveEnv(10, { color: "not-a-real-color" });
+    const res = await handleBadgeSvgRequest(
+      new Request(url),
+      env,
+      new URL(url),
+    );
+    assert.equal(res.status, 200);
+    const svg = await res.text();
+    assert.match(svg, /#9f9f9f/); // BADGE_COLOR_HEX unmapped-color fallback (lightgrey)
+  });
+
   test("badge SVG HEAD returns the headers + etag with no body", async () => {
     const url = "https://api.metagraph.sh/metagraph/health/badges/7.svg";
     const res = await handleBadgeSvgRequest(

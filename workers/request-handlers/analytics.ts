@@ -134,9 +134,11 @@ type HealthMetaKvReader = (
 // test still import it from there; injecting the stable function reference here
 // keeps the import acyclic. This is a one-time wiring of a stable function — not
 // the mutable fallback state, which is genuinely owned by this module below.
+/* v8 ignore start */
 let readHealthMetaKv: HealthMetaKvReader = () => {
   throw new Error("analytics handlers used before configureAnalytics()");
 };
+/* v8 ignore stop */
 
 // Called once at api.mjs module-init to wire the api.mjs-local KV reader.
 export function configureAnalytics(deps: {
@@ -399,7 +401,12 @@ export async function withEdgeCache(
   let stamp = null;
   if (cache) {
     if (typeof resolveCacheStamp === "function") {
+      // resolveCacheStamp is an override hook for a future bespoke-stamp
+      // need (see its own doc comment above) -- no call site passes one
+      // today, so this branch is genuinely unreachable right now.
+      /* v8 ignore start */
       stamp = await resolveCacheStamp(env);
+      /* v8 ignore stop */
     } else {
       stamp = (await readHealthMetaKv(env))?.last_run_at ?? null;
     }
