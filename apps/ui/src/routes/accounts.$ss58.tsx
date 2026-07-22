@@ -1133,10 +1133,7 @@ function deriveDelegationStatus(
   childrenData: AccountDelegationGraph | undefined,
   parentsData: AccountDelegationGraph | undefined,
 ): DelegationStatus {
-  if (
-    (childrenResult.isPending && !childrenData) ||
-    (parentsResult.isPending && !parentsData)
-  ) {
+  if ((childrenResult.isPending && !childrenData) || (parentsResult.isPending && !parentsData)) {
     return { kind: "pending" };
   }
   const childRows = flattenDelegation(childrenData?.subnets ?? null);
@@ -1159,13 +1156,7 @@ function deriveDelegationStatus(
  * Visual edge list — proportion bar + compact SN/hotkey row.
  * Avoids multi-word table headers that wrap on mobile (#7226/#7263 closes).
  */
-function DelegationEdgeList({
-  ss58,
-  rows,
-}: {
-  ss58: string;
-  rows: DelegationRow[];
-}) {
+function DelegationEdgeList({ ss58, rows }: { ss58: string; rows: DelegationRow[] }) {
   return (
     <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border/80 bg-card/95">
       {rows.map((r, i) => {
@@ -1185,7 +1176,10 @@ function DelegationEdgeList({
             >
               SN{r.netuid}
             </Link>
-            <div className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-muted" title={r.counterpart}>
+            <div
+              className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-muted"
+              title={r.counterpart}
+            >
               {r.counterpart !== ss58 ? (
                 <Link
                   to="/accounts/$ss58"
@@ -1266,12 +1260,7 @@ function AccountDelegationSection({ ss58 }: { ss58: string }) {
   const parentsResult = useQuery(accountParentsQuery(ss58));
   const childrenData = childrenResult.data?.data;
   const parentsData = parentsResult.data?.data;
-  const status = deriveDelegationStatus(
-    childrenResult,
-    parentsResult,
-    childrenData,
-    parentsData,
-  );
+  const status = deriveDelegationStatus(childrenResult, parentsResult, childrenData, parentsData);
 
   if (status.kind === "pending") {
     return <AccountFeedSectionSkeleton id="delegation" title="Delegation" />;
@@ -1357,9 +1346,7 @@ function EntityLabelCard({ label }: { label: AccountEntityLabel }) {
     <div className={KPI_TILE}>
       <div className="flex flex-wrap items-center gap-2">
         <Tag className="h-3.5 w-3.5 shrink-0 text-accent" />
-        <span className="min-w-0 truncate font-semibold text-ink">
-          {label.name ?? "Unnamed"}
-        </span>
+        <span className="min-w-0 truncate font-semibold text-ink">{label.name ?? "Unnamed"}</span>
         {label.category ? (
           <span className="shrink-0 whitespace-nowrap rounded border border-border/70 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
             {label.category}
@@ -1416,11 +1403,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
       title="Entity"
       tone="accent"
       info="Community labels and subnet-ownership ties from /api/v1/accounts/{ss58}/entities. Ownership ties are automatic SubnetOwnerChanged transfers only (not genesis ownership)."
-      right={
-        <SectionBadge tone="accent">
-          {formatNumber(labels.length + ties.length)}
-        </SectionBadge>
-      }
+      right={<SectionBadge tone="accent">{formatNumber(labels.length + ties.length)}</SectionBadge>}
     >
       {labels.length > 0 ? (
         <div className="mb-6 grid gap-4 sm:grid-cols-2">

@@ -88,10 +88,7 @@ describe("accountEntitiesQuery", () => {
     resolveWith({
       ss58: ALICE,
       labels: [{ source_urls: ["https://ok", 42, null] }],
-      ownership_ties: [
-        { netuid: "junk", role: "gained_ownership", block_number: "junk" },
-        {},
-      ],
+      ownership_ties: [{ netuid: "junk", role: "gained_ownership", block_number: "junk" }, {}],
     });
     const res = await runQuery(ALICE);
     expect(res.data.labels).toEqual([
