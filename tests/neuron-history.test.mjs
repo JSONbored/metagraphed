@@ -8,7 +8,7 @@ import {
   HISTORY_WINDOWS,
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.mjs";
-import { buildConcentrationHistory } from "../src/concentration.mjs";
+import { buildConcentrationHistory } from "../src/concentration.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 

@@ -12,7 +12,7 @@
 // 1 TAO = 1e9 rao. Sum in rao-integer BigInt space, not float space --
 // summing potentially thousands of neurons' stake_tao (network-wide) with
 // plain `+=` compounds rounding error across the accumulation even when
-// each individual value is itself exact (mirrors src/concentration.mjs's
+// each individual value is itself exact (mirrors src/concentration.ts's
 // own toRaoBig/raoBigToTao, a deliberate byte-for-byte copy per this
 // codebase's per-module rounding-helper convention).
 function toRaoBig(taoValue) {
@@ -24,7 +24,7 @@ function raoBigToTao(rao) {
 }
 
 // The rows share one cron capture, but don't assume an order -- take the
-// newest captured_at (mirrors src/concentration.mjs's own captureStamp/
+// newest captured_at (mirrors src/concentration.ts's own captureStamp/
 // epochMsStamp, a deliberate byte-for-byte copy per this codebase's
 // per-module convention). Accepts an epoch-ms number, a numeric-string
 // epoch (D1/Postgres often hand back a BIGINT column as a string), or an

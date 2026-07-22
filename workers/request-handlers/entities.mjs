@@ -138,7 +138,7 @@ import {
   buildChainConcentration,
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
-} from "../../src/concentration.mjs";
+} from "../../src/concentration.ts";
 import { buildChainPerformance } from "../../src/chain-performance.ts";
 import { buildChainYield } from "../../src/chain-yield.ts";
 import {

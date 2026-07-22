@@ -22,7 +22,7 @@ function round(value, dp = 9) {
 // with plain `+=` compounds rounding error across the scan (up to thousands of
 // transfers) even when each individual value is itself exact, so convert each
 // addend to integer rao, sum the integers, and convert back once at the end.
-// Mirrors the toRaoBig/raoBigToTao pattern established in concentration.mjs /
+// Mirrors the toRaoBig/raoBigToTao pattern established in concentration.ts /
 // chain-yield.ts (#2933).
 function toRaoBig(tao) {
   // Guard the post-multiply value (not just `tao`): a huge-but-finite TAO amount

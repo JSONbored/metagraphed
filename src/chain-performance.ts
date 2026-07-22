@@ -8,7 +8,7 @@
 // Every function is pure + exported for unit tests; the Worker does the D1 read +
 // envelope. Null-safe: an empty snapshot yields a schema-stable `null` block.
 
-import { computeConcentration } from "./concentration.mjs";
+import { computeConcentration } from "./concentration.ts";
 
 // The neurons-tier columns the network performance handler reads — like the
 // per-subnet read but with `netuid`, so the artifact can report how many subnets

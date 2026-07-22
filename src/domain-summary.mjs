@@ -13,12 +13,12 @@
 // throws.
 
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
-import { computeConcentration } from "./concentration.mjs";
+import { computeConcentration } from "./concentration.ts";
 
 // 1 TAO = 1e9 rao. Sum in rao-integer BigInt space, not float space -- summing a
 // domain's worth of subnets' total_stake_tao with plain `+=` compounds rounding
 // error across the accumulation even when each individual value is itself exact
-// (mirrors src/concentration.mjs's own toRaoBig/raoBigToTao, a deliberate
+// (mirrors src/concentration.ts's own toRaoBig/raoBigToTao, a deliberate
 // byte-for-byte copy per this codebase's per-module rounding-helper convention --
 // see src/subnet-ohlc.mjs's header comment for why these aren't shared imports).
 function toRaoBig(taoValue) {
@@ -35,7 +35,7 @@ function round(value, dp = 4) {
   /* v8 ignore next -- defensive: both call sites below always pass a finite
      number (raoBigToTao's output, or a reduce-sum over already
      Number.isFinite-filtered emissionShares); copied verbatim from
-     concentration.mjs's own round, whose other callers do need this guard. */
+     concentration.ts's own round, whose other callers do need this guard. */
   if (value == null || !Number.isFinite(value)) return null;
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;

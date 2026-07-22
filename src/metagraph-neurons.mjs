@@ -178,7 +178,7 @@ function toD1Flag(value) {
 // alone rather than drifting with whenever the API happens to be called.
 // Reuses APY_SECONDS_PER_BLOCK, the same ~12s/block assumption apy_estimate
 // already depends on. Exported for direct unit testing, mirroring
-// src/concentration.mjs's pure-statistics convention; formatNeuron is its only
+// src/concentration.ts's pure-statistics convention; formatNeuron is its only
 // real caller.
 export function computeImmunityWindow(row, neuron, immunityPeriod) {
   if (!neuron.is_immunity_period || neuron.registered_at_block == null) {

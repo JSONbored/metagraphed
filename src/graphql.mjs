@@ -151,7 +151,7 @@ import {
   buildConcentrationHistory,
   CONCENTRATION_HISTORY_WINDOWS,
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
-} from "./concentration.mjs";
+} from "./concentration.ts";
 import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
@@ -397,7 +397,7 @@ import {
   buildChainSigners,
 } from "./chain-analytics.ts";
 import { buildChainPerformance } from "./chain-performance.ts";
-import { buildChainConcentration } from "./concentration.mjs";
+import { buildChainConcentration } from "./concentration.ts";
 import {
   DEFAULT_NOMINATOR_SORT,
   DEFAULT_NOMINATOR_WINDOW,

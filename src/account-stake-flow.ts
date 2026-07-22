@@ -44,7 +44,7 @@ function roundTao(value: number): number {
 
 // Round the HHI concentration ratio to 4 decimals WITHOUT letting a sub-perfect
 // value round up to an exact 1 — the same anti-overstatement invariant the shared
-// concentration/turnover/reliability ratios enforce (roundRatio in concentration.mjs,
+// concentration/turnover/reliability ratios enforce (roundRatio in concentration.ts,
 // #2327). A wallet spread across two or more subnets (HHI < 1) must never render as
 // 1, which this card's own contract defines as "all flow in one subnet".
 function roundConcentration(value: number): number {

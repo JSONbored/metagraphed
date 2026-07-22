@@ -7,7 +7,7 @@
 // (netuid/uid/stake/permit/active). Pure + exported for unit tests; the Worker
 // does the D1 read + envelope. Null-safe: no positions -> schema-stable empty card.
 
-import { computeConcentration } from "./concentration.mjs";
+import { computeConcentration } from "./concentration.ts";
 
 // The neurons-tier columns the portfolio reads for one hotkey.
 export const ACCOUNT_PORTFOLIO_READ_COLUMNS =
@@ -53,7 +53,7 @@ interface CaptureStamp {
 }
 
 // Guard 0/negative epoch ms (a blank/sentinel D1 cell) so captured_at never stamps
-// the 1970 epoch; mirrors epochMsStamp in concentration.mjs / subnet-performance.mjs.
+// the 1970 epoch; mirrors epochMsStamp in concentration.ts / subnet-performance.mjs.
 function captureStamp(value: unknown): CaptureStamp | null {
   let ms: number;
   if (typeof value === "number" && Number.isFinite(value)) {

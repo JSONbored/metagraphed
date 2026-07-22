@@ -6,7 +6,7 @@
 // rows (the economics tier, formatNeuron's own immunity_expires_at_block
 // output, src/metagraph-neurons.mjs) and the current block number --
 // matches this codebase's other pure-shaping/no-I/O module convention
-// (src/concentration.mjs, src/alpha-volume.mjs).
+// (src/concentration.ts, src/alpha-volume.mjs).
 //
 // buildDeregRiskSnapshot's return shape is exactly what
 // src/alert-triggers.mjs's readConditionMetric reads from -- see that

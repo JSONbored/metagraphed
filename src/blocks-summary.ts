@@ -10,7 +10,7 @@
 // Distinct from /api/v1/chain/signers (who SIGNS extrinsics) — this is who AUTHORS
 // blocks, a base-layer validator-set decentralization signal, not a tx-fee signal.
 
-import { computeConcentration } from "./concentration.mjs";
+import { computeConcentration } from "./concentration.ts";
 
 // The `blocks` columns the summary reads. `author` is best-effort/nullable; the
 // counts are nullable INTEGERs; `observed_at` is the block timestamp (epoch ms).

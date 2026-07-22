@@ -1,14 +1,14 @@
 // Subnet performance / reward-distribution metrics: pure statistics over a
 // subnet's per-UID PERFORMANCE columns (incentive, dividends, trust, consensus,
 // validator_trust) from the live `neurons` D1 tier. This is the reward-flow and
-// trust companion to concentration.mjs — concentration measures who holds the
+// trust companion to concentration.ts — concentration measures who holds the
 // STAKE/EMISSION; this measures how concentrated the actual REWARDS are and how
 // the 0..1 trust/consensus scores are spread across the neurons. Every function
 // is pure + exported for unit tests; the Worker does the D1 read + envelope.
 // Null-safe by design: an empty / all-zero distribution yields a schema-stable
 // `null` block (never throws), matching the concentration tier it mirrors.
 
-import { computeConcentration } from "./concentration.mjs";
+import { computeConcentration } from "./concentration.ts";
 
 // The neurons-tier columns the performance handler reads — the D1 read contract
 // for buildSubnetPerformance (mirrors CONCENTRATION_READ_COLUMNS). Kept next to
@@ -31,7 +31,7 @@ function round(value) {
 }
 
 // Guard 0/negative epoch ms (a blank/sentinel D1 cell) so a captured_at never
-// stamps the 1970 epoch. Mirrors epochMsStamp in concentration.mjs / the
+// stamps the 1970 epoch. Mirrors epochMsStamp in concentration.ts / the
 // account-events + snapshot fixes (#2776/#2777).
 function epochMsStamp(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return null;
@@ -44,7 +44,7 @@ function captureStamp(value) {
   if (value == null) return null;
   if (typeof value === "string") {
     // D1 can return an INTEGER captured_at as a numeric-epoch string; Date.parse
-    // returns NaN for a bare epoch string, so coerce it like concentration.mjs.
+    // returns NaN for a bare epoch string, so coerce it like concentration.ts.
     if (/^\d+$/.test(value)) return epochMsStamp(Number(value));
     const ms = Date.parse(value);
     if (Number.isFinite(ms)) return { ms, value };
@@ -177,7 +177,7 @@ export async function loadSubnetPerformance(d1, netuid) {
 // ---- Performance HISTORY (reward flow & trust over time) -------------------
 // Per-day performance from the dated neuron_daily rollup, so a subnet's
 // reward-flow trend (are rewards consolidating? is trust drifting?) is chartable.
-// The reward-flow twin of concentration.mjs's concentration/history: each day
+// The reward-flow twin of concentration.ts's concentration/history: each day
 // needs its full per-UID distribution (Gini of the reward flow + the score
 // spread can't be a cheap SQL GROUP BY), so the read is the raw per-UID rows
 // bounded by a row cap that then drops a truncated oldest day.

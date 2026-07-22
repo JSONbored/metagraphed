@@ -266,7 +266,7 @@ import {
   buildConcentration,
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
-} from "./concentration.mjs";
+} from "./concentration.ts";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.mjs";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";

@@ -79,7 +79,7 @@ import {
   CONCENTRATION_HISTORY_ROW_CAP,
   CONCENTRATION_HISTORY_WINDOWS,
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
-} from "../src/concentration.mjs";
+} from "../src/concentration.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -8069,7 +8069,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/concentration (#4832 Tier 2): stake &
         // emission decentralization for one subnet, mirroring
-        // src/concentration.mjs's the handler's own inline query (no shared
+        // src/concentration.ts's the handler's own inline query (no shared
         // loader -- this is one of the live-`neurons` routes, distinct from
         // the neuron_daily-derived /concentration/history below).
         const subnetConcentration = url.pathname.match(
@@ -8098,7 +8098,7 @@ export default {
 
         // GET /api/v1/chain/concentration (#4832 Tier 2): network-wide stake &
         // emission decentralization across every subnet's neurons, mirroring
-        // src/concentration.mjs's loadChainConcentration.
+        // src/concentration.ts's loadChainConcentration.
         if (url.pathname === "/api/v1/chain/concentration") {
           const rows = await sql`
           SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
@@ -8512,7 +8512,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/concentration/history?window= (#4832
         // Tier 2b): per-day stake & emission concentration trend, mirroring
-        // src/concentration.mjs's buildConcentrationHistory.
+        // src/concentration.ts's buildConcentrationHistory.
         const concentrationHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/,
         );

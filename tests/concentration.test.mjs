@@ -7,7 +7,7 @@ import {
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
-} from "../src/concentration.mjs";
+} from "../src/concentration.ts";
 
 describe("computeConcentration", () => {
   test("returns null for an empty / non-array / all-zero distribution", () => {

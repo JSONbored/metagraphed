@@ -41,7 +41,7 @@ function toNonNegativeTao(value: unknown): number {
 // Round a 0..1 dominance ratio to a stable precision WITHOUT letting a
 // sub-perfect value round up to an exact 1 — the same anti-overstatement guard
 // the sibling concentration/turnover ratios apply (roundRatio in
-// src/concentration.mjs, round in src/chain-turnover.ts). top_pair_volume_tao is
+// src/concentration.ts, round in src/chain-turnover.ts). top_pair_volume_tao is
 // the full-window MAX corridor and total_volume_tao the full-window SUM, so a
 // near-monopoly (e.g. 249990/250000 = 0.99996, with other pairs still present in
 // unique_pairs/pairs[]) must not surface as a flat 1 ("100% of volume"). A
