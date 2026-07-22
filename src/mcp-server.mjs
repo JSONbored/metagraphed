@@ -659,7 +659,7 @@ import {
   buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
-} from "./entity-labels.mjs";
+} from "./entity-labels.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.mjs";
 import {
   buildValidatorNominators,

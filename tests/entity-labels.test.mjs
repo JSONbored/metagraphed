@@ -4,7 +4,7 @@ import {
   buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
-} from "../src/entity-labels.mjs";
+} from "../src/entity-labels.ts";
 
 // Same real-shaped fixture bytes as tests/subnet-ownership-history.test.mjs.
 const OLD_COLDKEY_BYTES = [

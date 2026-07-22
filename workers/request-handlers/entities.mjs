@@ -117,7 +117,7 @@ import {
   buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
-} from "../../src/entity-labels.mjs";
+} from "../../src/entity-labels.ts";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.mjs";
 import { loadSubnetBurn } from "../../src/subnet-burn.mjs";
 import { loadSubnetLease } from "../../src/subnet-lease.mjs";
@@ -3010,7 +3010,7 @@ export async function handleAccount(request, env, ss58) {
 // GET /api/v1/accounts/{coldkey}/entities (#6740): one address's own entity
 // labels plus every subnet-ownership tie it has via the SubnetOwnerChanged
 // chain_events stream (either side of the transfer) -- see
-// src/entity-labels.mjs's own header for the scope/limitation note (this
+// src/entity-labels.ts's own header for the scope/limitation note (this
 // only tracks AUTOMATIC ownership transfers, not genesis ownership).
 //
 // The DATA_API service binding (workers/data-api.mjs) only carries the

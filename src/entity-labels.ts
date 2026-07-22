@@ -20,19 +20,33 @@ export const ENTITY_LABELS_ARTIFACT = "/metagraph/entities.json";
 // entity records). Keyed by ss58 -- the registry's own one-file-per-address
 // invariant means this is never a genuine collision, just last-write-wins
 // defensively.
-export function entityLabelsIndex(entities) {
-  const bySs58 = new Map();
+export function entityLabelsIndex(
+  entities: Array<Record<string, unknown>> | null | undefined,
+): Map<string, Record<string, unknown>> {
+  const bySs58 = new Map<string, Record<string, unknown>>();
   for (const entity of entities ?? []) {
-    if (entity?.ss58) bySs58.set(entity.ss58, entity);
+    if (typeof entity?.ss58 === "string" && entity.ss58) {
+      bySs58.set(entity.ss58, entity);
+    }
   }
   return bySs58;
+}
+
+export interface EntityLabel {
+  name: unknown;
+  category: unknown;
+  notes: unknown;
+  source_urls: unknown[];
 }
 
 // Public label shape for a given address -- omits `review`/internal
 // governance fields (those are curation metadata, not a user-facing claim).
 // Always an array (0 or 1 entries today; array-shaped so a future multi-label
 // address doesn't need a breaking response-shape change).
-export function labelsForSs58(index, ss58) {
+export function labelsForSs58(
+  index: Map<string, Record<string, unknown>>,
+  ss58: string,
+): EntityLabel[] {
   const entity = index.get(ss58);
   if (!entity) return [];
   return [
@@ -45,26 +59,36 @@ export function labelsForSs58(index, ss58) {
   ];
 }
 
-function numberOrNull(value) {
+function numberOrNull(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
-function isoOrNull(value) {
+function isoOrNull(value: unknown): string | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   const date = new Date(n);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
+interface OwnershipChangeRow {
+  netuid: number | null;
+  old_coldkey: unknown;
+  new_coldkey: unknown;
+  block_number: number | null;
+  observed_at: string | null;
+}
+
 // One SubnetOwnerChanged chain_events row -> { netuid, old_coldkey,
 // new_coldkey, block_number, observed_at }, decoded exactly like
 // subnet-ownership-history.mjs's own shapeOwnershipChange.
-function decodeOwnershipChangeRow(row) {
+function decodeOwnershipChangeRow(
+  row: Record<string, unknown>,
+): OwnershipChangeRow {
   const decoded = decodeChainEventArgs(row.args, {
-    pallet: row.pallet,
-    method: row.method,
-  });
+    pallet: row.pallet as string,
+    method: row.method as string,
+  }) as Record<string, unknown> | null | undefined;
   return {
     netuid: numberOrNull(decoded?.netuid),
     old_coldkey: decoded?.old_coldkey ?? null,
@@ -72,6 +96,21 @@ function decodeOwnershipChangeRow(row) {
     block_number: numberOrNull(row.block_number),
     observed_at: isoOrNull(row.observed_at),
   };
+}
+
+export interface OwnershipTie {
+  netuid: number | null;
+  role: "gained_ownership" | "lost_ownership";
+  block_number: number | null;
+  observed_at: string | null;
+}
+
+export interface AccountEntitiesResult {
+  schema_version: 1;
+  ss58: string;
+  labels: EntityLabel[];
+  ownership_tie_count: number;
+  ownership_ties: OwnershipTie[];
 }
 
 // #6740: one coldkey's entity labels plus every subnet-ownership tie it has
@@ -82,16 +121,27 @@ function decodeOwnershipChangeRow(row) {
 // stores hex pubkeys and only decodeChainEventArgs knows how to resolve them
 // to ss58 (a SQL-side equality filter would need the reverse ss58->hex
 // encoding, which this module deliberately does not attempt).
-export function buildAccountEntities(ss58, { entities, ownershipRows } = {}) {
+export function buildAccountEntities(
+  ss58: string,
+  {
+    entities,
+    ownershipRows,
+  }: {
+    entities?: Array<Record<string, unknown>> | null;
+    ownershipRows?: Array<Record<string, unknown>> | null;
+  } = {},
+): AccountEntitiesResult {
   const labels = labelsForSs58(entityLabelsIndex(entities), ss58);
-  const ownershipTies = (ownershipRows ?? [])
+  const ownershipTies: OwnershipTie[] = (ownershipRows ?? [])
     .map(decodeOwnershipChangeRow)
     .filter(
       (change) => change.old_coldkey === ss58 || change.new_coldkey === ss58,
     )
     .map((change) => ({
       netuid: change.netuid,
-      role: change.new_coldkey === ss58 ? "gained_ownership" : "lost_ownership",
+      role: (change.new_coldkey === ss58
+        ? "gained_ownership"
+        : "lost_ownership") as "gained_ownership" | "lost_ownership",
       block_number: change.block_number,
       observed_at: change.observed_at,
     }))

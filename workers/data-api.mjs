@@ -57,7 +57,7 @@ import {
   buildSubnetOwnershipHistory,
   OWNERSHIP_CHANGE_EVENT_METHOD,
 } from "../src/subnet-ownership-history.mjs";
-import { buildAccountEntities } from "../src/entity-labels.mjs";
+import { buildAccountEntities } from "../src/entity-labels.ts";
 import {
   buildSubnetLeaseHistory,
   SUBNET_LEASE_CREATED_KIND,
@@ -5765,7 +5765,7 @@ export default {
         // address has via the SAME chain_events SubnetOwnerChanged stream as
         // ownership-history above -- unfiltered by netuid here (a network-
         // wide scan, not a per-subnet one), filtered by address in JS after
-        // decoding (see src/entity-labels.mjs's own header for why). This
+        // decoding (see src/entity-labels.ts's own header for why). This
         // Worker has no R2/KV bindings, so `entities` (community labels) is
         // always [] here -- the main API Worker joins those on afterward.
         const accountEntities = url.pathname.match(

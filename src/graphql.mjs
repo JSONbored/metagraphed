@@ -235,7 +235,7 @@ import {
   buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
-} from "./entity-labels.mjs";
+} from "./entity-labels.ts";
 import { loadSudoKey } from "./sudo-key.mjs";
 // #7642: saved_query reuses the same maintainer-curated template executor the
 // GET /api/v1/queries/{id} route and run_saved_query MCP tool already share.
