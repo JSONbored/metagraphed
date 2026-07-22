@@ -453,7 +453,7 @@ import {
   CHAIN_TRANSFER_LIMIT_MAX,
   CHAIN_TRANSFER_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_WINDOW,
-} from "./chain-transfers.mjs";
+} from "./chain-transfers.ts";
 import {
   buildChainTransferPairs,
   CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,

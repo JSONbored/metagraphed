@@ -278,7 +278,7 @@ import {
   CHAIN_TRANSFER_LIMIT_MAX,
   CHAIN_TRANSFER_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_WINDOW,
-} from "./chain-transfers.mjs";
+} from "./chain-transfers.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_LIMIT_DEFAULT,

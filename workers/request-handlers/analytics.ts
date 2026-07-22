@@ -65,7 +65,7 @@ import {
   CHAIN_TRANSFER_PAIR_SORTS,
   buildChainTransferPairs,
 } from "../../src/chain-transfer-pairs.ts";
-import { buildChainTransfers } from "../../src/chain-transfers.mjs";
+import { buildChainTransfers } from "../../src/chain-transfers.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
@@ -1242,15 +1242,15 @@ export async function handleChainTransfers(
         buildChainTransfers({
           window: label,
           observedAt: meta?.last_run_at || null,
-        } as unknown as Parameters<typeof buildChainTransfers>[0]);
+        });
       if (csv) {
         return csvResponse(
           [
-            ...data.top_senders.map((row: Record<string, unknown>) => ({
+            ...data.top_senders.map((row) => ({
               direction: "sender",
               ...row,
             })),
-            ...data.top_receivers.map((row: Record<string, unknown>) => ({
+            ...data.top_receivers.map((row) => ({
               direction: "receiver",
               ...row,
             })),

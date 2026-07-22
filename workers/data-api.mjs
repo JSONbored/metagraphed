@@ -321,7 +321,7 @@ import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
 } from "../src/chain-alpha-volume.ts";
-import { buildChainTransfers } from "../src/chain-transfers.mjs";
+import { buildChainTransfers } from "../src/chain-transfers.ts";
 import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
 import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
@@ -6287,7 +6287,7 @@ export default {
 
         // GET /api/v1/chain/transfers (#4832 Tier 2): network-wide native-TAO
         // transfer scorecard (totals + top senders/receivers), mirroring
-        // src/chain-transfers.mjs's loadChainTransfers. "Transfer" mirrors
+        // src/chain-transfers.ts's loadChainTransfers. "Transfer" mirrors
         // that module's own private TRANSFER_KIND constant (not exported, so
         // inlined here). observedAt: the D1 path sources this from a KV
         // cron-freshness marker (readHealthMetaKv) that this Worker has no

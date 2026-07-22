@@ -19,19 +19,19 @@ export const CHAIN_TRANSFER_LIMIT_MAX = 100;
 // 1 TAO = 1e9 rao; round every TAO output to that precision to shed IEEE-754 noise from
 // summing many REAL amount_tao values (the same rounding the chain/fees market applies).
 const RAO_PER_TAO = 1e9;
-function roundTao(value) {
+function roundTao(value: unknown): number {
   const n = toNumber(value);
   return Math.round(n * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
 // Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite number.
-function toNumber(value) {
+function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 // A whole non-negative count (D1 COUNT is integer; truncate defensively for direct callers).
-function toCount(value) {
+function toCount(value: unknown): number {
   return Math.max(0, Math.trunc(toNumber(value)));
 }
 
@@ -43,22 +43,43 @@ function toCount(value) {
 // a near-monopoly (e.g. 249990/250000 = 0.99996, with other senders still present
 // in unique_senders) must not surface as a flat 1 ("100% of outflow"). A genuine
 // single-sender window where the top senders ARE the whole volume keeps a true 1.
-function roundShare(value, dp = 4) {
+function roundShare(value: number, dp = 4): number {
   const factor = 10 ** dp;
   const rounded = Math.round(value * factor) / factor;
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
+export interface ChainTransferParty {
+  address: string;
+  volume_tao: number;
+  transfer_count: number;
+}
+
 // Shape one side's leaderboard rows (address + summed volume + transfer count) into a
 // ranked list. Drops rows with a missing address so a NULL sender/receiver cannot leak in.
-function shapeParties(rows) {
+function shapeParties(
+  rows: Array<Record<string, unknown>> | null | undefined,
+): ChainTransferParty[] {
   return (Array.isArray(rows) ? rows : [])
     .filter((row) => typeof row?.address === "string" && row.address.length > 0)
     .map((row) => ({
-      address: row.address,
+      address: row.address as string,
       volume_tao: roundTao(row?.volume_tao),
       transfer_count: toCount(row?.transfer_count),
     }));
+}
+
+export interface ChainTransfersResult {
+  schema_version: 1;
+  window: string | null;
+  observed_at: string | null;
+  total_volume_tao: number;
+  transfer_count: number;
+  unique_senders: number;
+  unique_receivers: number;
+  top_sender_share: number | null;
+  top_senders: ChainTransferParty[];
+  top_receivers: ChainTransferParty[];
 }
 
 // Shape the network transfer scorecard. `totals` is the single-row aggregate (count,
@@ -72,7 +93,13 @@ export function buildChainTransfers({
   totals = null,
   senders = [],
   receivers = [],
-} = {}) {
+}: {
+  window?: string | null;
+  observedAt?: string | null;
+  totals?: Record<string, unknown> | null;
+  senders?: Array<Record<string, unknown>>;
+  receivers?: Array<Record<string, unknown>>;
+} = {}): ChainTransfersResult {
   const totalVolume = roundTao(totals?.total_volume_tao);
   const topSenders = shapeParties(senders);
   const topReceivers = shapeParties(receivers);

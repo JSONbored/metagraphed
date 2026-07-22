@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { buildChainTransfers } from "../src/chain-transfers.mjs";
+import { buildChainTransfers } from "../src/chain-transfers.ts";
 
 const party = (address, volume, count = 1) => ({
   address,
