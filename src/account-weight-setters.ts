@@ -19,27 +19,30 @@ import { WEIGHTS_EVENT_KIND } from "./chain-weights.mjs";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export { WEIGHTS_EVENT_KIND };
-export const ACCOUNT_WEIGHT_SETTERS_WINDOWS = { "7d": 7, "30d": 30 };
+export const ACCOUNT_WEIGHT_SETTERS_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+};
 export const DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW = "7d";
 
-function roundConcentration(value) {
+function roundConcentration(value: number): number {
   const rounded = Math.round(value * 10000) / 10000;
   return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 
-function toCount(value) {
+function toCount(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
-function normalizedNetuid(value) {
+function normalizedNetuid(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
 }
 
-function coerceEpochMs(value) {
+function coerceEpochMs(value: unknown): number | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -47,17 +50,42 @@ function coerceEpochMs(value) {
   return Number.isFinite(date.getTime()) ? n : null;
 }
 
-function toIso(value) {
+function toIso(value: unknown): string | null {
   const n = coerceEpochMs(value);
   return n == null ? null : new Date(n).toISOString();
+}
+
+export interface AccountWeightSetterSubnet {
+  netuid: number;
+  weight_sets: number;
+  first_set_at: string | null;
+  last_set_at: string | null;
+}
+
+export interface AccountWeightSettersResult {
+  schema_version: 1;
+  address: string;
+  window: string | null;
+  total_weight_sets: number;
+  subnet_count: number;
+  concentration: number | null;
+  dominant_netuid: number | null;
+  subnets: AccountWeightSetterSubnet[];
 }
 
 // Shape an account's per-netuid WeightsSet aggregate into a weight-setting scorecard. `rows` is the
 // GROUP BY netuid result (netuid, weight_sets, first_observed, last_observed). Null-safe: no rows
 // (cold store / empty window) yields a zeroed, empty-subnet card.
-export function buildAccountWeightSetters(rows, address, { window } = {}) {
+export function buildAccountWeightSetters(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  address: string,
+  { window }: { window?: string | null } = {},
+): AccountWeightSettersResult {
   const list = Array.isArray(rows) ? rows : [];
-  const perSubnet = new Map();
+  const perSubnet = new Map<
+    number,
+    { weightSets: number; firstMs: number | null; lastMs: number | null }
+  >();
   for (const row of list) {
     const netuid = normalizedNetuid(row?.netuid);
     if (netuid == null) continue;
@@ -85,7 +113,7 @@ export function buildAccountWeightSetters(rows, address, { window } = {}) {
 
   let totalWeightSets = 0;
   let squares = 0;
-  const subnets = [];
+  const subnets: AccountWeightSetterSubnet[] = [];
   for (const [netuid, b] of perSubnet) {
     totalWeightSets += b.weightSets;
     squares += b.weightSets * b.weightSets;
@@ -126,10 +154,18 @@ export function buildAccountWeightSetters(rows, address, { window } = {}) {
 // Returns { data, generatedAt } where generatedAt is the newest weight-set's observed_at as an ISO
 // string (string|null per the envelope contract). Cold/absent D1 -> zeroed card + null.
 export async function loadAccountWeightSetters(
-  d1,
-  address,
-  { windowLabel = DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW } = {},
-) {
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
+  address: string,
+  {
+    windowLabel = DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+  }: { windowLabel?: string } = {},
+): Promise<{
+  data: AccountWeightSettersResult;
+  generatedAt: string | null;
+}> {
   const days =
     ACCOUNT_WEIGHT_SETTERS_WINDOWS[windowLabel] ??
     ACCOUNT_WEIGHT_SETTERS_WINDOWS[DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW];
@@ -150,7 +186,7 @@ export async function loadAccountWeightSetters(
       ") GROUP BY netuid",
     [address, WEIGHTS_EVENT_KIND, cutoff, address, WEIGHTS_EVENT_KIND, cutoff],
   );
-  let latestObserved = null;
+  let latestObserved: number | null = null;
   for (const row of Array.isArray(rows) ? rows : []) {
     const observed = coerceEpochMs(row?.last_observed);
     if (

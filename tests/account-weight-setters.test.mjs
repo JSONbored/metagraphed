@@ -5,7 +5,7 @@ import {
   loadAccountWeightSetters,
   WEIGHTS_EVENT_KIND,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "../src/account-weight-setters.mjs";
+} from "../src/account-weight-setters.ts";
 
 // One GROUP BY netuid row (weight_sets count + first/last observed epoch ms).
 function row(netuid, weightSets, first, last) {

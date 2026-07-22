@@ -571,7 +571,7 @@ import {
   buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "./account-weight-setters.mjs";
+} from "./account-weight-setters.ts";
 import {
   buildAccountServing,
   SERVING_WINDOWS,

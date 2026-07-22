@@ -151,7 +151,7 @@ import {
   WEIGHTS_EVENT_KIND,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "../src/account-weight-setters.mjs";
+} from "../src/account-weight-setters.ts";
 import {
   buildSubnetWeightSetters,
   SUBNET_WEIGHT_SETTERS_LIMIT,

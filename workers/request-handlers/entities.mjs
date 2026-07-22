@@ -246,7 +246,7 @@ import {
   buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
-} from "../../src/account-weight-setters.mjs";
+} from "../../src/account-weight-setters.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
