@@ -759,8 +759,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -785,8 +787,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -811,8 +815,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -837,8 +843,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -863,8 +871,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -889,8 +899,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -915,8 +927,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -941,8 +955,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -967,8 +983,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -993,8 +1011,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1019,8 +1039,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1045,8 +1067,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1071,8 +1095,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1097,8 +1123,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1123,8 +1151,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1149,8 +1179,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1175,8 +1207,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "api-key",
+        "scopes_note": "Requires an X-API-Key header (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing API key\"; a well-formed X-API-Key progresses to \"Invalid API key\"). No hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "X-API-Key"
       },
       "auth_required": true,
       "authority": "community",
@@ -1201,8 +1235,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request, wrapped in the target API's own SignedEnvelope shape: {\"payload\": {...request data...}, \"sig\": {\"signer_ss58\": ..., \"nonce\": ..., \"signature\": ...}} -- declared in the subnet's own OpenAPI spec (SignedEnvelope_dict_/Signature schemas). No static API key or bearer token is accepted.",
+        "location": "body",
+        "names": ["signer_ss58", "nonce", "signature"],
+        "body_envelope": {
+          "payload_key": "payload",
+          "credential_key": "sig"
+        }
       },
       "auth_required": true,
       "authority": "community",
@@ -1227,8 +1267,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request, wrapped in the target API's own SignedEnvelope shape: {\"payload\": {...request data...}, \"sig\": {\"signer_ss58\": ..., \"nonce\": ..., \"signature\": ...}} -- declared in the subnet's own OpenAPI spec (SignedEnvelope_dict_/Signature schemas). No static API key or bearer token is accepted.",
+        "location": "body",
+        "names": ["signer_ss58", "nonce", "signature"],
+        "body_envelope": {
+          "payload_key": "payload",
+          "credential_key": "sig"
+        }
       },
       "auth_required": true,
       "authority": "community",
@@ -1253,8 +1299,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request, wrapped in the target API's own SignedEnvelope shape: {\"payload\": {...request data...}, \"sig\": {\"signer_ss58\": ..., \"nonce\": ..., \"signature\": ...}} -- declared in the subnet's own OpenAPI spec (SignedEnvelope_dict_/Signature schemas). No static API key or bearer token is accepted.",
+        "location": "body",
+        "names": ["signer_ss58", "nonce", "signature"],
+        "body_envelope": {
+          "payload_key": "payload",
+          "credential_key": "sig"
+        }
       },
       "auth_required": true,
       "authority": "community",
@@ -1279,8 +1331,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request, wrapped in the target API's own SignedEnvelope shape: {\"payload\": {...request data...}, \"sig\": {\"signer_ss58\": ..., \"nonce\": ..., \"signature\": ...}} -- declared in the subnet's own OpenAPI spec (SignedEnvelope_dict_/Signature schemas). No static API key or bearer token is accepted.",
+        "location": "body",
+        "names": ["signer_ss58", "nonce", "signature"],
+        "body_envelope": {
+          "payload_key": "payload",
+          "credential_key": "sig"
+        }
       },
       "auth_required": true,
       "authority": "community",
@@ -1305,8 +1363,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request, wrapped in the target API's own SignedEnvelope shape: {\"payload\": {...request data...}, \"sig\": {\"signer_ss58\": ..., \"nonce\": ..., \"signature\": ...}} -- declared in the subnet's own OpenAPI spec (SignedEnvelope_dict_/Signature schemas). No static API key or bearer token is accepted.",
+        "location": "body",
+        "names": ["signer_ss58", "nonce", "signature"],
+        "body_envelope": {
+          "payload_key": "payload",
+          "credential_key": "sig"
+        }
       },
       "auth_required": true,
       "authority": "community",
@@ -1331,8 +1395,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request, wrapped in the target API's own SignedEnvelope shape: {\"payload\": {...request data...}, \"sig\": {\"signer_ss58\": ..., \"nonce\": ..., \"signature\": ...}} -- declared in the subnet's own OpenAPI spec (SignedEnvelope_dict_/Signature schemas). No static API key or bearer token is accepted.",
+        "location": "body",
+        "names": ["signer_ss58", "nonce", "signature"],
+        "body_envelope": {
+          "payload_key": "payload",
+          "credential_key": "sig"
+        }
       },
       "auth_required": true,
       "authority": "community",
@@ -1357,8 +1427,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request, wrapped in the target API's own SignedEnvelope shape: {\"payload\": {...request data...}, \"sig\": {\"signer_ss58\": ..., \"nonce\": ..., \"signature\": ...}} -- declared in the subnet's own OpenAPI spec (SignedEnvelope_dict_/Signature schemas). No static API key or bearer token is accepted.",
+        "location": "body",
+        "names": ["signer_ss58", "nonce", "signature"],
+        "body_envelope": {
+          "payload_key": "payload",
+          "credential_key": "sig"
+        }
       },
       "auth_required": true,
       "authority": "community",
@@ -1383,8 +1459,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request, wrapped in the target API's own SignedEnvelope shape: {\"payload\": {...request data...}, \"sig\": {\"signer_ss58\": ..., \"nonce\": ..., \"signature\": ...}} -- declared in the subnet's own OpenAPI spec (SignedEnvelope_dict_/Signature schemas). No static API key or bearer token is accepted.",
+        "location": "body",
+        "names": ["signer_ss58", "nonce", "signature"],
+        "body_envelope": {
+          "payload_key": "payload",
+          "credential_key": "sig"
+        }
       },
       "auth_required": true,
       "authority": "community",
