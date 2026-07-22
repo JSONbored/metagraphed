@@ -91,6 +91,13 @@ function redactCredentialValue(text, credential) {
  */
 
 /**
+ * @typedef {object} CallSubnetSurfaceCredential
+ * @property {"header" | "query" | "cookie"} location Where to place the credential -- mirrors the surface's own `auth.location`. The CALLER (call_subnet_surface's tool handler) is responsible for validating the surface's auth.scheme is generically supported (bearer/api-key) and auth.location/auth.name are both present BEFORE ever passing this; this function only places the value, it does not validate eligibility.
+ * @property {string} name Header name, query-parameter name, or cookie name -- the surface's own `auth.name`.
+ * @property {string} value The credential value exactly as supplied by the caller, inserted verbatim (never reformatted against `auth.value_format` -- the caller is expected to have already formatted it, e.g. "Bearer <token>").
+ */
+
+/**
  * @typedef {object} CallSubnetSurfaceOptions
  * @property {Record<string, string | number | boolean>} [query] Query params merged onto the effective base URL.
  * @property {string} [path] MCP execute Phase 2b (#7674) schema-validated path override -- the CALLER (call_subnet_surface's tool handler) is responsible for confirming this path is declared in the surface's captured schema via matchSchemaOperation BEFORE ever passing it here; this function does not validate it. When present, the request URL is this surface's own origin (never the OpenAPI document's own `servers[]` host) joined with this path, not `surface.url`.

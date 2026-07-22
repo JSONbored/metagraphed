@@ -42,7 +42,10 @@
 import { withSentry } from "@sentry/cloudflare";
 import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import handler from "./api.mjs";
-import { buildOAuthProviderOptions } from "../src/github-oauth.mjs";
+import {
+  buildOAuthProviderOptions,
+  isAnonymousMcpRequest,
+} from "../src/github-oauth.mjs";
 // wrangler.jsonc's "main" now points at THIS file, so wrangler looks for
 // every Durable Object binding's class as a named export from here, not
 // from api.mjs -- confirmed by a real `wrangler deploy --dry-run` failure
@@ -58,10 +61,23 @@ export {
 // GitHub OAuth (metagraphed#7151): OAuthProvider owns top-level fetch
 // dispatch (its own /oauth/token + /oauth/register endpoints, plus routing
 // /mcp to apiHandler with ctx.props populated when a valid Bearer token is
-// present, falling through to defaultHandler -- the real, unmodified
-// `handler` -- for everything else, INCLUDING /mcp with no/invalid token).
-// Anonymous/IP-rate-limited access is therefore completely unaffected; see
-// src/github-oauth.mjs's own header for the full flow.
+// present). A BARE /mcp request with no Bearer token is routed to the real,
+// unmodified `handler` directly, bypassing oauthProvider.fetch() entirely --
+// isAnonymousMcpRequest below, NOT anything inside OAuthProvider's own
+// apiRoute/apiHandler machinery, is what keeps anonymous/IP-rate-limited
+// access to /mcp working. This was a real production regression (silently
+// 401ing every anonymous MCP client since #7151) until this explicit bypass
+// was added: @cloudflare/workers-oauth-provider's apiRoute/apiHandler
+// mechanism unconditionally requires a valid Bearer token and 401s BEFORE
+// apiHandler is ever reached -- there is no library-level "authenticate if
+// present, else fall through to defaultHandler" option (confirmed against
+// node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js
+// directly, not just its .d.ts); see src/github-oauth.mjs's
+// buildOAuthProviderOptions/isAnonymousMcpRequest comments for the full
+// story. Every other path -- /authorize, /oauth/token, /oauth/register,
+// OAuthProvider's own discovery endpoints, and /mcp WITH a Bearer token --
+// still needs the real oauthProvider.fetch() dispatch, so this bypass stays
+// scoped to exactly the one route/no-token combination.
 //
 // OAuthProvider instances expose ONLY .fetch(), not .scheduled() -- this
 // Worker has four live cron triggers (wrangler.jsonc "triggers.crons": the
@@ -75,7 +91,9 @@ export {
 const oauthProvider = new OAuthProvider(buildOAuthProviderOptions(handler));
 const handlerWithOAuth = {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) =>
-    oauthProvider.fetch(request, env, ctx),
+    isAnonymousMcpRequest(request)
+      ? handler.fetch(request, env, ctx)
+      : oauthProvider.fetch(request, env, ctx),
   // Discards handleScheduled's (api.mjs, not yet converted) return value --
   // it returns diagnostic objects for its own test suite's benefit; the real
   // Workers runtime ignores scheduled()'s return value, and ExportedHandler's

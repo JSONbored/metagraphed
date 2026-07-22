@@ -4,6 +4,7 @@ import {
   buildOAuthProviderOptions,
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
+  isAnonymousMcpRequest,
   OAUTH_PENDING_TTL_SECONDS,
   UNUSED_DEFAULT_HANDLER,
 } from "../src/github-oauth.mjs";
@@ -99,6 +100,53 @@ describe("buildOAuthProviderOptions", () => {
     const response = await options.apiHandler.fetch("req", "env", "ctx");
     assert.equal(await response.text(), "delegated");
     assert.deepEqual(calls, [["req", "env", "ctx"]]);
+  });
+});
+
+// REGRESSION: @cloudflare/workers-oauth-provider's apiRoute/apiHandler
+// machinery unconditionally 401s a /mcp request with no Bearer token BEFORE
+// apiHandler is ever reached -- confirmed directly against
+// node_modules/@cloudflare/workers-oauth-provider/dist/oauth-provider.js.
+// This silently broke every anonymous MCP client since GitHub OAuth (#7151)
+// shipped; isAnonymousMcpRequest is what the real entrypoint
+// (workers/api.sentry.ts) uses to bypass oauthProvider.fetch() entirely for
+// exactly this one case, restoring the pre-#7151 anonymous behavior.
+describe("isAnonymousMcpRequest", () => {
+  test("true for /mcp with no Authorization header at all", () => {
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+    });
+    assert.equal(isAnonymousMcpRequest(request), true);
+  });
+
+  test("true for /mcp with a non-Bearer Authorization header", () => {
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: { Authorization: "Basic dXNlcjpwYXNz" },
+    });
+    assert.equal(isAnonymousMcpRequest(request), true);
+  });
+
+  test("false for /mcp with a Bearer token -- still needs the real OAuth dispatch", () => {
+    const request = new Request("https://api.metagraph.sh/mcp", {
+      method: "POST",
+      headers: { Authorization: "Bearer real-token" },
+    });
+    assert.equal(isAnonymousMcpRequest(request), false);
+  });
+
+  test("false for a non-/mcp path with no Authorization header -- the OAuth flow's own endpoints must never bypass oauthProvider", () => {
+    const request = new Request(
+      "https://api.metagraph.sh/authorize?client_id=x",
+    );
+    assert.equal(isAnonymousMcpRequest(request), false);
+  });
+
+  test("false for /oauth/token with no Authorization header", () => {
+    const request = new Request("https://api.metagraph.sh/oauth/token", {
+      method: "POST",
+    });
+    assert.equal(isAnonymousMcpRequest(request), false);
   });
 });
 
