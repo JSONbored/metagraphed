@@ -390,7 +390,7 @@ import {
   CHAIN_PROMETHEUS_LIMIT_MAX,
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
-} from "./chain-prometheus.mjs";
+} from "./chain-prometheus.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,

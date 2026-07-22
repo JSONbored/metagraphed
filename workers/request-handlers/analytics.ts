@@ -75,7 +75,7 @@ import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
   CHAIN_PROMETHEUS_LIMIT_MAX,
-} from "../../src/chain-prometheus.mjs";
+} from "../../src/chain-prometheus.ts";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,

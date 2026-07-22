@@ -292,7 +292,7 @@ import {
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
-} from "../src/chain-prometheus.mjs";
+} from "../src/chain-prometheus.ts";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
@@ -6012,7 +6012,7 @@ export default {
 
         // GET /api/v1/chain/prometheus (#4832 Tier 2): network-wide
         // PrometheusServed announcement leaderboard, mirroring
-        // src/chain-prometheus.mjs's loadChainPrometheus.
+        // src/chain-prometheus.ts's loadChainPrometheus.
         const chainPrometheus = url.pathname.match(
           /^\/api\/v1\/chain\/prometheus$/,
         );

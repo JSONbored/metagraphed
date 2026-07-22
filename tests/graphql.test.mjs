@@ -22,7 +22,7 @@ import {
   schema as chainEventsSchema,
 } from "../src/graphql.mjs";
 import { LEADERBOARD_BOARDS } from "../src/health-serving.mjs";
-import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.mjs";
+import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.ts";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.mjs";
 import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.ts";
 import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.mjs";

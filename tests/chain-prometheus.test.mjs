@@ -3,7 +3,7 @@ import { afterEach, describe, test } from "vitest";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_MAX,
-} from "../src/chain-prometheus.mjs";
+} from "../src/chain-prometheus.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
