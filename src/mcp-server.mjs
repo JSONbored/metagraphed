@@ -159,7 +159,7 @@ import {
   LIST_SOURCE_SNAPSHOTS_MCP_TOOL,
   LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
   loadSourceSnapshotsList,
-} from "./source-snapshots-mcp.mjs";
+} from "./source-snapshots-mcp.ts";
 import {
   LIST_SURFACES_INSTRUCTIONS,
   LIST_SURFACES_MCP_TOOL,

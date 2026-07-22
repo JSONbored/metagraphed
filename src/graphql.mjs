@@ -10,7 +10,7 @@ import { readArtifact, readHealthKv } from "../workers/storage.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
 // and MCP already use) -- not a reimplementation.
-import { loadSourceSnapshotsList } from "./source-snapshots-mcp.mjs";
+import { loadSourceSnapshotsList } from "./source-snapshots-mcp.ts";
 // #7171: GraphQL parity for GET /api/v1/gaps and /api/v1/evidence, reusing
 // list_gaps / list_evidence loaders unchanged (same artifact + list-query
 // transforms REST and MCP already use) -- not a reimplementation.
