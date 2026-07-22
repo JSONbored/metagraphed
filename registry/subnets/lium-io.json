@@ -323,6 +323,128 @@
       "public_safe": true,
       "source_urls": ["https://lium.io/api/openapi.json"],
       "url": "https://lium.io/api/watchtower/digest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-executors",
+      "kind": "data-artifact",
+      "name": "Lium available executors",
+      "notes": "Lium available executors on the Lium Backend API (GET /executors), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Live-verified 2026-07-22: HTTP 200 application/json listing available executors with machine name and per-GPU pricing. Public, no-auth and fixed-URL, so its probe is enabled and it is callable through call_subnet_surface today.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/executors"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-pods",
+      "kind": "subnet-api",
+      "name": "Lium pods collection",
+      "notes": "Lium pods collection on the Lium Backend API (GET /pods), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Live-verified 2026-07-22: HTTP 401 to an unauthenticated request, confirming the declared gate is real. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/pods"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-root",
+      "kind": "subnet-api",
+      "name": "Lium API service root",
+      "notes": "Lium API service root on the Lium Backend API (GET /), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Live-verified 2026-07-22: HTTP 200 application/json service banner (\"Hello world\"). Public, no-auth and fixed-URL, so its probe is enabled and it is callable through call_subnet_surface today.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-templates",
+      "kind": "data-artifact",
+      "name": "Lium pod templates",
+      "notes": "Lium pod templates on the Lium Backend API (GET, POST /templates), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Live-verified 2026-07-22: HTTP 200 application/json listing published pod templates (id, name, description). Public, no-auth and fixed-URL, so its probe is enabled and it is callable through call_subnet_surface today.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/templates"
+    },
+    {
+      "auth": {
+        "scheme": "bearer",
+        "location": "header",
+        "name": "Authorization",
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes (a bearer scheme declared per-operation). Only the scheme and location are asserted."
+      },
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-51-lium-users-search",
+      "kind": "subnet-api",
+      "name": "Lium user search",
+      "notes": "Lium user search on the Lium Backend API (GET /users/search), declared in the subnet's own OpenAPI spec at https://lium.io/api/openapi.json. Live-verified 2026-07-22: HTTP 401 to an unauthenticated request, confirming the declared gate is real. Registered auth_required:true with probe.enabled:false (Phase 3).",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "joaovictor91123"
+      },
+      "source_urls": ["https://lium.io/api/openapi.json"],
+      "url": "https://lium.io/api/users/search"
     }
   ],
   "source_repo": "https://github.com/Datura-ai/lium-io"
