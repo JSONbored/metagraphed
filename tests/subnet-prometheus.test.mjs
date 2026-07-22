@@ -6,7 +6,7 @@ import {
   PROMETHEUS_EVENT_KIND,
   SUBNET_PROMETHEUS_WINDOWS,
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
-} from "../src/subnet-prometheus.mjs";
+} from "../src/subnet-prometheus.ts";
 
 describe("buildSubnetPrometheus", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {

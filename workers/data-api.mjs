@@ -229,7 +229,7 @@ import {
   buildSubnetPrometheus,
   SUBNET_PROMETHEUS_WINDOWS,
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
-} from "../src/subnet-prometheus.mjs";
+} from "../src/subnet-prometheus.ts";
 import {
   buildAccountDeregistrations,
   DEREGISTRATION_EVENT_KIND,
