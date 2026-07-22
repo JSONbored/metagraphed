@@ -6,7 +6,7 @@ import {
   loadSubnetPerformance,
   parseSubnetPerformanceHistoryWindow,
   buildSubnetPerformanceHistory,
-} from "../src/subnet-performance.mjs";
+} from "../src/subnet-performance.ts";
 
 // A neurons-tier snapshot for one subnet: two validators (permit=1) and two
 // miners (permit=0), with a skewed incentive/dividend distribution.

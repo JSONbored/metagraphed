@@ -10,6 +10,9 @@
 
 import { computeConcentration } from "./concentration.ts";
 
+type Row = Record<string, unknown>;
+type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
+
 // The neurons-tier columns the performance handler reads — the D1 read contract
 // for buildSubnetPerformance (mirrors CONCENTRATION_READ_COLUMNS). Kept next to
 // its consumer so the Worker handler stays a thin SELECT.
@@ -25,7 +28,7 @@ const SCORE_PERCENTILES = [10, 25, 50, 75, 90];
 // Round a score/mean to 6 dp so JSON never carries a long floating-point tail.
 // Callers only ever pass finite values (finiteValues drops non-finite cells and
 // scoreDistribution guards count > 0), so no null-guard is needed here.
-function round(value) {
+function round(value: number): number {
   const factor = 1e6;
   return Math.round(value * factor) / factor;
 }
@@ -33,14 +36,14 @@ function round(value) {
 // Guard 0/negative epoch ms (a blank/sentinel D1 cell) so a captured_at never
 // stamps the 1970 epoch. Mirrors epochMsStamp in concentration.ts / the
 // account-events + snapshot fixes (#2776/#2777).
-function epochMsStamp(ms) {
+function epochMsStamp(ms: number): { ms: number; value: string } | null {
   if (!Number.isFinite(ms) || ms <= 0) return null;
   const date = new Date(ms);
   if (!Number.isFinite(date.getTime())) return null;
   return { ms, value: date.toISOString() };
 }
 
-function captureStamp(value) {
+function captureStamp(value: unknown): { ms: number; value: string } | null {
   if (value == null) return null;
   if (typeof value === "string") {
     // D1 can return an INTEGER captured_at as a numeric-epoch string; Date.parse
@@ -58,8 +61,8 @@ function captureStamp(value) {
 // `positiveValues`, a score of exactly 0 is a real observation (a neuron with zero
 // trust IS part of the spread), so only null/NaN cells are dropped — the `count`
 // reflects the neurons that actually carry a score.
-function finiteValues(values) {
-  const out = [];
+function finiteValues(values: unknown[]): number[] {
+  const out: number[] = [];
   for (const raw of values) {
     // Guard null/undefined/blank BEFORE Number(): Number(null) / Number(" ") are 0,
     // which would count an absent score as a real 0 and pollute the distribution.
@@ -74,7 +77,7 @@ function finiteValues(values) {
 // Nearest-rank percentile over a non-empty ascending array (rank = ceil(p/100 · n),
 // 1-based), matching the subnet-yield / health-percentile convention. Only called
 // after scoreDistribution has established count > 0, so the array is never empty.
-function percentile(ascending, p) {
+function percentile(ascending: number[], p: number): number {
   const rank = Math.max(1, Math.ceil((p / 100) * ascending.length));
   return ascending[rank - 1];
 }
@@ -86,7 +89,7 @@ function percentile(ascending, p) {
 // "averages the two middle values ... not lower-middle"), so a field named
 // *_median reports the same statistic across both modules. Callers pass a raw
 // column array (dayRows.map(...)); returns null when no neuron carries a finite value.
-function scoreMedian(values) {
+function scoreMedian(values: unknown[]): number | null {
   const ascending = finiteValues(values).sort((a, b) => a - b);
   const n = ascending.length;
   if (n === 0) return null;
@@ -96,16 +99,26 @@ function scoreMedian(values) {
     : round((ascending[mid - 1] + ascending[mid]) / 2);
 }
 
+export interface ScoreDistribution {
+  count: number;
+  mean: number;
+  min: number;
+  max: number;
+  [percentileKey: `p${number}`]: number;
+}
+
 // Distribution summary for one 0..1 score column, or `null` when no neuron carries
 // a finite value (cold store / empty subnet / all-null column). count/mean plus the
 // SCORE_PERCENTILES spread and the min/max, all rounded to a stable precision.
-export function scoreDistribution(values) {
+export function scoreDistribution(
+  values: unknown[] | null | undefined,
+): ScoreDistribution | null {
   const finite = finiteValues(Array.isArray(values) ? values : []);
   const count = finite.length;
   if (count === 0) return null;
   const ascending = [...finite].sort((a, b) => a - b);
   const total = finite.reduce((sum, v) => sum + v, 0);
-  const summary = {
+  const summary: ScoreDistribution = {
     count,
     mean: round(total / count),
     min: round(ascending[0]),
@@ -125,10 +138,13 @@ export function scoreDistribution(values) {
 //     spread of the 0..1 performance scores across the subnet)
 // plus neuron/validator/active counts. Null-safe on junk/sparse rows — an empty
 // array yields a schema-stable zero (every metric block null).
-export function buildSubnetPerformance(rows, netuid) {
+export function buildSubnetPerformance(
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+): Row {
   const list = Array.isArray(rows) ? rows : [];
   // The rows share one cron capture, but don't assume an order — take the newest.
-  let capturedAt = null;
+  let capturedAt: { ms: number; value: string } | null = null;
   let validatorCount = 0;
   let activeCount = 0;
   for (const row of list) {
@@ -166,7 +182,10 @@ export function buildSubnetPerformance(rows, netuid) {
 
 // Shared D1 loader (mirrors handleSubnetPerformance) — read one subnet's neurons
 // and shape them into the performance artifact. Exported for the MCP tool.
-export async function loadSubnetPerformance(d1, netuid) {
+export async function loadSubnetPerformance(
+  d1: D1Runner,
+  netuid: unknown,
+): Promise<Row> {
   const rows = await d1(
     `SELECT ${PERFORMANCE_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
     [netuid],
@@ -181,7 +200,11 @@ export async function loadSubnetPerformance(d1, netuid) {
 // needs its full per-UID distribution (Gini of the reward flow + the score
 // spread can't be a cheap SQL GROUP BY), so the read is the raw per-UID rows
 // bounded by a row cap that then drops a truncated oldest day.
-export const PERFORMANCE_HISTORY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+export const PERFORMANCE_HISTORY_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 export const DEFAULT_PERFORMANCE_HISTORY_WINDOW = "30d";
 // Safety valve on the raw per-UID read (≈256 UIDs × 90d ≈ 23k; leaves head room
 // and the builder drops a truncated oldest day so every point is complete).
@@ -190,7 +213,11 @@ export const PERFORMANCE_HISTORY_ROW_CAP = 50_000;
 // Parse ?window for the history route — a deliberately smaller set than the
 // structural history (no 1y/all) so the raw read stays bounded. Returns
 // {label, days} or {error:{parameter,message}} (the analyticsQueryError shape).
-export function parseSubnetPerformanceHistoryWindow(value) {
+export function parseSubnetPerformanceHistoryWindow(
+  value: unknown,
+):
+  | { label: string; days: number }
+  | { error: { parameter: string; message: string } } {
   const v =
     typeof value === "string" && value
       ? value
@@ -211,7 +238,7 @@ export function parseSubnetPerformanceHistoryWindow(value) {
 // Nakamoto / top-10% share for incentive (all neurons) and dividends (validators),
 // plus the mean/median of the 0..1 trust, consensus, and validator_trust scores.
 // Null-safe — a cold/empty day yields null metrics, never throws.
-function performanceHistoryPoint(date, dayRows) {
+function performanceHistoryPoint(date: string, dayRows: Row[]): Row {
   const validatorRows = dayRows.filter(
     (row) => Number(row?.validator_permit) === 1,
   );
@@ -259,24 +286,24 @@ function performanceHistoryPoint(date, dayRows) {
 // oldest day, which may be a partial distribution. Null-safe: a cold store yields
 // point_count:0.
 export function buildSubnetPerformanceHistory(
-  rows,
-  netuid,
-  { window, capped } = {},
-) {
+  rows: Row[] | null | undefined,
+  netuid: unknown,
+  { window, capped }: { window?: unknown; capped?: boolean } = {},
+): Row {
   const list = Array.isArray(rows) ? rows : [];
   // Group by snapshot_date. Rows arrive newest-first + same-date contiguous, so
   // Map insertion order is the newest-first date order we want.
-  const byDate = new Map();
+  const byDate = new Map<string, Row[]>();
   for (const row of list) {
     const date = row?.snapshot_date;
     if (typeof date !== "string" || !date) continue;
     if (!byDate.has(date)) byDate.set(date, []);
-    byDate.get(date).push(row);
+    byDate.get(date)!.push(row);
   }
   let dates = [...byDate.keys()];
   if (capped && dates.length > 1) dates = dates.slice(0, -1);
   const points = dates.map((date) =>
-    performanceHistoryPoint(date, byDate.get(date)),
+    performanceHistoryPoint(date, byDate.get(date) as Row[]),
   );
   return {
     schema_version: 1,

@@ -86,7 +86,7 @@ import {
   PERFORMANCE_HISTORY_ROW_CAP,
   PERFORMANCE_HISTORY_WINDOWS,
   DEFAULT_PERFORMANCE_HISTORY_WINDOW,
-} from "../src/subnet-performance.mjs";
+} from "../src/subnet-performance.ts";
 import { buildChainPerformance } from "../src/chain-performance.ts";
 import {
   buildChainIdleStake,
@@ -8542,7 +8542,7 @@ export default {
 
         // GET /api/v1/subnets/:netuid/performance/history?window= (#4832
         // Tier 2b): per-day reward-flow & trust trend, mirroring
-        // src/subnet-performance.mjs's buildSubnetPerformanceHistory.
+        // src/subnet-performance.ts's buildSubnetPerformanceHistory.
         const performanceHistoryMatch = url.pathname.match(
           /^\/api\/v1\/subnets\/(\d+)\/performance\/history$/,
         );

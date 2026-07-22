@@ -154,7 +154,7 @@ import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
   parseSubnetPerformanceHistoryWindow,
-} from "../../src/subnet-performance.mjs";
+} from "../../src/subnet-performance.ts";
 import {
   buildCounterparties,
   buildCounterpartyRelationship,
@@ -439,7 +439,7 @@ const SUBNET_YIELD_HISTORY_CSV_COLUMNS = [
   "p75_yield",
   "p90_yield",
 ];
-// performanceHistoryPoint's flat row shape (src/subnet-performance.mjs) — the
+// performanceHistoryPoint's flat row shape (src/subnet-performance.ts) — the
 // reward-flow twin of SUBNET_CONCENTRATION_HISTORY_CSV_COLUMNS.
 const SUBNET_PERFORMANCE_HISTORY_CSV_COLUMNS = [
   "snapshot_date",

@@ -145,7 +145,7 @@ import {
   buildSubnetPerformanceHistory,
   PERFORMANCE_HISTORY_WINDOWS,
   DEFAULT_PERFORMANCE_HISTORY_WINDOW,
-} from "./subnet-performance.mjs";
+} from "./subnet-performance.ts";
 import {
   buildConcentration,
   buildConcentrationHistory,

@@ -53,7 +53,7 @@ interface CaptureStamp {
 }
 
 // Guard 0/negative epoch ms (a blank/sentinel D1 cell) so captured_at never stamps
-// the 1970 epoch; mirrors epochMsStamp in concentration.ts / subnet-performance.mjs.
+// the 1970 epoch; mirrors epochMsStamp in concentration.ts / subnet-performance.ts.
 function captureStamp(value: unknown): CaptureStamp | null {
   let ms: number;
   if (typeof value === "number" && Number.isFinite(value)) {
