@@ -950,6 +950,28 @@
       },
       "source_urls": ["https://api.all-ways.io/swagger-json"],
       "url": "https://api.all-ways.io/treasury/churn"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-data-artifact",
+      "kind": "data-artifact",
+      "name": "Allways llms.txt agent quickstart",
+      "notes": "Public no-auth machine-readable llms.txt served at all-ways.io/llms.txt for SN7 Allways -- an agent/LLM-facing Markdown quickstart for the subnet's on-chain orderbook for native cross-asset swaps, with a resource table pointing at the live dashboard, the HTTP API + Swagger already registered here, the docs site, and the source repo; content begins '# Allways -- Agent Quickstart'. Distinct path from the registered website surface on the same host; the file self-references https://all-ways.io/llms.txt as its canonical raw location and notes a testnet mirror at test.all-ways.io/llms.txt.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "tryeverything24"
+      },
+      "source_urls": ["https://all-ways.io/"],
+      "url": "https://all-ways.io/llms.txt"
     }
   ],
   "website_url": "https://all-ways.io/"
