@@ -23,7 +23,7 @@ import {
   registryItems,
   sortAndCap,
 } from "./feeds.mjs";
-import { loadChangelog } from "./changelog-mcp.mjs";
+import { loadChangelog } from "./changelog-mcp.ts";
 
 export const FEED_KINDS = ["registry", "incidents", "gaps", "subnet"];
 const ENRICHMENT_QUEUE_ARTIFACT = "/metagraph/review/enrichment-queue.json";

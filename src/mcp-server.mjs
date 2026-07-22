@@ -218,7 +218,7 @@ import {
   GET_CHANGELOG_MCP_TOOL,
   GET_CHANGELOG_OUTPUT_SCHEMA,
   loadChangelog,
-} from "./changelog-mcp.mjs";
+} from "./changelog-mcp.ts";
 import { SAVED_QUERY_TEMPLATES, runSavedQuery } from "./saved-queries.mjs";
 import { decodeEvmPrecompileCall } from "./evm-precompiles.mjs";
 import { H160_PATTERN, loadAddressMapping } from "./address-mapping.ts";

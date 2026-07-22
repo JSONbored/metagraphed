@@ -2,20 +2,41 @@
 // Serves the baked /metagraph/changelog.json artifact (publish-time artifact,
 // subnet, and coverage diffs).
 
+import type { StorageReadResult } from "../workers/storage.ts";
+
 export const CHANGELOG_ARTIFACT = "/metagraph/changelog.json";
 
-export function changelogToolError(code, message) {
-  const error = new Error(message);
+export interface ChangelogToolError extends Error {
+  toolError: true;
+  code: string;
+}
+
+export function changelogToolError(
+  code: string,
+  message: string,
+): ChangelogToolError {
+  const error = new Error(message) as ChangelogToolError;
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-export async function loadChangelog(ctx, { readArtifact } = {}) {
+export async function loadChangelog(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<unknown> {
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, CHANGELOG_ARTIFACT);
   if (!result?.ok) {
-    const code = result?.code || "artifact_unavailable";
+    const code =
+      (result as { code?: string } | undefined)?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
       throw changelogToolError(
         "not_found",
