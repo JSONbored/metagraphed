@@ -11027,7 +11027,7 @@ export const MCP_TOOLS = [
     name: "call_subnet_surface",
     title: "Call a subnet's live API and return its response",
     description:
-      "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). For POST/PUT, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it (MCP execute Phase 3, #7686-#7688). Never obtains a credential on your behalf and never stores or reuses one past this single call.",
+      "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). For POST/PUT, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, cookie, or merged into a POST/PUT JSON body (MCP execute Phase 3-4, #7686-#7688, #7701). Never obtains a credential on your behalf and never stores or reuses one past this single call.",
     inputSchema: {
       type: "object",
       properties: {
@@ -11064,9 +11064,9 @@ export const MCP_TOOLS = [
             'Media type for `body`, e.g. "application/json". Must be one the matched operation declares. Optional when the operation declares application/json or exactly one media type.',
         },
         credential: {
-          type: "string",
+          type: ["string", "object"],
           description:
-            'Credential for an auth_required surface, already formatted per the surface\'s auth.value_format (e.g. "Bearer <token>", "Apikey <key>" -- fetch it first with list_subnet_apis/get_api_schema). Only surfaces with auth.scheme bearer or api-key AND both auth.location/auth.name documented accept this; anything else (custom scheme, or an incompletely-documented one) is rejected. This tool never obtains a credential on your behalf -- you must already hold a working one. Never stored, logged, or reused past this single call.',
+            "Credential for an auth_required surface -- see this surface's auth details (list_subnet_apis/get_api_schema) for which shape it needs. For auth.scheme bearer/api-key: a single string, already formatted per auth.value_format (e.g. \"Bearer <token>\"). For auth.scheme signature (e.g. a Bittensor hotkey-signed request): an object mapping every name in auth.names to a value YOU have already computed -- this tool never signs anything itself, you must compute the signature yourself (with your own wallet/key, exactly as if calling the subnet directly) before calling this tool; the object's keys must exactly match auth.names, no more, no fewer. Any other scheme (custom, or incompletely documented) is rejected. Never obtains a credential on your behalf, never stores or reuses one past this single call.",
         },
       },
       required: ["surface_id"],
@@ -11138,8 +11138,13 @@ export const MCP_TOOLS = [
           `No catalogued surface with id, key, or deprecated id "${args.surface_id}".`,
         );
       }
-      const hasCredentialArg =
+      const hasStringCredentialArg =
         typeof args?.credential === "string" && args.credential.length > 0;
+      const hasObjectCredentialArg =
+        args?.credential !== null &&
+        typeof args?.credential === "object" &&
+        !Array.isArray(args?.credential);
+      const hasCredentialArg = hasStringCredentialArg || hasObjectCredentialArg;
       if (hasCredentialArg && !surface.auth_required) {
         throw toolError(
           "invalid_params",
@@ -11155,26 +11160,92 @@ export const MCP_TOOLS = [
           );
         }
         const scheme = surface.auth?.scheme;
-        if (scheme !== "bearer" && scheme !== "api-key") {
-          throw toolError(
-            "credential_not_supported",
-            `This surface's auth scheme ("${scheme || "undocumented"}") is not one this tool can attach a credential to (only bearer/api-key are supported). Use list_subnet_apis / how_do_i_call to see how to call it directly.`,
-          );
-        }
         const location = surface.auth?.location;
-        const name = surface.auth?.name;
-        if (
-          !name ||
-          (location !== "header" &&
-            location !== "query" &&
-            location !== "cookie")
-        ) {
+        if (scheme === "bearer" || scheme === "api-key") {
+          const name = surface.auth?.name;
+          if (
+            !name ||
+            (location !== "header" &&
+              location !== "query" &&
+              location !== "cookie")
+          ) {
+            throw toolError(
+              "credential_not_supported",
+              "This surface's auth mechanism (location/name) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
+            );
+          }
+          if (!hasStringCredentialArg) {
+            throw toolError(
+              "invalid_params",
+              `This surface's auth.scheme ("${scheme}") requires \`credential\` to be a single string, not an object.`,
+            );
+          }
+          credentialPlacement = { location, name, value: args.credential };
+        } else if (scheme === "signature") {
+          const names = Array.isArray(surface.auth?.names)
+            ? surface.auth.names
+            : null;
+          if (
+            !names ||
+            names.length === 0 ||
+            (location !== "header" &&
+              location !== "query" &&
+              location !== "cookie" &&
+              location !== "body")
+          ) {
+            throw toolError(
+              "credential_not_supported",
+              "This surface's auth mechanism (location/names) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
+            );
+          }
+          if (!hasObjectCredentialArg) {
+            throw toolError(
+              "invalid_params",
+              `This surface's auth.scheme ("signature") requires \`credential\` to be an object mapping each of ${JSON.stringify(names)} to a value you have already computed -- this tool does not sign requests itself.`,
+            );
+          }
+          const suppliedNames = Object.keys(args.credential);
+          const missing = names.filter((n) => !suppliedNames.includes(n));
+          const unexpected = suppliedNames.filter((n) => !names.includes(n));
+          if (missing.length > 0 || unexpected.length > 0) {
+            throw toolError(
+              "invalid_params",
+              `\`credential\` must have exactly these keys: ${JSON.stringify(names)}.` +
+                (missing.length > 0
+                  ? ` Missing: ${JSON.stringify(missing)}.`
+                  : "") +
+                (unexpected.length > 0
+                  ? ` Unexpected: ${JSON.stringify(unexpected)}.`
+                  : ""),
+            );
+          }
+          for (const [key, value] of Object.entries(args.credential)) {
+            if (typeof value !== "string" || value.length === 0) {
+              throw toolError(
+                "invalid_params",
+                `\`credential.${key}\` must be a non-empty string.`,
+              );
+            }
+          }
+          if (
+            location === "body" &&
+            !(
+              hasPath &&
+              (normalizedMethod === "POST" || normalizedMethod === "PUT")
+            )
+          ) {
+            throw toolError(
+              "invalid_params",
+              "This surface's credential is sent in the request body, which requires `path` and `method` (POST or PUT) to also be set.",
+            );
+          }
+          credentialPlacement = { location, values: args.credential };
+        } else {
           throw toolError(
             "credential_not_supported",
-            "This surface's auth mechanism (location/name) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
+            `This surface's auth scheme ("${scheme || "undocumented"}") is not one this tool can attach a credential to (only bearer/api-key/signature are supported). Use list_subnet_apis / how_do_i_call to see how to call it directly.`,
           );
         }
-        credentialPlacement = { location, name, value: args.credential };
       }
       if (surface.probe?.enabled === false) {
         throw toolError(
@@ -11265,6 +11336,20 @@ export const MCP_TOOLS = [
           // reusing MAX_RESPONSE_BYTES's 256 KiB) would be strictly weaker
           // than the transport cap and could never fire.
         }
+      }
+      // A body-location signature credential (#7701) is merged into the
+      // outgoing JSON body by callSubnetSurface regardless of whether the
+      // caller separately supplied `body` -- if they didn't (credential
+      // fields only), the block above never ran and requestContentType is
+      // still unset. This surface's own auth object already independently
+      // establishes that a JSON body carrying these fields is expected (the
+      // operation's OpenAPI schema frequently doesn't document it at all,
+      // which is exactly why it's scheme:signature and not something
+      // generic), so default to application/json here rather than reusing
+      // the schema-driven resolution above, which only ever runs when the
+      // caller supplied a body of their own.
+      if (credentialPlacement?.location === "body" && !requestContentType) {
+        requestContentType = "application/json";
       }
       const result = await callSubnetSurface(surface, {
         query:

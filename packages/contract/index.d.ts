@@ -4016,17 +4016,19 @@ export interface components {
             /** @description Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness. */
             auth?: {
                 /**
-                 * @description Where the credential is sent.
+                 * @description Where the credential is sent. "body" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie).
                  * @enum {unknown}
                  */
-                location?: "header" | "query" | "cookie";
-                /** @description Header or query-parameter name, e.g. "Authorization" or "X-API-Key". */
+                location?: "header" | "query" | "cookie" | "body";
+                /** @description Header or query-parameter name, e.g. "Authorization" or "X-API-Key". Mutually exclusive with `names` -- single-value schemes (bearer/api-key/basic) use this; scheme:signature uses `names` instead. */
                 name?: string;
+                /** @description For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. ["X-Hotkey", "X-Timestamp", "X-Signature"]. Mutually exclusive with `name`. */
+                names?: string[];
                 /**
-                 * @description Credential scheme.
+                 * @description Credential scheme. "signature" is a multi-value bundle (e.g. a Bittensor hotkey-signed request: signature + timestamp + address headers) the caller computes and supplies as a whole -- see `names`, not `name`.
                  * @enum {unknown}
                  */
-                scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "custom";
+                scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
                 /** @description Note on required scopes or how to obtain a credential. */
                 scopes_note?: string;
                 /**
@@ -8306,17 +8308,19 @@ export interface components {
             /** @description Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness. */
             auth?: {
                 /**
-                 * @description Where the credential is sent.
+                 * @description Where the credential is sent. "body" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie).
                  * @enum {unknown}
                  */
-                location?: "header" | "query" | "cookie";
-                /** @description Header or query-parameter name, e.g. "Authorization" or "X-API-Key". */
+                location?: "header" | "query" | "cookie" | "body";
+                /** @description Header or query-parameter name, e.g. "Authorization" or "X-API-Key". Mutually exclusive with `names` -- single-value schemes (bearer/api-key/basic) use this; scheme:signature uses `names` instead. */
                 name?: string;
+                /** @description For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. ["X-Hotkey", "X-Timestamp", "X-Signature"]. Mutually exclusive with `name`. */
+                names?: string[];
                 /**
-                 * @description Credential scheme.
+                 * @description Credential scheme. "signature" is a multi-value bundle (e.g. a Bittensor hotkey-signed request: signature + timestamp + address headers) the caller computes and supplies as a whole -- see `names`, not `name`.
                  * @enum {unknown}
                  */
-                scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "custom";
+                scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
                 /** @description Note on required scopes or how to obtain a credential. */
                 scopes_note?: string;
                 /**

@@ -804,6 +804,255 @@ describe("callSubnetSurface", () => {
     assert.equal(result.error, "connection refused");
   });
 
+  // metagraphed#7701: multi-value credential bundle (scheme:signature) --
+  // the caller has already computed every value themselves (e.g. signed a
+  // request locally with their own Bittensor hotkey); this module only
+  // places the bundle, never computes or validates a signature.
+  test("credential bundle: header location sets every named header", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          values: {
+            "X-Hotkey": "5F...",
+            "X-Timestamp": "1700000000",
+            "X-Signature": "0xabc",
+          },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.headers["X-Hotkey"], "5F...");
+          assert.equal(init.headers["X-Timestamp"], "1700000000");
+          assert.equal(init.headers["X-Signature"], "0xabc");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential bundle: query location merges every named param", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "query",
+          values: { validator_hotkey: "5F...", signature: "0xabc", nonce: "1" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url) => {
+          const parsed = new URL(url);
+          assert.equal(parsed.searchParams.get("validator_hotkey"), "5F...");
+          assert.equal(parsed.searchParams.get("signature"), "0xabc");
+          assert.equal(parsed.searchParams.get("nonce"), "1");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential bundle: cookie location joins every named cookie with '; '", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "cookie",
+          values: { session: "abc", csrf: "def" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.equal(init.headers.cookie, "session=abc; csrf=def");
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential bundle: body location merges every named field into the outgoing JSON body", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/submit",
+        method: "POST",
+        body: JSON.stringify({ payload: "x" }),
+        contentType: "application/json",
+        credential: {
+          location: "body",
+          values: {
+            identity: "5F...",
+            timestamp: "1700000000",
+            signature: "0xabc",
+          },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.deepEqual(JSON.parse(init.body), {
+            payload: "x",
+            identity: "5F...",
+            timestamp: "1700000000",
+            signature: "0xabc",
+          });
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential bundle: body location works with no separately-supplied body (credential fields only)", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/openapi.json" },
+      {
+        path: "/submit",
+        method: "POST",
+        contentType: "application/json",
+        credential: {
+          location: "body",
+          values: { identity: "5F...", signature: "0xabc" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          assert.deepEqual(JSON.parse(init.body), {
+            identity: "5F...",
+            signature: "0xabc",
+          });
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("credential bundle: query values are all redacted in the returned url", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "query",
+          values: { validator_hotkey: "5F...", signature: "0xabc" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => jsonResponse({}),
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.ok(!result.url.includes("5F..."));
+    assert.ok(!result.url.includes("0xabc"));
+    assert.equal(
+      new URL(result.url).searchParams.get("validator_hotkey"),
+      "<redacted>",
+    );
+    assert.equal(
+      new URL(result.url).searchParams.get("signature"),
+      "<redacted>",
+    );
+  });
+
+  test("credential bundle: every value is scrubbed from a network-error message", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          values: { "X-Hotkey": "5F-secret", "X-Signature": "0xdeadbeef" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => {
+          throw new Error(
+            "fetch failed (X-Hotkey: 5F-secret, X-Signature: 0xdeadbeef)",
+          );
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.ok(!result.error.includes("5F-secret"));
+    assert.ok(!result.error.includes("0xdeadbeef"));
+  });
+
+  test("credential: a query-location credential with neither name nor values leaves the url unchanged (nothing to redact)", async () => {
+    // Exercises the credentialEntries/names fallback all the way to [] --
+    // a credential object present but carrying no name and no values (never
+    // produced by the tool handler's own validation, but this module's own
+    // "caller validates eligibility, this module only places/redacts"
+    // contract means it must still degrade to a no-op rather than throw.
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "query" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => jsonResponse({}),
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.url, "https://example.com/api");
+  });
+
+  test("credential: a credential with neither value nor values leaves error messages unchanged (nothing to redact)", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: { location: "header" },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => {
+          throw new Error("connection refused");
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.error, "connection refused");
+  });
+
+  test("credential bundle: an empty-string value in the bundle is skipped during error scrubbing", async () => {
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          values: { "X-Hotkey": "5F-secret", "X-Empty": "" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async () => {
+          throw new Error("fetch failed (X-Hotkey: 5F-secret)");
+        },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.ok(!result.error.includes("5F-secret"));
+    assert.ok(result.error.includes("<redacted>"));
+  });
+
+  test("credential bundle: preserved across a same-origin redirect, stripped on cross-origin", async () => {
+    let calls = 0;
+    const result = await callSubnetSurface(
+      { url: "https://example.com/api" },
+      {
+        credential: {
+          location: "header",
+          values: { "X-Hotkey": "5F...", "X-Signature": "0xabc" },
+        },
+        isUnsafeUrl: SAFE,
+        fetchImpl: async (url, init) => {
+          calls += 1;
+          if (url === "https://example.com/api") {
+            assert.equal(init.headers["X-Hotkey"], "5F...");
+            return new Response(null, {
+              status: 307,
+              headers: { location: "https://other.example/api" },
+            });
+          }
+          assert.equal(init.headers["X-Hotkey"], undefined);
+          assert.equal(init.headers["X-Signature"], undefined);
+          return jsonResponse({});
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(calls, 2);
+  });
+
   test("credential: cookie location sets a Cookie header formatted name=value", async () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
@@ -826,12 +1075,12 @@ describe("callSubnetSurface", () => {
   test("credential: an unrecognized location is silently ignored, never placed anywhere", async () => {
     // callSubnetSurface only places a credential, it doesn't validate
     // eligibility (the tool handler already restricts location to
-    // header/query/cookie before ever constructing this option) -- an
+    // header/query/cookie/body before ever constructing this option) -- an
     // unrecognized value should be a no-op, not a crash or a guess.
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
-        credential: { location: "body", name: "x", value: "abc123" },
+        credential: { location: "nonsense", name: "x", value: "abc123" },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
           assert.equal(url, "https://example.com/api");
