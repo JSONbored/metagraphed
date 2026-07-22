@@ -25,55 +25,60 @@ import {
   writeJson,
 } from "./lib.mjs";
 
+type Row = Record<string, unknown>;
+
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
-const nativeSnapshot = await loadNativeSnapshot();
-const existingOverlays = await loadSubnets();
-const providers = await loadProviders();
-const providerIds = new Set(providers.map((provider) => provider.id));
+const nativeSnapshot: Row = await loadNativeSnapshot();
+const nativeSnapshotSubnets = nativeSnapshot.subnets as Row[];
+const existingOverlays: Row[] = await loadSubnets();
+const providers: Row[] = await loadProviders();
+const providerIds = new Set(providers.map((provider) => provider.id as string));
 const observedAt =
   process.env.METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT === "1"
     ? process.env.METAGRAPH_DISCOVERY_OBSERVED_AT || new Date().toISOString()
     : null;
-const nativeByNetuid = new Map(
-  nativeSnapshot.subnets.map((subnet) => [subnet.netuid, subnet]),
+const nativeByNetuid = new Map<number, Row>(
+  nativeSnapshotSubnets.map((subnet) => [subnet.netuid as number, subnet]),
 );
-const overlayNameByNetuid = new Map(
+const overlayNameByNetuid = new Map<number, string>(
   existingOverlays
     .filter((overlay) => overlay.name)
-    .map((overlay) => [overlay.netuid, overlay.name]),
+    .map((overlay) => [overlay.netuid as number, overlay.name as string]),
 );
-const overlayProviderByNetuid = new Map(
+const overlayProviderByNetuid = new Map<number, string>(
   existingOverlays.map((overlay) => [
-    overlay.netuid,
+    overlay.netuid as number,
     selectOverlayProvider(overlay),
   ]),
 );
-const netuidsWithProjectDocs = new Set(
+const netuidsWithProjectDocs = new Set<number>(
   existingOverlays
     .filter((overlay) =>
-      (overlay.surfaces || []).some(
+      ((overlay.surfaces as Row[]) || []).some(
         (surface) =>
           surface.kind === "docs" && !isCommunityDocsProvider(surface.provider),
       ),
     )
-    .map((overlay) => overlay.netuid),
+    .map((overlay) => overlay.netuid as number),
 );
 // Subnets that already expose an `openapi` surface — nothing to auto-discover.
-const netuidsWithOpenapi = new Set(
+const netuidsWithOpenapi = new Set<number>(
   existingOverlays
     .filter((overlay) =>
-      (overlay.surfaces || []).some((surface) => surface.kind === "openapi"),
+      ((overlay.surfaces as Row[]) || []).some(
+        (surface) => surface.kind === "openapi",
+      ),
     )
-    .map((overlay) => overlay.netuid),
+    .map((overlay) => overlay.netuid as number),
 );
 // Body cap for an OpenAPI spec probe — generous enough for real specs while
 // bounding what a hostile path can stream back into the discovery process.
 const OPENAPI_SPEC_PROBE_MAX_BYTES = 2 * 1024 * 1024;
-const candidatesByKey = new Map();
-const candidateIds = new Set();
-const warnings = [];
+const candidatesByKey = new Map<string, Row>();
+const candidateIds = new Set<string>();
+const warnings: string[] = [];
 const existingGeneratedCandidates = await loadExistingGeneratedCandidates();
 // A committed community/curated candidate already pins a locator that the live
 // OpenAPI/website probes can rediscover under a different id — which trips
@@ -83,12 +88,12 @@ const existingGeneratedCandidates = await loadExistingGeneratedCandidates();
 // Reserve every committed community candidate's locator (same key format as
 // addCandidate, via the shared normalizeCandidateUrl) so the discovery never
 // emits a duplicate of one — the committed candidate stands.
-const reservedCandidateLocators = new Set();
+const reservedCandidateLocators = new Set<string>();
 for (const file of await listJsonFilesRecursive(
   path.join(repoRoot, "registry/candidates/community"),
 )) {
-  const document = await readJson(file);
-  for (const candidate of document.candidates || []) {
+  const document: Row = await readJson(file);
+  for (const candidate of (document.candidates as Row[]) || []) {
     const normalizedUrl = normalizeCandidateUrl(candidate.url);
     if (!normalizedUrl) continue;
     reservedCandidateLocators.add(
@@ -96,7 +101,7 @@ for (const file of await listJsonFilesRecursive(
     );
   }
 }
-const restoredProviders = new Set();
+const restoredProviders = new Set<string>();
 const TAOPEDIA_ARTICLE_PROBE_MAX_BYTES = 64 * 1024;
 // TaoMarketCap normally reports a finite `count`, but keep count-less
 // pagination bounded so a malformed `next` chain cannot hang refresh jobs.
@@ -131,14 +136,14 @@ if (restoredProviders.size === 0) {
 
 const candidates = [...candidatesByKey.values()].sort(
   (a, b) =>
-    a.netuid - b.netuid ||
-    a.kind.localeCompare(b.kind) ||
-    a.id.localeCompare(b.id),
+    (a.netuid as number) - (b.netuid as number) ||
+    (a.kind as string).localeCompare(b.kind as string) ||
+    (a.id as string).localeCompare(b.id as string),
 );
 
 const summary = {
   mode: dryRun ? "dry-run" : "write",
-  native_subnet_count: nativeSnapshot.subnets.length,
+  native_subnet_count: nativeSnapshotSubnets.length,
   generated_candidate_count: candidates.length,
   candidate_subnet_count: new Set(
     candidates.map((candidate) => candidate.netuid),
@@ -218,24 +223,25 @@ if (!dryRun) {
 
 console.log(stableStringify(summary));
 
-async function discoverFromNativeChainIdentity() {
+async function discoverFromNativeChainIdentity(): Promise<void> {
   const sourceUrl =
     "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html";
 
-  for (const subnet of nativeSnapshot.subnets) {
-    const identity = subnet.chain_identity;
+  for (const subnet of nativeSnapshotSubnets) {
+    const identity = subnet.chain_identity as Row | undefined;
     if (!identity || typeof identity !== "object") {
       continue;
     }
 
+    const netuid = subnet.netuid as number;
     const displayName =
-      cleanName(identity.subnet_name) || displayNameForNetuid(subnet.netuid);
-    const provider = providerForNativeIdentity(subnet.netuid);
+      cleanName(identity.subnet_name) || displayNameForNetuid(netuid);
+    const provider = providerForNativeIdentity(netuid);
 
     for (const url of extractUrls(identity.subnet_url)) {
       addCandidate({
-        id: `sn-${subnet.netuid}-native-chain-website`,
-        netuid: subnet.netuid,
+        id: `sn-${netuid}-native-chain-website`,
+        netuid,
         name: `${displayName} website`,
         kind: "website",
         url,
@@ -251,8 +257,8 @@ async function discoverFromNativeChainIdentity() {
 
     for (const url of extractUrls(identity.github_repo)) {
       addCandidate({
-        id: `sn-${subnet.netuid}-native-chain-github`,
-        netuid: subnet.netuid,
+        id: `sn-${netuid}-native-chain-github`,
+        netuid,
         name: `${displayName} GitHub ${
           githubSurfaceKind(url) === "repo-registry"
             ? "repository registry"
@@ -272,7 +278,7 @@ async function discoverFromNativeChainIdentity() {
   }
 }
 
-function selectOverlayProvider(overlay) {
+function selectOverlayProvider(overlay: Row): string {
   const ignoredProviders = new Set([
     "backprop-finance",
     "opentensor",
@@ -282,29 +288,29 @@ function selectOverlayProvider(overlay) {
     "taostats",
     "tensorplex-subnet-docs",
   ]);
-  for (const surface of overlay.surfaces || []) {
+  for (const surface of (overlay.surfaces as Row[]) || []) {
     if (
       surface.provider &&
-      providerIds.has(surface.provider) &&
-      !ignoredProviders.has(surface.provider)
+      providerIds.has(surface.provider as string) &&
+      !ignoredProviders.has(surface.provider as string)
     ) {
-      return surface.provider;
+      return surface.provider as string;
     }
   }
-  if (overlay.slug && providerIds.has(overlay.slug)) {
-    return overlay.slug;
+  if (overlay.slug && providerIds.has(overlay.slug as string)) {
+    return overlay.slug as string;
   }
   return "opentensor";
 }
 
-function providerForNativeIdentity(netuid) {
+function providerForNativeIdentity(netuid: number): string {
   return overlayProviderByNetuid.get(netuid) || "opentensor";
 }
 
-async function discoverFromTaoMarketCap() {
+async function discoverFromTaoMarketCap(): Promise<void> {
   const limit = 100;
   let offset = 0;
-  let expectedCount = null;
+  let expectedCount: number | null = null;
 
   for (let pageIndex = 0; pageIndex < TAOMARKETCAP_MAX_PAGES; pageIndex += 1) {
     if (expectedCount !== null && offset >= expectedCount) {
@@ -325,14 +331,17 @@ async function discoverFromTaoMarketCap() {
     // response without `count` exited after page 1 even when `page.next` pointed
     // at more pages. Leave it null and let the `if (!page.next) break` below
     // (the API's own pagination signal) terminate the walk.
-    expectedCount = Number.isInteger(page.count) ? page.count : null;
-    for (const subnet of page.results || []) {
+    expectedCount = Number.isInteger(page.count)
+      ? (page.count as number)
+      : null;
+    for (const subnet of (page.results as Row[]) || []) {
       const netuid = Number(subnet.netuid);
       if (!nativeByNetuid.has(netuid) || subnet.is_active === false) {
         continue;
       }
 
-      const identity = subnet.latest_snapshot?.subnet_identities_v3;
+      const latestSnapshot = subnet.latest_snapshot as Row | undefined;
+      const identity = latestSnapshot?.subnet_identities_v3 as Row | undefined;
       if (!identity || typeof identity !== "object") {
         continue;
       }
@@ -389,11 +398,13 @@ async function discoverFromTaoMarketCap() {
   }
 }
 
-async function discoverFromTensorplexSubnetDocs() {
+async function discoverFromTensorplexSubnetDocs(): Promise<void> {
   let discoveredCount = 0;
 
   await mapLimit(
-    nativeSnapshot.subnets.map((subnet) => subnet.netuid).sort((a, b) => a - b),
+    nativeSnapshotSubnets
+      .map((subnet) => subnet.netuid as number)
+      .sort((a, b) => a - b),
     8,
     async (netuid) => {
       const rawUrl = `https://raw.githubusercontent.com/tensorplex-labs/subnet-docs/main/data/${netuid}/subnet.json`;
@@ -459,16 +470,18 @@ async function discoverFromTensorplexSubnetDocs() {
       }
 
       for (const [index, website] of arrayFrom(document.websites).entries()) {
-        const kind = surfaceKindForWebsiteLabel(website?.label);
+        const site = website as Row | undefined;
+        const kind = surfaceKindForWebsiteLabel(site?.label);
         if (!kind) {
           continue;
         }
-        for (const url of extractUrls(website?.url)) {
-          const label = slugify(website?.label || "website") || "website";
+        for (const url of extractUrls(site?.url)) {
+          const label =
+            slugify((site?.label as string) || "website") || "website";
           addCandidate({
             id: `sn-${netuid}-tensorplex-${label}-${index + 1}`,
             netuid,
-            name: `${displayName} ${website?.label || "website"}`,
+            name: `${displayName} ${site?.label || "website"}`,
             kind,
             url,
             source_url: repoUrl,
@@ -492,16 +505,16 @@ async function discoverFromTensorplexSubnetDocs() {
   }
 }
 
-async function discoverFromTaopediaArticles() {
+async function discoverFromTaopediaArticles(): Promise<void> {
   let discoveredCount = 0;
-  const existingTaopediaByNetuid = new Map(
+  const existingTaopediaByNetuid = new Map<number, Row>(
     existingGeneratedCandidates
       .filter((candidate) => candidate.provider === "taopedia-articles")
-      .map((candidate) => [candidate.netuid, candidate]),
+      .map((candidate) => [candidate.netuid as number, candidate]),
   );
   await mapLimit(
-    nativeSnapshot.subnets
-      .map((subnet) => subnet.netuid)
+    nativeSnapshotSubnets
+      .map((subnet) => subnet.netuid as number)
       .filter((netuid) => netuid !== 0)
       .sort((a, b) => a - b),
     8,
@@ -541,7 +554,9 @@ async function discoverFromTaopediaArticles() {
   }
 }
 
-async function fetchTaopediaArticlePath(pathValue) {
+async function fetchTaopediaArticlePath(
+  pathValue: string | null,
+): Promise<string | null> {
   if (!pathValue) {
     return null;
   }
@@ -557,15 +572,16 @@ async function fetchTaopediaArticlePath(pathValue) {
   return pathValue;
 }
 
-async function discoverUniversalTaoMarketCapDashboards() {
-  for (const subnet of nativeSnapshot.subnets) {
+async function discoverUniversalTaoMarketCapDashboards(): Promise<void> {
+  for (const subnet of nativeSnapshotSubnets) {
+    const netuid = subnet.netuid as number;
     addCandidate({
-      id: `sn-${subnet.netuid}-taomarketcap-dashboard`,
-      netuid: subnet.netuid,
-      name: `${displayNameForNetuid(subnet.netuid)} TaoMarketCap dashboard`,
+      id: `sn-${netuid}-taomarketcap-dashboard`,
+      netuid,
+      name: `${displayNameForNetuid(netuid)} TaoMarketCap dashboard`,
       kind: "dashboard",
-      url: `https://taomarketcap.com/subnets/${subnet.netuid}`,
-      source_url: `https://api.taomarketcap.com/public/v1/subnets/${subnet.netuid}/`,
+      url: `https://taomarketcap.com/subnets/${netuid}`,
+      source_url: `https://api.taomarketcap.com/public/v1/subnets/${netuid}/`,
       source_type: "taomarketcap-dashboard",
       source_tier: "third-party-index",
       confidence: "medium",
@@ -576,14 +592,15 @@ async function discoverUniversalTaoMarketCapDashboards() {
   }
 }
 
-async function discoverUniversalBackpropFinanceDashboards() {
-  for (const subnet of nativeSnapshot.subnets) {
-    const displayName = displayNameForNetuid(subnet.netuid);
-    const subnetSlug = slugify(displayName) || `subnet-${subnet.netuid}`;
-    const url = `https://backprop.finance/dtao/subnets/${subnet.netuid}-${subnetSlug}`;
+async function discoverUniversalBackpropFinanceDashboards(): Promise<void> {
+  for (const subnet of nativeSnapshotSubnets) {
+    const netuid = subnet.netuid as number;
+    const displayName = displayNameForNetuid(netuid);
+    const subnetSlug = slugify(displayName) || `subnet-${netuid}`;
+    const url = `https://backprop.finance/dtao/subnets/${netuid}-${subnetSlug}`;
     addCandidate({
-      id: `sn-${subnet.netuid}-backprop-dashboard`,
-      netuid: subnet.netuid,
+      id: `sn-${netuid}-backprop-dashboard`,
+      netuid,
       name: `${displayName} Backprop Finance dashboard`,
       kind: "dashboard",
       url,
@@ -598,13 +615,14 @@ async function discoverUniversalBackpropFinanceDashboards() {
   }
 }
 
-async function discoverUniversalTaostatsMetagraphDashboards() {
-  for (const subnet of nativeSnapshot.subnets) {
-    const displayName = displayNameForNetuid(subnet.netuid);
-    const url = `https://taostats.io/subnets/${subnet.netuid}/metagraph`;
+async function discoverUniversalTaostatsMetagraphDashboards(): Promise<void> {
+  for (const subnet of nativeSnapshotSubnets) {
+    const netuid = subnet.netuid as number;
+    const displayName = displayNameForNetuid(netuid);
+    const url = `https://taostats.io/subnets/${netuid}/metagraph`;
     addCandidate({
-      id: `sn-${subnet.netuid}-taostats-metagraph`,
-      netuid: subnet.netuid,
+      id: `sn-${netuid}-taostats-metagraph`,
+      netuid,
       name: `${displayName} Taostats metagraph`,
       kind: "dashboard",
       url,
@@ -619,13 +637,14 @@ async function discoverUniversalTaostatsMetagraphDashboards() {
   }
 }
 
-async function discoverUniversalSubnetRadarDashboards() {
-  for (const subnet of nativeSnapshot.subnets) {
-    const displayName = displayNameForNetuid(subnet.netuid);
-    const url = `https://subnetradar.com/subnet/${subnet.netuid}`;
+async function discoverUniversalSubnetRadarDashboards(): Promise<void> {
+  for (const subnet of nativeSnapshotSubnets) {
+    const netuid = subnet.netuid as number;
+    const displayName = displayNameForNetuid(netuid);
+    const url = `https://subnetradar.com/subnet/${netuid}`;
     addCandidate({
-      id: `sn-${subnet.netuid}-subnetradar-dashboard`,
-      netuid: subnet.netuid,
+      id: `sn-${netuid}-subnetradar-dashboard`,
+      netuid,
       name: `${displayName} SubnetRadar dashboard`,
       kind: "dashboard",
       url,
@@ -640,20 +659,27 @@ async function discoverUniversalSubnetRadarDashboards() {
   }
 }
 
-async function discoverFromGithubReadmes() {
+async function discoverFromGithubReadmes(): Promise<void> {
   const sourceRepoCandidates = [...candidatesByKey.values()].filter(
     (candidate) =>
-      candidate.kind === "source-repo" && parseGithubRepo(candidate.url),
+      candidate.kind === "source-repo" &&
+      parseGithubRepo(candidate.url as string),
   );
-  const byRepo = new Map();
+  const byRepo = new Map<
+    string,
+    { repo: { owner: string; repo: string }; candidates: Row[] }
+  >();
 
   for (const candidate of sourceRepoCandidates) {
-    const repo = parseGithubRepo(candidate.url);
+    const repo = parseGithubRepo(candidate.url as string) as {
+      owner: string;
+      repo: string;
+    };
     const key = `${repo.owner}/${repo.repo}`.toLowerCase();
     if (!byRepo.has(key)) {
       byRepo.set(key, { repo, candidates: [] });
     }
-    byRepo.get(key).candidates.push(candidate);
+    byRepo.get(key)?.candidates.push(candidate);
   }
 
   await mapLimit([...byRepo.values()], 8, async ({ repo, candidates }) => {
@@ -664,14 +690,19 @@ async function discoverFromGithubReadmes() {
 
     for (const candidate of candidates) {
       const repoSlug = slugify(`${repo.owner}-${repo.repo}`);
-      const links = selectReviewableReadmeLinks(
+      const links = (
+        selectReviewableReadmeLinks as (
+          links: Row[],
+          options: { limit?: number; netuid?: unknown; repo?: unknown },
+        ) => Row[]
+      )(
         extractMarkdownLinks(readme.text, readme.url)
-          .map((link) => ({
+          .map((link): Row => ({
             ...link,
             classification: classifyDiscoveredLink(
-              link.url,
+              link.url as string,
               link.label,
-              candidate.url,
+              candidate.url as string,
             ),
           }))
           .filter((link) => link.classification),
@@ -679,11 +710,12 @@ async function discoverFromGithubReadmes() {
       );
 
       for (const [index, link] of links.entries()) {
+        const classification = link.classification as Row;
         addCandidate({
-          id: `sn-${candidate.netuid}-github-readme-${repoSlug}-${link.classification.kind}-${index + 1}`,
+          id: `sn-${candidate.netuid}-github-readme-${repoSlug}-${classification.kind}-${index + 1}`,
           netuid: candidate.netuid,
-          name: `${displayNameForNetuid(candidate.netuid)} ${link.classification.label}`,
-          kind: link.classification.kind,
+          name: `${displayNameForNetuid(candidate.netuid as number)} ${classification.label}`,
+          kind: classification.kind,
           url: link.url,
           source_url: readme.htmlUrl,
           source_type: "github-readme-link",
@@ -698,7 +730,7 @@ async function discoverFromGithubReadmes() {
   });
 }
 
-async function discoverFromProjectWebsites() {
+async function discoverFromProjectWebsites(): Promise<void> {
   const websiteCandidates = [...candidatesByKey.values()].filter(
     (candidate) => candidate.kind === "website",
   );
@@ -722,19 +754,24 @@ async function discoverFromProjectWebsites() {
 
     const links = extractHtmlLinks(html.text, root)
       .filter((link) => isLikelyProjectDomain(root, link.url))
-      .map((link) => ({
+      .map((link): Row => ({
         ...link,
-        classification: classifyDiscoveredLink(link.url, link.label, root),
+        classification: classifyDiscoveredLink(
+          link.url as string,
+          link.label,
+          root,
+        ),
       }))
       .filter((link) => link.classification)
       .slice(0, 10);
 
     for (const [index, link] of links.entries()) {
+      const classification = link.classification as Row;
       addCandidate({
-        id: `sn-${candidate.netuid}-website-link-${websiteSlug}-${link.classification.kind}-${index + 1}`,
+        id: `sn-${candidate.netuid}-website-link-${websiteSlug}-${classification.kind}-${index + 1}`,
         netuid: candidate.netuid,
-        name: `${displayNameForNetuid(candidate.netuid)} ${link.classification.label}`,
-        kind: link.classification.kind,
+        name: `${displayNameForNetuid(candidate.netuid as number)} ${classification.label}`,
+        kind: classification.kind,
         url: link.url,
         source_url: root,
         source_type: "project-website-link",
@@ -748,12 +785,16 @@ async function discoverFromProjectWebsites() {
   });
 }
 
-async function addDocsSubdomainCandidate(candidate, root) {
-  if (netuidsWithProjectDocs.has(candidate.netuid)) {
+async function addDocsSubdomainCandidate(
+  candidate: Row,
+  root: string,
+): Promise<void> {
+  const netuid = candidate.netuid as number;
+  if (netuidsWithProjectDocs.has(netuid)) {
     return;
   }
 
-  let docsUrl;
+  let docsUrl: string;
   try {
     const parsed = new URL(root);
     if (isGenericHost(parsed.hostname)) {
@@ -778,9 +819,9 @@ async function addDocsSubdomainCandidate(candidate, root) {
   }
 
   addCandidate({
-    id: `sn-${candidate.netuid}-website-subdomain-docs-${slugify(new URL(docsUrl).hostname)}`,
-    netuid: candidate.netuid,
-    name: `${displayNameForNetuid(candidate.netuid)} docs subdomain`,
+    id: `sn-${netuid}-website-subdomain-docs-${slugify(new URL(docsUrl).hostname)}`,
+    netuid,
+    name: `${displayNameForNetuid(netuid)} docs subdomain`,
     kind: "docs",
     url: docsUrl,
     source_url: root,
@@ -793,8 +834,8 @@ async function addDocsSubdomainCandidate(candidate, root) {
   });
 }
 
-function addCommonApiPathCandidates(candidate, root) {
-  let origin;
+function addCommonApiPathCandidates(candidate: Row, root: string): void {
+  let origin: string;
   try {
     const parsed = new URL(root);
     if (isGenericHost(parsed.hostname)) {
@@ -805,6 +846,7 @@ function addCommonApiPathCandidates(candidate, root) {
     return;
   }
 
+  const netuid = candidate.netuid as number;
   const commonPaths = [
     { path: "/openapi.json", kind: "openapi", label: "OpenAPI JSON" },
     { path: "/swagger.json", kind: "openapi", label: "Swagger JSON" },
@@ -816,9 +858,9 @@ function addCommonApiPathCandidates(candidate, root) {
 
   for (const commonPath of commonPaths) {
     addCandidate({
-      id: `sn-${candidate.netuid}-website-common-${slugify(commonPath.path)}`,
-      netuid: candidate.netuid,
-      name: `${displayNameForNetuid(candidate.netuid)} ${commonPath.label}`,
+      id: `sn-${netuid}-website-common-${slugify(commonPath.path)}`,
+      netuid,
+      name: `${displayNameForNetuid(netuid)} ${commonPath.label}`,
       kind: commonPath.kind,
       url: `${origin}${commonPath.path}`,
       source_url: root,
@@ -838,7 +880,7 @@ function addCommonApiPathCandidates(candidate, root) {
 // these are confirmed by a safe, body-capped probe, so they enter at `medium`
 // confidence and feed the same verification + promotion + snapshot-openapi
 // pipeline as every other candidate.
-async function discoverOpenApiSpecs() {
+async function discoverOpenApiSpecs(): Promise<void> {
   await mapLimit(collectOpenApiBaseOrigins(), 8, async (target) => {
     const match = await probeOpenApiSpec(
       target.origin,
@@ -848,7 +890,7 @@ async function discoverOpenApiSpecs() {
     if (!match) {
       return;
     }
-    let hostSlug;
+    let hostSlug: string;
     try {
       hostSlug = slugify(new URL(target.origin).hostname);
     } catch {
@@ -876,11 +918,15 @@ async function discoverOpenApiSpecs() {
 // for the subnet (specs frequently live on an `api.` subdomain, not the
 // marketing site). Subnets that already expose an `openapi` surface are skipped,
 // and a candidate with no resolvable provider is dropped (provider is required).
-function collectOpenApiBaseOrigins() {
-  const seen = new Set();
-  const targets = [];
-  const pushOrigin = (netuid, provider, origin) => {
-    let host;
+function collectOpenApiBaseOrigins(): {
+  netuid: number;
+  provider: string;
+  origin: string;
+}[] {
+  const seen = new Set<string>();
+  const targets: { netuid: number; provider: string; origin: string }[] = [];
+  const pushOrigin = (netuid: number, provider: string, origin: string) => {
+    let host: string;
     try {
       host = new URL(origin).hostname;
     } catch {
@@ -896,7 +942,11 @@ function collectOpenApiBaseOrigins() {
     seen.add(key);
     targets.push({ netuid, provider, origin });
   };
-  const add = (netuid, provider, rawUrl) => {
+  const add = (
+    netuid: number | null,
+    provider: string | null,
+    rawUrl: unknown,
+  ) => {
     if (netuid == null || !provider || netuidsWithOpenapi.has(netuid)) {
       return;
     }
@@ -904,7 +954,7 @@ function collectOpenApiBaseOrigins() {
     if (!normalized) {
       return;
     }
-    let origin;
+    let origin: string;
     try {
       origin = new URL(normalized).origin;
     } catch {
@@ -917,21 +967,25 @@ function collectOpenApiBaseOrigins() {
     // #1004 — also probe the conventional api./docs. subdomains of the same
     // registrable domain; live specs frequently live there, not on the marketing
     // root (the Graphite/Vidaio/Hippius class the root-only probe missed).
-    for (const derived of apiDocsSubdomainOrigins(origin)) {
+    for (const derived of apiDocsSubdomainOrigins(origin) as string[]) {
       pushOrigin(netuid, provider, derived);
     }
   };
 
   for (const candidate of candidatesByKey.values()) {
     if (candidate.kind === "website") {
-      add(candidate.netuid, candidate.provider, candidate.url);
+      add(
+        candidate.netuid as number,
+        candidate.provider as string,
+        candidate.url,
+      );
     }
   }
   for (const overlay of existingOverlays) {
     const provider = selectOverlayProvider(overlay);
-    for (const surface of overlay.surfaces || []) {
+    for (const surface of (overlay.surfaces as Row[]) || []) {
       if (surface.kind === "subnet-api" || surface.kind === "docs") {
-        add(overlay.netuid, provider, surface.url);
+        add(overlay.netuid as number, provider, surface.url);
       }
     }
   }
@@ -942,7 +996,7 @@ function collectOpenApiBaseOrigins() {
 // or null on any non-200, oversized, non-JSON, or unsafe/blocked response.
 // Delegates to fetchText, which enforces the timeout, byte cap, and
 // private-IP/unsafe-URL block (via fetchWithSafeRedirects).
-async function fetchOpenApiCandidate(url) {
+async function fetchOpenApiCandidate(url: string): Promise<unknown> {
   const result = await fetchText(url, {
     accept: "application/json",
     maxBytes: OPENAPI_SPEC_PROBE_MAX_BYTES,
@@ -958,35 +1012,37 @@ async function fetchOpenApiCandidate(url) {
   }
 }
 
-function isCommunityDocsProvider(provider) {
-  return ["taopedia-articles", "tensorplex-subnet-docs"].includes(provider);
+function isCommunityDocsProvider(provider: unknown): boolean {
+  return ["taopedia-articles", "tensorplex-subnet-docs"].includes(
+    provider as string,
+  );
 }
 
-async function loadExistingGeneratedCandidates() {
-  const candidates = [];
+async function loadExistingGeneratedCandidates(): Promise<Row[]> {
+  const candidates: Row[] = [];
   try {
-    const existing = await readJson(
+    const existing: Row = await readJson(
       path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
     );
     if (Array.isArray(existing.candidates)) {
-      candidates.push(...existing.candidates);
+      candidates.push(...(existing.candidates as Row[]));
     }
   } catch {
     // Continue to the public artifact fallback below.
   }
 
   try {
-    const publicArtifact = await readJson(
+    const publicArtifact: Row = await readJson(
       path.join(repoRoot, "public/metagraph/candidates.json"),
     );
     if (Array.isArray(publicArtifact.candidates)) {
-      candidates.push(...publicArtifact.candidates);
+      candidates.push(...(publicArtifact.candidates as Row[]));
     }
   } catch {
     // No built candidate artifact exists yet.
   }
 
-  const byKey = new Map();
+  const byKey = new Map<string, Row>();
   for (const candidate of candidates) {
     const key = `${candidate.id}:${candidate.url}`;
     if (!byKey.has(key)) {
@@ -996,7 +1052,7 @@ async function loadExistingGeneratedCandidates() {
   return [...byKey.values()];
 }
 
-function restoreExistingCandidatesForProvider(provider) {
+function restoreExistingCandidatesForProvider(provider: string): void {
   restoredProviders.add(provider);
   for (const candidate of existingGeneratedCandidates.filter(
     (entry) => entry.provider === provider,
@@ -1005,16 +1061,16 @@ function restoreExistingCandidatesForProvider(provider) {
   }
 }
 
-function restoreExistingCandidatesForSourceTypes(sourceTypes) {
+function restoreExistingCandidatesForSourceTypes(sourceTypes: string[]): void {
   const sourceTypeSet = new Set(sourceTypes);
   for (const candidate of existingGeneratedCandidates.filter((entry) =>
-    sourceTypeSet.has(entry.source_type),
+    sourceTypeSet.has(entry.source_type as string),
   )) {
     restoreCandidate(candidate);
   }
 }
 
-function restoreCandidate(candidate) {
+function restoreCandidate(candidate: Row): void {
   addCandidate({
     id: candidate.id,
     netuid: candidate.netuid,
@@ -1032,12 +1088,12 @@ function restoreCandidate(candidate) {
   });
 }
 
-function githubBlobPath(urlValue) {
+function githubBlobPath(urlValue: unknown): string | null {
   if (!urlValue) {
     return null;
   }
   try {
-    const url = new URL(urlValue);
+    const url = new URL(urlValue as string);
     const prefix = "/e35ventura/taopedia-articles/blob/main/";
     if (url.hostname !== "github.com" || !url.pathname.startsWith(prefix)) {
       return null;
@@ -1048,7 +1104,7 @@ function githubBlobPath(urlValue) {
   }
 }
 
-function stripRefreshFailureNote(value) {
+function stripRefreshFailureNote(value: unknown): string {
   return String(value || "")
     .replace(
       /\s*Source refresh failed; preserved pending a successful refresh\./g,
@@ -1057,15 +1113,17 @@ function stripRefreshFailureNote(value) {
     .trim();
 }
 
-function displayNameForNetuid(netuid) {
+function displayNameForNetuid(netuid: number): string {
   const nativeSubnet = nativeByNetuid.get(netuid);
-  return nativeDisplayName(
-    nativeSubnet,
-    overlayNameByNetuid.get(netuid) || `Subnet ${netuid}`,
-  );
+  // nativeDisplayName's fallback param is inferred as `null | undefined` from
+  // its untyped scripts/lib/formatting.mjs default value (`= null`), not
+  // `string` -- cast until Phase 4 batch 7 converts that file.
+  return (
+    nativeDisplayName as (subnet: Row | undefined, fallback?: string) => string
+  )(nativeSubnet, overlayNameByNetuid.get(netuid) || `Subnet ${netuid}`);
 }
 
-function githubSurfaceKind(urlValue) {
+function githubSurfaceKind(urlValue: string): string {
   try {
     const url = new URL(urlValue);
     if (
@@ -1080,7 +1138,7 @@ function githubSurfaceKind(urlValue) {
   return "source-repo";
 }
 
-function addCandidate(candidate) {
+function addCandidate(candidate: Row): void {
   const normalizedUrl = normalizeCandidateUrl(candidate.url);
   if (!normalizedUrl) {
     return;
@@ -1103,14 +1161,14 @@ function addCandidate(candidate) {
   if (existing) {
     existing.source_urls = [
       ...new Set([
-        ...(existing.source_urls || [existing.source_url]),
+        ...((existing.source_urls as string[]) || [existing.source_url]),
         ...sourceUrls,
       ]),
     ].sort();
     return;
   }
 
-  const stableId = uniqueCandidateId(candidate.id, normalizedUrl);
+  const stableId = uniqueCandidateId(candidate.id as string, normalizedUrl);
   candidateIds.add(stableId);
   candidatesByKey.set(key, {
     schema_version: 1,
@@ -1127,7 +1185,7 @@ function addCandidate(candidate) {
   });
 }
 
-function uniqueCandidateId(id, url) {
+function uniqueCandidateId(id: string, url: string): string {
   if (!candidateIds.has(id)) {
     return id;
   }
@@ -1143,7 +1201,7 @@ function uniqueCandidateId(id, url) {
   return `${suffixed}-${index}`;
 }
 
-function hashString(value) {
+function hashString(value: string): string {
   let hash = 0;
   for (const char of value) {
     hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
@@ -1151,7 +1209,7 @@ function hashString(value) {
   return hash.toString(36);
 }
 
-function extractUrls(value) {
+function extractUrls(value: unknown): string[] {
   const values = arrayFrom(value).flatMap((item) => {
     if (typeof item !== "string") {
       return [];
@@ -1161,7 +1219,13 @@ function extractUrls(value) {
     return explicitUrls.length > 0 ? explicitUrls : [trimmed];
   });
 
-  return [...new Set(values.map(normalizeCandidateUrl).filter(Boolean))];
+  return [
+    ...new Set(
+      values
+        .map(normalizeCandidateUrl)
+        .filter((url): url is string => Boolean(url)),
+    ),
+  ];
 }
 
 // Canonical URL normalization lives in scripts/lib.mjs (normalizePublicUrl) and
@@ -1172,14 +1236,14 @@ function extractUrls(value) {
 // deprecated + "your*" README stubs) that clear those guards but must never
 // enter the candidate bundle. isPlaceholderIdentityUrl now carries the union of
 // both former placeholder lists, so this is a thin compose, not a reimpl.
-function normalizeCandidateUrl(value) {
+function normalizeCandidateUrl(value: unknown): string | null {
   const normalized = normalizePublicUrl(value);
   return normalized && !isPlaceholderIdentityUrl(normalized)
     ? normalized
     : null;
 }
 
-function cleanName(value) {
+function cleanName(value: unknown): string {
   if (typeof value !== "string") {
     return "";
   }
@@ -1190,7 +1254,7 @@ function cleanName(value) {
   return name;
 }
 
-function arrayFrom(value) {
+function arrayFrom(value: unknown): unknown[] {
   if (Array.isArray(value)) {
     return value;
   }
@@ -1200,7 +1264,7 @@ function arrayFrom(value) {
   return [value];
 }
 
-function surfaceKindForWebsiteLabel(label) {
+function surfaceKindForWebsiteLabel(label: unknown): string | null {
   const normalized = String(label || "").toLowerCase();
   if (["twitter", "x", "discord", "telegram"].includes(normalized)) {
     return null;
@@ -1231,7 +1295,9 @@ function surfaceKindForWebsiteLabel(label) {
   return "website";
 }
 
-function parseGithubRepo(value) {
+function parseGithubRepo(
+  value: string,
+): { owner: string; repo: string } | null {
   try {
     const url = new URL(value);
     if (url.hostname !== "github.com") {
@@ -1247,7 +1313,10 @@ function parseGithubRepo(value) {
   }
 }
 
-async function fetchGithubReadme(repo) {
+async function fetchGithubReadme(repo: {
+  owner: string;
+  repo: string;
+}): Promise<{ text: string; url: string; htmlUrl: string } | null> {
   const branches = ["main", "master"];
   const names = ["README.md", "readme.md"];
   for (const branch of branches) {
@@ -1269,8 +1338,8 @@ async function fetchGithubReadme(repo) {
   return null;
 }
 
-function extractMarkdownLinks(markdown, baseUrl) {
-  const links = [];
+function extractMarkdownLinks(markdown: string, baseUrl: string): Row[] {
+  const links: Row[] = [];
   const markdownLinkPattern = /\[([^\]]{1,120})\]\((https?:\/\/[^)\s]+)\)/g;
   const bareUrlPattern = /https?:\/\/[^\s<>)"'`\]]+/g;
   for (const match of markdown.matchAll(markdownLinkPattern)) {
@@ -1285,8 +1354,8 @@ function extractMarkdownLinks(markdown, baseUrl) {
   );
 }
 
-function extractHtmlLinks(html, baseUrl) {
-  const links = [];
+function extractHtmlLinks(html: string, baseUrl: string): Row[] {
+  const links: Row[] = [];
   const anchorPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis;
   for (const match of html.matchAll(anchorPattern)) {
     links.push({
@@ -1300,7 +1369,7 @@ function extractHtmlLinks(html, baseUrl) {
   );
 }
 
-function normalizeLinkedUrl(value, baseUrl) {
+function normalizeLinkedUrl(value: unknown, baseUrl: string): string | null {
   if (
     typeof value !== "string" ||
     value.startsWith("#") ||
@@ -1315,21 +1384,26 @@ function normalizeLinkedUrl(value, baseUrl) {
   }
 }
 
-function dedupeLinks(links, baseUrl) {
+function dedupeLinks(links: Row[], baseUrl: string): Row[] {
   const seen = new Set([normalizeCandidateUrl(baseUrl)]);
-  const result = [];
+  const result: Row[] = [];
   for (const link of links) {
-    if (!link.url || seen.has(link.url) || isSocialUrl(link.url)) {
+    const url = link.url as string | null;
+    if (!url || seen.has(url) || isSocialUrl(url)) {
       continue;
     }
-    seen.add(link.url);
+    seen.add(url);
     result.push(link);
   }
   return result;
 }
 
-function classifyDiscoveredLink(url, label, baseUrl) {
-  let parsed;
+function classifyDiscoveredLink(
+  url: string,
+  label: unknown,
+  baseUrl: string,
+): { kind: string; label: string } | null {
+  let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
@@ -1390,7 +1464,7 @@ function classifyDiscoveredLink(url, label, baseUrl) {
   return null;
 }
 
-function isGenericHost(hostname) {
+function isGenericHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^www\./, "");
   return [
     "github.com",
@@ -1408,7 +1482,7 @@ function isGenericHost(hostname) {
   );
 }
 
-function isBadgeOrAssetUrl(value) {
+function isBadgeOrAssetUrl(value: string): boolean {
   try {
     const url = new URL(value);
     const host = url.hostname.toLowerCase().replace(/^www\./, "");
@@ -1424,7 +1498,7 @@ function isBadgeOrAssetUrl(value) {
   }
 }
 
-function isSocialUrl(value) {
+function isSocialUrl(value: string): boolean {
   try {
     const host = new URL(value).hostname.replace(/^www\./, "");
     return [
@@ -1445,14 +1519,18 @@ function isSocialUrl(value) {
   }
 }
 
-function stripHtml(value) {
+function stripHtml(value: unknown): string {
   return String(value || "")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-async function fetchJson(url, headers = {}, options = {}) {
+async function fetchJson(
+  url: string,
+  headers: Record<string, string> = {},
+  options: { warn?: boolean } = {},
+): Promise<Row | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
@@ -1473,7 +1551,7 @@ async function fetchJson(url, headers = {}, options = {}) {
     return await response.json();
   } catch (error) {
     if (options.warn !== false) {
-      warnings.push(`${url}: ${error.message}`);
+      warnings.push(`${url}: ${(error as Error).message}`);
     }
     return null;
   } finally {
@@ -1481,7 +1559,15 @@ async function fetchJson(url, headers = {}, options = {}) {
   }
 }
 
-async function fetchText(url, options = {}) {
+async function fetchText(
+  url: string,
+  options: {
+    accept?: string;
+    maxBytes?: number;
+    warn?: boolean;
+    timeoutMs?: number;
+  } = {},
+): Promise<{ status_code: number; text: string } | null> {
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(),
@@ -1507,7 +1593,7 @@ async function fetchText(url, options = {}) {
     };
   } catch (error) {
     if (options.warn !== false) {
-      warnings.push(`${url}: ${error.message}`);
+      warnings.push(`${url}: ${(error as Error).message}`);
     }
     return null;
   } finally {
@@ -1515,8 +1601,11 @@ async function fetchText(url, options = {}) {
   }
 }
 
-async function readResponseText(response, maxBytes) {
-  if (!Number.isFinite(maxBytes) || maxBytes <= 0) {
+async function readResponseText(
+  response: Response,
+  maxBytes: number | undefined,
+): Promise<string> {
+  if (!Number.isFinite(maxBytes) || (maxBytes as number) <= 0) {
     return await response.text();
   }
   if (!response.body) {
@@ -1529,19 +1618,21 @@ async function readResponseText(response, maxBytes) {
   let text = "";
 
   try {
-    while (bytesRead < maxBytes) {
+    while (bytesRead < (maxBytes as number)) {
       const { done, value } = await reader.read();
       if (done) {
         return text + decoder.decode();
       }
 
-      const remainingBytes = maxBytes - bytesRead;
+      const remainingBytes = (maxBytes as number) - bytesRead;
       const chunk =
         value.byteLength > remainingBytes
           ? value.slice(0, remainingBytes)
           : value;
       bytesRead += chunk.byteLength;
-      text += decoder.decode(chunk, { stream: bytesRead < maxBytes });
+      text += decoder.decode(chunk, {
+        stream: bytesRead < (maxBytes as number),
+      });
 
       if (value.byteLength > remainingBytes) {
         return text + decoder.decode();
@@ -1554,7 +1645,11 @@ async function readResponseText(response, maxBytes) {
   }
 }
 
-async function fetchWithSafeRedirects(url, init, redirectCount = 0) {
+async function fetchWithSafeRedirects(
+  url: string,
+  init: RequestInit,
+  redirectCount = 0,
+): Promise<Response> {
   if (await isUnsafeResolvedUrl(url)) {
     throw new Error("unsafe URL");
   }
@@ -1585,13 +1680,17 @@ async function fetchWithSafeRedirects(url, init, redirectCount = 0) {
   return response;
 }
 
-async function mapLimit(items, limit, mapper) {
+async function mapLimit<T>(
+  items: T[],
+  limit: number,
+  mapper: (item: T) => Promise<void>,
+): Promise<void> {
   const queue = [...items];
   const workers = Array.from(
     { length: Math.min(limit, queue.length) },
     async () => {
       while (queue.length > 0) {
-        const item = queue.shift();
+        const item = queue.shift() as T;
         await mapper(item);
       }
     },
@@ -1599,13 +1698,17 @@ async function mapLimit(items, limit, mapper) {
   await Promise.all(workers);
 }
 
-function countBy(items, key) {
+function countBy(items: Row[], key: string): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
-      items.reduce((accumulator, item) => {
-        accumulator[item[key]] = (accumulator[item[key]] || 0) + 1;
-        return accumulator;
-      }, {}),
+      items.reduce(
+        (accumulator: Record<string, number>, item) => {
+          const value = item[key] as string;
+          accumulator[value] = (accumulator[value] || 0) + 1;
+          return accumulator;
+        },
+        {} as Record<string, number>,
+      ),
     ).sort(([a], [b]) => a.localeCompare(b)),
   );
 }

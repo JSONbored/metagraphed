@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 
-const source = await readFile("scripts/discover-candidates.mjs", "utf8");
+const source = await readFile("scripts/discover-candidates.ts", "utf8");
 
 describe("TaoMarketCap discovery pagination", () => {
   it("keeps count-less pagination bounded by a page cap", () => {

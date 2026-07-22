@@ -29,7 +29,7 @@ const env = {
 };
 
 const steps = [
-  ["discover-candidates", ["scripts/discover-candidates.mjs", "--write"]],
+  ["discover-candidates", ["scripts/discover-candidates.ts", "--write"]],
   ["verify-candidates", ["scripts/verify-candidates.mjs", "--write"]],
   // The provenance review queue is a pure transform of the candidates +
   // verification just refreshed above; regenerate it in lockstep so the publish's

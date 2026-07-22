@@ -8,7 +8,7 @@ import {
 
 describe("discover-candidates project-domain matching", () => {
   test("discover-candidates imports shared domain helpers from lib.mjs", async () => {
-    const source = await readFile("scripts/discover-candidates.mjs", "utf8");
+    const source = await readFile("scripts/discover-candidates.ts", "utf8");
     assert.match(source, /isLikelyProjectDomain,/);
     assert.doesNotMatch(source, /function isLikelyProjectDomain\(/);
     assert.doesNotMatch(source, /function registrableDomain\(/);
@@ -16,7 +16,7 @@ describe("discover-candidates project-domain matching", () => {
   });
 
   test("discover-candidates uses the shared normalizePublicUrl, not a local copy (#5991)", async () => {
-    const source = await readFile("scripts/discover-candidates.mjs", "utf8");
+    const source = await readFile("scripts/discover-candidates.ts", "utf8");
     // The canonical helper + placeholder guard are imported from lib.mjs...
     assert.match(source, /normalizePublicUrl,/);
     assert.match(source, /isPlaceholderIdentityUrl,/);
