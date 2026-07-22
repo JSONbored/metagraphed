@@ -249,8 +249,10 @@
       "auth_required": true,
       "authority": "community",
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Miner-Hotkey, X-Miner-Nonce, and X-Miner-Signature headers proving control of a registered hotkey (declared in the subnet's own OpenAPI spec; live-verified 2026-07-22 -- an unauthenticated request's HTTP 422 names X-Miner-Hotkey as missing). No bearer token or API key is accepted.",
+        "location": "header",
+        "names": ["X-Miner-Hotkey", "X-Miner-Nonce", "X-Miner-Signature"]
       },
       "id": "sn-21-adtao-episodes",
       "kind": "subnet-api",
@@ -278,8 +280,10 @@
       "auth_required": true,
       "authority": "community",
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Miner-Hotkey, X-Miner-Nonce, and X-Miner-Signature headers proving control of a registered hotkey (declared in the subnet's own OpenAPI spec; live-verified 2026-07-22 -- an unauthenticated request's HTTP 422 names X-Miner-Hotkey as missing). No bearer token or API key is accepted.",
+        "location": "header",
+        "names": ["X-Miner-Hotkey", "X-Miner-Nonce", "X-Miner-Signature"]
       },
       "id": "sn-21-adtao-episode-detail",
       "kind": "subnet-api",
@@ -307,8 +311,10 @@
       "auth_required": true,
       "authority": "community",
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Miner-Hotkey, X-Miner-Nonce, and X-Miner-Signature headers proving control of a registered hotkey (declared in the subnet's own OpenAPI spec; live-verified 2026-07-22 -- an unauthenticated request's HTTP 422 names X-Miner-Hotkey as missing). No bearer token or API key is accepted.",
+        "location": "header",
+        "names": ["X-Miner-Hotkey", "X-Miner-Nonce", "X-Miner-Signature"]
       },
       "id": "sn-21-adtao-episodes-batch",
       "kind": "subnet-api",
@@ -336,8 +342,10 @@
       "auth_required": true,
       "authority": "community",
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Miner-Hotkey, X-Miner-Nonce, and X-Miner-Signature headers proving control of a registered hotkey (declared in the subnet's own OpenAPI spec; live-verified 2026-07-22 -- an unauthenticated request's HTTP 422 names X-Miner-Hotkey as missing). No bearer token or API key is accepted.",
+        "location": "header",
+        "names": ["X-Miner-Hotkey", "X-Miner-Nonce", "X-Miner-Signature"]
       },
       "id": "sn-21-adtao-my-predictions",
       "kind": "subnet-api",
@@ -365,8 +373,10 @@
       "auth_required": true,
       "authority": "community",
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Miner-Hotkey, X-Miner-Nonce, and X-Miner-Signature headers proving control of a registered hotkey (declared in the subnet's own OpenAPI spec; live-verified 2026-07-22 -- an unauthenticated request's HTTP 422 names X-Miner-Hotkey as missing). No bearer token or API key is accepted.",
+        "location": "header",
+        "names": ["X-Miner-Hotkey", "X-Miner-Nonce", "X-Miner-Signature"]
       },
       "id": "sn-21-adtao-training-episodes-api",
       "kind": "subnet-api",
@@ -394,8 +404,10 @@
       "auth_required": true,
       "authority": "community",
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Miner-Hotkey, X-Miner-Nonce, and X-Miner-Signature headers proving control of a registered hotkey (declared in the subnet's own OpenAPI spec; live-verified 2026-07-22 -- an unauthenticated request's HTTP 422 names X-Miner-Hotkey as missing). No bearer token or API key is accepted.",
+        "location": "header",
+        "names": ["X-Miner-Hotkey", "X-Miner-Nonce", "X-Miner-Signature"]
       },
       "id": "sn-21-adtao-training-summary",
       "kind": "subnet-api",
@@ -423,8 +435,10 @@
       "auth_required": true,
       "authority": "community",
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a per-miner identity header; not a bearer token. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Miner-Hotkey, X-Miner-Nonce, and X-Miner-Signature headers proving control of a registered hotkey (declared in the subnet's own OpenAPI spec; live-verified 2026-07-22 -- an unauthenticated request's HTTP 422 names X-Miner-Hotkey as missing). No bearer token or API key is accepted.",
+        "location": "header",
+        "names": ["X-Miner-Hotkey", "X-Miner-Nonce", "X-Miner-Signature"]
       },
       "id": "sn-21-adtao-registration-status",
       "kind": "subnet-api",
