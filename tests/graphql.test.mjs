@@ -11365,7 +11365,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 });
 
-describe("graphql — account_children / account_parents (#6976, live chain RPC via child-hotkey-delegation.mjs)", () => {
+describe("graphql — account_children / account_parents (#6976, live chain RPC via child-hotkey-delegation.ts)", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CHILD_SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 

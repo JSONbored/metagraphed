@@ -7,7 +7,7 @@ import {
   decodeProportionAccountList,
   loadAccountChildren,
   loadAccountParents,
-} from "../src/child-hotkey-delegation.mjs";
+} from "../src/child-hotkey-delegation.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.mjs";
 

@@ -61,13 +61,13 @@ const MAX_NETUID_KEYS = 250;
 // twice" convention. Duplicates account-balance.mjs's base58 decode rather
 // than importing it (self-contained-module convention already established
 // by subnet-burn.mjs/sudo-key.mjs for small codec helpers).
-function accountIdFromSs58(ss58) {
+function accountIdFromSs58(ss58: string): Uint8Array {
   const BASE58_ALPHABET =
     "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   const INDEX = new Map([...BASE58_ALPHABET].map((c, i) => [c, i]));
   const bytes = [0];
   for (const char of ss58) {
-    let carry = INDEX.get(char);
+    let carry = INDEX.get(char) as number;
     for (let i = 0; i < bytes.length; i += 1) {
       carry += bytes[i] * 58;
       bytes[i] = carry & 0xff;
@@ -82,7 +82,7 @@ function accountIdFromSs58(ss58) {
   return decoded.subarray(1, 33);
 }
 
-function blake2_128Concat(bytes) {
+function blake2_128Concat(bytes: Uint8Array): Uint8Array {
   const hash = blake2b(bytes, { dkLen: 16 });
   const out = new Uint8Array(hash.length + bytes.length);
   out.set(hash, 0);
@@ -93,7 +93,10 @@ function blake2_128Concat(bytes) {
 // The fixed prefix ++ Blake2_128Concat(accountId) -- everything up to (but
 // not including) the trailing Identity-hashed netuid suffix, which varies
 // per returned key and is read back from state_getKeysPaged's own results.
-function accountScopedStoragePrefix(itemName, accountId) {
+function accountScopedStoragePrefix(
+  itemName: string,
+  accountId: Uint8Array,
+): string {
   const prefix = storageMapPrefix("SubtensorModule", itemName);
   const hashed = blake2_128Concat(accountId);
   const out = new Uint8Array(prefix.length + hashed.length);
@@ -102,7 +105,16 @@ function accountScopedStoragePrefix(itemName, accountId) {
   return bytesToHex(out);
 }
 
-async function rpcCall(method, params, timeoutMs) {
+interface RpcCallResult {
+  ok: boolean;
+  result: unknown;
+}
+
+async function rpcCall(
+  method: string,
+  params: unknown[],
+  timeoutMs: number,
+): Promise<RpcCallResult> {
   try {
     const resp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
@@ -111,14 +123,14 @@ async function rpcCall(method, params, timeoutMs) {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
     if (!resp.ok) return { ok: false, result: undefined };
-    const body = await resp.json();
+    const body: { result?: unknown } = await resp.json();
     return { ok: true, result: body?.result };
   } catch {
     return { ok: false, result: undefined };
   }
 }
 
-function hexToBytes(hex) {
+function hexToBytes(hex: unknown): Uint8Array | null {
   if (typeof hex !== "string" || !/^0x([0-9a-fA-F]{2})*$/.test(hex)) {
     return null;
   }
@@ -130,16 +142,21 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-function readU16LE(bytes, offset) {
+function readU16LE(bytes: Uint8Array, offset: number): number {
   return bytes[offset] | (bytes[offset + 1] << 8);
 }
 
-function readU64LEBigInt(bytes, offset) {
+function readU64LEBigInt(bytes: Uint8Array, offset: number): bigint {
   let value = 0n;
   for (let i = 7; i >= 0; i -= 1) {
     value = (value << 8n) | BigInt(bytes[offset + i]);
   }
   return value;
+}
+
+interface CompactU32Result {
+  value: number;
+  nextOffset: number;
 }
 
 // SCALE Compact<u32> at `offset`. Returns { value, nextOffset } or null on a
@@ -148,7 +165,10 @@ function readU64LEBigInt(bytes, offset) {
 // hotkey); mode 3 (big-integer) is intentionally NOT decoded -- a delegation
 // list would never legitimately need it, so treating it as a decode failure
 // is safer than guessing at an unbounded byte-length prefix.
-function readCompactU32(bytes, offset) {
+function readCompactU32(
+  bytes: Uint8Array,
+  offset: number,
+): CompactU32Result | null {
   if (offset >= bytes.length) return null;
   const first = bytes[offset];
   const mode = first & 0b11;
@@ -179,7 +199,7 @@ function readCompactU32(bytes, offset) {
 // 0..1 float. Split whole/remainder in BigInt space first for the same
 // precision reason src/network-parameters.mjs's u64f64ToFloat does.
 const U64_SCALE = 2n ** 64n;
-function proportionToFraction(raw) {
+function proportionToFraction(raw: bigint): number {
   const whole = raw / U64_SCALE;
   const remainder = raw % U64_SCALE;
   return Number(whole) + Number(remainder) / Number(U64_SCALE);
@@ -189,13 +209,16 @@ function proportionToFraction(raw) {
 // type). Returns null on malformed input; [] for a genuinely empty list
 // (the ValueQuery default when nothing is set). counterpartKey names the
 // decoded account field ("child" or "parent").
-export function decodeProportionAccountList(hex, counterpartKey) {
+export function decodeProportionAccountList(
+  hex: unknown,
+  counterpartKey: string,
+): Array<Record<string, unknown>> | null {
   const bytes = hexToBytes(hex);
   if (!bytes) return null;
   const lenResult = readCompactU32(bytes, 0);
   if (!lenResult) return null;
   const { value: count, nextOffset } = lenResult;
-  const entries = [];
+  const entries: Array<Record<string, unknown>> = [];
   let offset = nextOffset;
   for (let i = 0; i < count; i += 1) {
     if (offset + 8 + 32 > bytes.length) return null;
@@ -213,16 +236,21 @@ export function decodeProportionAccountList(hex, counterpartKey) {
   return entries;
 }
 
+interface DelegationRow {
+  netuid: number;
+  entries: Array<Record<string, unknown>>;
+}
+
 // Enumerate every (netuid, Vec<(proportion, counterpart)>) entry for one
 // hotkey under `itemName` ("ChildKeys" or "ParentKeys"). Returns null on RPC
 // failure (schema-stable null propagates to the caller); [] when the hotkey
 // genuinely has none (the common case).
 async function loadDelegationEntries(
-  accountId,
-  itemName,
-  counterpartKey,
-  timeoutMs,
-) {
+  accountId: Uint8Array,
+  itemName: string,
+  counterpartKey: string,
+  timeoutMs: number,
+): Promise<DelegationRow[] | null> {
   const prefix = accountScopedStoragePrefix(itemName, accountId);
   const keysResult = await rpcCall(
     "state_getKeysPaged",
@@ -230,14 +258,16 @@ async function loadDelegationEntries(
     timeoutMs,
   );
   if (!keysResult.ok) return null;
-  const keys = Array.isArray(keysResult.result) ? keysResult.result : [];
+  const keys = Array.isArray(keysResult.result)
+    ? (keysResult.result as string[])
+    : [];
   if (keys.length === 0) return [];
 
   const valueResults = await Promise.all(
     keys.map((key) => rpcCall("state_getStorage", [key], timeoutMs)),
   );
 
-  const rows = [];
+  const rows: DelegationRow[] = [];
   for (let i = 0; i < keys.length; i += 1) {
     const key = keys[i];
     const keyBytes = hexToBytes(key);
@@ -263,13 +293,20 @@ async function loadDelegationEntries(
   return rows;
 }
 
+export interface ChildHotkeyGraphResult {
+  schema_version: 1;
+  account: string;
+  subnets: DelegationRow[] | null;
+  queried_at: string;
+}
+
 async function loadChildHotkeyGraph(
-  env,
-  ss58,
-  itemName,
-  counterpartKey,
-  cacheKeyPrefix,
-) {
+  env: Env,
+  ss58: string,
+  itemName: string,
+  counterpartKey: string,
+  cacheKeyPrefix: string,
+): Promise<ChildHotkeyGraphResult> {
   if (!isFinneySs58Address(ss58)) {
     throw new RangeError("ss58 must be a valid finney SS58 account address");
   }
@@ -280,7 +317,7 @@ async function loadChildHotkeyGraph(
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return cached;
+      if (cached) return cached as ChildHotkeyGraphResult;
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
@@ -295,11 +332,11 @@ async function loadChildHotkeyGraph(
   );
   const ok = rows !== null;
 
-  const payload = {
+  const payload: ChildHotkeyGraphResult = {
     schema_version: 1,
     account: ss58,
     subnets: ok
-      ? rows
+      ? (rows as DelegationRow[])
           .filter((row) => row.entries.length > 0)
           .sort((a, b) => a.netuid - b.netuid)
       : null,
@@ -323,12 +360,18 @@ async function loadChildHotkeyGraph(
 // hotkey currently delegates stake-weight to. `subnets: null` on RPC
 // failure; `subnets: []` when the hotkey genuinely has no children anywhere
 // (the common case) -- schema-stable, never throws on a live-RPC failure.
-export async function loadAccountChildren(env, ss58) {
+export async function loadAccountChildren(
+  env: Env,
+  ss58: string,
+): Promise<ChildHotkeyGraphResult> {
   return loadChildHotkeyGraph(env, ss58, "ChildKeys", "child", "children");
 }
 
 // Query every parent hotkey currently delegating stake-weight to this
 // hotkey. Same shape as loadAccountChildren, reading ParentKeys instead.
-export async function loadAccountParents(env, ss58) {
+export async function loadAccountParents(
+  env: Env,
+  ss58: string,
+): Promise<ChildHotkeyGraphResult> {
   return loadChildHotkeyGraph(env, ss58, "ParentKeys", "parent", "parents");
 }

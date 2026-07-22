@@ -224,7 +224,7 @@ import { loadAccountRootClaim } from "./account-root-claim.ts";
 import {
   loadAccountChildren,
   loadAccountParents,
-} from "./child-hotkey-delegation.mjs";
+} from "./child-hotkey-delegation.ts";
 import {
   buildAccountWeightSetters,
   ACCOUNT_WEIGHT_SETTERS_WINDOWS,

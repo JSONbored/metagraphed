@@ -107,7 +107,7 @@ import { loadAccountRootClaim } from "../../src/account-root-claim.ts";
 import {
   loadAccountChildren,
   loadAccountParents,
-} from "../../src/child-hotkey-delegation.mjs";
+} from "../../src/child-hotkey-delegation.ts";
 import { loadSudoKey } from "../../src/sudo-key.mjs";
 import { H160_PATTERN, loadAddressMapping } from "../../src/address-mapping.ts";
 import { loadNetworkParameters } from "../../src/network-parameters.mjs";
@@ -3889,7 +3889,7 @@ export async function handleAccountRootClaim(request, env, ss58) {
 // delegation graph epic #6721): every child hotkey this account currently
 // delegates stake-weight to, per subnet, with the proportion charged. Live
 // RPC + KV-cache route, same shape as handleAccountBalance just above —
-// see src/child-hotkey-delegation.mjs's header for the on-chain storage
+// see src/child-hotkey-delegation.ts's header for the on-chain storage
 // details.
 export async function handleAccountChildren(request, env, ss58) {
   if (!isFinneySs58Address(ss58)) {
