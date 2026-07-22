@@ -636,7 +636,7 @@ import {
 } from "./top-holders.mjs";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.mjs";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.mjs";
-import { buildAlphaVolume } from "./alpha-volume.mjs";
+import { buildAlphaVolume } from "./alpha-volume.ts";
 import {
   buildSubnetOhlc,
   OHLC_INTERVALS,

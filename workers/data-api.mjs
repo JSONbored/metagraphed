@@ -46,7 +46,7 @@ import {
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
 } from "../src/account-events.ts";
-import { buildAlphaVolume } from "../src/alpha-volume.mjs";
+import { buildAlphaVolume } from "../src/alpha-volume.ts";
 import {
   buildSubnetOhlc,
   OHLC_INTERVAL_DEFAULT,

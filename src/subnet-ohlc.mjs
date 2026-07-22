@@ -28,7 +28,7 @@
 // scope") extending metagraphed's original developer-explorer fence (#2589,
 // which had explicitly excluded OHLC candlesticks) to cover this feature.
 
-import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./alpha-volume.mjs";
+import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./alpha-volume.ts";
 
 export { STAKE_ADDED_KIND, STAKE_REMOVED_KIND };
 

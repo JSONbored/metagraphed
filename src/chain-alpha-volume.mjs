@@ -19,7 +19,7 @@ import {
   STAKE_REMOVED_KIND,
   sentimentRatio,
   classifySentiment,
-} from "./alpha-volume.mjs";
+} from "./alpha-volume.ts";
 
 export const CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT = 20;
 export const CHAIN_ALPHA_VOLUME_LIMIT_MAX = 100;

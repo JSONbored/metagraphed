@@ -23,13 +23,13 @@ export const STAKE_REMOVED_KIND = "StakeRemoved";
 
 // Coerce a D1 SUM()/COUNT() cell (number, numeric string, or null) to a finite
 // number, defaulting to 0.
-function toNumber(value) {
+function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 // A finite amount aggregate cell, or null when absent/blank/non-numeric.
-function nullableAmount(value) {
+function nullableAmount(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
@@ -40,7 +40,7 @@ function nullableAmount(value) {
 // noise below the rao floor; round every output to rao precision, mirroring
 // stake-flow.mjs's roundTao.
 const RAO_PER_UNIT = 1e9;
-function roundUnit(value) {
+function roundUnit(value: number): number {
   /* v8 ignore next -- defensive: callers only pass finite toNumber-guarded sums */
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * RAO_PER_UNIT) / RAO_PER_UNIT;
@@ -59,7 +59,10 @@ const SENTIMENT_NEUTRAL_BAND = 0.2;
 // volume at all" (#2997's clamp, extended to this sibling ratio). Exported so
 // chain-alpha-volume.mjs can derive the SAME sentiment reading at the
 // network-wide rollup level instead of re-deriving this math.
-export function sentimentRatio(netAlpha, grossAlpha) {
+export function sentimentRatio(
+  netAlpha: number,
+  grossAlpha: number,
+): number | null {
   if (grossAlpha <= 0) return null;
   const raw = netAlpha / grossAlpha;
   const rounded = Math.round(raw * 10000) / 10000;
@@ -68,13 +71,18 @@ export function sentimentRatio(netAlpha, grossAlpha) {
   return rounded;
 }
 
+export type AlphaVolumeSentiment = "bullish" | "bearish" | "neutral";
+
 // Buy/sell sentiment indicator (#4339/8.2): a coarse label from the same
 // net/gross lean account-stake-flow.mjs classifies for one account's capital
 // flow, relabeled for a subnet-wide volume reading — "bullish"/"bearish" past
 // the neutral band, "neutral" both for balanced two-way volume AND a
 // zero-volume window (no data is no signal either way). Exported for
 // chain-alpha-volume.mjs's network-wide rollup (see sentimentRatio above).
-export function classifySentiment(netAlpha, grossAlpha) {
+export function classifySentiment(
+  netAlpha: number,
+  grossAlpha: number,
+): AlphaVolumeSentiment {
   if (grossAlpha <= 0) return "neutral";
   const ratio = netAlpha / grossAlpha;
   if (ratio >= SENTIMENT_NEUTRAL_BAND) return "bullish";
@@ -91,16 +99,21 @@ export function classifySentiment(netAlpha, grossAlpha) {
 // figure (not from account_events), so unlike sentiment_ratio it can be
 // missing even when volume itself is zero. Unbounded (unlike sentiment_ratio):
 // a high-turnover day can legitimately exceed 1.
-function volMcapRatio(totalVolumeTao, marketCapTao) {
-  if (!Number.isFinite(marketCapTao) || marketCapTao <= 0) return null;
+function volMcapRatio(
+  totalVolumeTao: number,
+  marketCapTao: number | null | undefined,
+): number | null {
+  if (!Number.isFinite(marketCapTao) || (marketCapTao as number) <= 0) {
+    return null;
+  }
   /* v8 ignore next -- defensive: totalVolumeTao is always roundUnit's finite output */
   if (!Number.isFinite(totalVolumeTao)) return null;
-  return Math.round((totalVolumeTao / marketCapTao) * 1e6) / 1e6;
+  return Math.round((totalVolumeTao / (marketCapTao as number)) * 1e6) / 1e6;
 }
 
 // Convert an epoch-ms timestamp to an ISO string, or null when not finite.
 // Same getTime()-range guard the other account_events scorecards use.
-function coerceEpochMs(value) {
+function coerceEpochMs(value: unknown): number | null {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -108,9 +121,27 @@ function coerceEpochMs(value) {
   return Number.isFinite(date.getTime()) ? n : null;
 }
 
-function toIso(value) {
+function toIso(value: unknown): string | null {
   const n = coerceEpochMs(value);
   return n == null ? null : new Date(n).toISOString();
+}
+
+export interface AlphaVolumeResult {
+  schema_version: 1;
+  netuid: number;
+  window: "24h";
+  buy_volume_alpha: number;
+  sell_volume_alpha: number;
+  total_volume_alpha: number;
+  buy_volume_tao: number;
+  sell_volume_tao: number;
+  total_volume_tao: number;
+  buy_count: number;
+  sell_count: number;
+  net_volume_alpha: number;
+  sentiment_ratio: number | null;
+  sentiment: AlphaVolumeSentiment;
+  vol_mcap_ratio: number | null;
 }
 
 // Shape a subnet's StakeAdded/StakeRemoved aggregate into a 24h volume
@@ -119,7 +150,11 @@ function toIso(value) {
 // event_count. Null-safe: no rows (cold store / empty window) yields zeroed
 // totals, never throws. Volumes are unsigned (buy + sell), never netted —
 // distinct from stake-flow's net_flow_tao.
-export function buildAlphaVolume(rows, netuid, { marketCapTao } = {}) {
+export function buildAlphaVolume(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  netuid: number,
+  { marketCapTao }: { marketCapTao?: number | null } = {},
+): AlphaVolumeResult {
   const list = Array.isArray(rows) ? rows : [];
   let buyAlpha = 0;
   let sellAlpha = 0;
@@ -191,7 +226,14 @@ export function buildAlphaVolume(rows, netuid, { marketCapTao } = {}) {
 // Cold/absent D1 -> zeroed totals + generatedAt null. The 3-day account_events
 // retention (EVENT_RETENTION_MS, src/account-events.mjs) comfortably covers a
 // 24h window.
-export async function loadSubnetAlphaVolume(d1, netuid, { marketCapTao } = {}) {
+export async function loadSubnetAlphaVolume(
+  d1: (
+    sql: string,
+    params: unknown[],
+  ) => Promise<Array<Record<string, unknown>>>,
+  netuid: number,
+  { marketCapTao }: { marketCapTao?: number | null } = {},
+): Promise<{ data: AlphaVolumeResult; generatedAt: string | null }> {
   const cutoff = Date.now() - DAY_MS;
   const rows = await d1(
     "SELECT event_kind, COALESCE(SUM(alpha_amount), 0) AS alpha_volume, " +
@@ -202,7 +244,7 @@ export async function loadSubnetAlphaVolume(d1, netuid, { marketCapTao } = {}) {
       "GROUP BY event_kind",
     [netuid, STAKE_ADDED_KIND, STAKE_REMOVED_KIND, cutoff],
   );
-  let latestObserved = null;
+  let latestObserved: number | null = null;
   for (const row of Array.isArray(rows) ? rows : []) {
     const observed = coerceEpochMs(row?.last_observed);
     if (
