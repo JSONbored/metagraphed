@@ -640,8 +640,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -666,8 +668,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -692,8 +696,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -718,8 +724,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -744,8 +752,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -770,8 +780,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -796,8 +808,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -822,8 +836,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -848,8 +864,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -874,8 +892,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -900,8 +920,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -926,8 +948,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -952,8 +976,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -978,8 +1004,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1004,8 +1032,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1030,8 +1060,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1056,8 +1088,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1082,8 +1116,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1108,8 +1144,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1134,8 +1172,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1160,8 +1200,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1186,8 +1228,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1212,8 +1256,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1238,8 +1284,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1264,8 +1312,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1290,8 +1340,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1316,8 +1368,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1342,8 +1396,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1368,8 +1424,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1394,8 +1452,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1420,8 +1480,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1446,8 +1508,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1472,8 +1536,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1498,8 +1564,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1524,8 +1592,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1550,8 +1620,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1576,8 +1648,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1602,8 +1676,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1628,8 +1704,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1654,8 +1732,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1680,8 +1760,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1706,8 +1788,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1732,8 +1816,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1758,8 +1844,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1784,8 +1872,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1810,8 +1900,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1836,8 +1928,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1862,8 +1956,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1888,8 +1984,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1914,8 +2012,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1940,8 +2040,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1966,8 +2068,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -1992,8 +2096,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2018,8 +2124,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2044,8 +2152,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2070,8 +2180,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2096,8 +2208,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2122,8 +2236,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2148,8 +2264,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2174,8 +2292,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2200,8 +2320,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2226,8 +2348,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2252,8 +2376,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2278,8 +2404,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2304,8 +2432,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2330,8 +2460,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2356,8 +2488,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2382,8 +2516,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2408,8 +2544,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2434,8 +2572,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2460,8 +2600,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2486,8 +2628,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2512,8 +2656,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2538,8 +2684,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2564,8 +2712,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2590,8 +2740,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2616,8 +2768,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2642,8 +2796,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2668,8 +2824,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2694,8 +2852,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2720,8 +2880,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2746,8 +2908,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2772,8 +2936,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2798,8 +2964,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2824,8 +2992,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2850,8 +3020,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2876,8 +3048,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2902,8 +3076,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2928,8 +3104,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2954,8 +3132,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -2980,8 +3160,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -3006,8 +3188,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -3032,8 +3216,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -3058,8 +3244,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -3084,8 +3272,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -3110,8 +3300,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -3136,8 +3328,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
@@ -3162,8 +3356,10 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a cryptographically signed request using a custom header-based signature scheme; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Hotkey, X-Timestamp, and X-Signature headers proving control of a registered hotkey (live-verified 2026-07-22 -- supplying all three moves the error past \"missing signature headers\" to a signature/timestamp-specific check). No static API key or bearer token is accepted.",
+        "location": "header",
+        "names": ["X-Hotkey", "X-Timestamp", "X-Signature"]
       },
       "auth_required": true,
       "authority": "community",
