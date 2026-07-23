@@ -199,11 +199,14 @@ function ApiKeysPanel({
           <p className="text-[12px] font-medium text-health-warn">
             This key is shown once and is never echoed back -- store it now.
           </p>
+          {/* ph-no-capture: excludes this one-time secret reveal from
+              PostHog session replay (metagraphed#7761) -- rrweb's own
+              blockClass marker, see analytics.ts's session_recording config. */}
           <CopyableCode
             label="key"
             value={createMutation.data.key}
             truncate={false}
-            className="w-full"
+            className="w-full ph-no-capture"
           />
         </div>
       ) : null}

@@ -251,7 +251,15 @@ function CreateSubscriptionSection() {
             The secret below is shown once and is never echoed back by GET — store it now.
           </p>
           <CopyableCode label="id" value={result.id} truncate={false} className="w-full" />
-          <CopyableCode label="secret" value={result.secret} truncate={false} className="w-full" />
+          {/* ph-no-capture: excludes this one-time secret reveal from
+              PostHog session replay (metagraphed#7761) -- rrweb's own
+              blockClass marker, see analytics.ts's session_recording config. */}
+          <CopyableCode
+            label="secret"
+            value={result.secret}
+            truncate={false}
+            className="w-full ph-no-capture"
+          />
           <div className="space-y-1 text-[11px] text-ink-muted">
             <p>
               Deliveries are signed {result.delivery.signature_algorithm} over the raw request body,

@@ -1,17 +1,20 @@
 /**
- * Centralized PostHog web-analytics + error-tracking seam
- * (metagraphed#7760, #7759).
+ * Centralized PostHog web-analytics + error-tracking + session-replay seam
+ * (metagraphed#7760, #7759, #7761).
  *
- * Single chokepoint for client-side product analytics AND exception
- * reporting: the app calls `initAnalytics()`/`capturePageview()`/
+ * Single chokepoint for client-side product analytics, exception reporting,
+ * AND session replay: the app calls `initAnalytics()`/`capturePageview()`/
  * `captureEvent()`/`captureException()` and never touches `posthog-js`
- * directly elsewhere. `captureException` is called from
- * error-reporting.ts's `reportError` -- a second, parallel sink alongside
- * the existing Sentry one there, sharing THIS module's one `posthog-js`
- * instance rather than each maintaining its own. Additive alongside the
- * existing self-hosted Umami tracker (src/server.ts) and Sentry while parity
- * is proven -- see the consolidation epic (metagraphed#7757) for the
- * decommission plan.
+ * directly elsewhere. Session replay has no separate exported function --
+ * it's configured once in `loadPostHog`'s `session_recording` block below
+ * and otherwise runs itself (posthog-js's own recorder), except for the
+ * exception-linked force-record call inside `captureException`.
+ * `captureException` is called from error-reporting.ts's `reportError` -- a
+ * second, parallel sink alongside the existing Sentry one there, sharing
+ * THIS module's one `posthog-js` instance rather than each maintaining its
+ * own. Additive alongside the existing self-hosted Umami tracker
+ * (src/server.ts) and Sentry while parity is proven -- see the
+ * consolidation epic (metagraphed#7757) for the decommission plan.
  *
  * `posthog-js` is loaded via a DYNAMIC import, mirroring error-reporting.ts's
  * exact Sentry-loading pattern: this keeps it out of the initial client
@@ -103,8 +106,50 @@ function loadPostHog(): Promise<PostHog | null> {
         // tradeoff: identity resets every reload/tab close (each is a new
         // anonymous visitor) rather than persisting client-side -- accepted
         // for a public dashboard that doesn't need cross-session user
-        // profiles for pageview-level web analytics.
+        // profiles for pageview-level web analytics. Session replay
+        // (below) inherits the same reset-per-reload behavior, since
+        // posthog-js's own session ID also lives in this persistence store.
         persistence: "memory",
+        // Session replay (metagraphed#7761). Privacy is the point here, not
+        // an afterthought -- see this module's own privacy review in the PR
+        // that added this block for the full surface audit (search inputs,
+        // wallet/auth flows, one-time-secret reveals).
+        session_recording: {
+          // All three explicit even though they match posthog-js's own
+          // defaults (node_modules/@posthog/types' own @default tags) --
+          // documented intent, not an accidental default.
+          maskAllInputs: true,
+          // rrweb's built-in element markers, not custom selectors: any
+          // element with class="ph-mask" gets its TEXT content masked;
+          // class="ph-no-capture" is excluded from the DOM recording
+          // entirely. The three one-time secret-reveal panels (minted API
+          // key, webhook signing secret, watch-alert owner token) use
+          // ph-no-capture at their call sites -- see api-keys-manager.tsx,
+          // webhook-subscription-manager.tsx, watch-alert-form.tsx.
+          maskTextClass: "ph-mask",
+          blockClass: "ph-no-capture",
+          // 15%, the midpoint of the issue's own suggested 10-20% starting
+          // range. Hardcoded rather than left to PostHog's remote/dashboard
+          // sampling config (which this value overrides when set, per
+          // node_modules/@posthog/types' own doc comment) -- same
+          // reasoning as this module's `persistence: "memory"` choice
+          // above: a safe default that doesn't depend on separately
+          // getting a dashboard setting right before this ships. Tune via
+          // a follow-up code change once real volume against the 5k/mo
+          // free-tier recording cap is known.
+          sampleRate: 0.15,
+        },
+        // Explicitly off, not left `undefined` (posthog-js's own default,
+        // which falls back to remote/dashboard config -- see
+        // node_modules/@posthog/types' own doc comment). This app has
+        // dev-only `console.error` calls sprinkled through it (see
+        // error-reporting.ts, analytics.ts's own load-failure handlers)
+        // gated on `import.meta.env?.DEV`, so nothing reaches the console
+        // in production today -- but a dashboard setting shouldn't be the
+        // only thing standing between that and a future console.log this
+        // module's author didn't audit. Console capture is out of scope
+        // for what this replay rollout reviewed.
+        enable_recording_console_log: false,
       });
       return posthog;
     })
@@ -153,5 +198,18 @@ export function captureEvent(name: string, properties?: Record<string, unknown>)
  * other export here. */
 export function captureException(error: unknown, properties?: Record<string, unknown>): void {
   if (!POSTHOG_TOKEN) return;
-  void loadPostHog().then((posthog) => posthog?.captureException(error, properties));
+  void loadPostHog().then((posthog) => {
+    // metagraphed#7761's own explicit requirement: "always-on [replay] for
+    // sessions with an exception". `startSessionRecording(true)` is
+    // posthog-js's documented override to force this session's recording
+    // past its sample-rate dice roll (`{ sampling: true, linked_flag: true }`
+    // shorthand) -- it does not retroactively invent pre-exception frames,
+    // but posthog-js's recorder already buffers a rolling pre-trigger
+    // window internally (see `trigger_pending_buffer_interval_millis` in
+    // node_modules/@posthog/types), so calling this the moment an exception
+    // is captured keeps that lead-up context rather than starting a bare
+    // recording from this instant. A no-op if replay is already recording.
+    posthog?.startSessionRecording(true);
+    posthog?.captureException(error, properties);
+  });
 }

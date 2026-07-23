@@ -130,7 +130,15 @@ export function CreatedTokenPanel({ id, ownerToken }: { id: string; ownerToken: 
         or delete this alert later via the API.
       </p>
       <CopyableCode label="id" value={id} truncate={false} className="w-full" />
-      <CopyableCode label="owner token" value={ownerToken} truncate={false} className="w-full" />
+      {/* ph-no-capture: excludes this one-time secret reveal from PostHog
+          session replay (metagraphed#7761) -- rrweb's own blockClass
+          marker, see analytics.ts's session_recording config. */}
+      <CopyableCode
+        label="owner token"
+        value={ownerToken}
+        truncate={false}
+        className="w-full ph-no-capture"
+      />
     </div>
   );
 }
