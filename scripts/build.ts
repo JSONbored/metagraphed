@@ -141,7 +141,7 @@ function revertDeployOwnedArtifactsIfChanged(): void {
 function localSteps(): Step[] {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.ts", "--write"),
-    nodeStep("build-artifacts", "scripts/build-artifacts.mjs", {
+    nodeStep("build-artifacts", "scripts/build-artifacts.ts", {
       METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
     }),
     // After build-artifacts (which wipes the R2 staging root) and before
@@ -191,13 +191,13 @@ function productionSteps(): Step[] {
     // blocks the publish. Without this step the index is empty and get_fixture
     // returns nothing.
     nodeStep("capture-fixtures", "scripts/capture-fixtures.ts", "--write"),
-    nodeStep("build-artifacts", "scripts/build-artifacts.mjs"),
+    nodeStep("build-artifacts", "scripts/build-artifacts.ts"),
     nodeStep("probes-smoke", "scripts/probes-smoke.ts", {
       METAGRAPH_WRITE_PROBE_RESULTS: "1",
     }),
     nodeStep(
       "build-artifacts-with-probe-health",
-      "scripts/build-artifacts.mjs",
+      "scripts/build-artifacts.ts",
       {
         METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
       },

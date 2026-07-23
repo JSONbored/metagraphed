@@ -26,7 +26,7 @@ truth or touching the REST/RPC hot path.
 Add an AI-native layer as thin projections/wrappers over the existing artifact
 contract. No new authority, no new pipeline.
 
-1. **Agent capability catalog** (AI-1). `scripts/build-artifacts.mjs` joins
+1. **Agent capability catalog** (AI-1). `scripts/build-artifacts.ts` joins
    curated surfaces (`kind ∈ subnet-api/openapi/sse`) with the schema index and
    endpoint health to emit `/metagraph/agent-catalog.json` (compact, committed
    index of the subnets exposing callable services) and per-subnet

@@ -2120,7 +2120,7 @@ const CLUSTER_CCTLD_SUFFIXES = [
 // Multi-tenant platform hosts: each subdomain is a distinct tenant, so the
 // cluster unit is the full `<tenant>.<suffix>` and the bare suffix is not a
 // cluster of its own. Single source of truth — `clusterDomainFromUrl` (here)
-// and `isGenericClusterHost` (build-artifacts.mjs) both consume this set so the
+// and `isGenericClusterHost` (build-artifacts.ts) both consume this set so the
 // two cannot drift (issue #419).
 export const MULTI_TENANT_HOST_SUFFIXES = new Set([
   "github.io",

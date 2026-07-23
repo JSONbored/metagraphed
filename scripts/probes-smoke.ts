@@ -136,11 +136,11 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     contractVersion,
     source: "live-smoke-probe",
   });
-  // Current-state health is local-cache-only now. build-artifacts.mjs
+  // Current-state health is local-cache-only now. build-artifacts.ts
   // intentionally stopped publishing health/latest.json, health/summary.json,
   // and health/subnets/*.json (the live /api/v1/health routes serve from KV/D1),
   // and the Worker unconditionally 410s those static paths. We only seed the
-  // local fallback cache that build-artifacts.mjs still reads — the retired
+  // local fallback cache that build-artifacts.ts still reads — the retired
   // static writes below are gone.
   await writeJson(
     path.join(repoRoot, ".cache/metagraphed/health/latest.json"),

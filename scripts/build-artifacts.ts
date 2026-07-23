@@ -86,7 +86,12 @@ import {
   listToolDefinitions,
 } from "../src/mcp-server.mjs";
 import { buildDatasetExports } from "./datasets.ts";
-import { buildChangelog } from "./changelog.ts";
+import {
+  buildChangelog,
+  type ArtifactEntry,
+  type CoverageSnapshot,
+  type SubnetEntry,
+} from "./changelog.ts";
 import {
   buildSurfaceAliasArtifact,
   SURFACE_ALIASES_RELATIVE_PATH,
@@ -103,6 +108,12 @@ import {
 } from "../src/artifact-storage.ts";
 
 const execFileAsync = promisify(execFile);
+
+// Registry/artifact rows are untrusted dynamic JSON, read only for artifact
+// derivation -- never trusted for control flow. Mirrors the readJson/
+// readArtifactJson precedent in scripts/lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
 
 // #2057: batch the independent per-subnet/per-provider artifact writes with
 // bounded-concurrency mapLimit instead of serial awaits. Safe because each write
@@ -138,7 +149,7 @@ const CORE_INTERFACE_GAP_KINDS = ["openapi", "subnet-api"];
 // Resolve a per-gap-row severity (critical/warning/info — the EndpointIncidentSeverity
 // vocabulary already in the contract) from the subnet's missing surface kinds,
 // using the existing high-value/core classification rather than a new scale.
-function gapRowSeverity(missingKinds) {
+function gapRowSeverity(missingKinds: string[] | null | undefined): string {
   const missing = new Set(missingKinds || []);
   const missingHighValue = HIGH_VALUE_GAP_KINDS.filter((kind) =>
     missing.has(kind),
@@ -155,19 +166,21 @@ function gapRowSeverity(missingKinds) {
   return "info";
 }
 
-const providers = await loadProviders();
-const overlays = await loadSubnets();
-const candidates = await loadCandidates();
+const providers: Row[] = await loadProviders();
+const overlays: Row[] = await loadSubnets();
+const candidates: Row[] = await loadCandidates();
 const candidateDiscovery = await readOptionalJson(
   path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
 );
 const verification = redactCredentialedUrls(
   await loadVerification({ preferDetailed: false }),
-);
-const detailedVerification = redactCredentialedUrls(await loadVerification());
+) as Row;
+const detailedVerification = redactCredentialedUrls(
+  await loadVerification(),
+) as Row;
 const adapterSnapshots = await loadAdapterSnapshots();
 const reviewDecisions = await loadReviewDecisions();
-const nativeSnapshot = await loadNativeSnapshot();
+const nativeSnapshot: Row = await loadNativeSnapshot();
 // #6639: per-subnet GitHub language + last-push signal, from the committed
 // registry/generated/github-signals.json (periodically maintainer-refreshed
 // via `node scripts/github-signals.ts --write`, mirrors how verification/
@@ -177,7 +190,7 @@ const githubSignals = await loadGithubSignals();
 const overlayByNetuid = new Map(
   overlays.map((overlay) => [overlay.netuid, overlay]),
 );
-const chainSubnets = nativeSnapshot.subnets;
+const chainSubnets: Row[] = nativeSnapshot.subnets;
 const activeOverlayNetuids = new Set(
   chainSubnets.map((subnet) => subnet.netuid),
 );
@@ -187,7 +200,7 @@ const activeOverlays = overlays.filter((overlay) =>
 // #1006: stamp the per-surface `stale` flag against the committed native-snapshot
 // captured_at — a deterministic reference (never wall-clock), so the flag stays
 // reproducible across builds. `last_verified_at` is added inside flattenSurfaces.
-const surfaces = withSurfaceFreshness(
+const surfaces: Row[] = withSurfaceFreshness(
   flattenSurfaces(activeOverlays),
   Date.parse(nativeSnapshot.captured_at),
 );
@@ -202,7 +215,7 @@ const surfaces = withSurfaceFreshness(
 const curatedSurfaceIdByRegistryKey = new Map(
   surfaces.map((surface) => [registrySurfaceKey(surface), surface.id]),
 );
-const supersededBySurfaceId = (candidate) =>
+const supersededBySurfaceId = (candidate: Row) =>
   curatedSurfaceIdByRegistryKey.get(registrySurfaceKey(candidate)) ?? null;
 // Raw grouping: registry-wide intake stats (coverage.candidate_count /
 // candidate_subnet_count) describe every candidate record, matching the full
@@ -231,13 +244,16 @@ const fullVerification = buildFullVerificationArtifact(detailedVerification, {
   generatedAt,
 });
 const fullVerificationByCandidate = new Map(
-  (fullVerification.results || []).map((result) => [
+  (fullVerification.results || []).map((result: Row) => [
     result.candidate_id,
     result,
   ]),
 );
 const canonicalVerificationByCandidate = new Map(
-  (verification.results || []).map((result) => [result.candidate_id, result]),
+  (verification.results || []).map((result: Row) => [
+    result.candidate_id,
+    result,
+  ]),
 );
 const previousArtifactDigests = await collectPreviousPublicArtifactDigests({
   publicRoot: outputRoot,
@@ -266,11 +282,11 @@ const previousSchemaIndexArtifact = await readOptionalJson(
 // schema files (R2 staging); capture it before the wipe below so the schema
 // rebuild can re-attach it (the index stays light, but the files carry the
 // spec for get_api_schema).
-const capturedSchemaDocuments = new Map();
-const capturedSchemaDetails = new Map();
+const capturedSchemaDocuments = new Map<string, Row>();
+const capturedSchemaDetails = new Map<string, Row>();
 {
   const schemasDir = path.join(r2OutputRoot, "schemas");
-  let schemaFiles;
+  let schemaFiles: string[];
   try {
     schemaFiles = await fs.readdir(schemasDir);
   } catch {
@@ -283,7 +299,7 @@ const capturedSchemaDetails = new Map();
       continue;
     }
     const relativePath = `schemas/${file}`;
-    const document = sanitizeOpenApiDocument(existing.document);
+    const document = sanitizeOpenApiDocument(existing.document) as Row;
     const { document: _document, ...snapshot } = existing;
     capturedSchemaDocuments.set(relativePath, document);
     capturedSchemaDetails.set(relativePath, {
@@ -298,11 +314,11 @@ const capturedSchemaDetails = new Map();
 // can re-serve fixtures/{surface_id}.json + index them in R2 fixtures.json.
 // Absent on a pure deterministic build (no capture run) → an empty index,
 // populated on the next refresh (same model as schemas).
-const capturedFixtures = new Map();
-let capturedFixtureReport = null;
+const capturedFixtures = new Map<string, Row>();
+let capturedFixtureReport: Row | null = null;
 {
   const fixturesDir = path.join(r2OutputRoot, "fixtures");
-  let fixtureFiles;
+  let fixtureFiles: string[];
   try {
     fixtureFiles = await fs.readdir(fixturesDir);
   } catch {
@@ -372,7 +388,7 @@ for (const subnet of mergedSubnets) {
 const testnetSnapshot = await readOptionalJson(
   path.join(repoRoot, "registry/native/test-subnets.json"),
 );
-const testnetSubnets = testnetSnapshot?.subnets || [];
+const testnetSubnets: Row[] = testnetSnapshot?.subnets || [];
 const testnetByNetuid = new Map(
   testnetSubnets.map((subnet) => [subnet.netuid, subnet]),
 );
@@ -382,7 +398,7 @@ const mergedByNetuid = new Map(
 const lineageApprovals = await readOptionalJson(
   path.join(repoRoot, "registry/lineage.json"),
 );
-const lineageBrokenLinks = [];
+const lineageBrokenLinks: Row[] = [];
 const lineageLinks = buildSubnetLineageLinks(
   chainSubnets,
   testnetSubnets,
@@ -453,7 +469,7 @@ const firstPartySubnetCount = [...surfaceTrustByNetuid.values()].filter(
 const subnetsWithoutOfficialSurface =
   surfaceTrustByNetuid.size - firstPartySubnetCount;
 
-const subnetIndex = mergedSubnets.map((subnet) => {
+const subnetIndex: Row[] = mergedSubnets.map((subnet) => {
   // The Discord contact is on-chain (SubnetIdentitiesV3) and untrusted. Surface
   // it on the lightweight index (issue #344) so an agent can answer "how do I
   // reach this team" without fetching detail: `discord` is the allowlisted
@@ -636,10 +652,10 @@ const adapterArtifacts = Object.fromEntries(
         },
       ];
     })
-    .filter(Boolean),
+    .filter((entry): entry is [string, Row] => entry !== null),
 );
 
-const coverage = {
+const coverage: Row = {
   schema_version: 1,
   generated_at: generatedAt,
   network: nativeSnapshot.network,
@@ -694,7 +710,7 @@ const coverage = {
   // A subnet contributes to every tag it carries. Reporting-only.
   domain_coverage: countBy(
     mergedSubnets.flatMap((subnet) => subnet.derived_categories || []),
-    (tag) => tag,
+    (tag: unknown) => tag as string,
   ),
 };
 
@@ -704,7 +720,10 @@ const coverage = {
 // flagged, for transparency + the dedup link; the *_active indexes below drop
 // them so per-subnet counts/lists, profiles, and the enrichment/curation
 // leaderboards present each (netuid, kind, url) exactly once.
-const candidateIndex = candidates.map((candidate) => ({
+// The object spread of a Record<string, any> drops its index signature, so
+// these callbacks are annotated `Row` (this file's Row-typed array element)
+// to keep the spread candidate's own fields visible downstream.
+const candidateIndex: Row[] = candidates.map((candidate): Row => ({
   ...candidate,
   superseded_by: supersededBySurfaceId(candidate),
   // #1007: distinct discovery sources that corroborate this candidate.
@@ -716,7 +735,7 @@ const candidateIndex = candidates.map((candidate) => ({
   // byte-identical to the per-candidate native scan it replaces (#2095).
   subnet_name: nativeByNetuid.get(candidate.netuid)?.name || null,
 }));
-const canonicalCandidateIndex = candidates.map((candidate) => ({
+const canonicalCandidateIndex: Row[] = candidates.map((candidate): Row => ({
   ...candidate,
   superseded_by: supersededBySurfaceId(candidate),
   confirmed_by: corroboratingSources(candidate),
@@ -787,13 +806,16 @@ const candidateIndexByNetuid = groupByNetuid(candidateIndex);
 const activeCandidateIndexByNetuid = groupByNetuid(activeCandidateIndex);
 const fullVerificationByNetuid = groupByNetuid(fullVerification.results || []);
 const agentSchemaBySurfaceId = new Map(
-  (schemaIndexArtifact.schemas || []).map((entry) => [entry.surface_id, entry]),
+  (schemaIndexArtifact.schemas || []).map((entry: Row) => [
+    entry.surface_id,
+    entry,
+  ]),
 );
-const agentSchemaEntries = (schemaIndexArtifact.schemas || []).filter(
-  (entry) => entry.status === "captured" && entry.path,
+const agentSchemaEntries: Row[] = (schemaIndexArtifact.schemas || []).filter(
+  (entry: Row) => entry.status === "captured" && entry.path,
 );
-const agentSchemaByUrl = new Map();
-const agentSchemasByNetuidOrigin = new Map();
+const agentSchemaByUrl = new Map<string, Row>();
+const agentSchemasByNetuidOrigin = new Map<string, Row[]>();
 for (const entry of agentSchemaEntries) {
   for (const url of [
     entry.schema_url,
@@ -807,18 +829,18 @@ for (const entry of agentSchemaEntries) {
     if (!agentSchemasByNetuidOrigin.has(key)) {
       agentSchemasByNetuidOrigin.set(key, []);
     }
-    agentSchemasByNetuidOrigin.get(key).push(entry);
+    agentSchemasByNetuidOrigin.get(key)!.push(entry);
   }
 }
 const agentEndpointBySurfaceId = new Map(
-  endpointResources.endpoints
-    .filter((endpoint) => endpoint.surface_id)
-    .map((endpoint) => [endpoint.surface_id, endpoint]),
+  (endpointResources.endpoints as Row[])
+    .filter((endpoint: Row) => endpoint.surface_id)
+    .map((endpoint: Row) => [endpoint.surface_id, endpoint]),
 );
-const capturedFixtureStatusBySurfaceId = new Map(
+const capturedFixtureStatusBySurfaceId = new Map<string, Row>(
   (capturedFixtureReport?.surfaces || [])
-    .filter((entry) => entry?.surface_id)
-    .map((entry) => [entry.surface_id, entry]),
+    .filter((entry: Row) => entry?.surface_id)
+    .map((entry: Row): [string, Row] => [entry.surface_id, entry]),
 );
 
 // Integration readiness (objective 0-100) for EVERY subnet — surfaced inline on
@@ -854,7 +876,7 @@ const readinessByNetuid = new Map(
   mergedSubnets.map((subnet) => [
     subnet.netuid,
     subnetIntegrationReadiness({
-      services: servicesByNetuid.get(subnet.netuid),
+      services: servicesByNetuid.get(subnet.netuid) || [],
       lifecycle: subnet.lifecycle,
       completenessScore: profileArtifacts.byNetuid.get(subnet.netuid)
         ?.completeness_score,
@@ -958,7 +980,7 @@ const GENERIC_CLUSTER_HOSTS = new Set([
   "linktr.ee",
   "huggingface.co",
 ]);
-function isGenericClusterHost(host) {
+function isGenericClusterHost(host: string): boolean {
   return (
     GENERIC_CLUSTER_HOSTS.has(host) ||
     [...MULTI_TENANT_HOST_SUFFIXES].some(
@@ -977,7 +999,7 @@ const endpointsByProvider = groupBy(
   endpointResources.endpoints,
   (endpoint) => endpoint.provider,
 );
-const enrichedProviders = providers.map((provider) => {
+const enrichedProviders: Row[] = providers.map((provider): Row => {
   const providerSurfaces = surfacesByProvider.get(provider.id) || [];
   const netuids = [
     ...new Set(
@@ -1009,7 +1031,7 @@ const enrichedProviders = providers.map((provider) => {
     null;
   // #786: drop the raw curated `social` before spreading so an unsanitized
   // (possibly unsafe/private) value can never survive into the artifact.
-  const safeProvider = { ...provider };
+  const safeProvider: Row = { ...provider };
   delete safeProvider.social;
   return {
     ...safeProvider,
@@ -1054,8 +1076,8 @@ await mapLimit(
 // of registry/entities/<ss58>.json, minus rejected entries -- no cross-
 // referencing at build time (the reverse-lookup route joins against
 // subnet_ownership_history live, at request time, #6740).
-const publishableEntities = (await loadEntities()).filter(
-  (entity) => entity.review?.state !== "rejected",
+const publishableEntities = ((await loadEntities()) as Row[]).filter(
+  (entity: Row) => entity.review?.state !== "rejected",
 );
 await writeJson(artifactFile("entities.json"), {
   schema_version: 1,
@@ -1159,7 +1181,7 @@ await writeJson(
     currentSurfaces: surfaces,
     generatedAt,
     previousAliases: null,
-    previousSurfaces: null,
+    previousSurfaces: undefined,
   }),
 );
 await fs.rm(r2ArtifactDir("surfaces"), {
@@ -1398,7 +1420,7 @@ await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
 // AGENT_SERVICE_KINDS + agentSchemaBySurfaceId + agentEndpointBySurfaceId are
 // declared earlier (service-resolution indices, alongside integration readiness)
 // and reused here.
-function urlOrigin(value) {
+function urlOrigin(value: string): string | null {
   try {
     return new URL(value).origin;
   } catch {
@@ -1406,17 +1428,17 @@ function urlOrigin(value) {
   }
 }
 
-function schemaOriginKeys(entry) {
+function schemaOriginKeys(entry: Row): string[] {
   return [
     ...new Set(
       [entry.schema_url, entry.url, entry.snapshot?.surface_url]
         .map((value) => (value ? urlOrigin(value) : null))
-        .filter(Boolean),
+        .filter((origin): origin is string => origin !== null),
     ),
   ];
 }
 
-function firstDeterministicSchemaEntry(entries) {
+function firstDeterministicSchemaEntry(entries: Row[] | undefined): Row | null {
   if (!Array.isArray(entries) || entries.length === 0) return null;
   const bySchemaUrl = new Map();
   for (const entry of entries) {
@@ -1430,7 +1452,7 @@ function firstDeterministicSchemaEntry(entries) {
   )[0];
 }
 
-function resolveAgentServiceSchema(surface) {
+function resolveAgentServiceSchema(surface: Row): Row {
   const direct = agentSchemaBySurfaceId.get(surface.id);
   if (direct) return { entry: direct, match: "surface-id" };
 
@@ -1458,12 +1480,12 @@ function resolveAgentServiceSchema(surface) {
   return { entry: null, match: null };
 }
 
-function serviceSchemaSource(schemaResolution) {
+function serviceSchemaSource(schemaResolution: Row | null): Row | null {
   const schema = schemaResolution?.entry || null;
   if (!schema) return null;
   return {
     surface_id: schema.surface_id,
-    match: schemaResolution.match,
+    match: schemaResolution!.match,
     url: schema.schema_url || schema.url || null,
     artifact: schema.path || null,
     status: schema.status || null,
@@ -1472,11 +1494,11 @@ function serviceSchemaSource(schemaResolution) {
   };
 }
 
-function fixtureProbeMethod(surface) {
+function fixtureProbeMethod(surface: Row): string {
   return (surface.probe?.method || "GET").toUpperCase();
 }
 
-function isFixtureCaptureCandidateSurface(surface) {
+function isFixtureCaptureCandidateSurface(surface: Row): boolean {
   return (
     FIXTURE_SERVICE_KINDS.has(surface.kind) &&
     surface.public_safe &&
@@ -1486,11 +1508,11 @@ function isFixtureCaptureCandidateSurface(surface) {
   );
 }
 
-function fixtureCoverageEntry(surface) {
+function fixtureCoverageEntry(surface: Row): Row {
   const fixtureRef = surfaceFixtureReference(
     surface.id,
     capturedFixtures.get(surface.id),
-  );
+  ) as Row | null;
   const report = capturedFixtureStatusBySurfaceId.get(surface.id);
   const status = fixtureRef
     ? "available"
@@ -1505,7 +1527,7 @@ function fixtureCoverageEntry(surface) {
     status,
     reason:
       status === "capture-failed"
-        ? report.reason || "capture failed"
+        ? report?.reason || "capture failed"
         : status === "missing"
           ? "no captured fixture available"
           : null,
@@ -1516,14 +1538,18 @@ function fixtureCoverageEntry(surface) {
   };
 }
 
-function fixtureCoverageEntries(surfacesForFixtures) {
+function fixtureCoverageEntries(surfacesForFixtures: Row[]): Row[] {
   return surfacesForFixtures
     .filter(isFixtureCaptureCandidateSurface)
     .map(fixtureCoverageEntry)
     .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
 }
 
-function serviceFixtureStatus(surface, fixtureRef, authRequired) {
+function serviceFixtureStatus(
+  surface: Row,
+  fixtureRef: Row | null | undefined,
+  authRequired: boolean,
+): Row {
   if (fixtureRef) {
     return {
       status: "available",
@@ -1576,7 +1602,7 @@ function serviceFixtureStatus(surface, fixtureRef, authRequired) {
   };
 }
 
-function buildSubnetServices(netuid) {
+function buildSubnetServices(netuid: unknown): Row[] {
   return (overviewSurfacesByNetuid.get(netuid) || [])
     .filter(
       (surface) => AGENT_SERVICE_KINDS.has(surface.kind) && surface.public_safe,
@@ -1672,26 +1698,26 @@ await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
 const exampleSurfacesByNetuid = groupByNetuid(
   surfaces.filter((surface) => surface.kind === "example"),
 );
-const subnetExamples = (netuid) =>
-  (exampleSurfacesByNetuid.get(netuid) || []).map((surface) => ({
+const subnetExamples = (netuid: unknown): Row[] =>
+  (exampleSurfacesByNetuid.get(netuid) || []).map((surface: Row) => ({
     surface_id: surface.id,
     name: surface.name,
     url: surface.url,
     provider: surface.provider || null,
     authority: surface.authority || null,
   }));
-const agentCatalogIndex = [];
-const blockedAgentCatalogIndex = [];
-const agentReadinessByNetuid = new Map();
+const agentCatalogIndex: Row[] = [];
+const blockedAgentCatalogIndex: Row[] = [];
+const agentReadinessByNetuid = new Map<unknown, Row>();
 let callableServiceCount = 0;
 // serial: accumulates shared state (callableServiceCount and the catalog index
 // arrays), so unlike the #2057 per-subnet write loops this is not parallelized.
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
-  const services = servicesByNetuid.get(subnet.netuid) || [];
+  const services: Row[] = servicesByNetuid.get(subnet.netuid) || [];
   const examples = subnetExamples(subnet.netuid);
   // Reuse the readiness computed once above for the index/profile surfaces.
-  const readiness = readinessByNetuid.get(subnet.netuid);
+  const readiness: Row = readinessByNetuid.get(subnet.netuid)!;
   const callable = services.filter((s) => s.eligibility.callable).length;
   const agentReadiness = buildAgentReadiness({
     subnet,
@@ -1859,12 +1885,12 @@ const llmsSubnetLines = mergedSubnets
     const idx = agentCatalogIndex.find((e) => e.netuid === subnet.netuid);
     const cats = idx?.categories?.length
       ? ` [${idx.categories
-          .map((category) => formatLlmMarkdownText(category))
+          .map((category: unknown) => formatLlmMarkdownText(category))
           .join(", ")}]`
       : "";
     const svc = idx
       ? `; ${idx.callable_count}/${idx.service_count} callable services (${idx.service_kinds
-          .map((kind) => formatLlmMarkdownText(kind))
+          .map((kind: unknown) => formatLlmMarkdownText(kind))
           .join(", ")})`
       : "; no catalogued public API yet";
     return `- SN${subnet.netuid} ${formatLlmMarkdownText(subnet.name)} (${formatLlmMarkdownText(subnet.slug)})${cats}${svc} — ${llmsApiBase}/api/v1/agent-catalog/${subnet.netuid}`;
@@ -1911,11 +1937,11 @@ await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
 // Minimal YAML-frontmatter reader for SKILL.md: pulls `name` and `description`,
 // folding the multi-line (`>-`) description into one line. Not a general YAML
 // parser — just the two scalar fields these files use.
-function parseSkillFrontmatter(body) {
+function parseSkillFrontmatter(body: string): Row {
   const match = /^---\n([\s\S]*?)\n---/.exec(body);
-  const meta = { name: null, description: null };
+  const meta: Row = { name: null, description: null };
   if (!match) return meta;
-  const buf = {};
+  const buf: Row = {};
   let key = null;
   for (const line of match[1].split("\n")) {
     const top = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
@@ -2140,7 +2166,7 @@ await writeJson(artifactFile("agent-resources.json"), {
 // public/datasets/ and served as static ASSETS at api.metagraph.sh/datasets/*
 // (not worker-first, so no route/handler). Deterministic (epoch generated_at +
 // the already-sorted committed projections), so stable across rebuilds.
-const datasetExports = buildDatasetExports({
+const datasetExports: Row = buildDatasetExports({
   subnets: subnetIndex,
   surfaces,
   providers,
@@ -2329,7 +2355,7 @@ const testnetBaseEndpoints = await readOptionalJson(
   path.join(repoRoot, "registry/native/test-base-endpoints.json"),
 );
 const testnetRpcPoolEndpoints = (testnetBaseEndpoints?.endpoints || []).map(
-  (endpoint) => ({
+  (endpoint: Row) => ({
     id: endpoint.id,
     kind: endpoint.kind || "subtensor-rpc",
     url: endpoint.url,
@@ -2521,14 +2547,15 @@ const currentArtifactDigests = await collectArtifactDigests({
 // build time — previousSubnets/previousCoverage resolve to null and this emits
 // an EMPTY placeholder changelog. The real "since last publish" diff is computed
 // by scripts/build-changelog.ts at publish time against the previous R2 publish.
-const changelogArtifact = buildChangelog({
+const changelogArtifact: Row = buildChangelog({
   contractVersion,
-  currentArtifacts: currentArtifactDigests,
-  currentCoverage: coverage,
-  currentSubnets: { subnets: subnetIndex },
+  currentArtifacts: currentArtifactDigests as unknown as ArtifactEntry[],
+  currentCoverage: coverage as unknown as CoverageSnapshot,
+  currentSubnets: { subnets: subnetIndex as unknown as SubnetEntry[] },
   generatedAt,
-  previousArtifacts: previousArtifactDigests,
-  previousCoverage: previousCoverageArtifact,
+  previousArtifacts: previousArtifactDigests as unknown as ArtifactEntry[],
+  previousCoverage:
+    previousCoverageArtifact as unknown as CoverageSnapshot | null,
   previousSubnets: previousSubnetsArtifact,
 });
 await writeJson(artifactFile("changelog.json"), changelogArtifact);
@@ -2653,7 +2680,9 @@ const artifactSizes = await collectArtifactSizes({
 const reviewArtifactSizes = artifactSizes.filter(
   (artifact) => artifact.storage_tier !== "r2",
 );
-const artifactBudgets = evaluateArtifactBudgets(artifactSizes);
+const artifactBudgets = evaluateArtifactBudgets(
+  artifactSizes as unknown as Parameters<typeof evaluateArtifactBudgets>[0],
+);
 await writeJson(artifactFile("build-summary.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -2699,10 +2728,15 @@ console.log(
   `Built ${mergedSubnets.length} subnet(s), ${surfaces.length} surface(s), and ${providers.length} provider(s).`,
 );
 
-function mergeSubnet(nativeSubnet, overlay, candidateCount) {
+function mergeSubnet(
+  nativeSubnet: Row,
+  overlay: Row | null | undefined,
+  candidateCount: number,
+): Row {
   const surfaceCount = overlay?.surfaces?.length || 0;
   const probedSurfaceCount =
-    overlay?.surfaces?.filter((surface) => surface.probe?.enabled).length || 0;
+    overlay?.surfaces?.filter((surface: Row) => surface.probe?.enabled)
+      .length || 0;
   const coverageLevel =
     surfaceCount === 0
       ? "native-only"
@@ -2802,7 +2836,11 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
     // #6639: dev-activity signal from the resolved source_repo above, keyed
     // off the same overlay-then-chain-backfill resolution -- null/null when
     // there's no GitHub source_repo, or signals haven't been captured yet.
-    ...githubSignalsForSubnet(githubSignals, overlay, nativeSubnet),
+    ...githubSignalsForSubnet(
+      githubSignals,
+      overlay ?? undefined,
+      nativeSubnet,
+    ),
     status: nativeSubnet.status,
     subnet_type: nativeSubnet.subnet_type,
     surface_count: surfaceCount,
@@ -2842,7 +2880,7 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
   };
 }
 
-function buildGaps(surfaces, overlay) {
+function buildGaps(surfaces: Row[], overlay: Row | null | undefined): Row {
   const kinds = new Set(surfaces.map((surface) => surface.kind));
   if (overlay?.docs_url) {
     kinds.add("docs");
@@ -2874,7 +2912,10 @@ function buildGaps(surfaces, overlay) {
   };
 }
 
-function countBy(items, keyOrFn) {
+function countBy(
+  items: Row[],
+  keyOrFn: string | ((item: Row) => string),
+): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
       items.reduce((accumulator, item) => {
@@ -2887,7 +2928,7 @@ function countBy(items, keyOrFn) {
   );
 }
 
-function endpointSummary(endpoints) {
+function endpointSummary(endpoints: Row[]): Row {
   return {
     endpoint_count: endpoints.length,
     monitored_count: endpoints.filter(
@@ -2905,19 +2946,34 @@ function endpointSummary(endpoints) {
 // Group probed health rows into netuid -> (surface kind -> rows[]) so the
 // profile builder can check, per subnet, whether each operational surface kind
 // is currently verified healthy-and-fresh.
-function groupHealthByNetuidAndKind(healthSurfaces) {
-  const byNetuid = new Map();
+function groupHealthByNetuidAndKind(
+  healthSurfaces: Row[] | null | undefined,
+): Map<unknown, Map<string, Row[]>> {
+  const byNetuid = new Map<unknown, Map<string, Row[]>>();
   for (const row of healthSurfaces || []) {
     if (!byNetuid.has(row.netuid)) {
       byNetuid.set(row.netuid, new Map());
     }
-    const byKind = byNetuid.get(row.netuid);
+    const byKind = byNetuid.get(row.netuid)!;
     if (!byKind.has(row.kind)) {
       byKind.set(row.kind, []);
     }
-    byKind.get(row.kind).push(row);
+    byKind.get(row.kind)!.push(row);
   }
   return byNetuid;
+}
+
+interface BuildSubnetProfileArtifactsOptions {
+  subnets: Row[];
+  surfaces: Row[];
+  endpoints: Row[];
+  candidates: Row[];
+  nativeIdentitiesByNetuid?: Map<unknown, Row | null>;
+  overlaysByNetuid?: Map<unknown, Row | null>;
+  derivedDescriptionByNetuid?: Map<unknown, string | null>;
+  lineageByNetuid?: Map<unknown, Row | null>;
+  healthSurfaces?: Row[];
+  probeFinishedAt?: string | null;
 }
 
 function buildSubnetProfileArtifacts({
@@ -2931,7 +2987,7 @@ function buildSubnetProfileArtifacts({
   lineageByNetuid = new Map(),
   healthSurfaces = [],
   probeFinishedAt = null,
-}) {
+}: BuildSubnetProfileArtifactsOptions): Row {
   const surfacesByNetuid = groupByNetuid(surfaces);
   const endpointsByNetuid = groupByNetuid(endpoints);
   const candidatesByNetuid = groupByNetuid(candidates);
@@ -3049,7 +3105,7 @@ function buildSubnetProfileArtifacts({
   };
 }
 
-function countGapReasons(profiles) {
+function countGapReasons(profiles: Row[]): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
       profiles.reduce((accumulator, profile) => {
@@ -3060,6 +3116,19 @@ function countGapReasons(profiles) {
       }, {}),
     ).sort(([left], [right]) => left.localeCompare(right)),
   );
+}
+
+interface BuildSubnetProfileOptions {
+  subnet: Row;
+  surfaces: Row[];
+  endpoints: Row[];
+  candidates: Row[];
+  nativeIdentity: Row | null | undefined;
+  overlay?: Row | null;
+  derivedDescription?: string | null;
+  lineage?: Row | null;
+  healthByKind?: Map<string, Row[]>;
+  probeFinishedAt?: string | null;
 }
 
 function buildSubnetProfile({
@@ -3073,7 +3142,7 @@ function buildSubnetProfile({
   lineage = null,
   healthByKind = new Map(),
   probeFinishedAt = null,
-}) {
+}: BuildSubnetProfileOptions): Row {
   const archiveSupported = surfaces.some(surfaceHasArchiveSupport);
   const supportedKinds = [
     ...new Set([
@@ -3189,7 +3258,7 @@ function buildSubnetProfile({
   };
 }
 
-function nativeIdentitySummary(identity) {
+function nativeIdentitySummary(identity: Row | null | undefined): Row | null {
   if (!identity || typeof identity !== "object") {
     return null;
   }
@@ -3214,7 +3283,15 @@ function nativeIdentitySummary(identity) {
   };
 }
 
-function profileIdentityEvidence({ candidates, nativeIdentity, primaryLinks }) {
+function profileIdentityEvidence({
+  candidates,
+  nativeIdentity,
+  primaryLinks,
+}: {
+  candidates: Row[];
+  nativeIdentity: Row | null;
+  primaryLinks: Row;
+}): Row {
   const identityKinds = ["docs", "source-repo", "website"];
   const curatedIdentityKinds = identityKinds
     .filter((kind) => primaryLinkForKind(primaryLinks, kind))
@@ -3263,7 +3340,10 @@ function profileIdentityEvidence({ candidates, nativeIdentity, primaryLinks }) {
   };
 }
 
-function candidateIdentityKindsByClassification(candidates, classifications) {
+function candidateIdentityKindsByClassification(
+  candidates: Row[],
+  classifications: string[],
+): string[] {
   const classificationSet = new Set(classifications);
   return [
     ...new Set(
@@ -3276,12 +3356,12 @@ function candidateIdentityKindsByClassification(candidates, classifications) {
   ].sort();
 }
 
-function candidateIdentityClassification(candidate) {
+function candidateIdentityClassification(candidate: Row): string {
   return candidate.verification?.classification || candidate.state || "unknown";
 }
 
-function primaryLinkForKind(primaryLinks, kind) {
-  const fieldByKind = {
+function primaryLinkForKind(primaryLinks: Row, kind: string): string | null {
+  const fieldByKind: Record<string, string> = {
     docs: "docs_url",
     "source-repo": "source_repo",
     website: "website_url",
@@ -3289,14 +3369,14 @@ function primaryLinkForKind(primaryLinks, kind) {
   return primaryLinks[fieldByKind[kind]] || null;
 }
 
-function cleanProfileText(value) {
+function cleanProfileText(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
   }
   // Defuse prompt-injection in native-identity text (it reaches agents via the
   // profile + search tokens). URLs are preserved here — unlike descriptions —
   // because identity URLs are surfaced as links elsewhere.
-  const clean = sanitizeChainText(value).text.trim();
+  const clean = (sanitizeChainText(value).text || "").trim();
   return clean || null;
 }
 
@@ -3306,13 +3386,19 @@ function subnetProfileCompleteness({
   staleOperationalKinds: staleKinds = new Set(),
   subnetType,
   supportedKinds,
-}) {
+}: {
+  curationLevel: unknown;
+  primaryLinks: Row;
+  staleOperationalKinds?: Set<string> | string[];
+  subnetType: unknown;
+  supportedKinds: string[];
+}): Row {
   const kindSet = new Set(supportedKinds);
   const staleSet = staleKinds instanceof Set ? staleKinds : new Set(staleKinds);
   // Operational surfaces that exist but are not currently verified healthy-and-
   // fresh contribute reduced points (freshness auto-demotion, Finding 9): an
   // unverifiable surface should not read as "complete".
-  const operationalKindPoints = (kind, points) => {
+  const operationalKindPoints = (kind: string, points: number): number => {
     if (!kindSet.has(kind)) return 0;
     return staleSet.has(kind)
       ? Math.round(points * FRESHNESS_DEMOTION_FACTOR)
@@ -3412,14 +3498,14 @@ function subnetProfileCompleteness({
   };
 }
 
-function operationalKindsForSubnetType(subnetType) {
+function operationalKindsForSubnetType(subnetType: unknown): string[] {
   if (subnetType === "root") {
     return ["subtensor-rpc", "subtensor-wss", "archive"];
   }
   return ["openapi", "subnet-api", "sse", "data-artifact"];
 }
 
-function surfaceHasArchiveSupport(surface) {
+function surfaceHasArchiveSupport(surface: Row): boolean {
   if (surface.kind === "archive") {
     return true;
   }
@@ -3433,7 +3519,7 @@ function surfaceHasArchiveSupport(surface) {
   );
 }
 
-function profileConfidence(curation) {
+function profileConfidence(curation: Row): string {
   if (
     curation.review_state === "maintainer-reviewed" ||
     curation.level === "adapter-backed"
@@ -3446,7 +3532,7 @@ function profileConfidence(curation) {
   return "low";
 }
 
-function primaryAppSurface(surfaces) {
+function primaryAppSurface(surfaces: Row[]): Row | null {
   const priority = [
     "subnet-api",
     "openapi",
@@ -3466,12 +3552,12 @@ function primaryAppSurface(surfaces) {
   );
 }
 
-function priorityRank(priority, value) {
-  const index = priority.indexOf(value);
+function priorityRank(priority: string[], value: unknown): number {
+  const index = priority.indexOf(value as string);
   return index === -1 ? 999 : index;
 }
 
-function surfaceSummary(surface) {
+function surfaceSummary(surface: Row | null | undefined): Row | null {
   if (!surface) {
     return null;
   }
@@ -3484,11 +3570,17 @@ function surfaceSummary(surface) {
   };
 }
 
-function firstSurfaceUrl(surfaces, kind) {
+function firstSurfaceUrl(surfaces: Row[], kind: string): string | null {
   return surfaces.find((surface) => surface.kind === kind)?.url || null;
 }
 
-function profileSourceUrls({ primaryLinks, surfaces }) {
+function profileSourceUrls({
+  primaryLinks,
+  surfaces,
+}: {
+  primaryLinks: Row;
+  surfaces: Row[];
+}): string[] {
   const urls = new Set(Object.values(primaryLinks).filter(Boolean).sort());
   for (const surface of surfaces) {
     for (const url of surface.source_urls || []) {
@@ -3498,7 +3590,7 @@ function profileSourceUrls({ primaryLinks, surfaces }) {
   return [...urls].sort();
 }
 
-function profileSuggestedNextAction(profile) {
+function profileSuggestedNextAction(profile: Row): string {
   if (profile.completeness.missing_required.length > 0) {
     return "submit official docs, website, or source repository evidence";
   }
@@ -3514,7 +3606,7 @@ function profileSuggestedNextAction(profile) {
   return "profile is baseline-complete; monitor for drift";
 }
 
-function averageScore(profiles) {
+function averageScore(profiles: Row[]): number {
   if (profiles.length === 0) {
     return 0;
   }
@@ -3524,11 +3616,14 @@ function averageScore(profiles) {
   );
 }
 
-function groupByNetuid(items) {
+function groupByNetuid(items: Row[]): Map<unknown, Row[]> {
   return groupBy(items, "netuid");
 }
 
-function groupBy(items, key) {
+function groupBy(
+  items: Row[],
+  key: string | ((item: Row) => unknown),
+): Map<unknown, Row[]> {
   const groups = new Map();
   for (const item of items) {
     const groupKey = typeof key === "function" ? key(item) : item[key];
@@ -3539,7 +3634,7 @@ function groupBy(items, key) {
   return groups;
 }
 
-async function loadPreviousHealthArtifact() {
+async function loadPreviousHealthArtifact(): Promise<Row | null> {
   if (process.env.METAGRAPH_PRESERVE_PROBE_HEALTH !== "1") {
     return null;
   }
@@ -3549,19 +3644,24 @@ async function loadPreviousHealthArtifact() {
   return artifact?.source === "live-smoke-probe" ? artifact : null;
 }
 
-function buildSurfaceHealthRows({ surfaces, previousHealthArtifact }) {
-  const previousBySurfaceId = new Map(
-    (previousHealthArtifact?.surfaces || []).map((surface) => [
-      surface.surface_id,
-      surface,
-    ]),
+function buildSurfaceHealthRows({
+  surfaces,
+  previousHealthArtifact,
+}: {
+  surfaces: Row[];
+  previousHealthArtifact: Row | null;
+}): Row[] {
+  const previousBySurfaceId = new Map<string, Row>(
+    (previousHealthArtifact?.surfaces || []).map(
+      (surface: Row): [string, Row] => [surface.surface_id, surface],
+    ),
   );
   return surfaces.map((surface) =>
     buildSurfaceHealthRow(surface, previousBySurfaceId.get(surface.id)),
   );
 }
 
-function buildSurfaceHealthRow(surface, previous) {
+function buildSurfaceHealthRow(surface: Row, previous: Row | undefined): Row {
   const base = {
     auth_required: surface.auth_required,
     classification: "unknown",
@@ -3586,7 +3686,7 @@ function buildSurfaceHealthRow(surface, previous) {
     return base;
   }
 
-  const row = {
+  const row: Row = {
     ...base,
     classification: previous.classification || "unknown",
     last_checked: previous.last_checked || previous.verified_at || null,
@@ -3626,7 +3726,10 @@ function buildSurfaceHealthRow(surface, previous) {
   return row;
 }
 
-function isReusableHealthRow(surface, previous) {
+function isReusableHealthRow(
+  surface: Row,
+  previous: Row | undefined,
+): previous is Row {
   return Boolean(
     previous &&
     previous.surface_id === surface.id &&
@@ -3637,13 +3740,22 @@ function isReusableHealthRow(surface, previous) {
   );
 }
 
-function copyOptional(target, source, key, type) {
+function copyOptional(
+  target: Row,
+  source: Row,
+  key: string,
+  type: string,
+): void {
   if (typeof source[key] === type) {
     target[key] = source[key];
   }
 }
 
-function buildHealthArtifacts(surfaceHealth, subnets, options) {
+function buildHealthArtifacts(
+  surfaceHealth: Row[],
+  subnets: Row[],
+  options: Row,
+): Row {
   const byNetuid = groupByNetuid(surfaceHealth);
   const subnetArtifacts = new Map();
   const badgeArtifacts = new Map();
@@ -3755,7 +3867,7 @@ function buildHealthArtifacts(surfaceHealth, subnets, options) {
   };
 }
 
-function buildHealthHistoryArtifact(latest, date) {
+function buildHealthHistoryArtifact(latest: Row, date: string): Row {
   return {
     schema_version: 1,
     contract_version: contractVersion,
@@ -3765,7 +3877,7 @@ function buildHealthHistoryArtifact(latest, date) {
     probe_finished_at: latest.probe_finished_at || null,
     source: latest.source,
     summary: latest.summary,
-    surfaces: latest.surfaces.map((surface) => ({
+    surfaces: latest.surfaces.map((surface: Row) => ({
       classification: surface.classification || "unknown",
       error_class: surface.error_class || null,
       kind: surface.kind,
@@ -3787,16 +3899,16 @@ function buildHealthHistoryArtifact(latest, date) {
 }
 
 function buildCurationReview(
-  subnets,
-  surfaces,
-  candidates,
-  verificationArtifact,
-  reviewDecisionsDocument,
-) {
+  subnets: Row[],
+  surfaces: Row[],
+  candidates: Row[],
+  verificationArtifact: Row,
+  reviewDecisionsDocument: Row,
+): Row {
   const surfacesByNetuid = groupByNetuid(surfaces);
   const candidatesByNetuid = groupByNetuid(candidates);
-  const verificationByCandidate = new Map(
-    (verificationArtifact.results || []).map((result) => [
+  const verificationByCandidate = new Map<unknown, Row>(
+    (verificationArtifact.results || []).map((result: Row): [unknown, Row] => [
       result.candidate_id,
       result,
     ]),
@@ -3922,7 +4034,7 @@ function buildCurationReview(
   };
 }
 
-function adapterCandidateSummary(candidates) {
+function adapterCandidateSummary(candidates: Row[]): Row {
   return {
     candidate_count: candidates.length,
     by_curation_level: countBy(candidates, "curation_level"),
@@ -3950,7 +4062,10 @@ function adapterCandidateSummary(candidates) {
   };
 }
 
-function recommendedAdapterKind(subnet, operationalKinds) {
+function recommendedAdapterKind(
+  subnet: Row,
+  operationalKinds: string[],
+): string {
   if (subnet.curation.level === "adapter-backed") {
     return "custom-adapter";
   }
@@ -3970,7 +4085,11 @@ function adapterCandidateReasonCodes({
   apiCandidates,
   operationalKinds,
   subnet,
-}) {
+}: {
+  apiCandidates: Row[];
+  operationalKinds: string[];
+  subnet: Row;
+}): string[] {
   return [
     ...(subnet.curation.level === "adapter-backed" ? ["existing-adapter"] : []),
     ...operationalKinds.map((kind) => `${kind}-surface`),
@@ -3984,7 +4103,12 @@ function adapterCandidateNextAction({
   curationLevel,
   operationalKinds,
   operationalSurfaceCount,
-}) {
+}: {
+  apiCandidateCount: number;
+  curationLevel: unknown;
+  operationalKinds: string[];
+  operationalSurfaceCount: number;
+}): string {
   if (curationLevel === "adapter-backed") {
     return "maintain and deepen existing adapter metrics";
   }
@@ -4003,8 +4127,8 @@ function adapterCandidateNextAction({
   return "collect official operational interface evidence first";
 }
 
-function countArrayValues(items, key) {
-  const counts = {};
+function countArrayValues(items: Row[], key: string): Record<string, number> {
+  const counts: Record<string, number> = {};
   for (const item of items) {
     for (const value of item[key] || []) {
       counts[value] = (counts[value] || 0) + 1;
@@ -4015,7 +4139,7 @@ function countArrayValues(items, key) {
   );
 }
 
-function buildSchemaDriftPlaceholder(surfaces) {
+function buildSchemaDriftPlaceholder(surfaces: Row[]): Row {
   const openapiSurfaces = surfaces.filter(
     (surface) => surface.kind === "openapi",
   );
@@ -4048,7 +4172,10 @@ function buildSchemaDriftPlaceholder(surfaces) {
   };
 }
 
-function reusableSchemaDriftArtifact(surfaces, previous) {
+function reusableSchemaDriftArtifact(
+  surfaces: Row[],
+  previous: Row | null | undefined,
+): Row | null {
   if (
     !previous ||
     previous.source !== "openapi-snapshot" ||
@@ -4079,7 +4206,11 @@ function reusableSchemaDriftArtifact(surfaces, previous) {
   return previous;
 }
 
-function reusableSchemaIndexArtifact(surfaces, previous, capturedDetails) {
+function reusableSchemaIndexArtifact(
+  surfaces: Row[],
+  previous: Row | null | undefined,
+  capturedDetails: Map<string, Row>,
+): Row | null {
   if (
     !previous ||
     previous.source !== "openapi-snapshot" ||
@@ -4149,7 +4280,7 @@ function reusableSchemaIndexArtifact(surfaces, previous, capturedDetails) {
   };
 }
 
-function notCapturedSchemaIndexEntry(surface) {
+function notCapturedSchemaIndexEntry(surface: Row): Row {
   return {
     netuid: surface.netuid,
     subnet_slug: surface.subnet_slug,
@@ -4165,8 +4296,11 @@ function notCapturedSchemaIndexEntry(surface) {
   };
 }
 
-function schemaEntryCounts(entries, key) {
-  const counts = {};
+function schemaEntryCounts(
+  entries: Row[],
+  key: string,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
   for (const entry of entries) {
     counts[entry[key]] = (counts[entry[key]] || 0) + 1;
   }
@@ -4175,7 +4309,7 @@ function schemaEntryCounts(entries, key) {
   );
 }
 
-function buildSchemaIndexPlaceholder() {
+function buildSchemaIndexPlaceholder(): Row {
   return {
     schema_version: 1,
     contract_version: contractVersion,
@@ -4187,7 +4321,7 @@ function buildSchemaIndexPlaceholder() {
   };
 }
 
-function openApiSurfacesById(surfaces) {
+function openApiSurfacesById(surfaces: Row[]): Map<string, Row> {
   return new Map(
     surfaces
       .filter((surface) => surface.kind === "openapi" && surface.public_safe)
@@ -4195,13 +4329,16 @@ function openApiSurfacesById(surfaces) {
   );
 }
 
-function previousSurfaceIds(entries) {
+function previousSurfaceIds(entries: Row[]): string[] {
   return entries.map((entry) => entry.surface_id).sort();
 }
 
-function schemaSurfaceEntryMatchesSurface(entry, surface) {
+function schemaSurfaceEntryMatchesSurface(
+  entry: Row,
+  surface: Row | undefined,
+): surface is Row {
   return (
-    Boolean(surface) &&
+    surface !== undefined &&
     entry.surface_id === surface.id &&
     entry.netuid === surface.netuid &&
     entry.subnet_slug === surface.subnet_slug &&
@@ -4210,7 +4347,11 @@ function schemaSurfaceEntryMatchesSurface(entry, surface) {
   );
 }
 
-function schemaIndexEntryMatchesSurface(entry, surface, capturedDetails) {
+function schemaIndexEntryMatchesSurface(
+  entry: Row,
+  surface: Row | undefined,
+  capturedDetails: Map<string, Row>,
+): boolean {
   if (!schemaSurfaceEntryMatchesSurface(entry, surface)) {
     return false;
   }
@@ -4223,7 +4364,7 @@ function schemaIndexEntryMatchesSurface(entry, surface, capturedDetails) {
   }
 
   const relativePath = schemaDetailArtifactRelativePath(entry.path);
-  const captured = capturedDetails.get(relativePath);
+  const captured = relativePath ? capturedDetails.get(relativePath) : undefined;
   // Clean local/CI builds do not have the R2-only per-surface schema detail
   // files, so only enforce document-backed detail verification when such files
   // were captured before the staging wipe.
@@ -4250,7 +4391,7 @@ function schemaIndexEntryMatchesSurface(entry, surface, capturedDetails) {
   );
 }
 
-function candidateSchemaUrlsForSurface(surface) {
+function candidateSchemaUrlsForSurface(surface: Row): string[] {
   const urls = [];
   if (surface.schema_url) {
     urls.push(surface.schema_url);
@@ -4278,17 +4419,17 @@ function candidateSchemaUrlsForSurface(surface) {
   return [...new Set(urls)];
 }
 
-function sameStringSet(a, b) {
+function sameStringSet(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
 function buildSearchIndex(
-  subnets,
-  surfacesForIndex,
-  providerList,
-  profilesByNetuid = new Map(),
-  serviceKindsByNetuid = new Map(),
-) {
+  subnets: Row[],
+  surfacesForIndex: Row[],
+  providerList: Row[],
+  profilesByNetuid: Map<unknown, Row | undefined> = new Map(),
+  serviceKindsByNetuid: Map<unknown, string[]> = new Map(),
+): Row {
   const documents = [
     ...subnets.map((subnet) => {
       const profile = profilesByNetuid.get(subnet.netuid);
@@ -4377,9 +4518,9 @@ function buildSearchIndex(
 // dominate the full index's byte size. Browsers loading the whole index for
 // typeahead/listing never need them, so dropping the field yields a much smaller
 // payload (roadmap Finding 8) while keeping every display + filter field.
-function buildSlimSearchIndex(searchIndex) {
+function buildSlimSearchIndex(searchIndex: Row): Row {
   const documents = searchIndex.documents.map(
-    ({ tokens: _tokens, ...rest }) => rest,
+    ({ tokens: _tokens, ...rest }: Row) => rest,
   );
   return {
     schema_version: searchIndex.schema_version,
@@ -4390,7 +4531,7 @@ function buildSlimSearchIndex(searchIndex) {
   };
 }
 
-function nativeIdentityTokenText(identity) {
+function nativeIdentityTokenText(identity: Row | null | undefined): string {
   if (!identity || typeof identity !== "object") {
     return "";
   }
@@ -4405,7 +4546,7 @@ function nativeIdentityTokenText(identity) {
   );
 }
 
-function compactTokens(values) {
+function compactTokens(values: (string | null | undefined)[]): string[] {
   return [
     ...new Set(
       values
@@ -4427,12 +4568,21 @@ function buildFreshnessArtifact({
   previousFreshness,
   schemaDrift,
   verification: verificationArtifact,
-}) {
+}: {
+  adapterSnapshots: Map<string, Row>;
+  candidateDiscovery: Row | null;
+  generatedAt: string;
+  healthArtifacts: Row;
+  nativeSnapshot: Row;
+  previousFreshness: Row | null;
+  schemaDrift: Row;
+  verification: Row;
+}): Row {
   const adapterRows = [...snapshots.values()].map((snapshot) => {
     const capturedAt = latestTimestamp([
       snapshot.generated_at,
-      ...Object.values(snapshot.dimensions || {}).map(
-        (dimension) => dimension?.captured_at,
+      ...(Object.values(snapshot.dimensions || {}) as Row[]).map(
+        (dimension: Row) => dimension?.captured_at,
       ),
     ]);
     return {
@@ -4453,7 +4603,7 @@ function buildFreshnessArtifact({
     verificationArtifact.verification_finished_at ||
     nonPlaceholderTimestamp(verificationArtifact.generated_at) ||
     previousFreshness?.sources?.find(
-      (source) => source.id === "candidate-verification",
+      (source: Row) => source.id === "candidate-verification",
     )?.as_of ||
     previousFreshness?.summary?.verification_as_of ||
     null;
@@ -4567,14 +4717,14 @@ function buildFreshnessArtifact({
   // stays byte-identical there (freshness.json is R2-only; computed inline, not
   // persisted on the source, to avoid a contract/schema change).
   const nowMs = Date.parse(timestamp);
-  const sourceAgeHours = (source) => {
+  const sourceAgeHours = (source: Row): number | null => {
     const asOfMs = source.as_of ? Date.parse(source.as_of) : NaN;
     if (!(Number.isFinite(nowMs) && nowMs > 0 && Number.isFinite(asOfMs))) {
       return null;
     }
     return Math.round(((nowMs - asOfMs) / 3_600_000) * 100) / 100;
   };
-  const isOverWindow = (source) => {
+  const isOverWindow = (source: Row): boolean => {
     const age = sourceAgeHours(source);
     return (
       age != null &&
@@ -4645,7 +4795,18 @@ function freshnessSource({
   staleBehavior = requiredForPublish ? "block" : "warn",
   status = null,
   timestampField = null,
-}) {
+}: {
+  asOf: string | null;
+  id: string;
+  lane: string;
+  notes?: string;
+  pathValue: string;
+  requiredForPublish: boolean;
+  staleAfterHours: number;
+  staleBehavior?: string;
+  status?: string | null;
+  timestampField?: string | null;
+}): Row {
   const timestamp = asOf || null;
   return {
     as_of: timestamp,
@@ -4662,7 +4823,7 @@ function freshnessSource({
   };
 }
 
-function schemaSnapshotTimestamp(value) {
+function schemaSnapshotTimestamp(value: Row | null | undefined): string | null {
   return (
     nonPlaceholderTimestamp(value?.observed_at) ||
     nonPlaceholderTimestamp(value?.generated_at) ||
@@ -4670,7 +4831,9 @@ function schemaSnapshotTimestamp(value) {
   );
 }
 
-function nonPlaceholderTimestamp(value) {
+function nonPlaceholderTimestamp(
+  value: string | null | undefined,
+): string | null {
   if (!value || value === "1970-01-01T00:00:00.000Z") {
     return null;
   }
@@ -4678,9 +4841,12 @@ function nonPlaceholderTimestamp(value) {
 }
 
 function buildFullVerificationArtifact(
-  verificationArtifact,
-  { contractVersion, generatedAt },
-) {
+  verificationArtifact: Row,
+  {
+    contractVersion,
+    generatedAt,
+  }: { contractVersion: string; generatedAt: string },
+): Row {
   const results = (verificationArtifact.results || []).filter(
     isFullVerificationResult,
   );
@@ -4694,11 +4860,15 @@ function buildFullVerificationArtifact(
   };
 }
 
-function fullVerificationResultOrNull(result) {
+function fullVerificationResultOrNull(
+  result: Row | null | undefined,
+): Row | null {
   return isFullVerificationResult(result) ? result : null;
 }
 
-function isFullVerificationResult(result) {
+function isFullVerificationResult(
+  result: Row | null | undefined,
+): result is Row {
   return Boolean(
     result &&
     result.candidate_id &&
@@ -4709,15 +4879,15 @@ function isFullVerificationResult(result) {
   );
 }
 
-function latestTimestamp(values) {
+function latestTimestamp(values: (string | null | undefined)[]): string | null {
   const parsed = values
     .map(nonPlaceholderTimestamp)
-    .filter(Boolean)
+    .filter((value): value is string => value !== null)
     .map((value) => {
       const time = Date.parse(value);
       return Number.isFinite(time) ? { time, value } : null;
     })
-    .filter(Boolean)
+    .filter((entry): entry is { time: number; value: string } => entry !== null)
     .sort((a, b) => b.time - a.time);
   return parsed[0]?.value || null;
 }
@@ -4728,7 +4898,13 @@ function buildSourceHealthArtifact({
   providers: providerRows,
   rpcEndpoints: rpcArtifact,
   verification: verificationArtifact,
-}) {
+}: {
+  candidates: Row[];
+  endpointResources: Row;
+  providers: Row[];
+  rpcEndpoints: Row;
+  verification: Row;
+}): Row {
   const verificationResults = verificationArtifact.results || [];
   const candidatesByProvider = countBy(
     candidateRows,
@@ -4739,7 +4915,7 @@ function buildSourceHealthArtifact({
   // (~4.18M comparisons/build) into O(1) per result (#2095).
   const candidateById = new Map(candidateRows.map((row) => [row.id, row]));
   const verificationByProvider = verificationResults.reduce(
-    (accumulator, result) => {
+    (accumulator: Map<unknown, Row>, result: Row) => {
       const candidate = candidateById.get(result.candidate_id);
       const provider = candidate?.provider || "unknown";
       const row = accumulator.get(provider) || {
@@ -4753,7 +4929,7 @@ function buildSourceHealthArtifact({
       accumulator.set(provider, row);
       return accumulator;
     },
-    new Map(),
+    new Map<unknown, Row>(),
   );
 
   const providers = providerRows
@@ -4762,12 +4938,12 @@ function buildSourceHealthArtifact({
         classifications: {},
         result_count: 0,
       };
-      const rpcCount = (rpcArtifact.endpoints || []).filter(
-        (endpoint) => endpoint.provider === provider.id,
+      const rpcCount = ((rpcArtifact.endpoints || []) as Row[]).filter(
+        (endpoint: Row) => endpoint.provider === provider.id,
       ).length;
-      const endpointCount = (endpointArtifact.endpoints || []).filter(
-        (endpoint) => endpoint.provider === provider.id,
-      ).length;
+      const endpointCount = (
+        (endpointArtifact.endpoints || []) as Row[]
+      ).filter((endpoint: Row) => endpoint.provider === provider.id).length;
       return {
         id: provider.id,
         name: provider.name,
@@ -4800,7 +4976,10 @@ function buildSourceHealthArtifact({
   };
 }
 
-function sourceStatus(classifications, rpcCount) {
+function sourceStatus(
+  classifications: Record<string, number>,
+  rpcCount: number,
+): string {
   const live = (classifications.live || 0) + (classifications.redirected || 0);
   const degraded =
     (classifications["rate-limited"] || 0) +
@@ -4825,7 +5004,13 @@ function buildEvidenceLedger({
   capturedAt,
   subnets,
   surfaces: surfaceRows,
-}) {
+}: {
+  candidates: Row[];
+  generatedAt: string;
+  capturedAt: string | null;
+  subnets: Row[];
+  surfaces: Row[];
+}): Row {
   const subnetClaims = subnets.map((subnet) => ({
     claim: `SN${subnet.netuid} is an active ${subnet.subnet_type} netuid on Finney.`,
     confidence: "high",
@@ -4898,7 +5083,13 @@ function buildEvidenceLedger({
   };
 }
 
-function buildR2Manifest({ artifactSizes, generatedAt: timestamp }) {
+function buildR2Manifest({
+  artifactSizes,
+  generatedAt: timestamp,
+}: {
+  artifactSizes: Row[];
+  generatedAt: string;
+}): Row {
   const version = timestamp.replace(/[:.]/g, "-");
   const artifacts = artifactSizes.map((artifact) => ({
     content_type: "application/json",
@@ -4941,7 +5132,16 @@ async function buildSourceSnapshots({
   providers: providerRows,
   reviewDecisions: decisions,
   verification: verificationArtifact,
-}) {
+}: {
+  adapterSnapshots: Map<string, Row>;
+  candidates: Row[];
+  generatedAt: string;
+  nativeSnapshot: Row;
+  overlays: Row[];
+  providers: Row[];
+  reviewDecisions: Row;
+  verification: Row;
+}): Promise<Row> {
   const sourceRows = [
     sourceSnapshot(
       "native-subnets",
@@ -5021,7 +5221,14 @@ async function buildSourceSnapshots({
   };
 }
 
-function sourceSnapshot(id, kind, sourcePath, value, recordCount, capturedAt) {
+function sourceSnapshot(
+  id: string,
+  kind: string,
+  sourcePath: string,
+  value: unknown,
+  recordCount: number,
+  capturedAt: string | null | undefined,
+): Row {
   return {
     id,
     kind,
@@ -5032,7 +5239,7 @@ function sourceSnapshot(id, kind, sourcePath, value, recordCount, capturedAt) {
   };
 }
 
-function artifactFile(relativePath) {
+function artifactFile(relativePath: string): string {
   const tier = artifactStorageTierForRelativePath(relativePath);
   const root = tier === "r2" ? r2OutputRoot : outputRoot;
   const filePath = path.resolve(root, relativePath);
@@ -5043,15 +5250,21 @@ function artifactFile(relativePath) {
   return filePath;
 }
 
-function r2ArtifactDir(relativePath) {
+function r2ArtifactDir(relativePath: string): string {
   return path.join(r2OutputRoot, relativePath);
 }
 
-function schemaDetailArtifactPath(entry) {
+function schemaDetailArtifactPath(entry: Row): string | null {
   return schemaDetailArtifactRelativePath(entry.path || "");
 }
 
-async function collectPreviousPublicArtifactDigests({ publicRoot, r2Root }) {
+async function collectPreviousPublicArtifactDigests({
+  publicRoot,
+  r2Root,
+}: {
+  publicRoot: string;
+  r2Root: string;
+}): Promise<Row[]> {
   const committedArtifacts = await collectCommittedPublicArtifactDigests();
   if (committedArtifacts) {
     return committedArtifacts;
@@ -5063,7 +5276,7 @@ async function collectPreviousPublicArtifactDigests({ publicRoot, r2Root }) {
   });
 }
 
-async function collectCommittedPublicArtifactDigests() {
+async function collectCommittedPublicArtifactDigests(): Promise<Row[] | null> {
   const publicPrefix = "public/metagraph/";
   const output = await gitOutput([
     "ls-tree",
@@ -5098,7 +5311,10 @@ async function collectCommittedPublicArtifactDigests() {
   return artifacts.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-async function readPreviousPublicArtifactJson(relativePath, fallbackPath) {
+async function readPreviousPublicArtifactJson(
+  relativePath: string,
+  fallbackPath: string,
+): Promise<Row | null> {
   const raw = await gitBuffer([
     "show",
     `HEAD:public/metagraph/${relativePath}`,
@@ -5109,7 +5325,7 @@ async function readPreviousPublicArtifactJson(relativePath, fallbackPath) {
   return readOptionalJson(fallbackPath);
 }
 
-function isChangelogArtifactPath(relativePath) {
+function isChangelogArtifactPath(relativePath: string): boolean {
   return (
     relativePath.endsWith(".json") &&
     !["build-summary.json", "changelog.json", "r2-manifest.json"].includes(
@@ -5119,25 +5335,26 @@ function isChangelogArtifactPath(relativePath) {
   );
 }
 
-async function gitOutput(args) {
+async function gitOutput(args: string[]): Promise<string | null> {
   const output = await gitBuffer(args);
   return output ? Buffer.from(output).toString("utf8") : null;
 }
 
-async function gitBuffer(args) {
+async function gitBuffer(args: string[]): Promise<Buffer | null> {
   try {
     const { stdout } = await execFileAsync("git", args, {
       cwd: repoRoot,
       encoding: "buffer",
       maxBuffer: 1024 * 1024 * 50,
     });
-    return stdout;
+    return stdout as unknown as Buffer;
   } catch (error) {
     // git missing (ENOENT) or a "path not in HEAD"/bad-revision error (exit 128,
     // e.g. an R2-only artifact with no committed baseline). execFileAsync exposes
     // the exit code as error.code (number); execFileSync uses error.status —
     // handle both so a missing HEAD path returns null instead of throwing.
-    if (error.code === "ENOENT" || error.code === 128 || error.status === 128) {
+    const err = error as Row;
+    if (err.code === "ENOENT" || err.code === 128 || err.status === 128) {
       return null;
     }
     throw error;
@@ -5149,8 +5366,13 @@ async function collectArtifactDigests({
   previousManifest,
   publicRoot,
   r2Root,
-}) {
-  const files = [];
+}: {
+  includeR2Root?: boolean;
+  previousManifest?: Row | null;
+  publicRoot: string;
+  r2Root: string;
+}): Promise<Row[]> {
+  const files: Row[] = [];
   await collectArtifactFiles(
     { includeR2Root, publicRoot, r2Root },
     async (filePath, root) => {
@@ -5192,19 +5414,25 @@ async function collectArtifactDigests({
   return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-async function readOptionalJson(filePath) {
+async function readOptionalJson(filePath: string): Promise<Row | null> {
   try {
     return await readJson(filePath);
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
     }
     throw error;
   }
 }
 
-async function collectArtifactSizes({ publicRoot, r2Root }) {
-  const files = [];
+async function collectArtifactSizes({
+  publicRoot,
+  r2Root,
+}: {
+  publicRoot: string;
+  r2Root: string;
+}): Promise<Row[]> {
+  const files: Row[] = [];
   await collectArtifactFiles({ publicRoot, r2Root }, async (filePath, root) => {
     if (!filePath.endsWith(".json")) {
       return;
@@ -5225,14 +5453,14 @@ async function collectArtifactSizes({ publicRoot, r2Root }) {
   return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function countByStorageTier(artifacts) {
+function countByStorageTier(artifacts: Row[]): Record<string, number> {
   return artifacts.reduce((counts, artifact) => {
     counts[artifact.storage_tier] = (counts[artifact.storage_tier] || 0) + 1;
     return counts;
   }, {});
 }
 
-function sumBytesByStorageTier(artifacts) {
+function sumBytesByStorageTier(artifacts: Row[]): Record<string, number> {
   return artifacts.reduce((counts, artifact) => {
     counts[artifact.storage_tier] =
       (counts[artifact.storage_tier] || 0) + artifact.size_bytes;
@@ -5241,9 +5469,13 @@ function sumBytesByStorageTier(artifacts) {
 }
 
 async function collectArtifactFiles(
-  { includeR2Root = true, publicRoot, r2Root },
-  onFile,
-) {
+  {
+    includeR2Root = true,
+    publicRoot,
+    r2Root,
+  }: { includeR2Root?: boolean; publicRoot: string; r2Root: string },
+  onFile: (filePath: string, root: string) => Promise<void>,
+): Promise<void> {
   await walkIfExists(publicRoot, async (filePath) => {
     const relativePath = path
       .relative(publicRoot, filePath)
@@ -5258,7 +5490,7 @@ async function collectArtifactFiles(
   }
 }
 
-async function loadAdapterSnapshots() {
+async function loadAdapterSnapshots(): Promise<Map<string, Row>> {
   const files = await listJsonFilesRecursive(
     path.join(repoRoot, "registry/adapters/latest"),
   );
@@ -5266,13 +5498,13 @@ async function loadAdapterSnapshots() {
   return new Map(snapshots.map((snapshot) => [snapshot.slug, snapshot]));
 }
 
-async function loadReviewDecisions() {
+async function loadReviewDecisions(): Promise<Row> {
   try {
     return await readJson(
       path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
     );
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return {
         schema_version: 1,
         generated_at: generatedAt,
@@ -5283,12 +5515,15 @@ async function loadReviewDecisions() {
   }
 }
 
-async function walkIfExists(dirPath, onFile) {
+async function walkIfExists(
+  dirPath: string,
+  onFile: (filePath: string) => Promise<void>,
+): Promise<void> {
   let entries;
   try {
     entries = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return;
     }
     throw error;
@@ -5310,9 +5545,13 @@ async function walkIfExists(dirPath, onFile) {
   }
 }
 
-function reviewPriorityScore(subnet, surfacesForSubnet, candidatesForSubnet) {
+function reviewPriorityScore(
+  subnet: Row,
+  surfacesForSubnet: Row[],
+  candidatesForSubnet: Row[],
+): number {
   const missingKinds = subnet.gaps.missing_kinds || [];
-  const highValueMissing = missingKinds.filter((kind) =>
+  const highValueMissing = missingKinds.filter((kind: string) =>
     HIGH_VALUE_GAP_KINDS.includes(kind),
   );
   const adapterBonus =
@@ -5335,7 +5574,11 @@ function reviewPriorityScore(subnet, surfacesForSubnet, candidatesForSubnet) {
   );
 }
 
-function suggestedReviewAction(subnet, surfacesForSubnet, candidatesForSubnet) {
+function suggestedReviewAction(
+  subnet: Row,
+  surfacesForSubnet: Row[],
+  candidatesForSubnet: Row[],
+): string {
   if (
     subnet.curation.review_state !== "maintainer-reviewed" &&
     surfacesForSubnet.length > 0
@@ -5358,7 +5601,7 @@ function suggestedReviewAction(subnet, surfacesForSubnet, candidatesForSubnet) {
   return "keep baseline entry and wait for public-source or community intake";
 }
 
-function countGapKinds(subnets) {
+function countGapKinds(subnets: Row[]): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
       subnets.reduce((accumulator, subnet) => {
@@ -5375,7 +5618,10 @@ function countGapKinds(subnets) {
 // aggregate — the headline "trustworthy coverage completeness" metric. The full
 // per-subnet leaderboard stays queryable at /api/v1/profiles?sort=completeness_score
 // and /metagraph/review/profile-completeness.json.
-function buildCompletenessSummary(profiles, indexEntries = []) {
+function buildCompletenessSummary(
+  profiles: Row[],
+  indexEntries: Row[] = [],
+): Row {
   const scored = profiles.filter((profile) =>
     Number.isFinite(profile.completeness_score),
   );
@@ -5424,7 +5670,7 @@ function buildCompletenessSummary(profiles, indexEntries = []) {
     "sse",
     "data-artifact",
   ];
-  const dimensionCoverage = {};
+  const dimensionCoverage: Row = {};
   for (const kind of dimensions) {
     const present = scored.filter((profile) =>
       (profile.supported_interface_kinds || []).includes(kind),
@@ -5469,22 +5715,24 @@ function buildCompletenessSummary(profiles, indexEntries = []) {
   };
 }
 
-function badgeColor(status) {
+function badgeColor(status: string): string {
   return (
-    {
-      ok: "brightgreen",
-      degraded: "yellow",
-      failed: "red",
-      unknown: "lightgrey",
-    }[status] || "lightgrey"
+    (
+      {
+        ok: "brightgreen",
+        degraded: "yellow",
+        failed: "red",
+        unknown: "lightgrey",
+      } as Record<string, string>
+    )[status] || "lightgrey"
   );
 }
 
-function latestString(values) {
+function latestString(values: (string | null | undefined)[]): string | null {
   return values.filter(Boolean).sort().at(-1) || null;
 }
 
-function average(values) {
+function average(values: number[]): number | null {
   if (values.length === 0) {
     return null;
   }

@@ -1,4 +1,4 @@
-// Guards the agent/AI discovery artifacts emitted by build-artifacts.mjs:
+// Guards the agent/AI discovery artifacts emitted by build-artifacts.ts:
 // the Agent Skills discovery index (digest must match the shipped SKILL.md)
 // and the honest auth.md. The MCP server card (SEP-1649) is now worker-computed
 // and tested via mcpServerCardResponse rather than read from a committed file.

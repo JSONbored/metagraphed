@@ -1,4 +1,4 @@
-// Changelog diff — extracted from build-artifacts.mjs (#1003) so both the build
+// Changelog diff — extracted from build-artifacts.ts (#1003) so both the build
 // (which emits an empty placeholder) and the publish-time real diff
 // (scripts/build-changelog.ts) share one implementation. Pure functions, no
 // build side effects.

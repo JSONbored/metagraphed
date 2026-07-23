@@ -22,7 +22,7 @@
   "scripts": {
     "validate": "node scripts/validate.ts",
     "build": "node scripts/build.ts",
-    "build:artifacts": "node scripts/build-artifacts.mjs",
+    "build:artifacts": "node scripts/build-artifacts.ts",
     "pipeline:check": "node scripts/pipeline.ts --check",
     "pipeline:refresh": "node scripts/pipeline.ts --refresh",
     "artifacts:prepare-local": "node scripts/prepare-local-r2-staging.ts",

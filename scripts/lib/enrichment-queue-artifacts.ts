@@ -1,8 +1,8 @@
 // Enrichment queue / evidence / targets artifact derivation, extracted verbatim
-// from scripts/build-artifacts.mjs (#2042 maintainability decomposition). Pure +
+// from scripts/build-artifacts.ts (#2042 maintainability decomposition). Pure +
 // side-effect free: every function takes plain objects and returns plain objects,
 // with no module state and no I/O, so the output is byte-identical to the in-
-// build-artifacts.mjs originals. Imported directly by scripts/build-artifacts.mjs.
+// build-artifacts.ts originals. Imported directly by scripts/build-artifacts.ts.
 import { normalizePublicUrl, slugify } from "../lib.ts";
 
 // Candidates, profiles, review/verification rows, and derived queue/evidence/

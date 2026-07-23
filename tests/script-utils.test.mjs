@@ -2408,12 +2408,12 @@ describe("script utility contracts", () => {
 
   test("every artifact size budget maps to a real build-artifacts write", async () => {
     // Guard against dead budget rules (issue #6364): a `budget(path, ...)` entry
-    // is only ever evaluated against artifacts build-artifacts.mjs actually
+    // is only ever evaluated against artifacts build-artifacts.ts actually
     // emits, so an entry with no corresponding `artifactFile(...)` write is inert
     // and silently rots. Statically collect every literal/template path passed to
     // `artifactFile(...)` and assert each budget pattern matches at least one.
     const source = await readFile(
-      path.join(repoRoot, "scripts/build-artifacts.mjs"),
+      path.join(repoRoot, "scripts/build-artifacts.ts"),
       "utf8",
     );
     const writtenPatterns = new Set();

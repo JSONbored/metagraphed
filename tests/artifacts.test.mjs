@@ -55,7 +55,7 @@ function runNode(script) {
 }
 
 // Snapshot/restore the served public/ tree so the build-running tests below leave
-// the working tree exactly as they found it. build-artifacts.mjs regenerates from
+// the working tree exactly as they found it. build-artifacts.ts regenerates from
 // current source (which drifts from the committed seed), so restoring exact bytes
 // keeps `npm test` idempotent — a contributor can't accidentally commit drift.
 const PUBLIC_TREE = path.join(process.cwd(), "public");
@@ -114,13 +114,13 @@ test("llms.txt family is generated with the expected structure", async () => {
   const subnets = await loadSubnets();
   let short, wellKnown, full;
   try {
-    runNode("scripts/build-artifacts.mjs");
+    runNode("scripts/build-artifacts.ts");
     const read = (rel) => readFileSync(path.join(PUBLIC_TREE, rel), "utf8");
     short = read("llms.txt");
     wellKnown = read(".well-known/llms.txt");
     full = read("llms-full.txt");
   } finally {
-    // build-artifacts.mjs regenerates the whole public/ tree from current
+    // build-artifacts.ts regenerates the whole public/ tree from current
     // source (which drifts from the committed seed), so restore it before the
     // next test — otherwise tree-reading tests like "registry validates" run
     // against the regenerated tree and fail. (afterAll restores again; the
@@ -379,7 +379,7 @@ test("artifact build does not preserve forged endpoint index health", () => {
 
   try {
     writeFileSync(endpointsPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" },
@@ -404,7 +404,7 @@ test("artifact build does not preserve forged endpoint index health", () => {
     } else {
       writeFileSync(cachePath, originalCache);
     }
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: {
@@ -486,7 +486,7 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       );
     }
     writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,
@@ -510,7 +510,7 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       rmSync(schemaDriftPath, { force: true });
     }
     writeFileSync(schemaIndexPath, originalSchemaIndex);
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,
@@ -563,7 +563,7 @@ test("artifact build is deterministic (byte-identical across rebuilds)", () => {
   const buildEnv = { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" };
   delete buildEnv.METAGRAPH_BUILD_TIMESTAMP; // force the reproducible epoch
   const runBuild = () =>
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: buildEnv,
@@ -621,7 +621,7 @@ test("artifact build preserves committed schema index without R2 schema details"
 
   try {
     rmSync(r2StagingRoot, { recursive: true, force: true });
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,
@@ -661,7 +661,7 @@ test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured 
 
   try {
     writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,
@@ -679,7 +679,7 @@ test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured 
     assert.equal(rebuiltTarget?.hash, indexTarget.hash);
   } finally {
     writeFileSync(schemaIndexPath, originalSchemaIndex);
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,

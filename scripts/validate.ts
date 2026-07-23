@@ -985,7 +985,7 @@ async function validateGeneratedArtifacts(
   // below holds; the `|| []` fallback covers zero-surface overlays.
   const surfacesByNetuid = Map.groupBy(surfaces, (surface) => surface.netuid);
   // #6639: mirrors the build's own committed-signals load (mergeSubnet in
-  // build-artifacts.mjs) so the reproducibility check matches.
+  // build-artifacts.ts) so the reproducibility check matches.
   const githubSignals = await loadGithubSignals();
   const expectedSubnetsByNetuid = new Map(
     (nativeSnapshot.subnets as Row[]).map((nativeSubnet) => [

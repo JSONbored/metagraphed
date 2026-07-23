@@ -1,6 +1,6 @@
 // Advisory (report-only) check: does a subnet's top-level identity field
 // (`website_url` / `dashboard_url`) diverge from its own same-kind surface? The
-// build (scripts/build-artifacts.mjs) resolves a profile's primary links as
+// build (scripts/build-artifacts.ts) resolves a profile's primary links as
 // `subnet.<field> || firstSurfaceUrl(surfaces, kind)`, so a stale/generic
 // top-level value (e.g. a third-party TaoMarketCap link) silently SHADOWS a
 // more-specific curated surface of the same kind sitting in the same file
@@ -22,7 +22,7 @@ import { isFirstPartySurface } from "./stale-gap-notes.ts";
 type Row = Record<string, unknown>;
 
 // Top-level identity fields and the surface kind each falls back to, mirroring
-// the `primaryLinks` resolution in build-artifacts.mjs
+// the `primaryLinks` resolution in build-artifacts.ts
 // (`subnet.<field> || firstSurfaceUrl(surfaces, kind)`).
 const IDENTITY_FIELDS: { field: string; kind: string }[] = [
   { field: "website_url", kind: "website" },

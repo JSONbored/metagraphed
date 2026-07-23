@@ -7,7 +7,7 @@
 // Worker's /api/v1/{network}/… + /metagraph/{network}/… routing (Phase 1) serves
 // exactly these keys.
 //
-// Kept decoupled from the mainnet build (scripts/build-artifacts.mjs) on purpose:
+// Kept decoupled from the mainnet build (scripts/build-artifacts.ts) on purpose:
 // testnet's 505 sparse subnets shouldn't ripple through the curated-overlay /
 // surface / health / candidate machinery, and the schema validator catches any
 // projection drift between the two.
@@ -50,7 +50,7 @@ export const NETWORK_REGISTRIES: NetworkRegistryConfig[] = [
 ];
 
 const SCHEMA_VERSION = 1;
-// Mirrors buildGaps' expected-kinds list in build-artifacts.mjs.
+// Mirrors buildGaps' expected-kinds list in build-artifacts.ts.
 const EXPECTED_GAP_KINDS = [
   "docs",
   "source-repo",
@@ -157,7 +157,7 @@ function buildNativeSubnet(nativeSubnet: Row, snapshot: Row): Row {
   };
 }
 
-// Projection identical to the mainnet subnetIndex map in build-artifacts.mjs.
+// Projection identical to the mainnet subnetIndex map in build-artifacts.ts.
 // chainIdentity is the raw on-chain identity for the same netuid: the contact
 // fields (issue #344) are index-only, so they are computed here rather than
 // carried on the full subnet record (which the per-subnet detail embeds).

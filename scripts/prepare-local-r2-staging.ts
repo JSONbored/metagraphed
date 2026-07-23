@@ -35,7 +35,7 @@ for (const relativePath of trackedPublicArtifacts) {
 const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const schemaSnapshotDetails = await loadSchemaSnapshotDetails();
 
-const result = spawnSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+const result = spawnSync(process.execPath, ["scripts/build-artifacts.ts"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

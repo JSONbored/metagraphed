@@ -1,8 +1,8 @@
 // Build-time integration + coverage-depth readiness, extracted verbatim from
-// scripts/build-artifacts.mjs (#1901 maintainability decomposition). Pure +
+// scripts/build-artifacts.ts (#1901 maintainability decomposition). Pure +
 // side-effect free: every function takes plain objects and returns plain objects,
 // with no module state and no I/O, so the output is byte-identical to the in-
-// build-artifacts.mjs originals. Imported directly by scripts/build-artifacts.mjs
+// build-artifacts.ts originals. Imported directly by scripts/build-artifacts.ts
 // and unit-tested in tests/build-readiness.test.mjs.
 import { OPERATIONAL_SURFACE_KINDS } from "../../src/health-probe-core.ts";
 

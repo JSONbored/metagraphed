@@ -264,7 +264,7 @@ guarantees); and a handful of copy-paste example queries against the live beta.
 - **Recommended follow-up (not yet done):** close the freshness loop — auto-flag
   and demote surfaces not probed healthy within N days, so "complete" can never
   drift to "complete but stale/dead." Touches `probes-smoke.ts` →
-  `curate-baseline.mjs`/`build-artifacts.mjs`.
+  `curate-baseline.mjs`/`build-artifacts.ts`.
 
 ## Verification
 

@@ -9,7 +9,7 @@
 // onto its cadence would mean already-promoted source-repo surfaces (the vast
 // majority of subnets) never get this data, and it would never refresh. This
 // module instead resolves the FINAL merged source_repo per subnet (mirroring
-// build-artifacts.mjs's mergeSubnet / validate.ts's buildExpectedGeneratedSubnet
+// build-artifacts.ts's mergeSubnet / validate.ts's buildExpectedGeneratedSubnet
 // exactly: curated overlay wins, else the on-chain chain_identity.github_repo
 // backfill), so every subnet with a resolved source-repo gets covered --
 // matching the registry-build cadence, not the candidate-discovery one.
@@ -265,7 +265,7 @@ async function main(): Promise<void> {
 }
 
 // Only run when invoked directly (`node scripts/github-signals.ts`), not
-// when imported for its exported helpers (build-artifacts.mjs, validate.ts,
+// when imported for its exported helpers (build-artifacts.ts, validate.ts,
 // tests).
 if (import.meta.url === `file://${process.argv[1]}`) {
   await main();

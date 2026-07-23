@@ -23,7 +23,7 @@ export default defineConfig({
     // files mutate shared on-disk state outside their own process and must never
     // run alongside a concurrent reader/scanner of that same state:
     //   - tests/artifacts.test.mjs and tests/discovery-artifacts.test.mjs
-    //     execFileSync the real scripts/build-artifacts.mjs, which mutates the
+    //     execFileSync the real scripts/build-artifacts.ts, which mutates the
     //     shared on-disk artifact trees in place: it rm's + repopulates the R2
     //     staging dir (dist/metagraph-r2/metagraph, where R2-only artifacts such
     //     as registry-summary.json live with NO committed public/metagraph
@@ -58,7 +58,7 @@ export default defineConfig({
     // the three writers serially. The passes are sequential, so writers never
     // overlap readers. Coverage is collected only in `test:ci` (all three
     // writers drive their assertions primarily via execFileSync child
-    // processes — build-artifacts.mjs for the first two, scan-public-safety.ts
+    // processes — build-artifacts.ts for the first two, scan-public-safety.ts
     // for the third — contributing zero in-process coverage there; none of the
     // three scripts are in the `include` globs below, so moving their tests to
     // the serial pass has no coverage effect either way — verified Δ=0.00
@@ -72,7 +72,7 @@ export default defineConfig({
       // coverage/lcov.info); json-summary/text for local + CI readouts.
       reporter: ["text", "json-summary", "lcov"],
       // Only the in-process scripts are listed. The heavily-exercised build
-      // scripts (scripts/build-artifacts.mjs and its siblings) are intentionally
+      // scripts (scripts/build-artifacts.ts and its siblings) are intentionally
       // coverage-invisible: the artifact-build tests run them via execFileSync as
       // a child process, so the in-process V8 collector never sees those lines.
       // Adding them to `include` would report a misleading ~0% and risk tripping
