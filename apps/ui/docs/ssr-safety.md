@@ -25,9 +25,13 @@ Use this checklist before shipping code that touches `window`, `document`,
 
 ## Automated check
 
-The eslint `no-restricted-syntax` rules in `eslint.config.js` block the two
-most common regressions (reading `localStorage`/`matchMedia` inside a
-`useState` initializer) at PR time.
+The blank-screen watchdog (`src/lib/blank-screen-watchdog.ts`) plus the
+`GlobalErrorBoundary` (`src/components/metagraphed/global-error-boundary.tsx`,
+mounted in `src/routes/__root.tsx`) catch runtime regressions in production —
+window error/rejection handlers and a rendered-height check report through
+`reportLovableError`. The eslint `no-restricted-syntax` rules in
+`eslint.config.js` block the two most common regressions (reading
+`localStorage`/`matchMedia` inside a `useState` initializer) at PR time.
 
 ## Known safe entry points
 

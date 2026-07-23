@@ -26,6 +26,11 @@ import { Toaster } from "@jsonbored/ui-kit";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
 import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";
+import { GlobalErrorBoundary } from "@/components/metagraphed/global-error-boundary";
+import {
+  mountBlankScreenWatchdog,
+  PRE_HYDRATION_RECOVERY_SCRIPT,
+} from "@/lib/blank-screen-watchdog";
 
 function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -308,6 +313,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: DENSITY_BOOTSTRAP_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: HEALTH_PALETTE_BOOTSTRAP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_RECOVERY_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -321,12 +327,41 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    // Handshake with the dependency-free <head> recovery script. This must be
+    // the first effect work so a successful mount cancels its startup timeout.
+    window.__MG_HYDRATED__ = true;
+    const onError = (e: ErrorEvent) => {
+      const err = e.error instanceof Error ? e.error : new Error(String(e.message ?? e));
+      console.error("[hydration-capture] window error:", err, err.stack);
+      reportLovableError(err, { boundary: "hydration_window_error" });
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const err = e.reason instanceof Error ? e.reason : new Error(String(e.reason));
+      console.error("[hydration-capture] unhandled rejection:", err, err.stack);
+      reportLovableError(err, { boundary: "hydration_unhandled_rejection" });
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    const cleanupWatchdog = mountBlankScreenWatchdog({
+      onReport: (m) => reportLovableError(new Error("blank_screen_detected"), { metrics: m }),
+    });
+    return () => {
+      window.__MG_HYDRATED__ = false;
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+      cleanupWatchdog();
+    };
+  }, [queryClient]);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <RouteTransitionBar />
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <Toaster />
+      <GlobalErrorBoundary>
+        <RouteTransitionBar />
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <Toaster />
+      </GlobalErrorBoundary>
     </QueryClientProvider>
   );
 }

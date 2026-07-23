@@ -269,7 +269,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
               {active ? (
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute left-2.5 right-2.5 -bottom-[13px] h-px bg-accent"
+                  className="pointer-events-none absolute left-3 right-3 -bottom-1 h-[1.5px] rounded-full bg-accent mg-fade-in"
                 />
               ) : null}
             </Link>

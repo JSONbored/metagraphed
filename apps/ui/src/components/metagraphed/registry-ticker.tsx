@@ -11,6 +11,7 @@ import {
 import { API_BASE } from "@/lib/metagraphed/config";
 import { Tooltip, TooltipContent, TooltipTrigger, CopyButton, TimeAgo } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 interface Stat {
   label: string;
@@ -21,13 +22,18 @@ interface Stat {
 }
 
 export function RegistryTicker() {
-  const subnets = useQuery({ ...subnetsQuery(), retry: 0 });
-  const health = useQuery({ ...healthQuery(), retry: 0 });
-  const fresh = useQuery({ ...freshnessQuery(), retry: 0 });
-  const gaps = useQuery({ ...gapsQuery(), retry: 0 });
-  const build = useQuery({ ...buildQuery(), retry: 0 });
+  // Gate every query on hydration: SSR and the first client render must emit
+  // the same "—" placeholders, or React logs a hydration mismatch and
+  // discards the SSR-rendered tree (#7744 -- caught live via the
+  // hydration-capture handshake in __root.tsx).
+  const hydrated = useHydrated();
+  const subnets = useQuery({ ...subnetsQuery(), retry: 0, enabled: hydrated });
+  const health = useQuery({ ...healthQuery(), retry: 0, enabled: hydrated });
+  const fresh = useQuery({ ...freshnessQuery(), retry: 0, enabled: hydrated });
+  const gaps = useQuery({ ...gapsQuery(), retry: 0, enabled: hydrated });
+  const build = useQuery({ ...buildQuery(), retry: 0, enabled: hydrated });
 
-  const all = subnets.data?.data ?? [];
+  const all = hydrated ? (subnets.data?.data ?? []) : [];
   const curated = all.filter((s) => {
     const c = (s as { curation_level?: string }).curation_level;
     return c && c !== "native";
@@ -35,10 +41,10 @@ export function RegistryTicker() {
   const machineVerified = all.filter(
     (s) => (s as { curation_level?: string }).curation_level === "machine-verified",
   ).length;
-  const h = health.data?.data;
-  const f = fresh.data?.data;
-  const openGaps = gaps.data?.data?.length ?? 0;
-  const b = build.data?.data as { version?: string } | undefined;
+  const h = hydrated ? health.data?.data : undefined;
+  const f = hydrated ? fresh.data?.data : undefined;
+  const openGaps = hydrated ? (gaps.data?.data?.length ?? 0) : 0;
+  const b = hydrated ? (build.data?.data as { version?: string } | undefined) : undefined;
 
   // Freshness “live” pulse only when latest source < 5 minutes old.
   const isFresh = typeof f?.avg_age_seconds === "number" ? f.avg_age_seconds < 300 : false;

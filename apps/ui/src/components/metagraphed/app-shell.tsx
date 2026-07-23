@@ -52,6 +52,7 @@ import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
 import { IncidentStrip } from "./incident-strip";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
 import { buildCrumbs, parentCrumb } from "./breadcrumb-nav";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 // Brand links resolve from build-time env constants, but still run them through
 // the external-URL guard (with a known-good fallback) so a misconfigured
@@ -77,6 +78,8 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
 export function AppShell({
   children,
   fullBleedMain = false,
+  flushTop = false,
+  afterHeader,
 }: {
   children: ReactNode;
   // Fumadocs' DocsLayout manages its own full-height sidebar/content grid
@@ -84,6 +87,14 @@ export function AppShell({
   // + px/py wrapper below would squeeze its sidebar into the content column
   // instead of letting it span the full width under the header.
   fullBleedMain?: boolean;
+  // Drop <main>'s top padding so the first child sits flush against whatever
+  // renders in `afterHeader` (used by the home route to eliminate the gap
+  // between the alpha-price ticker and the hero).
+  flushTop?: boolean;
+  // Slot rendered flush beneath the header chrome, before <main>'s padded
+  // column. Used by the home route to seat the alpha-price ticker in what
+  // would otherwise be dead space between the ecosystem strip and the hero.
+  afterHeader?: ReactNode;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -126,6 +137,26 @@ export function AppShell({
     // Track visit for the "Continue exploring" rail.
     const v = visitFromPath(pathname);
     if (v) pushRecentVisit(v);
+  }, [pathname]);
+
+  // Publish the live header height as --mg-sticky-offset so downstream sticky
+  // sub-nav / toolbars can pin flush against the chrome instead of hardcoding
+  // top-14 (which is wrong once the ticker + breadcrumb strips render).
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>("header.mg-header");
+    if (!header) return;
+    const publish = () => {
+      const h = header.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--mg-sticky-offset", `${Math.round(h)}px`);
+    };
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(header);
+    window.addEventListener("resize", publish);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", publish);
+    };
   }, [pathname]);
 
   // Scroll-aware header
@@ -290,6 +321,7 @@ export function AppShell({
                 </div>
               </>
             ) : null}
+            {afterHeader}
           </header>
 
           <IncidentStrip />
@@ -347,8 +379,17 @@ export function AppShell({
             id="main-content"
             key={pathname}
             className={classNames(
-              "flex-1 w-full mg-route-enter",
-              fullBleedMain ? "" : "px-4 md:px-10 py-10 md:py-14 max-w-shell-max mx-auto",
+              // Keep route content visible by default. The previous
+              // `mg-route-enter` animation started at opacity: 0; when the
+              // embedded preview paused CSS animations, the entire route
+              // remained permanently transparent even though it had rendered.
+              "flex-1 w-full",
+              fullBleedMain
+                ? ""
+                : classNames(
+                    "px-4 md:px-10 max-w-shell-max mx-auto pb-10 md:pb-14",
+                    flushTop ? "pt-0" : "pt-10 md:pt-14",
+                  ),
             )}
           >
             {children}
@@ -485,10 +526,13 @@ function SiteFooter() {
 }
 
 function RegistryPulseStrip() {
-  const freshness = useQuery({ ...freshnessQuery(), retry: 0 });
-  const build = useQuery({ ...buildQuery(), retry: 0 });
-  const f = freshness.data?.data;
-  const b = build.data?.data as { version?: string; built_at?: string } | undefined;
+  const hydrated = useHydrated();
+  const freshness = useQuery({ ...freshnessQuery(), retry: 0, enabled: hydrated });
+  const build = useQuery({ ...buildQuery(), retry: 0, enabled: hydrated });
+  const f = hydrated ? freshness.data?.data : undefined;
+  const b = hydrated
+    ? (build.data?.data as { version?: string; built_at?: string } | undefined)
+    : undefined;
   const stale = f?.stale_count ?? 0;
   const sources = f?.sources?.length ?? 0;
   // Freshness carries an `[key: string]: unknown` index signature, so guard the

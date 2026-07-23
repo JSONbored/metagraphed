@@ -13,11 +13,9 @@ import {
   CurationChip,
   HealthPill,
   CopyableCode,
-  InfoTooltip,
   safeExternalUrl,
   ScrollReveal,
   Sparkline,
-  type SparklinePoint,
 } from "@jsonbored/ui-kit";
 import { SubnetPulseGrid } from "@/components/metagraphed/charts/subnet-pulse-grid";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
@@ -40,10 +38,11 @@ import { HeroSubnetChips } from "@/components/metagraphed/hero-subnet-chips";
 import { QuickActionsRow } from "@/components/metagraphed/quick-actions-row";
 import { RecentIdentityChanges } from "@/components/metagraphed/recent-identity-changes";
 import { ContinueExploring } from "@/components/metagraphed/continue-exploring";
+import { HeroFeatureRow } from "@/components/metagraphed/hero-feature-row";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 import {
   blocksQuery,
-  chainActivityQuery,
   coverageQuery,
   freshnessQuery,
   healthQuery,
@@ -79,20 +78,24 @@ function OverviewPage() {
   // until opened.
   const [showMore, setShowMore] = useState(false);
   return (
-    <AppShell>
+    <AppShell
+      flushTop
+      afterHeader={
+        // Seat the alpha-price marquee flush against the secondary ecosystem
+        // strip -- fills the gap that used to sit above the hero. Its bottom
+        // mint hairline doubles as the hero's top rule.
+        <QueryErrorBoundary fallback={() => null}>
+          <Suspense fallback={null}>
+            <SubnetPriceTicker />
+          </Suspense>
+        </QueryErrorBoundary>
+      }
+    >
       <HomeHero />
 
-      {/* #1124/#1302: hero discovery rail — alpha-price ticker, trending subnet
-          chips, and a "continue exploring" rail. Each renders null until it has
-          data, so they never clutter a cold first paint. */}
-      <QueryErrorBoundary fallback={() => null}>
-        <Suspense fallback={null}>
-          <SubnetPriceTicker />
-        </Suspense>
-      </QueryErrorBoundary>
-
-      {/* #6642: network-wide sentiment reading, surfaced as its own widget --
-          self-manages loading/error via useQuery (no Suspense needed). */}
+      {/* #6642: network-wide sentiment reading — full-width card with a real
+          gradient rail, ticks, and a numeric ratio. Self-manages loading/error
+          via useQuery (no Suspense needed). */}
       <QueryErrorBoundary fallback={() => null}>
         <NetworkMoodGauge />
       </QueryErrorBoundary>
@@ -352,201 +355,109 @@ function ChainHeadTip() {
   );
 }
 
+function openCommandPalette() {
+  if (typeof window === "undefined") return;
+  // The app shell listens on window for ⌘/Ctrl+K — dispatching a real
+  // KeyboardEvent triggers the same open path, no shell changes needed.
+  window.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true, bubbles: true }),
+  );
+}
+
 function HomeHero() {
+  const hydrated = useHydrated();
+  const { data: subnetsData } = useQuery({
+    ...subnetsQuery({ limit: 128 }),
+    enabled: hydrated,
+  });
+  const subnetCount =
+    hydrated && Array.isArray(subnetsData?.data)
+      ? (subnetsData?.data as Subnet[]).filter((s) => s.netuid > 0).length
+      : 128;
+
   return (
-    <section className="mg-hero-slab relative overflow-hidden px-6 py-12 md:px-12 md:py-20">
-      <div className="relative z-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-center">
-        <div className="min-w-0 max-w-2xl">
-          <div className="mg-fade-in font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted inline-flex items-center gap-2">
-            <span className="mg-live-dot" />
-            Registry · Live · Read-only
-          </div>
-          <h1 className="mg-fade-in mg-fade-in-delay-1 mt-4 font-display text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.02] tracking-tight text-ink-strong">
-            The public-interface registry for <span className="text-accent">Bittensor</span>.
-          </h1>
-          <p className="mg-fade-in mg-fade-in-delay-2 mt-5 max-w-xl text-base text-ink-muted leading-relaxed">
-            A builder-facing index of subnet APIs, schemas, docs, endpoints, and providers — plus a
-            chain-direct block explorer for blocks, extrinsics, and events.
-          </p>
-          <div className="mg-fade-in mg-fade-in-delay-3 mt-7 flex flex-wrap items-center gap-3">
-            <Link
-              to="/subnets"
-              className="inline-flex items-center gap-1.5 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground hover:opacity-90 transition-opacity"
+    <section className="mg-hero-slab relative overflow-hidden px-4 py-14 sm:px-6 md:py-20">
+      <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center text-center">
+        <h1 className="mg-fade-in mt-2 font-display text-[30px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.08] text-ink-strong">
+          <span className="block">Bittensor,</span>
+          <span className="block text-accent">de-mystified.</span>
+        </h1>
+        <p className="mg-fade-in mg-fade-in-delay-1 mt-5 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed">
+          One search bar for every subnet, endpoint, and account — and yes, it&rsquo;s all a live
+          API.
+        </p>
+
+        {/* Unified search field: query trigger on the left, mint Search button flush right. */}
+        <div className="mg-fade-in mg-fade-in-delay-2 mt-8 w-full max-w-2xl">
+          <div className="mg-focus-ring flex items-stretch overflow-hidden rounded-2xl border border-border bg-card transition-colors focus-within:border-accent/60 hover:border-accent/40">
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
+              className="flex flex-1 items-center gap-3 px-4 py-3.5 text-left text-sm text-ink-muted transition-colors hover:text-ink"
             >
-              Browse subnets
-              <ArrowUpRight className="size-3.5" />
-            </Link>
-            <Link
-              to="/schemas"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/50 px-5 py-2.5 text-sm font-medium text-ink hover:border-accent/40 transition-colors"
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                className="size-4 shrink-0 text-ink-muted"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+              </svg>
+              <span className="flex-1 truncate">
+                Search subnets, validators, endpoints, accounts…
+              </span>
+              <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+                ⌘K
+              </kbd>
+            </button>
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              aria-label="Open search"
+              className="flex size-12 shrink-0 items-center justify-center border-l border-border bg-primary-soft text-accent-text transition-colors hover:bg-accent hover:text-accent-foreground sm:h-auto sm:w-auto sm:px-5"
             >
-              Read the API
-            </Link>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                className="size-4 sm:hidden"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+              </svg>
+              <span className="hidden text-sm font-medium sm:inline">Search</span>
+            </button>
           </div>
-          <ChainHeadTip />
         </div>
-        <div className="mg-fade-in mg-fade-in-delay-2 shrink-0">
-          <HeroKpis />
+
+        <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 text-[13px]">
+          <Link
+            to="/subnets"
+            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full bg-accent px-5 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
+          >
+            Explore all {subnetCount} subnets
+            <ArrowUpRight className="size-3.5" />
+          </Link>
+          <Link
+            to="/schemas"
+            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-5 py-2 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+          >
+            Read the API
+          </Link>
         </div>
+        <ChainHeadTip />
+      </div>
+
+      <div className="relative z-10 mx-auto mt-10 max-w-6xl px-0 sm:px-2">
+        <HeroFeatureRow />
       </div>
     </section>
-  );
-}
-
-function HeroKpis() {
-  // #5312: freshness and health percentages live only in LivePerformance
-  // (homepage deep dive) — the global registry ticker already carries glance
-  // counts. The hero card keeps the subnet health map + chain-direct activity.
-  const activityResult = useQuery(chainActivityQuery("7d"));
-  const activity = activityResult.data?.data;
-  const activityChrono = activity?.days.length ? [...activity.days].reverse() : undefined;
-  const latestExtrinsics = activityChrono?.at(-1)?.extrinsic_count;
-  const activitySeries = activityChrono?.map((d) => d.extrinsic_count);
-  const activityPoints = activityChrono?.map((d) => ({ t: d.day, v: d.extrinsic_count }));
-
-  return (
-    <div className="mx-auto w-full max-w-[560px] rounded-xl border border-border bg-card/80 overflow-hidden lg:mx-0 lg:max-w-none">
-      {/* Caption strip */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-surface/40">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted inline-flex items-center gap-2">
-          <span className="mg-live-dot" />
-          Registry pulse
-        </div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          live · 30s
-        </div>
-      </div>
-
-      {/* Subnet health map — visual only; active-subnet count is in the global ticker. */}
-      <div className="px-4 py-3.5 border-b border-border">
-        <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Subnet health map
-        </div>
-        <SubnetPulseGrid columns={16} />
-        <div className="mt-2.5 flex items-center gap-3 text-[10px] font-mono text-ink-muted">
-          <LegendDot tone="bg-health-ok" label="ok" />
-          <LegendDot tone="bg-health-warn" label="warn" />
-          <LegendDot tone="bg-health-down" label="down" />
-          <LegendDot tone="bg-ink-subtle/60" label="unknown" />
-        </div>
-      </div>
-
-      {/* Chain-direct activity — the only numeric hero stat; not in the ticker. */}
-      <div className="border-b border-border">
-        <HeroStatCell
-          label="Chain activity"
-          value={latestExtrinsics != null ? formatNumber(latestExtrinsics) : "—"}
-          phase={statPhase(activityResult)}
-          series={activitySeries}
-          points={activityPoints}
-          formatValue={(v) => formatNumber(v)}
-          seriesCaption="7d · daily"
-          tooltip="Extrinsics in the latest indexed day, chain-direct (not registry-derived). Source: /api/v1/chain/activity."
-        />
-      </div>
-
-      {/* Pilot chips */}
-      <div className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-mono text-ink-muted">
-        <span className="uppercase tracking-[0.18em] text-[10px]">Pilots</span>
-        <span aria-hidden>▸</span>
-        <Link
-          to="/subnets/$netuid"
-          params={{ netuid: 7 }}
-          className="rounded-full border border-border bg-paper px-2 py-0.5 hover:text-accent hover:border-accent/40 transition-colors"
-        >
-          Allways · SN7
-        </Link>
-        <Link
-          to="/subnets/$netuid"
-          params={{ netuid: 74 }}
-          className="rounded-full border border-border bg-paper px-2 py-0.5 hover:text-accent hover:border-accent/40 transition-colors"
-        >
-          Gittensor · SN74
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function LegendDot({ tone, label }: { tone: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span className={`size-1.5 rounded-full ${tone}`} />
-      {label}
-    </span>
-  );
-}
-
-function HeroStatCell({
-  label,
-  value,
-  phase = "ready",
-  series,
-  points,
-  formatValue,
-  tooltip,
-  accent,
-  seriesCaption = "24h · hourly",
-}: {
-  label: string;
-  value: string;
-  /** Loading/error/ready phase of the cell's source query (#3964). */
-  phase?: StatPhase;
-  /** Real data series. When absent, no sparkline is rendered (no fabrication). */
-  series?: number[];
-  points?: SparklinePoint[];
-  formatValue?: (v: number) => string;
-  tooltip?: string;
-  accent?: boolean;
-  /** Cadence label under the sparkline; defaults to the freshness cell's 24h/hourly cadence. */
-  seriesCaption?: string;
-}) {
-  // Hide the sparkline unless the value settled successfully — a skeleton or
-  // error glyph replaces the number, so a stale series would misrepresent state.
-  const hasSeries = phase === "ready" && !!series && series.length > 1;
-  return (
-    <div className="px-4 py-3">
-      <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        <span>{label}</span>
-        {tooltip ? <InfoTooltip label={tooltip} /> : null}
-      </div>
-      <div
-        className={`mt-1 font-display text-xl font-semibold leading-none tabular-nums ${
-          accent ? "text-accent" : "text-ink-strong"
-        }`}
-      >
-        {phase === "pending" ? (
-          <Skeleton className="h-5 w-14" />
-        ) : phase === "error" ? (
-          <StatUnavailable />
-        ) : (
-          value
-        )}
-      </div>
-      {hasSeries ? (
-        <>
-          <div className="mt-2">
-            <Sparkline
-              values={series}
-              points={points}
-              formatValue={formatValue}
-              width={150}
-              height={20}
-              color={accent ? "var(--accent)" : "var(--ink-strong)"}
-              ariaLabel={label}
-            />
-          </div>
-          <div className="mt-1.5 flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-ink-muted">
-            <span
-              aria-hidden
-              className="inline-block h-px w-3"
-              style={{ background: accent ? "var(--accent)" : "var(--ink-strong)" }}
-            />
-            <span>{seriesCaption}</span>
-          </div>
-        </>
-      ) : null}
-    </div>
   );
 }
 
