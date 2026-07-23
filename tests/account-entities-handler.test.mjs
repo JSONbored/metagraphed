@@ -8,7 +8,7 @@ import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
+import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
   handleAccount,
   handleAccountEntities,

@@ -21,7 +21,7 @@ import {
   profilesProjectionFromRows,
 } from "../src/analytics-live.ts";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
+import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 
 const NETUID = 7;
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";

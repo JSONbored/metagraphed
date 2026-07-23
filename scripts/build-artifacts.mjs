@@ -95,7 +95,7 @@ import {
   evaluateArtifactBudgets,
   summarizeArtifactBudgets,
 } from "./artifact-budgets.ts";
-import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
+import { buildCanonicalOpenApiArtifact } from "./openapi-components.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,

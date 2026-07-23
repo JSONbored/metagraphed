@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
+import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import { handleSubnetHyperparamsHistory } from "../workers/request-handlers/entities.mjs";
 
 const NETUID = 7;

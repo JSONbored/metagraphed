@@ -16,7 +16,7 @@ import {
   buildOpenApiArtifact,
   compileRoutePattern,
 } from "../src/contracts.mjs";
-import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
+import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 
 describe("contracts — route ⇄ artifact mapping invariants", () => {
   test("every API route's artifact_path resolves to a public artifact contract", async () => {

@@ -77,7 +77,7 @@ import {
   isR2PreferredDualArtifactPath,
   schemaDetailArtifactRelativePath,
 } from "../src/artifact-storage.ts";
-import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
+import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.ts";
 import { renderCurationBrief } from "../scripts/curation-brief.ts";
 import {
   MissingEndpointArtifactsError,
