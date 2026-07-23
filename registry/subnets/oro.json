@@ -1395,12 +1395,7 @@
       "url": "https://api.oroagents.com/v1/admin/validators/%7Bvalidator_hotkey%7D/unban"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-auth-challenge",
       "kind": "subnet-api",
@@ -1423,9 +1418,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
+        "scheme": "bearer",
+        "scopes_note": "Requires the session Authorization bearer token obtained by completing the /v1/auth/challenge + /v1/auth/session login flow (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 \"Missing Authorization header\"). This tool cannot complete that login flow on your behalf -- you must already hold a working session token.",
         "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
+        "name": "Authorization",
+        "value_format": "Bearer <token>"
       },
       "auth_required": true,
       "authority": "community",
@@ -1449,12 +1446,7 @@
       "url": "https://api.oroagents.com/v1/auth/logout"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-auth-session",
       "kind": "subnet-api",
@@ -1784,12 +1776,7 @@
       "url": "https://api.oroagents.com/v1/miner/submit"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-agent-versions-agent-version-id",
       "kind": "subnet-api",
@@ -1811,12 +1798,7 @@
       "url": "https://api.oroagents.com/v1/public/agent-versions/%7Bagent_version_id%7D"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-agent-versions-agent-version-id-problems",
       "kind": "subnet-api",
@@ -1838,12 +1820,7 @@
       "url": "https://api.oroagents.com/v1/public/agent-versions/%7Bagent_version_id%7D/problems"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-agent-versions-agent-version-id-runs",
       "kind": "subnet-api",
@@ -1865,12 +1842,7 @@
       "url": "https://api.oroagents.com/v1/public/agent-versions/%7Bagent_version_id%7D/runs"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-agent-versions-agent-version-id-status",
       "kind": "subnet-api",
@@ -1892,12 +1864,7 @@
       "url": "https://api.oroagents.com/v1/public/agent-versions/%7Bagent_version_id%7D/status"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-artifacts-download-url",
       "kind": "subnet-api",
@@ -1919,12 +1886,7 @@
       "url": "https://api.oroagents.com/v1/public/artifacts/download-url"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-evaluation-runs-eval-run-id",
       "kind": "subnet-api",
@@ -1946,12 +1908,7 @@
       "url": "https://api.oroagents.com/v1/public/evaluation-runs/%7Beval_run_id%7D"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-races-race-id",
       "kind": "subnet-api",
@@ -1973,12 +1930,7 @@
       "url": "https://api.oroagents.com/v1/public/races/%7Brace_id%7D"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-races-race-id-validator-variance",
       "kind": "subnet-api",
@@ -2000,12 +1952,7 @@
       "url": "https://api.oroagents.com/v1/public/races/%7Brace_id%7D/validator-variance"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-suites-suite-id-problems",
       "kind": "subnet-api",
@@ -2027,12 +1974,7 @@
       "url": "https://api.oroagents.com/v1/public/suites/%7Bsuite_id%7D/problems"
     },
     {
-      "auth": {
-        "scheme": "custom",
-        "location": "header",
-        "scopes_note": "Requires a signed request using a custom header set; no static API key or bearer token is accepted. Contact the subnet operator for signing details."
-      },
-      "auth_required": true,
+      "auth_required": false,
       "authority": "community",
       "id": "sn-15-oro-v1-public-waitlist",
       "kind": "subnet-api",
