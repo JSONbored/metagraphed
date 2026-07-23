@@ -1,22 +1,30 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
-  ResetFiltersButton,
-  SearchInput,
-  SelectFilter,
-} from "@/components/metagraphed/table-controls";
+  AsyncPanel,
+  FilterChipRow,
+  FilterSheet,
+  PageMasthead,
+  QueryBar,
+  QueryProgress,
+  RoutePending,
+  type FilterChipItem,
+} from "@/components/metagraphed/primitives";
+import { CopyLinkButton } from "@/components/metagraphed/primitives/copy-link-button";
+import { ResponsiveTable } from "@/components/metagraphed/primitives/responsive-table";
+import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import {
   providersQuery,
   endpointsQuery,
   sourceHealthProvidersQuery,
+  metagraphedQueryKey,
   type ProviderCounts,
 } from "@/lib/metagraphed/queries";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -24,20 +32,16 @@ import { matchesQuery } from "@/lib/metagraphed/url-state";
 import { matchesProviderAuthority } from "@/lib/metagraphed/providers-url-state";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { resolveProviderCard } from "@/lib/metagraphed/provider-card-fields";
-import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
 import {
   BrandIcon,
   prefetchBrandIcon,
-  PageHero,
   ViewModeToggle,
   ShareButton,
   DownloadCsvButton,
   TimeAgo,
   ActionBar,
-  Donut,
-  DonutLegend,
-  Sparkline,
 } from "@jsonbored/ui-kit";
+import { ProvidersPulseRail } from "@/components/metagraphed/providers-pulse-rail";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import type { Provider } from "@/lib/metagraphed/types";
 
@@ -69,6 +73,7 @@ export const Route = createFileRoute("/providers/")({
       },
     ],
   }),
+  pendingComponent: () => <RoutePending panels={3} />,
   component: ProvidersPage,
 });
 
@@ -90,8 +95,7 @@ function ProvidersPage() {
   const providersCsvUrl = buildUrl("/api/v1/providers");
   return (
     <AppShell>
-      <PageHero
-        eyebrow="Infrastructure"
+      <PageMasthead
         live
         title="Providers"
         description="Teams, infra operators, docs registries, and community sources behind public interfaces."
@@ -115,11 +119,23 @@ function ProvidersPage() {
           </>
         }
       />
-      <QueryErrorBoundary>
-        <Suspense fallback={<ProvidersSkeleton />}>
-          <ProvidersGrid view={view} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        height="sm"
+        context="providers pulse"
+        retryQueryKeys={[metagraphedQueryKey("providers")]}
+      >
+        <ProvidersPulseRailLoader />
+      </AsyncPanel>
+      <AsyncPanel
+        context="providers"
+        fallback={<ProvidersSkeleton />}
+        retryQueryKeys={[
+          metagraphedQueryKey("providers"),
+          metagraphedQueryKey("source-health-providers"),
+        ]}
+      >
+        <ProvidersGrid view={view} />
+      </AsyncPanel>
       <ApiSourceFooter
         paths={["/api/v1/providers", "/api/v1/source-health"]}
         artifacts={["/metagraph/providers.json"]}
@@ -272,6 +288,9 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
     };
   }, [sorted]);
 
+  // Hooks must run unconditionally before the early return below.
+  const isFetchingProviders = useIsFetching({ queryKey: metagraphedQueryKey("providers") }) > 0;
+
   if (rows.length === 0)
     return (
       <EmptyState
@@ -292,59 +311,96 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
         />
       ) : null}
 
-      <ProviderOverview providers={rows} counts={counts} />
       <SourceHealthRollup />
 
-      {/* Filter toolbar — every control stretches to fill its track so the row stays
-          justified (flush on both ends), reflowing cleanly down to narrow viewports. */}
-      <div className="sticky top-14 z-20 -mx-4 border-y border-border bg-paper/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-paper/80 md:mx-0 md:rounded-lg md:border md:bg-card md:px-3">
-        <div className="flex w-full flex-wrap items-stretch gap-2">
-          <div className="flex w-full basis-full md:w-auto md:flex-[2] md:basis-0">
-            <SearchInput
-              value={q}
-              onChange={(v) => setSearch({ q: v })}
-              placeholder="Search providers, slugs, hosts…"
-            />
-          </div>
-          <div className="flex flex-1 basis-full min-[480px]:min-w-[7rem] min-[480px]:basis-0">
-            <SelectFilter
-              fill
+      <div className="sticky top-[var(--mg-sticky-offset)] z-20 bg-paper/95 py-2 backdrop-blur-sm">
+        <QueryBar ariaLabel="Provider directory filters">
+          <QueryBar.Search
+            value={q}
+            onChange={(v) => setSearch({ q: v })}
+            placeholder="Search providers, slugs, hosts…"
+            debounceMs={200}
+            shortcut
+          />
+          <div className="hidden items-center md:flex">
+            <QueryBar.FilterTrigger
               label="Kind"
               value={kind}
               onChange={(v) => setSearch({ kind: v })}
-              options={kinds.map((k) => ({ value: k, label: k }))}
+              options={kinds.map((value) => ({ value, label: value }))}
             />
-          </div>
-          <div className="flex flex-1 basis-full min-[480px]:min-w-[7rem] min-[480px]:basis-0">
-            <SelectFilter
-              fill
+            <QueryBar.FilterTrigger
               label="Authority"
               value={authority}
               onChange={(v) => setSearch({ authority: v })}
-              options={authorityOptions.map((a) => ({ value: a, label: a }))}
+              options={authorityOptions.map((value) => ({
+                value,
+                label: value === "high" ? "Official + claimed" : value,
+              }))}
             />
-          </div>
-          <div className="flex flex-1 basis-full min-[480px]:min-w-[7rem] min-[480px]:basis-0">
-            <SelectFilter
-              fill
+            <QueryBar.FilterTrigger
               label="Sort"
               value={sortKey}
               onChange={(v) => setSearch({ sort: v as ProviderSortKey })}
-              options={providerSortKeys.map((s) => ({ value: s, label: s }))}
-              allowEmpty={false}
+              options={providerSortKeys.map((value) => ({ value, label: value }))}
             />
           </div>
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <ResetFiltersButton
-            active={hasFilters}
-            onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
-          />
-          <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted tabular-nums">
-            {sorted.length} of {rows.length} providers
-          </span>
-        </div>
+          <QueryBar.Utility>
+            <FilterSheet
+              label="More filters"
+              className="md:hidden"
+              activeCount={(kind ? 1 : 0) + (authority ? 1 : 0) + (sortKey !== "name" ? 1 : 0)}
+            >
+              <QueryBar.FilterTrigger
+                label="Kind"
+                value={kind}
+                onChange={(v) => setSearch({ kind: v })}
+                options={kinds.map((value) => ({ value, label: value }))}
+                className="w-full justify-between border border-border"
+              />
+              <QueryBar.FilterTrigger
+                label="Authority"
+                value={authority}
+                onChange={(v) => setSearch({ authority: v })}
+                options={authorityOptions.map((value) => ({
+                  value,
+                  label: value === "high" ? "Official + claimed" : value,
+                }))}
+                className="w-full justify-between border border-border"
+              />
+              <QueryBar.FilterTrigger
+                label="Sort"
+                value={sortKey}
+                onChange={(v) => setSearch({ sort: v as ProviderSortKey })}
+                options={providerSortKeys.map((value) => ({ value, label: value }))}
+                className="w-full justify-between border border-border"
+              />
+            </FilterSheet>
+            <ResetFiltersButton
+              active={hasFilters}
+              onReset={() => setSearch({ q: "", kind: "", authority: "", sort: "name" })}
+              bare
+            />
+            <span className="hidden px-2 mg-type-micro tabular-nums sm:inline">
+              {sorted.length} of {rows.length} providers
+            </span>
+          </QueryBar.Utility>
+        </QueryBar>
       </div>
+
+      <FilterChipRow
+        items={[
+          ...(q ? [{ id: "q", label: "Search", value: q } as FilterChipItem] : []),
+          ...(kind ? [{ id: "kind", label: "Kind", value: kind } as FilterChipItem] : []),
+          ...(authority
+            ? [{ id: "authority", label: "Authority", value: authority } as FilterChipItem]
+            : []),
+        ]}
+        onRemove={(id) => setSearch({ [id]: "" } as Parameters<typeof setSearch>[0])}
+        onClearAll={() => setSearch({ q: "", kind: "", authority: "" })}
+      />
+
+      <QueryProgress active={isFetchingProviders} position="sticky" />
 
       {sorted.length === 0 ? (
         <EmptyState
@@ -420,9 +476,12 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
               );
             })}
           </div>
-          <div className="hidden overflow-x-auto rounded border border-border bg-card lg:block">
+          <ResponsiveTable
+            className="hidden rounded border border-border bg-card lg:block"
+            minWidth={960}
+          >
             <table className="w-full text-left text-sm">
-              <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+              <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
                 <tr>
                   <th className="px-3 py-2">Provider</th>
                   <th className="px-3 py-2">Kind</th>
@@ -439,7 +498,11 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                   const host = maskHost(p.website ?? p.homepage);
                   const c = counts[p.slug];
                   return (
-                    <tr key={p.slug} className="hover:bg-surface/40">
+                    <tr
+                      key={p.slug}
+                      id={`provider-${p.slug}`}
+                      className="mg-row-accent hover:bg-surface/40 target:bg-accent/5"
+                    >
                       <td className="px-3 py-2">
                         <Link
                           to="/providers/$slug"
@@ -493,14 +556,23 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                         {c?.endpoints ?? 0}
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
-                        <TimeAgo at={typeof p.updated_at === "string" ? p.updated_at : undefined} />
+                        <div className="inline-flex items-center gap-1 justify-end">
+                          <TimeAgo
+                            at={typeof p.updated_at === "string" ? p.updated_at : undefined}
+                          />
+                          <CopyLinkButton
+                            hash={`provider-${p.slug}`}
+                            size="xs"
+                            tooltip="Copy link to provider"
+                          />
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         </>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -672,99 +744,8 @@ function SourceHealthRollup() {
   );
 }
 
-function ProviderOverview({
-  providers,
-  counts,
-}: {
-  providers: Provider[];
-  counts: Record<string, { surfaces: number; endpoints: number; subnets: number }>;
-}) {
-  const kinds = providers.reduce<Record<string, number>>((acc, p) => {
-    const k = p.kind ?? "other";
-    acc[k] = (acc[k] ?? 0) + 1;
-    return acc;
-  }, {});
-  const kindPalette = [
-    "var(--chart-1)",
-    "var(--chart-2)",
-    "var(--chart-3)",
-    "var(--chart-4)",
-    "var(--chart-5)",
-    "var(--chart-6)",
-  ];
-  const kindSegs = Object.entries(kinds)
-    .sort((a, b) => b[1] - a[1])
-    .map(([label, value], i) => ({ label, value, color: kindPalette[i % kindPalette.length]! }));
-
-  // The /providers list omits per-provider endpoint_summary (only the detail
-  // route has it), so derive the cross-provider endpoint health from the
-  // endpoints collection directly.
-  const endpoints = useSuspenseQuery(endpointsQuery({ limit: 1000 })).data.data ?? [];
-  const endpointStatus = endpoints.reduce(
-    (acc, e) => {
-      const h = e.health ?? "unknown";
-      if (h === "ok") acc.ok += 1;
-      else if (h === "warn") acc.warn += 1;
-      else if (h === "down") acc.down += 1;
-      else acc.unknown += 1;
-      return acc;
-    },
-    { ok: 0, warn: 0, down: 0, unknown: 0 },
-  );
-  const statusSegs = healthStatusSegments(endpointStatus, { warnLabel: "Warn" });
-
-  // Top providers by endpoint count, as a sparkline of counts.
-  const topCounts = providers
-    .map((p) => counts[p.slug]?.endpoints ?? 0)
-    .sort((a, b) => b - a)
-    .slice(0, 20);
-  const totalEndpoints = providers.reduce((a, p) => a + (counts[p.slug]?.endpoints ?? 0), 0);
-
-  return (
-    <div className="grid gap-3 md:grid-cols-3">
-      <div className="rounded border border-border bg-card p-3 flex items-center gap-4">
-        <Donut
-          segments={kindSegs}
-          size={88}
-          strokeWidth={11}
-          centerLabel={String(providers.length)}
-          centerSub="providers"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="mg-label mb-1">By kind</div>
-          <DonutLegend segments={kindSegs.slice(0, 5)} />
-        </div>
-      </div>
-      <div className="rounded border border-border bg-card p-3 flex items-center gap-4">
-        <Donut
-          segments={statusSegs}
-          size={88}
-          strokeWidth={11}
-          centerLabel={String(
-            endpointStatus.ok + endpointStatus.warn + endpointStatus.down + endpointStatus.unknown,
-          )}
-          centerSub="endpoints"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="mg-label mb-1">Endpoint health</div>
-          <DonutLegend segments={statusSegs} />
-        </div>
-      </div>
-      <div className="rounded border border-border bg-card p-3">
-        <div className="mg-label mb-1">Top providers · endpoints</div>
-        <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
-          {totalEndpoints}
-        </div>
-        <Sparkline
-          values={topCounts}
-          width={260}
-          height={48}
-          ariaLabel="Top providers by endpoint count"
-        />
-        <div className="mt-1 font-mono text-[10px] text-ink-muted">
-          across {providers.length} providers
-        </div>
-      </div>
-    </div>
-  );
+function ProvidersPulseRailLoader() {
+  const { data } = useSuspenseQuery(providersQuery());
+  const providers = (data.data ?? []) as Provider[];
+  return <ProvidersPulseRail providers={providers} />;
 }

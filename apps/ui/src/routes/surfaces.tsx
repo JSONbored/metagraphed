@@ -1,18 +1,24 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useMemo } from "react";
+import { useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import {
+  AsyncPanel,
+  FilterChipRow,
+  FilterSheet,
+  QueryBar,
+  QueryProgress,
+  PageMasthead,
+  type FilterChipItem,
+} from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { Skeleton } from "@/components/metagraphed/states";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
   TimeAgo,
   CurationChip,
   ReviewChip,
   ExternalLink,
-  PageHero,
   SectionHeading,
   BrandIcon,
   ShareButton,
@@ -33,11 +39,15 @@ import {
   ariaSort,
   PageSizeSelect,
   ResetFiltersButton,
-  SearchInput,
   SelectFilter,
   SortHeader,
 } from "@/components/metagraphed/table-controls";
-import { surfacesInfiniteQuery, providersQuery, subnetsQuery } from "@/lib/metagraphed/queries";
+import {
+  surfacesInfiniteQuery,
+  providersQuery,
+  subnetsQuery,
+  metagraphedQueryKey,
+} from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { sortBy } from "@/lib/metagraphed/url-state";
 import { surfacesSearchSchema, matchesSurfaceFilters } from "@/lib/metagraphed/surface-filters";
@@ -94,8 +104,7 @@ function SurfacesPage() {
   return (
     <AppShell>
       <TimeRangeProvider defaultRange="7d">
-        <PageHero
-          eyebrow="Registry"
+        <PageMasthead
           live
           title="Surfaces"
           description="Verified public interfaces across subnets — filter by kind, provider, and netuid."
@@ -120,11 +129,17 @@ function SurfacesPage() {
             </>
           }
         />
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-            <SurfacesTable view={viewMode} />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          height="xl"
+          context="surfaces"
+          retryQueryKeys={[
+            metagraphedQueryKey("surfaces-infinite"),
+            metagraphedQueryKey("providers"),
+            metagraphedQueryKey("subnets"),
+          ]}
+        >
+          <SurfacesTable view={viewMode} />
+        </AsyncPanel>
         <section className="mt-section">
           <SectionHeading title="Evidence & sources" />
           <EvidencePanel />
@@ -238,13 +253,52 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
     (row, key) => (row as Record<string, unknown>)[key],
   );
 
-  const filters = (
+  const activeChips: Array<{ key: string; value: string; onClear: () => void }> = [];
+  if (search.q)
+    activeChips.push({ key: "q", value: search.q, onClear: () => setSearch({ q: "" }) });
+  if (search.kind)
+    activeChips.push({ key: "kind", value: search.kind, onClear: () => setSearch({ kind: "" }) });
+  if (search.provider)
+    activeChips.push({
+      key: "provider",
+      value: search.provider,
+      onClear: () => setSearch({ provider: "" }),
+    });
+  if (search.netuid)
+    activeChips.push({
+      key: "netuid",
+      value: String(search.netuid),
+      onClear: () => setSearch({ netuid: "" }),
+    });
+  if (search.public_safe)
+    activeChips.push({
+      key: "public",
+      value: String(search.public_safe),
+      onClear: () => setSearch({ public_safe: "" }),
+    });
+  if (search.auth)
+    activeChips.push({
+      key: "auth",
+      value: String(search.auth),
+      onClear: () => setSearch({ auth: "" }),
+    });
+  if (search.rate_limited)
+    activeChips.push({
+      key: "rate-limit",
+      value: String(search.rate_limited),
+      onClear: () => setSearch({ rate_limited: "" }),
+    });
+
+  const secondaryFilterCount =
+    (search.kind ? 1 : 0) +
+    (search.provider ? 1 : 0) +
+    (search.netuid ? 1 : 0) +
+    (search.public_safe ? 1 : 0) +
+    (search.auth ? 1 : 0) +
+    (search.rate_limited ? 1 : 0);
+
+  const secondaryFilters = (
     <>
-      <SearchInput
-        value={search.q}
-        onChange={(v) => setSearch({ q: v })}
-        placeholder="Search by name, URL, provider, or netuid"
-      />
       <SelectFilter
         label="kind"
         value={search.kind}
@@ -263,19 +317,64 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
         onChange={(v) => setSearch({ netuid: v })}
         options={netuidOptions}
       />
-      <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
     </>
   );
 
-  const filtersActive = !!(
-    search.q ||
-    search.kind ||
-    search.provider ||
-    search.netuid ||
-    search.public_safe ||
-    search.auth ||
-    search.rate_limited
+  const chipItems: FilterChipItem[] = [];
+  if (search.q) chipItems.push({ id: "q", label: "Search", value: search.q });
+  if (search.kind) chipItems.push({ id: "kind", label: "Kind", value: search.kind });
+  if (search.provider)
+    chipItems.push({ id: "provider", label: "Provider", value: search.provider });
+  if (search.netuid)
+    chipItems.push({ id: "netuid", label: "Netuid", value: String(search.netuid) });
+  if (search.public_safe)
+    chipItems.push({ id: "public_safe", label: "Public-safe", value: "only" });
+  if (search.auth) chipItems.push({ id: "auth", label: "Auth", value: search.auth });
+  if (search.rate_limited)
+    chipItems.push({ id: "rate_limited", label: "Rate-limited", value: "only" });
+
+  const clearChip = (id: string) => setSearch({ [id]: "" });
+  const clearAll = () =>
+    setSearch({
+      q: "",
+      kind: "",
+      provider: "",
+      netuid: "",
+      public_safe: "",
+      auth: "",
+      rate_limited: "",
+    });
+
+  const filters = (
+    <div className="flex w-full flex-col gap-0 min-w-0">
+      <div className="flex w-full items-center gap-2 min-w-0">
+        <QueryBar className="flex-1 min-w-0">
+          <QueryBar.Search
+            value={search.q}
+            onChange={(v) => setSearch({ q: v })}
+            placeholder="Search by name, URL, provider, or netuid"
+            shortcut
+            debounceMs={200}
+          />
+          <QueryBar.Divider />
+          <div className="hidden md:contents">{secondaryFilters}</div>
+          <QueryBar.Utility className="ml-auto">
+            <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
+          </QueryBar.Utility>
+        </QueryBar>
+        <FilterSheet className="md:hidden" label="Filters" activeCount={secondaryFilterCount}>
+          {secondaryFilters}
+        </FilterSheet>
+      </div>
+      <FilterChipRow
+        items={chipItems}
+        onRemove={clearChip}
+        onClearAll={chipItems.length > 1 ? clearAll : undefined}
+      />
+    </div>
   );
+
+  const filtersActive = activeChips.length > 0;
 
   const emptyNode = (
     <StateBlock
@@ -425,136 +524,135 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
   );
 
   return (
-    <ListShell
-      filters={filters}
-      isEmpty={rows.length === 0}
-      isStale={isFetching && !isFetchingNextPage}
-      empty={emptyNode}
-      // This table's <thead> isn't sticky (plain bg-surface/50, no
-      // position:sticky) -- opt out so it keeps ListShell's normal
-      // unbounded-height horizontal scroll instead of the sticky-header
-      // bounded-scroll box it doesn't use.
-      stickyHeader={false}
-      cards={view === "grid" ? undefined : rows.map(cardFor)}
-      table={
-        view === "grid" ? (
-          gridBody
-        ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface/50">
-              <tr>
-                <th
-                  className="px-3 py-2"
-                  aria-sort={ariaSort(search.sort === "netuid", search.order)}
-                >
-                  <SortHeader
-                    label="Netuid"
-                    field="netuid"
-                    active={search.sort === "netuid"}
-                    order={search.order}
-                    onSort={onSort}
-                  />
-                </th>
-                <th
-                  className="px-3 py-2"
-                  aria-sort={ariaSort(search.sort === "kind", search.order)}
-                >
-                  <SortHeader
-                    label="Kind"
-                    field="kind"
-                    active={search.sort === "kind"}
-                    order={search.order}
-                    onSort={onSort}
-                  />
-                </th>
-                <th
-                  className="px-3 py-2"
-                  aria-sort={ariaSort(search.sort === "name", search.order)}
-                >
-                  <SortHeader
-                    label="Name"
-                    field="name"
-                    active={search.sort === "name"}
-                    order={search.order}
-                    onSort={onSort}
-                  />
-                </th>
-                <th className="px-3 py-2">URL</th>
-                <th className="px-3 py-2">Provider</th>
-                <th className="px-3 py-2">Curation</th>
-                <th
-                  className="px-3 py-2 text-right"
-                  aria-sort={ariaSort(search.sort === "last_verified_at", search.order)}
-                >
-                  <SortHeader
-                    label="Last verified"
-                    field="last_verified_at"
-                    active={search.sort === "last_verified_at"}
-                    order={search.order}
-                    onSort={onSort}
-                    align="right"
-                  />
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((s) => (
-                <tr key={s.id} className="mg-row-accent hover:bg-surface/40">
-                  <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                    {renderSubnetCell(s.netuid)}
-                  </td>
-                  <td className="px-3 py-2 font-mono text-[11px]">{s.kind ?? "—"}</td>
-                  <td className="px-3 py-2 font-medium text-ink-strong">
-                    <span className="truncate">{s.name ?? "—"}</span>
-                  </td>
-                  <td className="px-3 py-2 text-[12px]">
-                    {s.url ? (
-                      <ExternalLink
-                        href={s.url}
-                        authRequired={s.auth_required}
-                        publicSafe={s.public_safe ?? true}
-                      >
-                        {s.url}
-                      </ExternalLink>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-[12px]">{renderProviderCell(s)}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <CurationChip level={s.curation_level} />
-                      <ReviewChip state={s.review?.state} />
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
-                    <SparkLegend
-                      metric="Surface verification"
-                      source="/api/v1/surfaces"
-                      windowLabel={windowLabel}
-                      updatedAt={s.last_verified_at ?? undefined}
-                      staleness="Re-verified on every registry build; unverified rows have never been probed."
-                    >
-                      <TimeAgo at={s.last_verified_at} fallback="never verified" />
-                    </SparkLegend>
-                  </td>
+    <div id="surfaces-list" className="relative">
+      <QueryProgress active={isFetching && !isFetchingNextPage} position="sticky" />
+      <ListShell
+        filters={filters}
+        isEmpty={rows.length === 0}
+        isStale={isFetching && !isFetchingNextPage}
+        empty={emptyNode}
+        stickyHeader={false}
+        cards={view === "grid" ? undefined : rows.map(cardFor)}
+        table={
+          view === "grid" ? (
+            gridBody
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface/50">
+                <tr>
+                  <th
+                    className="px-3 py-2"
+                    aria-sort={ariaSort(search.sort === "netuid", search.order)}
+                  >
+                    <SortHeader
+                      label="Netuid"
+                      field="netuid"
+                      active={search.sort === "netuid"}
+                      order={search.order}
+                      onSort={onSort}
+                    />
+                  </th>
+                  <th
+                    className="px-3 py-2"
+                    aria-sort={ariaSort(search.sort === "kind", search.order)}
+                  >
+                    <SortHeader
+                      label="Kind"
+                      field="kind"
+                      active={search.sort === "kind"}
+                      order={search.order}
+                      onSort={onSort}
+                    />
+                  </th>
+                  <th
+                    className="px-3 py-2"
+                    aria-sort={ariaSort(search.sort === "name", search.order)}
+                  >
+                    <SortHeader
+                      label="Name"
+                      field="name"
+                      active={search.sort === "name"}
+                      order={search.order}
+                      onSort={onSort}
+                    />
+                  </th>
+                  <th className="px-3 py-2">URL</th>
+                  <th className="px-3 py-2">Provider</th>
+                  <th className="px-3 py-2">Curation</th>
+                  <th
+                    className="px-3 py-2 text-right"
+                    aria-sort={ariaSort(search.sort === "last_verified_at", search.order)}
+                  >
+                    <SortHeader
+                      label="Last verified"
+                      field="last_verified_at"
+                      active={search.sort === "last_verified_at"}
+                      order={search.order}
+                      onSort={onSort}
+                      align="right"
+                    />
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )
-      }
-      footer={
-        <LoadMore
-          shown={rows.length}
-          total={total}
-          hasMore={!!hasNextPage}
-          isLoading={isFetchingNextPage}
-          onLoadMore={() => fetchNextPage()}
-          error={isFetchNextPageError ? (error as Error) : null}
-          cursorInvalid={cursorInvalid}
-        />
-      }
-    />
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((s) => (
+                  <tr key={s.id} className="mg-row-accent hover:bg-surface/40">
+                    <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
+                      {renderSubnetCell(s.netuid)}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px]">{s.kind ?? "—"}</td>
+                    <td className="px-3 py-2 font-medium text-ink-strong">
+                      <span className="truncate">{s.name ?? "—"}</span>
+                    </td>
+                    <td className="px-3 py-2 text-[12px]">
+                      {s.url ? (
+                        <ExternalLink
+                          href={s.url}
+                          authRequired={s.auth_required}
+                          publicSafe={s.public_safe ?? true}
+                        >
+                          {s.url}
+                        </ExternalLink>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-[12px]">{renderProviderCell(s)}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <CurationChip level={s.curation_level} />
+                        <ReviewChip state={s.review?.state} />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
+                      <SparkLegend
+                        metric="Surface verification"
+                        source="/api/v1/surfaces"
+                        windowLabel={windowLabel}
+                        updatedAt={s.last_verified_at ?? undefined}
+                        staleness="Re-verified on every registry build; unverified rows have never been probed."
+                      >
+                        <TimeAgo at={s.last_verified_at} fallback="never verified" />
+                      </SparkLegend>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        }
+        footer={
+          <LoadMore
+            shown={rows.length}
+            total={total}
+            hasMore={!!hasNextPage}
+            isLoading={isFetchingNextPage}
+            onLoadMore={() => fetchNextPage()}
+            error={isFetchNextPageError ? (error as Error) : null}
+            cursorInvalid={cursorInvalid}
+          />
+        }
+      />
+    </div>
   );
 }

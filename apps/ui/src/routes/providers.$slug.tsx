@@ -1,34 +1,37 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useMemo } from "react";
+import { useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import {
-  EmptyState,
-  PageHeading,
-  Skeleton,
-  StaleBanner,
-  RECOVERY,
-} from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { EmptyState, PageHeading, StaleBanner, RECOVERY } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
-  EntityHero,
   BrandIcon,
   PrimaryLinksRail,
   CopyableCode,
   SectionAnchor,
   ShareButton,
 } from "@jsonbored/ui-kit";
-import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
+import {
+  AsyncPanel,
+  Breadcrumbs,
+  PageMasthead,
+  RoutePending,
+  TabStrip,
+} from "@/components/metagraphed/primitives";
 import { EndpointsGlance } from "@/components/metagraphed/endpoints-glance";
 import { EndpointList } from "@/components/metagraphed/endpoint-list";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
-import { providerQuery, providerEndpointsQuery, subnetsQuery } from "@/lib/metagraphed/queries";
-import { API_BASE } from "@/lib/metagraphed/config";
+import {
+  providerQuery,
+  providerEndpointsQuery,
+  subnetsQuery,
+  metagraphedQueryKey,
+} from "@/lib/metagraphed/queries";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shouldShowProviderSlugSubtitle } from "@/lib/metagraphed/provider-hero-fields";
 import type { Endpoint, Subnet } from "@/lib/metagraphed/types";
 
+type ProviderTab = "overview" | "endpoints" | "subnets" | "evidence";
 type SearchParams = { tab?: string };
 
 export const Route = createFileRoute("/providers/$slug")({
@@ -63,6 +66,7 @@ export const Route = createFileRoute("/providers/$slug")({
       ],
     };
   },
+  pendingComponent: () => <RoutePending panels={3} />,
   component: ProviderDetail,
   notFoundComponent: () => (
     <AppShell>
@@ -79,26 +83,28 @@ export const Route = createFileRoute("/providers/$slug")({
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "endpoints", label: "Endpoints" },
-  { id: "subnets", label: "Subnets served" },
-  { id: "api", label: "API" },
+  { id: "subnets", label: "Subnets" },
+  { id: "evidence", label: "Evidence" },
 ] as const;
 
 const SECTION_TO_TAB: Record<string, string> = {
   "endpoints-glance": "overview",
   endpoints: "endpoints",
   "subnets-served": "subnets",
-  api: "api",
+  evidence: "evidence",
 };
 
 function ProviderDetail() {
   const { slug } = Route.useParams();
   return (
     <AppShell>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <ProviderShell slug={slug} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        height="md"
+        context="provider"
+        retryQueryKeys={[metagraphedQueryKey("provider", slug)]}
+      >
+        <ProviderShell slug={slug} />
+      </AsyncPanel>
     </AppShell>
   );
 }
@@ -106,40 +112,39 @@ function ProviderDetail() {
 function ProviderShell({ slug }: { slug: string }) {
   const { data: p, meta } = useSuspenseQuery(providerQuery(slug)).data;
   const summary = p?.endpoint_summary;
-  const tab = useActiveTab("overview");
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const tab = (
+    TABS.some((item) => item.id === search.tab) ? search.tab : "overview"
+  ) as ProviderTab;
   useHashScroll(tab, SECTION_TO_TAB);
   const stale = meta?.stale || isStaleFreshness(meta?.generated_at);
+  const setTab = (next: ProviderTab) =>
+    navigate({
+      search: { tab: next === "overview" ? undefined : next },
+      replace: true,
+      resetScroll: false,
+    });
 
   return (
     <>
-      <EntityHero
-        icon={
-          <BrandIcon
-            url={p?.website ?? p?.homepage}
-            iconUrl={p?.icon_url}
-            repoUrl={p?.repo}
-            providerSlug={slug}
-            name={p?.name ?? slug}
-            fallback={slug}
-            size={48}
-          />
-        }
-        eyebrow={
-          <span>
-            Provider
-            {p?.kind ? <> · {p.kind}</> : null}
-            {p?.authority ? <> · {p.authority}</> : null}
-          </span>
-        }
+      <Breadcrumbs
+        crumbs={[
+          { to: "/", label: "Home" },
+          { to: "/providers", label: "Providers" },
+          { to: `/providers/${slug}`, label: p?.name ?? slug },
+        ]}
+        className="mb-2"
+      />
+
+      <PageMasthead
+        eyebrow={["Provider", p?.kind, p?.authority].filter(Boolean).join(" · ")}
         title={p?.name ?? slug}
-        subtitle={shouldShowProviderSlugSubtitle(p?.name, slug) ? <>· {slug}</> : null}
-        description={p?.notes}
-        links={
-          // #5481: Share sits in this single connected bar with the link
-          // icons (not EntityHero's separate `actions` slot, which renders
-          // on its own row below) -- matching SegmentedToggle/ViewModeToggle's
-          // one-shared-border-and-divider look rather than separately spaced,
-          // individually-boxed icon buttons.
+        description={
+          p?.notes ?? "Public Bittensor infrastructure, endpoints, and supporting evidence."
+        }
+        live={(summary?.by_status?.ok ?? 0) > 0}
+        actions={
           <div className="inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden">
             <PrimaryLinksRail
               bare
@@ -150,41 +155,46 @@ function ProviderShell({ slug }: { slug: string }) {
             <ShareButton connected />
           </div>
         }
-        stats={[
-          { label: "Endpoints", value: formatNumber(summary?.endpoint_count) },
-          { label: "Monitored", value: formatNumber(summary?.monitored_count) },
-          { label: "OK", value: formatNumber(summary?.by_status?.ok) },
-          { label: "Pool-eligible", value: formatNumber(summary?.pool_eligible_count) },
-        ]}
-        banner={
-          stale ? (
-            <StaleBanner
-              generatedAt={meta?.generated_at}
-              refreshQueryKeys={[
-                providerQuery(slug).queryKey,
-                providerEndpointsQuery(slug).queryKey,
-              ]}
-            />
-          ) : null
-        }
       />
+      {shouldShowProviderSlugSubtitle(p?.name, slug) ? (
+        <div className="-mt-2 mb-3 font-mono text-[11px] text-ink-muted">{slug}</div>
+      ) : null}
 
-      <ProfileTabs
-        tabs={TABS.map((t) =>
-          t.id === "endpoints" ? { ...t, count: summary?.endpoint_count } : t,
+      <div className="mg-kpi-strip">
+        <ProviderPulseTile label="Endpoints" value={formatNumber(summary?.endpoint_count)} />
+        <ProviderPulseTile label="Monitored" value={formatNumber(summary?.monitored_count)} />
+        <ProviderPulseTile label="Healthy" value={formatNumber(summary?.by_status?.ok)} tone="ok" />
+        <ProviderPulseTile
+          label="Pool eligible"
+          value={formatNumber(summary?.pool_eligible_count)}
+        />
+      </div>
+      {stale ? (
+        <StaleBanner
+          generatedAt={meta?.generated_at}
+          refreshQueryKeys={[providerQuery(slug).queryKey, providerEndpointsQuery(slug).queryKey]}
+        />
+      ) : null}
+
+      <TabStrip
+        items={TABS.map((item) =>
+          item.id === "endpoints" ? { ...item, meta: summary?.endpoint_count } : item,
         )}
-        defaultTab="overview"
+        value={tab}
+        onChange={setTab}
+        ariaLabel="Provider profile sections"
+        className="mt-4 overflow-x-auto"
       />
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
+        <div className="min-w-0 space-y-6">
           {tab === "overview" ? <OverviewPanel slug={slug} /> : null}
           {tab === "endpoints" ? <EndpointsPanel slug={slug} /> : null}
           {tab === "subnets" ? <SubnetsServedPanel slug={slug} /> : null}
-          {tab === "api" ? <ApiPanel slug={slug} /> : null}
+          {tab === "evidence" ? <EvidencePanel slug={slug} provider={p} /> : null}
         </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-32 self-start">
+        <aside className="space-y-3 border-t border-border pt-4 lg:sticky lg:top-32 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 self-start">
           {summary?.by_kind ? <BreakdownCard title="By kind" data={summary.by_kind} /> : null}
           {summary?.by_status ? <BreakdownCard title="By status" data={summary.by_status} /> : null}
           {summary?.by_layer ? <BreakdownCard title="By layer" data={summary.by_layer} /> : null}
@@ -198,6 +208,23 @@ function ProviderShell({ slug }: { slug: string }) {
   );
 }
 
+function ProviderPulseTile({ label, value, tone }: { label: string; value: string; tone?: "ok" }) {
+  return (
+    <div>
+      <div className="mg-label">{label}</div>
+      <div
+        className={
+          tone === "ok"
+            ? "mt-1 font-mono text-xl text-health-ok"
+            : "mt-1 font-mono text-xl text-ink-strong"
+        }
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function OverviewPanel({ slug }: { slug: string }) {
   return (
     <>
@@ -207,11 +234,13 @@ function OverviewPanel({ slug }: { slug: string }) {
         subtitle="Root RPC/WSS, SSE/data streams, and open incidents — one tap to expand."
         info="Compact operational summary across this provider's endpoints."
       >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-            <EndpointsGlanceLoader slug={slug} />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          height="md"
+          context="endpoints"
+          retryQueryKeys={[metagraphedQueryKey("provider-endpoints", slug)]}
+        >
+          <EndpointsGlanceLoader slug={slug} />
+        </AsyncPanel>
       </SectionAnchor>
 
       <SectionAnchor
@@ -220,11 +249,16 @@ function OverviewPanel({ slug }: { slug: string }) {
         subtitle="Active netuids where this provider operates endpoints."
         info="Grouped by netuid — click any to open the subnet profile."
       >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-            <SubnetsServedGrid slug={slug} compact />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          height="sm"
+          context="subnets served"
+          retryQueryKeys={[
+            metagraphedQueryKey("provider-endpoints", slug),
+            metagraphedQueryKey("subnets"),
+          ]}
+        >
+          <SubnetsServedGrid slug={slug} compact />
+        </AsyncPanel>
       </SectionAnchor>
     </>
   );
@@ -238,11 +272,13 @@ function EndpointsPanel({ slug }: { slug: string }) {
       subtitle="Probe-derived health, latency, and freshness."
       info="Each endpoint is probed periodically. Health reflects the most recent probe."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-          <EndpointsTableLoader slug={slug} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        height="lg"
+        context="endpoints"
+        retryQueryKeys={[metagraphedQueryKey("provider-endpoints", slug)]}
+      >
+        <EndpointsTableLoader slug={slug} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -254,11 +290,16 @@ function SubnetsServedPanel({ slug }: { slug: string }) {
       title="Subnets served"
       subtitle="Active netuids where this provider operates endpoints."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <SubnetsServedGrid slug={slug} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        height="md"
+        context="subnets served"
+        retryQueryKeys={[
+          metagraphedQueryKey("provider-endpoints", slug),
+          metagraphedQueryKey("subnets"),
+        ]}
+      >
+        <SubnetsServedGrid slug={slug} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -403,29 +444,40 @@ function BreakdownCard({ title, data }: { title: string; data: Record<string, nu
   );
 }
 
-function ApiPanel({ slug }: { slug: string }) {
-  const rows: Array<{ label: string; path: string }> = [
-    { label: "provider", path: `/api/v1/providers/${slug}` },
-    { label: "endpoints", path: `/api/v1/providers/${slug}/endpoints` },
-    { label: "artifact", path: `/metagraph/providers/${slug}.json` },
-  ];
+function EvidencePanel({
+  slug,
+  provider,
+}: {
+  slug: string;
+  provider: { website?: string; homepage?: string; docs?: string; repo?: string };
+}) {
   return (
     <SectionAnchor
-      id="api"
-      title="API & artifacts"
-      subtitle="Canonical URLs powering this profile."
-      info="Copy any of these URLs to fetch the raw JSON directly."
+      id="evidence"
+      title="Evidence & source links"
+      subtitle="Public references and canonical data behind this profile."
+      info="Provider links are source context; canonical API and artifact URLs expose the normalized registry record."
     >
       <div className="space-y-2">
-        {rows.map((r) => (
+        {(provider.website ?? provider.homepage) ? (
           <CopyableCode
-            key={r.label}
-            label={r.label}
-            value={`${API_BASE}${r.path}`}
+            label="website"
+            value={provider.website ?? provider.homepage ?? ""}
             truncate={false}
             className="w-full"
           />
-        ))}
+        ) : null}
+        {provider.docs ? (
+          <CopyableCode label="docs" value={provider.docs} truncate={false} className="w-full" />
+        ) : null}
+        {provider.repo ? (
+          <CopyableCode
+            label="repository"
+            value={provider.repo}
+            truncate={false}
+            className="w-full"
+          />
+        ) : null}
       </div>
     </SectionAnchor>
   );
