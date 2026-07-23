@@ -38,6 +38,7 @@
 import * as Sentry from "@sentry/cloudflare";
 import {
   isUsageTelemetryConfigured,
+  recordMcpAnalyticsEvent,
   recordUsageEvent,
 } from "./usage-telemetry.ts";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
@@ -16255,7 +16256,42 @@ async function callTool(params, ctx) {
       ? { errorCode: result?.structuredContent?.error?.code }
       : {}),
   });
+  // metagraphed#7737: PostHog-native $mcp_tool_call alongside the coarse
+  // usage_event. Arguments and structured response are handed over RAW --
+  // recordMcpAnalyticsEvent owns the recursive credential redaction and size
+  // cap, so there is exactly one scrubbing pipeline to audit rather than one
+  // per call site.
+  scheduleMcpAnalyticsEvent(ctx, {
+    type: "tool_call",
+    toolName: typeof params?.name === "string" ? params.name : undefined,
+    ok: result.isError !== true,
+    durationMs: Date.now() - startedAt,
+    parameters: params?.arguments,
+    response: result?.structuredContent,
+    ...(result.isError
+      ? { errorCode: result?.structuredContent?.error?.code }
+      : {}),
+  });
   return result;
+}
+
+/**
+ * Hand a PostHog-native $mcp_* analytics event to the recorder without ever
+ * blocking or failing the request path (metagraphed#7737). Mirrors
+ * scheduleToolUsageEvent, including the injectable-recorder seam for tests.
+ *
+ * @param {object} ctx
+ * @param {object} event
+ */
+function scheduleMcpAnalyticsEvent(ctx, event) {
+  try {
+    if (!isUsageTelemetryConfigured(ctx?.env)) return;
+    const record = ctx?.recordMcpAnalyticsEvent ?? recordMcpAnalyticsEvent;
+    const pending = Promise.resolve(record(ctx.env, event)).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
 }
 
 /**
@@ -16381,6 +16417,13 @@ async function dispatchMessage(message, ctx) {
           // Registry backlink (sibling of serverInfo, never inside it).
           _meta: MCP_REGISTRY_META,
         };
+        // metagraphed#7737: $mcp_initialize with the (redacted, capped)
+        // handshake params -- client name/version is what the analytics
+        // family exists to segment on.
+        scheduleMcpAnalyticsEvent(ctx, {
+          type: "initialize",
+          parameters: params,
+        });
         return isNotification ? null : rpcResult(id, result);
       }
       case "ping":
@@ -16474,6 +16517,7 @@ function buildContext(request, env, deps) {
     // keeps working. Used solely to drain usage telemetry (#6031).
     executionCtx: deps.executionCtx,
     recordUsageEvent: deps.recordUsageEvent,
+    recordMcpAnalyticsEvent: deps.recordMcpAnalyticsEvent,
   };
 }
 

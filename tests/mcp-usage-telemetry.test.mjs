@@ -84,8 +84,9 @@ describe("MCP tool-dispatch usage telemetry", () => {
       "mcpTool",
       "ok",
     ]);
-    // Drained through waitUntil rather than awaited in the tool path.
-    assert.equal(executionCtx.scheduled.length, 1);
+    // Drained through waitUntil rather than awaited in the tool path -- one
+    // usage_event plus one $mcp_tool_call (metagraphed#7737).
+    assert.equal(executionCtx.scheduled.length, 2);
   });
 
   test("records an unknown tool as a failure", async () => {
@@ -183,11 +184,13 @@ describe("MCP tool-dispatch usage telemetry", () => {
       await Promise.all(executionCtx.scheduled);
 
       assert.equal(payload.result.isError, false);
-      assert.equal(posted.length, 1);
-      assert.equal(posted[0].body.event, "usage_event");
-      assert.equal(posted[0].body.properties.mcp_tool, TOOL);
-      assert.equal(posted[0].body.properties.ok, true);
-      assert.equal("error_code" in posted[0].body.properties, false);
+      // usage_event plus its $mcp_tool_call sibling (metagraphed#7737).
+      assert.equal(posted.length, 2);
+      const usage = posted.find((c) => c.body.event === "usage_event");
+      assert.ok(usage);
+      assert.equal(usage.body.properties.mcp_tool, TOOL);
+      assert.equal(usage.body.properties.ok, true);
+      assert.equal("error_code" in usage.body.properties, false);
     } finally {
       globalThis.fetch = original;
     }
@@ -210,9 +213,12 @@ describe("MCP tool-dispatch usage telemetry", () => {
       await Promise.all(executionCtx.scheduled);
 
       assert.equal(payload.result.isError, true);
-      assert.equal(posted.length, 1);
-      assert.equal(posted[0].body.properties.ok, false);
-      assert.equal(posted[0].body.properties.error_code, "invalid_params");
+      // usage_event plus its $mcp_tool_call sibling (metagraphed#7737).
+      assert.equal(posted.length, 2);
+      const usage = posted.find((c) => c.body.event === "usage_event");
+      assert.ok(usage);
+      assert.equal(usage.body.properties.ok, false);
+      assert.equal(usage.body.properties.error_code, "invalid_params");
     } finally {
       globalThis.fetch = original;
     }
@@ -271,5 +277,112 @@ describe("MCP tool-dispatch usage telemetry", () => {
         `telemetry mode changed the result: ${mode}`,
       );
     }
+  });
+});
+
+// metagraphed#7737: the PostHog-native $mcp_* analytics family, recorded
+// through its own injectable seam. The recorder receives RAW parameters and
+// response -- redaction/capping is recordMcpAnalyticsEvent's job (unit-tested
+// in usage-telemetry.test.mjs); what matters here is that dispatch hands the
+// analytics pipeline exactly one complete event per lifecycle point.
+describe("PostHog-native MCP analytics ($mcp_*)", () => {
+  function analyticsRecorder() {
+    const events = [];
+    return {
+      events,
+      recordMcpAnalyticsEvent(env, event) {
+        events.push({ env, event });
+        return true;
+      },
+    };
+  }
+
+  test("initialize records one $mcp_initialize event with the handshake params", async () => {
+    const spy = analyticsRecorder();
+    const payload = await callMcp(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          clientInfo: { name: "vitest", version: "1.0.0" },
+        },
+      },
+      CONFIGURED_ENV,
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordMcpAnalyticsEvent: spy.recordMcpAnalyticsEvent,
+      },
+    );
+
+    assert.ok(payload.result.serverInfo);
+    assert.equal(spy.events.length, 1);
+    const { env, event } = spy.events[0];
+    assert.equal(env, CONFIGURED_ENV);
+    assert.equal(event.type, "initialize");
+    assert.equal(event.parameters.clientInfo.name, "vitest");
+  });
+
+  test("a tool call records one $mcp_tool_call with raw args and response for central redaction", async () => {
+    const spy = analyticsRecorder();
+    const executionCtx = fakeExecutionCtx();
+    const payload = await callMcp(toolCall(TOOL), CONFIGURED_ENV, {
+      executionCtx,
+      recordMcpAnalyticsEvent: spy.recordMcpAnalyticsEvent,
+    });
+
+    assert.equal(payload.result.isError, false);
+    assert.equal(spy.events.length, 1);
+    const { event } = spy.events[0];
+    assert.equal(event.type, "tool_call");
+    assert.equal(event.toolName, TOOL);
+    assert.equal(event.ok, true);
+    assert.ok(event.durationMs >= 0);
+    assert.deepEqual(event.parameters, {});
+    assert.deepEqual(event.response, payload.result.structuredContent);
+    assert.equal("errorCode" in event, false);
+  });
+
+  test("a failing tool call carries the same fixed literal errorCode", async () => {
+    const spy = analyticsRecorder();
+    const payload = await callMcp(
+      toolCall("get_subnet", { netuid: "not-a-netuid" }),
+      CONFIGURED_ENV,
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordMcpAnalyticsEvent: spy.recordMcpAnalyticsEvent,
+      },
+    );
+
+    assert.equal(payload.result.isError, true);
+    assert.equal(spy.events.length, 1);
+    assert.equal(spy.events[0].event.ok, false);
+    assert.equal(spy.events[0].event.errorCode, "invalid_params");
+  });
+
+  test("does no analytics work when the deployment is unconfigured", async () => {
+    const spy = analyticsRecorder();
+    await callMcp(
+      toolCall(TOOL),
+      {},
+      {
+        executionCtx: fakeExecutionCtx(),
+        recordMcpAnalyticsEvent: spy.recordMcpAnalyticsEvent,
+      },
+    );
+    assert.deepEqual(spy.events, []);
+  });
+
+  test("an analytics recorder failure changes nothing about the tool result", async () => {
+    const baseline = await callMcp(toolCall(TOOL), {});
+    const payload = await callMcp(toolCall(TOOL), CONFIGURED_ENV, {
+      executionCtx: fakeExecutionCtx(),
+      recordUsageEvent: recorder().recordUsageEvent,
+      recordMcpAnalyticsEvent: () => {
+        throw new Error("analytics exploded");
+      },
+    });
+    assert.deepEqual(payload, baseline);
   });
 });

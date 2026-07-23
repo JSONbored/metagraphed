@@ -1485,5 +1485,73 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       assert.equal(recorded[0].ok, false);
       assert.equal(recorded[0].errorCode, "invalid_params");
     });
+
+    // metagraphed#7737: the $mcp_tool_call analytics capture DOES carry
+    // parameters -- so this exercises the real redaction pipeline end-to-end
+    // (no injected analytics recorder), asserting on the exact bytes handed
+    // to the capture transport: the credential value must be gone and the
+    // non-sensitive fields must survive.
+    test("the $mcp_tool_call capture redacts the credential end-to-end", async () => {
+      const of = globalThis.fetch;
+      const captured = [];
+      globalThis.fetch = async (url, init) => {
+        if (String(url).includes("posthog.com")) {
+          captured.push(JSON.parse(init.body));
+          return { ok: true };
+        }
+        // The surface's own outbound call.
+        return new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      };
+      const scheduled = [];
+      try {
+        const response = await handleMcpRequest(
+          new Request("https://metagraph.sh/mcp", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "tools/call",
+              params: {
+                name: "call_subnet_surface",
+                arguments: {
+                  surface_id: "x:api:6",
+                  credential: "Bearer super-secret-abc123",
+                },
+              },
+            }),
+          }),
+          { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+          {
+            ...deps,
+            executionCtx: { waitUntil: (p) => scheduled.push(p) },
+            // Keep the coarse usage_event on its injected spy so the only
+            // real capture on the wire is the $mcp_tool_call under test.
+            recordUsageEvent: async () => true,
+          },
+        );
+        await response.json();
+        await Promise.all(scheduled);
+      } finally {
+        globalThis.fetch = of;
+      }
+
+      assert.equal(captured.length, 1);
+      const capture = captured[0];
+      assert.equal(capture.event, "$mcp_tool_call");
+      assert.equal(capture.properties.$mcp_tool_name, "call_subnet_surface");
+      const serialized = JSON.stringify(capture);
+      assert.ok(!serialized.includes("super-secret-abc123"));
+      assert.ok(
+        capture.properties.$mcp_parameters.includes(
+          '"credential":"[REDACTED]"',
+        ),
+      );
+      // Redaction is surgical: the non-sensitive argument survives.
+      assert.ok(capture.properties.$mcp_parameters.includes("x:api:6"));
+    });
   });
 });

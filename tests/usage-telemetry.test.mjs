@@ -1,13 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  MCP_INITIALIZE_EVENT_NAME,
+  MCP_TOOL_CALL_EVENT_NAME,
   POSTHOG_CAPTURE_PATH,
   POSTHOG_HOST_ENV,
   POSTHOG_PROJECT_TOKEN_ENV,
+  REDACTED_PLACEHOLDER,
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
   isUsageTelemetryConfigured,
+  mcpAnalyticsProperties,
+  recordMcpAnalyticsEvent,
   recordUsageEvent,
+  redactAnalyticsValue,
+  redactedCaptureJson,
   resolvePostHogHost,
   usageEventProperties,
 } from "../src/usage-telemetry.ts";
@@ -303,5 +310,184 @@ describe("recordUsageEvent — configured", () => {
       },
     );
     assert.equal(calls[0].body.distinct_id, "test-distinct");
+  });
+});
+
+// --- PostHog native MCP analytics (#7737) -----------------------------------
+
+describe("redactAnalyticsValue", () => {
+  test("redacts every sensitive key name recursively, keeps safe siblings", () => {
+    const redacted = redactAnalyticsValue({
+      surface_id: "x:api:6",
+      credential: "Bearer super-secret-abc123",
+      owner_token: "ot_secret",
+      nested: {
+        Authorization: "Basic xyz",
+        session_cookie: "sid=1",
+        password: "hunter2",
+        refresh_token: "rt_1",
+        client_secret: "cs_1",
+        api_key: "ak_1",
+        private_key: "pk_1",
+        timeout_ms: 500,
+      },
+    });
+    assert.deepEqual(redacted, {
+      surface_id: "x:api:6",
+      credential: REDACTED_PLACEHOLDER,
+      owner_token: REDACTED_PLACEHOLDER,
+      nested: {
+        Authorization: REDACTED_PLACEHOLDER,
+        session_cookie: REDACTED_PLACEHOLDER,
+        password: REDACTED_PLACEHOLDER,
+        refresh_token: REDACTED_PLACEHOLDER,
+        client_secret: REDACTED_PLACEHOLDER,
+        api_key: REDACTED_PLACEHOLDER,
+        private_key: REDACTED_PLACEHOLDER,
+        timeout_ms: 500,
+      },
+    });
+  });
+
+  test("walks arrays element-wise and passes primitives through", () => {
+    assert.deepEqual(
+      redactAnalyticsValue([{ token: "t" }, "plain", 7, null, true]),
+      [{ token: REDACTED_PLACEHOLDER }, "plain", 7, null, true],
+    );
+    assert.equal(redactAnalyticsValue("just a string"), "just a string");
+    assert.equal(redactAnalyticsValue(null), null);
+  });
+
+  test("fails closed past the depth cap instead of passing values through", () => {
+    let deep = { credential: "leaf-secret" };
+    for (let i = 0; i < 12; i += 1) deep = { wrap: deep };
+    const serialized = JSON.stringify(redactAnalyticsValue(deep));
+    assert.ok(!serialized.includes("leaf-secret"));
+    assert.ok(serialized.includes(REDACTED_PLACEHOLDER));
+  });
+});
+
+describe("redactedCaptureJson", () => {
+  test("serializes the redacted value and caps it at 4096 chars", () => {
+    const json = redactedCaptureJson({ credential: "s", note: "n" });
+    assert.equal(json, `{"credential":"${REDACTED_PLACEHOLDER}","note":"n"}`);
+    const capped = redactedCaptureJson({ big: "x".repeat(10_000) });
+    assert.equal(capped.length, 4096);
+  });
+
+  test("returns undefined for undefined and for unserializable values", () => {
+    assert.equal(redactedCaptureJson(undefined), undefined);
+    // JSON.stringify throws on BigInt -- the capture is dropped, not thrown.
+    assert.equal(redactedCaptureJson({ big: 1n }), undefined);
+  });
+
+  test("a cyclic value is terminated by the depth cap, never thrown on", () => {
+    const cyclic = { credential: "loop-secret" };
+    cyclic.self = cyclic;
+    const json = redactedCaptureJson(cyclic);
+    assert.equal(typeof json, "string");
+    assert.ok(!json.includes("loop-secret"));
+    assert.ok(json.includes(REDACTED_PLACEHOLDER));
+  });
+});
+
+describe("mcpAnalyticsProperties", () => {
+  test("builds a fully-scrubbed $mcp_tool_call property set", () => {
+    const properties = mcpAnalyticsProperties({
+      type: "tool_call",
+      toolName: " call_subnet_surface ",
+      ok: false,
+      durationMs: 12.6,
+      errorCode: "invalid_params",
+      parameters: { surface_id: "x:api:6", credential: "sekrit" },
+      response: { error: { code: "invalid_params" } },
+    });
+    assert.deepEqual(properties, {
+      $mcp_tool_name: "call_subnet_surface",
+      ok: false,
+      duration_ms: 13,
+      error_code: "invalid_params",
+      $mcp_parameters: `{"surface_id":"x:api:6","credential":"${REDACTED_PLACEHOLDER}"}`,
+      $mcp_response: '{"error":{"code":"invalid_params"}}',
+    });
+  });
+
+  test("returns null for a malformed or unknown-type event", () => {
+    assert.equal(mcpAnalyticsProperties(null), null);
+    assert.equal(mcpAnalyticsProperties({}), null);
+    assert.equal(mcpAnalyticsProperties({ type: "no_such_type" }), null);
+  });
+
+  test("omits everything optional that is absent", () => {
+    assert.deepEqual(mcpAnalyticsProperties({ type: "initialize" }), {});
+  });
+});
+
+describe("recordMcpAnalyticsEvent", () => {
+  test("posts one $mcp_tool_call capture with redacted parameters", async () => {
+    const calls = [];
+    const recorded = await recordMcpAnalyticsEvent(
+      { [POSTHOG_PROJECT_TOKEN_ENV]: " phc_token " },
+      {
+        type: "tool_call",
+        toolName: "call_subnet_surface",
+        ok: true,
+        durationMs: 42,
+        parameters: { credential: "Bearer super-secret-abc123" },
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+
+    assert.equal(recorded, true);
+    assert.equal(calls.length, 1);
+    assert.equal(
+      calls[0].url,
+      `https://us.i.posthog.com${POSTHOG_CAPTURE_PATH}`,
+    );
+    assert.equal(calls[0].body.event, MCP_TOOL_CALL_EVENT_NAME);
+    assert.equal(calls[0].body.api_key, "phc_token");
+    assert.equal(calls[0].body.distinct_id, USAGE_EVENT_DISTINCT_ID);
+    const serialized = JSON.stringify(calls[0].body);
+    assert.ok(!serialized.includes("super-secret-abc123"));
+    assert.ok(
+      calls[0].body.properties.$mcp_parameters.includes(REDACTED_PLACEHOLDER),
+    );
+  });
+
+  test("names the initialize capture $mcp_initialize", async () => {
+    const calls = [];
+    await recordMcpAnalyticsEvent(
+      { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
+      { type: "initialize", parameters: { clientInfo: { name: "vitest" } } },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.event, MCP_INITIALIZE_EVENT_NAME);
+  });
+
+  test("is a safe no-op when unconfigured, and swallows transport failures", async () => {
+    let calls = 0;
+    assert.equal(
+      await recordMcpAnalyticsEvent(
+        {},
+        { type: "initialize" },
+        {
+          fetch: fakeFetch({
+            onCall: () => {
+              calls += 1;
+            },
+          }),
+        },
+      ),
+      false,
+    );
+    assert.equal(calls, 0);
+    assert.equal(
+      await recordMcpAnalyticsEvent(
+        { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" },
+        { type: "initialize" },
+        { fetch: fakeFetch({ throws: true }) },
+      ),
+      false,
+    );
   });
 });
