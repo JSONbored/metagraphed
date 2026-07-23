@@ -17,7 +17,7 @@ const trackedFiles = execFileSync("git", ["ls-files"], {
   .split("\n")
   .filter(Boolean);
 
-const findings = [];
+const findings: string[] = [];
 
 for (const file of trackedFiles) {
   for (const pattern of pathPatterns) {
@@ -35,10 +35,12 @@ for (const file of trackedFiles) {
   try {
     stat = await fs.lstat(absolutePath);
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       continue;
     }
-    console.warn(`Skipping unreadable path ${file}: ${error.message}`);
+    console.warn(
+      `Skipping unreadable path ${file}: ${(error as Error).message}`,
+    );
     continue;
   }
 
@@ -47,10 +49,12 @@ for (const file of trackedFiles) {
     try {
       linkTarget = await fs.readlink(absolutePath);
     } catch (error) {
-      if (error.code === "ENOENT") {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         continue;
       }
-      console.warn(`Skipping unreadable symlink ${file}: ${error.message}`);
+      console.warn(
+        `Skipping unreadable symlink ${file}: ${(error as Error).message}`,
+      );
       continue;
     }
 
@@ -70,7 +74,7 @@ for (const file of trackedFiles) {
     continue;
   }
 
-  let lines;
+  let lines: ReturnType<typeof createInterface> | undefined;
   try {
     lines = createInterface({
       input: createReadStream(absolutePath, { encoding: "utf8" }),
@@ -91,11 +95,13 @@ for (const file of trackedFiles) {
       }
     }
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       lines?.close();
       continue;
     }
-    console.warn(`Skipping unreadable file ${file}: ${error.message}`);
+    console.warn(
+      `Skipping unreadable file ${file}: ${(error as Error).message}`,
+    );
     lines?.close();
     continue;
   }

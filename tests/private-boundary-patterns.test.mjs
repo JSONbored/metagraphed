@@ -1,5 +1,5 @@
 // Unit tests for the leak-detection patterns behind the private-boundary CI
-// gate (#7236) — extracted from scripts/validate-private-boundary.mjs into
+// gate (#7236) — extracted from scripts/validate-private-boundary.ts into
 // scripts/private-boundary-patterns.ts so the regexes, the allowlist carve-out,
 // and the binary/generated skip are verified directly rather than exercised for
 // the first time against whatever a future PR happens to contain. Each content
@@ -156,7 +156,7 @@ describe("isAllowedContentMention (allowlist carve-out)", () => {
     );
     assert.equal(
       isAllowedContentMention(
-        "scripts/validate-private-boundary.mjs",
+        "scripts/validate-private-boundary.ts",
         "provider-specific private model route",
       ),
       true,
@@ -170,7 +170,7 @@ describe("isAllowedContentMention (allowlist carve-out)", () => {
     );
     assert.equal(
       isAllowedContentMention(
-        "scripts/validate-private-boundary.mjs",
+        "scripts/validate-private-boundary.ts",
         "real Discord webhook URL",
       ),
       false,

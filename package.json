@@ -72,7 +72,7 @@
     "validate:adapters": "node scripts/validate-adapters.mjs",
     "assert:probe-health": "node scripts/assert-published-probe-health.ts",
     "validate:intake": "node scripts/validate-intake.mjs",
-    "validate:private-boundary": "node scripts/validate-private-boundary.mjs",
+    "validate:private-boundary": "node scripts/validate-private-boundary.ts",
     "validate:workflows": "node scripts/validate-workflows.mjs",
     "validate:migrations": "node scripts/validate-migrations.ts",
     "migrate": "node scripts/apply-migrations.ts",

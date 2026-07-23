@@ -1,8 +1,8 @@
 // The leak-detection patterns, allowlist carve-out, and binary/generated skip
-// behind scripts/validate-private-boundary.mjs's CI gate (#7236). Extracted into
+// behind scripts/validate-private-boundary.ts's CI gate (#7236). Extracted into
 // this side-effect-free module so the regexes and the allowlist decision are
 // unit-testable directly, without running the validator's full git-ls-files
-// walk (which executes at its import time). validate-private-boundary.mjs
+// walk (which executes at its import time). validate-private-boundary.ts
 // imports these — the walk logic stays there; only the patterns/decision live
 // here, so the gate's behavior is unchanged.
 
@@ -36,7 +36,7 @@ export const allowedContentMentions = new Set([
   // These three define/exercise the boundary patterns themselves, so they
   // self-match on the non-Discord patterns (a real Discord webhook URL is still
   // never exempted, per isAllowedContentMention).
-  "scripts/validate-private-boundary.mjs",
+  "scripts/validate-private-boundary.ts",
   "scripts/private-boundary-patterns.ts",
   "tests/private-boundary-patterns.test.mjs",
 ]);
