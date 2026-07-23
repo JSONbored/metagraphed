@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
+import type { Row } from "./row-type.ts";
 
 const NO_AUTH_SURFACE = {
   surface_id: "x:api:1",
@@ -355,7 +356,7 @@ const CATALOG = {
 };
 
 const deps = {
-  readArtifact: async (_e, path) => {
+  readArtifact: async (_e: Row, path: string) => {
     if (path === "/metagraph/operational-surfaces.json") {
       return { ok: true, data: CATALOG };
     }
@@ -366,7 +367,7 @@ const deps = {
   },
 };
 
-async function callTool(args, fetchImpl) {
+async function callTool(args: Row, fetchImpl?: typeof fetch) {
   const of = globalThis.fetch;
   globalThis.fetch =
     fetchImpl ??
@@ -390,7 +391,7 @@ async function callTool(args, fetchImpl) {
       {},
       deps,
     );
-    return (await response.json()).result;
+    return ((await response.json()) as Row).result;
   } finally {
     globalThis.fetch = of;
   }
@@ -442,7 +443,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
   });
 
   test("merges query params onto the curated URL", async () => {
-    let requestedUrl;
+    let requestedUrl: string | undefined;
     const result = await callTool(
       { surface_id: "x:api:1", query: { limit: 3 } },
       async (url) => {
@@ -454,7 +455,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       },
     );
     assert.equal(result.isError, false);
-    assert.equal(new URL(requestedUrl).searchParams.get("limit"), "3");
+    assert.equal(new URL(requestedUrl!).searchParams.get("limit"), "3");
   });
 
   test("an upstream fetch failure maps to upstream_unavailable", async () => {
@@ -527,7 +528,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
   // #7674 (MCP execute Phase 2b): path/method schema-validated execution.
   describe("path/method execution (#7674)", () => {
     test("valid path/method fetches the surface's origin + path, not its curated url", async () => {
-      let requestedUrl;
+      let requestedUrl: string | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:4",
@@ -665,7 +666,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     });
 
     test("without path/method, a schema-bearing surface still uses its own curated url (Phase 1 unchanged)", async () => {
-      let requestedUrl;
+      let requestedUrl: string | undefined;
       const result = await callTool({ surface_id: "x:api:4" }, async (url) => {
         requestedUrl = String(url);
         return new Response("{}", {
@@ -681,7 +682,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
   // #7675 (MCP execute Phase 2c): POST/PUT + request bodies.
   describe("POST/PUT request bodies (#7675)", () => {
     test("a JSON object body is serialized and sent with application/json", async () => {
-      let sentBody;
+      let sentBody: BodyInit | null | undefined;
       let sentContentType;
       const result = await callTool(
         {
@@ -691,8 +692,10 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           body: { name: "ada" },
         },
         async (url, init) => {
-          sentBody = init.body;
-          sentContentType = init.headers["content-type"];
+          sentBody = init!.body;
+          sentContentType = (init!.headers as Record<string, string>)[
+            "content-type"
+          ];
           return new Response(JSON.stringify({ id: 1 }), {
             status: 201,
             headers: { "content-type": "application/json" },
@@ -705,7 +708,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     });
 
     test("a pre-serialized JSON string body is sent as-is", async () => {
-      let sentBody;
+      let sentBody: BodyInit | null | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:4",
@@ -714,7 +717,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           body: '{"name":"ada"}',
         },
         async (url, init) => {
-          sentBody = init.body;
+          sentBody = init!.body;
           return new Response("{}", {
             status: 201,
             headers: { "content-type": "application/json" },
@@ -726,7 +729,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     });
 
     test("a non-JSON declared media type requires a string body and is sent as-is", async () => {
-      let sentBody;
+      let sentBody: BodyInit | null | undefined;
       let sentContentType;
       const result = await callTool(
         {
@@ -736,8 +739,10 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           body: "plain note text",
         },
         async (url, init) => {
-          sentBody = init.body;
-          sentContentType = init.headers["content-type"];
+          sentBody = init!.body;
+          sentContentType = (init!.headers as Record<string, string>)[
+            "content-type"
+          ];
           return new Response("ok", { status: 200 });
         },
       );
@@ -799,7 +804,9 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           content_type: "text/csv",
         },
         async (url, init) => {
-          sentContentType = init.headers["content-type"];
+          sentContentType = (init!.headers as Record<string, string>)[
+            "content-type"
+          ];
           return new Response("ok", { status: 200 });
         },
       );
@@ -866,7 +873,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       const result = await callTool(
         { surface_id: "x:api:6", credential: "Bearer abc123" },
         async (url, init) => {
-          sentHeader = init.headers.Authorization;
+          sentHeader = (init!.headers as Record<string, string>).Authorization;
           return new Response("{}", {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -878,7 +885,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     });
 
     test("an api-key surface with a credential injects it as the documented query param", async () => {
-      let requestedUrl;
+      let requestedUrl: string | undefined;
       const result = await callTool(
         { surface_id: "x:api:7", credential: "abc123" },
         async (url) => {
@@ -890,7 +897,10 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
         },
       );
       assert.equal(result.isError, false);
-      assert.equal(new URL(requestedUrl).searchParams.get("api_key"), "abc123");
+      assert.equal(
+        new URL(requestedUrl!).searchParams.get("api_key"),
+        "abc123",
+      );
     });
 
     test("a basic-auth surface with a credential injects it as the documented header (#7722)", async () => {
@@ -901,7 +911,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           credential: "Basic dXNlcjpwYXNz",
         },
         async (url, init) => {
-          sentHeader = init.headers.Authorization;
+          sentHeader = (init!.headers as Record<string, string>).Authorization;
           return new Response("{}", {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -993,7 +1003,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
 
     test("a credentialed call to a schema-bearing surface still works with path/method (Phase 2 + 3 compose)", async () => {
       let sentHeader;
-      let requestedUrl;
+      let requestedUrl: string | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:6",
@@ -1003,7 +1013,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
         },
         async (url, init) => {
           requestedUrl = String(url);
-          sentHeader = init.headers.Authorization;
+          sentHeader = (init!.headers as Record<string, string>).Authorization;
           return new Response("{}", {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -1027,7 +1037,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
   // requirement) end-to-end.
   describe("signature-scheme credential passthrough (#7701)", () => {
     test("location:header injects every named header", async () => {
-      let sentHeaders;
+      let sentHeaders: Record<string, string> | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:12",
@@ -1038,7 +1048,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           },
         },
         async (url, init) => {
-          sentHeaders = init.headers;
+          sentHeaders = init!.headers as Record<string, string>;
           return new Response("{}", {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -1046,13 +1056,13 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
         },
       );
       assert.equal(result.isError, false);
-      assert.equal(sentHeaders["X-Hotkey"], "5F...");
-      assert.equal(sentHeaders["X-Timestamp"], "1700000000");
-      assert.equal(sentHeaders["X-Signature"], "0xabc");
+      assert.equal(sentHeaders!["X-Hotkey"], "5F...");
+      assert.equal(sentHeaders!["X-Timestamp"], "1700000000");
+      assert.equal(sentHeaders!["X-Signature"], "0xabc");
     });
 
     test("location:query merges every named param", async () => {
-      let requestedUrl;
+      let requestedUrl: string | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:13",
@@ -1068,24 +1078,24 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       );
       assert.equal(result.isError, false);
       assert.equal(
-        new URL(requestedUrl).searchParams.get("validator_hotkey"),
+        new URL(requestedUrl!).searchParams.get("validator_hotkey"),
         "5F...",
       );
       assert.equal(
-        new URL(requestedUrl).searchParams.get("signature"),
+        new URL(requestedUrl!).searchParams.get("signature"),
         "0xabc",
       );
     });
 
     test("location:cookie joins every named cookie", async () => {
-      let sentHeaders;
+      let sentHeaders: Record<string, string> | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:14",
           credential: { session: "abc", csrf: "def" },
         },
         async (url, init) => {
-          sentHeaders = init.headers;
+          sentHeaders = init!.headers as Record<string, string>;
           return new Response("{}", {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -1093,11 +1103,11 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
         },
       );
       assert.equal(result.isError, false);
-      assert.equal(sentHeaders.cookie, "session=abc; csrf=def");
+      assert.equal(sentHeaders!.cookie, "session=abc; csrf=def");
     });
 
     test("location:body merges every named field into an explicitly-supplied JSON body", async () => {
-      let sentBody;
+      let sentBody: BodyInit | null | undefined;
       let sentContentType;
       const result = await callTool(
         {
@@ -1112,8 +1122,10 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           },
         },
         async (url, init) => {
-          sentBody = init.body;
-          sentContentType = init.headers["content-type"];
+          sentBody = init!.body;
+          sentContentType = (init!.headers as Record<string, string>)[
+            "content-type"
+          ];
           return new Response(JSON.stringify({ id: 1 }), {
             status: 201,
             headers: { "content-type": "application/json" },
@@ -1121,7 +1133,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
         },
       );
       assert.equal(result.isError, false);
-      assert.deepEqual(JSON.parse(sentBody), {
+      assert.deepEqual(JSON.parse(sentBody as string), {
         name: "ada",
         identity: "5F...",
         timestamp: "1700000000",
@@ -1131,7 +1143,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     });
 
     test("location:body with no separately-supplied body still defaults content-type to application/json", async () => {
-      let sentBody;
+      let sentBody: BodyInit | null | undefined;
       let sentContentType;
       const result = await callTool(
         {
@@ -1145,13 +1157,15 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           },
         },
         async (url, init) => {
-          sentBody = init.body;
-          sentContentType = init.headers["content-type"];
+          sentBody = init!.body;
+          sentContentType = (init!.headers as Record<string, string>)[
+            "content-type"
+          ];
           return new Response("pong", { status: 200 });
         },
       );
       assert.equal(result.isError, false);
-      assert.deepEqual(JSON.parse(sentBody), {
+      assert.deepEqual(JSON.parse(sentBody as string), {
         identity: "5F...",
         timestamp: "1700000000",
         signature: "0xabc",
@@ -1274,7 +1288,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     });
 
     test("location:body with auth.body_envelope nests the credential under its own key", async () => {
-      let sentBody;
+      let sentBody: BodyInit | null | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:19",
@@ -1288,7 +1302,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           },
         },
         async (url, init) => {
-          sentBody = init.body;
+          sentBody = init!.body;
           return new Response(JSON.stringify({ id: 1 }), {
             status: 201,
             headers: { "content-type": "application/json" },
@@ -1296,14 +1310,14 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
         },
       );
       assert.equal(result.isError, false);
-      assert.deepEqual(JSON.parse(sentBody), {
+      assert.deepEqual(JSON.parse(sentBody as string), {
         payload: { name: "ada" },
         sig: { signer_ss58: "5F...", nonce: "abc123", signature: "0xabc" },
       });
     });
 
     test("location:body with auth.body_envelope defaults the payload key to {} with no separately-supplied body", async () => {
-      let sentBody;
+      let sentBody: BodyInit | null | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:19",
@@ -1316,19 +1330,19 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           },
         },
         async (url, init) => {
-          sentBody = init.body;
+          sentBody = init!.body;
           return new Response("pong", { status: 200 });
         },
       );
       assert.equal(result.isError, false);
-      assert.deepEqual(JSON.parse(sentBody), {
+      assert.deepEqual(JSON.parse(sentBody as string), {
         payload: {},
         sig: { signer_ss58: "5F...", nonce: "abc123", signature: "0xabc" },
       });
     });
 
     test("a malformed auth.body_envelope (missing credential_key) falls back to a flat top-level merge", async () => {
-      let sentBody;
+      let sentBody: BodyInit | null | undefined;
       const result = await callTool(
         {
           surface_id: "x:api:20",
@@ -1341,12 +1355,12 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           },
         },
         async (url, init) => {
-          sentBody = init.body;
+          sentBody = init!.body;
           return new Response("pong", { status: 200 });
         },
       );
       assert.equal(result.isError, false);
-      assert.deepEqual(JSON.parse(sentBody), {
+      assert.deepEqual(JSON.parse(sentBody as string), {
         identity: "5F...",
         timestamp: "1700000000",
         signature: "0xabc",
@@ -1393,7 +1407,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           status: 200,
           headers: { "content-type": "application/json" },
         });
-      const recorded = [];
+      const recorded: Row[] = [];
       try {
         const response = await handleMcpRequest(
           new Request("https://metagraph.sh/mcp", {
@@ -1415,8 +1429,8 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
           { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
           {
             ...deps,
-            executionCtx: { waitUntil: (p) => p },
-            recordUsageEvent: async (_env, event) => {
+            executionCtx: { waitUntil: (p: Row) => p },
+            recordUsageEvent: async (_env: Row, event: Row) => {
               recorded.push(event);
               return true;
             },
@@ -1443,7 +1457,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
     // caller input) even on the failure path this describe block didn't
     // originally cover.
     test("a failing credentialed call_subnet_surface still never leaks the credential, and records the toolError code", async () => {
-      const recorded = [];
+      const recorded: Row[] = [];
       const response = await handleMcpRequest(
         new Request("https://metagraph.sh/mcp", {
           method: "POST",
@@ -1464,14 +1478,14 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
         { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
         {
           ...deps,
-          executionCtx: { waitUntil: (p) => p },
-          recordUsageEvent: async (_env, event) => {
+          executionCtx: { waitUntil: (p: Row) => p },
+          recordUsageEvent: async (_env: Row, event: Row) => {
             recorded.push(event);
             return true;
           },
         },
       );
-      const payload = await response.json();
+      const payload = (await response.json()) as Row;
       assert.equal(payload.result.isError, true);
       assert.equal(recorded.length, 1);
       const serialized = JSON.stringify(recorded[0]);

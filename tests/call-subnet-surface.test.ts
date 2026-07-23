@@ -4,12 +4,17 @@ import {
   callSubnetSurface,
   matchSchemaOperation,
   MAX_RESPONSE_BYTES,
+  type CallSubnetSurfaceOptions,
 } from "../src/call-subnet-surface.ts";
+import type { Row } from "./row-type.ts";
 
-const SAFE = () => false;
-const UNSAFE = () => true;
+const SAFE = async () => false;
+const UNSAFE = async () => true;
 
-function jsonResponse(body, { status = 200, headers = {} } = {}) {
+function jsonResponse(
+  body: unknown,
+  { status = 200, headers = {} }: { status?: number; headers?: Row } = {},
+) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json", ...headers },
@@ -19,14 +24,21 @@ function jsonResponse(body, { status = 200, headers = {} } = {}) {
 describe("callSubnetSurface", () => {
   test("throws when isUnsafeUrl is not provided", async () => {
     await assert.rejects(
-      () => callSubnetSurface({ url: "https://example.com" }, {}),
+      () =>
+        callSubnetSurface(
+          { url: "https://example.com" },
+          {} as CallSubnetSurfaceOptions,
+        ),
       /requires options.isUnsafeUrl/,
     );
   });
 
   test("throws the same way when options itself is omitted entirely", async () => {
     await assert.rejects(
-      () => callSubnetSurface({ url: "https://example.com" }),
+      () =>
+        (callSubnetSurface as unknown as (surface: Row) => Promise<Row>)({
+          url: "https://example.com",
+        }),
       /requires options.isUnsafeUrl/,
     );
   });
@@ -55,7 +67,7 @@ describe("callSubnetSurface", () => {
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
           assert.equal(url, "https://example.com/api");
-          assert.equal(init.method, "GET");
+          assert.equal(init!.method, "GET");
           return jsonResponse({ hello: "world" });
         },
       },
@@ -73,7 +85,7 @@ describe("callSubnetSurface", () => {
       {
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.method, "GET");
+          assert.equal(init!.method, "GET");
           return jsonResponse({});
         },
       },
@@ -87,7 +99,7 @@ describe("callSubnetSurface", () => {
       {
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.method, "HEAD");
+          assert.equal(init!.method, "HEAD");
           return new Response(null, {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -106,7 +118,7 @@ describe("callSubnetSurface", () => {
         isUnsafeUrl: SAFE,
         query: { limit: 5, active: true, name: "x" },
         fetchImpl: async (url) => {
-          const parsed = new URL(url);
+          const parsed = new URL(url as string);
           assert.equal(parsed.searchParams.get("limit"), "5");
           assert.equal(parsed.searchParams.get("active"), "true");
           assert.equal(parsed.searchParams.get("name"), "x");
@@ -144,8 +156,8 @@ describe("callSubnetSurface", () => {
             status: 200,
             headers: { "content-type": "image/png" },
           });
-          const originalCancel = res.body.cancel.bind(res.body);
-          res.body.cancel = async (...args) => {
+          const originalCancel = res.body!.cancel.bind(res.body);
+          res.body!.cancel = async (...args: unknown[]) => {
             bodyCancelled = true;
             return originalCancel(...args);
           };
@@ -173,7 +185,7 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, true);
     assert.equal(result.truncated, true);
-    assert.equal(result.body.length, MAX_RESPONSE_BYTES);
+    assert.equal((result.body as string).length, MAX_RESPONSE_BYTES);
   });
 
   test("reports a parse_error but still returns the raw text on malformed JSON", async () => {
@@ -250,7 +262,7 @@ describe("callSubnetSurface", () => {
         isUnsafeUrl: SAFE,
         fetchImpl: async (url) => {
           calls += 1;
-          const n = Number(url.split("/").pop());
+          const n = Number((url as string).split("/").pop());
           if (n < 8) {
             return new Response(null, {
               status: 302,
@@ -290,7 +302,7 @@ describe("callSubnetSurface", () => {
         isUnsafeUrl: SAFE,
         fetchImpl: (url, init) =>
           new Promise((_resolve, reject) => {
-            init.signal.addEventListener("abort", () => {
+            init!.signal!.addEventListener("abort", () => {
               const err = new Error("This operation was aborted");
               err.name = "AbortError";
               reject(err);
@@ -322,9 +334,13 @@ describe("callSubnetSurface", () => {
       { url: "https://example.com/api" },
       {
         isUnsafeUrl: SAFE,
-        query: { keep: "yes", drop1: null, drop2: undefined },
+        query: {
+          keep: "yes",
+          drop1: null,
+          drop2: undefined,
+        } as unknown as Record<string, string | number | boolean>,
         fetchImpl: async (url) => {
-          const parsed = new URL(url);
+          const parsed = new URL(url as string);
           assert.equal(parsed.searchParams.get("keep"), "yes");
           assert.equal(parsed.searchParams.has("drop1"), false);
           assert.equal(parsed.searchParams.has("drop2"), false);
@@ -352,7 +368,7 @@ describe("callSubnetSurface", () => {
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
           assert.equal(url, "https://example.com/v1/users/123");
-          assert.equal(init.method, "GET");
+          assert.equal(init!.method, "GET");
           return jsonResponse({ id: 123 });
         },
       },
@@ -369,7 +385,7 @@ describe("callSubnetSurface", () => {
         method: "HEAD",
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.method, "HEAD");
+          assert.equal(init!.method, "HEAD");
           return new Response(null, {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -389,7 +405,7 @@ describe("callSubnetSurface", () => {
         query: { q: "x" },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url) => {
-          const parsed = new URL(url);
+          const parsed = new URL(url as string);
           assert.equal(parsed.pathname, "/search");
           assert.equal(parsed.searchParams.get("q"), "x");
           return jsonResponse({});
@@ -480,9 +496,12 @@ describe("callSubnetSurface", () => {
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
           assert.equal(url, "https://example.com/users");
-          assert.equal(init.method, "POST");
-          assert.equal(init.body, JSON.stringify({ name: "x" }));
-          assert.equal(init.headers["content-type"], "application/json");
+          assert.equal(init!.method, "POST");
+          assert.equal(init!.body, JSON.stringify({ name: "x" }));
+          assert.equal(
+            (init!.headers as Record<string, string>)["content-type"],
+            "application/json",
+          );
           return jsonResponse({ id: 1 });
         },
       },
@@ -500,8 +519,8 @@ describe("callSubnetSurface", () => {
         contentType: "application/json",
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.method, "PUT");
-          assert.equal(init.body, JSON.stringify({ name: "y" }));
+          assert.equal(init!.method, "PUT");
+          assert.equal(init!.body, JSON.stringify({ name: "y" }));
           return jsonResponse({ id: 1 });
         },
       },
@@ -517,8 +536,11 @@ describe("callSubnetSurface", () => {
         method: "POST",
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.body, undefined);
-          assert.equal(init.headers["content-type"], undefined);
+          assert.equal(init!.body, undefined);
+          assert.equal(
+            (init!.headers as Record<string, string>)["content-type"],
+            undefined,
+          );
           return jsonResponse({});
         },
       },
@@ -536,9 +558,12 @@ describe("callSubnetSurface", () => {
         contentType: "application/json",
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.method, "GET");
-          assert.equal(init.body, undefined);
-          assert.equal(init.headers["content-type"], undefined);
+          assert.equal(init!.method, "GET");
+          assert.equal(init!.body, undefined);
+          assert.equal(
+            (init!.headers as Record<string, string>)["content-type"],
+            undefined,
+          );
           return jsonResponse({});
         },
       },
@@ -559,14 +584,14 @@ describe("callSubnetSurface", () => {
         fetchImpl: async (url, init) => {
           calls += 1;
           if (url === "https://example.com/users") {
-            assert.equal(init.body, "raw-body");
+            assert.equal(init!.body, "raw-body");
             return new Response(null, {
               status: 307,
               headers: { location: "https://example.com/users/v2" },
             });
           }
-          assert.equal(init.method, "POST");
-          assert.equal(init.body, "raw-body");
+          assert.equal(init!.method, "POST");
+          assert.equal(init!.body, "raw-body");
           return jsonResponse({ ok: true });
         },
       },
@@ -586,7 +611,10 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.headers.Authorization, "Bearer abc123");
+          assert.equal(
+            (init!.headers as Record<string, string>).Authorization,
+            "Bearer abc123",
+          );
           return jsonResponse({});
         },
       },
@@ -606,7 +634,7 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url) => {
-          const parsed = new URL(url);
+          const parsed = new URL(url as string);
           assert.equal(parsed.searchParams.get("limit"), "5");
           assert.equal(parsed.searchParams.get("api_key"), "abc123");
           return jsonResponse({});
@@ -627,7 +655,7 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url) => {
-          const parsed = new URL(url);
+          const parsed = new URL(url as string);
           assert.equal(parsed.searchParams.get("api_key"), "abc123");
           return jsonResponse({});
         },
@@ -662,7 +690,7 @@ describe("callSubnetSurface", () => {
         credential: { location: "query", name: "api_key", value: "abc123" },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url) => {
-          if (new URL(url).pathname === "/api") {
+          if (new URL(url as string).pathname === "/api") {
             return new Response(null, {
               status: 302,
               // The surface's own redirect happens to echo the query string
@@ -689,7 +717,7 @@ describe("callSubnetSurface", () => {
         credential: { location: "query", name: "api_key", value: "abc123" },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url) => {
-          if (new URL(url).pathname === "/api") {
+          if (new URL(url as string).pathname === "/api") {
             // The surface's redirect drops the query string entirely --
             // nothing named "api_key" ends up in the target.
             return new Response(null, {
@@ -712,7 +740,7 @@ describe("callSubnetSurface", () => {
         credential: { location: "query", name: "api_key", value: "abc123" },
         isUnsafeUrl: async (url) => url.includes("internal"),
         fetchImpl: async (url) => {
-          if (new URL(url).pathname === "/api") {
+          if (new URL(url as string).pathname === "/api") {
             return new Response(null, {
               status: 302,
               headers: {
@@ -726,9 +754,9 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, false);
     assert.equal(result.private_redirect_blocked, true);
-    assert.ok(!result.redirect_target.includes("abc123"));
+    assert.ok(!result.redirect_target!.includes("abc123"));
     assert.equal(
-      new URL(result.redirect_target).searchParams.get("api_key"),
+      new URL(result.redirect_target!).searchParams.get("api_key"),
       "<redacted>",
     );
   });
@@ -822,9 +850,18 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.headers["X-Hotkey"], "5F...");
-          assert.equal(init.headers["X-Timestamp"], "1700000000");
-          assert.equal(init.headers["X-Signature"], "0xabc");
+          assert.equal(
+            (init!.headers as Record<string, string>)["X-Hotkey"],
+            "5F...",
+          );
+          assert.equal(
+            (init!.headers as Record<string, string>)["X-Timestamp"],
+            "1700000000",
+          );
+          assert.equal(
+            (init!.headers as Record<string, string>)["X-Signature"],
+            "0xabc",
+          );
           return jsonResponse({});
         },
       },
@@ -842,7 +879,7 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url) => {
-          const parsed = new URL(url);
+          const parsed = new URL(url as string);
           assert.equal(parsed.searchParams.get("validator_hotkey"), "5F...");
           assert.equal(parsed.searchParams.get("signature"), "0xabc");
           assert.equal(parsed.searchParams.get("nonce"), "1");
@@ -863,7 +900,10 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.headers.cookie, "session=abc; csrf=def");
+          assert.equal(
+            (init!.headers as Record<string, string>).cookie,
+            "session=abc; csrf=def",
+          );
           return jsonResponse({});
         },
       },
@@ -889,7 +929,7 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.deepEqual(JSON.parse(init.body), {
+          assert.deepEqual(JSON.parse(init!.body as string), {
             payload: "x",
             identity: "5F...",
             timestamp: "1700000000",
@@ -915,7 +955,7 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.deepEqual(JSON.parse(init.body), {
+          assert.deepEqual(JSON.parse(init!.body as string), {
             identity: "5F...",
             signature: "0xabc",
           });
@@ -948,7 +988,7 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.deepEqual(JSON.parse(init.body), {
+          assert.deepEqual(JSON.parse(init!.body as string), {
             payload: { api_key: "sk-..." },
             sig: {
               signer_ss58: "5F...",
@@ -977,7 +1017,7 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.deepEqual(JSON.parse(init.body), {
+          assert.deepEqual(JSON.parse(init!.body as string), {
             payload: {},
             sig: { signer_ss58: "5F...", nonce: "abc", signature: "0xabc" },
           });
@@ -1099,14 +1139,23 @@ describe("callSubnetSurface", () => {
         fetchImpl: async (url, init) => {
           calls += 1;
           if (url === "https://example.com/api") {
-            assert.equal(init.headers["X-Hotkey"], "5F...");
+            assert.equal(
+              (init!.headers as Record<string, string>)["X-Hotkey"],
+              "5F...",
+            );
             return new Response(null, {
               status: 307,
               headers: { location: "https://other.example/api" },
             });
           }
-          assert.equal(init.headers["X-Hotkey"], undefined);
-          assert.equal(init.headers["X-Signature"], undefined);
+          assert.equal(
+            (init!.headers as Record<string, string>)["X-Hotkey"],
+            undefined,
+          );
+          assert.equal(
+            (init!.headers as Record<string, string>)["X-Signature"],
+            undefined,
+          );
           return jsonResponse({});
         },
       },
@@ -1126,7 +1175,10 @@ describe("callSubnetSurface", () => {
         },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.headers.cookie, "session=abc123");
+          assert.equal(
+            (init!.headers as Record<string, string>).cookie,
+            "session=abc123",
+          );
           return jsonResponse({});
         },
       },
@@ -1142,12 +1194,19 @@ describe("callSubnetSurface", () => {
     const result = await callSubnetSurface(
       { url: "https://example.com/api" },
       {
-        credential: { location: "nonsense", name: "x", value: "abc123" },
+        credential: {
+          location: "nonsense" as "body",
+          name: "x",
+          value: "abc123",
+        },
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
           assert.equal(url, "https://example.com/api");
-          assert.equal(init.headers.x, undefined);
-          assert.equal(init.headers.cookie, undefined);
+          assert.equal((init!.headers as Record<string, string>).x, undefined);
+          assert.equal(
+            (init!.headers as Record<string, string>).cookie,
+            undefined,
+          );
           return jsonResponse({});
         },
       },
@@ -1163,7 +1222,10 @@ describe("callSubnetSurface", () => {
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
           assert.equal(url, "https://example.com/api");
-          assert.equal(init.headers["X-Api-Key"], "k");
+          assert.equal(
+            (init!.headers as Record<string, string>)["X-Api-Key"],
+            "k",
+          );
           return jsonResponse({});
         },
       },
@@ -1185,13 +1247,19 @@ describe("callSubnetSurface", () => {
         fetchImpl: async (url, init) => {
           calls += 1;
           if (url === "https://example.com/api") {
-            assert.equal(init.headers.Authorization, "Bearer abc123");
+            assert.equal(
+              (init!.headers as Record<string, string>).Authorization,
+              "Bearer abc123",
+            );
             return new Response(null, {
               status: 307,
               headers: { location: "https://example.com/api/v2" },
             });
           }
-          assert.equal(init.headers.Authorization, "Bearer abc123");
+          assert.equal(
+            (init!.headers as Record<string, string>).Authorization,
+            "Bearer abc123",
+          );
           return jsonResponse({});
         },
       },
@@ -1214,14 +1282,20 @@ describe("callSubnetSurface", () => {
         fetchImpl: async (url, init) => {
           calls += 1;
           if (url === "https://example.com/api") {
-            assert.equal(init.headers.Authorization, "Bearer abc123");
+            assert.equal(
+              (init!.headers as Record<string, string>).Authorization,
+              "Bearer abc123",
+            );
             return new Response(null, {
               status: 307,
               headers: { location: "https://other.example/api" },
             });
           }
           assert.equal(url, "https://other.example/api");
-          assert.equal(init.headers.Authorization, undefined);
+          assert.equal(
+            (init!.headers as Record<string, string>).Authorization,
+            undefined,
+          );
           return jsonResponse({});
         },
       },
@@ -1250,14 +1324,20 @@ describe("callSubnetSurface", () => {
             });
           }
           if (url === "https://other.example/api") {
-            assert.equal(init.headers.Authorization, undefined);
+            assert.equal(
+              (init!.headers as Record<string, string>).Authorization,
+              undefined,
+            );
             return new Response(null, {
               status: 307,
               headers: { location: "https://example.com/api/v2" },
             });
           }
           assert.equal(url, "https://example.com/api/v2");
-          assert.equal(init.headers.Authorization, undefined);
+          assert.equal(
+            (init!.headers as Record<string, string>).Authorization,
+            undefined,
+          );
           return jsonResponse({});
         },
       },
@@ -1276,7 +1356,7 @@ describe("callSubnetSurface", () => {
         method: "GET",
         isUnsafeUrl: SAFE,
         fetchImpl: async (url, init) => {
-          assert.equal(init.method, "HEAD");
+          assert.equal(init!.method, "HEAD");
           return new Response(null, {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -1314,7 +1394,7 @@ describe("callSubnetSurface", () => {
     );
     assert.equal(result.ok, true);
     assert.equal(result.truncated, true);
-    assert.equal(result.body.length, MAX_RESPONSE_BYTES);
+    assert.equal((result.body as string).length, MAX_RESPONSE_BYTES);
   });
 });
 
@@ -1332,7 +1412,12 @@ describe("matchSchemaOperation", () => {
       /method must be a non-empty string/,
     );
     assert.throws(
-      () => matchSchemaOperation({ paths: {} }, "/users", undefined),
+      () =>
+        matchSchemaOperation(
+          { paths: {} },
+          "/users",
+          undefined as unknown as string,
+        ),
       /method must be a non-empty string/,
     );
   });

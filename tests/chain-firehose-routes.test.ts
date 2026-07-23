@@ -8,12 +8,13 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import type { AnyFn } from "./row-type.ts";
 
-function stubHub(fetchImpl) {
+function stubHub(fetchImpl: AnyFn) {
   return {
-    idFromName: (name) => `id:${name}`,
-    get: (id) => ({
-      fetch: (input, init) => fetchImpl(input, init, id),
+    idFromName: (name: string) => `id:${name}`,
+    get: (id: string) => ({
+      fetch: (input: unknown, init: unknown) => fetchImpl(input, init, id),
     }),
   };
 }
@@ -31,14 +32,16 @@ test("chain/stream: 503s when CHAIN_FIREHOSE_HUB is not bound", async () => {
 });
 
 test("chain/stream: forwards to the hub's /subscribe path, preserving the query string, on the fixed 'global' id", async () => {
-  let forwardedUrl;
+  let forwardedUrl: URL | undefined;
   let forwardedId;
   const env = {
-    CHAIN_FIREHOSE_HUB: stubHub((request, _init, id) => {
-      forwardedUrl = new URL(request.url);
-      forwardedId = id;
-      return new Response("stream", { status: 200 });
-    }),
+    CHAIN_FIREHOSE_HUB: stubHub(
+      (request: Request, _init: unknown, id: string) => {
+        forwardedUrl = new URL(request.url);
+        forwardedId = id;
+        return new Response("stream", { status: 200 });
+      },
+    ),
   };
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/stream?topics=blocks"),
@@ -47,8 +50,8 @@ test("chain/stream: forwards to the hub's /subscribe path, preserving the query 
   );
   assert.equal(res.status, 200);
   assert.equal(forwardedId, "id:global");
-  assert.equal(forwardedUrl.pathname, "/subscribe");
-  assert.equal(forwardedUrl.searchParams.get("topics"), "blocks");
+  assert.equal(forwardedUrl!.pathname, "/subscribe");
+  assert.equal(forwardedUrl!.searchParams.get("topics"), "blocks");
 });
 
 test("chain/stream: preserves the Upgrade header so a WebSocket handshake reaches the hub unchanged", async () => {
@@ -58,7 +61,7 @@ test("chain/stream: preserves the Upgrade header so a WebSocket handshake reache
   // replies 200 rather than attempting to construct a real 101.
   let receivedUpgrade;
   const env = {
-    CHAIN_FIREHOSE_HUB: stubHub((request) => {
+    CHAIN_FIREHOSE_HUB: stubHub((request: Request) => {
       receivedUpgrade = request.headers.get("upgrade");
       return new Response(null, { status: 200 });
     }),
@@ -76,8 +79,13 @@ test("chain/stream: preserves the Upgrade header so a WebSocket handshake reache
 
 // --- POST /api/v1/internal/chain-firehose-ingest --------------------------------
 
-function ingestRequest(body, { method = "POST", token } = {}) {
-  const headers = { "content-type": "application/json" };
+function ingestRequest(
+  body: BodyInit | null,
+  { method = "POST", token }: { method?: string; token?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (token !== undefined) headers["x-chain-firehose-sync-token"] = token;
   return new Request(
     "https://api.metagraph.sh/api/v1/internal/chain-firehose-ingest",
@@ -145,12 +153,14 @@ test("ingest: on valid auth, forwards the body to the hub's /ingest path on the 
   let forwardedId;
   const env = {
     CHAIN_FIREHOSE_SYNC_SECRET: "shh",
-    CHAIN_FIREHOSE_HUB: stubHub((input, init, id) => {
-      forwardedUrl = input;
-      forwardedBody = init.body;
-      forwardedId = id;
-      return new Response(JSON.stringify({ ok: true }), { status: 202 });
-    }),
+    CHAIN_FIREHOSE_HUB: stubHub(
+      (input: string, init: RequestInit, id: string) => {
+        forwardedUrl = input;
+        forwardedBody = init.body;
+        forwardedId = id;
+        return new Response(JSON.stringify({ ok: true }), { status: 202 });
+      },
+    ),
   };
   const res = await handleRequest(
     ingestRequest(JSON.stringify({ table: "blocks", block_number: 1 }), {

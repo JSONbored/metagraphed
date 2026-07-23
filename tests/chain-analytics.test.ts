@@ -8,19 +8,25 @@ import {
 } from "../src/chain-analytics.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
+
+// `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+// not a `globalThis` property -- so stubbing/restoring it for a test needs
+// this cast (matches workers/request-handlers/analytics.ts's own precedent).
+const globalWithCaches = globalThis as unknown as { caches: Row };
 
 function installMapCache() {
-  const store = new Map();
-  const putKeys = [];
+  const store = new Map<string, Response>();
+  const putKeys: string[] = [];
   let matchCalls = 0;
-  globalThis.caches = {
+  globalWithCaches.caches = {
     default: {
-      async match(request) {
+      async match(request: Request) {
         matchCalls += 1;
         const cached = store.get(request.url);
         return cached ? cached.clone() : undefined;
       },
-      async put(request, response) {
+      async put(request: Request, response: Response) {
         putKeys.push(request.url);
         store.set(request.url, response.clone());
       },
@@ -171,8 +177,8 @@ test("a day present in only one tier still appears, zero-filled", () => {
     blockRows: [{ day: "2026-06-24", block_count: 100, event_count: 200 }],
   });
   assert.equal(out.day_count, 2);
-  const d25 = out.days.find((d) => d.day === "2026-06-25");
-  const d24 = out.days.find((d) => d.day === "2026-06-24");
+  const d25 = out.days.find((d) => d.day === "2026-06-25")!;
+  const d24 = out.days.find((d) => d.day === "2026-06-24")!;
   assert.equal(d25.block_count, 0); // extrinsics-only day
   assert.equal(d25.event_count, 0);
   assert.equal(d24.extrinsic_count, 0); // blocks-only day
@@ -217,7 +223,7 @@ test("ignores junk rows (null, non-object, missing/non-string day)", () => {
       { extrinsic_count: 9 }, // no day
       { day: 20260625, extrinsic_count: 9 }, // non-string day
       { day: "2026-06-25", extrinsic_count: 1, successful_extrinsics: 1 },
-    ],
+    ] as unknown as Row[],
   });
   assert.equal(out.day_count, 1);
   assert.equal(out.days[0].day, "2026-06-25");
@@ -297,7 +303,11 @@ test("buildChainCalls is cold-stable (share null on empty window, junk dropped)"
   const out = buildChainCalls({
     window: "7d",
     total: 0,
-    rows: [null, { count: 9 }, { call_module: "X", count: 3 }],
+    rows: [
+      null,
+      { count: 9 },
+      { call_module: "X", count: 3 },
+    ] as unknown as Row[],
   });
   assert.equal(out.call_count, 1); // junk (null, no-module) dropped
   assert.equal(out.calls[0].share, null); // zero-total denominator
@@ -392,12 +402,12 @@ test("GET /api/v1/chain/calls groups by call_module with honest share via the Po
 // tryPostgresTier, and to pass the Postgres-tier body through untouched
 // (mirrors the "GET /api/v1/chain/fees forwards call_module" test below).
 test("GET /api/v1/chain/calls forwards call_module scoping to the Postgres tier for module-function groups", async () => {
-  let requestedUrl;
+  let requestedUrl: URL | undefined;
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_EXTRINSICS_SOURCE: "postgres",
     DATA_API: {
-      fetch: async (request) => {
+      fetch: async (request: Request) => {
         requestedUrl = new URL(request.url);
         return Response.json({
           schema_version: 1,
@@ -431,8 +441,11 @@ test("GET /api/v1/chain/calls forwards call_module scoping to the Postgres tier 
   assert.equal(body.data.total_extrinsics, 80);
   assert.equal(body.data.calls[0].call_function, "add_stake");
   assert.equal(body.data.calls[0].share, 0.625);
-  assert.equal(requestedUrl.searchParams.get("call_module"), "SubtensorModule");
-  assert.equal(requestedUrl.searchParams.get("group_by"), "module_function");
+  assert.equal(
+    requestedUrl!.searchParams.get("call_module"),
+    "SubtensorModule",
+  );
+  assert.equal(requestedUrl!.searchParams.get("group_by"), "module_function");
 });
 
 test("GET /api/v1/chain/calls rejects inert group_by and non-canonical limits", async () => {
@@ -640,22 +653,22 @@ test("GET /api/v1/chain/transfers never queries D1 even when mocked with real ro
 });
 
 test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
-  const originalCaches = globalThis.caches;
+  const originalCaches = globalWithCaches.caches;
   const cache = installMapCache();
-  const captured = [];
+  const captured: Row[] = [];
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_CONTROL: {
-      async get(key) {
+      async get(key: string) {
         return key === "health:meta"
           ? { last_run_at: "2026-07-02T00:00:00.000Z" }
           : null;
       },
     },
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
-          bind(...params) {
+          bind(...params: unknown[]) {
             captured.push({ sql, params });
             return {
               all: () => {
@@ -708,7 +721,7 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
       new Request(url, { method: "HEAD" }),
       env,
       {
-        waitUntil(promise) {
+        waitUntil(promise: Promise<unknown>) {
           return promise;
         },
       },
@@ -738,7 +751,7 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
       "GET should reuse the HEAD-populated body",
     );
   } finally {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   }
 });
 
@@ -767,11 +780,19 @@ test("GET /api/v1/chain/transfers rejects non-canonical limits", async () => {
   }
 });
 
-function transfersEnv({ senders = [], receivers = [], totals } = {}) {
+function transfersEnv({
+  senders = [],
+  receivers = [],
+  totals,
+}: {
+  senders?: Row[];
+  receivers?: Row[];
+  totals?: Row;
+} = {}) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -1027,11 +1048,17 @@ test("GET /api/v1/chain/transfer-pairs never queries D1 even when mocked with re
   assert.equal(d1Called, false);
 });
 
-function transferPairsEnv({ pairs = [], totals } = {}) {
+function transferPairsEnv({
+  pairs = [],
+  totals,
+}: {
+  pairs?: Row[];
+  totals?: Row;
+} = {}) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -1150,7 +1177,7 @@ test("HEAD /api/v1/chain/transfer-pairs returns headers without a body", async (
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -1284,12 +1311,12 @@ test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to D1 when DATA
 // in Postgres -- the handler's own contract is just to forward call_module
 // on the request it hands to tryPostgresTier.
 test("GET /api/v1/chain/fees forwards call_module on the Postgres-tier request", async () => {
-  let requestedUrl;
+  let requestedUrl: URL | undefined;
   const env = {
     ...createLocalArtifactEnv(),
     METAGRAPH_EXTRINSICS_SOURCE: "postgres",
     DATA_API: {
-      fetch: async (request) => {
+      fetch: async (request: Request) => {
         requestedUrl = new URL(request.url);
         return Response.json({
           schema_version: 1,
@@ -1310,7 +1337,10 @@ test("GET /api/v1/chain/fees forwards call_module on the Postgres-tier request",
     {},
   );
   assert.equal(res.status, 200);
-  assert.equal(requestedUrl.searchParams.get("call_module"), "SubtensorModule");
+  assert.equal(
+    requestedUrl!.searchParams.get("call_module"),
+    "SubtensorModule",
+  );
 });
 
 test("chain signers/fees reject an over-long call_module with 400", async () => {
@@ -1393,12 +1423,12 @@ test("buildChainFees computes per-day averages + null avg on a zero-extrinsic da
     out.daily.map((d) => d.day),
     ["2026-06-26", "2026-06-25"],
   );
-  const d25 = out.daily.find((d) => d.day === "2026-06-25");
+  const d25 = out.daily.find((d) => d.day === "2026-06-25")!;
   assert.equal(d25.avg_fee_tao, 0.01); // 1.0/100
   assert.equal(d25.median_fee_tao, 0.004);
   assert.equal(d25.avg_tip_tao, 0.005);
   assert.equal(d25.median_tip_tao, 0.001);
-  const d26 = out.daily.find((d) => d.day === "2026-06-26");
+  const d26 = out.daily.find((d) => d.day === "2026-06-26")!;
   assert.equal(d26.avg_fee_tao, null); // zero extrinsics → null, never NaN
   assert.equal(d26.median_fee_tao, null);
   assert.equal(d26.median_tip_tao, null);

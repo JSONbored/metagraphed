@@ -134,7 +134,15 @@ describe("sanitizeIdentityHistoryFields", () => {
   });
 
   test("returns non-object inputs unchanged", () => {
-    assert.equal(sanitizeIdentityHistoryFields(null), null);
-    assert.equal(sanitizeIdentityHistoryFields(undefined), undefined);
+    assert.equal(
+      sanitizeIdentityHistoryFields(null as unknown as Record<string, unknown>),
+      null,
+    );
+    assert.equal(
+      sanitizeIdentityHistoryFields(
+        undefined as unknown as Record<string, unknown>,
+      ),
+      undefined,
+    );
   });
 });

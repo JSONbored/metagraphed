@@ -18,6 +18,7 @@ import {
   coverageDepthPriorityScore,
   buildCoverageDepthArtifact,
 } from "../scripts/lib/build-readiness.ts";
+import type { Row } from "./row-type.ts";
 
 // --- test helpers -----------------------------------------------------------
 
@@ -56,19 +57,19 @@ function mockProfile(overrides = {}) {
   };
 }
 
-function mapOf(entries) {
+function mapOf<T>(entries: [number, T][] = []): Map<number, T> {
   return new Map(entries);
 }
 
 function buildCoverageDepthInput({
-  subnets = [mockSubnet()],
-  profiles = [],
-  surfaces = [],
-  services = [],
-  candidates = [],
-  readiness = [],
-  agentReadiness = [],
-  examples = [],
+  subnets = [mockSubnet()] as Row[],
+  profiles = [] as [number, Row][],
+  surfaces = [] as [number, Row[]][],
+  services = [] as [number, Row[]][],
+  candidates = [] as [number, Row[]][],
+  readiness = [] as [number, Row][],
+  agentReadiness = [] as [number, Row][],
+  examples = [] as [number, Row[]][],
 } = {}) {
   return {
     subnets,
@@ -567,10 +568,12 @@ describe("buildAgentReadiness", () => {
     assert.equal(result.status, "base-layer");
     assert.equal(result.blocker_level, "hard-blocked");
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "base-layer-only"),
+      result.blockers.some(
+        (blocker: Row) => blocker.code === "base-layer-only",
+      ),
     );
     assert.equal(
-      result.blockers.find((b) => b.code === "base-layer-only").severity,
+      result.blockers.find((b: Row) => b.code === "base-layer-only").severity,
       "hard",
     );
   });
@@ -593,10 +596,13 @@ describe("buildAgentReadiness", () => {
       callableCount: 0,
     });
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "inactive-lifecycle"),
+      result.blockers.some(
+        (blocker: Row) => blocker.code === "inactive-lifecycle",
+      ),
     );
     assert.equal(
-      result.blockers.find((b) => b.code === "inactive-lifecycle").severity,
+      result.blockers.find((b: Row) => b.code === "inactive-lifecycle")
+        .severity,
       "hard",
     );
   });
@@ -620,7 +626,7 @@ describe("buildAgentReadiness", () => {
     assert.equal(result.status, "blocked");
     assert.ok(
       result.blockers.some(
-        (blocker) => blocker.code === "missing-callable-service",
+        (blocker: Row) => blocker.code === "missing-callable-service",
       ),
     );
     assert.ok(result.missing_fields.includes("surfaces"));
@@ -645,7 +651,7 @@ describe("buildAgentReadiness", () => {
     });
     assert.ok(
       result.blockers.some(
-        (blocker) => blocker.code === "service-not-callable",
+        (blocker: Row) => blocker.code === "service-not-callable",
       ),
     );
     assert.equal(result.blocker_level, "hard-blocked");
@@ -671,7 +677,7 @@ describe("buildAgentReadiness", () => {
     assert.equal(result.blocker_level, "needs-review");
     assert.ok(
       result.blockers.some(
-        (blocker) => blocker.code === "candidate-api-needs-review",
+        (blocker: Row) => blocker.code === "candidate-api-needs-review",
       ),
     );
   });
@@ -693,7 +699,9 @@ describe("buildAgentReadiness", () => {
       callableCount: 0,
     });
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "no-candidate-api"),
+      result.blockers.some(
+        (blocker: Row) => blocker.code === "no-candidate-api",
+      ),
     );
   });
 
@@ -718,7 +726,7 @@ describe("buildAgentReadiness", () => {
       callableCount: 1,
     });
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "missing-schema"),
+      result.blockers.some((blocker: Row) => blocker.code === "missing-schema"),
     );
     assert.ok(result.missing_fields.includes("schemas"));
   });
@@ -748,7 +756,7 @@ describe("buildAgentReadiness", () => {
       callableCount: 1,
     });
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "unclear-auth"),
+      result.blockers.some((blocker: Row) => blocker.code === "unclear-auth"),
     );
   });
 
@@ -769,8 +777,10 @@ describe("buildAgentReadiness", () => {
       readiness,
       callableCount: 1,
     });
-    assert.ok(result.blockers.some((b) => b.code === "missing-docs"));
-    assert.ok(result.blockers.some((b) => b.code === "missing-source-repo"));
+    assert.ok(result.blockers.some((b: Row) => b.code === "missing-docs"));
+    assert.ok(
+      result.blockers.some((b: Row) => b.code === "missing-source-repo"),
+    );
     assert.ok(result.missing_fields.includes("docs_url"));
     assert.ok(result.missing_fields.includes("source_repo"));
   });
@@ -794,7 +804,9 @@ describe("buildAgentReadiness", () => {
       callableCount: 1,
     });
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "profile-incomplete"),
+      result.blockers.some(
+        (blocker: Row) => blocker.code === "profile-incomplete",
+      ),
     );
     assert.equal(result.blocker_level, "missing-data");
   });
@@ -855,7 +867,9 @@ describe("buildAgentReadiness", () => {
       readiness,
       callableCount: 0,
     });
-    assert.ok(fromProfile.blockers.some((b) => b.code === "base-layer-only"));
+    assert.ok(
+      fromProfile.blockers.some((b: Row) => b.code === "base-layer-only"),
+    );
     const fromSubnet = buildAgentReadiness({
       subnet: mockSubnet({ subnet_type: "root" }),
       profile: null,
@@ -863,7 +877,9 @@ describe("buildAgentReadiness", () => {
       readiness,
       callableCount: 0,
     });
-    assert.ok(fromSubnet.blockers.some((b) => b.code === "base-layer-only"));
+    assert.ok(
+      fromSubnet.blockers.some((b: Row) => b.code === "base-layer-only"),
+    );
   });
 });
 
@@ -1080,8 +1096,8 @@ describe("coverageDepthTier", () => {
 
 describe("addCoverageDepthGap", () => {
   test("deduplicates gaps by code", () => {
-    const gaps = [];
-    const seen = new Set();
+    const gaps: Row[] = [];
+    const seen = new Set<string>();
     addCoverageDepthGap(gaps, seen, {
       code: "missing-fixture",
       severity: "missing-data",
@@ -1457,7 +1473,7 @@ describe("buildCoverageDepthArtifact", () => {
       }),
     );
     assert.deepEqual(
-      artifact.rows.map((row) => row.netuid),
+      artifact.rows.map((row: Row) => row.netuid),
       [5, 12, 30],
     );
   });
@@ -1479,11 +1495,14 @@ describe("buildCoverageDepthArtifact", () => {
     assert.equal(artifact.subnet_count, artifact.rows.length);
     assert.equal(artifact.summary.queue_count, artifact.ranked_queue.length);
     assert.equal(
-      Object.values(artifact.summary.tier_counts).reduce((a, b) => a + b, 0),
+      (Object.values(artifact.summary.tier_counts) as number[]).reduce(
+        (a, b) => a + b,
+        0,
+      ),
       artifact.rows.length,
     );
     assert.equal(
-      Object.values(artifact.summary.blocker_level_counts).reduce(
+      (Object.values(artifact.summary.blocker_level_counts) as number[]).reduce(
         (a, b) => a + b,
         0,
       ),
@@ -1493,14 +1512,16 @@ describe("buildCoverageDepthArtifact", () => {
       artifact.rows.length === 0
         ? 0
         : Math.round(
-            artifact.rows.reduce((sum, row) => sum + row.score, 0) /
-              artifact.rows.length,
+            artifact.rows.reduce(
+              (sum: number, row: Row) => sum + row.score,
+              0,
+            ) / artifact.rows.length,
           );
     assert.equal(artifact.summary.average_score, avg);
   });
 
   test("ranked_queue ordering: priority desc, score asc, netuid asc", () => {
-    const makeRowSubnet = (netuid, priorityHints) => {
+    const makeRowSubnet = (netuid: number, priorityHints: Row) => {
       const service = mockService({
         schema_artifact: priorityHints.schema ? "x.json" : null,
         fixture_status: {
@@ -1603,11 +1624,11 @@ describe("buildCoverageDepthArtifact", () => {
   });
 
   test("ranked_queue respects COVERAGE_DEPTH_QUEUE_LIMIT", () => {
-    const subnets = [];
-    const profiles = [];
-    const services = [];
-    const readiness = [];
-    const agentReadiness = [];
+    const subnets: Row[] = [];
+    const profiles: [number, Row][] = [];
+    const services: [number, Row[]][] = [];
+    const readiness: [number, Row][] = [];
+    const agentReadiness: [number, Row][] = [];
     for (
       let netuid = 1;
       netuid <= COVERAGE_DEPTH_QUEUE_LIMIT + 5;
@@ -1671,7 +1692,7 @@ describe("buildCoverageDepthArtifact", () => {
         ],
       }),
     );
-    const row = subnet.rows.find((entry) => entry.netuid === 7);
+    const row = subnet.rows.find((entry: Row) => entry.netuid === 7);
     assert.ok(row.top_gap_codes.includes("missing-fixture"));
     assert.ok(subnet.summary.gap_code_counts["missing-fixture"] >= 1);
   });
@@ -1787,9 +1808,9 @@ describe("buildCoverageDepthArtifact", () => {
         ],
       }),
     );
-    const codes = artifact.rows[0].top_gaps.map((gap) => gap.code);
+    const codes = artifact.rows[0].top_gaps.map((gap: Row) => gap.code);
     assert.equal(
-      codes.filter((c) => c === "missing-callable-service").length,
+      codes.filter((c: string) => c === "missing-callable-service").length,
       1,
     );
   });

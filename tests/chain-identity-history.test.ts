@@ -7,6 +7,7 @@ import {
 } from "../src/chain-identity-history.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 // A network feed: identity changes from two subnets, newest first (the loader
 // reads block_number DESC, netuid ASC).
@@ -117,16 +118,20 @@ describe("buildChainIdentityHistory", () => {
   });
 
   test("drops rows the shared formatter rejects", () => {
-    const out = buildChainIdentityHistory([null, "nope", change()], {
-      limit: 50,
-    });
+    const out = buildChainIdentityHistory(
+      [null, "nope", change()] as unknown as Record<string, unknown>[],
+      { limit: 50 },
+    );
     assert.equal(out.count, 1);
     assert.equal(out.changes[0].subnet_name, "Alpha");
   });
 
   test("empty / non-array rows → schema-stable empty feed", () => {
     for (const rows of [[], null, undefined, "nope", 42]) {
-      const out = buildChainIdentityHistory(rows, { limit: 50 });
+      const out = buildChainIdentityHistory(
+        rows as unknown as Record<string, unknown>[],
+        { limit: 50 },
+      );
       assert.deepEqual(out, {
         schema_version: 1,
         count: 0,
@@ -244,9 +249,13 @@ describe("GET /api/v1/chain/identity-history", () => {
 });
 
 describe("chain/identity-history edge cache", () => {
-  let originalCaches;
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   // D1 fully eliminated (2026-07-16): the bespoke readIdentityHistoryCacheStamp
@@ -254,11 +263,11 @@ describe("chain/identity-history edge cache", () => {
   // on -- this route now busts on the same shared health-cron `last_run_at`
   // KV value every sibling Postgres-tier analytics route already uses,
   // mirroring chain-performance.test.mjs's own post-#4772 edge-cache tests.
-  function controlEnv(lastRunAt) {
+  function controlEnv(lastRunAt: string | null) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key !== "health:meta") return null;
           return lastRunAt ? { last_run_at: lastRunAt } : null;
         },
@@ -267,17 +276,17 @@ describe("chain/identity-history edge cache", () => {
   }
 
   function mockCacheStore() {
-    const store = new Map();
+    const store = new Map<string, Response>();
     return {
       store,
       install() {
-        globalThis.caches = {
+        globalWithCaches.caches = {
           default: {
-            async match(request) {
+            async match(request: Request) {
               const cached = store.get(request.url);
               return cached ? cached.clone() : undefined;
             },
-            async put(request, response) {
+            async put(request: Request, response: Response) {
               store.set(request.url, response.clone());
             },
           },
@@ -287,26 +296,26 @@ describe("chain/identity-history edge cache", () => {
   }
 
   test("engages the edge cache, busting on the health-cron last_run_at stamp", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCacheStore();
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/identity-history"),
       controlEnv("2026-06-18T00:00:00.000Z"),
-      { waitUntil: (promise) => promise },
+      { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
     assert.equal(cache.store.size, 1);
   });
 
   test("skips the cache entirely when the health stamp is cold", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCacheStore();
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/identity-history"),
       controlEnv(null),
-      { waitUntil: (promise) => promise },
+      { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
     assert.equal(cache.store.size, 0);

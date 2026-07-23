@@ -6,11 +6,16 @@ import {
 } from "../src/chain-axon-removals.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 const OBS = 1_700_000_000_000;
 
 // One per-subnet account_events AxonInfoRemoved aggregate row (the loader GROUPs BY netuid).
-function rrow(netuid, distinct_removers, removals) {
+function rrow(
+  netuid: number,
+  distinct_removers: number,
+  removals: number | null,
+) {
   return { netuid, distinct_removers, removals };
 }
 
@@ -39,16 +44,16 @@ describe("buildChainAxonRemovals", () => {
       data.subnets.map((s) => s.netuid),
       [1, 2, 5],
     );
-    const s1 = data.subnets.find((s) => s.netuid === 1);
+    const s1 = data.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.distinct_removers, 4);
     assert.equal(s1.removals, 40);
     assert.equal(s1.removals_per_remover, 10);
     assert.equal(
-      data.subnets.find((s) => s.netuid === 2).removals_per_remover,
+      data.subnets.find((s) => s.netuid === 2)!.removals_per_remover,
       15,
     );
     assert.equal(
-      data.subnets.find((s) => s.netuid === 5).removals_per_remover,
+      data.subnets.find((s) => s.netuid === 5)!.removals_per_remover,
       2.5,
     );
   });
@@ -69,14 +74,14 @@ describe("buildChainAxonRemovals", () => {
       networkDistinct: NETWORK,
     });
     // intensities 10, 15, 2.5 -> ascending [2.5, 10, 15].
-    assert.equal(intensity_distribution.count, 3);
-    assert.equal(intensity_distribution.min, 2.5);
-    assert.equal(intensity_distribution.p25, 2.5);
-    assert.equal(intensity_distribution.median, 10);
-    assert.equal(intensity_distribution.p75, 15);
-    assert.equal(intensity_distribution.p90, 15);
-    assert.equal(intensity_distribution.max, 15);
-    assert.equal(intensity_distribution.mean, 9.17);
+    assert.equal(intensity_distribution!.count, 3);
+    assert.equal(intensity_distribution!.min, 2.5);
+    assert.equal(intensity_distribution!.p25, 2.5);
+    assert.equal(intensity_distribution!.median, 10);
+    assert.equal(intensity_distribution!.p75, 15);
+    assert.equal(intensity_distribution!.p90, 15);
+    assert.equal(intensity_distribution!.max, 15);
+    assert.equal(intensity_distribution!.mean, 9.17);
   });
 
   test("ties on total events break by netuid ascending", () => {
@@ -98,7 +103,7 @@ describe("buildChainAxonRemovals", () => {
     });
     assert.equal(data.subnets.length, 2);
     assert.equal(data.subnet_count, 3);
-    assert.equal(data.intensity_distribution.count, 3);
+    assert.equal(data.intensity_distribution!.count, 3);
   });
 
   // #5579: limit floor is 0 (matching #2984's chain-weights fix), so limit: 0
@@ -122,7 +127,7 @@ describe("buildChainAxonRemovals", () => {
     assert.equal(big.subnets.length, 3);
     const bogus = buildChainAxonRemovals(SUBNETS, {
       window: "7d",
-      limit: "abc",
+      limit: "abc" as unknown as number,
       networkDistinct: NETWORK,
     });
     assert.equal(bogus.subnets.length, 3);
@@ -199,7 +204,7 @@ describe("buildChainAxonRemovals", () => {
 
   test("empty, non-array, or all-invalid rows yield the empty block", () => {
     for (const rows of [[], "not-an-array", [{ netuid: null }]]) {
-      const data = buildChainAxonRemovals(rows, {
+      const data = buildChainAxonRemovals(rows as unknown as Row[], {
         window: "7d",
         networkDistinct: NETWORK,
       });
@@ -213,11 +218,17 @@ describe("buildChainAxonRemovals", () => {
 });
 
 describe("GET /api/v1/chain/axon-removals", () => {
-  function axonRemovalsEnv({ networkRow, subnetRows }) {
+  function axonRemovalsEnv({
+    networkRow,
+    subnetRows,
+  }: {
+    networkRow: Row[];
+    subnetRows: Row[];
+  }) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -425,21 +436,25 @@ describe("GET /api/v1/chain/axon-removals", () => {
 });
 
 describe("chain/axon-removals edge cache", () => {
-  let originalCaches;
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   test("routes through the edge cache with caches enabled", async () => {
-    originalCaches = globalThis.caches;
-    const store = new Map();
-    globalThis.caches = {
+    originalCaches = globalWithCaches.caches;
+    const store = new Map<string, Response>();
+    globalWithCaches.caches = {
       default: {
-        async match(request) {
+        async match(request: Request) {
           const cached = store.get(request.url);
           return cached ? cached.clone() : undefined;
         },
-        async put(request, response) {
+        async put(request: Request, response: Response) {
           store.set(request.url, response.clone());
         },
       },
@@ -447,14 +462,14 @@ describe("chain/axon-removals edge cache", () => {
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === "health:meta"
             ? { last_run_at: "2026-06-30T00:00:00.000Z" }
             : null;
         },
       },
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -466,12 +481,12 @@ describe("chain/axon-removals edge cache", () => {
         },
       },
     };
-    const waits = [];
+    const waits: Promise<unknown>[] = [];
     const call = () =>
       handleRequest(
         new Request("https://api.metagraph.sh/api/v1/chain/axon-removals"),
         env,
-        { waitUntil: (promise) => waits.push(promise) },
+        { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();
     assert.equal(res.status, 200);

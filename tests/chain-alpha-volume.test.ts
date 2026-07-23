@@ -6,6 +6,7 @@ import {
 } from "../src/chain-alpha-volume.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 const OBS = 1_700_000_000_000;
 
@@ -13,12 +14,12 @@ const OBS = 1_700_000_000_000;
 // loadChainAlphaVolume's SUM/COUNT/MAX query returns (mirrors alpha-volume.mjs's
 // own per-subnet loader row shape, just without the `netuid = ?` filter).
 function ev(
-  netuid,
-  event_kind,
-  alpha_volume,
-  tao_volume,
-  event_count,
-  last_observed = OBS,
+  netuid: number,
+  event_kind: string,
+  alpha_volume: number,
+  tao_volume: number,
+  event_count: number,
+  last_observed: number = OBS,
 ) {
   return {
     netuid,
@@ -52,7 +53,7 @@ describe("buildChainAlphaVolume", () => {
       data.subnets.map((s) => s.netuid),
       [1, 2, 3],
     );
-    const s1 = data.subnets.find((s) => s.netuid === 1);
+    const s1 = data.subnets.find((s) => s.netuid === 1)!;
     // Each leaderboard entry is a full buildAlphaVolume scorecard (schema_version/
     // window/netuid included).
     assert.equal(s1.schema_version, 1);
@@ -132,14 +133,14 @@ describe("buildChainAlphaVolume", () => {
   test("summarizes the spread of per-subnet total_volume_tao into a distribution", () => {
     // per-subnet total_volume_tao [130, 100, 20] -> ascending [20, 100, 130].
     const { volume_distribution: dist } = buildChainAlphaVolume(ROWS, {});
-    assert.equal(dist.count, 3);
-    assert.equal(dist.mean, 83.333333333); // 250/3 rounded to rao
-    assert.equal(dist.min, 20);
-    assert.equal(dist.p25, 20);
-    assert.equal(dist.median, 100);
-    assert.equal(dist.p75, 130);
-    assert.equal(dist.p90, 130);
-    assert.equal(dist.max, 130);
+    assert.equal(dist!.count, 3);
+    assert.equal(dist!.mean, 83.333333333); // 250/3 rounded to rao
+    assert.equal(dist!.min, 20);
+    assert.equal(dist!.p25, 20);
+    assert.equal(dist!.median, 100);
+    assert.equal(dist!.p75, 130);
+    assert.equal(dist!.p90, 130);
+    assert.equal(dist!.max, 130);
   });
 
   test("distribution is null when no subnet had volume", () => {
@@ -150,7 +151,7 @@ describe("buildChainAlphaVolume", () => {
     const { volume_distribution: dist } = buildChainAlphaVolume(ROWS, {
       limit: 1,
     });
-    assert.equal(dist.count, 3);
+    assert.equal(dist!.count, 3);
   });
 
   test("caps the leaderboard to limit but counts every subnet", () => {
@@ -161,7 +162,8 @@ describe("buildChainAlphaVolume", () => {
   });
 
   test("clamps a non-integer / negative / over-max / non-finite limit", () => {
-    const n = (limit) => buildChainAlphaVolume(ROWS, { limit }).subnets.length;
+    const n = (limit: number) =>
+      buildChainAlphaVolume(ROWS, { limit }).subnets.length;
     assert.equal(n(1.9), 1); // floored
     assert.equal(n(-5), 0); // negative -> 0
     assert.equal(n(9999), 3); // over-max clamps, capped by data
@@ -244,7 +246,7 @@ describe("buildChainAlphaVolume", () => {
 
   test("cold / empty input yields a schema-stable zeroed card", () => {
     for (const rows of [[], null, undefined, "not-an-array"]) {
-      const data = buildChainAlphaVolume(rows, {});
+      const data = buildChainAlphaVolume(rows as unknown as Row[], {});
       assert.equal(data.schema_version, 1);
       assert.equal(data.window, "24h");
       assert.equal(data.observed_at, null);
@@ -282,7 +284,7 @@ describe("buildChainAlphaVolume", () => {
   test("ignores a non-numeric last_observed cell instead of throwing", () => {
     const data = buildChainAlphaVolume(
       [
-        ev(2, "StakeAdded", 5, 5, 1, "not-a-timestamp"),
+        ev(2, "StakeAdded", 5, 5, 1, "not-a-timestamp" as unknown as number),
         ev(3, "StakeAdded", 7, 7, 1, OBS),
       ],
       {},
@@ -293,11 +295,11 @@ describe("buildChainAlphaVolume", () => {
 });
 
 describe("GET /api/v1/chain/alpha-volume", () => {
-  function alphaVolumeEnv(rows) {
+  function alphaVolumeEnv(rows: Row[]) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -488,21 +490,25 @@ describe("GET /api/v1/chain/alpha-volume", () => {
 });
 
 describe("chain/alpha-volume edge cache", () => {
-  let originalCaches;
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   test("routes through the edge cache with caches enabled", async () => {
-    originalCaches = globalThis.caches;
-    const store = new Map();
-    globalThis.caches = {
+    originalCaches = globalWithCaches.caches;
+    const store = new Map<string, Response>();
+    globalWithCaches.caches = {
       default: {
-        async match(request) {
+        async match(request: Request) {
           const cached = store.get(request.url);
           return cached ? cached.clone() : undefined;
         },
-        async put(request, response) {
+        async put(request: Request, response: Response) {
           store.set(request.url, response.clone());
         },
       },
@@ -512,14 +518,14 @@ describe("chain/alpha-volume edge cache", () => {
       // A non-null health:meta stamp so withEdgeCache actually engages (it skips caching when
       // the analytics cron stamp is null).
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === "health:meta"
             ? { last_run_at: "2026-06-30T00:00:00.000Z" }
             : null;
         },
       },
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -532,12 +538,12 @@ describe("chain/alpha-volume edge cache", () => {
       },
     };
     // withEdgeCache writes via ctx.waitUntil, so capture the background put and await it.
-    const waits = [];
+    const waits: Promise<unknown>[] = [];
     const call = () =>
       handleRequest(
         new Request("https://api.metagraph.sh/api/v1/chain/alpha-volume"),
         env,
-        { waitUntil: (promise) => waits.push(promise) },
+        { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();
     assert.equal(res.status, 200);

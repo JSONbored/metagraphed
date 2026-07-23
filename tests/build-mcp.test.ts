@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   BUILD_SUMMARY_ARTIFACT,
   GET_BUILD_INSTRUCTIONS,
@@ -10,6 +10,10 @@ import {
   loadBuildSummary,
 } from "../src/build-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_BUILD = {
   schema_version: 1,
@@ -36,42 +40,45 @@ describe("build-mcp", () => {
 
   test("loadBuildSummary returns the baked artifact payload", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async (_env, path) => ({
+      env: mockEnv(),
+      readArtifact: (async (_env: Env, path: string) => ({
         ok: true,
         data: path === BUILD_SUMMARY_ARTIFACT ? SAMPLE_BUILD : null,
-      }),
+      })) as unknown as ReadArtifact,
     };
-    const out = await loadBuildSummary(ctx);
+    const out = (await loadBuildSummary(ctx)) as Row;
     assert.equal(out.schema_version, 1);
     assert.equal(out.artifact_count, 42);
     assert.equal(out.artifacts.length, 1);
   });
 
   test("loadBuildSummary uses an injected readArtifact dep", async () => {
-    const out = await loadBuildSummary(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+    const out = (await loadBuildSummary(
       {
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
+      {
+        readArtifact: (async () => ({
           ok: true,
           data: { schema_version: 1, artifact_count: 0, artifacts: [] },
-        }),
+        })) as unknown as ReadArtifact,
       },
-    );
+    )) as Row;
     assert.equal(out.artifact_count, 0);
   });
 
   test("loadBuildSummary maps artifact_not_found to not_found", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_not_found",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadBuildSummary(ctx),
-      (err) =>
+      (err: Row) =>
         err.code === "not_found" &&
         err.toolError === true &&
         /unavailable in this environment/.test(err.message),
@@ -80,15 +87,15 @@ describe("build-mcp", () => {
 
   test("loadBuildSummary surfaces other artifact failures with the path", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_timeout",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadBuildSummary(ctx),
-      (err) =>
+      (err: Row) =>
         err.code === "artifact_timeout" &&
         /build-summary\.json/.test(err.message),
     );
@@ -96,12 +103,12 @@ describe("build-mcp", () => {
 
   test("loadBuildSummary defaults code when the read result is bare", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({ ok: false }),
+      env: mockEnv(),
+      readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadBuildSummary(ctx),
-      (err) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "artifact_unavailable",
     );
   });
 

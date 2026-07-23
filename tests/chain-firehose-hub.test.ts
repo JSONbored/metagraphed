@@ -29,12 +29,21 @@ import {
   ChainFirehoseHub,
   chainFirehoseMatchesTopics,
   createAsyncRepeater,
+  type AsyncRepeater,
+  type ChainFirehoseIngestPayload,
   formatChainFirehoseSseFrame,
   parseChainFirehoseTopics,
   validateChainEventsSubscribePayload,
   validateChainFirehoseIngestPayload,
 } from "../workers/chain-firehose-hub.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+// SseClientEntry/ChainEventSubscriberEntry aren't exported from the source
+// module, so these reference their shape structurally through the public
+// methods that accept them (mirrors the established pattern for other
+// non-exported local types in this test suite).
+type SseEntryLike = Parameters<ChainFirehoseHub["addSseClient"]>[0];
 
 // --- validateChainEventsSubscribePayload (#4983 security fix) -------------------
 //
@@ -70,11 +79,11 @@ test("validateChainEventsSubscribePayload: rejects a mutation operation", () => 
 
 test("validateChainEventsSubscribePayload: rejects a missing/empty query", () => {
   assert.match(
-    validateChainEventsSubscribePayload({})[0].message,
+    validateChainEventsSubscribePayload({})![0].message,
     /Missing required field: query/,
   );
   assert.match(
-    validateChainEventsSubscribePayload({ query: "   " })[0].message,
+    validateChainEventsSubscribePayload({ query: "   " })![0].message,
     /Missing required field: query/,
   );
 });
@@ -122,14 +131,14 @@ test("createAsyncRepeater: a push before next() is consumed on the following nex
   const repeater = createAsyncRepeater();
   repeater.push("a");
   repeater.push("b");
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), { value: "a", done: false });
   assert.deepEqual(await it.next(), { value: "b", done: false });
 });
 
 test("createAsyncRepeater: a next() called before any push() resolves once push() happens", async () => {
   const repeater = createAsyncRepeater();
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   const pending = it.next();
   repeater.push("late");
   assert.deepEqual(await pending, { value: "late", done: false });
@@ -137,7 +146,7 @@ test("createAsyncRepeater: a next() called before any push() resolves once push(
 
 test("createAsyncRepeater: end() completes a pending next() with done:true", async () => {
   const repeater = createAsyncRepeater();
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   const pending = it.next();
   repeater.end();
   assert.deepEqual(await pending, { value: undefined, done: true });
@@ -146,7 +155,7 @@ test("createAsyncRepeater: end() completes a pending next() with done:true", asy
 test("createAsyncRepeater: next() after end() resolves done:true immediately", async () => {
   const repeater = createAsyncRepeater();
   repeater.end();
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
@@ -154,13 +163,13 @@ test("createAsyncRepeater: push() after end() is silently dropped, not queued", 
   const repeater = createAsyncRepeater();
   repeater.end();
   repeater.push("too late");
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
 test("createAsyncRepeater: calling end() twice is idempotent", async () => {
   const repeater = createAsyncRepeater();
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   const pending = it.next();
   repeater.end();
   assert.doesNotThrow(() => repeater.end());
@@ -169,14 +178,14 @@ test("createAsyncRepeater: calling end() twice is idempotent", async () => {
 
 test("createAsyncRepeater: return() ends iteration (for-await early break support)", async () => {
   const repeater = createAsyncRepeater();
-  const it = repeater[Symbol.asyncIterator]();
-  assert.deepEqual(await it.return(), { value: undefined, done: true });
+  const it = repeater![Symbol.asyncIterator]();
+  assert.deepEqual(await it.return!(), { value: undefined, done: true });
   assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
 test("createAsyncRepeater: a real for-await loop consumes pushed values in order", async () => {
   const repeater = createAsyncRepeater();
-  const seen = [];
+  const seen: unknown[] = [];
   const consumer = (async () => {
     for await (const value of repeater) {
       seen.push(value);
@@ -204,7 +213,7 @@ test("createAsyncRepeater: defaults highWaterMark to CHAIN_FIREHOSE_GRAPHQL_SUBS
   }
   // pending.length is now already at the mark -- this one overflows.
   repeater.push("one-more");
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
@@ -220,7 +229,7 @@ test("createAsyncRepeater: ends and calls onOverflow instead of buffering past a
   repeater.push("b");
   repeater.push("c"); // exceeds the mark -> ends instead of buffering
   assert.equal(overflowed, true);
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
@@ -229,7 +238,7 @@ test("createAsyncRepeater: overflow clears any already-buffered pending values",
   repeater.push("fills-to-the-mark"); // pending.length 0 -> 1, at the mark
   repeater.push("triggers-overflow"); // pending.length already >= mark -> finish(), pending cleared
   repeater.push("dropped-after-finish"); // finished -> silent no-op
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
@@ -243,33 +252,33 @@ test("parseChainFirehoseTopics: parses a comma-separated known-table list", () =
   const topics = parseChainFirehoseTopics(
     new URLSearchParams("topics=blocks,extrinsics"),
   );
-  assert.deepEqual([...topics].sort(), ["blocks", "extrinsics"]);
+  assert.deepEqual([...topics!].sort(), ["blocks", "extrinsics"]);
 });
 
 test("parseChainFirehoseTopics: trims whitespace around entries", () => {
   const topics = parseChainFirehoseTopics(
     new URLSearchParams("topics= blocks , chain_events "),
   );
-  assert.deepEqual([...topics].sort(), ["blocks", "chain_events"]);
+  assert.deepEqual([...topics!].sort(), ["blocks", "chain_events"]);
 });
 
 test("parseChainFirehoseTopics: account_events is a recognized topic (#4984 prerequisite)", () => {
   const topics = parseChainFirehoseTopics(
     new URLSearchParams("topics=account_events"),
   );
-  assert.deepEqual([...topics], ["account_events"]);
+  assert.deepEqual([...topics!], ["account_events"]);
 });
 
 test("parseChainFirehoseTopics: drops unknown table names silently", () => {
   const topics = parseChainFirehoseTopics(
     new URLSearchParams("topics=blocks,not_a_real_table"),
   );
-  assert.deepEqual([...topics], ["blocks"]);
+  assert.deepEqual([...topics!], ["blocks"]);
 });
 
 test("parseChainFirehoseTopics: an all-unrecognized list yields an empty Set (matches nothing), not the everything-filter", () => {
   const topics = parseChainFirehoseTopics(new URLSearchParams("topics=bogus"));
-  assert.deepEqual([...topics], []);
+  assert.deepEqual([...topics!], []);
 });
 
 // --- chainFirehoseMatchesTopics -------------------------------------------------
@@ -308,7 +317,7 @@ test("validateChainFirehoseIngestPayload: accepts a well-formed blocks payload",
     }),
   );
   assert.equal(result.ok, true);
-  assert.equal(result.payload.block_number, 8607915);
+  assert.equal((result.payload as Row).block_number, 8607915);
 });
 
 test("validateChainFirehoseIngestPayload: accepts a well-formed chain_events payload", () => {
@@ -340,8 +349,8 @@ test("validateChainFirehoseIngestPayload: accepts a well-formed account_events p
     }),
   );
   assert.equal(result.ok, true);
-  assert.equal(result.payload.netuid, 7);
-  assert.equal(result.payload.amount_tao, 12.5);
+  assert.equal((result.payload as Row).netuid, 7);
+  assert.equal((result.payload as Row).amount_tao, 12.5);
 });
 
 test("validateChainFirehoseIngestPayload: accepts a boolean field (e.g. extrinsics.success)", () => {
@@ -354,7 +363,7 @@ test("validateChainFirehoseIngestPayload: accepts a boolean field (e.g. extrinsi
     }),
   );
   assert.equal(result.ok, true);
-  assert.equal(result.payload.success, true);
+  assert.equal((result.payload as Row).success, true);
 });
 
 test("validateChainFirehoseIngestPayload: rejects a non-string body", () => {
@@ -513,7 +522,7 @@ test("validateChainFirehoseIngestPayload: a non-finite numeric field round-trips
     }),
   );
   assert.equal(result.ok, true);
-  assert.equal(result.payload.extrinsic_count, null);
+  assert.equal((result.payload as Row).extrinsic_count, null);
 });
 
 // --- formatChainFirehoseSseFrame -------------------------------------------------
@@ -536,18 +545,21 @@ test("formatChainFirehoseSseFrame: frames a payload as an SSE `chain` event", ()
 // semantics where a tag-scoped query returns only sockets accepted with
 // that tag. Pass a non-empty list to simulate a socket that IS
 // graphql-ws-tagged (see the hibernation-staleness tests below).
-function stubState(webSockets = [], graphqlWsTaggedSockets = []) {
+function stubState(
+  webSockets: Row[] = [],
+  graphqlWsTaggedSockets: Row[] = [],
+): DurableObjectState {
   return {
-    getWebSockets: (tag) => {
+    getWebSockets: (tag?: string) => {
       if (tag === undefined) return webSockets;
       if (tag === GRAPHQL_WS_SOCKET_TAG) return graphqlWsTaggedSockets;
       return [];
     },
-  };
+  } as unknown as DurableObjectState;
 }
 
 test("ChainFirehoseHub.fetch: 404s on an unrecognized path", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const res = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/nope"),
   );
@@ -555,7 +567,7 @@ test("ChainFirehoseHub.fetch: 404s on an unrecognized path", async () => {
 });
 
 test("ChainFirehoseHub.fetch: GET /ingest is not routed to handleIngest (POST-only)", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const res = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/ingest", {
       method: "GET",
@@ -565,9 +577,9 @@ test("ChainFirehoseHub.fetch: GET /ingest is not routed to handleIngest (POST-on
 });
 
 test("ChainFirehoseHub.handleIngest: 400s on an invalid payload without broadcasting", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   let broadcastCalls = 0;
-  hub.broadcast = () => {
+  hub.broadcast = async () => {
     broadcastCalls += 1;
   };
   const res = await hub.fetch(
@@ -581,9 +593,9 @@ test("ChainFirehoseHub.handleIngest: 400s on an invalid payload without broadcas
 });
 
 test("ChainFirehoseHub.handleIngest: 202s and broadcasts a valid payload", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  let broadcast;
-  hub.broadcast = (payload) => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  let broadcast: Row | undefined;
+  hub.broadcast = async (payload: Row) => {
     broadcast = payload;
   };
   const res = await hub.fetch(
@@ -594,14 +606,14 @@ test("ChainFirehoseHub.handleIngest: 202s and broadcasts a valid payload", async
   );
   assert.equal(res.status, 202);
   assert.deepEqual(await res.json(), { ok: true });
-  assert.equal(broadcast.block_number, 42);
+  assert.equal(broadcast!.block_number, 42);
 });
 
 // #6672: a batch-array body broadcasts every element, in order, sequentially.
 test("ChainFirehoseHub.handleIngest: 202s and broadcasts every element of a batch payload, in order", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const broadcasts = [];
-  hub.broadcast = async (payload) => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const broadcasts: Row[] = [];
+  hub.broadcast = async (payload: Row) => {
     broadcasts.push(payload);
   };
   const res = await hub.fetch(
@@ -623,7 +635,7 @@ test("ChainFirehoseHub.handleIngest: 202s and broadcasts every element of a batc
 });
 
 test("ChainFirehoseHub /subscribe (SSE): responds with a text/event-stream and an initial comment frame", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const res = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/subscribe"),
   );
@@ -632,14 +644,14 @@ test("ChainFirehoseHub /subscribe (SSE): responds with a text/event-stream and a
   assert.equal(res.headers.get("cache-control"), "no-store");
   // #5545: SSE responses must carry nosniff like every other response builder.
   assert.equal(res.headers.get("x-content-type-options"), "nosniff");
-  const reader = res.body.getReader();
+  const reader = res.body!.getReader();
   const { value } = await reader.read();
   assert.equal(new TextDecoder().decode(value), ": connected\n\n");
   await reader.cancel();
 });
 
 test("ChainFirehoseHub /subscribe (SSE): rejects new clients at the global connection cap", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const responses = [];
   // Spread across many distinct IPs, well under the per-IP cap each (#5004
   // item 1's dedicated tests further below cover THAT cap specifically) --
@@ -662,16 +674,16 @@ test("ChainFirehoseHub /subscribe (SSE): rejects new clients at the global conne
   assert.equal(capped.status, 503);
   assert.equal(await capped.text(), "too many connections");
 
-  await Promise.all(responses.map((res) => res.body.cancel()));
+  await Promise.all(responses.map((res) => res.body!.cancel()));
   assert.equal(hub.sseClients.size, 0);
 });
 
 test("ChainFirehoseHub /subscribe (SSE) -> broadcast: a connected client receives a matching event, not a filtered-out one", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const res = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/subscribe?topics=blocks"),
   );
-  const reader = res.body.getReader();
+  const reader = res.body!.getReader();
   await reader.read(); // drain the initial ": connected" comment frame
 
   hub.broadcast({ table: "extrinsics", block_number: 1 }); // filtered out
@@ -686,7 +698,7 @@ test("ChainFirehoseHub /subscribe (SSE) -> broadcast: a connected client receive
 });
 
 test("ChainFirehoseHub broadcast: drops a stalled SSE client instead of growing its queue unboundedly", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const res = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/subscribe"),
   );
@@ -698,7 +710,7 @@ test("ChainFirehoseHub broadcast: drops a stalled SSE client instead of growing 
     hub.broadcast({ table: "blocks", block_number: i });
   }
   assert.equal(hub.sseClients.size, 0);
-  await res.body.cancel();
+  await res.body!.cancel();
 });
 
 test("ChainFirehoseHub broadcast: drops an SSE client whose enqueue throws for a reason other than backpressure", () => {
@@ -706,7 +718,7 @@ test("ChainFirehoseHub broadcast: drops an SSE client whose enqueue throws for a
   // ReadableStream into this state -- desiredSize is non-negative (so the
   // backpressure branch above is NOT what's under test here) but enqueue
   // itself throws, exercising the catch-all cleanup as its own branch.
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const entry = {
     topics: null,
     controller: {
@@ -716,18 +728,18 @@ test("ChainFirehoseHub broadcast: drops an SSE client whose enqueue throws for a
       },
     },
   };
-  hub.sseClients.add(entry);
+  hub.sseClients.add(entry as unknown as SseEntryLike);
   hub.broadcast({ table: "blocks", block_number: 1 });
-  assert.equal(hub.sseClients.has(entry), false);
+  assert.equal(hub.sseClients.has(entry as unknown as SseEntryLike), false);
 });
 
 test("ChainFirehoseHub /subscribe (SSE): cancelling the stream removes it from sseClients", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const res = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/subscribe"),
   );
   assert.equal(hub.sseClients.size, 1);
-  await res.body.cancel();
+  await res.body!.cancel();
   assert.equal(hub.sseClients.size, 0);
 });
 
@@ -740,7 +752,7 @@ test("ChainFirehoseHub /subscribe (SSE): cancelling the stream removes it from s
 // cf-connecting-ip header attached (mirroring tests/config.test.mjs's own
 // fakeRequest pattern for resolveClientIp, but as a real Request since
 // handleSubscribe is exercised through hub.fetch here, not called directly).
-function subscribeRequest(ip, query = "") {
+function subscribeRequest(ip: string | null, query = "") {
   return new Request(
     `https://chain-firehose-hub.internal/subscribe${query}`,
     ip ? { headers: { "cf-connecting-ip": ip } } : undefined,
@@ -748,7 +760,7 @@ function subscribeRequest(ip, query = "") {
 }
 
 test("ChainFirehoseHub /subscribe (SSE): rejects a new client from the SAME IP at the per-IP cap, well below the global cap", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const responses = [];
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
     responses.push(await hub.fetch(subscribeRequest("203.0.113.9")));
@@ -766,27 +778,27 @@ test("ChainFirehoseHub /subscribe (SSE): rejects a new client from the SAME IP a
   // sseClients hitting CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS.
   assert.equal(hub.sseClients.size, CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP);
 
-  await Promise.all(responses.map((res) => res.body.cancel()));
+  await Promise.all(responses.map((res) => res.body!.cancel()));
 });
 
 test("ChainFirehoseHub /subscribe (SSE): a DIFFERENT IP is unaffected by another IP's per-IP cap", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const responses = [];
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
     responses.push(await hub.fetch(subscribeRequest("203.0.113.9")));
   }
   const otherIp = await hub.fetch(subscribeRequest("198.51.100.4"));
   assert.equal(otherIp.status, 200);
-  await Promise.all([...responses, otherIp].map((res) => res.body.cancel()));
+  await Promise.all([...responses, otherIp].map((res) => res.body!.cancel()));
 });
 
 test("ChainFirehoseHub /subscribe (SSE): cancelling one connection frees that IP's slot for a new one", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const responses = [];
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
     responses.push(await hub.fetch(subscribeRequest("203.0.113.9")));
   }
-  await responses[0].body.cancel();
+  await responses[0].body!.cancel();
   assert.equal(
     hub.sseClientsByIp.get("203.0.113.9"),
     CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP - 1,
@@ -800,23 +812,23 @@ test("ChainFirehoseHub /subscribe (SSE): cancelling one connection frees that IP
   );
 
   await Promise.all(
-    [...responses.slice(1), reconnected].map((res) => res.body.cancel()),
+    [...responses.slice(1), reconnected].map((res) => res.body!.cancel()),
   );
 });
 
 test("ChainFirehoseHub /subscribe (SSE): requests with no cf-connecting-ip header share the anonymous bucket", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const responses = [];
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP; i += 1) {
     responses.push(await hub.fetch(subscribeRequest(null)));
   }
   const capped = await hub.fetch(subscribeRequest(null));
   assert.equal(capped.status, 503);
-  await Promise.all(responses.map((res) => res.body.cancel()));
+  await Promise.all(responses.map((res) => res.body!.cancel()));
 });
 
 test("ChainFirehoseHub broadcast: dropping a stalled SSE client also releases its per-IP slot (not just sseClients)", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const res = await hub.fetch(subscribeRequest("203.0.113.9"));
   assert.equal(hub.sseClientsByIp.get("203.0.113.9"), 1);
   for (let i = 0; i < CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK + 5; i += 1) {
@@ -824,29 +836,31 @@ test("ChainFirehoseHub broadcast: dropping a stalled SSE client also releases it
   }
   assert.equal(hub.sseClients.size, 0);
   assert.equal(hub.sseClientsByIp.has("203.0.113.9"), false);
-  await res.body.cancel();
+  await res.body!.cancel();
 });
 
 test("ChainFirehoseHub.addSseClient: a second connection from the same IP increments rather than overwrites the count", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  hub.addSseClient({ ip: "203.0.113.9" });
-  hub.addSseClient({ ip: "203.0.113.9" });
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  hub.addSseClient({ ip: "203.0.113.9" } as unknown as SseEntryLike);
+  hub.addSseClient({ ip: "203.0.113.9" } as unknown as SseEntryLike);
   assert.equal(hub.sseClientsByIp.get("203.0.113.9"), 2);
 });
 
 test("ChainFirehoseHub.removeSseClient: a no-op (does not throw or touch sseClientsByIp) when the entry was never registered", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  assert.doesNotThrow(() => hub.removeSseClient({ ip: "203.0.113.9" }));
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  assert.doesNotThrow(() =>
+    hub.removeSseClient({ ip: "203.0.113.9" } as unknown as SseEntryLike),
+  );
   assert.equal(hub.sseClientsByIp.size, 0);
 });
 
 test("ChainFirehoseHub broadcast: fans out to WebSockets via the stubbed state.getWebSockets(), honoring their attached topic filter", () => {
-  const sent = [];
+  const sent: Row[] = [];
   const ws = {
     deserializeAttachment: () => ({ topics: ["blocks"] }),
-    send: (message) => sent.push(message),
-  };
-  const hub = new ChainFirehoseHub(stubState([ws]), {});
+    send: (message: Row) => sent.push(message),
+  } as unknown as WebSocket;
+  const hub = new ChainFirehoseHub(stubState([ws]), mockEnv({}));
   hub.broadcast({ table: "extrinsics", block_number: 1 });
   hub.broadcast({ table: "blocks", block_number: 2 });
   assert.deepEqual(sent, [
@@ -855,31 +869,31 @@ test("ChainFirehoseHub broadcast: fans out to WebSockets via the stubbed state.g
 });
 
 test("ChainFirehoseHub broadcast: a WebSocket with no attachment (null topics) receives everything", () => {
-  const sent = [];
+  const sent: Row[] = [];
   const ws = {
     deserializeAttachment: () => null,
-    send: (message) => sent.push(message),
-  };
-  const hub = new ChainFirehoseHub(stubState([ws]), {});
+    send: (message: Row) => sent.push(message),
+  } as unknown as WebSocket;
+  const hub = new ChainFirehoseHub(stubState([ws]), mockEnv({}));
   hub.broadcast({ table: "chain_events", block_number: 3 });
   assert.equal(sent.length, 1);
 });
 
 test("ChainFirehoseHub broadcast: a WebSocket whose deserializeAttachment throws is treated as unfiltered, not crashed", () => {
-  const sent = [];
+  const sent: Row[] = [];
   const ws = {
     deserializeAttachment: () => {
       throw new Error("boom");
     },
-    send: (message) => sent.push(message),
-  };
-  const hub = new ChainFirehoseHub(stubState([ws]), {});
+    send: (message: Row) => sent.push(message),
+  } as unknown as WebSocket;
+  const hub = new ChainFirehoseHub(stubState([ws]), mockEnv({}));
   hub.broadcast({ table: "blocks", block_number: 1 });
   assert.equal(sent.length, 1);
 });
 
 test("ChainFirehoseHub broadcast: a WebSocket whose send() throws (dead socket) doesn't stop the rest of the fanout", () => {
-  const sent = [];
+  const sent: Row[] = [];
   const dead = {
     deserializeAttachment: () => null,
     send: () => {
@@ -888,9 +902,9 @@ test("ChainFirehoseHub broadcast: a WebSocket whose send() throws (dead socket) 
   };
   const alive = {
     deserializeAttachment: () => null,
-    send: (message) => sent.push(message),
+    send: (message: Row) => sent.push(message),
   };
-  const hub = new ChainFirehoseHub(stubState([dead, alive]), {});
+  const hub = new ChainFirehoseHub(stubState([dead, alive]), mockEnv({}));
   hub.broadcast({ table: "blocks", block_number: 1 });
   assert.equal(sent.length, 1);
 });
@@ -905,17 +919,17 @@ test("ChainFirehoseHub broadcast: state.getWebSockets() throwing doesn't crash t
     getWebSockets: () => {
       throw new Error("internal error; reference = deadbeef");
     },
-  };
-  const sseSent = [];
+  } as unknown as DurableObjectState;
+  const sseSent: Row[] = [];
   const entry = {
     topics: null,
     controller: {
       desiredSize: 1,
-      enqueue: (message) => sseSent.push(message),
+      enqueue: (message: Row) => sseSent.push(message),
     },
   };
-  const hub = new ChainFirehoseHub(throwingState, {});
-  hub.sseClients.add(entry);
+  const hub = new ChainFirehoseHub(throwingState, mockEnv({}));
+  hub.sseClients.add(entry as unknown as SseEntryLike);
   assert.doesNotThrow(() =>
     hub.broadcast({ table: "blocks", block_number: 1 }),
   );
@@ -923,20 +937,20 @@ test("ChainFirehoseHub broadcast: state.getWebSockets() throwing doesn't crash t
 });
 
 test("ChainFirehoseHub broadcast: state.getWebSockets(tag) throwing for the graphql-ws tag alone doesn't crash the broadcast", () => {
-  const sent = [];
+  const sent: Row[] = [];
   const ws = {
     deserializeAttachment: () => null,
-    send: (message) => sent.push(message),
-  };
+    send: (message: Row) => sent.push(message),
+  } as unknown as WebSocket;
   const partiallyThrowingState = {
-    getWebSockets: (tag) => {
+    getWebSockets: (tag: string | undefined) => {
       if (tag === GRAPHQL_WS_SOCKET_TAG) {
         throw new Error("internal error; reference = deadbeef");
       }
       return [ws];
     },
-  };
-  const hub = new ChainFirehoseHub(partiallyThrowingState, {});
+  } as unknown as DurableObjectState;
+  const hub = new ChainFirehoseHub(partiallyThrowingState, mockEnv({}));
   assert.doesNotThrow(() =>
     hub.broadcast({ table: "blocks", block_number: 1 }),
   );
@@ -944,28 +958,39 @@ test("ChainFirehoseHub broadcast: state.getWebSockets(tag) throwing for the grap
 });
 
 test("ChainFirehoseHub.webSocketMessage: a no-op for a plain firehose socket (not registered in graphqlWsSockets)", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  await assert.doesNotReject(() => hub.webSocketMessage({}, "ignored"));
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  await assert.doesNotReject(() =>
+    hub.webSocketMessage({} as unknown as WebSocket, "ignored"),
+  );
 });
 
 test("ChainFirehoseHub.webSocketMessage: routes to the graphql-ws onMessage callback registered for that socket, decoding a binary frame", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const ws = {};
-  const received = [];
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const ws = {} as unknown as WebSocket;
+  const received: string[] = [];
   hub.graphqlWsSockets.set(ws, {
-    onMessageCb: async (text) => {
+    onMessageCb: async (text: string) => {
       received.push(text);
     },
   });
   await hub.webSocketMessage(ws, '{"type":"ping"}');
-  await hub.webSocketMessage(ws, new TextEncoder().encode('{"type":"pong"}'));
+  await hub.webSocketMessage(
+    ws,
+    new TextEncoder().encode('{"type":"pong"}').buffer as ArrayBuffer,
+  );
   assert.deepEqual(received, ['{"type":"ping"}', '{"type":"pong"}']);
 });
 
 test("ChainFirehoseHub.webSocketClose: closes the socket, swallowing an already-closed error", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  let closedWith;
-  hub.webSocketClose({ close: (c, r) => (closedWith = [c, r]) }, 1000, "bye");
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  let closedWith: [number | undefined, string | undefined] | undefined;
+  hub.webSocketClose(
+    {
+      close: (c: number, r: string) => (closedWith = [c, r]),
+    } as unknown as WebSocket,
+    1000,
+    "bye",
+  );
   assert.deepEqual(closedWith, [1000, "bye"]);
   assert.doesNotThrow(() =>
     hub.webSocketClose(
@@ -973,7 +998,7 @@ test("ChainFirehoseHub.webSocketClose: closes the socket, swallowing an already-
         close: () => {
           throw new Error("already closed");
         },
-      },
+      } as unknown as WebSocket,
       1000,
       "bye",
     ),
@@ -981,11 +1006,11 @@ test("ChainFirehoseHub.webSocketClose: closes the socket, swallowing an already-
 });
 
 test("ChainFirehoseHub.webSocketClose: calls the graphql-ws closed() cleanup and removes the socket entry", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const ws = { close: () => {} };
-  let closedWith;
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const ws = { close: () => {} } as unknown as WebSocket;
+  let closedWith: [number | undefined, string | undefined] | undefined;
   hub.graphqlWsSockets.set(ws, {
-    closedCb: (code, reason) => {
+    closedCb: async (code?: number, reason?: string) => {
       closedWith = [code, reason];
     },
   });
@@ -995,16 +1020,18 @@ test("ChainFirehoseHub.webSocketClose: calls the graphql-ws closed() cleanup and
 });
 
 test("ChainFirehoseHub.webSocketError: a no-op for a plain firehose socket", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  assert.doesNotThrow(() => hub.webSocketError({}, new Error("boom")));
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  assert.doesNotThrow(() =>
+    hub.webSocketError({} as unknown as WebSocket, new Error("boom")),
+  );
 });
 
 test("ChainFirehoseHub.webSocketError: calls the graphql-ws closed() cleanup with an internal-error close code", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const ws = {};
-  let closedWith;
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const ws = {} as unknown as WebSocket;
+  let closedWith: [number | undefined, string | undefined] | undefined;
   hub.graphqlWsSockets.set(ws, {
-    closedCb: (code, reason) => {
+    closedCb: async (code?: number, reason?: string) => {
       closedWith = [code, reason];
     },
   });
@@ -1014,15 +1041,15 @@ test("ChainFirehoseHub.webSocketError: calls the graphql-ws closed() cleanup wit
 });
 
 test("ChainFirehoseHub.webSocketError: falls back to a generic reason when no error/message is given", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const ws = {};
-  let closedWith;
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const ws = {} as unknown as WebSocket;
+  let closedWith: [number | undefined, string | undefined] | undefined;
   hub.graphqlWsSockets.set(ws, {
-    closedCb: (code, reason) => {
+    closedCb: async (code?: number, reason?: string) => {
       closedWith = [code, reason];
     },
   });
-  hub.webSocketError(ws);
+  hub.webSocketError(ws, undefined);
   assert.deepEqual(closedWith, [1011, "internal error"]);
 });
 
@@ -1040,58 +1067,64 @@ test("ChainFirehoseHub.webSocketError: falls back to a generic reason when no er
 // needing a real accept step.
 
 test("ChainFirehoseHub.webSocketClose: releases the per-IP WS slot recorded in the socket's attachment", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   hub.wsClientsByIp.set("203.0.113.9", 1);
   const ws = {
     deserializeAttachment: () => ({ topics: null, ip: "203.0.113.9" }),
     close: () => {},
-  };
+  } as unknown as WebSocket;
   hub.webSocketClose(ws, 1000, "bye");
   assert.equal(hub.wsClientsByIp.has("203.0.113.9"), false);
 });
 
 test("ChainFirehoseHub.webSocketClose: decrements (not deletes) when other connections from the same IP remain", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   hub.wsClientsByIp.set("203.0.113.9", 3);
   const ws = {
     deserializeAttachment: () => ({ ip: "203.0.113.9" }),
     close: () => {},
-  };
+  } as unknown as WebSocket;
   hub.webSocketClose(ws, 1000, "bye");
   assert.equal(hub.wsClientsByIp.get("203.0.113.9"), 2);
 });
 
 test("ChainFirehoseHub.webSocketError: also releases the per-IP WS slot (not just webSocketClose)", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   hub.wsClientsByIp.set("198.51.100.4", 1);
-  const ws = { deserializeAttachment: () => ({ ip: "198.51.100.4" }) };
+  const ws = {
+    deserializeAttachment: () => ({ ip: "198.51.100.4" }),
+  } as unknown as WebSocket;
   hub.webSocketError(ws, new Error("boom"));
   assert.equal(hub.wsClientsByIp.has("198.51.100.4"), false);
 });
 
 test("ChainFirehoseHub.releaseWsIpSlot: a no-op when the attachment has no ip (e.g. a legacy/malformed attachment)", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   hub.wsClientsByIp.set("203.0.113.9", 1);
   assert.doesNotThrow(() =>
-    hub.releaseWsIpSlot({ deserializeAttachment: () => ({ topics: null }) }),
+    hub.releaseWsIpSlot({
+      deserializeAttachment: () => ({ topics: null }),
+    } as unknown as WebSocket),
   );
   // Unrelated IP's count is untouched -- nothing to attribute the release to.
   assert.equal(hub.wsClientsByIp.get("203.0.113.9"), 1);
 });
 
 test("ChainFirehoseHub.releaseWsIpSlot: a no-op when deserializeAttachment returns null", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   assert.doesNotThrow(() =>
-    hub.releaseWsIpSlot({ deserializeAttachment: () => null }),
+    hub.releaseWsIpSlot({
+      deserializeAttachment: () => null,
+    } as unknown as WebSocket),
   );
 });
 
 test("ChainFirehoseHub.releaseWsIpSlot: a no-op when this DO instance never recorded that IP (e.g. a socket accepted by a prior, now-replaced instance)", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   assert.doesNotThrow(() =>
     hub.releaseWsIpSlot({
       deserializeAttachment: () => ({ ip: "203.0.113.9" }),
-    }),
+    } as unknown as WebSocket),
   );
   assert.equal(hub.wsClientsByIp.has("203.0.113.9"), false);
 });
@@ -1103,7 +1136,7 @@ test("ChainFirehoseHub.rebuildWsClientsByIp: reconstructs per-IP counts from sur
       { deserializeAttachment: () => ({ ip: "203.0.113.9", topics: null }) },
       { deserializeAttachment: () => ({ ip: "198.51.100.4" }) },
     ]),
-    {},
+    mockEnv({}),
   );
 
   hub.wsClientsByIp.set("stale-before-rebuild", 99);
@@ -1126,7 +1159,7 @@ test("ChainFirehoseHub.rebuildWsClientsByIp: ignores malformed attachments while
         },
       },
     ]),
-    {},
+    mockEnv({}),
   );
 
   assert.doesNotThrow(() => hub.rebuildWsClientsByIp());
@@ -1137,11 +1170,15 @@ test("ChainFirehoseHub.rebuildWsClientsByIp: ignores malformed attachments while
 // --- subscribeChainEvents / unsubscribeChainEvents / broadcast (#4983) ----------
 
 test("ChainFirehoseHub.subscribeChainEvents: broadcast delivers matching payloads to the returned repeater", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const repeater = hub.subscribeChainEvents(new Set(["blocks"]));
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const repeater = hub.subscribeChainEvents(
+    new Set(["blocks"]),
+    undefined,
+    undefined,
+  );
   hub.broadcast({ table: "extrinsics", block_number: 1 }); // filtered out
   hub.broadcast({ table: "blocks", block_number: 2 }); // matches
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), {
     value: { table: "blocks", block_number: 2 },
     done: false,
@@ -1149,10 +1186,10 @@ test("ChainFirehoseHub.subscribeChainEvents: broadcast delivers matching payload
 });
 
 test("ChainFirehoseHub.subscribeChainEvents: null topics receives every table", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const repeater = hub.subscribeChainEvents(null);
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const repeater = hub.subscribeChainEvents(null, undefined, undefined);
   hub.broadcast({ table: "chain_events", block_number: 1 });
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), {
     value: { table: "chain_events", block_number: 1 },
     done: false,
@@ -1160,35 +1197,39 @@ test("ChainFirehoseHub.subscribeChainEvents: null topics receives every table", 
 });
 
 test("ChainFirehoseHub.unsubscribeChainEvents: ends the repeater and stops further delivery", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const repeater = hub.subscribeChainEvents(null);
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const repeater = hub.subscribeChainEvents(null, undefined, undefined);
   assert.equal(hub.chainEventSubscribers.size, 1);
-  hub.unsubscribeChainEvents(repeater);
+  hub.unsubscribeChainEvents(repeater!);
   assert.equal(hub.chainEventSubscribers.size, 0);
-  const it = repeater[Symbol.asyncIterator]();
+  const it = repeater![Symbol.asyncIterator]();
   assert.deepEqual(await it.next(), { value: undefined, done: true });
 });
 
 test("ChainFirehoseHub.unsubscribeChainEvents: a non-matching repeater in a NON-empty set leaves the real entry intact", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  hub.subscribeChainEvents(null); // one real entry, so the loop body actually runs
-  const foreign = { end() {} };
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  hub.subscribeChainEvents(null, undefined, undefined); // one real entry, so the loop body actually runs
+  const foreign = {
+    end() {},
+  } as unknown as AsyncRepeater<ChainFirehoseIngestPayload>;
   hub.unsubscribeChainEvents(foreign);
   assert.equal(hub.chainEventSubscribers.size, 1);
 });
 
 test("ChainFirehoseHub.unsubscribeChainEvents: unsubscribing a repeater not in the set is a no-op", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const foreign = { end() {} };
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const foreign = {
+    end() {},
+  } as unknown as AsyncRepeater<ChainFirehoseIngestPayload>;
   assert.doesNotThrow(() => hub.unsubscribeChainEvents(foreign));
 });
 
 test("ChainFirehoseHub.broadcast: a REGISTERED graphql-ws-tagged WebSocket is excluded from the plain firehose send() loop", () => {
-  const sent = [];
-  const ws = { deserializeAttachment: () => null };
-  const hub = new ChainFirehoseHub(stubState([ws], [ws]), {});
+  const sent: Row[] = [];
+  const ws = { deserializeAttachment: () => null } as unknown as WebSocket;
+  const hub = new ChainFirehoseHub(stubState([ws], [ws]), mockEnv({}));
   hub.graphqlWsSockets.set(ws, { onMessageCb: async () => {} });
-  ws.send = (message) => sent.push(message); // would fail the test if called
+  ws.send = ((message: Row) => sent.push(message)) as unknown as typeof ws.send; // would fail the test if called
   hub.broadcast({ table: "blocks", block_number: 1 });
   assert.equal(sent.length, 0);
 });
@@ -1206,46 +1247,48 @@ test("ChainFirehoseHub.broadcast: a REGISTERED graphql-ws-tagged WebSocket is ex
 // or having its messages silently dropped.
 
 test("ChainFirehoseHub.broadcast: a STALE graphql-ws-tagged WebSocket (tagged but unregistered) is closed, not sent to or silently skipped", () => {
-  const sent = [];
-  let closedWith;
+  const sent: Row[] = [];
+  let closedWith: [number | undefined, string | undefined] | undefined;
   const ws = {
     deserializeAttachment: () => null,
-    send: (message) => sent.push(message),
-    close: (code, reason) => {
+    send: (message: Row) => sent.push(message),
+    close: (code: number, reason: string) => {
       closedWith = [code, reason];
     },
-  };
-  const hub = new ChainFirehoseHub(stubState([ws], [ws]), {});
+  } as unknown as WebSocket;
+  const hub = new ChainFirehoseHub(stubState([ws], [ws]), mockEnv({}));
   // Deliberately NOT registered in hub.graphqlWsSockets -- simulates a
   // post-hibernation-reconstruction instance that never re-opened it.
   hub.broadcast({ table: "blocks", block_number: 1 });
   assert.equal(sent.length, 0);
-  assert.equal(closedWith[0], 1012);
+  assert.equal(closedWith![0], 1012);
 });
 
 test("ChainFirehoseHub.webSocketMessage: a STALE graphql-ws-tagged WebSocket is closed rather than silently dropping the message", async () => {
-  let closedWith;
+  let closedWith: [number | undefined, string | undefined] | undefined;
   const ws = {
-    close: (code, reason) => {
+    close: (code: number, reason: string) => {
       closedWith = [code, reason];
     },
-  };
-  const hub = new ChainFirehoseHub(stubState([ws], [ws]), {});
+  } as unknown as WebSocket;
+  const hub = new ChainFirehoseHub(stubState([ws], [ws]), mockEnv({}));
   await hub.webSocketMessage(ws, "some graphql-ws protocol message");
-  assert.equal(closedWith[0], 1012);
+  assert.equal(closedWith![0], 1012);
 });
 
 test("ChainFirehoseHub.webSocketMessage: an untagged (genuinely plain) socket with no graphqlWsSockets entry stays a silent no-op", async () => {
-  const ws = { close: () => assert.fail("should not be closed") };
-  const hub = new ChainFirehoseHub(stubState([ws]), {}); // not tagged
+  const ws = {
+    close: () => assert.fail("should not be closed"),
+  } as unknown as WebSocket;
+  const hub = new ChainFirehoseHub(stubState([ws]), mockEnv({})); // not tagged
   await assert.doesNotReject(() => hub.webSocketMessage(ws, "ignored"));
 });
 
 test("ChainFirehoseHub.isGraphqlWsTaggedSocket / closeStaleGraphqlWsSocket: direct unit coverage", () => {
-  const ws = { close: () => {} };
-  const taggedHub = new ChainFirehoseHub(stubState([ws], [ws]), {});
+  const ws = { close: () => {} } as unknown as WebSocket;
+  const taggedHub = new ChainFirehoseHub(stubState([ws], [ws]), mockEnv({}));
   assert.equal(taggedHub.isGraphqlWsTaggedSocket(ws), true);
-  const untaggedHub = new ChainFirehoseHub(stubState([ws]), {});
+  const untaggedHub = new ChainFirehoseHub(stubState([ws]), mockEnv({}));
   assert.equal(untaggedHub.isGraphqlWsTaggedSocket(ws), false);
   assert.doesNotThrow(() => taggedHub.closeStaleGraphqlWsSocket(ws));
   assert.doesNotThrow(() =>
@@ -1253,22 +1296,22 @@ test("ChainFirehoseHub.isGraphqlWsTaggedSocket / closeStaleGraphqlWsSocket: dire
       close: () => {
         throw new Error("already closed");
       },
-    }),
+    } as unknown as WebSocket),
   );
 });
 
 // --- CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS (Finding 1, found by adversarial review) --
 
 test("ChainFirehoseHub.subscribeChainEvents: returns null (not a repeater) once at CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS; i += 1) {
-    assert.notEqual(hub.subscribeChainEvents(null), null);
+    assert.notEqual(hub.subscribeChainEvents(null, undefined, undefined), null);
   }
   assert.equal(
     hub.chainEventSubscribers.size,
     CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
   );
-  assert.equal(hub.subscribeChainEvents(null), null);
+  assert.equal(hub.subscribeChainEvents(null, undefined, undefined), null);
   assert.equal(
     hub.chainEventSubscribers.size,
     CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
@@ -1294,20 +1337,23 @@ test("ChainFirehoseHub.subscribeChainEvents: returns null (not a repeater) once 
 // does.
 
 test("ChainFirehoseHub.subscribeChainEvents: rejects a new subscription from the SAME IP at the per-IP cap, well below the global cap", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   assert.ok(
     CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP <
       CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS,
   );
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP; i += 1) {
-    assert.notEqual(hub.subscribeChainEvents(null, "203.0.113.9"), null);
+    assert.notEqual(
+      hub.subscribeChainEvents(null, "203.0.113.9", undefined),
+      null,
+    );
   }
   assert.equal(
     hub.chainEventSubscribersByIp.get("203.0.113.9"),
     CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP,
   );
 
-  const capped = hub.subscribeChainEvents(null, "203.0.113.9");
+  const capped = hub.subscribeChainEvents(null, "203.0.113.9", undefined);
   assert.equal(capped, null);
   // The per-IP rejection didn't consume any of the global budget beyond this
   // IP's own subscriptions -- proves the rejection came from the per-IP
@@ -1319,30 +1365,34 @@ test("ChainFirehoseHub.subscribeChainEvents: rejects a new subscription from the
 });
 
 test("ChainFirehoseHub.subscribeChainEvents: a DIFFERENT IP is unaffected by another IP's per-IP cap", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP; i += 1) {
-    hub.subscribeChainEvents(null, "203.0.113.9");
+    hub.subscribeChainEvents(null, "203.0.113.9", undefined);
   }
-  const otherIpRepeater = hub.subscribeChainEvents(null, "198.51.100.4");
+  const otherIpRepeater = hub.subscribeChainEvents(
+    null,
+    "198.51.100.4",
+    undefined,
+  );
   assert.notEqual(otherIpRepeater, null);
   assert.equal(hub.chainEventSubscribersByIp.get("198.51.100.4"), 1);
 });
 
 test("ChainFirehoseHub.unsubscribeChainEvents: releases the subscribing IP's slot, freeing room for a new subscription from the same IP", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const repeaters = [];
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const repeaters: (AsyncRepeater<ChainFirehoseIngestPayload> | null)[] = [];
   for (let i = 0; i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP; i += 1) {
-    repeaters.push(hub.subscribeChainEvents(null, "203.0.113.9"));
+    repeaters.push(hub.subscribeChainEvents(null, "203.0.113.9", undefined));
   }
-  assert.equal(hub.subscribeChainEvents(null, "203.0.113.9"), null); // capped
+  assert.equal(hub.subscribeChainEvents(null, "203.0.113.9", undefined), null); // capped
 
-  hub.unsubscribeChainEvents(repeaters[0]);
+  hub.unsubscribeChainEvents(repeaters[0]!);
   assert.equal(
     hub.chainEventSubscribersByIp.get("203.0.113.9"),
     CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP - 1,
   );
 
-  const reconnected = hub.subscribeChainEvents(null, "203.0.113.9");
+  const reconnected = hub.subscribeChainEvents(null, "203.0.113.9", undefined);
   assert.notEqual(reconnected, null);
   assert.equal(
     hub.chainEventSubscribersByIp.get("203.0.113.9"),
@@ -1351,10 +1401,10 @@ test("ChainFirehoseHub.unsubscribeChainEvents: releases the subscribing IP's slo
 });
 
 test("ChainFirehoseHub.unsubscribeChainEvents: deletes (not zeroes) the IP's map entry once its last subscription ends", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const repeater = hub.subscribeChainEvents(null, "203.0.113.9");
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const repeater = hub.subscribeChainEvents(null, "203.0.113.9", undefined);
   assert.equal(hub.chainEventSubscribersByIp.get("203.0.113.9"), 1);
-  hub.unsubscribeChainEvents(repeater);
+  hub.unsubscribeChainEvents(repeater!);
   assert.equal(hub.chainEventSubscribersByIp.has("203.0.113.9"), false);
 });
 
@@ -1365,22 +1415,24 @@ test("ChainFirehoseHub.unsubscribeChainEvents: a defensive no-op when the entry 
   // use elsewhere in this class for an untracked IP -- seeded directly here
   // (like several other tests in this file seed hub.sseClients/
   // hub.graphqlWsSockets directly) to exercise that guard as its own branch.
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const repeater = createAsyncRepeater();
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const repeater = createAsyncRepeater<ChainFirehoseIngestPayload>();
   const entry = { repeater, topics: null, clientIp: "203.0.113.9" };
-  hub.chainEventSubscribers.add(entry);
-  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater));
+  hub.chainEventSubscribers.add(
+    entry as unknown as Parameters<typeof hub.chainEventSubscribers.add>[0],
+  );
+  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater!));
   assert.equal(hub.chainEventSubscribersByIp.has("203.0.113.9"), false);
 });
 
 test("ChainFirehoseHub.subscribeChainEvents: an undefined clientIp (e.g. a caller not going through the real WS/graphql-ws path) skips the per-IP check entirely, sharing no bucket and never getting capped by it", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   for (
     let i = 0;
     i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_IP + 5;
     i += 1
   ) {
-    assert.notEqual(hub.subscribeChainEvents(null), null);
+    assert.notEqual(hub.subscribeChainEvents(null, undefined, undefined), null);
   }
   assert.equal(
     hub.chainEventSubscribers.size,
@@ -1390,9 +1442,9 @@ test("ChainFirehoseHub.subscribeChainEvents: an undefined clientIp (e.g. a calle
 });
 
 test("ChainFirehoseHub.unsubscribeChainEvents: unsubscribing a repeater that was subscribed with no clientIp doesn't touch chainEventSubscribersByIp", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
-  const repeater = hub.subscribeChainEvents(null);
-  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater));
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const repeater = hub.subscribeChainEvents(null, undefined, undefined);
+  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater!));
   assert.equal(hub.chainEventSubscribersByIp.size, 0);
 });
 
@@ -1404,7 +1456,7 @@ test("ChainFirehoseHub.unsubscribeChainEvents: unsubscribing a repeater that was
 // subscribeChainEvents's third argument.
 
 test("ChainFirehoseHub.subscribeChainEvents: enforces the per-socket active subscription cap independent of clientIp", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const connection = {
     activeSubscriptions: CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET,
   };
@@ -1414,7 +1466,7 @@ test("ChainFirehoseHub.subscribeChainEvents: enforces the per-socket active subs
 });
 
 test("ChainFirehoseHub.subscribeChainEvents: a DIFFERENT socket (same IP) is unaffected by another socket's per-socket cap", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const fullSocket = {
     activeSubscriptions: CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET,
   };
@@ -1426,36 +1478,36 @@ test("ChainFirehoseHub.subscribeChainEvents: a DIFFERENT socket (same IP) is una
 });
 
 test("ChainFirehoseHub.subscribeChainEvents: increments connection.activeSubscriptions on success", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const connection = { activeSubscriptions: 0 };
-  hub.subscribeChainEvents(null, null, connection);
-  hub.subscribeChainEvents(null, null, connection);
+  hub.subscribeChainEvents(null, undefined, connection);
+  hub.subscribeChainEvents(null, undefined, connection);
   assert.equal(connection.activeSubscriptions, 2);
 });
 
 test("ChainFirehoseHub.unsubscribeChainEvents: decrements connection.activeSubscriptions, floored at 0", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const connection = { activeSubscriptions: 0 };
-  const repeater = hub.subscribeChainEvents(null, null, connection);
+  const repeater = hub.subscribeChainEvents(null, undefined, connection);
   assert.equal(connection.activeSubscriptions, 1);
-  hub.unsubscribeChainEvents(repeater);
+  hub.unsubscribeChainEvents(repeater!);
   assert.equal(connection.activeSubscriptions, 0);
-  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater)); // already removed, no-op
+  assert.doesNotThrow(() => hub.unsubscribeChainEvents(repeater!)); // already removed, no-op
 });
 
 test("ChainFirehoseHub.subscribeChainEvents: an undefined connection skips the per-socket check entirely", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   for (
     let i = 0;
     i < CHAIN_FIREHOSE_MAX_GRAPHQL_SUBSCRIPTIONS_PER_SOCKET + 5;
     i += 1
   ) {
-    assert.notEqual(hub.subscribeChainEvents(null), null);
+    assert.notEqual(hub.subscribeChainEvents(null, undefined, undefined), null);
   }
 });
 
 test("ChainFirehoseHub.broadcast: a subscription that overflows its buffer is dropped and its counters released", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const connection = { activeSubscriptions: 0 };
   const repeater = hub.subscribeChainEvents(null, "203.0.113.9", connection);
   for (
@@ -1468,7 +1520,7 @@ test("ChainFirehoseHub.broadcast: a subscription that overflows its buffer is dr
   assert.equal(hub.chainEventSubscribers.size, 0);
   assert.equal(hub.chainEventSubscribersByIp.has("203.0.113.9"), false);
   assert.equal(connection.activeSubscriptions, 0);
-  assert.deepEqual(await repeater[Symbol.asyncIterator]().next(), {
+  assert.deepEqual(await repeater![Symbol.asyncIterator]().next(), {
     value: undefined,
     done: true,
   });
@@ -1493,13 +1545,15 @@ test("CHAIN_FIREHOSE_INGEST_TOKEN_HEADER and CHAIN_FIREHOSE_TABLES are the docum
 
 // --- MCP resource-subscription notify loop (#4983 MCP half) ---------------------
 
-function fakeMcpSessionHubBinding(overrides = {}) {
-  const calls = [];
+function fakeMcpSessionHubBinding(
+  overrides: Record<string, () => Response> = {},
+) {
+  const calls: Row[] = [];
   return {
     calls,
-    idFromName: (name) => name,
-    get: (sessionId) => ({
-      fetch: async (url, init) => {
+    idFromName: (name: string) => name,
+    get: (sessionId: string) => ({
+      fetch: async (url: string | URL, init: RequestInit) => {
         calls.push({ sessionId, url, init });
         if (overrides[sessionId]) return overrides[sessionId]();
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -1509,7 +1563,7 @@ function fakeMcpSessionHubBinding(overrides = {}) {
 }
 
 test("mcpSubscribeSession / mcpUnsubscribeSession: idempotent Set add/delete", () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   hub.mcpSubscribeSession("s1");
   hub.mcpSubscribeSession("s1"); // double-subscribe is a no-op
   assert.deepEqual([...hub.mcpSubscribedSessions], ["s1"]);
@@ -1520,7 +1574,7 @@ test("mcpSubscribeSession / mcpUnsubscribeSession: idempotent Set add/delete", (
 });
 
 test("ChainFirehoseHub.fetch: GET /latest returns the latest broadcast payload, null before any broadcast", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const before = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/latest"),
   );
@@ -1536,7 +1590,7 @@ test("ChainFirehoseHub.fetch: GET /latest returns the latest broadcast payload, 
 });
 
 test("ChainFirehoseHub.fetch: POST /mcp-subscribe registers the session", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const res = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/mcp-subscribe", {
       method: "POST",
@@ -1549,7 +1603,7 @@ test("ChainFirehoseHub.fetch: POST /mcp-subscribe registers the session", async 
 });
 
 test("ChainFirehoseHub.fetch: POST /mcp-unsubscribe removes the session", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   hub.mcpSubscribeSession("s1");
   const res = await hub.fetch(
     new Request("https://chain-firehose-hub.internal/mcp-unsubscribe", {
@@ -1564,13 +1618,16 @@ test("ChainFirehoseHub.fetch: POST /mcp-unsubscribe removes the session", async 
 
 test("broadcast: with no MCP-subscribed sessions, never calls MCP_SESSION_HUB", async () => {
   const mcpHub = fakeMcpSessionHubBinding();
-  const hub = new ChainFirehoseHub(stubState(), { MCP_SESSION_HUB: mcpHub });
+  const hub = new ChainFirehoseHub(
+    stubState(),
+    mockEnv({ MCP_SESSION_HUB: mcpHub }),
+  );
   await hub.broadcast({ table: "blocks", block_number: 1 });
   assert.equal(mcpHub.calls.length, 0);
 });
 
 test("broadcast: with a subscribed session but MCP_SESSION_HUB unbound, never throws and skips the loop", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   hub.mcpSubscribeSession("s1");
   await assert.doesNotReject(() =>
     hub.broadcast({ table: "blocks", block_number: 1 }),
@@ -1579,7 +1636,10 @@ test("broadcast: with a subscribed session but MCP_SESSION_HUB unbound, never th
 
 test("broadcast: notifies every MCP-subscribed session's McpSessionHub with a pointer-only uri", async () => {
   const mcpHub = fakeMcpSessionHubBinding();
-  const hub = new ChainFirehoseHub(stubState(), { MCP_SESSION_HUB: mcpHub });
+  const hub = new ChainFirehoseHub(
+    stubState(),
+    mockEnv({ MCP_SESSION_HUB: mcpHub }),
+  );
   hub.mcpSubscribeSession("s1");
   hub.mcpSubscribeSession("s2");
   await hub.broadcast({ table: "chain_events", block_number: 7 });
@@ -1601,7 +1661,10 @@ test("broadcast: an unreachable/erroring session hub is best-effort -- doesn't t
       throw new Error("session DO unreachable");
     },
   });
-  const hub = new ChainFirehoseHub(stubState(), { MCP_SESSION_HUB: mcpHub });
+  const hub = new ChainFirehoseHub(
+    stubState(),
+    mockEnv({ MCP_SESSION_HUB: mcpHub }),
+  );
   hub.mcpSubscribeSession("s1");
   hub.mcpSubscribeSession("s2");
   await assert.doesNotReject(() =>
@@ -1613,13 +1676,13 @@ test("broadcast: an unreachable/erroring session hub is best-effort -- doesn't t
 
 // --- ALERTER_HUB ping (#4984 Part 2) ---------------------------------------------
 
-function fakeAlerterHubBinding(overrides = {}) {
-  const calls = [];
+function fakeAlerterHubBinding(overrides: Record<string, () => Response> = {}) {
+  const calls: Row[] = [];
   return {
     calls,
-    idFromName: (name) => name,
-    get: (name) => ({
-      fetch: async (url, init) => {
+    idFromName: (name: string) => name,
+    get: (name: string) => ({
+      fetch: async (url: string | URL, init: RequestInit) => {
         calls.push({ name, url, init });
         if (overrides[name]) return overrides[name]();
         return new Response(JSON.stringify({ matched: 0 }), { status: 200 });
@@ -1629,7 +1692,7 @@ function fakeAlerterHubBinding(overrides = {}) {
 }
 
 test("broadcast: with ALERTER_HUB unbound, never throws and skips the ping", async () => {
-  const hub = new ChainFirehoseHub(stubState(), {});
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   await assert.doesNotReject(() =>
     hub.broadcast({ table: "account_events", block_number: 1 }),
   );
@@ -1637,7 +1700,10 @@ test("broadcast: with ALERTER_HUB unbound, never throws and skips the ping", asy
 
 test("broadcast: pings ALERTER_HUB's singleton /evaluate route with the full payload", async () => {
   const alerterHub = fakeAlerterHubBinding();
-  const hub = new ChainFirehoseHub(stubState(), { ALERTER_HUB: alerterHub });
+  const hub = new ChainFirehoseHub(
+    stubState(),
+    mockEnv({ ALERTER_HUB: alerterHub }),
+  );
   const payload = {
     table: "account_events",
     block_number: 7,
@@ -1658,7 +1724,10 @@ test("broadcast: an unreachable/erroring AlerterHub is best-effort -- doesn't th
       throw new Error("alerter hub unreachable");
     },
   });
-  const hub = new ChainFirehoseHub(stubState(), { ALERTER_HUB: alerterHub });
+  const hub = new ChainFirehoseHub(
+    stubState(),
+    mockEnv({ ALERTER_HUB: alerterHub }),
+  );
   await assert.doesNotReject(() =>
     hub.broadcast({ table: "account_events", block_number: 1 }),
   );
@@ -1667,7 +1736,10 @@ test("broadcast: an unreachable/erroring AlerterHub is best-effort -- doesn't th
 
 test("broadcast: the ALERTER_HUB ping carries a bounded AbortSignal, so a slow/stuck AlerterHub.evaluate() can't stall broadcast() (and therefore handleIngest's response) indefinitely", async () => {
   const alerterHub = fakeAlerterHubBinding();
-  const hub = new ChainFirehoseHub(stubState(), { ALERTER_HUB: alerterHub });
+  const hub = new ChainFirehoseHub(
+    stubState(),
+    mockEnv({ ALERTER_HUB: alerterHub }),
+  );
   await hub.broadcast({ table: "account_events", block_number: 1 });
   assert.equal(alerterHub.calls.length, 1);
   const { signal } = alerterHub.calls[0].init;
@@ -1687,10 +1759,13 @@ test("ALERTER_HUB_EVALUATE_TIMEOUT_MS is generous enough to cover AlerterHub's o
 test("broadcast: pings ALERTER_HUB unconditionally, unlike the per-session MCP loop -- no subscribe step required", async () => {
   const alerterHub = fakeAlerterHubBinding();
   const mcpHub = fakeMcpSessionHubBinding();
-  const hub = new ChainFirehoseHub(stubState(), {
-    ALERTER_HUB: alerterHub,
-    MCP_SESSION_HUB: mcpHub,
-  });
+  const hub = new ChainFirehoseHub(
+    stubState(),
+    mockEnv({
+      ALERTER_HUB: alerterHub,
+      MCP_SESSION_HUB: mcpHub,
+    }),
+  );
   // No mcpSubscribeSession call -- the MCP loop should stay silent while the
   // alerter ping still fires.
   await hub.broadcast({ table: "account_events", block_number: 1 });

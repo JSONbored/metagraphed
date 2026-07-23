@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { decodeChainEventArgs } from "../src/chain-event-args.ts";
+import type { Row } from "./row-type.ts";
 
 describe("decodeChainEventArgs", () => {
   test("decodes an account-keyed 32-byte field to SS58 (real TransactionFeePaid.who, block 8587754/412)", () => {
@@ -100,7 +101,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "SubtensorModule",
       method: "AxonServed",
-    });
+    }) as Row;
     assert.equal(decoded[0], 33);
     assert.ok(typeof decoded[1] === "string" && decoded[1].startsWith("5"));
   });
@@ -120,7 +121,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "SubtensorModule",
       method: "NeuronRegistered",
-    });
+    }) as Row;
     assert.deepEqual(decoded.slice(0, 2), [3, 30]);
     assert.ok(typeof decoded[2] === "string" && decoded[2].startsWith("5"));
   });
@@ -133,7 +134,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "SubtensorModule",
       method: "StakeTransferred",
-    });
+    }) as Row;
     assert.ok(decoded[0].startsWith("5"));
     assert.ok(decoded[1].startsWith("5"));
     assert.ok(decoded[2].startsWith("5"));
@@ -150,7 +151,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "SubtensorModule",
       method: "StakeMoved",
-    });
+    }) as Row;
     assert.ok(decoded[0].startsWith("5"));
     assert.ok(decoded[1].startsWith("5"));
     assert.ok(decoded[3].startsWith("5"));
@@ -168,7 +169,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "SubtensorModule",
       method: "StakeAdded",
-    });
+    }) as Row;
     assert.ok(decoded[0].startsWith("5"));
     assert.ok(decoded[1].startsWith("5"));
     assert.deepEqual(decoded.slice(2), [7990000000, 7990000000, 0, 0]);
@@ -214,7 +215,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "SubtensorModule",
       method: "ColdkeySwapped",
-    });
+    }) as Row;
     assert.ok(decoded.new_coldkey.startsWith("5"));
     assert.ok(decoded.old_coldkey.startsWith("5"));
     assert.notEqual(decoded.new_coldkey, decoded.old_coldkey);
@@ -232,7 +233,7 @@ describe("decodeChainEventArgs", () => {
     const sig1 = new Array(32).fill(1);
     const sig2 = new Array(32).fill(2);
     const args = { who: [[sig1], [sig2]] };
-    const decoded = decodeChainEventArgs(args);
+    const decoded = decodeChainEventArgs(args) as Row;
     assert.ok(Array.isArray(decoded.who));
     assert.equal(decoded.who.length, 2);
     assert.ok(
@@ -251,7 +252,7 @@ describe("decodeChainEventArgs", () => {
   test("is idempotent on already-decoded data (safe no-op if run twice)", () => {
     const decoded = decodeChainEventArgs({
       who: [new Array(32).fill(1)],
-    });
+    }) as Row;
     assert.deepEqual(decodeChainEventArgs(decoded), decoded);
   });
 
@@ -374,7 +375,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "EVM",
       method: "Log",
-    });
+    }) as Row;
     assert.deepEqual(decoded.log.topics, ["0x" + "03".repeat(32)]);
   });
 
@@ -385,7 +386,7 @@ describe("decodeChainEventArgs", () => {
         extra_data: [72, 105], // "Hi"
       },
       { pallet: "Ethereum", method: "Executed" },
-    );
+    ) as Row;
     assert.deepEqual(
       decodeChainEventArgs(decoded, { pallet: "Ethereum", method: "Executed" }),
       decoded,
@@ -472,7 +473,7 @@ describe("decodeChainEventArgs", () => {
         ],
       ],
     };
-    const decoded = decodeChainEventArgs(args);
+    const decoded = decodeChainEventArgs(args) as Row;
     assert.equal(
       decoded.new_hotkey,
       "5HE5eye8JdfMFe8Q1z7HosfwebqFUNUnyvmLZ1WWYtircSWe",
@@ -495,7 +496,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "EVM",
       method: "Log",
-    });
+    }) as Row;
     assert.equal(typeof decoded.log.data, "string");
     assert.match(decoded.log.data, /^0x[0-9a-f]{192}$/);
   });
@@ -513,7 +514,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "Contracts",
       method: "ContractEmitted",
-    });
+    }) as Row;
     assert.equal(
       decoded.data,
       "0xce020000000008505fdf55620b0000000000000060519be9cc9def5e0b000000000000000200000001",
@@ -560,7 +561,7 @@ describe("decodeChainEventArgs", () => {
     const decoded = decodeChainEventArgs(args, {
       pallet: "Contracts",
       method: "Called",
-    });
+    }) as Row;
     assert.equal(
       decoded.caller,
       "5CMGSFvP5A2UAunRzjaZHx5BDBYmYBm8nQNdW25uZNqX5sEi",
@@ -703,10 +704,12 @@ describe("decodeChainEventArgs", () => {
       data: [],
     };
     assert.equal(
-      decodeChainEventArgs(args, {
-        pallet: "Contracts",
-        method: "ContractEmitted",
-      }).contract,
+      (
+        decodeChainEventArgs(args, {
+          pallet: "Contracts",
+          method: "ContractEmitted",
+        }) as Row
+      ).contract,
       "5GcaftCj1psi5489Dp8RiL5UmMsbRMf9XsfNrDMMsfM5hFoB",
     );
   });
@@ -736,7 +739,7 @@ describe("decodeChainEventArgs", () => {
     const out = decodeChainEventArgs(args, {
       pallet: "Contracts",
       method: "Called",
-    });
+    }) as Row;
     assert.equal(
       out.contract,
       "5GcaftCj1psi5489Dp8RiL5UmMsbRMf9XsfNrDMMsfM5hFoB",
@@ -762,7 +765,7 @@ describe("decodeChainEventArgs", () => {
     const out = decodeChainEventArgs(args, {
       pallet: "LimitOrders",
       method: "OrderExecuted",
-    });
+    }) as Row;
     assert.equal(
       out.signer,
       "5HNprQFF4MmHNgDFnfQE4XznnNaVTz2qBtufLG4Apq1RUNrf",

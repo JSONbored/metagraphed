@@ -10,6 +10,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test, vi } from "vitest";
+import type { Row } from "./row-type.ts";
 
 // Hoisted spies -- mocked the same way apps/ui/src/lib/error-reporting.test.ts
 // mocks @sentry/browser. reportRateLimitPause and main()'s own fatal catch
@@ -270,11 +271,11 @@ test("computeBatchPaceDelayMs: pacing a full poll's worth of REQUESTS (post-batc
 // --- forwardChainFirehoseNotification ----------------------------------------
 
 test("forwardChainFirehoseNotification: POSTs the payload with the sync-token header, returns ok/status", async () => {
-  let received;
-  const fetchImpl = async (url, init) => {
+  let received: Row | undefined;
+  const fetchImpl = (async (url: string, init: RequestInit) => {
     received = { url, init };
     return new Response("{}", { status: 202 });
-  };
+  }) as typeof fetch;
   const result = await forwardChainFirehoseNotification(
     '{"table":"blocks","block_number":1}',
     { ingestUrl: "https://hub.example.com/ingest", syncSecret: "shh" },
@@ -282,14 +283,14 @@ test("forwardChainFirehoseNotification: POSTs the payload with the sync-token he
   );
   assert.equal(result.ok, true);
   assert.equal(result.status, 202);
-  assert.equal(received.url, "https://hub.example.com/ingest");
-  assert.equal(received.init.method, "POST");
+  assert.equal(received!.url, "https://hub.example.com/ingest");
+  assert.equal(received!.init.method, "POST");
   assert.equal(
-    received.init.headers[CHAIN_FIREHOSE_INGEST_TOKEN_HEADER],
+    received!.init.headers[CHAIN_FIREHOSE_INGEST_TOKEN_HEADER],
     "shh",
   );
-  assert.equal(received.init.body, '{"table":"blocks","block_number":1}');
-  assert.equal(received.init.signal instanceof AbortSignal, true);
+  assert.equal(received!.init.body, '{"table":"blocks","block_number":1}');
+  assert.equal(received!.init.signal instanceof AbortSignal, true);
 });
 
 test("forwardChainFirehoseNotification: a non-2xx response is reported as not ok", async () => {
@@ -308,7 +309,7 @@ test("forwardChainFirehoseNotification: cancels the response body before returni
   const result = await forwardChainFirehoseNotification(
     "{}",
     { ingestUrl: "https://hub.example.com/ingest", syncSecret: "shh" },
-    async () => ({
+    (async () => ({
       ok: true,
       status: 202,
       body: {
@@ -316,7 +317,7 @@ test("forwardChainFirehoseNotification: cancels the response body before returni
           canceled = true;
         },
       },
-    }),
+    })) as unknown as typeof fetch,
   );
   assert.deepEqual(result, { ok: true, status: 202 });
   assert.equal(canceled, true);
@@ -328,12 +329,12 @@ test("forwardChainFirehoseNotification: aborts a stalled fetch after the per-att
     const promise = forwardChainFirehoseNotification(
       "{}",
       { ingestUrl: "https://hub.example.com/ingest", syncSecret: "shh" },
-      async (_url, init) =>
+      (async (_url: string, init: RequestInit) =>
         new Promise((_resolve, reject) => {
-          init.signal.addEventListener("abort", () =>
+          init.signal!.addEventListener("abort", () =>
             reject(new Error("aborted")),
           );
-        }),
+        })) as unknown as typeof fetch,
     );
     const rejection = assert.rejects(promise, /aborted/);
 
@@ -369,7 +370,7 @@ test("forwardWithRetry: succeeds immediately without sleeping when the first att
 
 test("forwardWithRetry: retries with backoff on failure, succeeds on a later attempt", async () => {
   let calls = 0;
-  const sleeps = [];
+  const sleeps: number[] = [];
   const ok = await forwardWithRetry(
     "{}",
     { ingestUrl: "u", syncSecret: "s" },
@@ -378,7 +379,7 @@ test("forwardWithRetry: retries with backoff on failure, succeeds on a later att
         calls += 1;
         return new Response("{}", { status: calls < 2 ? 500 : 202 });
       },
-      sleepImpl: async (ms) => {
+      sleepImpl: async (ms: number) => {
         sleeps.push(ms);
       },
     },
@@ -440,7 +441,7 @@ test("forwardWithRetry: never sleeps after the final attempt (no wasted delay be
 // --- forwardBatch --------------------------------------------------------------
 
 test("forwardBatch: groups rows into CHAIN_FIREHOSE_INGEST_BATCH_SIZE-sized chunks, one POST body (JSON array) per chunk", async () => {
-  const seenBodies = [];
+  const seenBodies: Row[][] = [];
   // One row over a full chunk, so this exercises exactly 2 chunks: one full
   // (CHAIN_FIREHOSE_INGEST_BATCH_SIZE rows) and one with the remainder (1 row).
   const rows = Array.from(
@@ -451,10 +452,10 @@ test("forwardBatch: groups rows into CHAIN_FIREHOSE_INGEST_BATCH_SIZE-sized chun
     rows,
     { ingestUrl: "u", syncSecret: "s" },
     {
-      fetchImpl: async (_url, init) => {
-        seenBodies.push(JSON.parse(init.body));
+      fetchImpl: (async (_url: string, init: RequestInit) => {
+        seenBodies.push(JSON.parse(init.body as string));
         return new Response("{}", { status: 202 });
-      },
+      }) as typeof fetch,
       sleepImpl: async () => {},
     },
   );
@@ -468,7 +469,7 @@ test("forwardBatch: groups rows into CHAIN_FIREHOSE_INGEST_BATCH_SIZE-sized chun
   // batch branch expects.
   const fullChunk = seenBodies.find(
     (body) => body.length === CHAIN_FIREHOSE_INGEST_BATCH_SIZE,
-  );
+  )!;
   assert.equal(fullChunk[0].table, "blocks");
   assert.equal(typeof fullChunk[0].block_number, "number");
 });
@@ -481,7 +482,7 @@ test("forwardBatch: a chunk dropped after exhausting retries drops EVERY row in 
     { id: 1, payload: { table: "blocks", block_number: 1 } }, // always fails
     { id: 2, payload: { table: "blocks", block_number: 2 } }, // always succeeds
   ];
-  const dropped = [];
+  const dropped: number[] = [];
   const result = await forwardBatch(
     rows,
     { ingestUrl: "u", syncSecret: "s" },
@@ -489,12 +490,16 @@ test("forwardBatch: a chunk dropped after exhausting retries drops EVERY row in 
       chunkSize: 1,
       // Keyed by payload body, not a shared call counter -- chunks forward
       // concurrently, so interleaving between the two isn't deterministic.
-      fetchImpl: async (_url, init) =>
+      fetchImpl: (async (_url: string, init: RequestInit) =>
         new Response("{}", {
-          status: init.body.includes('"block_number":1') ? 500 : 202,
-        }),
+          status: (init.body as string).includes('"block_number":1')
+            ? 500
+            : 202,
+        })) as typeof fetch,
       sleepImpl: async () => {},
-      onDrop: (payload) => dropped.push(payload.block_number),
+      onDrop: (payload: unknown) => {
+        dropped.push((payload as Row).block_number);
+      },
     },
   );
   assert.equal(result.forwarded, 1);
@@ -507,14 +512,16 @@ test("forwardBatch: a dropped multi-row chunk fires onDrop once per row in that 
     { id: 1, payload: { table: "blocks", block_number: 1 } },
     { id: 2, payload: { table: "blocks", block_number: 2 } },
   ];
-  const dropped = [];
+  const dropped: number[] = [];
   const result = await forwardBatch(
     rows,
     { ingestUrl: "u", syncSecret: "s" },
     {
       fetchImpl: async () => new Response("{}", { status: 500 }),
       sleepImpl: async () => {},
-      onDrop: (payload) => dropped.push(payload.block_number),
+      onDrop: (payload: unknown) => {
+        dropped.push((payload as Row).block_number);
+      },
     },
   );
   assert.equal(result.forwarded, 0);
@@ -541,7 +548,7 @@ test("parseRetryAfterMs: an HTTP-date header resolves to a future-relative delay
   const ms = parseRetryAfterMs(future);
   // Allow slop for wall-clock time elapsed between Date.now() above and the
   // parse itself -- assert it's in the right ballpark, not an exact ms match.
-  assert.ok(ms > 25_000 && ms <= 30_000, `expected ~30000, got ${ms}`);
+  assert.ok(ms! > 25_000 && ms! <= 30_000, `expected ~30000, got ${ms}`);
 });
 
 test("parseRetryAfterMs: a past HTTP-date clamps to 0, never negative", () => {
@@ -582,7 +589,7 @@ test("forwardChainFirehoseNotification: no retryAfterMs key at all on a normal 2
 
 test("forwardWithRetry: a 429 uses retry-after for the pause, NOT the generic exponential backoff", async () => {
   let calls = 0;
-  const sleeps = [];
+  const sleeps: number[] = [];
   const ok = await forwardWithRetry(
     "{}",
     { ingestUrl: "u", syncSecret: "s" },
@@ -594,7 +601,9 @@ test("forwardWithRetry: a 429 uses retry-after for the pause, NOT the generic ex
           headers: { "retry-after": "5" },
         });
       },
-      sleepImpl: async (ms) => sleeps.push(ms),
+      sleepImpl: async (ms: number) => {
+        sleeps.push(ms);
+      },
     },
   );
   assert.equal(ok, true);
@@ -607,13 +616,15 @@ test("forwardWithRetry: a 429 uses retry-after for the pause, NOT the generic ex
 });
 
 test("forwardWithRetry: a 429 with no retry-after header falls back to CHAIN_FIREHOSE_DEFAULT_RATE_LIMIT_PAUSE_MS", async () => {
-  const sleeps = [];
+  const sleeps: number[] = [];
   await forwardWithRetry(
     "{}",
     { ingestUrl: "u", syncSecret: "s" },
     {
       fetchImpl: async () => new Response("{}", { status: 429 }),
-      sleepImpl: async (ms) => sleeps.push(ms),
+      sleepImpl: async (ms: number) => {
+        sleeps.push(ms);
+      },
     },
   );
   assert.deepEqual(sleeps, [
@@ -623,7 +634,7 @@ test("forwardWithRetry: a 429 with no retry-after header falls back to CHAIN_FIR
 });
 
 test("forwardWithRetry: an absurd retry-after value is clamped to CHAIN_FIREHOSE_MAX_RATE_LIMIT_PAUSE_MS", async () => {
-  const sleeps = [];
+  const sleeps: number[] = [];
   await forwardWithRetry(
     "{}",
     { ingestUrl: "u", syncSecret: "s" },
@@ -633,7 +644,9 @@ test("forwardWithRetry: an absurd retry-after value is clamped to CHAIN_FIREHOSE
           status: 429,
           headers: { "retry-after": "999999" },
         }),
-      sleepImpl: async (ms) => sleeps.push(ms),
+      sleepImpl: async (ms: number) => {
+        sleeps.push(ms);
+      },
     },
   );
   assert.ok(
@@ -647,7 +660,7 @@ test("forwardWithRetry: calls onRateLimited on EVERY 429 attempt, including the 
   // the actual sleepImpl pause is skipped there, a separate concern) so
   // forwardBatch's caller learns about the rate limit even when a payload
   // gets dropped rather than successfully retried.
-  const pauses = [];
+  const pauses: (number | undefined)[] = [];
   const ok = await forwardWithRetry(
     "{}",
     { ingestUrl: "u", syncSecret: "s" },
@@ -679,8 +692,8 @@ test("forwardWithRetry: onDrop receives the last-observed status code as its sec
 });
 
 test("forwardWithRetry: onDrop's status is undefined when every attempt threw (not a stale status from an earlier attempt)", async () => {
-  let statusArgWasPassed = true;
-  let lastStatus = "unset";
+  const statusArgWasPassed = true;
+  let lastStatus: string | number | undefined = "unset";
   await forwardWithRetry(
     "{}",
     { ingestUrl: "u", syncSecret: "s" },
@@ -703,7 +716,7 @@ test("forwardWithRetry: a 429 followed by a thrown network error does not leak t
   // `result` must reset each attempt, or a later thrown-error attempt would
   // incorrectly report the PRIOR attempt's 429 status via onDrop.
   let calls = 0;
-  let lastStatus = "unset";
+  let lastStatus: string | number | undefined = "unset";
   await forwardWithRetry(
     "{}",
     { ingestUrl: "u", syncSecret: "s" },
@@ -738,13 +751,15 @@ test("forwardBatch: surfaces rateLimitedForMs as the MAX pause seen across the b
     { ingestUrl: "u", syncSecret: "s" },
     {
       chunkSize: 1, // isolate 2 separate chunks/requests, one per row
-      fetchImpl: async (_url, init) =>
+      fetchImpl: (async (_url: string, init: RequestInit) =>
         new Response("{}", {
           status: 429,
           headers: {
-            "retry-after": init.body.includes('"block_number":1') ? "5" : "20",
+            "retry-after": (init.body as string).includes('"block_number":1')
+              ? "5"
+              : "20",
           },
-        }),
+        })) as typeof fetch,
       sleepImpl: async () => {},
     },
   );
@@ -833,7 +848,7 @@ test("computeDropWindowUpdate: two independent windows (null starting state each
   const windowA = computeDropWindowUpdate(null, 200, 500, 1_000_000).nextWindow;
   const windowB = computeDropWindowUpdate(null, 50, 429, 5_000_000);
   assert.equal(windowB.count, 50, "windowB must not include windowA's 200");
-  assert.notEqual(windowA.startedAt, windowB.nextWindow.startedAt);
+  assert.notEqual(windowA!.startedAt, windowB.nextWindow!.startedAt);
 });
 
 test("reportRateLimitPause: calls Sentry.captureMessage directly, once per call (naturally low-frequency, no aggregation needed)", () => {
@@ -883,10 +898,10 @@ test("initSentry: filters the default ProcessSession integration out (it would o
   vi.stubEnv("SENTRY_DSN", "https://abc@o0.ingest.sentry.io/0");
   initSentry();
 
-  const { integrations } = sentryInit.mock.calls[0][0];
+  const { integrations } = sentryInit.mock.calls[0][0] as Row;
   const filtered = integrations([{ name: "ProcessSession" }, { name: "Http" }]);
   assert.deepEqual(
-    filtered.map((i) => i.name),
+    filtered.map((i: Row) => i.name),
     ["Http"],
   );
 
@@ -910,7 +925,7 @@ test("endSessionAndFlush: ends the session and flushes", async () => {
   await endSessionAndFlush();
   assert.equal(endSession.mock.calls.length, 1);
   assert.equal(flush.mock.calls.length, 1);
-  assert.equal(flush.mock.calls[0][0], 2000);
+  assert.equal((flush.mock.calls[0] as unknown[])[0], 2000);
 });
 
 // --- touchHeartbeat / isHeartbeatFresh -----------------------------------------
@@ -919,7 +934,7 @@ test("endSessionAndFlush: ends the session and flushes", async () => {
 // path, but take an explicit `path` override precisely so tests never touch
 // /tmp/chain-firehose-relay-heartbeat itself.
 
-function withHeartbeatDir(fn) {
+function withHeartbeatDir(fn: (heartbeatPath: string) => void) {
   const dir = mkdtempSync(path.join(tmpdir(), "metagraphed-heartbeat-test-"));
   try {
     return fn(path.join(dir, "heartbeat"));
@@ -991,7 +1006,7 @@ test("runQueryWithRetry: returns the operation's result on first success without
 
 test("runQueryWithRetry: retries a transient error with capped-exponential backoff, then returns the eventual success", async () => {
   let calls = 0;
-  const sleeps = [];
+  const sleeps: number[] = [];
   const result = await runQueryWithRetry(
     async () => {
       calls += 1;
@@ -999,7 +1014,7 @@ test("runQueryWithRetry: retries a transient error with capped-exponential backo
       return "ok";
     },
     {
-      sleepImpl: async (ms) => {
+      sleepImpl: async (ms: number) => {
         sleeps.push(ms);
       },
     },
@@ -1028,7 +1043,7 @@ test("runQueryWithRetry: rethrows the last error after exhausting maxAttempts", 
 });
 
 test("runQueryWithRetry: invokes onRetry with the caught error and 0-indexed attempt before each backoff, but not after the final failure", async () => {
-  const observed = [];
+  const observed: [string, number][] = [];
   await assert.rejects(
     runQueryWithRetry(
       async () => {
@@ -1037,8 +1052,8 @@ test("runQueryWithRetry: invokes onRetry with the caught error and 0-indexed att
       {
         maxAttempts: 3,
         sleepImpl: async () => {},
-        onRetry: (error, attempt) => {
-          observed.push([error.message, attempt]);
+        onRetry: (error: unknown, attempt: number) => {
+          observed.push([(error as Error).message, attempt]);
         },
       },
     ),

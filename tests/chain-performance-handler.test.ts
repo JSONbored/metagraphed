@@ -4,40 +4,43 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import { handleChainPerformance } from "../workers/request-handlers/entities.mjs";
+import type { Row } from "./row-type.ts";
 
-function req(path) {
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
+
+function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-function url(path) {
+function url(path: string) {
   return new URL(`https://api.metagraph.sh${path}`);
 }
 
-async function json(res) {
+async function json(res: Response) {
   assert.equal(res.status, 200, `expected 200, got ${res.status}`);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.ok, true);
   return body;
 }
 
-async function errorJson(res) {
+async function errorJson(res: Response) {
   assert.equal(res.status, 400);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.ok, false);
   return body;
 }
 
-function neuronsEnv(rows, capture = []) {
+function neuronsEnv(rows: Row[], capture: Row[] = []) {
   return {
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
-          bind(...params) {
+          bind(...params: unknown[]) {
             capture.push({ sql, params });
             return {
               all: async () => ({ results: rows }),
@@ -49,7 +52,7 @@ function neuronsEnv(rows, capture = []) {
   };
 }
 
-async function assertValidComponent(componentName, data) {
+async function assertValidComponent(componentName: string, data: Row) {
   const generatedAt = "2026-06-24T12:00:00.000Z";
   const openapi = buildOpenApiArtifact(
     generatedAt,

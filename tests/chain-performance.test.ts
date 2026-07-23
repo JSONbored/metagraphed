@@ -7,6 +7,7 @@ import {
 } from "../src/chain-performance.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 // A network snapshot: neurons from two subnets, two validators + two miners, a
 // skewed incentive/dividend distribution.
@@ -59,7 +60,7 @@ const ROWS = [
 
 describe("scoreDistribution", () => {
   test("computes count/mean/min/max + nearest-rank percentiles over 0..1 scores", () => {
-    const d = scoreDistribution([0, 0.4, 0.7, 0.9]);
+    const d = scoreDistribution([0, 0.4, 0.7, 0.9])!;
     assert.equal(d.count, 4);
     assert.equal(d.min, 0);
     assert.equal(d.max, 0.9);
@@ -70,14 +71,14 @@ describe("scoreDistribution", () => {
   });
 
   test("drops null/NaN/blank cells, coerces numeric strings", () => {
-    const d = scoreDistribution([0.5, null, "0.25", undefined, NaN, ""]);
+    const d = scoreDistribution([0.5, null, "0.25", undefined, NaN, ""])!;
     assert.equal(d.count, 2); // 0.5 and "0.25"
     assert.equal(d.min, 0.25);
     assert.equal(d.max, 0.5);
   });
 
   test("drops a whitespace-only cell instead of reading it as a real 0", () => {
-    const d = scoreDistribution([0.5, " "]);
+    const d = scoreDistribution([0.5, " "])!;
     assert.equal(d.count, 1); // the blank cell carries no real score
     assert.equal(d.mean, 0.5);
     assert.equal(d.min, 0.5);
@@ -86,7 +87,10 @@ describe("scoreDistribution", () => {
   test("empty / all-null column → null (schema-stable)", () => {
     assert.equal(scoreDistribution([]), null);
     assert.equal(scoreDistribution([null, undefined, "x"]), null);
-    assert.equal(scoreDistribution("not-an-array"), null);
+    assert.equal(
+      scoreDistribution("not-an-array" as unknown as unknown[]),
+      null,
+    );
   });
 });
 
@@ -103,24 +107,24 @@ describe("buildChainPerformance", () => {
 
   test("incentive concentration is over ALL neurons with a positive incentive", () => {
     const out = buildChainPerformance(ROWS);
-    assert.equal(out.incentive.holders, 3); // 0.6/0.3/0.1 positive; the 0 dropped
-    assert.ok(out.incentive.gini > 0);
-    assert.equal(out.incentive.nakamoto_coefficient, 1); // 0.6 of total 1.0 > 50%
+    assert.equal((out.incentive as Row).holders, 3); // 0.6/0.3/0.1 positive; the 0 dropped
+    assert.ok((out.incentive as Row).gini > 0);
+    assert.equal((out.incentive as Row).nakamoto_coefficient, 1); // 0.6 of total 1.0 > 50%
   });
 
   test("dividends concentration is over the VALIDATORS only", () => {
     const out = buildChainPerformance(ROWS);
-    assert.equal(out.dividends.holders, 2); // only the two validators earn
-    assert.equal(out.dividends.total, 0.6);
+    assert.equal((out.dividends as Row).holders, 2); // only the two validators earn
+    assert.equal((out.dividends as Row).total, 0.6);
   });
 
   test("trust/consensus spread over all neurons; validator_trust over validators", () => {
     const out = buildChainPerformance(ROWS);
-    assert.equal(out.trust.count, 4);
-    assert.equal(out.consensus.count, 4);
-    assert.equal(out.validator_trust.count, 2);
-    assert.equal(out.trust.max, 0.9);
-    assert.equal(out.validator_trust.min, 0.85);
+    assert.equal(out.trust!.count, 4);
+    assert.equal(out.consensus!.count, 4);
+    assert.equal(out.validator_trust!.count, 2);
+    assert.equal(out.trust!.max, 0.9);
+    assert.equal(out.validator_trust!.min, 0.85);
   });
 
   test("subnet_count ignores null, blank, and non-integer netuid cells", () => {
@@ -184,21 +188,23 @@ describe("buildChainPerformance", () => {
   });
 
   test("null-safe on junk rows", () => {
-    const out = buildChainPerformance("nope");
+    const out = buildChainPerformance(
+      "nope" as unknown as Record<string, unknown>[],
+    );
     assert.equal(out.neuron_count, 0);
     assert.equal(out.incentive, null);
   });
 
   test("loadChainPerformance issues one un-filtered SELECT and shapes it", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
+    let seen: Row | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
       return ROWS;
     };
     const out = await loadChainPerformance(d1);
-    assert.match(seen.sql, /FROM neurons/);
-    assert.doesNotMatch(seen.sql, /WHERE netuid/); // network-wide: no filter
-    assert.deepEqual(seen.params, []);
+    assert.match(seen!.sql, /FROM neurons/);
+    assert.doesNotMatch(seen!.sql, /WHERE netuid/); // network-wide: no filter
+    assert.deepEqual(seen!.params, []);
     assert.equal(out.subnet_count, 2);
     assert.equal(out.validator_count, 2);
   });
@@ -207,11 +213,11 @@ describe("buildChainPerformance", () => {
 describe("GET /api/v1/chain/performance", () => {
   // The MAX(captured_at) cache stamp and the network neurons read both hit
   // `FROM neurons`, so route the stamp query first (mirrors chain/concentration).
-  function neuronsEnv(rows) {
+  function neuronsEnv(rows: Row[]) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -237,9 +243,13 @@ describe("GET /api/v1/chain/performance", () => {
 });
 
 describe("chain/performance edge cache", () => {
-  let originalCaches;
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   // #5358: chain/performance no longer reads D1 for its edge-cache stamp — the
@@ -249,11 +259,11 @@ describe("chain/performance edge cache", () => {
   // frozen stamp ever since). It now busts on the same shared health-cron
   // `last_run_at` KV value every sibling Postgres-tier analytics route already
   // uses.
-  function controlEnv(lastRunAt) {
+  function controlEnv(lastRunAt: string | null) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key !== "health:meta") return null;
           return lastRunAt ? { last_run_at: lastRunAt } : null;
         },
@@ -263,17 +273,17 @@ describe("chain/performance edge cache", () => {
 
   // A Map-backed stand-in for the Workers cache so withEdgeCache actually engages.
   function mockCacheStore() {
-    const store = new Map();
+    const store = new Map<string, Response>();
     return {
       store,
       install() {
-        globalThis.caches = {
+        globalWithCaches.caches = {
           default: {
-            async match(request) {
+            async match(request: Request) {
               const cached = store.get(request.url);
               return cached ? cached.clone() : undefined;
             },
-            async put(request, response) {
+            async put(request: Request, response: Response) {
               store.set(request.url, response.clone());
             },
           },
@@ -283,13 +293,13 @@ describe("chain/performance edge cache", () => {
   }
 
   test("engages the edge cache, busting on the health-cron last_run_at stamp", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCacheStore();
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/performance"),
       controlEnv("2026-06-18T00:00:00.000Z"),
-      { waitUntil: (promise) => promise },
+      { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
     // A warm stamp + 200 means the response was cached: proof the default
@@ -298,13 +308,13 @@ describe("chain/performance edge cache", () => {
   });
 
   test("skips the cache entirely when the health stamp is cold", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCacheStore();
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/performance"),
       controlEnv(null),
-      { waitUntil: (promise) => promise },
+      { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
     // A cold/absent last_run_at must never seed the edge cache (mirrors the

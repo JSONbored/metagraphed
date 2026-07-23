@@ -6,6 +6,7 @@ import {
 } from "../src/concentration.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 // buildChainConcentration reuses the (separately tested) computeConcentration /
 // groupByEntity primitives, so these tests target the NETWORK-specific wiring:
@@ -51,20 +52,20 @@ describe("buildChainConcentration", () => {
     assert.equal(out.captured_at, "2026-06-27T00:00:00Z");
 
     // per-UID lens: three holders (10, 20, 30), total 60.
-    assert.equal(out.stake.holders, 3);
-    assert.equal(out.stake.total, 60);
+    assert.equal(out.stake!.holders, 3);
+    assert.equal(out.stake!.total, 60);
 
     // entity lens: ck-a's two subnets collapse to 30, so the network control
     // distribution is a uniform {30, 30} — two holders, Gini 0.
-    assert.equal(out.entity_stake.holders, 2);
-    assert.equal(out.entity_stake.total, 60);
-    assert.equal(out.entity_stake.gini, 0);
-    assert.equal(out.entity_emission.holders, 2);
-    assert.equal(out.entity_emission.total, 6);
+    assert.equal(out.entity_stake!.holders, 2);
+    assert.equal(out.entity_stake!.total, 60);
+    assert.equal(out.entity_stake!.gini, 0);
+    assert.equal(out.entity_emission!.holders, 2);
+    assert.equal(out.entity_emission!.total, 6);
 
     // validator lens: only the two permit=1 rows (10 + 20 = 30).
-    assert.equal(out.validator_stake.holders, 2);
-    assert.equal(out.validator_stake.total, 30);
+    assert.equal(out.validator_stake!.holders, 2);
+    assert.equal(out.validator_stake!.total, 30);
   });
 
   test("sums one coldkey's per-UID stake and the network total in exact rao space (#2922)", () => {
@@ -94,9 +95,9 @@ describe("buildChainConcentration", () => {
       Number(expectedTotalRao % 1_000_000_000n) / 1e9;
     const rounded = Math.round(expectedTotal * 1e4) / 1e4; // computeConcentration rounds `total` to 4dp
     // one coldkey -> one entity, so the entity total equals the per-UID total.
-    assert.equal(out.stake.total, rounded);
-    assert.equal(out.entity_stake.total, rounded);
-    assert.equal(out.entity_stake.holders, 1);
+    assert.equal(out.stake!.total, rounded);
+    assert.equal(out.entity_stake!.total, rounded);
+    assert.equal(out.entity_stake!.holders, 1);
   });
 
   test("takes the newest captured_at across mixed epoch-ms / ISO stamps", () => {
@@ -125,7 +126,7 @@ describe("buildChainConcentration", () => {
       { stake_tao: 20, coldkey: "b", validator_permit: 0, netuid: 1 },
     ]);
     assert.equal(out.validator_stake, null);
-    assert.equal(out.stake.holders, 2);
+    assert.equal(out.stake!.holders, 2);
   });
 
   test("coerces string netuid cells and rejects blank/null/invalid ones", () => {
@@ -185,19 +186,19 @@ describe("buildChainConcentration", () => {
         netuid: 1,
         captured_at: "2026-06-27T00:00:00Z",
       },
-    ]);
+    ] as unknown as Row[]);
     assert.equal(out.subnet_count, 1);
-    assert.equal(out.stake.holders, 1);
-    assert.equal(out.stake.total, 10);
+    assert.equal(out.stake!.holders, 1);
+    assert.equal(out.stake!.total, 10);
     assert.equal(out.captured_at, "2026-06-27T00:00:00Z");
   });
 });
 
 describe("loadChainConcentration", () => {
   // A D1 stub that records the SQL/params so the read shape can be asserted.
-  function captureD1(rows = []) {
-    const calls = [];
-    const d1 = async (sql, params) => {
+  function captureD1(rows: Row[] = []) {
+    const calls: Row[] = [];
+    const d1 = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return rows;
     };
@@ -230,7 +231,7 @@ describe("loadChainConcentration", () => {
     assert.doesNotMatch(calls[0].sql, /WHERE/);
     assert.deepEqual(calls[0].params, []);
     assert.equal(data.subnet_count, 2);
-    assert.equal(data.stake.holders, 2);
+    assert.equal(data.stake!.holders, 2);
   });
 
   test("returns a schema-stable null block on a cold D1", async () => {
@@ -246,11 +247,11 @@ describe("loadChainConcentration", () => {
 describe("GET /api/v1/chain/concentration", () => {
   // A METAGRAPH_HEALTH_DB stub: the MAX(captured_at) cache stamp and the network
   // neurons read both hit `FROM neurons`, so route the stamp query first.
-  function neuronsEnv(rows) {
+  function neuronsEnv(rows: Row[]) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind() {
               return {
@@ -278,9 +279,13 @@ describe("GET /api/v1/chain/concentration", () => {
 });
 
 describe("chain/concentration edge cache", () => {
-  let originalCaches;
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   // #5358: chain/concentration no longer reads D1 for its edge-cache stamp — the
@@ -290,11 +295,11 @@ describe("chain/concentration edge cache", () => {
   // frozen stamp ever since). It now busts on the same shared health-cron
   // `last_run_at` KV value every sibling Postgres-tier analytics route already
   // uses.
-  function controlEnv(lastRunAt) {
+  function controlEnv(lastRunAt: string | null) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key !== "health:meta") return null;
           return lastRunAt ? { last_run_at: lastRunAt } : null;
         },
@@ -304,17 +309,17 @@ describe("chain/concentration edge cache", () => {
 
   // A Map-backed stand-in for the Workers cache so withEdgeCache actually engages.
   function mockCacheStore() {
-    const store = new Map();
+    const store = new Map<string, Response>();
     return {
       store,
       install() {
-        globalThis.caches = {
+        globalWithCaches.caches = {
           default: {
-            async match(request) {
+            async match(request: Request) {
               const cached = store.get(request.url);
               return cached ? cached.clone() : undefined;
             },
-            async put(request, response) {
+            async put(request: Request, response: Response) {
               store.set(request.url, response.clone());
             },
           },
@@ -324,13 +329,13 @@ describe("chain/concentration edge cache", () => {
   }
 
   test("engages the edge cache, busting on the health-cron last_run_at stamp", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCacheStore();
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/concentration"),
       controlEnv("2026-06-18T00:00:00.000Z"),
-      { waitUntil: (promise) => promise },
+      { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
     // A warm stamp + 200 means the response was cached: proof the default
@@ -339,13 +344,13 @@ describe("chain/concentration edge cache", () => {
   });
 
   test("skips the cache entirely when the health stamp is cold", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCacheStore();
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/concentration"),
       controlEnv(null),
-      { waitUntil: (promise) => promise },
+      { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
     // A cold/absent last_run_at must never seed the edge cache (mirrors the

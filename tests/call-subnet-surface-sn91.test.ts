@@ -13,6 +13,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import type { Row } from "./row-type.ts";
 
 // The SN91 health surface exactly as the build emits it into
 // operational-surfaces.json (registry/subnets/bitstarter-1.json ->
@@ -33,7 +34,7 @@ const SN91_HEALTH_SURFACE = {
 const HEALTH_BODY = { status: "ok", message: "All systems operational" };
 
 const deps = {
-  readArtifact: async (_env, path) => {
+  readArtifact: async (_env: Row, path: string) => {
     if (path === "/metagraph/operational-surfaces.json") {
       return { ok: true, data: { surfaces: [SN91_HEALTH_SURFACE] } };
     }
@@ -43,8 +44,8 @@ const deps = {
 
 // Serves the DoH lookup the SSRF guard makes for updates.bitstarter.ai (answer
 // with a public IP so it's treated as safe) and the surface's own JSON body.
-function mockFetch() {
-  return async (input) => {
+function mockFetch(): typeof fetch {
+  return (async (input: string | URL | Request) => {
     const url = String(input);
     if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
       return new Response(
@@ -56,10 +57,10 @@ function mockFetch() {
       status: 200,
       headers: { "content-type": "application/json; charset=utf-8" },
     });
-  };
+  }) as typeof fetch;
 }
 
-async function callSn91Surface(surfaceId) {
+async function callSn91Surface(surfaceId: string) {
   const original = globalThis.fetch;
   globalThis.fetch = mockFetch();
   try {
@@ -80,7 +81,7 @@ async function callSn91Surface(surfaceId) {
       {},
       deps,
     );
-    return (await response.json()).result;
+    return ((await response.json()) as Row).result;
   } finally {
     globalThis.fetch = original;
   }
