@@ -9,7 +9,7 @@
 // for long-lived Node servers (batching, flush intervals, shutdown draining) —
 // none of which survives a Workers isolate anyway — and it costs ~40 KiB
 // gzipped in the bundle. The Worker entry is already within a few KiB of
-// Cloudflare's 1 MiB script limit (scripts/worker-bundle-budget.mjs), so
+// Cloudflare's 1 MiB script limit (scripts/worker-bundle-budget.ts), so
 // importing it here pushes the deployable bundle past the limit outright.
 // One fetch to the documented capture endpoint does the same job at zero
 // bundle cost, and fetch is the platform-native transport here.

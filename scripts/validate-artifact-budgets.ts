@@ -7,9 +7,15 @@ import {
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.ts";
 
+interface ArtifactRecord {
+  path: string;
+  sha256: string;
+  size_bytes: number;
+}
+
 const artifactRoot = path.join(repoRoot, "public/metagraph");
 const r2ArtifactRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
-const artifacts = [];
+const artifacts: ArtifactRecord[] = [];
 
 await walk(artifactRoot, async (filePath) => {
   if (!filePath.endsWith(".json")) {
@@ -78,12 +84,15 @@ console.log(
   `Artifact size budgets passed for ${results.length} artifact(s) with ${warnings.length} warning(s).`,
 );
 
-async function walk(dirPath, onFile) {
+async function walk(
+  dirPath: string,
+  onFile: (filePath: string) => Promise<void>,
+): Promise<void> {
   let entries;
   try {
     entries = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return;
     }
     throw error;

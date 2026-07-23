@@ -64,7 +64,7 @@ try {
   }
 
   let totalGzip = 0;
-  const rows = [];
+  const rows: { name: string; gzip: number }[] = [];
   for (const name of moduleFiles) {
     const bytes = await fs.readFile(path.join(outDir, name));
     const gzip = gzipSync(bytes, { level: 9 }).length;
