@@ -16,11 +16,19 @@ import {
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.ts";
 
+type Row = Record<string, unknown>;
+
+interface ArtifactFile {
+  path: string;
+  sha256: string;
+  size_bytes: number;
+}
+
 const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 // build-summary.json is R2-only (#1003) — read/write it in the R2 staging tier.
 const summaryPath = path.join(r2OutputRoot, "build-summary.json");
-const existing = JSON.parse(await fs.readFile(summaryPath, "utf8"));
+const existing: Row = JSON.parse(await fs.readFile(summaryPath, "utf8"));
 const artifacts = await collectArtifactSizes({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
@@ -51,8 +59,14 @@ console.log(
   }),
 );
 
-async function collectArtifactSizes({ publicRoot, r2Root }) {
-  const files = [];
+async function collectArtifactSizes({
+  publicRoot,
+  r2Root,
+}: {
+  publicRoot: string;
+  r2Root: string;
+}): Promise<ArtifactFile[]> {
+  const files: ArtifactFile[] = [];
   await walk(publicRoot, async (filePath) => {
     if (!filePath.endsWith(".json")) {
       return;
@@ -93,12 +107,15 @@ async function collectArtifactSizes({ publicRoot, r2Root }) {
   return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-async function walk(dirPath, onFile) {
+async function walk(
+  dirPath: string,
+  onFile: (filePath: string) => Promise<void>,
+): Promise<void> {
   let entries;
   try {
     entries = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return;
     }
     throw error;

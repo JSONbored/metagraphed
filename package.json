@@ -88,7 +88,7 @@
     "providers:list": "node scripts/list-providers.ts",
     "r2:manifest": "node scripts/r2-manifest.ts --write",
     "r2:manifest:dry-run": "node scripts/r2-manifest.ts",
-    "build-summary:refresh": "node scripts/refresh-build-summary.mjs",
+    "build-summary:refresh": "node scripts/refresh-build-summary.ts",
     "r2:download:dry-run": "node scripts/r2-download.ts",
     "r2:download": "node scripts/r2-download.ts --write",
     "r2:upload:dry-run": "node scripts/r2-upload.ts --dry-run",
