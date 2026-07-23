@@ -1,4 +1,4 @@
-// Regression coverage for #6331: validate-surface.mjs now fails when a
+// Regression coverage for #6331: validate-surface.ts now fails when a
 // surface declares schema_status: "machine-readable" with no schema_url —
 // the claim ("a schema is fetchable") needs the URL that backs it up.
 // Mirrors validate-surface-duplicate-url.test.mjs's subprocess-fixture pattern.
@@ -26,7 +26,7 @@ function runNode(args) {
   }
 }
 
-describe("validate-surface.mjs schema_url check", () => {
+describe("validate-surface.ts schema_url check", () => {
   let tempDir;
 
   afterEach(() => {
@@ -71,7 +71,7 @@ describe("validate-surface.mjs schema_url check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -100,7 +100,7 @@ describe("validate-surface.mjs schema_url check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -125,7 +125,7 @@ describe("validate-surface.mjs schema_url check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -136,17 +136,17 @@ describe("validate-surface.mjs schema_url check", () => {
   test("the full registry has no unresolved schema_url findings", () => {
     // Sanity check the check itself against real data: running with no file
     // args (validates every subnet file) must be clean.
-    const { status, output } = runNode(["scripts/validate-surface.mjs"]);
+    const { status, output } = runNode(["scripts/validate-surface.ts"]);
     assert.equal(status, 0, output);
   });
 });
 
-describe("validate-surface.mjs schema_url check does not misfire", () => {
+describe("validate-surface.ts schema_url check does not misfire", () => {
   test("every real subnet file individually passes (no false-positive schema_url findings)", async () => {
     const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
     assert.ok(files.length > 0);
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       ...files,
     ]);
     assert.equal(status, 0, output);

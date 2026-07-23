@@ -1,4 +1,4 @@
-// Regression coverage for #5737: validate-surface.mjs now fails when two
+// Regression coverage for #5737: validate-surface.ts now fails when two
 // surfaces[] entries in the same subnet file register the identical URL
 // under different ids/kinds (the mistake #5736 found 3 live instances of).
 // Mirrors validate-error-messages.test.mjs's subprocess-fixture pattern.
@@ -26,7 +26,7 @@ function runNode(args) {
   }
 }
 
-describe("validate-surface.mjs duplicate-URL check", () => {
+describe("validate-surface.ts duplicate-URL check", () => {
   let tempDir;
 
   afterEach(() => {
@@ -80,7 +80,7 @@ describe("validate-surface.mjs duplicate-URL check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -118,7 +118,7 @@ describe("validate-surface.mjs duplicate-URL check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -153,7 +153,7 @@ describe("validate-surface.mjs duplicate-URL check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -164,17 +164,17 @@ describe("validate-surface.mjs duplicate-URL check", () => {
   test("the full registry has no unresolved duplicate-URL findings", () => {
     // Sanity check the check itself against real data: after #5736's fix,
     // running with no file args (validates every subnet file) must be clean.
-    const { status, output } = runNode(["scripts/validate-surface.mjs"]);
+    const { status, output } = runNode(["scripts/validate-surface.ts"]);
     assert.equal(status, 0, output);
   });
 });
 
-describe("validate-surface.mjs duplicate-URL check does not misfire", () => {
+describe("validate-surface.ts duplicate-URL check does not misfire", () => {
   test("every real subnet file individually passes (no false-positive dedupe)", async () => {
     const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
     assert.ok(files.length > 0);
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       ...files,
     ]);
     assert.equal(status, 0, output);

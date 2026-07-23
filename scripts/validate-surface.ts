@@ -6,8 +6,8 @@
 //
 //   npm run validate:surface -- registry/subnets/<slug>.json
 //   npm run validate:surface          # validates every subnet file
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import {
   classifyNativeName,
@@ -17,6 +17,18 @@ import {
   readJson,
   repoRoot,
 } from "./lib.ts";
+
+// ajv-formats' default export resolves to the CJS module namespace rather than
+// the plugin function under this project's NodeNext + esModuleInterop
+// resolution -- cast to its real callable signature rather than fight the
+// interop. Mirrors validate-openapi-examples.ts.
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
+
+// Subnet registry documents are read for schema/convention validation only,
+// never trusted for control flow. Mirrors the readJson/readArtifactJson
+// precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
@@ -79,7 +91,7 @@ const REVIEWED_AUTHORSHIP_TIERS = new Set([
   "adapter-backed",
 ]);
 
-function conventionExemption(document) {
+function conventionExemption(document: Row): string | null {
   if (document.netuid === 0) return "netuid-0 base-layer overlay";
   if (document.partnership?.tier === "pilot") return "pilot manifest";
   return null;
@@ -92,7 +104,7 @@ function conventionExemption(document) {
 // Loaded here at start-up so the per-surface loop stays O(1). Silently skipped
 // when the generated artifacts are absent (fresh clone, offline run).
 const LIVE_CLASSIFICATIONS = new Set(["live", "redirected"]);
-const nativeChainLiveKeys = new Set();
+const nativeChainLiveKeys = new Set<string>();
 try {
   const publicSources = await readJson(
     path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
@@ -101,7 +113,10 @@ try {
     path.join(repoRoot, "registry/verification/promotions.json"),
   );
   const classificationById = new Map(
-    (promotions.results || []).map((r) => [r.candidate_id, r.classification]),
+    ((promotions.results as Row[] | undefined) || []).map((r) => [
+      r.candidate_id,
+      r.classification,
+    ]),
   );
   for (const candidate of publicSources.candidates || []) {
     if (
@@ -126,21 +141,26 @@ const files =
     ? fileArgs.map((arg) => path.resolve(arg))
     : await listJsonFiles(path.join(repoRoot, "registry/subnets"));
 
-const errors = [];
-const conventionAdvisories = [];
-const conventionExemptions = [];
-const authAdvisories = [];
+const errors: string[] = [];
+const conventionAdvisories: string[] = [];
+const conventionExemptions: string[] = [];
+const authAdvisories: string[] = [];
 let surfaceCount = 0;
 // #6328: normalized URL -> claimant locations, across ALL files in this run
 // (unlike surfaceIdsByUrl below, which resets per-file). Populated in the
 // per-surface loop, checked once after every file has been processed.
-const surfaceLocationsByUrl = new Map();
+const surfaceLocationsByUrl = new Map<
+  string,
+  { file: string; id: unknown; netuid: unknown }[]
+>();
 for (const file of files) {
-  let document;
+  let document: Row;
   try {
     document = await readJson(file);
   } catch (error) {
-    errors.push(`${path.basename(file)}: not readable JSON — ${error.message}`);
+    errors.push(
+      `${path.basename(file)}: not readable JSON — ${(error as Error).message}`,
+    );
     continue;
   }
   if (!validate(document)) {
@@ -165,7 +185,7 @@ for (const file of files) {
   // mistake (e.g. a subnet-api and a data-artifact surface both pointing at
   // the same endpoint) fails here instead of silently landing in the
   // registry — see #5736 for 3 confirmed live instances this would have caught.
-  const surfaceIdsByUrl = new Map();
+  const surfaceIdsByUrl = new Map<string, unknown[]>();
   for (const surface of document.surfaces || []) {
     surfaceCount += 1;
     const label = `${path.basename(file)} (${surface.id})`;
@@ -268,7 +288,9 @@ for (const file of files) {
   // hard error: exempt entries (root / pilot manifests) are acknowledged, and
   // any other reviewed-tier entry that deviates is flagged rather than silent.
   if (REVIEWED_AUTHORSHIP_TIERS.has(document.curation?.level)) {
-    const missingSourceUrls = (document.surfaces || []).filter(
+    const missingSourceUrls = (
+      (document.surfaces as Row[] | undefined) || []
+    ).filter(
       (surface) =>
         !Array.isArray(surface.source_urls) || surface.source_urls.length === 0,
     ).length;
@@ -363,12 +385,17 @@ if (authAdvisories.length > 0) {
 // gives no hint of the valid enum. Fix: for enum-keyword errors, append the
 // allowed values (and the offending value, when resolvable from the document)
 // to the message; every other keyword's message is left untouched.
-function formatValidationErrors(errors, document) {
+function formatValidationErrors(
+  errors: ErrorObject[] | null | undefined,
+  document: Row,
+): string {
   return (errors || [])
     .map((error) => {
-      let message = error.message;
+      let message: string = error.message ?? "";
       if (error.keyword === "enum") {
-        const allowed = (error.params?.allowedValues || []).join(", ");
+        const allowed = ((error.params?.allowedValues as unknown[]) || []).join(
+          ", ",
+        );
         const actual = valueAtInstancePath(document, error.instancePath);
         const gotSuffix =
           actual === undefined ? "" : ` (got ${JSON.stringify(actual)})`;
@@ -379,16 +406,16 @@ function formatValidationErrors(errors, document) {
     .join(", ");
 }
 
-function valueAtInstancePath(document, instancePath) {
+function valueAtInstancePath(document: Row, instancePath: string): unknown {
   if (!instancePath) return undefined;
   const segments = instancePath
     .split("/")
     .slice(1)
     .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
-  let value = document;
+  let value: unknown = document;
   for (const segment of segments) {
     if (value == null) return undefined;
-    value = value[segment];
+    value = (value as Row)[segment];
   }
   return value;
 }

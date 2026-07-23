@@ -1,4 +1,4 @@
-// #6327: subnet-manifest.schema.json is the schema scripts/validate-surface.mjs
+// #6327: subnet-manifest.schema.json is the schema scripts/validate-surface.ts
 // (the fast contributor-facing pre-push gate) actually ajv.compile()s, but its
 // surface url/schema_url and top-level identity URLs were `format: uri` only —
 // which ajv-formats accepts for ANY scheme (javascript:, mailto:, ftp:, data:).
@@ -16,7 +16,7 @@ const SURFACE_PATTERN = "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://";
 const IDENTITY_PATTERN = "^[Hh][Tt][Tt][Pp][Ss]?://";
 
 // subnet-manifest.schema.json is self-contained (no $refs), so it compiles
-// standalone with ajv — the exact setup scripts/validate-surface.mjs uses.
+// standalone with ajv — the exact setup scripts/validate-surface.ts uses.
 const ajv = new Ajv2020({
   strict: false,
   validateFormats: true,

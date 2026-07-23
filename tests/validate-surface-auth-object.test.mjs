@@ -1,4 +1,4 @@
-// Regression coverage for #6330: validate-surface.mjs now warns (advisory,
+// Regression coverage for #6330: validate-surface.ts now warns (advisory,
 // not blocking) when a surface declares auth_required: true with no
 // structured auth{} object -- the mistake #6330's audit found 13 live
 // instances of across 12 files. Mirrors validate-surface-reviewed-convention
@@ -24,7 +24,7 @@ function runNode(args) {
   };
 }
 
-describe("validate-surface.mjs auth_required/auth{} advisory", () => {
+describe("validate-surface.ts auth_required/auth{} advisory", () => {
   let tempDir;
 
   afterEach(() => {
@@ -67,7 +67,7 @@ describe("validate-surface.mjs auth_required/auth{} advisory", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -97,7 +97,7 @@ describe("validate-surface.mjs auth_required/auth{} advisory", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -132,7 +132,7 @@ describe("validate-surface.mjs auth_required/auth{} advisory", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -160,7 +160,7 @@ describe("validate-surface.mjs auth_required/auth{} advisory", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -171,18 +171,18 @@ describe("validate-surface.mjs auth_required/auth{} advisory", () => {
   test("the full registry has no unresolved auth_required/auth{} advisories", () => {
     // Sanity check the check itself against real data: after #6330's fix,
     // running with no file args (validates every subnet file) must be clean.
-    const { status, output } = runNode(["scripts/validate-surface.mjs"]);
+    const { status, output } = runNode(["scripts/validate-surface.ts"]);
     assert.equal(status, 0, output);
     assert.doesNotMatch(output, /auth_required advisory/);
   });
 });
 
-describe("validate-surface.mjs auth_required/auth{} advisory does not misfire", () => {
+describe("validate-surface.ts auth_required/auth{} advisory does not misfire", () => {
   test("every real subnet file individually passes with no advisory (no false positive)", async () => {
     const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
     assert.ok(files.length > 0);
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       ...files,
     ]);
     assert.equal(status, 0, output);

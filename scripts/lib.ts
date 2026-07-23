@@ -1617,7 +1617,7 @@ export function normalizePublicUrl(value: unknown): string | null {
       // #5990: the brand-impersonation guard (ADR 0004) previously ran only on
       // the deprecated discovery path's local copy; run it here too so every
       // contributor-submitted surface URL -- the path that actually ships today
-      // (validate-surface.mjs / surface-add.ts) -- is checked, not just
+      // (validate-surface.ts / surface-add.ts) -- is checked, not just
       // auto-discovered candidates.
       isBrandImpersonationUrl(url.toString())
     ) {

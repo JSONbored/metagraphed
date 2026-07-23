@@ -1,4 +1,4 @@
-// Regression coverage for #6328: validate-surface.mjs now fails when the
+// Regression coverage for #6328: validate-surface.ts now fails when the
 // identical URL is registered as a surface in TWO DIFFERENT subnet files
 // under different netuids — the cross-file counterpart to #5737's within-file
 // duplicate-URL check, which only ever sees one document at a time and so
@@ -29,7 +29,7 @@ function runNode(args) {
   }
 }
 
-describe("validate-surface.mjs cross-file duplicate-URL check", () => {
+describe("validate-surface.ts cross-file duplicate-URL check", () => {
   let tempDir;
 
   afterEach(() => {
@@ -82,7 +82,7 @@ describe("validate-surface.mjs cross-file duplicate-URL check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fileA,
       fileB,
     ]);
@@ -110,7 +110,7 @@ describe("validate-surface.mjs cross-file duplicate-URL check", () => {
     // Single-file run only — the within-file check (#5737) catches this one,
     // not the cross-file check, and asserting on that message here would
     // just re-test #5737's own coverage.
-    const { status } = runNode(["scripts/validate-surface.mjs", fileA]);
+    const { status } = runNode(["scripts/validate-surface.ts", fileA]);
     assert.equal(status, 1);
   });
 
@@ -141,7 +141,7 @@ describe("validate-surface.mjs cross-file duplicate-URL check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fileA,
       fileB,
     ]);
@@ -154,7 +154,7 @@ describe("validate-surface.mjs cross-file duplicate-URL check", () => {
       { netuid: 48, surfaces: [surface({ id: "fixture-a-health" })] },
     ]);
 
-    const { status, output } = runNode(["scripts/validate-surface.mjs", fileA]);
+    const { status, output } = runNode(["scripts/validate-surface.ts", fileA]);
     assert.equal(status, 0, output);
   });
 
@@ -165,7 +165,7 @@ describe("validate-surface.mjs cross-file duplicate-URL check", () => {
     ]);
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fileA,
       fileB,
     ]);
@@ -174,17 +174,17 @@ describe("validate-surface.mjs cross-file duplicate-URL check", () => {
   });
 
   test("the full registry has no unresolved cross-file duplicate-URL findings", () => {
-    const { status, output } = runNode(["scripts/validate-surface.mjs"]);
+    const { status, output } = runNode(["scripts/validate-surface.ts"]);
     assert.equal(status, 0, output);
   });
 });
 
-describe("validate-surface.mjs cross-file duplicate-URL check does not misfire", () => {
+describe("validate-surface.ts cross-file duplicate-URL check does not misfire", () => {
   test("every real subnet file passes when validated together (no false-positive cross-file dedupe)", async () => {
     const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
     assert.ok(files.length > 0);
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       ...files,
     ]);
     assert.equal(status, 0, output);

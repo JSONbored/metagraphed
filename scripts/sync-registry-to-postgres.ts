@@ -29,7 +29,7 @@
 // not a GitHub Actions push event's before/sha.
 //
 // Independently re-validates each changed subnet file against
-// scripts/validate-surface.mjs before sending it (defense in depth: the Gate
+// scripts/validate-surface.ts before sending it (defense in depth: the Gate
 // already checked it pre-merge, this checks again post-merge) rather than
 // trusting the git content blindly.
 //
@@ -52,7 +52,7 @@ import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { initSentry, endSessionAndFlush } from "./observability.ts";
 
 // Registry overlay files here are read via readJson (already `any`) and
-// re-validated against the schema (validate-surface.mjs) before this script
+// re-validated against the schema (validate-surface.ts) before this script
 // ever sends them anywhere -- typing every dynamic hop through `unknown`
 // would force a cast at every `?.` in a script whose real safety net is the
 // schema, not TS. Mirrors the readJson/readArtifactJson precedent in lib.ts.
@@ -121,7 +121,7 @@ async function main(): Promise<void> {
     if (file.startsWith("registry/subnets/")) {
       const revalidation = spawnSync(
         process.execPath,
-        ["scripts/validate-surface.mjs", "--", file],
+        ["scripts/validate-surface.ts", "--", file],
         { cwd: repoRoot, encoding: "utf8" },
       );
       if (revalidation.status !== 0) {

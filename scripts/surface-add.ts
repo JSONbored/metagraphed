@@ -32,7 +32,7 @@ import {
 import { normalizeGitHubLogin } from "./registry-identity.ts";
 
 // A registered surface/provider is only ever written after independent
-// verification (verifyAndEnrich probes the live URL, validate-surface.mjs
+// verification (verifyAndEnrich probes the live URL, validate-surface.ts
 // re-checks the schema in CI) — typing every dynamic hop here through
 // `unknown` would force a cast at every `?.` for no real safety gain over
 // what those two checks already provide. Mirrors the readJson/

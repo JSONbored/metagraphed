@@ -1,5 +1,5 @@
 // Regression coverage for the enum-mismatch message clarity fix: both
-// scripts/validate-surface.mjs and scripts/validate-schemas.mjs previously
+// scripts/validate-surface.ts and scripts/validate-schemas.mjs previously
 // surfaced ajv's bare "must be equal to one of the allowed values" for an
 // invalid `kind`, with no indication of what those values actually are.
 // Both scripts now append the allowed-values list (and the offending value)
@@ -7,7 +7,7 @@
 //
 // The "validate-schemas.mjs enum error messages" describe block below
 // mutates a REAL registry/subnets/*.json file in place (validate-schemas.mjs
-// takes no file argument, unlike validate-surface.mjs, so there's no way to
+// takes no file argument, unlike validate-surface.ts, so there's no way to
 // point it at an isolated fixture) and restores it in afterEach. That
 // transient window raced other tests scanning the same directory under
 // vitest's default parallel file execution -- this file is pinned to serial
@@ -40,7 +40,7 @@ function runNode(args) {
   }
 }
 
-describe("validate-surface.mjs enum error messages", () => {
+describe("validate-surface.ts enum error messages", () => {
   let tempDir;
 
   afterEach(() => {
@@ -66,7 +66,7 @@ describe("validate-surface.mjs enum error messages", () => {
     writeFileSync(fixturePath, JSON.stringify(document, null, 2));
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 

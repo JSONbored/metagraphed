@@ -1229,7 +1229,7 @@ function extractUrls(value: unknown): string[] {
 }
 
 // Canonical URL normalization lives in scripts/lib.ts (normalizePublicUrl) and
-// is shared with the contributor-facing path (validate-surface.mjs /
+// is shared with the contributor-facing path (validate-surface.ts /
 // surface-add.ts) so protocol/credential/SSRF/impersonation handling can never
 // diverge by call site (#5991). Discovery layers on one extra rejection: the
 // placeholder/template identity URLs (example.com, github.com/username/repo,

@@ -1,4 +1,4 @@
-// Coverage for #5739: validate-surface.mjs now makes the reviewed-tier
+// Coverage for #5739: validate-surface.ts now makes the reviewed-tier
 // verified_at/source_urls convention non-silent. Reviewed-tier
 // (maintainer-reviewed / adapter-backed) entries that drop verified_at or a
 // surface's source_urls are surfaced as a NON-BLOCKING advisory, EXCEPT the
@@ -26,7 +26,7 @@ function runNode(args) {
   };
 }
 
-describe("validate-surface.mjs reviewed-tier convention (#5739)", () => {
+describe("validate-surface.ts reviewed-tier convention (#5739)", () => {
   let tempDir;
 
   afterEach(() => {
@@ -65,7 +65,7 @@ describe("validate-surface.mjs reviewed-tier convention (#5739)", () => {
     });
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -99,7 +99,7 @@ describe("validate-surface.mjs reviewed-tier convention (#5739)", () => {
     });
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -120,7 +120,7 @@ describe("validate-surface.mjs reviewed-tier convention (#5739)", () => {
     });
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -144,7 +144,7 @@ describe("validate-surface.mjs reviewed-tier convention (#5739)", () => {
     });
 
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       fixturePath,
     ]);
 
@@ -158,7 +158,7 @@ describe("validate-surface.mjs reviewed-tier convention (#5739)", () => {
     // other tests (validate-error-messages) mutate registry/subnets/*.json
     // in place under parallel vitest, which races a full-corpus run.
     const { status, output } = runNode([
-      "scripts/validate-surface.mjs",
+      "scripts/validate-surface.ts",
       "registry/subnets/root.json",
       "registry/subnets/gittensor.json",
       "registry/subnets/allways.json",

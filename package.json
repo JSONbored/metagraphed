@@ -84,7 +84,7 @@
     "subnet:new": "node scripts/subnet-new.ts",
     "enrich:issues": "node scripts/enrichment-issues.ts --write",
     "enrich:issues:dry-run": "node scripts/enrichment-issues.ts --dry-run",
-    "validate:surface": "node scripts/validate-surface.mjs",
+    "validate:surface": "node scripts/validate-surface.ts",
     "providers:list": "node scripts/list-providers.ts",
     "r2:manifest": "node scripts/r2-manifest.ts --write",
     "r2:manifest:dry-run": "node scripts/r2-manifest.ts",
