@@ -196,7 +196,7 @@ export function netuidFromEvidenceSubject(subject) {
  * Read a CLI flag's value, accepting both `--flag=value` and `--flag value`.
  *
  * `scripts/` grew both conventions independently: some parsers match `--flag=`
- * only (r2-download.mjs), while others take the next argv entry (subnet-new.mjs,
+ * only (r2-download.ts), while others take the next argv entry (subnet-new.mjs,
  * curation-brief.ts, and endpoint-ops-brief.ts's own `valueAfter`). A parser
  * that accepts only one form silently ignores the other -- no error, no warning,
  * the flag is simply dropped and the default applies instead. That is exactly

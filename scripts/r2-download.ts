@@ -13,9 +13,18 @@ import {
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
 
+type Row = Record<string, unknown>;
+
+interface PlannedArtifact {
+  key: string;
+  local_path: string;
+  sha256: string;
+  size_bytes: number;
+}
+
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
-const manifest = await readJson(
+const manifest: Row = await readJson(
   path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
 // Both `--prefix=latest/` and `--prefix latest/` are accepted: the equals-only
@@ -25,14 +34,21 @@ const manifest = await readJson(
 const prefixArg = flagValue(process.argv, "--prefix");
 const prefix = prefixArg
   ? prefixArg.replace(/^\/+|\/+$/g, "") + "/"
-  : manifest.latest_prefix;
-const outputDir = flagValue(process.argv, "--out", "tmp/r2-download");
-const planned = manifest.artifacts.map((artifact) => ({
-  key: `${prefix}${artifact.path.replace(/^\/metagraph\//, "")}`,
-  local_path: localArtifactPath(outputDir, artifact.path),
-  sha256: artifact.sha256,
-  size_bytes: artifact.size_bytes,
-}));
+  : (manifest.latest_prefix as string);
+// flagValue's untyped .mjs default param (fallback = undefined) locks TS's
+// cross-file inference to exactly undefined; cast until Phase 4 Batch 7
+// converts scripts/lib.mjs.
+const outputDir: string = (
+  flagValue as (argv: string[], flag: string, fallback?: string) => string
+)(process.argv, "--out", "tmp/r2-download");
+const planned: PlannedArtifact[] = (manifest.artifacts as Row[]).map(
+  (artifact) => ({
+    key: `${prefix}${(artifact.path as string).replace(/^\/metagraph\//, "")}`,
+    local_path: localArtifactPath(outputDir, artifact.path as string),
+    sha256: artifact.sha256 as string,
+    size_bytes: artifact.size_bytes as number,
+  }),
+);
 
 if (!write) {
   console.log(
@@ -57,7 +73,7 @@ if (process.env.METAGRAPH_ALLOW_R2_DOWNLOAD !== "1") {
 
 for (const artifact of planned) {
   await mkdir(path.dirname(artifact.local_path), { recursive: true });
-  getObject(artifact.key, artifact.local_path, manifest.bucket_name);
+  getObject(artifact.key, artifact.local_path, manifest.bucket_name as string);
   await verifyDownloadedArtifact(artifact);
 }
 
@@ -65,7 +81,9 @@ console.log(
   `Downloaded ${planned.length} artifact(s) from R2 bucket ${manifest.bucket_name}.`,
 );
 
-async function verifyDownloadedArtifact(artifact) {
+async function verifyDownloadedArtifact(
+  artifact: PlannedArtifact,
+): Promise<void> {
   const actual = sha256Hex(await readFile(artifact.local_path));
   if (actual !== artifact.sha256) {
     throw new Error(
@@ -74,7 +92,7 @@ async function verifyDownloadedArtifact(artifact) {
   }
 }
 
-function getObject(key, localPath, bucketName) {
+function getObject(key: string, localPath: string, bucketName: string): void {
   const wranglerBin = path.join(
     repoRoot,
     "node_modules",
@@ -96,7 +114,7 @@ function getObject(key, localPath, bucketName) {
   }
 }
 
-function localArtifactPath(baseDir, artifactPath) {
+function localArtifactPath(baseDir: string, artifactPath: string): string {
   const relativePath = artifactPath.replace(/^\/metagraph\//, "");
   const tier = artifactStorageTierForPath(artifactPath);
   if (tier === "r2") {
