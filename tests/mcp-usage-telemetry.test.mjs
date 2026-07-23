@@ -85,7 +85,8 @@ describe("MCP tool-dispatch usage telemetry", () => {
       "ok",
     ]);
     // Drained through waitUntil rather than awaited in the tool path.
-    assert.equal(executionCtx.scheduled.length, 1);
+    // Two promises: one for usage_event, one for $mcp_tool_call.
+    assert.equal(executionCtx.scheduled.length, 2);
   });
 
   test("records an unknown tool as a failure", async () => {
@@ -183,11 +184,17 @@ describe("MCP tool-dispatch usage telemetry", () => {
       await Promise.all(executionCtx.scheduled);
 
       assert.equal(payload.result.isError, false);
-      assert.equal(posted.length, 1);
-      assert.equal(posted[0].body.event, "usage_event");
-      assert.equal(posted[0].body.properties.mcp_tool, TOOL);
-      assert.equal(posted[0].body.properties.ok, true);
-      assert.equal("error_code" in posted[0].body.properties, false);
+      // Two events: usage_event (existing telemetry) + $mcp_tool_call (MCP analytics).
+      assert.equal(posted.length, 2);
+      const usagePost = posted.find((p) => p.body.event === "usage_event");
+      assert.ok(usagePost, "usage_event should be posted");
+      assert.equal(usagePost.body.properties.mcp_tool, TOOL);
+      assert.equal(usagePost.body.properties.ok, true);
+      assert.equal("error_code" in usagePost.body.properties, false);
+      const mcpPost = posted.find((p) => p.body.event === "$mcp_tool_call");
+      assert.ok(mcpPost, "$mcp_tool_call should be posted");
+      assert.equal(mcpPost.body.properties.$mcp_tool_name, TOOL);
+      assert.equal(mcpPost.body.properties.$mcp_is_error, false);
     } finally {
       globalThis.fetch = original;
     }
@@ -210,9 +217,12 @@ describe("MCP tool-dispatch usage telemetry", () => {
       await Promise.all(executionCtx.scheduled);
 
       assert.equal(payload.result.isError, true);
-      assert.equal(posted.length, 1);
-      assert.equal(posted[0].body.properties.ok, false);
-      assert.equal(posted[0].body.properties.error_code, "invalid_params");
+      // Two events: usage_event + $mcp_tool_call.
+      assert.equal(posted.length, 2);
+      const usagePost = posted.find((p) => p.body.event === "usage_event");
+      assert.ok(usagePost, "usage_event should be posted");
+      assert.equal(usagePost.body.properties.ok, false);
+      assert.equal(usagePost.body.properties.error_code, "invalid_params");
     } finally {
       globalThis.fetch = original;
     }
@@ -226,6 +236,79 @@ describe("MCP tool-dispatch usage telemetry", () => {
     });
 
     assert.equal(spy.events.length, 2);
+  });
+
+  // #7737: proves the redaction end-to-end through the real dispatch path
+  // (callTool -> scheduleMcpToolCallEvent -> recordMcpToolCallEvent -> fetch),
+  // not just against the unit-level function in usage-telemetry.test.mjs.
+  test("$mcp_tool_call never leaks call_subnet_surface's credential argument", async () => {
+    const original = globalThis.fetch;
+    const posted = [];
+    globalThis.fetch = async (url, init) => {
+      posted.push({ url, body: JSON.parse(init.body) });
+      return { ok: true };
+    };
+    try {
+      const executionCtx = fakeExecutionCtx();
+      await callMcp(
+        toolCall("call_subnet_surface", {
+          surface_id: "x:api:6",
+          credential: "Bearer super-secret-abc123",
+        }),
+        CONFIGURED_ENV,
+        { executionCtx },
+      );
+      await Promise.all(executionCtx.scheduled);
+
+      assert.ok(!JSON.stringify(posted).includes("super-secret-abc123"));
+      const mcpPost = posted.find((p) => p.body.event === "$mcp_tool_call");
+      assert.ok(mcpPost, "$mcp_tool_call should be posted");
+      assert.equal(
+        mcpPost.body.properties.$mcp_parameters.credential,
+        "[redacted]",
+      );
+      assert.equal(
+        mcpPost.body.properties.$mcp_parameters.surface_id,
+        "x:api:6",
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("$mcp_tool_call never leaks get_alert_trigger's owner_token argument", async () => {
+    const original = globalThis.fetch;
+    const posted = [];
+    globalThis.fetch = async (url, init) => {
+      posted.push({ url, body: JSON.parse(init.body) });
+      return { ok: true };
+    };
+    try {
+      const executionCtx = fakeExecutionCtx();
+      const payload = await callMcp(
+        toolCall("get_alert_trigger", {
+          id: "trigger-1",
+          owner_token: "owner-secret-xyz",
+        }),
+        CONFIGURED_ENV,
+        { executionCtx },
+      );
+      await Promise.all(executionCtx.scheduled);
+
+      // DATA_API isn't bound in tests -- the tool call itself fails, but the
+      // argument capture in callTool doesn't depend on the tool succeeding.
+      assert.equal(payload.result.isError, true);
+      assert.ok(!JSON.stringify(posted).includes("owner-secret-xyz"));
+      const mcpPost = posted.find((p) => p.body.event === "$mcp_tool_call");
+      assert.ok(mcpPost, "$mcp_tool_call should be posted");
+      assert.equal(
+        mcpPost.body.properties.$mcp_parameters.owner_token,
+        "[redacted]",
+      );
+      assert.equal(mcpPost.body.properties.$mcp_parameters.id, "trigger-1");
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 
   // The regression the issue asks for: a telemetry failure must never become a
@@ -252,6 +335,7 @@ describe("MCP tool-dispatch usage telemetry", () => {
       },
       "waitUntil throws": {
         recordUsageEvent: recorder().recordUsageEvent,
+        recordMcpToolCallEvent: async () => false,
         executionCtx: {
           waitUntil() {
             throw new Error("isolate already finished");
@@ -260,11 +344,74 @@ describe("MCP tool-dispatch usage telemetry", () => {
       },
       "no ExecutionContext at all": {
         recordUsageEvent: recorder().recordUsageEvent,
+        recordMcpToolCallEvent: async () => false,
+      },
+      // #7737: scheduleMcpToolCallEvent's own .catch(() => false) -- proves a
+      // rejecting/throwing $mcp_tool_call recorder is exactly as harmless as
+      // a rejecting/throwing usage_event recorder above.
+      "$mcp_tool_call recorder rejects": {
+        recordMcpToolCallEvent: () => Promise.reject(new Error("posthog down")),
+        executionCtx: fakeExecutionCtx(),
+      },
+      "$mcp_tool_call recorder throws synchronously": {
+        recordMcpToolCallEvent: () => {
+          throw new Error("recorder exploded");
+        },
+        executionCtx: fakeExecutionCtx(),
       },
     };
 
     for (const [mode, deps] of Object.entries(failureModes)) {
       const payload = await callMcp(toolCall(TOOL), CONFIGURED_ENV, deps);
+      // Flush the fire-and-forget telemetry promises before moving on, so a
+      // rejecting recorder's own .catch(() => false) actually runs within
+      // this test rather than resolving after it (both are equally safe --
+      // this just makes the assertion below deterministic instead of racy).
+      if (Array.isArray(deps.executionCtx?.scheduled)) {
+        await Promise.allSettled(deps.executionCtx.scheduled);
+      }
+      assert.deepEqual(
+        payload,
+        baseline,
+        `telemetry mode changed the result: ${mode}`,
+      );
+    }
+  });
+
+  // Mirrors the test above but for scheduleMcpInitializeEvent's own
+  // .catch(() => false) -- initialize is the only method that fires it.
+  test("an $mcp_initialize telemetry failure changes nothing about the initialize result", async () => {
+    const initializeRequest = {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-03-26",
+        clientInfo: { name: "test-client", version: "1.0.0" },
+      },
+    };
+    const baseline = await callMcp(initializeRequest, {});
+    assert.equal(baseline.result.protocolVersion, "2025-03-26");
+
+    const failureModes = {
+      "recorder rejects": {
+        recordMcpInitializeEvent: () =>
+          Promise.reject(new Error("posthog down")),
+        executionCtx: fakeExecutionCtx(),
+      },
+      "recorder throws synchronously": {
+        recordMcpInitializeEvent: () => {
+          throw new Error("recorder exploded");
+        },
+        executionCtx: fakeExecutionCtx(),
+      },
+    };
+
+    for (const [mode, deps] of Object.entries(failureModes)) {
+      const payload = await callMcp(initializeRequest, CONFIGURED_ENV, deps);
+      if (Array.isArray(deps.executionCtx?.scheduled)) {
+        await Promise.allSettled(deps.executionCtx.scheduled);
+      }
       assert.deepEqual(
         payload,
         baseline,

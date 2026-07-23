@@ -163,3 +163,204 @@ function sanitizeLabel(value: unknown): string | undefined {
     ? trimmed.slice(0, MAX_LABEL_CHARS)
     : trimmed;
 }
+
+// MCP Analytics events (#7737). Emit PostHog's canonical $mcp_* event family
+// so PostHog's built-in MCP Analytics dashboards work out of the box.
+// Implemented via the same raw-fetch pattern as recordUsageEvent — posthog-
+// node cannot be bundled into the Worker (bundle-budget constraint; see the
+// header comment), so there is no SDK `instrument()` wrapper here and no
+// SDK-provided default redaction sitting in front of what gets sent. Whatever
+// this module includes in $mcp_parameters / $mcp_response, it redacts itself.
+//
+// redactMcpSensitiveFields mirrors the key-name-substring redaction
+// posthog-node/@posthog/mcp applies automatically when instrument() drives
+// capture (authorization/cookie/password/token/secret/api_key/private_key,
+// per https://posthog.com/docs/mcp-analytics/privacy) — plus `credential`,
+// which that default list does NOT cover and which call_subnet_surface's own
+// `credential` argument (src/call-subnet-surface.ts) needs: a bearer token,
+// API key, or Bittensor hotkey-signed bundle a caller supplies for one call.
+// Every other sensitive argument this server takes is already covered by the
+// baseline set — e.g. get_alert_trigger's `owner_token` via the "token"
+// substring — so `credential` is the only addition needed.
+
+const MCP_SENSITIVE_KEY_PATTERN =
+  /authorization|cookie|password|token|secret|api[_-]?key|private[_-]?key|credential/i;
+
+const MCP_REDACTED_VALUE = "[redacted]";
+
+// Caps recursion on a pathologically deep structure (call_subnet_surface's
+// `body` argument and its upstream response body are both fully caller/
+// third-party-controlled) — a v8 stack limit is a much uglier failure mode
+// than a placeholder string.
+const MCP_REDACT_MAX_DEPTH = 8;
+
+function redactMcpSensitiveFields(value: unknown, depth = 0): unknown {
+  if (depth > MCP_REDACT_MAX_DEPTH) return "[max depth exceeded]";
+  if (Array.isArray(value)) {
+    return value.map((entry) => redactMcpSensitiveFields(entry, depth + 1));
+  }
+  if (value && typeof value === "object") {
+    const redacted: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      redacted[key] = MCP_SENSITIVE_KEY_PATTERN.test(key)
+        ? MCP_REDACTED_VALUE
+        : redactMcpSensitiveFields(entry, depth + 1);
+    }
+    return redacted;
+  }
+  return value;
+}
+
+// Generous for typical tool-call arguments; far below call_subnet_surface's
+// own 256 KiB response cap (src/call-subnet-surface.ts's MAX_RESPONSE_BYTES)
+// so one large response can't balloon a PostHog capture payload.
+const MCP_PAYLOAD_MAX_CHARS = 4096;
+
+function boundedMcpPayload(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  const redacted = redactMcpSensitiveFields(value);
+  let serialized: string | undefined;
+  try {
+    serialized = JSON.stringify(redacted);
+  } catch {
+    return undefined;
+  }
+  if (typeof serialized !== "string") return undefined;
+  if (serialized.length <= MCP_PAYLOAD_MAX_CHARS) return redacted;
+  return {
+    truncated: true,
+    preview: serialized.slice(0, MCP_PAYLOAD_MAX_CHARS),
+  };
+}
+
+/** Inputs for a single MCP tool-call analytics event. */
+export interface McpToolCallEvent {
+  toolName?: string;
+  isError: boolean;
+  durationMs: number;
+  /** Mcp-Session-Id header value; omitted from the payload when absent. */
+  sessionId?: string | null;
+  /**
+   * The tool call's raw arguments / result. Redacted (redactMcpSensitiveFields)
+   * and size-capped (boundedMcpPayload) before ever being included in the
+   * posted event — this module owns that, callers pass the raw value through.
+   */
+  parameters?: unknown;
+  response?: unknown;
+}
+
+/** Inputs for an MCP initialize-handshake analytics event. */
+export interface McpInitializeEvent {
+  clientName?: string;
+  clientVersion?: string;
+  /** Mcp-Session-Id header value; omitted from the payload when absent. */
+  sessionId?: string | null;
+}
+
+/**
+ * Emit a PostHog `$mcp_tool_call` event via the capture endpoint.
+ * Same no-throw contract as recordUsageEvent.
+ */
+export async function recordMcpToolCallEvent(
+  env: Env | null | undefined,
+  event: McpToolCallEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    if (typeof event.isError !== "boolean") return false;
+    if (
+      typeof event.durationMs !== "number" ||
+      !Number.isFinite(event.durationMs) ||
+      event.durationMs < 0
+    ) {
+      return false;
+    }
+
+    const properties: Record<string, unknown> = {
+      $mcp_is_error: event.isError,
+      $mcp_duration_ms: Math.min(Math.round(event.durationMs), 86_400_000),
+    };
+
+    const toolName = sanitizeLabel(event.toolName);
+    if (toolName !== undefined) properties["$mcp_tool_name"] = toolName;
+
+    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
+      properties["$session_id"] = event.sessionId.trim();
+    }
+
+    const parameters = boundedMcpPayload(event.parameters);
+    if (parameters !== undefined) properties["$mcp_parameters"] = parameters;
+
+    const responseBody = boundedMcpPayload(event.response);
+    if (responseBody !== undefined) properties["$mcp_response"] = responseBody;
+
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: "$mcp_tool_call",
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Emit a PostHog `$mcp_initialize` event via the capture endpoint.
+ * Same no-throw contract as recordUsageEvent.
+ */
+export async function recordMcpInitializeEvent(
+  env: Env | null | undefined,
+  event: McpInitializeEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties: Record<string, string | number | boolean> = {};
+
+    const clientName = sanitizeLabel(event.clientName);
+    if (clientName !== undefined) properties["$mcp_client_name"] = clientName;
+
+    const clientVersion = sanitizeLabel(event.clientVersion);
+    if (clientVersion !== undefined)
+      properties["$mcp_client_version"] = clientVersion;
+
+    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
+      properties["$session_id"] = event.sessionId.trim();
+    }
+
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: "$mcp_initialize",
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
+}

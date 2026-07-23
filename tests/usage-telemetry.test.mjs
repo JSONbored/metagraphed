@@ -7,6 +7,8 @@ import {
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
   isUsageTelemetryConfigured,
+  recordMcpInitializeEvent,
+  recordMcpToolCallEvent,
   recordUsageEvent,
   resolvePostHogHost,
   usageEventProperties,
@@ -303,5 +305,387 @@ describe("recordUsageEvent — configured", () => {
       },
     );
     assert.equal(calls[0].body.distinct_id, "test-distinct");
+  });
+});
+
+// #7737: recordMcpToolCallEvent is the one place $mcp_parameters/$mcp_response
+// get built — there is no SDK instrument() pipeline redacting these for us
+// (see the module's own header comment), so this redaction is the only thing
+// standing between a real credential and PostHog.
+describe("recordMcpToolCallEvent", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  test("posts $mcp_tool_call with tool name / error flag / duration / session id", async () => {
+    const calls = [];
+    const recorded = await recordMcpToolCallEvent(
+      CONFIGURED,
+      {
+        toolName: "get_subnet",
+        isError: false,
+        durationMs: 12.4,
+        sessionId: " sess-1 ",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    assert.equal(calls[0].body.event, "$mcp_tool_call");
+    assert.deepEqual(calls[0].body.properties, {
+      $mcp_is_error: false,
+      $mcp_duration_ms: 12,
+      $mcp_tool_name: "get_subnet",
+      $session_id: "sess-1",
+    });
+  });
+
+  test("returns false for an invalid event without capturing", async () => {
+    let calls = 0;
+    const onCall = () => {
+      calls += 1;
+    };
+    assert.equal(
+      await recordMcpToolCallEvent(
+        CONFIGURED,
+        { isError: "yes", durationMs: 1 },
+        { fetch: fakeFetch({ onCall }) },
+      ),
+      false,
+    );
+    assert.equal(
+      await recordMcpToolCallEvent(
+        CONFIGURED,
+        { isError: false, durationMs: -1 },
+        { fetch: fakeFetch({ onCall }) },
+      ),
+      false,
+    );
+    assert.equal(calls, 0);
+  });
+
+  test("reports a rejected capture as not recorded", async () => {
+    const recorded = await recordMcpToolCallEvent(
+      CONFIGURED,
+      { isError: false, durationMs: 1 },
+      { fetch: fakeFetch({ ok: false }) },
+    );
+    assert.equal(recorded, false);
+  });
+
+  test("swallows a transport failure", async () => {
+    const recorded = await recordMcpToolCallEvent(
+      CONFIGURED,
+      { isError: false, durationMs: 1 },
+      { fetch: fakeFetch({ throws: true }) },
+    );
+    assert.equal(recorded, false);
+  });
+
+  // boundedMcpPayload's JSON.stringify can throw (a circular reference is the
+  // realistic case here -- a tool response accidentally aliasing part of
+  // itself) -- drop the field rather than let that reach the outer catch and
+  // silently fail the whole event. A BigInt is the reliable way to trigger
+  // this -- redactMcpSensitiveFields passes it through untouched (it's
+  // neither an array nor a plain object), and JSON.stringify itself throws
+  // on a BigInt.
+  test("drops a payload that can't be JSON-serialized instead of failing the whole event", async () => {
+    const calls = [];
+    const recorded = await recordMcpToolCallEvent(
+      CONFIGURED,
+      { isError: false, durationMs: 1, response: { big: 10n } },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    assert.equal("$mcp_response" in calls[0].body.properties, false);
+  });
+
+  // JSON.stringify itself can also return undefined without throwing (a bare
+  // function or symbol) -- a different branch than the BigInt case above.
+  test("drops a payload JSON.stringify silently declines to serialize (e.g. a function)", async () => {
+    const calls = [];
+    const recorded = await recordMcpToolCallEvent(
+      CONFIGURED,
+      { isError: false, durationMs: 1, response: () => {} },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    assert.equal("$mcp_response" in calls[0].body.properties, false);
+  });
+
+  test("defaults to the platform fetch when none is injected", async () => {
+    const original = globalThis.fetch;
+    const calls = [];
+    globalThis.fetch = fakeFetch({ onCall: (call) => calls.push(call) });
+    try {
+      const recorded = await recordMcpToolCallEvent(CONFIGURED, {
+        isError: false,
+        durationMs: 1,
+      });
+      assert.equal(recorded, true);
+      assert.equal(calls.length, 1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  // A self-referential response is a realistic caller mistake (e.g. an error
+  // object aliasing its own cause chain), not just deep-but-acyclic data --
+  // the depth guard defuses it the same way, so this never throws or hangs.
+  test("does not loop forever on a circular reference", async () => {
+    const circular = {};
+    circular.self = circular;
+    const calls = [];
+    const recorded = await recordMcpToolCallEvent(
+      CONFIGURED,
+      { isError: false, durationMs: 1, response: circular },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    assert.ok(calls[0].body.properties.$mcp_response !== undefined);
+  });
+
+  test("omits $mcp_parameters / $mcp_response entirely when not supplied", async () => {
+    const calls = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      { isError: false, durationMs: 1 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal("$mcp_parameters" in calls[0].body.properties, false);
+    assert.equal("$mcp_response" in calls[0].body.properties, false);
+  });
+
+  test("redacts a string credential (bearer/api-key/basic shape) out of $mcp_parameters", async () => {
+    const calls = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      {
+        isError: false,
+        durationMs: 1,
+        parameters: {
+          surface_id: "x:api:6",
+          credential: "Bearer super-secret-abc123",
+        },
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.ok(!JSON.stringify(calls[0].body).includes("super-secret-abc123"));
+    assert.deepEqual(calls[0].body.properties.$mcp_parameters, {
+      surface_id: "x:api:6",
+      credential: "[redacted]",
+    });
+  });
+
+  // call_subnet_surface's signature-bundle shape (#7701): an object whose own
+  // key names are caller-defined (the surface's auth.names) -- the whole
+  // value is dropped rather than trying to redact by nested key name.
+  test("redacts an object-shaped signature-bundle credential regardless of its own key names", async () => {
+    const calls = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      {
+        isError: false,
+        durationMs: 1,
+        parameters: {
+          surface_id: "x:api:6",
+          credential: { hotkey: "5FakeHotkey", nonce: "top-secret-nonce" },
+        },
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const serialized = JSON.stringify(calls[0].body);
+    assert.ok(!serialized.includes("top-secret-nonce"));
+    assert.ok(!serialized.includes("5FakeHotkey"));
+    assert.equal(
+      calls[0].body.properties.$mcp_parameters.credential,
+      "[redacted]",
+    );
+  });
+
+  test("redacts owner_token via the same generic key-name pattern (no project-specific special case)", async () => {
+    const calls = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      {
+        isError: false,
+        durationMs: 1,
+        parameters: { id: "trigger-1", owner_token: "owner-secret-xyz" },
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.ok(!JSON.stringify(calls[0].body).includes("owner-secret-xyz"));
+    assert.deepEqual(calls[0].body.properties.$mcp_parameters, {
+      id: "trigger-1",
+      owner_token: "[redacted]",
+    });
+  });
+
+  test("redacts nested sensitive keys inside $mcp_response too, not just $mcp_parameters", async () => {
+    const calls = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      {
+        isError: false,
+        durationMs: 1,
+        response: {
+          ok: true,
+          body: { access_token: "leaked-if-not-redacted", data: [1, 2, 3] },
+        },
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.ok(
+      !JSON.stringify(calls[0].body).includes("leaked-if-not-redacted"),
+    );
+    assert.deepEqual(calls[0].body.properties.$mcp_response, {
+      ok: true,
+      body: { access_token: "[redacted]", data: [1, 2, 3] },
+    });
+  });
+
+  test("leaves non-sensitive fields untouched", async () => {
+    const calls = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      {
+        isError: false,
+        durationMs: 1,
+        parameters: { surface_id: "x:api:6", query: { page: 2 } },
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.deepEqual(calls[0].body.properties.$mcp_parameters, {
+      surface_id: "x:api:6",
+      query: { page: 2 },
+    });
+  });
+
+  test("truncates an oversized payload instead of shipping it whole", async () => {
+    const calls = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED,
+      { isError: false, durationMs: 1, response: { data: "x".repeat(10_000) } },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const sent = calls[0].body.properties.$mcp_response;
+    assert.equal(sent.truncated, true);
+    assert.ok(sent.preview.length <= 4096);
+  });
+
+  // A secret buried past the recursion cap must never reach the payload,
+  // even unredacted-by-key-name -- the depth guard drops the whole subtree
+  // rather than risk a stack overflow trying to inspect it.
+  test("does not overflow, and never leaks, on a pathologically deep structure", async () => {
+    let deep = { credential: "leaf-secret" };
+    for (let i = 0; i < 50; i += 1) deep = { nested: deep };
+    const calls = [];
+    await assert.doesNotReject(() =>
+      recordMcpToolCallEvent(
+        CONFIGURED,
+        { isError: false, durationMs: 1, response: deep },
+        { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+      ),
+    );
+    assert.equal(calls.length, 1);
+    assert.ok(!JSON.stringify(calls[0].body).includes("leaf-secret"));
+  });
+
+  test("never posts when the deployment is unconfigured, even with a credential present", async () => {
+    let calls = 0;
+    const recorded = await recordMcpToolCallEvent(
+      {},
+      { isError: false, durationMs: 1, parameters: { credential: "x" } },
+      {
+        fetch: fakeFetch({
+          onCall: () => {
+            calls += 1;
+          },
+        }),
+      },
+    );
+    assert.equal(recorded, false);
+    assert.equal(calls, 0);
+  });
+});
+
+describe("recordMcpInitializeEvent", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  test("posts $mcp_initialize with client name / version / session id", async () => {
+    const calls = [];
+    const recorded = await recordMcpInitializeEvent(
+      CONFIGURED,
+      {
+        clientName: " claude-code ",
+        clientVersion: " 1.2.3 ",
+        sessionId: " sess-1 ",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    assert.equal(calls[0].body.event, "$mcp_initialize");
+    assert.deepEqual(calls[0].body.properties, {
+      $mcp_client_name: "claude-code",
+      $mcp_client_version: "1.2.3",
+      $session_id: "sess-1",
+    });
+  });
+
+  test("omits client name / version / session id when blank or absent", async () => {
+    const calls = [];
+    await recordMcpInitializeEvent(
+      CONFIGURED,
+      {},
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.deepEqual(calls[0].body.properties, {});
+  });
+
+  test("defaults to the platform fetch when none is injected", async () => {
+    const original = globalThis.fetch;
+    const calls = [];
+    globalThis.fetch = fakeFetch({ onCall: (call) => calls.push(call) });
+    try {
+      const recorded = await recordMcpInitializeEvent(CONFIGURED, {
+        clientName: "claude-code",
+      });
+      assert.equal(recorded, true);
+      assert.equal(calls.length, 1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("never posts when the deployment is unconfigured", async () => {
+    let calls = 0;
+    const recorded = await recordMcpInitializeEvent(
+      {},
+      { clientName: "claude-code" },
+      {
+        fetch: fakeFetch({
+          onCall: () => {
+            calls += 1;
+          },
+        }),
+      },
+    );
+    assert.equal(recorded, false);
+    assert.equal(calls, 0);
+  });
+
+  test("reports a rejected capture as not recorded", async () => {
+    const recorded = await recordMcpInitializeEvent(
+      CONFIGURED,
+      { clientName: "claude-code" },
+      { fetch: fakeFetch({ ok: false }) },
+    );
+    assert.equal(recorded, false);
+  });
+
+  test("swallows a transport failure", async () => {
+    const recorded = await recordMcpInitializeEvent(
+      CONFIGURED,
+      { clientName: "claude-code" },
+      { fetch: fakeFetch({ throws: true }) },
+    );
+    assert.equal(recorded, false);
   });
 });

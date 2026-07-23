@@ -38,6 +38,8 @@
 import * as Sentry from "@sentry/cloudflare";
 import {
   isUsageTelemetryConfigured,
+  recordMcpInitializeEvent,
+  recordMcpToolCallEvent,
   recordUsageEvent,
 } from "./usage-telemetry.ts";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
@@ -16235,16 +16237,25 @@ function negotiateProtocol(requested) {
 // invocation instead of instrumenting ~150 handlers individually. It also
 // already funnels every outcome into an isError result rather than throwing,
 // which is what makes success/failure readable here without touching any
-// handler. Nothing but the tool name, that flag, elapsed time, and (on
-// failure) a fixed error category is recorded — never arguments or response
-// content, and never a free-form error message.
+// handler.
+//
+// Two events are scheduled below, with two different shapes. usage_event
+// (scheduleToolUsageEvent) is this codebase's own minimal telemetry: nothing
+// but the tool name, that flag, elapsed time, and (on failure) a fixed error
+// category — never arguments or response content, never a free-form error
+// message. $mcp_tool_call (scheduleMcpToolCallEvent, #7737) is PostHog's own
+// MCP Analytics event family and DOES include the call's arguments/result —
+// but only after recordMcpToolCallEvent (src/usage-telemetry.ts) redacts and
+// size-caps them; see that module's header comment for why (no SDK
+// instrument() wrapper here, so no default redaction pipeline either).
 async function callTool(params, ctx) {
   const startedAt = Date.now();
   const result = await dispatchTool(params, ctx);
+  const durationMs = Date.now() - startedAt;
   scheduleToolUsageEvent(ctx, {
     mcpTool: typeof params?.name === "string" ? params.name : undefined,
     ok: result.isError !== true,
-    durationMs: Date.now() - startedAt,
+    durationMs,
     // metagraphed#7726: every isError result already carries a code from a
     // small, developer-defined literal set (toolError's own codes, or
     // "unknown_tool" below) in structuredContent.error.code -- thread it
@@ -16254,6 +16265,14 @@ async function callTool(params, ctx) {
     ...(result.isError
       ? { errorCode: result?.structuredContent?.error?.code }
       : {}),
+  });
+  scheduleMcpToolCallEvent(ctx, {
+    toolName: typeof params?.name === "string" ? params.name : undefined,
+    isError: result.isError === true,
+    durationMs,
+    sessionId: ctx?.sessionId,
+    parameters: params?.arguments,
+    response: result?.structuredContent,
   });
   return result;
 }
@@ -16270,6 +16289,26 @@ function scheduleToolUsageEvent(ctx, event) {
     if (!isUsageTelemetryConfigured(ctx?.env)) return;
     const record = ctx?.recordUsageEvent ?? recordUsageEvent;
     const pending = Promise.resolve(record(ctx.env, event)).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+function scheduleMcpToolCallEvent(ctx, event) {
+  try {
+    const record = ctx?.recordMcpToolCallEvent ?? recordMcpToolCallEvent;
+    const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+function scheduleMcpInitializeEvent(ctx, event) {
+  try {
+    const record = ctx?.recordMcpInitializeEvent ?? recordMcpInitializeEvent;
+    const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
     ctx?.executionCtx?.waitUntil?.(pending);
   } catch {
     // Telemetry must never surface into the tool path.
@@ -16381,6 +16420,11 @@ async function dispatchMessage(message, ctx) {
           // Registry backlink (sibling of serverInfo, never inside it).
           _meta: MCP_REGISTRY_META,
         };
+        scheduleMcpInitializeEvent(ctx, {
+          clientName: params?.clientInfo?.name,
+          clientVersion: params?.clientInfo?.version,
+          sessionId: ctx?.sessionId,
+        });
         return isNotification ? null : rpcResult(id, result);
       }
       case "ping":
