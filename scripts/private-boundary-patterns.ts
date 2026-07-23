@@ -38,7 +38,7 @@ export const allowedContentMentions = new Set([
   // never exempted, per isAllowedContentMention).
   "scripts/validate-private-boundary.ts",
   "scripts/private-boundary-patterns.ts",
-  "tests/private-boundary-patterns.test.mjs",
+  "tests/private-boundary-patterns.test.ts",
 ]);
 
 // A content-pattern finding on `file` for `patternName` is suppressed only when
