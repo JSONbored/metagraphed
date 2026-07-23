@@ -54,7 +54,7 @@ function raoToTaoNumber(rao: bigint): number {
 // Lossless fixed 9-decimal (rao-precision) TAO string -- a JSON number (double) is only
 // exact up to 2^53-1, ~9,007,199 TAO at rao precision, and the network-wide total_stake_tao
 // sum this feeds already exceeds that ceiling at current network scale (#5290, mirrors
-// #2924/#5287's identical fix in neuron-history.ts and economics-artifacts.mjs). Unlike
+// #2924/#5287's identical fix in neuron-history.ts and economics-artifacts.ts). Unlike
 // those siblings' cumulative totals, a boundary DELTA (end - start) is genuinely signed --
 // network stake/emission can net-decrease over a window -- so this keeps the negative-sign
 // handling those siblings dropped as unreachable dead code; here it's live and reachable.
@@ -143,7 +143,7 @@ const ZERO: BoundaryEntry = {
 // from, so both stay consistent as more network-level fields are added. stake/emission
 // accumulate as exact rao-integer BigInts (#5290): this is the same network-wide "sum of
 // total_stake_tao across every subnet" quantity that #2924/#5287 already fixed at two other
-// call sites (neuron-history.ts, economics-artifacts.mjs) — movers hits the identical
+// call sites (neuron-history.ts, economics-artifacts.ts) — movers hits the identical
 // precision ceiling at the identical live network magnitude.
 function sumBoundary(map: Map<number, BoundaryEntry>): {
   stakeRao: bigint;

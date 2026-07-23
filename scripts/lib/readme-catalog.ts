@@ -3,7 +3,7 @@
 // Pure functions over plain overlay objects/strings (loadOverlays is the only
 // I/O boundary), so the catalog logic is unit-testable without invoking the CLI.
 // scripts/generate-registry-readme-section.ts is now a thin wrapper that imports
-// from here — mirrors the scripts/lib/readme-links.mjs / scripts/lib.ts split.
+// from here — mirrors the scripts/lib/readme-links.ts / scripts/lib.ts split.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -27,7 +27,13 @@ const PROVENANCE_EXACT = new Set([
   "macrocosmos",
 ]);
 
-export function loadOverlays() {
+// Overlay documents are untrusted registry JSON, read only for rendering
+// purposes -- never trusted for control flow. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+export function loadOverlays(): Row[] {
   return readdirSync(OVERLAYS_DIR)
     .filter((file) => file.endsWith(".json"))
     .map((file) =>
@@ -37,22 +43,25 @@ export function loadOverlays() {
     .sort((a, b) => a.netuid - b.netuid);
 }
 
-export function focusTags(overlay) {
+export function focusTags(overlay: Row): string[] {
   return (overlay.categories || [])
-    .filter((tag) => !PROVENANCE_PREFIX.test(tag) && !PROVENANCE_EXACT.has(tag))
+    .filter(
+      (tag: string) =>
+        !PROVENANCE_PREFIX.test(tag) && !PROVENANCE_EXACT.has(tag),
+    )
     .sort();
 }
 
-export function links(overlay) {
-  const out = [];
+export function links(overlay: Row): string {
+  const out: string[] = [];
   if (overlay.website_url) out.push(`[site](${overlay.website_url})`);
   if (overlay.docs_url) out.push(`[docs](${overlay.docs_url})`);
   if (overlay.source_repo) out.push(`[repo](${overlay.source_repo})`);
   return out.join(" · ") || "—";
 }
 
-export function renderCatalog(overlays) {
-  const focusCounts = new Map();
+export function renderCatalog(overlays: Row[]): string {
+  const focusCounts = new Map<string, number>();
   for (const overlay of overlays) {
     for (const tag of focusTags(overlay)) {
       focusCounts.set(tag, (focusCounts.get(tag) || 0) + 1);
@@ -95,7 +104,7 @@ export function renderCatalog(overlays) {
   ].join("\n");
 }
 
-export function injectedReadme(readme, catalog) {
+export function injectedReadme(readme: string, catalog: string): string {
   const beginAt = readme.indexOf(BEGIN);
   const endAt = readme.indexOf(END);
   if (beginAt === -1 || endAt === -1 || endAt < beginAt) {

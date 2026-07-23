@@ -11,7 +11,7 @@
 // visibility → more contributions). Live health/readiness links out to the profile
 // rather than being inlined, so there are no per-view badge requests baked into git.
 //
-// The pure catalog-rendering helpers live in scripts/lib/readme-catalog.mjs (#6247);
+// The pure catalog-rendering helpers live in scripts/lib/readme-catalog.ts (#6247);
 // this file is a thin CLI wrapper over them.
 //
 //   node scripts/generate-registry-readme-section.ts           # write README.md
@@ -24,7 +24,7 @@ import {
   injectedReadme,
   loadOverlays,
   renderCatalog,
-} from "./lib/readme-catalog.mjs";
+} from "./lib/readme-catalog.ts";
 
 const README_PATH = path.join(repoRoot, "README.md");
 

@@ -7,7 +7,7 @@ import {
   computeMinerReadiness,
   computeNetworkValueSummary,
   buildEconomicsArtifact,
-} from "../scripts/lib/economics-artifacts.mjs";
+} from "../scripts/lib/economics-artifacts.ts";
 
 // --- computeMinerReadiness --------------------------------------------------
 

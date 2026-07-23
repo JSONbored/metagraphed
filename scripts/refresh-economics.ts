@@ -23,7 +23,7 @@ import {
   repoRoot,
   stableStringify,
 } from "./lib.ts";
-import { loadAlphaPriceHistoryByNetuid } from "./lib/load-alpha-price-history.mjs";
+import { loadAlphaPriceHistoryByNetuid } from "./lib/load-alpha-price-history.ts";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import { shouldPublishEconomics } from "./economics-floor.ts";
@@ -38,25 +38,23 @@ const write = args.has("--write");
 
 const subnets: Row[] = await loadSubnets();
 const native: Row = await loadNativeSnapshot();
-const economicsByNetuid = new Map<unknown, unknown>();
+const economicsByNetuid = new Map<number, Row>();
 for (const subnet of (native.subnets as Row[] | undefined) || []) {
-  if (subnet.economics) economicsByNetuid.set(subnet.netuid, subnet.economics);
+  if (subnet.economics) {
+    economicsByNetuid.set(subnet.netuid as number, subnet.economics as Row);
+  }
 }
 
 // #7227: bake alpha_price_change_* from subnet_snapshots when DATABASE_URL is
 // present (indexer box). Missing DB → null change fields (schema-stable).
 const priceHistoryByNetuid = await loadAlphaPriceHistoryByNetuid();
 
-// buildEconomicsArtifact's untyped .mjs default params (network = null,
-// capturedAt = null, priceHistoryByNetuid = null) lock TS's cross-file
-// inference to null; cast until Phase 4 Batch 7 converts
-// scripts/lib/economics-artifacts.mjs.
-const economics = (buildEconomicsArtifact as unknown as (options: Row) => Row)({
+const economics = buildEconomicsArtifact({
   subnets,
   economicsByNetuid,
   generatedAt: buildTimestamp(),
-  network: native.network,
-  capturedAt: native.captured_at,
+  network: native.network as string | null,
+  capturedAt: native.captured_at as string | null,
   priceHistoryByNetuid,
 });
 // Match build-artifacts: economics.json carries the contract stamp, and

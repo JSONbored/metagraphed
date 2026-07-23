@@ -241,7 +241,7 @@ const RAO_PER_TAO = 1_000_000_000n;
 // full rao precision, so both the BigInt accumulation above and this string
 // formatting (instead of returning a float) are required to avoid silently
 // corrupting the value. Mirrors the identical helper in
-// scripts/lib/economics-artifacts.mjs's buildEconomicsArtifact summary.
+// scripts/lib/economics-artifacts.ts's buildEconomicsArtifact summary.
 // No negative-sign handling: total_stake_tao is a non-negative on-chain
 // quantity, so a negative sum is unreachable here -- would be untestable
 // dead code.

@@ -20,7 +20,7 @@ import {
   repoRoot,
   stableStringify,
 } from "./lib.ts";
-import { selectDispatchKeys } from "./lib/webhook-dispatch-selection.mjs";
+import { selectDispatchKeys } from "./lib/webhook-dispatch-selection.ts";
 import {
   buildChangeEvent,
   dispatchWithRedelivery,

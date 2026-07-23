@@ -428,14 +428,9 @@ function buildGeneratedOverlay({
   const existingOverlay = existingGeneratedByNetuid.get(netuid);
   const existingName =
     existingOverlay && nativeNameQuality(existingOverlay) === "chain"
-      ? existingOverlay.name
+      ? (existingOverlay.name as string | null)
       : null;
-  // nativeDisplayName's untyped .mjs default param (fallbackName = null) locks
-  // TS's cross-file inference to null | undefined; cast until Phase 4 Batch 7
-  // converts scripts/lib/formatting.mjs.
-  const name = (
-    nativeDisplayName as (subnet: Row, fallback?: unknown) => unknown
-  )(nativeSubnet, existingName);
+  const name = nativeDisplayName(nativeSubnet, existingName);
 
   return {
     schema_version: 1,

@@ -1115,12 +1115,10 @@ function stripRefreshFailureNote(value: unknown): string {
 
 function displayNameForNetuid(netuid: number): string {
   const nativeSubnet = nativeByNetuid.get(netuid);
-  // nativeDisplayName's fallback param is inferred as `null | undefined` from
-  // its untyped scripts/lib/formatting.mjs default value (`= null`), not
-  // `string` -- cast until Phase 4 batch 7 converts that file.
-  return (
-    nativeDisplayName as (subnet: Row | undefined, fallback?: string) => string
-  )(nativeSubnet, overlayNameByNetuid.get(netuid) || `Subnet ${netuid}`);
+  return nativeDisplayName(
+    nativeSubnet,
+    overlayNameByNetuid.get(netuid) || `Subnet ${netuid}`,
+  );
 }
 
 function githubSurfaceKind(urlValue: string): string {

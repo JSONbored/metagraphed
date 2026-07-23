@@ -4,7 +4,13 @@
 // byte-identical to the in-lib.ts originals. Re-exported from scripts/lib.ts
 // so existing importers keep their import paths unchanged.
 
-export function slugify(value) {
+// Chain/overlay subnet records are untrusted dynamic JSON, read only for
+// formatting purposes -- never trusted for control flow. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+export function slugify(value: unknown): string {
   return String(value || "")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -14,13 +20,16 @@ export function slugify(value) {
     .replace(/-{2,}/g, "-");
 }
 
-export function formatLlmMarkdownText(value, { maxLength = 160 } = {}) {
+export function formatLlmMarkdownText(
+  value: unknown,
+  { maxLength = 160 }: { maxLength?: number } = {},
+): string {
   const markdownCharacters = new Set("\\&<>{}[]()#*_`|!");
   const chars = Array.from(String(value ?? "")).slice(0, maxLength);
   let safeValue = "";
 
   for (const char of chars) {
-    const codePoint = char.codePointAt(0);
+    const codePoint = char.codePointAt(0)!;
     if (char === "\r") {
       safeValue += "\\r";
     } else if (char === "\n") {
@@ -39,7 +48,15 @@ export function formatLlmMarkdownText(value, { maxLength = 160 } = {}) {
   return safeValue;
 }
 
-export function classifyNativeName(value, netuid) {
+interface NativeNameClassification {
+  raw_name: string | null;
+  quality: "empty" | "placeholder" | "chain";
+}
+
+export function classifyNativeName(
+  value: unknown,
+  netuid: unknown,
+): NativeNameClassification {
   const raw = typeof value === "string" ? value.trim() : "";
   if (!raw) {
     return { raw_name: null, quality: "empty" };
@@ -78,7 +95,7 @@ export function classifyNativeName(value, netuid) {
   return { raw_name: raw, quality: "chain" };
 }
 
-export function nativeNameQuality(subnet) {
+export function nativeNameQuality(subnet: Row | undefined): string {
   const rawName =
     typeof subnet?.raw_name === "string" ? subnet.raw_name : subnet?.name;
   return classifyNativeName(rawName, subnet?.netuid).quality;
@@ -124,7 +141,12 @@ const CHAIN_TEXT_INJECTION_RULES = [
 // was modified and must be treated as untrusted data, never instructions.
 // Deterministic + idempotent, so the build and the reproducibility validator
 // derive identical output. Does NOT strip URLs — that is cleanDescription's job.
-export function sanitizeChainText(value) {
+interface SanitizedChainText {
+  text: string | null;
+  scrubbed: boolean;
+}
+
+export function sanitizeChainText(value: unknown): SanitizedChainText {
   if (typeof value !== "string") return { text: null, scrubbed: false };
   let text = value;
   let scrubbed = false;
@@ -136,7 +158,10 @@ export function sanitizeChainText(value) {
   return { text, scrubbed };
 }
 
-export function nativeDisplayName(subnet, fallbackName = null) {
+export function nativeDisplayName(
+  subnet: Row | undefined,
+  fallbackName: string | null = null,
+): string {
   const quality = nativeNameQuality(subnet);
   const candidate =
     quality === "chain"
@@ -158,7 +183,7 @@ export function nativeDisplayName(subnet, fallbackName = null) {
 
 // Strip embedded URLs/emails/bare-domains from free text — they shred into junk
 // search tokens ("https"/"com"/"gg") and read poorly.
-export function stripUrls(value) {
+export function stripUrls(value: unknown): string {
   if (typeof value !== "string") return "";
   return value
     .replace(/https?:\/\/\S+/gi, " ")
@@ -180,7 +205,7 @@ export function stripUrls(value) {
 // "deprecated" description on-chain that should not leak into the served data.
 const JUNK_DESCRIPTION = /^(?:deprecated|none|null|n\/a|tbd|todo|test)$/i;
 
-export function cleanDescription(value) {
+export function cleanDescription(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const cleaned = stripUrls(sanitizeChainText(value).text);
   if (cleaned.length < 2) return null;
@@ -193,7 +218,10 @@ export function cleanDescription(value) {
 // a word boundary. This populates a SEPARATE derived_description field — it never
 // backfills the curated description, so the gap stays visible to the SN74
 // flywheel. Returns null when there is nothing usable.
-export function deriveDescriptionFromNotes(notes, { maxLength = 280 } = {}) {
+export function deriveDescriptionFromNotes(
+  notes: unknown,
+  { maxLength = 280 }: { maxLength?: number } = {},
+): string | null {
   if (typeof notes !== "string") return null;
   const cleaned = cleanDescription(notes);
   if (!cleaned) return null;

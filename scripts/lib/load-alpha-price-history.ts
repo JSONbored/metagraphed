@@ -8,12 +8,9 @@ import { indexAlphaPriceHistoryByNetuid } from "../../src/alpha-price-change.ts"
 /** Days of history needed for the 1m window, plus a few days of slack. */
 export const ALPHA_PRICE_HISTORY_LOOKBACK_DAYS = 40;
 
-/**
- * @returns {Promise<Map<number, Array> | null>}
- */
 export async function loadAlphaPriceHistoryByNetuid(
-  databaseUrl = process.env.DATABASE_URL,
-) {
+  databaseUrl: string | undefined = process.env.DATABASE_URL,
+): Promise<ReturnType<typeof indexAlphaPriceHistoryByNetuid> | null> {
   if (!databaseUrl) return null;
   const { default: postgres } = await import("postgres");
   const sql = postgres(databaseUrl, {
@@ -36,7 +33,7 @@ export async function loadAlphaPriceHistoryByNetuid(
     return indexAlphaPriceHistoryByNetuid(rows);
   } catch (err) {
     console.warn(
-      `::warning::alpha-price history load failed (${err?.message || err}); economics bake continues with null change fields.`,
+      `::warning::alpha-price history load failed (${(err as Error)?.message || err}); economics bake continues with null change fields.`,
     );
     return null;
   } finally {

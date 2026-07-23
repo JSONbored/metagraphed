@@ -10,7 +10,7 @@ import {
   stripUrls,
   cleanDescription,
   deriveDescriptionFromNotes,
-} from "../scripts/lib/formatting.mjs";
+} from "../scripts/lib/formatting.ts";
 
 // --- slugify ----------------------------------------------------------------
 

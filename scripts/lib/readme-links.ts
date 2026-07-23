@@ -9,9 +9,15 @@
 
 import { registrableHostDomain } from "../lib.ts";
 
+// README candidate links / repo descriptors are untrusted, deeply-nested
+// discovery data, read only for classification purposes -- never trusted for
+// control flow. Mirrors the readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 export const README_LINK_LIMIT = 5;
 
-export const README_KIND_LIMITS = {
+export const README_KIND_LIMITS: Record<string, number> = {
   dashboard: 2,
   "data-artifact": 1,
   docs: 1,
@@ -25,7 +31,7 @@ export const README_KIND_LIMITS = {
 // `/example/` and `/examples/`. Pure + exported so the discovery classifier and
 // its tests share one definition. Callers check this AHEAD of the generic
 // api/docs heuristics so an examples dir is not mis-bucketed.
-export function isLikelyExampleLink(haystack) {
+export function isLikelyExampleLink(haystack: unknown): boolean {
   if (typeof haystack !== "string") return false;
   return (
     haystack.includes("/example") ||
@@ -78,13 +84,19 @@ const README_AFFINITY_STOPWORDS = new Set([
   "www",
 ]);
 
+interface ReadmeLinkSelectionOptions {
+  limit?: number;
+  netuid?: unknown;
+  repo?: { owner?: string; repo?: string };
+}
+
 export function selectReviewableReadmeLinks(
-  links,
-  { limit = README_LINK_LIMIT, netuid, repo } = {},
-) {
-  const selected = [];
-  const seen = new Set();
-  const kindCounts = new Map();
+  links: Row[] | undefined,
+  { limit = README_LINK_LIMIT, netuid, repo }: ReadmeLinkSelectionOptions = {},
+): Row[] {
+  const selected: Row[] = [];
+  const seen = new Set<string>();
+  const kindCounts = new Map<string, number>();
 
   for (const link of links || []) {
     if (!isReviewableReadmeLink(link, { netuid, repo })) {
@@ -114,7 +126,10 @@ export function selectReviewableReadmeLinks(
   return selected;
 }
 
-export function isReviewableReadmeLink(link, { netuid, repo } = {}) {
+export function isReviewableReadmeLink(
+  link: Row,
+  { netuid, repo }: ReadmeLinkSelectionOptions = {},
+): boolean {
   if (!link?.url || !link.classification?.kind) {
     return false;
   }
@@ -126,7 +141,7 @@ export function isReviewableReadmeLink(link, { netuid, repo } = {}) {
   return hasReadmeProjectAffinity(link, { netuid, repo });
 }
 
-function readmeDedupeKey(link) {
+function readmeDedupeKey(link: Row): string {
   try {
     return `${link.classification.kind}:${registrableDomain(
       new URL(link.url).hostname,
@@ -136,9 +151,9 @@ function readmeDedupeKey(link) {
   }
 }
 
-function isGenericReadmeReferenceHost(value) {
+function isGenericReadmeReferenceHost(value: unknown): boolean {
   try {
-    const host = normalizeHost(new URL(value).hostname);
+    const host = normalizeHost(new URL(value as string).hostname);
     return GENERIC_README_REFERENCE_HOSTS.some(
       (genericHost) => host === genericHost || host.endsWith(`.${genericHost}`),
     );
@@ -147,7 +162,10 @@ function isGenericReadmeReferenceHost(value) {
   }
 }
 
-function hasReadmeProjectAffinity(link, { netuid, repo } = {}) {
+function hasReadmeProjectAffinity(
+  link: Row,
+  { netuid, repo }: ReadmeLinkSelectionOptions = {},
+): boolean {
   let url;
   try {
     url = new URL(link.url);
@@ -167,7 +185,7 @@ function hasReadmeProjectAffinity(link, { netuid, repo } = {}) {
   return repoTokens(repo).some((token) => compactHaystack.includes(token));
 }
 
-function hasNetuidAffinity(value, netuid) {
+function hasNetuidAffinity(value: string, netuid: unknown): boolean {
   const escaped = String(netuid).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const patterns = [
     new RegExp(`(^|[^a-z0-9])sn[-_ ]?${escaped}([^a-z0-9]|$)`, "i"),
@@ -186,7 +204,7 @@ function hasNetuidAffinity(value, netuid) {
   return new RegExp(`(sn|subnets?)${escaped}(?![0-9])`).test(compactValue);
 }
 
-function repoTokens(repo = {}) {
+function repoTokens(repo: { owner?: string; repo?: string } = {}): string[] {
   const rawTokens = `${repo.owner || ""} ${repo.repo || ""}`
     .toLowerCase()
     .split(/[^a-z0-9]+/)
@@ -205,18 +223,18 @@ function repoTokens(repo = {}) {
   );
 }
 
-function compactReadmeValue(value) {
+function compactReadmeValue(value: unknown): string {
   return String(value || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
 }
 
-function normalizeHost(hostname) {
+function normalizeHost(hostname: unknown): string {
   return String(hostname || "")
     .toLowerCase()
     .replace(/^www\./, "");
 }
 
-function registrableDomain(hostname) {
+function registrableDomain(hostname: unknown): string {
   return registrableHostDomain(normalizeHost(hostname));
 }

@@ -743,13 +743,7 @@ function buildExpectedGeneratedSubnet(
       : nativeSubnet.name || null;
   const displayName =
     overlay?.name ||
-    // scripts/lib/formatting.mjs isn't converted yet (Phase 4 batch 7), so its
-    // `fallbackName = null` default infers as null-only instead of
-    // string | null -- correct the signature to what it actually accepts.
-    (nativeDisplayName as (subnet: Row, fallback?: string | null) => string)(
-      nativeSubnet,
-      `Subnet ${nativeSubnet.netuid}`,
-    );
+    nativeDisplayName(nativeSubnet, `Subnet ${nativeSubnet.netuid}`);
   const nativeSlug =
     nameQuality === "chain" && nativeName
       ? slugify(nativeName)

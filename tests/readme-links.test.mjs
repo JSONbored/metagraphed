@@ -6,7 +6,7 @@ import {
   isLikelyExampleLink,
   selectReviewableReadmeLinks,
   isReviewableReadmeLink,
-} from "../scripts/lib/readme-links.mjs";
+} from "../scripts/lib/readme-links.ts";
 
 // --- exported constants -----------------------------------------------------
 

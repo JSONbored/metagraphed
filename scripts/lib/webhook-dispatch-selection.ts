@@ -15,7 +15,7 @@
 // previous behavior.
 
 // FNV-1a 32-bit — a small, dependency-free, well-distributed string hash.
-function fnv1a32(str) {
+function fnv1a32(str: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < str.length; i += 1) {
     hash ^= str.charCodeAt(i);
@@ -25,15 +25,18 @@ function fnv1a32(str) {
   return hash >>> 0;
 }
 
-/**
- * Choose up to `max` subscription keys to dispatch to this run.
- *
- * @param {string[]} allKeys - every registered subscription key (any order).
- * @param {{ max: number, seed?: number|string }} options
- * @returns {string[]} at most `max` keys; the full input (unchanged order) when
- *   `allKeys.length <= max`.
- */
-export function selectDispatchKeys(allKeys, { max, seed = 0 }) {
+interface SelectDispatchKeysOptions {
+  max: number;
+  seed?: number | string;
+}
+
+// Choose up to `max` subscription keys to dispatch to this run. Returns at
+// most `max` keys; the full input (unchanged order) when
+// `allKeys.length <= max`.
+export function selectDispatchKeys(
+  allKeys: string[],
+  { max, seed = 0 }: SelectDispatchKeysOptions,
+): string[] {
   if (!Array.isArray(allKeys)) {
     throw new TypeError("selectDispatchKeys: allKeys must be an array");
   }

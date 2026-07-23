@@ -111,13 +111,7 @@ function buildNativeSubnet(nativeSubnet: Row, snapshot: Row): Row {
       gap_notes: [],
     },
     mechanism_count: nativeSubnet.mechanism_count,
-    // nativeDisplayName's fallback param is inferred as `null | undefined` from
-    // its untyped scripts/lib/formatting.mjs default value (`= null`), not
-    // `string` -- cast until Phase 4 batch 7 converts that file.
-    name: (nativeDisplayName as (subnet: Row, fallback?: string) => string)(
-      nativeSubnet,
-      `Subnet ${nativeSubnet.netuid}`,
-    ),
+    name: nativeDisplayName(nativeSubnet, `Subnet ${nativeSubnet.netuid}`),
     native_name: nativeName,
     native_name_quality: nameQuality,
     native_slug: nativeSlug(nativeSubnet),

@@ -17,7 +17,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
-import { createComponentValidatorCompiler } from "./lib/component-validator.mjs";
+import { createComponentValidatorCompiler } from "./lib/component-validator.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than
 // the plugin function under this project's NodeNext + esModuleInterop

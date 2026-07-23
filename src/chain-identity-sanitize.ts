@@ -4,7 +4,7 @@
 // isPlaceholderIdentityUrl) so operator-controlled chain strings cannot violate
 // the published URI / maxLength contract.
 
-import { sanitizeChainText } from "../scripts/lib/formatting.mjs";
+import { sanitizeChainText } from "../scripts/lib/formatting.ts";
 import { isUnsafePublicUrl } from "./health-probe-core.ts";
 
 const CREDENTIALED_URL_PARAMS = new Set([

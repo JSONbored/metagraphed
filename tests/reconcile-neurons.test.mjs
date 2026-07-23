@@ -9,7 +9,7 @@ import {
   RELATIVE_TOLERANCE,
   exceedsAlertThreshold,
   fieldsDiffer,
-} from "../scripts/lib/reconcile-neurons-tolerance.mjs";
+} from "../scripts/lib/reconcile-neurons-tolerance.ts";
 
 describe("fieldsDiffer", () => {
   it("returns false when live is non-finite (fetch produced no value)", () => {

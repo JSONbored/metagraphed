@@ -6,7 +6,7 @@
 // within-cap behavior exactly.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { selectDispatchKeys } from "../scripts/lib/webhook-dispatch-selection.mjs";
+import { selectDispatchKeys } from "../scripts/lib/webhook-dispatch-selection.ts";
 
 // Realistic subscription keys: WEBHOOK_KV_PREFIX + a v4-uuid-ish id.
 function makeKeys(n) {

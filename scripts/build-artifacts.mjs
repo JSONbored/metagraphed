@@ -1338,7 +1338,7 @@ const economicsByNetuid = new Map(
 // #7227: optional alpha-price history for inline %-change fields (null when
 // DATABASE_URL is unset, e.g. CI without the indexer Postgres).
 const { loadAlphaPriceHistoryByNetuid } =
-  await import("./lib/load-alpha-price-history.mjs");
+  await import("./lib/load-alpha-price-history.ts");
 const priceHistoryByNetuid = await loadAlphaPriceHistoryByNetuid();
 const economics = buildEconomicsArtifact({
   subnets: mergedSubnets,

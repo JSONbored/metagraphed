@@ -38,7 +38,7 @@ import {
   RELATIVE_TOLERANCE,
   exceedsAlertThreshold,
   fieldsDiffer,
-} from "./lib/reconcile-neurons-tolerance.mjs";
+} from "./lib/reconcile-neurons-tolerance.ts";
 
 export {
   ABSOLUTE_FLOOR_TAO,
@@ -46,7 +46,7 @@ export {
   RELATIVE_TOLERANCE,
   exceedsAlertThreshold,
   fieldsDiffer,
-} from "./lib/reconcile-neurons-tolerance.mjs";
+} from "./lib/reconcile-neurons-tolerance.ts";
 
 type Row = Record<string, unknown>;
 

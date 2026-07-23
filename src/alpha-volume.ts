@@ -93,7 +93,7 @@ export function classifySentiment(
 // 24h volume / market-cap turnover ratio (#4339/8.3) — unsigned total_volume_tao
 // (buy + sell, matching this artifact's other TAO totals) over
 // alpha_market_cap_tao (the economics artifact's own alpha_price_tao *
-// total_stake_tao proxy, scripts/lib/economics-artifacts.mjs). Both sides are
+// total_stake_tao proxy, scripts/lib/economics-artifacts.ts). Both sides are
 // TAO-denominated so the ratio is dimensionless. Null when the market cap
 // input is unavailable/non-positive — this is an external, separately-loaded
 // figure (not from account_events), so unlike sentiment_ratio it can be

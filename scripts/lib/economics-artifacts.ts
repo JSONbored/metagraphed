@@ -6,6 +6,12 @@
 
 import { withAlphaPriceChanges } from "../../src/alpha-price-change.ts";
 
+// Chain economics/subnet records are untrusted dynamic JSON, read only for
+// artifact derivation -- never trusted for control flow. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 // #1009: per-subnet validator + economic entity, derived from the chain
 // snapshot's `economics` block (validator/miner counts, stake, registration
 // cost, alpha price). dTAO emission is price-weighted, so each subnet's
@@ -19,7 +25,11 @@ import { withAlphaPriceChanges } from "../../src/alpha-price-change.ts";
 // (vs. having to outcompete an existing miner), the registration cost, and
 // whether the subnet is actually active. A display/ranking signal for miner
 // discovery — never a guarantee, never feeds completeness.
-export function computeMinerReadiness(economics, openSlots, emissionShare) {
+export function computeMinerReadiness(
+  economics: Row | null | undefined,
+  openSlots: unknown,
+  emissionShare: unknown,
+): number | null {
   if (!economics || typeof economics !== "object") return null;
   let score = 0;
   if (economics.registration_allowed) score += 40; // can register at all
@@ -45,20 +55,23 @@ export function computeMinerReadiness(economics, openSlots, emissionShare) {
 // Fixed per-subnet alpha max supply on Bittensor — the denominator for FDV.
 export const ALPHA_MAX_SUPPLY = 21_000_000;
 
-export function computeAlphaMarketCapTao(alphaPriceTao, totalStakeTao) {
+export function computeAlphaMarketCapTao(
+  alphaPriceTao: unknown,
+  totalStakeTao: unknown,
+): number | null {
   if (!Number.isFinite(alphaPriceTao) || !Number.isFinite(totalStakeTao)) {
     return null;
   }
   // total_stake_tao is the on-chain circulating-alpha proxy for this display
   // metric until a dedicated circulating-alpha supply field is available.
-  return alphaPriceTao * totalStakeTao;
+  return (alphaPriceTao as number) * (totalStakeTao as number);
 }
 
-export function computeAlphaFdvTao(alphaPriceTao) {
+export function computeAlphaFdvTao(alphaPriceTao: unknown): number | null {
   if (alphaPriceTao == null || !Number.isFinite(alphaPriceTao)) {
     return null;
   }
-  return alphaPriceTao * ALPHA_MAX_SUPPLY;
+  return (alphaPriceTao as number) * ALPHA_MAX_SUPPLY;
 }
 
 const RAO_PER_TAO = 1_000_000_000n;
@@ -77,19 +90,19 @@ const RAO_PER_TAO = 1_000_000_000n;
 // quantity (matches the schema's own `minimum: 0`), so a negative sum is
 // unreachable -- unlike a real negative-capable delta, branching on a sign
 // that can never occur here would just be untestable dead code.
-function taoNumberToRao(value) {
+function taoNumberToRao(value: unknown): bigint {
   return typeof value === "number" && Number.isFinite(value)
     ? BigInt(Math.round(value * 1e9))
     : 0n;
 }
 
-function raoToTaoString(rao) {
+function raoToTaoString(rao: bigint): string {
   const whole = rao / RAO_PER_TAO;
   const frac = rao % RAO_PER_TAO;
   return `${whole}.${frac.toString().padStart(9, "0")}`;
 }
 
-function sumFieldTaoString(rows, field) {
+function sumFieldTaoString(rows: Row[], field: string): string {
   let sumRao = 0n;
   for (const row of rows) {
     sumRao += taoNumberToRao(row[field]);
@@ -106,7 +119,13 @@ function sumFieldTaoString(rows, field) {
 // times its TAO stake) is deliberately excluded from the alpha rollup so its
 // stake isn't counted as both "root value" and "alpha value"; total_network
 // is the rao-exact sum of the two, not a re-parsed string addition.
-export function computeNetworkValueSummary(rows) {
+interface NetworkValueSummary {
+  total_root_value_tao: string;
+  total_alpha_value_tao: string;
+  total_network_value_tao: string;
+}
+
+export function computeNetworkValueSummary(rows: Row[]): NetworkValueSummary {
   let rootRao = 0n;
   let alphaRao = 0n;
   for (const row of rows) {
@@ -123,17 +142,27 @@ export function computeNetworkValueSummary(rows) {
   };
 }
 
+interface BuildEconomicsArtifactOptions {
+  subnets: Row[];
+  economicsByNetuid: Map<number, Row>;
+  generatedAt: string;
+  network?: string | null;
+  capturedAt?: string | null;
+  /** Optional Map<netuid, snapshot rows> for #7227 alpha_price_change_* fields. */
+  priceHistoryByNetuid?: Map<number, Row[]> | null;
+}
+
 export function buildEconomicsArtifact({
   subnets,
   economicsByNetuid,
   generatedAt,
   network = null,
   capturedAt = null,
-  /** Optional Map<netuid, snapshot rows> for #7227 alpha_price_change_* fields. */
   priceHistoryByNetuid = null,
-}) {
-  const numericOrZero = (value) => (typeof value === "number" ? value : 0);
-  const round = (value, places) => {
+}: BuildEconomicsArtifactOptions): Row {
+  const numericOrZero = (value: unknown): number =>
+    typeof value === "number" ? value : 0;
+  const round = (value: number, places: number): number => {
     const factor = 10 ** places;
     return Math.round(value * factor) / factor;
   };
@@ -142,12 +171,15 @@ export function buildEconomicsArtifact({
       subnet,
       economics: economicsByNetuid.get(subnet.netuid) || null,
     }))
-    .filter((entry) => entry.economics);
+    .filter(
+      (entry): entry is { subnet: Row; economics: Row } =>
+        entry.economics != null,
+    );
   const totalAlphaPrice = withEconomics.reduce(
     (sum, { economics }) => sum + numericOrZero(economics.alpha_price_tao),
     0,
   );
-  const rows = withEconomics.map(({ subnet, economics }) => {
+  const rows: Row[] = withEconomics.map(({ subnet, economics }) => {
     const price =
       typeof economics.alpha_price_tao === "number"
         ? economics.alpha_price_tao
@@ -202,7 +234,7 @@ export function buildEconomicsArtifact({
       (b.emission_share ?? -1) - (a.emission_share ?? -1) ||
       a.netuid - b.netuid,
   );
-  const sumField = (field) =>
+  const sumField = (field: string) =>
     rows.reduce((sum, row) => sum + numericOrZero(row[field]), 0);
   return {
     schema_version: 1,

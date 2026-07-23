@@ -14,7 +14,7 @@ import {
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.ts";
 import { entityLabelsIndex } from "../src/entity-labels.ts";
-import { sanitizeChainText, slugify } from "./lib/formatting.mjs";
+import { sanitizeChainText, slugify } from "./lib/formatting.ts";
 
 type Row = Record<string, unknown>;
 
@@ -2670,7 +2670,7 @@ export function staleOperationalKinds({
 }
 
 // Chain-text formatting and sanitization helpers were extracted to
-// scripts/lib/formatting.mjs (#510 maintainability decomposition). Re-exported
+// scripts/lib/formatting.ts (#510 maintainability decomposition). Re-exported
 // here verbatim so every existing importer of scripts/lib.ts keeps its import
 // path unchanged — pure code-motion with byte-identical artifact output.
 export {
@@ -2683,9 +2683,9 @@ export {
   stripUrls,
   cleanDescription,
   deriveDescriptionFromNotes,
-} from "./lib/formatting.mjs";
+} from "./lib/formatting.ts";
 
-// README link selection + classification was extracted to scripts/lib/readme-links.mjs
+// README link selection + classification was extracted to scripts/lib/readme-links.ts
 // (#510 maintainability decomposition). Re-exported here verbatim so every existing
 // importer of scripts/lib.ts keeps its import path unchanged — pure code-motion
 // with byte-identical artifact output.
@@ -2695,7 +2695,7 @@ export {
   isLikelyExampleLink,
   selectReviewableReadmeLinks,
   isReviewableReadmeLink,
-} from "./lib/readme-links.mjs";
+} from "./lib/readme-links.ts";
 
 // Economics + endpoint artifact derivation were extracted to dedicated modules
 // under scripts/lib/ (#510 maintainability decomposition). They are re-exported
@@ -2704,7 +2704,7 @@ export {
 export {
   computeMinerReadiness,
   buildEconomicsArtifact,
-} from "./lib/economics-artifacts.mjs";
+} from "./lib/economics-artifacts.ts";
 export {
   buildRpcEndpointArtifact,
   buildEndpointResourceArtifact,

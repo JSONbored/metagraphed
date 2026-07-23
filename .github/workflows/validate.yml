@@ -791,7 +791,7 @@ jobs:
       # Same drift-check shape as the API reference docs step just above
       # (#6634, the #1652 acceptance line that was never actually built):
       # content/docs/catalog.mdx is entirely generated from the curated
-      # registry/subnets/ overlays via scripts/lib/readme-catalog.mjs (the
+      # registry/subnets/ overlays via scripts/lib/readme-catalog.ts (the
       # same renderer README.md's own catalog section uses) -- an enriched
       # subnet that never regenerates this page silently drifts otherwise.
       - name: Build subnet catalog docs (drift check)

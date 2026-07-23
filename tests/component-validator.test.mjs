@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { createComponentValidatorCompiler } from "../scripts/lib/component-validator.mjs";
+import { createComponentValidatorCompiler } from "../scripts/lib/component-validator.ts";
 
 describe("createComponentValidatorCompiler", () => {
   test("memoizes ajv.compile by schema_ref (#2093)", () => {

@@ -8,7 +8,7 @@ import {
   injectedReadme,
   links,
   renderCatalog,
-} from "../scripts/lib/readme-catalog.mjs";
+} from "../scripts/lib/readme-catalog.ts";
 
 describe("readme-catalog focusTags", () => {
   test("strips provenance prefix + exact tags, keeps real focus tags (sorted)", () => {

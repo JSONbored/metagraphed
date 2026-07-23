@@ -74,7 +74,7 @@ two metrics are derived from one query.
   ([`volMcapRatio`, `src/alpha-volume.mjs:94`](../src/alpha-volume.mjs)), `null` when the market
   cap input is missing or non-positive. Unbounded — a genuinely high-turnover day can exceed `1`.
 - `alpha_market_cap_tao = alpha_price_tao × total_stake_tao`
-  ([`computeAlphaMarketCapTao`, `scripts/lib/economics-artifacts.mjs:46`](../scripts/lib/economics-artifacts.mjs)),
+  ([`computeAlphaMarketCapTao`, `scripts/lib/economics-artifacts.ts:58`](../scripts/lib/economics-artifacts.ts)),
   where `alpha_price_tao` is read directly from the chain's `moving_price` field on each subnet's
   info (the `SubnetMovingPrice` storage item — `scripts/fetch-native-subnets.py:80`) and
   `total_stake_tao` stands in as the circulating-alpha proxy until a dedicated supply field exists.
