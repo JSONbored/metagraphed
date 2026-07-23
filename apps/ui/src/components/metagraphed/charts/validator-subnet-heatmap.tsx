@@ -6,6 +6,7 @@ import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 
 // #3495: validator (row) × subnet (column) participation matrix from the global
 // validators payload, cells shaded by relative stake. Pure consumer of
@@ -43,14 +44,14 @@ export function ValidatorSubnetHeatmap() {
 
   if (rows.length === 0 || netuids.length === 0) {
     return (
-      <div className="rounded border border-border bg-card p-4 text-xs text-ink-muted">
+      <Panel as="div" dense bodyClassName="text-xs text-ink-muted">
         No validator participation data yet.
-      </div>
+      </Panel>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <Panel as="div" flush className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Validator × subnet · stake intensity
@@ -132,6 +133,6 @@ export function ValidatorSubnetHeatmap() {
           </table>
         </TooltipProvider>
       </div>
-    </div>
+    </Panel>
   );
 }

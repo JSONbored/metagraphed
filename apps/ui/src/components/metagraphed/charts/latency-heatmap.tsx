@@ -12,6 +12,7 @@ import {
 } from "@jsonbored/ui-kit";
 import type { Endpoint } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 
 // Map heatmap "kind" buckets onto /endpoints `category` query values so chip
 // clicks land on a pre-filtered view rather than the unfiltered list. The
@@ -128,15 +129,15 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
 
   if (providers.length === 0) {
     return (
-      <div className="rounded border border-border bg-card p-4 text-xs text-ink-muted">
+      <Panel as="div" dense bodyClassName="text-xs text-ink-muted">
         No endpoint latency data yet.
-      </div>
+      </Panel>
     );
   }
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <Panel as="div" flush className="overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             Latency heatmap · provider × kind
@@ -226,7 +227,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
     </TooltipProvider>
   );
 }

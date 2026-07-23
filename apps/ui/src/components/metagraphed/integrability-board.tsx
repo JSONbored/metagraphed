@@ -3,6 +3,7 @@ import { Gauge, Layers, CheckCircle2 } from "lucide-react";
 import { StatTile, BarMini, type BarMiniDatum } from "@jsonbored/ui-kit";
 import { coverageQuery } from "@/lib/metagraphed/queries";
 import type { Coverage } from "@/lib/metagraphed/types";
+import { Panel } from "@/components/metagraphed/primitives";
 
 // Fixed bucket order for the score distribution (the API keys are unordered).
 const SCORE_BUCKETS = ["0-24", "25-49", "50-74", "75-99", "100"];
@@ -69,7 +70,7 @@ export function IntegrabilityBoard() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {dimensionData.length > 0 ? (
-          <div className="rounded border border-border bg-card p-3">
+          <Panel as="div" dense>
             <div className="mb-2 flex items-baseline justify-between">
               <h3 className="font-display text-sm font-semibold text-ink-strong">
                 Coverage by dimension
@@ -80,11 +81,11 @@ export function IntegrabilityBoard() {
             <p className="mt-2 text-[11px] text-ink-muted">
               Lowest-coverage dimensions first — the biggest gaps to fill.
             </p>
-          </div>
+          </Panel>
         ) : null}
 
         {distribution.length > 0 ? (
-          <div className="rounded border border-border bg-card p-3">
+          <Panel as="div" dense>
             <div className="mb-2 flex items-baseline justify-between">
               <h3 className="font-display text-sm font-semibold text-ink-strong">
                 Completeness scores
@@ -95,7 +96,7 @@ export function IntegrabilityBoard() {
             <p className="mt-2 text-[11px] text-ink-muted">
               How subnet completeness scores are distributed across the registry.
             </p>
-          </div>
+          </Panel>
         ) : null}
       </div>
     </div>

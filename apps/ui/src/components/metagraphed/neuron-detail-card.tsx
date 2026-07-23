@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/metagraphed/states";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 
 function scoreStr(v?: number | null): string {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -103,7 +104,7 @@ export function NeuronDetailCard({
         <Fact label="Dividends" value={scoreStr(n.dividends)} />
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-2.5">
+      <Panel as="div" dense bodyClassName="space-y-2.5">
         <KeyRow label="Hotkey" value={n.hotkey} />
         <KeyRow label="Coldkey" value={n.coldkey} />
         {n.registered_at_block != null ? (
@@ -120,21 +121,21 @@ export function NeuronDetailCard({
             </Link>
           </div>
         ) : null}
-      </div>
+      </Panel>
     </div>
   );
 }
 
 function Fact({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-3">
+    <Panel as="div" dense>
       <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
         {label}
       </div>
       <div className="mt-1 font-display text-base font-semibold tabular-nums text-ink-strong leading-none">
         {value}
       </div>
-    </div>
+    </Panel>
   );
 }
 
