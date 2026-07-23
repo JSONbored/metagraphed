@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildEnrichmentQueueArtifacts,
   directSubmissionKindsForProfile,
-} from "../scripts/lib/enrichment-queue-artifacts.mjs";
+} from "../scripts/lib/enrichment-queue-artifacts.ts";
 
 const GENERATED_AT = "2026-06-25T00:00:00.000Z";
 const CONTRACT = "test-contract";

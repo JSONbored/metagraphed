@@ -17,7 +17,7 @@ import {
   scoreCoverageDepthDimensions,
   coverageDepthPriorityScore,
   buildCoverageDepthArtifact,
-} from "../scripts/lib/build-readiness.mjs";
+} from "../scripts/lib/build-readiness.ts";
 
 // --- test helpers -----------------------------------------------------------
 

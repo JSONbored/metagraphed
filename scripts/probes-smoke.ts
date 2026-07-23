@@ -27,20 +27,6 @@ import { CONTRACT_VERSION } from "../src/contracts.mjs";
 
 type Row = Record<string, unknown>;
 
-// buildRpcEndpointArtifact/buildEndpointResourceArtifact's untyped .mjs default
-// param (healthSurfaces = []) locks TS's cross-file inference to never[], and
-// buildEndpointPoolArtifact's (rpcArtifact = null, endpointArtifact = null)
-// locks to null | undefined; cast until Phase 4 Batch 7 converts
-// scripts/lib/endpoint-artifacts.mjs.
-const typedBuildRpcEndpointArtifact = buildRpcEndpointArtifact as unknown as (
-  options: Row,
-) => Row;
-const typedBuildEndpointResourceArtifact =
-  buildEndpointResourceArtifact as unknown as (options: Row) => Row;
-const typedBuildEndpointPoolArtifact = buildEndpointPoolArtifact as unknown as (
-  options: Row,
-) => Row;
-
 const contractVersion = CONTRACT_VERSION;
 const subnets: Row[] = await loadSubnets();
 const providers: Row[] = await loadProviders();
@@ -136,16 +122,16 @@ const artifact = buildHealthArtifacts(results, {
 });
 
 if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
-  const rpcEndpointArtifact = typedBuildRpcEndpointArtifact({
+  const rpcEndpointArtifact = buildRpcEndpointArtifact({
     surfaces: allSurfaces,
-    healthSurfaces: artifact.latest.surfaces,
+    healthSurfaces: artifact.latest.surfaces as Row[],
     generatedAt: buildTimestamp(),
     contractVersion,
     source: "live-smoke-probe",
   });
-  const endpointResourceArtifact = typedBuildEndpointResourceArtifact({
+  const endpointResourceArtifact = buildEndpointResourceArtifact({
     surfaces: allSurfaces,
-    healthSurfaces: artifact.latest.surfaces,
+    healthSurfaces: artifact.latest.surfaces as Row[],
     generatedAt: buildTimestamp(),
     contractVersion,
     source: "live-smoke-probe",
@@ -178,7 +164,7 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
   );
   await writeJson(
     artifactOutputPath("rpc/pools.json"),
-    typedBuildEndpointPoolArtifact({
+    buildEndpointPoolArtifact({
       generatedAt: buildTimestamp(),
       contractVersion,
       rpcArtifact: rpcEndpointArtifact,
@@ -186,7 +172,7 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
   );
   await writeJson(
     artifactOutputPath("endpoint-pools.json"),
-    typedBuildEndpointPoolArtifact({
+    buildEndpointPoolArtifact({
       generatedAt: buildTimestamp(),
       contractVersion,
       endpointArtifact: endpointResourceArtifact,

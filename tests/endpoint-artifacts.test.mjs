@@ -5,7 +5,7 @@ import {
   buildEndpointResourceArtifact,
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
-} from "../scripts/lib/endpoint-artifacts.mjs";
+} from "../scripts/lib/endpoint-artifacts.ts";
 
 const GENERATED_AT = "2026-06-25T00:00:00.000Z";
 const CONTRACT = "test-contract";

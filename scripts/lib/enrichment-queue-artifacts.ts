@@ -5,10 +5,20 @@
 // build-artifacts.mjs originals. Imported directly by scripts/build-artifacts.mjs.
 import { normalizePublicUrl, slugify } from "../lib.ts";
 
-function countBy(items, keyOrFn) {
+// Candidates, profiles, review/verification rows, and derived queue/evidence/
+// target entries are untrusted dynamic JSON, read only for artifact derivation
+// -- never trusted for control flow. Mirrors the readJson/readArtifactJson
+// precedent in scripts/lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+function countBy(
+  items: Row[],
+  keyOrFn: string | ((item: Row) => string),
+): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
-      items.reduce((accumulator, item) => {
+      items.reduce((accumulator: Record<string, number>, item) => {
         const key =
           typeof keyOrFn === "function" ? keyOrFn(item) : item[keyOrFn];
         accumulator[key] = (accumulator[key] || 0) + 1;
@@ -18,8 +28,11 @@ function countBy(items, keyOrFn) {
   );
 }
 
-function groupBy(items, key) {
-  const groups = new Map();
+function groupBy(
+  items: Row[],
+  key: string | ((item: Row) => unknown),
+): Map<unknown, Row[]> {
+  const groups = new Map<unknown, Row[]>();
   for (const item of items) {
     const groupKey = typeof key === "function" ? key(item) : item[key];
     const group = groups.get(groupKey) || [];
@@ -29,8 +42,25 @@ function groupBy(items, key) {
   return groups;
 }
 
-function groupByNetuid(items) {
+function groupByNetuid(items: Row[]): Map<unknown, Row[]> {
   return groupBy(items, "netuid");
+}
+
+interface BuildEnrichmentQueueArtifactsOptions {
+  candidates: Row[];
+  curationReview: Row;
+  profiles: Row[];
+  reviewProfiles: Row[];
+  subnets: Row[];
+  verification: Row;
+  contractVersion: string;
+  generatedAt: string;
+}
+
+interface BuildEnrichmentQueueArtifactsResult {
+  evidenceArtifact: Row;
+  queueArtifact: Row;
+  targetArtifact: Row;
 }
 
 export function buildEnrichmentQueueArtifacts({
@@ -42,44 +72,47 @@ export function buildEnrichmentQueueArtifacts({
   verification,
   contractVersion,
   generatedAt,
-}) {
-  const verificationByCandidate = new Map(
-    (verification.results || []).map((result) => [result.candidate_id, result]),
+}: BuildEnrichmentQueueArtifactsOptions): BuildEnrichmentQueueArtifactsResult {
+  const verificationByCandidate = new Map<unknown, Row>(
+    (verification.results || []).map((result: Row) => [
+      result.candidate_id,
+      result,
+    ]),
   );
-  const reviewProfileByNetuid = new Map(
+  const reviewProfileByNetuid = new Map<unknown, Row>(
     reviewProfiles.map((profile) => [profile.netuid, profile]),
   );
-  const gapPriorityByNetuid = new Map(
-    (curationReview.gap_priorities || []).map((priority) => [
+  const gapPriorityByNetuid = new Map<unknown, Row>(
+    (curationReview.gap_priorities || []).map((priority: Row) => [
       priority.netuid,
       priority,
     ]),
   );
-  const adapterCandidateByNetuid = new Map(
-    (curationReview.adapter_candidates || []).map((candidate) => [
+  const adapterCandidateByNetuid = new Map<unknown, Row>(
+    (curationReview.adapter_candidates || []).map((candidate: Row) => [
       candidate.netuid,
       candidate,
     ]),
   );
-  const excludedCandidateIdsByNetuid = new Map(
+  const excludedCandidateIdsByNetuid = new Map<unknown, Set<unknown>>(
     subnets.map((subnet) => [
       subnet.netuid,
       new Set(subnet.baseline_excluded_surface_ids || []),
     ]),
   );
-  const excludedCandidateUrlsByNetuid = new Map(
+  const excludedCandidateUrlsByNetuid = new Map<unknown, Set<string>>(
     subnets.map((subnet) => [
       subnet.netuid,
-      new Set(
+      new Set<string>(
         (subnet.baseline_excluded_surface_urls || [])
-          .map((url) => normalizePublicUrl(url))
+          .map((url: string) => normalizePublicUrl(url))
           .filter(Boolean),
       ),
     ]),
   );
   const candidatesByNetuid = groupByNetuid(candidates);
 
-  const fullQueue = profiles
+  const fullQueue: Row[] = profiles
     .map((profile) =>
       enrichmentQueueEntry({
         adapterCandidate: adapterCandidateByNetuid.get(profile.netuid),
@@ -103,7 +136,7 @@ export function buildEnrichmentQueueArtifacts({
   const queue = fullQueue.map(compactEnrichmentQueueEntry);
   const evidenceEntries = fullQueue.map(enrichmentEvidenceEntry);
 
-  const queueArtifact = {
+  const queueArtifact: Row = {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
@@ -137,7 +170,7 @@ export function buildEnrichmentQueueArtifacts({
     },
     queue,
   };
-  const evidenceArtifact = {
+  const evidenceArtifact: Row = {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
@@ -168,26 +201,39 @@ export function buildEnrichmentQueueArtifacts({
   return { evidenceArtifact, queueArtifact, targetArtifact };
 }
 
+interface EnrichmentCandidatesForSubnetOptions {
+  excludedIds: Set<unknown> | undefined;
+  excludedUrls: Set<string> | undefined;
+  subnetCandidates: Row[];
+}
+
 function enrichmentCandidatesForSubnet({
   excludedIds,
   excludedUrls,
   subnetCandidates,
-}) {
+}: EnrichmentCandidatesForSubnetOptions): Row[] {
   const hasExcludedIds = excludedIds && excludedIds.size > 0;
   const hasExcludedUrls = excludedUrls && excludedUrls.size > 0;
   if (!hasExcludedIds && !hasExcludedUrls) {
     return subnetCandidates;
   }
   return subnetCandidates.filter((candidate) => {
-    if (hasExcludedIds && excludedIds.has(candidate.id)) {
+    if (hasExcludedIds && excludedIds?.has(candidate.id)) {
       return false;
     }
     if (!hasExcludedUrls) {
       return true;
     }
     const candidateUrl = normalizePublicUrl(candidate.url);
-    return !candidateUrl || !excludedUrls.has(candidateUrl);
+    return !candidateUrl || !excludedUrls?.has(candidateUrl);
   });
+}
+
+interface BuildEnrichmentTargetsArtifactOptions {
+  evidenceEntries: Row[];
+  queue: Row[];
+  contractVersion: string;
+  generatedAt: string;
 }
 
 function buildEnrichmentTargetsArtifact({
@@ -195,11 +241,11 @@ function buildEnrichmentTargetsArtifact({
   queue,
   contractVersion,
   generatedAt,
-}) {
-  const evidenceByNetuid = new Map(
+}: BuildEnrichmentTargetsArtifactOptions): Row {
+  const evidenceByNetuid = new Map<unknown, Row>(
     evidenceEntries.map((entry) => [entry.netuid, entry]),
   );
-  const targets = queue
+  const targets: Row[] = queue
     .flatMap((entry) =>
       enrichmentTargetsForEntry({
         entry,
@@ -248,9 +294,15 @@ function buildEnrichmentTargetsArtifact({
   };
 }
 
-function enrichmentTargetsForEntry({ entry, evidenceEntry }) {
+function enrichmentTargetsForEntry({
+  entry,
+  evidenceEntry,
+}: {
+  entry: Row;
+  evidenceEntry: Row | undefined;
+}): Row[] {
   if (entry.lane === "direct-submission") {
-    return entry.direct_submission_kinds.map((kind) =>
+    return entry.direct_submission_kinds.map((kind: string) =>
       surfaceCandidateTarget({ entry, evidenceEntry, kind }),
     );
   }
@@ -275,8 +327,16 @@ function enrichmentTargetsForEntry({ entry, evidenceEntry }) {
   ];
 }
 
-function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
-  const candidateEvidence = evidenceEntry?.candidate_evidence_by_kind?.[
+function surfaceCandidateTarget({
+  entry,
+  evidenceEntry,
+  kind,
+}: {
+  entry: Row;
+  evidenceEntry: Row | undefined;
+  kind: string;
+}): Row {
+  const candidateEvidence: Row = evidenceEntry?.candidate_evidence_by_kind?.[
     kind
   ] || {
     candidate_count: 0,
@@ -320,7 +380,7 @@ function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
   };
 }
 
-function surfaceEvidenceAction(candidateEvidence) {
+function surfaceEvidenceAction(candidateEvidence: Row | undefined): string {
   if (!candidateEvidence || candidateEvidence.candidate_count === 0) {
     return "submit-new-evidence";
   }
@@ -333,8 +393,14 @@ function surfaceEvidenceAction(candidateEvidence) {
   return "verify-existing-evidence";
 }
 
-function nonSurfaceEnrichmentTarget({ entry, targetType }) {
-  const routeByType = {
+function nonSurfaceEnrichmentTarget({
+  entry,
+  targetType,
+}: {
+  entry: Row;
+  targetType: string;
+}): Row {
+  const routeByType: Record<string, string> = {
     "adapter-review": "adapter-request",
     "maintainer-review": "maintainer-review",
     "monitoring-followup": "status-report",
@@ -370,7 +436,7 @@ function nonSurfaceEnrichmentTarget({ entry, targetType }) {
   };
 }
 
-function enrichmentTargetQueueContext(entry) {
+function enrichmentTargetQueueContext(entry: Row): Row {
   return {
     adapter_score: entry.adapter_score,
     candidate_count: entry.candidate_count,
@@ -389,7 +455,7 @@ function enrichmentTargetQueueContext(entry) {
   };
 }
 
-function enrichmentTargetGroups(targets) {
+function enrichmentTargetGroups(targets: Row[]): Row[] {
   return [...groupBy(targets, "target_type").entries()]
     .flatMap(([targetType, rows]) => {
       const byKind = groupBy(rows, (row) => row.kind || targetType);
@@ -416,22 +482,26 @@ function enrichmentTargetGroups(targets) {
     })
     .sort(
       (a, b) =>
-        a.target_type.localeCompare(b.target_type) ||
+        String(a.target_type).localeCompare(String(b.target_type)) ||
         String(a.kind || "").localeCompare(String(b.kind || "")),
     );
 }
 
-function enrichmentTargetId(entry, targetType, kind) {
+function enrichmentTargetId(
+  entry: Row,
+  targetType: string,
+  kind: string | null,
+): string {
   return [`sn-${entry.netuid}`, targetType, kind || entry.lane]
     .map(slugify)
     .join("-");
 }
 
-function candidateCommandTemplate(netuid, kind) {
+function candidateCommandTemplate(netuid: unknown, kind: string): string {
   return `npm run surface:add -- --netuid ${netuid} --kind ${kind} --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write`;
 }
 
-function surfaceTargetAction(evidenceAction) {
+function surfaceTargetAction(evidenceAction: string): string {
   if (evidenceAction === "replace-stale-evidence") {
     return "replace-stale-candidate";
   }
@@ -444,7 +514,10 @@ function surfaceTargetAction(evidenceAction) {
   return "submit-new-candidate";
 }
 
-function contributionPromptForKind(kind, evidenceAction) {
+function contributionPromptForKind(
+  kind: string,
+  evidenceAction: string,
+): string {
   const verb =
     evidenceAction === "replace-stale-evidence"
       ? "Replace stale or failed"
@@ -454,7 +527,7 @@ function contributionPromptForKind(kind, evidenceAction) {
   return `${verb} official public ${kind} evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.`;
 }
 
-function contributionPromptForTargetType(targetType) {
+function contributionPromptForTargetType(targetType: string): string {
   if (targetType === "adapter-review") {
     return "Review whether the existing public API/schema/data surfaces justify a subnet-specific adapter. Adapter requests route to manual review.";
   }
@@ -464,7 +537,7 @@ function contributionPromptForTargetType(targetType) {
   return "Review probe-derived status or request a re-probe. Contributor reports never set observed health directly.";
 }
 
-function sourceRequirementsForKind(kind) {
+function sourceRequirementsForKind(kind: string): string[] {
   if (["website", "docs", "source-repo"].includes(kind)) {
     return [
       "Prefer an official project/team source.",
@@ -486,7 +559,7 @@ function sourceRequirementsForKind(kind) {
   ];
 }
 
-function sourceRequirementsForTargetType(targetType) {
+function sourceRequirementsForTargetType(targetType: string): string[] {
   if (targetType === "adapter-review") {
     return [
       "Existing public API/schema/data evidence should be stable enough to normalize.",
@@ -505,7 +578,7 @@ function sourceRequirementsForTargetType(targetType) {
   ];
 }
 
-function compactEnrichmentQueueEntry(entry) {
+function compactEnrichmentQueueEntry(entry: Row): Row {
   const { candidate_evidence_by_kind: evidenceByKind, ...compact } = entry;
   return {
     ...compact,
@@ -513,7 +586,7 @@ function compactEnrichmentQueueEntry(entry) {
   };
 }
 
-function enrichmentEvidenceEntry(entry) {
+function enrichmentEvidenceEntry(entry: Row): Row {
   return {
     candidate_evidence_by_kind: entry.candidate_evidence_by_kind,
     candidate_evidence_summary: summarizeCandidateEvidence(
@@ -530,9 +603,9 @@ function enrichmentEvidenceEntry(entry) {
   };
 }
 
-function summarizeCandidateEvidence(evidenceByKind) {
+function summarizeCandidateEvidence(evidenceByKind: Row | undefined): Row {
   const entries = Object.entries(evidenceByKind || {});
-  const summary = {
+  const summary: Row = {
     candidate_count: 0,
     kinds_with_candidates: [],
     live_kinds: [],
@@ -544,7 +617,7 @@ function summarizeCandidateEvidence(evidenceByKind) {
     unverified_kinds: [],
   };
 
-  for (const [kind, evidence] of entries) {
+  for (const [kind, evidence] of entries as [string, Row][]) {
     summary.candidate_count += evidence.candidate_count || 0;
     summary.live_or_redirected_count += evidence.live_or_redirected_count || 0;
     summary.reviewable_count += evidence.reviewable_count || 0;
@@ -571,6 +644,15 @@ function summarizeCandidateEvidence(evidenceByKind) {
   return summary;
 }
 
+interface EnrichmentQueueEntryOptions {
+  adapterCandidate: Row | undefined;
+  gapPriority: Row | undefined;
+  profile: Row;
+  reviewProfile: Row | undefined;
+  subnetCandidates: Row[];
+  verificationByCandidate: Map<unknown, Row>;
+}
+
 function enrichmentQueueEntry({
   adapterCandidate,
   gapPriority,
@@ -578,7 +660,7 @@ function enrichmentQueueEntry({
   reviewProfile,
   subnetCandidates,
   verificationByCandidate,
-}) {
+}: EnrichmentQueueEntryOptions): Row {
   const missingRequired = profile.completeness.missing_required || [];
   const missingOperational = profile.completeness.missing_operational || [];
   const missingKinds = [
@@ -688,12 +770,19 @@ function enrichmentQueueEntry({
   };
 }
 
+interface CandidateEvidenceByKindForQueueOptions {
+  directSubmissionKinds: string[];
+  missingKinds: string[];
+  subnetCandidates: Row[];
+  verificationByCandidate: Map<unknown, Row>;
+}
+
 function candidateEvidenceByKindForQueue({
   directSubmissionKinds,
   missingKinds,
   subnetCandidates,
   verificationByCandidate,
-}) {
+}: CandidateEvidenceByKindForQueueOptions): Row {
   const relevantKinds = [
     ...new Set([...missingKinds, ...directSubmissionKinds]),
   ].sort();
@@ -755,13 +844,21 @@ function candidateEvidenceByKindForQueue({
   );
 }
 
+interface SampleCandidateIdsForQueueOptions {
+  candidateClasses?: string[] | null;
+  directSubmissionKinds: string[];
+  missingKinds: string[];
+  subnetCandidates: Row[];
+  verificationByCandidate: Map<unknown, Row>;
+}
+
 function sampleCandidateIdsForQueue({
   candidateClasses = null,
   directSubmissionKinds,
   missingKinds,
   subnetCandidates,
   verificationByCandidate,
-}) {
+}: SampleCandidateIdsForQueueOptions): string[] {
   const relevantKinds = new Set(
     directSubmissionKinds.length > 0 ? directSubmissionKinds : missingKinds,
   );
@@ -788,7 +885,10 @@ function sampleCandidateIdsForQueue({
     .slice(0, 5);
 }
 
-function candidateQueueClassification(candidate, verificationByCandidate) {
+function candidateQueueClassification(
+  candidate: Row,
+  verificationByCandidate: Map<unknown, Row>,
+): string {
   return (
     verificationByCandidate.get(candidate.id)?.classification ||
     candidate.verification?.classification ||
@@ -797,12 +897,15 @@ function candidateQueueClassification(candidate, verificationByCandidate) {
   );
 }
 
-function candidateQueuePriority(candidate, verificationByCandidate) {
+function candidateQueuePriority(
+  candidate: Row,
+  verificationByCandidate: Map<unknown, Row>,
+): number {
   const classification = candidateQueueClassification(
     candidate,
     verificationByCandidate,
   );
-  const weights = {
+  const weights: Record<string, number> = {
     live: 0,
     redirected: 1,
     verified: 2,
@@ -821,11 +924,17 @@ function candidateQueuePriority(candidate, verificationByCandidate) {
   return weights[classification] ?? 20;
 }
 
+interface EnrichmentEvidenceActionOptions {
+  candidateEvidenceByKind: Row;
+  directSubmissionKinds: string[];
+  lane: string;
+}
+
 function enrichmentEvidenceAction({
   candidateEvidenceByKind,
   directSubmissionKinds,
   lane,
-}) {
+}: EnrichmentEvidenceActionOptions): string {
   if (["adapter-candidate", "maintainer-review"].includes(lane)) {
     return "maintainer-review-existing-evidence";
   }
@@ -863,14 +972,15 @@ function enrichmentEvidenceAction({
   return "submit-new-evidence";
 }
 
-function staleCandidateCount(candidateEvidenceByKind) {
+function staleCandidateCount(candidateEvidenceByKind: Row): number {
   return Object.values(candidateEvidenceByKind).reduce(
-    (sum, evidence) => sum + (evidence.stale_or_failed_count || 0),
+    (sum: number, evidence) =>
+      sum + ((evidence as Row).stale_or_failed_count || 0),
     0,
   );
 }
 
-export function directSubmissionKindsForProfile(profile) {
+export function directSubmissionKindsForProfile(profile: Row): string[] {
   const missingRequired = new Set(profile.completeness.missing_required || []);
   const identityTargets = ["docs", "website", "source-repo"].filter((kind) =>
     missingRequired.has(kind),
@@ -890,9 +1000,9 @@ export function directSubmissionKindsForProfile(profile) {
     return operationalTargets;
   }
 
-  const hasApiLikeEvidence = profile.operational_interface_kinds.some((kind) =>
-    ["openapi", "subnet-api"].includes(kind),
-  );
+  const hasApiLikeEvidence = (
+    profile.operational_interface_kinds as string[]
+  ).some((kind) => ["openapi", "subnet-api"].includes(kind));
   if (!hasApiLikeEvidence) {
     return operationalTargets.filter((kind) =>
       ["openapi", "subnet-api"].includes(kind),
@@ -902,7 +1012,17 @@ export function directSubmissionKindsForProfile(profile) {
   return [];
 }
 
-function enrichmentLane({ adapterCandidate, directSubmissionKinds, profile }) {
+interface EnrichmentLaneOptions {
+  adapterCandidate: Row | undefined;
+  directSubmissionKinds: string[];
+  profile: Row;
+}
+
+function enrichmentLane({
+  adapterCandidate,
+  directSubmissionKinds,
+  profile,
+}: EnrichmentLaneOptions): string {
   if (directSubmissionKinds.length > 0) {
     return "direct-submission";
   }
@@ -918,12 +1038,18 @@ function enrichmentLane({ adapterCandidate, directSubmissionKinds, profile }) {
   return "baseline-monitoring";
 }
 
+interface EnrichmentReasonCodesOptions {
+  adapterCandidate: Row | undefined;
+  directSubmissionKinds: string[];
+  profile: Row;
+}
+
 function enrichmentReasonCodes({
   adapterCandidate,
   directSubmissionKinds,
   profile,
-}) {
-  const reasons = [];
+}: EnrichmentReasonCodesOptions): string[] {
+  const reasons: string[] = [];
   if (profile.profile_level === "directory-only") {
     reasons.push("directory-only-profile");
   }
@@ -939,7 +1065,10 @@ function enrichmentReasonCodes({
   return [...new Set(reasons)].sort();
 }
 
-function enrichmentContributionHint(lane, directSubmissionKinds) {
+function enrichmentContributionHint(
+  lane: string,
+  directSubmissionKinds: string[],
+): string {
   if (lane === "direct-submission") {
     const kinds = directSubmissionKinds.join(", ");
     return `Submit one official public ${kinds || "interface"} candidate with npm run surface:add.`;
@@ -956,13 +1085,21 @@ function enrichmentContributionHint(lane, directSubmissionKinds) {
   return "No immediate enrichment action; keep monitoring for drift and new public interfaces.";
 }
 
+interface EnrichmentRecommendedActionOptions {
+  adapterCandidate: Row | undefined;
+  directSubmissionKinds: string[];
+  lane: string;
+  profile: Row;
+  reviewProfile: Row | undefined;
+}
+
 function enrichmentRecommendedAction({
   adapterCandidate,
   directSubmissionKinds,
   lane,
   profile,
   reviewProfile,
-}) {
+}: EnrichmentRecommendedActionOptions): string {
   if (lane === "direct-submission") {
     if (
       directSubmissionKinds.some((kind) =>
@@ -980,7 +1117,7 @@ function enrichmentRecommendedAction({
     );
   }
   if (lane === "adapter-candidate") {
-    const kinds = (adapterCandidate.operational_kinds || []).join(", ");
+    const kinds = (adapterCandidate?.operational_kinds || []).join(", ");
     return `evaluate adapter support for ${kinds || "operational surfaces"}`;
   }
   if (profile.operational_interface_count > 0) {
@@ -989,10 +1126,10 @@ function enrichmentRecommendedAction({
   return "profile is baseline-complete; monitor for new public interfaces";
 }
 
-function countDirectSubmissionKinds(queue) {
+function countDirectSubmissionKinds(queue: Row[]): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
-      queue.reduce((accumulator, entry) => {
+      queue.reduce((accumulator: Record<string, number>, entry) => {
         for (const kind of entry.direct_submission_kinds || []) {
           accumulator[kind] = (accumulator[kind] || 0) + 1;
         }

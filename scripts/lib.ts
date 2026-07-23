@@ -2710,7 +2710,7 @@ export {
   buildEndpointResourceArtifact,
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
-} from "./lib/endpoint-artifacts.mjs";
+} from "./lib/endpoint-artifacts.ts";
 
 // The two terminal trust-tier "ceiling" levels. The CurationLevel enum documents
 // a "maintainer-reviewed / adapter-backed ceiling" (schemas/api-components), so a

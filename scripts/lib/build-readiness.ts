@@ -6,12 +6,21 @@
 // and unit-tested in tests/build-readiness.test.mjs.
 import { OPERATIONAL_SURFACE_KINDS } from "../../src/health-probe-core.ts";
 
+// Subnets, surfaces, services, and derived readiness rows are untrusted dynamic
+// JSON, read only for artifact derivation -- never trusted for control flow.
+// Mirrors the readJson/readArtifactJson precedent in scripts/lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 export const READINESS_VERSION = 2;
 
-function countBy(items, keyOrFn) {
+function countBy(
+  items: Row[],
+  keyOrFn: string | ((item: Row) => string),
+): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
-      items.reduce((accumulator, item) => {
+      items.reduce((accumulator: Record<string, number>, item) => {
         const key =
           typeof keyOrFn === "function" ? keyOrFn(item) : item[keyOrFn];
         accumulator[key] = (accumulator[key] || 0) + 1;
@@ -30,13 +39,22 @@ function countBy(items, keyOrFn) {
 // #356: a categorical readiness gradient that turns the API-less long tail into
 // a ranked curation pipeline instead of a single 0-15 cliff. Derived purely from
 // components (not the numeric score) so the tier stays stable if weights move.
-export function readinessTier(components) {
+export function readinessTier(components: Row): string {
   if (components.has_callable_api) return "buildable";
   if (components.has_candidate_api || components.has_public_docs)
     return "emerging";
   if (components.has_source_repo || components.active_lifecycle)
     return "identity-only";
   return "dormant";
+}
+
+interface SubnetIntegrationReadinessOptions {
+  services: Row[];
+  lifecycle: unknown;
+  completenessScore: unknown;
+  sourceRepo: unknown;
+  docsUrl: unknown;
+  candidates: Row[] | null | undefined;
 }
 
 export function subnetIntegrationReadiness({
@@ -46,7 +64,7 @@ export function subnetIntegrationReadiness({
   sourceRepo,
   docsUrl,
   candidates,
-}) {
+}: SubnetIntegrationReadinessOptions): Row {
   const callable = services.filter((service) => service.eligibility.callable);
   const components = {
     has_callable_api: services.length > 0,
@@ -58,7 +76,7 @@ export function subnetIntegrationReadiness({
       ),
     callable_now: callable.length > 0,
     active_lifecycle: lifecycle === "active",
-    profile_complete: (completenessScore ?? 0) >= 70,
+    profile_complete: (Number(completenessScore) || 0) >= 70,
     // #356: low-weight, NON-API signals so the ~99 API-less subnets stop
     // cliffing at one score and rank as a curation pipeline. has_public_docs is
     // any docs link (distinct from `documented`, which needs a verified schema);
@@ -66,7 +84,7 @@ export function subnetIntegrationReadiness({
     has_source_repo: Boolean(sourceRepo),
     has_public_docs: Boolean(docsUrl),
     has_candidate_api: (candidates ?? []).some((candidate) =>
-      OPERATIONAL_SURFACE_KINDS.includes(candidate.kind),
+      (OPERATIONAL_SURFACE_KINDS as string[]).includes(candidate.kind),
     ),
   };
   const score = Math.min(
@@ -91,17 +109,31 @@ export function subnetIntegrationReadiness({
   };
 }
 
+interface BuildAgentReadinessOptions {
+  subnet: Row;
+  profile: Row | null | undefined;
+  services: Row[];
+  readiness: Row | null | undefined;
+  callableCount: number;
+}
+
 export function buildAgentReadiness({
   subnet,
   profile,
   services,
   readiness,
   callableCount,
-}) {
-  const components = readiness?.components || {};
+}: BuildAgentReadinessOptions): Row {
+  const components: Row = readiness?.components || {};
   const subnetType = profile?.subnet_type || subnet.subnet_type || null;
-  const blockers = [];
-  const add = (code, severity, message, field, nextAction) => {
+  const blockers: Row[] = [];
+  const add = (
+    code: string,
+    severity: string,
+    message: string,
+    field: string,
+    nextAction: string,
+  ): void => {
     blockers.push({
       code,
       severity,
@@ -233,17 +265,17 @@ export function buildAgentReadiness({
     blocker_level: blockerLevel,
     blockers,
     missing_fields: [
-      ...new Set(
+      ...new Set<string>(
         blockers
           .filter((blocker) => blocker.severity === "missing-data")
-          .map((blocker) => blocker.field),
+          .map((blocker): string => blocker.field),
       ),
     ].sort(),
   };
 }
 
-export function summarizeAgentReadinessBlockers(blockedSubnets) {
-  const blockers = blockedSubnets.flatMap(
+export function summarizeAgentReadinessBlockers(blockedSubnets: Row[]): Row {
+  const blockers: Row[] = blockedSubnets.flatMap(
     (subnet) => subnet.agent_readiness?.blockers || [],
   );
   return {
@@ -271,13 +303,25 @@ export const COVERAGE_DEPTH_WEIGHTS = {
   profile_completeness: 10,
 };
 export const COVERAGE_DEPTH_QUEUE_LIMIT = 100;
-export const COVERAGE_DEPTH_SEVERITY_RANK = {
+export const COVERAGE_DEPTH_SEVERITY_RANK: Record<string, number> = {
   hard: 0,
   "needs-review": 1,
   "missing-data": 2,
 };
 
-export function coverageDepthTier({ agentReadiness, dimensions, gaps, score }) {
+interface CoverageDepthTierOptions {
+  agentReadiness: Row | null | undefined;
+  dimensions: Row;
+  gaps: Row[];
+  score: number;
+}
+
+export function coverageDepthTier({
+  agentReadiness,
+  dimensions,
+  gaps,
+  score,
+}: CoverageDepthTierOptions): string {
   if (agentReadiness?.blocker_level === "hard-blocked") {
     return "hard-blocked";
   }
@@ -304,13 +348,17 @@ export function coverageDepthTier({ agentReadiness, dimensions, gaps, score }) {
   return "missing-interface";
 }
 
-export function addCoverageDepthGap(gaps, seenCodes, gap) {
+export function addCoverageDepthGap(
+  gaps: Row[],
+  seenCodes: Set<string>,
+  gap: Row,
+): void {
   if (seenCodes.has(gap.code)) return;
   seenCodes.add(gap.code);
   gaps.push(gap);
 }
 
-export function sortCoverageDepthGaps(gaps) {
+export function sortCoverageDepthGaps(gaps: Row[]): Row[] {
   return [...gaps].sort((a, b) => {
     const severityDelta =
       (COVERAGE_DEPTH_SEVERITY_RANK[a.severity] ?? 9) -
@@ -320,11 +368,17 @@ export function sortCoverageDepthGaps(gaps) {
   });
 }
 
+interface ScoreCoverageDepthDimensionsOptions {
+  dimensions: Row;
+  agentReadiness: Row | null | undefined;
+  completenessScore: unknown;
+}
+
 export function scoreCoverageDepthDimensions({
   dimensions,
   agentReadiness,
   completenessScore,
-}) {
+}: ScoreCoverageDepthDimensionsOptions): number {
   const callableCoverage =
     dimensions.callable_service_count > 0
       ? 1
@@ -337,7 +391,7 @@ export function scoreCoverageDepthDimensions({
       : 0;
   const explicitFixtureAbsenceCount = Object.values(
     dimensions.fixture_status_counts,
-  ).reduce((sum, count) => sum + count, 0);
+  ).reduce((sum: number, count) => sum + (count as number), 0);
   const fixtureCoverage =
     dimensions.callable_service_count > 0
       ? dimensions.fixture_available_count > 0
@@ -380,12 +434,20 @@ export function scoreCoverageDepthDimensions({
   );
 }
 
-export function coverageDepthPriorityScore({ row, gaps }) {
+interface CoverageDepthPriorityScoreOptions {
+  row: Row;
+  gaps: Row[];
+}
+
+export function coverageDepthPriorityScore({
+  row,
+  gaps,
+}: CoverageDepthPriorityScoreOptions): number {
   const actionableGaps = gaps.filter((gap) => gap.severity !== "hard");
   if (row.subnet_type === "root" || actionableGaps.length === 0) {
     return 0;
   }
-  const severityWeight = actionableGaps.reduce((sum, gap) => {
+  const severityWeight = actionableGaps.reduce((sum: number, gap) => {
     if (gap.severity === "needs-review") return sum + 18;
     return sum + 12;
   }, 0);
@@ -411,6 +473,19 @@ export function coverageDepthPriorityScore({ row, gaps }) {
   );
 }
 
+interface BuildCoverageDepthArtifactOptions {
+  subnets: Row[];
+  profileByNetuid: Map<unknown, Row | null | undefined>;
+  surfacesByNetuid: Map<unknown, Row[]>;
+  servicesByNetuid: Map<unknown, Row[]>;
+  candidatesByNetuid: Map<unknown, Row[]>;
+  readinessByNetuid: Map<unknown, Row>;
+  agentReadinessByNetuid: Map<unknown, Row>;
+  examplesByNetuid: Map<unknown, Row[]>;
+  generatedAt: string;
+  contractVersion: string;
+}
+
 export function buildCoverageDepthArtifact({
   subnets,
   profileByNetuid,
@@ -422,16 +497,17 @@ export function buildCoverageDepthArtifact({
   examplesByNetuid,
   generatedAt,
   contractVersion,
-}) {
-  const rows = subnets
+}: BuildCoverageDepthArtifactOptions): Row {
+  const rows: Row[] = subnets
     .map((subnet) => {
       const profile = profileByNetuid.get(subnet.netuid) || null;
-      const subnetSurfaces = surfacesByNetuid.get(subnet.netuid) || [];
-      const services = servicesByNetuid.get(subnet.netuid) || [];
+      const subnetSurfaces: Row[] = surfacesByNetuid.get(subnet.netuid) || [];
+      const services: Row[] = servicesByNetuid.get(subnet.netuid) || [];
       const callableServices = services.filter(
         (service) => service.eligibility?.callable,
       );
-      const candidatesForSubnet = candidatesByNetuid.get(subnet.netuid) || [];
+      const candidatesForSubnet: Row[] =
+        candidatesByNetuid.get(subnet.netuid) || [];
       const agentReadiness = agentReadinessByNetuid.get(subnet.netuid) || {
         status: "blocked",
         blocker_level: "missing-data",
@@ -441,7 +517,7 @@ export function buildCoverageDepthArtifact({
       const readiness = readinessByNetuid.get(subnet.netuid) || {
         score: 0,
       };
-      const examples = examplesByNetuid.get(subnet.netuid) || [];
+      const examples: Row[] = examplesByNetuid.get(subnet.netuid) || [];
       const sdkCount = subnetSurfaces.filter(
         (surface) => surface.kind === "sdk",
       ).length;
@@ -449,7 +525,7 @@ export function buildCoverageDepthArtifact({
         callableServices,
         (service) => service.fixture_status?.status || "missing",
       );
-      const dimensions = {
+      const dimensions: Row = {
         surface_count: subnetSurfaces.length,
         official_surface_count: subnetSurfaces.filter(
           (surface) => surface.authority === "official",
@@ -463,7 +539,9 @@ export function buildCoverageDepthArtifact({
         service_count: services.length,
         callable_service_count: callableServices.length,
         service_kinds: [
-          ...new Set(callableServices.map((service) => service.kind)),
+          ...new Set<string>(
+            callableServices.map((service): string => service.kind),
+          ),
         ].sort(),
         schema_service_count: callableServices.filter(
           (service) => service.schema_artifact,
@@ -479,7 +557,7 @@ export function buildCoverageDepthArtifact({
         sdk_count: sdkCount,
         candidate_count: candidatesForSubnet.length,
         candidate_operational_count: candidatesForSubnet.filter((candidate) =>
-          OPERATIONAL_SURFACE_KINDS.includes(candidate.kind),
+          (OPERATIONAL_SURFACE_KINDS as string[]).includes(candidate.kind),
         ).length,
         data_artifact_count: callableServices.filter(
           (service) => service.kind === "data-artifact",
@@ -492,8 +570,8 @@ export function buildCoverageDepthArtifact({
         agentReadiness,
         completenessScore: profile?.completeness_score,
       });
-      const gaps = [];
-      const seenGapCodes = new Set();
+      const gaps: Row[] = [];
+      const seenGapCodes = new Set<string>();
       for (const blocker of agentReadiness.blockers || []) {
         addCoverageDepthGap(gaps, seenGapCodes, blocker);
       }
@@ -557,7 +635,7 @@ export function buildCoverageDepthArtifact({
         });
       }
       const sortedGaps = sortCoverageDepthGaps(gaps);
-      const row = {
+      const row: Row = {
         netuid: subnet.netuid,
         slug: subnet.slug,
         name: subnet.name,
@@ -604,7 +682,8 @@ export function buildCoverageDepthArtifact({
     .slice(0, COVERAGE_DEPTH_QUEUE_LIMIT)
     .map((row, index) => {
       const primaryGap =
-        row.top_gaps.find((gap) => gap.severity !== "hard") || row.top_gaps[0];
+        row.top_gaps.find((gap: Row) => gap.severity !== "hard") ||
+        row.top_gaps[0];
       return {
         rank: index + 1,
         netuid: row.netuid,
@@ -619,7 +698,7 @@ export function buildCoverageDepthArtifact({
           row.recommended_next_action || primaryGap.next_action,
       };
     });
-  const allTopGaps = rows.flatMap((row) => row.top_gaps);
+  const allTopGaps: Row[] = rows.flatMap((row) => row.top_gaps);
   return {
     schema_version: 1,
     contract_version: contractVersion,

@@ -12,15 +12,32 @@
 // (inside buildEndpointResourceArtifact), never during module evaluation.
 import { surfaceStableKey } from "../lib.ts";
 
+// Surfaces, probe health, and derived endpoint/pool/incident rows are untrusted
+// dynamic JSON, read only for artifact derivation -- never trusted for control
+// flow. Mirrors the readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+interface BuildRpcEndpointArtifactOptions {
+  surfaces: Row[];
+  healthSurfaces?: Row[];
+  generatedAt: string;
+  contractVersion: string;
+  source: string;
+}
+
 export function buildRpcEndpointArtifact({
   surfaces,
   healthSurfaces = [],
   generatedAt,
   contractVersion,
   source,
-}) {
-  const healthBySurface = new Map(
-    healthSurfaces.map((surface) => [surface.surface_id, surface]),
+}: BuildRpcEndpointArtifactOptions): Row {
+  const healthBySurface = new Map<string, Row>(
+    healthSurfaces.map((surface): [string, Row] => [
+      surface.surface_id,
+      surface,
+    ]),
   );
   const endpoints = surfaces
     .filter((surface) =>
@@ -88,15 +105,26 @@ export function buildRpcEndpointArtifact({
   };
 }
 
+interface BuildEndpointResourceArtifactOptions {
+  surfaces: Row[];
+  healthSurfaces?: Row[];
+  generatedAt: string;
+  contractVersion: string;
+  source: string;
+}
+
 export function buildEndpointResourceArtifact({
   surfaces,
   healthSurfaces = [],
   generatedAt,
   contractVersion,
   source,
-}) {
-  const healthBySurface = new Map(
-    healthSurfaces.map((surface) => [surface.surface_id, surface]),
+}: BuildEndpointResourceArtifactOptions): Row {
+  const healthBySurface = new Map<string, Row>(
+    healthSurfaces.map((surface): [string, Row] => [
+      surface.surface_id,
+      surface,
+    ]),
   );
   const endpoints = surfaces.map((surface) => {
     const surfaceKey = surface.key || surfaceStableKey(surface);
@@ -204,31 +232,42 @@ export function buildEndpointResourceArtifact({
   };
 }
 
+interface BuildEndpointPoolArtifactOptions {
+  generatedAt: string;
+  contractVersion: string;
+  rpcArtifact?: Row | null;
+  endpointArtifact?: Row | null;
+  // Static, non-default-network base-layer RPC endpoints (e.g. testnet). These
+  // are NOT probe-derived: they carry static pool_eligible/score so /rpc/v1/{net}
+  // can route immediately, with the proxy's in-isolate breaker + failover handling
+  // liveness. Shape matches the mapped `endpoints` below (see test-base-endpoints).
+  testnetEndpoints?: Row[];
+}
+
 export function buildEndpointPoolArtifact({
   generatedAt,
   contractVersion,
   rpcArtifact = null,
   endpointArtifact = null,
-  // Static, non-default-network base-layer RPC endpoints (e.g. testnet). These
-  // are NOT probe-derived: they carry static pool_eligible/score so /rpc/v1/{net}
-  // can route immediately, with the proxy's in-isolate breaker + failover handling
-  // liveness. Shape matches the mapped `endpoints` below (see test-base-endpoints).
   testnetEndpoints = [],
-}) {
-  const sourceArtifact = endpointArtifact || rpcArtifact || { endpoints: [] };
-  const endpoints = (sourceArtifact.endpoints || []).map((endpoint) => {
-    const scoreBreakdown = endpointScoreBreakdown(endpoint);
-    const poolEligibility = endpointPoolEligibility(endpoint);
-    return {
-      ...endpoint,
-      score: scoreBreakdown.score,
-      score_reasons: endpoint.score_reasons || scoreBreakdown.reasons,
-      pool_eligible: poolEligibility.eligible,
-      pool_eligibility_reasons:
-        endpoint.pool_eligibility_reasons || poolEligibility.reasons,
-      unsafe_methods_blocked: true,
-    };
-  });
+}: BuildEndpointPoolArtifactOptions): Row {
+  const sourceArtifact: Row = endpointArtifact ||
+    rpcArtifact || { endpoints: [] };
+  const endpoints: Row[] = (sourceArtifact.endpoints || []).map(
+    (endpoint: Row) => {
+      const scoreBreakdown = endpointScoreBreakdown(endpoint);
+      const poolEligibility = endpointPoolEligibility(endpoint);
+      return {
+        ...endpoint,
+        score: scoreBreakdown.score,
+        score_reasons: endpoint.score_reasons || scoreBreakdown.reasons,
+        pool_eligible: poolEligibility.eligible,
+        pool_eligibility_reasons:
+          endpoint.pool_eligibility_reasons || poolEligibility.reasons,
+        unsafe_methods_blocked: true,
+      };
+    },
+  );
 
   return {
     schema_version: 1,
@@ -294,7 +333,7 @@ export function buildEndpointPoolArtifact({
   };
 }
 
-function endpointPool(id, kind, endpoints) {
+function endpointPool(id: string, kind: string, endpoints: Row[]): Row {
   const poolEndpoints = endpoints
     .filter((endpoint) => kind === "archive" || endpoint.kind === kind)
     .sort(
@@ -350,12 +389,18 @@ const CALLABLE_ENDPOINT_KINDS = new Set([
   "data-artifact",
 ]);
 
+interface BuildEndpointIncidentArtifactOptions {
+  endpointArtifact?: Row | null;
+  generatedAt: string;
+  contractVersion: string;
+}
+
 export function buildEndpointIncidentArtifact({
   endpointArtifact,
   generatedAt,
   contractVersion,
-}) {
-  const endpoints = endpointArtifact?.endpoints || [];
+}: BuildEndpointIncidentArtifactOptions): Row {
+  const endpoints: Row[] = endpointArtifact?.endpoints || [];
   const incidents = endpoints
     .filter((endpoint) => CALLABLE_ENDPOINT_KINDS.has(endpoint.kind))
     .filter((endpoint) => endpoint.monitoring_status === "monitored")
@@ -426,7 +471,7 @@ export function buildEndpointIncidentArtifact({
   };
 }
 
-function endpointLayer(kind) {
+function endpointLayer(kind: string): string {
   if (isBaseLayerEndpoint(kind) || kind === "archive") {
     return "bittensor-base";
   }
@@ -443,7 +488,21 @@ function endpointLayer(kind) {
   return "docs-provider";
 }
 
-function endpointHealthMetadata({ health, monitored }) {
+interface EndpointHealthMetadata {
+  observed_at: string | null;
+  health_source: string;
+  health_stale: boolean;
+  last_checked: string | null;
+  last_ok: string | null;
+}
+
+function endpointHealthMetadata({
+  health,
+  monitored,
+}: {
+  health: Row;
+  monitored: boolean;
+}): EndpointHealthMetadata {
   if (!monitored) {
     return {
       observed_at: null,
@@ -466,11 +525,11 @@ function endpointHealthMetadata({ health, monitored }) {
   };
 }
 
-function isBaseLayerEndpoint(kind) {
+function isBaseLayerEndpoint(kind: string): boolean {
   return ["subtensor-rpc", "subtensor-wss"].includes(kind);
 }
 
-function endpointMonitoringPolicy(surface) {
+function endpointMonitoringPolicy(surface: Row): Row {
   if (!surface.probe) {
     return {
       enabled: false,
@@ -488,7 +547,15 @@ function endpointMonitoringPolicy(surface) {
   };
 }
 
-function endpointPublicationState({ monitored, poolEligible, surface }) {
+function endpointPublicationState({
+  monitored,
+  poolEligible,
+  surface,
+}: {
+  monitored: boolean;
+  poolEligible: boolean;
+  surface: Row;
+}): string {
   if (surface.public_safe !== true) {
     return "disabled";
   }
@@ -501,10 +568,15 @@ function endpointPublicationState({ monitored, poolEligible, surface }) {
   return "verified";
 }
 
-function endpointScoreBreakdown(endpoint) {
+interface ScoreBreakdown {
+  score: number;
+  reasons: Array<{ reason: string; points: number }>;
+}
+
+function endpointScoreBreakdown(endpoint: Row): ScoreBreakdown {
   let score = 0;
-  const reasons = [];
-  function add(reason, points) {
+  const reasons: Array<{ reason: string; points: number }> = [];
+  function add(reason: string, points: number): void {
     score += points;
     reasons.push({ reason, points });
   }
@@ -537,8 +609,13 @@ function endpointScoreBreakdown(endpoint) {
   };
 }
 
-function endpointPoolEligibility(endpoint) {
-  const reasons = [];
+interface PoolEligibility {
+  eligible: boolean;
+  reasons: string[];
+}
+
+function endpointPoolEligibility(endpoint: Row): PoolEligibility {
+  const reasons: string[] = [];
   if (!isBaseLayerEndpoint(endpoint.kind)) {
     reasons.push("not-bittensor-base-layer");
   }
@@ -557,8 +634,8 @@ function endpointPoolEligibility(endpoint) {
   };
 }
 
-function endpointProviderScores(endpoints) {
-  const providers = new Map();
+function endpointProviderScores(endpoints: Row[]): Row[] {
+  const providers = new Map<string, Row>();
   for (const endpoint of endpoints) {
     const provider = endpoint.provider || "unknown";
     const row = providers.get(provider) || {
@@ -584,10 +661,15 @@ function endpointProviderScores(endpoints) {
   }
 
   return [...providers.values()]
-    .map((row) => {
-      const publicRow = { ...row };
+    .map((row): Row => {
+      const publicRow: Row = { ...row };
       delete publicRow.score_total;
       return {
+        // The object spread of a Record<string, any> drops its index
+        // signature, so the literal below would otherwise type as just
+        // {average_score, operational_score} -- annotate the callback return
+        // as Row (this function's declared return element type) to keep
+        // publicRow's fields visible to the .sort() below.
         ...publicRow,
         average_score: row.endpoint_count
           ? Math.round(row.score_total / row.endpoint_count)
@@ -614,14 +696,17 @@ function endpointProviderScores(endpoints) {
     );
 }
 
-function severityRank(severity) {
-  return { critical: 3, warning: 2, info: 1 }[severity] || 0;
+function severityRank(severity: string): number {
+  return ({ critical: 3, warning: 2, info: 1 } as Row)[severity] || 0;
 }
 
-function countRecord(items, keyFn) {
+function countRecord(
+  items: Row[],
+  keyFn: (item: Row) => string,
+): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
-      items.reduce((accumulator, item) => {
+      items.reduce((accumulator: Record<string, number>, item) => {
         const key = keyFn(item) || "unknown";
         accumulator[key] = (accumulator[key] || 0) + 1;
         return accumulator;

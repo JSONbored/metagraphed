@@ -68,11 +68,11 @@ import {
   buildCoverageDepthArtifact,
   subnetIntegrationReadiness,
   summarizeAgentReadinessBlockers,
-} from "./lib/build-readiness.mjs";
+} from "./lib/build-readiness.ts";
 import {
   buildEnrichmentQueueArtifacts,
   directSubmissionKindsForProfile,
-} from "./lib/enrichment-queue-artifacts.mjs";
+} from "./lib/enrichment-queue-artifacts.ts";
 import {
   API_ROUTES,
   CONTRACT_VERSION,
