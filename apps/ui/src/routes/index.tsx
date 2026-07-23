@@ -6,6 +6,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { AsyncPanel } from "@/components/metagraphed/primitives";
 import {
   AccentBand,
   BrandIcon,
@@ -48,6 +49,10 @@ import {
   healthQuery,
   subnetsQuery,
   adapterQuery,
+  registrySummaryQuery,
+  coverageDepthQuery,
+  changelogQuery,
+  endpointIncidentsQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -151,25 +156,34 @@ function OverviewPage() {
                   />
                   <TimeRangeScrub />
                 </div>
-                <QueryErrorBoundary>
-                  <div className="grid gap-4 lg:grid-cols-12">
-                    <Suspense fallback={<Skeleton className="h-72 lg:col-span-5" />}>
-                      <div className="lg:col-span-5">
-                        <CoverageFunnel />
-                      </div>
-                    </Suspense>
-                    <Suspense fallback={<Skeleton className="h-72 lg:col-span-7" />}>
-                      <div className="lg:col-span-7">
-                        <NetworkPulseBand />
-                      </div>
-                    </Suspense>
-                    <Suspense fallback={<Skeleton className="h-64 lg:col-span-12" />}>
-                      <div className="lg:col-span-12">
-                        <WhatChangedFeed />
-                      </div>
-                    </Suspense>
-                  </div>
-                </QueryErrorBoundary>
+                <div className="grid gap-4 lg:grid-cols-12">
+                  <AsyncPanel
+                    context="coverage funnel"
+                    fallback={<Skeleton className="h-72 lg:col-span-5" />}
+                    retryQueryKeys={[coverageQuery().queryKey]}
+                  >
+                    <div className="lg:col-span-5">
+                      <CoverageFunnel />
+                    </div>
+                  </AsyncPanel>
+                  <AsyncPanel
+                    context="network pulse"
+                    fallback={<Skeleton className="h-72 lg:col-span-7" />}
+                  >
+                    <div className="lg:col-span-7">
+                      <NetworkPulseBand />
+                    </div>
+                  </AsyncPanel>
+                  <AsyncPanel
+                    context="what changed"
+                    fallback={<Skeleton className="h-64 lg:col-span-12" />}
+                    retryQueryKeys={[changelogQuery().queryKey, endpointIncidentsQuery().queryKey]}
+                  >
+                    <div className="lg:col-span-12">
+                      <WhatChangedFeed />
+                    </div>
+                  </AsyncPanel>
+                </div>
               </TimeRangeProvider>
             </section>
           </ScrollReveal>
@@ -186,29 +200,35 @@ function OverviewPage() {
                 description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
               />
               <div className="grid gap-4 lg:grid-cols-12">
-                <QueryErrorBoundary>
-                  <Suspense fallback={<Skeleton className="h-64 lg:col-span-7" />}>
-                    <div className="lg:col-span-7">
-                      <RegistryScoreHistogram className="h-full" />
-                    </div>
-                  </Suspense>
-                </QueryErrorBoundary>
-                <QueryErrorBoundary>
-                  <Suspense fallback={<Skeleton className="h-64 lg:col-span-5" />}>
-                    <div className="lg:col-span-5">
-                      <DimensionCoverageHeatmap className="h-full" />
-                    </div>
-                  </Suspense>
-                </QueryErrorBoundary>
+                <AsyncPanel
+                  context="registry score histogram"
+                  fallback={<Skeleton className="h-64 lg:col-span-7" />}
+                  retryQueryKeys={[registrySummaryQuery().queryKey]}
+                >
+                  <div className="lg:col-span-7">
+                    <RegistryScoreHistogram className="h-full" />
+                  </div>
+                </AsyncPanel>
+                <AsyncPanel
+                  context="dimension coverage heatmap"
+                  fallback={<Skeleton className="h-64 lg:col-span-5" />}
+                  retryQueryKeys={[registrySummaryQuery().queryKey]}
+                >
+                  <div className="lg:col-span-5">
+                    <DimensionCoverageHeatmap className="h-full" />
+                  </div>
+                </AsyncPanel>
                 <div className="lg:col-span-12">
                   <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
                     Enrichment queue
                   </div>
-                  <QueryErrorBoundary>
-                    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-                      <EnrichmentQueueTable />
-                    </Suspense>
-                  </QueryErrorBoundary>
+                  <AsyncPanel
+                    context="enrichment queue"
+                    fallback={<Skeleton className="h-64 w-full" />}
+                    retryQueryKeys={[coverageDepthQuery().queryKey]}
+                  >
+                    <EnrichmentQueueTable />
+                  </AsyncPanel>
                 </div>
               </div>
             </section>
@@ -245,11 +265,13 @@ function OverviewPage() {
                 <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
             </div>
-            <QueryErrorBoundary>
-              <Suspense fallback={<TableSkeleton />}>
-                <SubnetPreviewTable />
-              </Suspense>
-            </QueryErrorBoundary>
+            <AsyncPanel
+              context="subnets"
+              fallback={<TableSkeleton />}
+              retryQueryKeys={[subnetsQuery({ limit: 12 }).queryKey]}
+            >
+              <SubnetPreviewTable />
+            </AsyncPanel>
           </section>
 
           {/* #3474: live network-wide feed of recent subnet-identity changes. */}
