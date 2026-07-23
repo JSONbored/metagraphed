@@ -17,7 +17,7 @@ function mkKvEnv(
   blob = { captured_at: "2026-06-22T00:00:00.000Z", subnets: [] },
 ) {
   let gets = 0;
-  let lastKey = null;
+  let lastKey: string | null = null;
   return {
     get gets() {
       return gets;
@@ -26,7 +26,7 @@ function mkKvEnv(
       return lastKey;
     },
     METAGRAPH_CONTROL: {
-      async get(key) {
+      async get(key: string) {
         gets += 1;
         lastKey = key;
         return blob;
@@ -46,7 +46,10 @@ test("readEconomicsCurrentKv memoizes within the TTL — one KV read for repeate
   const t0 = 1_000_000;
   const a = await readEconomicsCurrentKv(env, t0);
   const b = await readEconomicsCurrentKv(env, t0 + 1000);
-  assert.equal(a.captured_at, "2026-06-22T00:00:00.000Z");
+  assert.equal(
+    (a as { captured_at: string }).captured_at,
+    "2026-06-22T00:00:00.000Z",
+  );
   assert.deepEqual(a, b);
   assert.equal(
     env.gets,
@@ -63,8 +66,8 @@ test("readEconomicsCurrentKv never cross-reads a different env (isolation safety
   const envA = mkKvEnv({ captured_at: "a", subnets: [] });
   const envB = mkKvEnv({ captured_at: "b", subnets: [] });
   const t0 = 2_000_000;
-  const a = await readEconomicsCurrentKv(envA, t0);
-  const b = await readEconomicsCurrentKv(envB, t0);
+  const a = (await readEconomicsCurrentKv(envA, t0)) as { captured_at: string };
+  const b = (await readEconomicsCurrentKv(envB, t0)) as { captured_at: string };
   assert.equal(a.captured_at, "a");
   assert.equal(b.captured_at, "b", "a different env object must miss the memo");
   assert.equal(envA.gets, 1);

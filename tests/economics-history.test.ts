@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { formatTrajectory } from "../src/health-serving.ts";
+import type { Row } from "./row-type.ts";
 
 // #1307: the daily subnet_snapshots rollup now carries per-subnet economics, so
 // the trajectory time series exposes economic trends alongside the structural ones.
@@ -31,7 +32,7 @@ test("formatTrajectory carries economic fields in the time series (#1307)", () =
   ];
   const out = formatTrajectory({ netuid: 1, rows });
   assert.equal(out.point_count, 2);
-  const latest = out.points[1];
+  const latest = (out as Row).points[1];
   assert.equal(latest.date, "2026-06-21");
   assert.equal(latest.validator_count, 10);
   assert.equal(latest.miner_count, 246);
@@ -47,9 +48,9 @@ test("formatTrajectory nulls economics on pre-migration rows", () => {
     netuid: 1,
     rows: [{ snapshot_date: "2026-06-01", completeness_score: 70 }],
   });
-  assert.equal(out.points[0].validator_count, null);
-  assert.equal(out.points[0].total_stake_tao, null);
-  assert.equal(out.points[0].alpha_price_tao, null);
+  assert.equal((out as Row).points[0].validator_count, null);
+  assert.equal((out as Row).points[0].total_stake_tao, null);
+  assert.equal((out as Row).points[0].alpha_price_tao, null);
 });
 
 // #2552: pool reserves + volume carried in the time series alongside the
@@ -67,7 +68,7 @@ test("formatTrajectory carries pool liquidity + volume fields in the time series
       },
     ],
   });
-  const point = out.points[0];
+  const point = (out as Row).points[0];
   assert.equal(point.tao_in_pool_tao, 26707.57);
   assert.equal(point.alpha_in_pool, 2956464.98);
   assert.equal(point.alpha_out_pool, 2257199.02);
@@ -79,10 +80,10 @@ test("formatTrajectory nulls pool liquidity + volume on pre-migration rows (#255
     netuid: 1,
     rows: [{ snapshot_date: "2026-06-01", completeness_score: 70 }],
   });
-  assert.equal(out.points[0].tao_in_pool_tao, null);
-  assert.equal(out.points[0].alpha_in_pool, null);
-  assert.equal(out.points[0].alpha_out_pool, null);
-  assert.equal(out.points[0].subnet_volume_tao, null);
+  assert.equal((out as Row).points[0].tao_in_pool_tao, null);
+  assert.equal((out as Row).points[0].alpha_in_pool, null);
+  assert.equal((out as Row).points[0].alpha_out_pool, null);
+  assert.equal((out as Row).points[0].subnet_volume_tao, null);
 });
 
 // #2552's core deliverable: "net TAO in/out flow" is the windowed delta of
@@ -111,14 +112,14 @@ test("formatTrajectory's 7d/30d deltas report net pool flow (#2552)", () => {
       },
     ],
   });
-  const delta7d = out.deltas["7d"];
+  const delta7d = (out as Row).deltas["7d"];
   assert.equal(delta7d.from_date, "2026-06-14");
   assert.equal(delta7d.to_date, "2026-06-21");
   assert.ok(Math.abs(delta7d.tao_in_pool_tao - 2707.57) < 1e-6);
   assert.ok(Math.abs(delta7d.alpha_in_pool - 16464.98) < 1e-6);
   assert.ok(Math.abs(delta7d.alpha_out_pool - 27199.02) < 1e-6);
 
-  const delta30d = out.deltas["30d"];
+  const delta30d = (out as Row).deltas["30d"];
   assert.equal(delta30d.from_date, "2026-05-20");
   assert.equal(delta30d.to_date, "2026-06-21");
   assert.ok(Math.abs(delta30d.tao_in_pool_tao - 6707.57) < 1e-6);
@@ -136,6 +137,6 @@ test("formatTrajectory's deltas are null when a bound is missing a pool reading 
       },
     ],
   });
-  assert.equal(out.deltas["30d"].tao_in_pool_tao, null);
-  assert.equal(out.deltas["30d"].alpha_out_pool, null);
+  assert.equal((out as Row).deltas["30d"].tao_in_pool_tao, null);
+  assert.equal((out as Row).deltas["30d"].alpha_out_pool, null);
 });

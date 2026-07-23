@@ -1,35 +1,48 @@
-// SN2 (SN2) end-to-end verification for the call_subnet_surface MCP tool
-// (metagraphed#7018, MCP execute Phase 1 follow-up #7014/#7215). Unlike
-// tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring with
-// synthetic surfaces -- this file pins SN2's *real* registry surface config
-// (registry/subnets/dsperse.json) to the tool's contract, so a future edit that
-// regresses its callability (flipping to HEAD, marking it auth_required,
-// disabling its probe) is caught here.
+// SN101 (eni) end-to-end verification for the call_subnet_surface MCP tool
+// (metagraphed#7058, MCP execute Phase 1 follow-up #7014/#7215; issue #7113).
+// Unlike tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring
+// with synthetic surfaces -- this file pins SN101's *real* registry surface
+// config (registry/subnets/eni.json) to the tool's contract, so a future edit
+// that regresses its callability (flipping to HEAD, marking it auth_required,
+// disabling its probe, moving the url) is caught here.
 //
-// The surface is the public no-auth SN2 API endpoint (sn-2-dsperse-circuit-list, GET https://repository.inferencelabs.com/circuits,
-// JSON, single fixed endpoint -- no schema). Live-verified 2026-07-21 to return
-// HTTP 200 application/json with a top-level "circuits" field. The fixture below
-// mirrors that live response's shape (live data, so the test pins the stable
-// shape -- the "circuits" key is present and the body parses -- not exact values).
+// The surface is the public no-auth SN101 indexed subnet feed on TaoMarketCap
+// (sn-101-taomarketcap-subnet-api, GET
+// https://api.taomarketcap.com/public/v1/subnets/101/, JSON, single fixed
+// endpoint -- no schema). Live-verified 2026-07-21 to return HTTP 200
+// application/json -- an object self-reporting netuid 101 (id, is_active,
+// mechanism_count, latest_snapshot). The fixture below mirrors that live
+// response rather than fetching it, keeping the test hermetic while still
+// exercising the tool's JSON parse-and-return path.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
+import type { Row } from "./row-type.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
-const SURFACE_ID = "sn-2-dsperse-circuit-list";
+const SURFACE_ID = "sn-101-taomarketcap-subnet-api";
+const NETUID = 101;
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/dsperse.json", import.meta.url)),
+    fileURLToPath(new URL("../registry/subnets/eni.json", import.meta.url)),
     "utf8",
   ),
 );
-const SURFACE = registry.surfaces.find((surface) => surface.id === SURFACE_ID);
+const SURFACE = registry.surfaces.find(
+  (surface: Row) => surface.id === SURFACE_ID,
+);
 
-// A minimal fixture mirroring the live response's top-level shape.
-const BODY = { circuits: "verified" };
+// A faithful subset of the live SN101 TaoMarketCap subnet feed.
+const BODY = {
+  id: "101",
+  netuid: 101,
+  is_active: true,
+  mechanism_count: 1,
+  latest_snapshot_id: "8667931-101",
+};
 
 function upstreamResponse() {
   return new Response(JSON.stringify(BODY), {
@@ -38,28 +51,33 @@ function upstreamResponse() {
   });
 }
 
-describe("SN2 SN2 call_subnet_surface verification (#7018)", () => {
+describe("SN101 eni call_subnet_surface verification (#7058)", () => {
   test("the registry surface exists and is configured to be callable", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
     assert.equal(SURFACE.auth_required, false);
     assert.equal(SURFACE.probe?.enabled, true);
+    // No-auth GET returning JSON.
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
-    assert.equal(SURFACE.url, "https://repository.inferencelabs.com/circuits");
+    assert.equal(
+      SURFACE.url,
+      "https://api.taomarketcap.com/public/v1/subnets/101/",
+    );
+    // Single fixed endpoint -- no machine-readable schema is expected.
     assert.equal(SURFACE.schema_url, undefined);
   });
 
   test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
-    let requestedUrl;
-    let requestedMethod;
+    let requestedUrl: string | undefined;
+    let requestedMethod: string | undefined;
     const result = await callSubnetSurface(SURFACE, {
       isUnsafeUrl: async () => false,
-      fetchImpl: async (url, init) => {
+      fetchImpl: (async (url: string | URL, init?: RequestInit) => {
         requestedUrl = String(url);
-        requestedMethod = init.method;
+        requestedMethod = init!.method;
         return upstreamResponse();
-      },
+      }) as typeof fetch,
     });
     assert.equal(result.ok, true);
     assert.equal(requestedUrl, SURFACE.url);
@@ -67,17 +85,16 @@ describe("SN2 SN2 call_subnet_surface verification (#7018)", () => {
     assert.equal(result.status_code, 200);
     assert.equal(result.content_type, "application/json");
     assert.equal(result.truncated, false);
-    assert.equal(typeof result.body, "object");
-    assert.ok(result.body !== null);
-    assert.ok("circuits" in result.body);
+    assert.equal((result.body as Row).netuid, NETUID);
+    assert.equal(typeof (result.body as Row).is_active, "boolean");
   });
 
   test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
     const catalog = {
-      surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 2 }],
+      surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: NETUID }],
     };
     const deps = {
-      readArtifact: async (_env, path) =>
+      readArtifact: async (_env: Row, path: string) =>
         path === "/metagraph/operational-surfaces.json"
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
@@ -110,11 +127,11 @@ describe("SN2 SN2 call_subnet_surface verification (#7018)", () => {
         {},
         deps,
       );
-      const result = (await response.json()).result;
+      const result = ((await response.json()) as Row).result;
       assert.equal(result.isError, false);
       assert.equal(result.structuredContent.surface_id, SURFACE_ID);
       assert.equal(result.structuredContent.status_code, 200);
-      assert.ok("circuits" in result.structuredContent.body);
+      assert.equal(result.structuredContent.body.netuid, NETUID);
     } finally {
       globalThis.fetch = originalFetch;
     }

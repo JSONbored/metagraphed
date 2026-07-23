@@ -92,7 +92,11 @@ describe("entityLabelsIndex / labelsForSs58", () => {
   });
 
   test("a falsy/malformed entry in the entities list is skipped, not thrown on", () => {
-    const index = entityLabelsIndex([null, { ss58: "" }, entity()]);
+    const index = entityLabelsIndex([
+      null,
+      { ss58: "" },
+      entity(),
+    ] as unknown as Array<Record<string, unknown>>);
     assert.equal(index.size, 1);
     assert.deepEqual(
       labelsForSs58(index, NEW_COLDKEY_SS58)[0].name,

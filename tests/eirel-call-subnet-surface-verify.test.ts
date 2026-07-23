@@ -29,6 +29,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
+import type { Row } from "./row-type.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 const SURFACE_ID = "sn-36-eirel-metagraph-status";
@@ -39,7 +40,9 @@ const registry = JSON.parse(
     "utf8",
   ),
 );
-const SURFACE = registry.surfaces.find((surface) => surface.id === SURFACE_ID);
+const SURFACE = registry.surfaces.find(
+  (surface: Row) => surface.id === SURFACE_ID,
+);
 
 // The live https://api.eirel.ai/v1/metagraph/status response body, verbatim
 // (not simplified) -- the `error` field is the whole point of this fixture,
@@ -77,15 +80,15 @@ describe("SN36 (Eirel) call_subnet_surface verification (#7051)", () => {
   });
 
   test("callSubnetSurface returns the real JSON body using the surface's own url + GET — including the subnet's own internal-error payload, unmasked", async () => {
-    let requestedUrl;
-    let requestedMethod;
+    let requestedUrl: string | undefined;
+    let requestedMethod: string | undefined;
     const result = await callSubnetSurface(SURFACE, {
       isUnsafeUrl: async () => false,
-      fetchImpl: async (url, init) => {
+      fetchImpl: (async (url: string | URL, init?: RequestInit) => {
         requestedUrl = String(url);
-        requestedMethod = init.method;
+        requestedMethod = init!.method;
         return upstreamResponse();
-      },
+      }) as typeof fetch,
     });
     assert.equal(result.ok, true);
     assert.equal(requestedUrl, SURFACE.url);
@@ -97,10 +100,10 @@ describe("SN36 (Eirel) call_subnet_surface verification (#7051)", () => {
     // header comment. Asserting on `error` (not just `status`) so a future
     // simplification of this fixture can't silently drop the field that
     // actually proves this is an error response, not real metagraph data.
-    assert.equal(result.body.status, "failed");
-    assert.equal(result.body.validator_count, 0);
-    assert.equal(result.body.miner_count, 0);
-    assert.match(result.body.error, /Invalid type for data/);
+    assert.equal((result.body as Row).status, "failed");
+    assert.equal((result.body as Row).validator_count, 0);
+    assert.equal((result.body as Row).miner_count, 0);
+    assert.match((result.body as Row).error, /Invalid type for data/);
   });
 
   test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
@@ -108,7 +111,7 @@ describe("SN36 (Eirel) call_subnet_surface verification (#7051)", () => {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 36 }],
     };
     const deps = {
-      readArtifact: async (_env, path) =>
+      readArtifact: async (_env: Row, path: string) =>
         path === "/metagraph/operational-surfaces.json"
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
@@ -141,7 +144,7 @@ describe("SN36 (Eirel) call_subnet_surface verification (#7051)", () => {
         {},
         deps,
       );
-      const result = (await response.json()).result;
+      const result = ((await response.json()) as Row).result;
       assert.equal(result.isError, false);
       assert.equal(result.structuredContent.surface_id, SURFACE_ID);
       assert.equal(result.structuredContent.status_code, 200);

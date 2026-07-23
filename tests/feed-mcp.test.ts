@@ -14,9 +14,10 @@ import {
   resolveNetuid,
 } from "../src/feed-mcp.ts";
 import { FEED_MAX_ITEMS } from "../src/feeds.ts";
+import { mockEnv, type Row } from "./row-type.ts";
 
 // A thrown value is a clean invalid_params toolError.
-const isInvalidParams = (e) =>
+const isInvalidParams = (e: Row) =>
   e?.toolError === true && e?.code === "invalid_params";
 
 describe("requireKind", () => {
@@ -174,14 +175,18 @@ describe("loadFeedItems branch dispatch", () => {
     }));
     const loadIncidents = vi.fn(async () => []);
     return {
-      ctx: { env: {}, readArtifact },
+      ctx: { env: mockEnv(), readArtifact },
       deps: { loadIncidents },
     };
   }
 
   test("registry: no netuid, does not consult the incident ledger", async () => {
     const { ctx, deps } = makeCtxDeps();
-    const res = await loadFeedItems(ctx, { kind: "registry" }, deps);
+    const res = await loadFeedItems(
+      ctx as unknown as Parameters<typeof loadFeedItems>[0],
+      { kind: "registry" },
+      deps,
+    );
     assert.equal(res.kind, "registry");
     assert.equal(res.netuid, null);
     assert.equal(deps.loadIncidents.mock.calls.length, 0);
@@ -192,7 +197,11 @@ describe("loadFeedItems branch dispatch", () => {
 
   test("incidents: consults the incident ledger exactly once", async () => {
     const { ctx, deps } = makeCtxDeps();
-    const res = await loadFeedItems(ctx, { kind: "incidents" }, deps);
+    const res = await loadFeedItems(
+      ctx as unknown as Parameters<typeof loadFeedItems>[0],
+      { kind: "incidents" },
+      deps,
+    );
     assert.equal(res.kind, "incidents");
     assert.equal(res.netuid, null);
     assert.equal(deps.loadIncidents.mock.calls.length, 1);
@@ -200,7 +209,11 @@ describe("loadFeedItems branch dispatch", () => {
 
   test("gaps: no netuid, does not consult the incident ledger", async () => {
     const { ctx, deps } = makeCtxDeps();
-    const res = await loadFeedItems(ctx, { kind: "gaps" }, deps);
+    const res = await loadFeedItems(
+      ctx as unknown as Parameters<typeof loadFeedItems>[0],
+      { kind: "gaps" },
+      deps,
+    );
     assert.equal(res.kind, "gaps");
     assert.equal(res.netuid, null);
     assert.equal(deps.loadIncidents.mock.calls.length, 0);
@@ -208,7 +221,11 @@ describe("loadFeedItems branch dispatch", () => {
 
   test("subnet: carries the netuid and consults the incident ledger (registry + incidents combined)", async () => {
     const { ctx, deps } = makeCtxDeps();
-    const res = await loadFeedItems(ctx, { kind: "subnet", netuid: 7 }, deps);
+    const res = await loadFeedItems(
+      ctx as unknown as Parameters<typeof loadFeedItems>[0],
+      { kind: "subnet", netuid: 7 },
+      deps,
+    );
     assert.equal(res.kind, "subnet");
     assert.equal(res.netuid, 7);
     assert.equal(deps.loadIncidents.mock.calls.length, 1);
@@ -217,7 +234,7 @@ describe("loadFeedItems branch dispatch", () => {
   test("forwards the raw since/until args into the returned filters descriptor", async () => {
     const { ctx, deps } = makeCtxDeps();
     const res = await loadFeedItems(
-      ctx,
+      ctx as unknown as Parameters<typeof loadFeedItems>[0],
       { kind: "registry", since: "2026-06-01", until: "2026-06-02", limit: 5 },
       deps,
     );

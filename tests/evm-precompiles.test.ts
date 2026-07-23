@@ -8,7 +8,7 @@ import {
   functionSelector,
 } from "../src/evm-precompiles.ts";
 
-function word(n) {
+function word(n: string | number) {
   return BigInt(n).toString(16).padStart(64, "0");
 }
 
@@ -109,21 +109,21 @@ describe("decodeAbiArgs", () => {
       ["a", "b", "c", "d", "e", "f", "g", "h"],
       dataHex,
     );
-    assert.equal(args.a, "0x7e4c9cc4b96eeb035aa16f1a73df55252dc7055c");
-    assert.equal(args.b, true);
-    assert.equal(args.c, "0x" + "ab".repeat(32));
-    assert.equal(args.d, 255);
-    assert.equal(args.e, 65535);
-    assert.equal(args.f, 4294967295);
-    assert.equal(args.g, "18446744073709551615");
-    assert.equal(args.h, "7");
+    assert.equal(args!.a, "0x7e4c9cc4b96eeb035aa16f1a73df55252dc7055c");
+    assert.equal(args!.b, true);
+    assert.equal(args!.c, "0x" + "ab".repeat(32));
+    assert.equal(args!.d, 255);
+    assert.equal(args!.e, 65535);
+    assert.equal(args!.f, 4294967295);
+    assert.equal(args!.g, "18446744073709551615");
+    assert.equal(args!.h, "7");
   });
 
   test("decodes false and a zero uint256", () => {
     const dataHex = "0x" + word(0) + word(0);
     const args = decodeAbiArgs(["bool", "uint256"], ["flag", "n"], dataHex);
-    assert.equal(args.flag, false);
-    assert.equal(args.n, "0");
+    assert.equal(args!.flag, false);
+    assert.equal(args!.n, "0");
   });
 
   test("decodes a dynamic uint16[] array", () => {
@@ -135,13 +135,13 @@ describe("decodeAbiArgs", () => {
       word(20) +
       word(30);
     const args = decodeAbiArgs(["uint16[]"], ["values"], dataHex);
-    assert.deepEqual(args.values, [10, 20, 30]);
+    assert.deepEqual(args!.values, [10, 20, 30]);
   });
 
   test("decodes an empty dynamic array", () => {
     const dataHex = "0x" + word(32) + word(0);
     const args = decodeAbiArgs(["uint8[]"], ["values"], dataHex);
-    assert.deepEqual(args.values, []);
+    assert.deepEqual(args!.values, []);
   });
 
   test("returns null for truncated head data", () => {
@@ -183,10 +183,10 @@ describe("decodeEvmPrecompileCall", () => {
   test("decodes a real precompile call end-to-end", () => {
     const precompile = EVM_PRECOMPILE_BY_ADDRESS.get(
       "0x0000000000000000000000000000000000000805",
-    );
+    )!;
     const fn = precompile.functions.find(
       (f) => f.name === "getTotalHotkeyStake",
-    );
+    )!;
     const inputHex = fn.selector + "ab".repeat(32);
     const result = decodeEvmPrecompileCall(
       "0x0000000000000000000000000000000000000805",
@@ -204,14 +204,14 @@ describe("decodeEvmPrecompileCall", () => {
   test("is case-insensitive on the `to` address", () => {
     const precompile = EVM_PRECOMPILE_BY_ADDRESS.get(
       "0x0000000000000000000000000000000000000805",
-    );
+    )!;
     const fn = precompile.functions.find(
       (f) => f.name === "getNominatorMinRequiredStake",
-    );
+    )!;
     const result = decodeEvmPrecompileCall(
       "0x0000000000000000000000000000000000000805".toUpperCase(),
       fn.selector,
-    );
+    )!;
     assert.equal(result.function, "getNominatorMinRequiredStake");
     assert.deepEqual(result.args, {});
   });

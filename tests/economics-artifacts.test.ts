@@ -8,6 +8,7 @@ import {
   computeNetworkValueSummary,
   buildEconomicsArtifact,
 } from "../scripts/lib/economics-artifacts.ts";
+import type { Row } from "./row-type.ts";
 
 // --- computeMinerReadiness --------------------------------------------------
 
@@ -15,7 +16,14 @@ describe("computeMinerReadiness", () => {
   test("nullish or non-object economics returns null", () => {
     assert.equal(computeMinerReadiness(null, 5, 0.1), null);
     assert.equal(computeMinerReadiness(undefined, 5, 0.1), null);
-    assert.equal(computeMinerReadiness("not-an-object", 5, 0.1), null);
+    assert.equal(
+      computeMinerReadiness(
+        "not-an-object" as unknown as Record<string, unknown>,
+        5,
+        0.1,
+      ),
+      null,
+    );
   });
 
   test("open registration + slots + cheap + active reaches the 100 ceiling", () => {
@@ -234,7 +242,7 @@ describe("computeNetworkValueSummary", () => {
 
 // --- buildEconomicsArtifact -------------------------------------------------
 
-function econSubnet(netuid, overrides = {}) {
+function econSubnet(netuid: number, overrides = {}) {
   return {
     netuid,
     slug: `sn-${netuid}`,
@@ -328,7 +336,7 @@ describe("buildEconomicsArtifact", () => {
       ]),
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
-    const root = artifact.subnets.find((row) => row.netuid === 0);
+    const root = artifact.subnets.find((row: Row) => row.netuid === 0);
     // Root's own row still gets its ordinary alpha_market_cap_tao (500) --
     // untouched, only the network-value rollup treats it specially.
     assert.equal(root.alpha_market_cap_tao, 500);
@@ -364,7 +372,7 @@ describe("buildEconomicsArtifact", () => {
     });
     // total = 4 → shares 0.25 (sn1) and 0.75 (sn2); higher first.
     assert.deepEqual(
-      artifact.subnets.map((row) => row.netuid),
+      artifact.subnets.map((row: Row) => row.netuid),
       [2, 1],
     );
     assert.equal(artifact.subnets[0].emission_share, 0.75);
@@ -383,7 +391,7 @@ describe("buildEconomicsArtifact", () => {
     });
     // Equal prices → identical shares, so only the netuid tiebreak orders them.
     assert.deepEqual(
-      artifact.subnets.map((row) => row.netuid),
+      artifact.subnets.map((row: Row) => row.netuid),
       [1, 2, 3],
     );
     // 1/3 is non-terminating → the 6-decimal rounding is what makes it exact.
@@ -401,11 +409,11 @@ describe("buildEconomicsArtifact", () => {
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
     assert.deepEqual(
-      artifact.subnets.map((row) => row.netuid),
+      artifact.subnets.map((row: Row) => row.netuid),
       [1, 3, 5],
     );
     assert.deepEqual(
-      artifact.subnets.map((row) => row.emission_share),
+      artifact.subnets.map((row: Row) => row.emission_share),
       [1, null, null],
     );
   });
@@ -438,9 +446,11 @@ describe("buildEconomicsArtifact", () => {
       ]),
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
-    const byNetuid = new Map(artifact.subnets.map((row) => [row.netuid, row]));
-    assert.equal(byNetuid.get(1).open_slots, null);
-    assert.equal(byNetuid.get(2).open_slots, 0); // max(0, 10 − 17)
+    const byNetuid = new Map<number, Row>(
+      artifact.subnets.map((row: Row): [number, Row] => [row.netuid, row]),
+    );
+    assert.equal(byNetuid.get(1)!.open_slots, null);
+    assert.equal(byNetuid.get(2)!.open_slots, 0); // max(0, 10 − 17)
   });
 
   test("passes through network and captured_at metadata", () => {

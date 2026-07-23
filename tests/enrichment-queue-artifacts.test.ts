@@ -4,13 +4,17 @@ import {
   buildEnrichmentQueueArtifacts,
   directSubmissionKindsForProfile,
 } from "../scripts/lib/enrichment-queue-artifacts.ts";
+import type { Row } from "./row-type.ts";
 
 const GENERATED_AT = "2026-06-25T00:00:00.000Z";
 const CONTRACT = "test-contract";
 
 // --- directSubmissionKindsForProfile ----------------------------------------
 
-function completeness({ required = [], operational = [] } = {}) {
+function completeness({
+  required = [] as string[],
+  operational = [] as string[],
+} = {}) {
   return { missing_required: required, missing_operational: operational };
 }
 
@@ -77,7 +81,7 @@ describe("directSubmissionKindsForProfile", () => {
 
 // --- buildEnrichmentQueueArtifacts ------------------------------------------
 
-function profile(netuid, overrides = {}) {
+function profile(netuid: number, overrides: Row = {}) {
   return {
     netuid,
     slug: `sn-${netuid}`,
@@ -100,7 +104,7 @@ function profile(netuid, overrides = {}) {
   };
 }
 
-function buildAll(input) {
+function buildAll(input: Row) {
   return buildEnrichmentQueueArtifacts({
     candidates: [],
     curationReview: { gap_priorities: [], adapter_candidates: [] },
@@ -256,68 +260,71 @@ describe("buildEnrichmentQueueArtifacts", () => {
       },
     });
 
-    const byNetuid = new Map(
-      queueArtifact.queue.map((entry) => [entry.netuid, entry]),
+    const byNetuid = new Map<number, Row>(
+      queueArtifact.queue.map((entry: Row): [number, Row] => [
+        entry.netuid,
+        entry,
+      ]),
     );
 
-    assert.equal(byNetuid.get(1).lane, "direct-submission");
-    assert.deepEqual(byNetuid.get(1).direct_submission_kinds, ["docs"]);
-    assert.equal(byNetuid.get(1).evidence_action, "review-existing-evidence");
-    assert.ok(byNetuid.get(1).reason_codes.includes("directory-only-profile"));
-    assert.ok(byNetuid.get(1).reason_codes.includes("missing-docs"));
-    assert.equal(byNetuid.get(1).verified_candidate_count, 2);
+    assert.equal(byNetuid.get(1)!.lane, "direct-submission");
+    assert.deepEqual(byNetuid.get(1)!.direct_submission_kinds, ["docs"]);
+    assert.equal(byNetuid.get(1)!.evidence_action, "review-existing-evidence");
+    assert.ok(byNetuid.get(1)!.reason_codes.includes("directory-only-profile"));
+    assert.ok(byNetuid.get(1)!.reason_codes.includes("missing-docs"));
+    assert.equal(byNetuid.get(1)!.verified_candidate_count, 2);
     // Live only via the overlay (c-a1's own classification is "dead").
-    assert.deepEqual(byNetuid.get(1).sample_live_candidate_ids, ["c-a1"]);
+    assert.deepEqual(byNetuid.get(1)!.sample_live_candidate_ids, ["c-a1"]);
 
-    assert.equal(byNetuid.get(2).lane, "direct-submission");
-    assert.deepEqual(byNetuid.get(2).direct_submission_kinds, [
+    assert.equal(byNetuid.get(2)!.lane, "direct-submission");
+    assert.deepEqual(byNetuid.get(2)!.direct_submission_kinds, [
       "openapi",
       "subnet-api",
     ]);
-    assert.equal(byNetuid.get(2).evidence_action, "replace-stale-evidence");
+    assert.equal(byNetuid.get(2)!.evidence_action, "replace-stale-evidence");
     // Exactly 2: c-b1 (dead) + c-b3 (timeout); c-b4 is "unknown", not stale.
-    assert.equal(byNetuid.get(2).stale_candidate_count, 2);
-    assert.deepEqual(byNetuid.get(2).sample_stale_candidate_ids.sort(), [
+    assert.equal(byNetuid.get(2)!.stale_candidate_count, 2);
+    assert.deepEqual(byNetuid.get(2)!.sample_stale_candidate_ids.sort(), [
       "c-b1",
       "c-b3",
     ]);
 
-    assert.equal(byNetuid.get(3).lane, "direct-submission");
-    assert.deepEqual(byNetuid.get(3).direct_submission_kinds, ["openapi"]);
-    assert.equal(byNetuid.get(3).evidence_action, "verify-existing-evidence");
+    assert.equal(byNetuid.get(3)!.lane, "direct-submission");
+    assert.deepEqual(byNetuid.get(3)!.direct_submission_kinds, ["openapi"]);
+    assert.equal(byNetuid.get(3)!.evidence_action, "verify-existing-evidence");
 
-    assert.equal(byNetuid.get(4).lane, "maintainer-review");
-    assert.equal(byNetuid.get(4).manual_review_required, true);
+    assert.equal(byNetuid.get(4)!.lane, "maintainer-review");
+    assert.equal(byNetuid.get(4)!.manual_review_required, true);
     assert.equal(
-      byNetuid.get(4).evidence_action,
+      byNetuid.get(4)!.evidence_action,
       "maintainer-review-existing-evidence",
     );
     assert.equal(
-      byNetuid.get(4).recommended_action,
+      byNetuid.get(4)!.recommended_action,
       "promote the verified surface",
     );
-    assert.equal(byNetuid.get(4).priority_score, 80);
+    assert.equal(byNetuid.get(4)!.priority_score, 80);
 
-    assert.equal(byNetuid.get(5).lane, "adapter-candidate");
-    assert.equal(byNetuid.get(5).manual_review_required, true);
-    assert.equal(byNetuid.get(5).adapter_score, 50);
+    assert.equal(byNetuid.get(5)!.lane, "adapter-candidate");
+    assert.equal(byNetuid.get(5)!.manual_review_required, true);
+    assert.equal(byNetuid.get(5)!.adapter_score, 50);
     assert.equal(
-      byNetuid.get(5).recommended_action,
+      byNetuid.get(5)!.recommended_action,
       "evaluate adapter support for subnet-api",
     );
 
-    assert.equal(byNetuid.get(6).lane, "baseline-monitoring");
-    assert.equal(byNetuid.get(6).evidence_action, "monitor");
-    assert.ok(byNetuid.get(6).recommended_action.includes("drift"));
+    assert.equal(byNetuid.get(6)!.lane, "baseline-monitoring");
+    assert.equal(byNetuid.get(6)!.evidence_action, "monitor");
+    assert.ok(byNetuid.get(6)!.recommended_action.includes("drift"));
 
-    assert.equal(byNetuid.get(7).lane, "baseline-monitoring");
+    assert.equal(byNetuid.get(7)!.lane, "baseline-monitoring");
     assert.ok(
-      byNetuid.get(7).recommended_action.includes("new public interfaces"),
+      byNetuid.get(7)!.recommended_action.includes("new public interfaces"),
     );
 
-    assert.equal(byNetuid.get(8).lane, "direct-submission");
-    assert.deepEqual(byNetuid.get(8).direct_submission_kinds, ["website"]);
-    assert.equal(byNetuid.get(8).evidence_action, "submit-new-evidence");
+    assert.equal(byNetuid.get(8)!.lane, "direct-submission");
+    assert.deepEqual(byNetuid.get(8)!.direct_submission_kinds, ["website"]);
+    assert.equal(byNetuid.get(8)!.evidence_action, "submit-new-evidence");
 
     // Queue summary reconciles with the lanes above.
     assert.equal(queueArtifact.summary.subnet_count, 8);
@@ -367,8 +374,8 @@ describe("buildEnrichmentQueueArtifacts", () => {
     assert.equal(targetArtifact.summary.manual_review_required_count, 4);
 
     const docsTarget = targetArtifact.targets.find(
-      (target) => target.netuid === 1 && target.kind === "docs",
-    );
+      (target: Row) => target.netuid === 1 && target.kind === "docs",
+    )!;
     assert.equal(docsTarget.target_type, "surface-candidate");
     assert.equal(docsTarget.submission_route, "direct-candidate-pr");
     assert.equal(docsTarget.auto_review_candidate, true);
@@ -379,14 +386,14 @@ describe("buildEnrichmentQueueArtifacts", () => {
     );
     // docs is an identity kind → identity-flavored source requirements.
     assert.ok(
-      docsTarget.source_requirements.some((line) =>
+      docsTarget.source_requirements.some((line: string) =>
         line.includes("official project/team source"),
       ),
     );
 
     const adapterTarget = targetArtifact.targets.find(
-      (target) => target.target_type === "adapter-review",
-    );
+      (target: Row) => target.target_type === "adapter-review",
+    )!;
     assert.equal(adapterTarget.netuid, 5);
     assert.equal(adapterTarget.manual_review_required, true);
     assert.equal(adapterTarget.candidate_command, null);
@@ -449,7 +456,7 @@ describe("buildEnrichmentQueueArtifacts", () => {
   });
 
   test("buckets candidate classifications and orders samples by liveness weight", () => {
-    const cand = (id, classification, state) => ({
+    const cand = (id: string, classification: string, state?: string) => ({
       id,
       netuid: 20,
       kind: "subnet-api",

@@ -61,7 +61,7 @@ describe("export-parquet attachPostgres", () => {
     };
     await assert.rejects(
       attachPostgres(connection, "registry", conn),
-      (err) => {
+      (err: Error) => {
         assert.ok(
           !err.message.includes(conn.password),
           "re-thrown error leaked the plaintext password",
@@ -77,14 +77,14 @@ describe("export-parquet attachPostgres", () => {
   });
 
   test("passes an ATTACH statement built from libpqConnString to connection.run on success", async () => {
-    let ran;
+    let ran: string | undefined;
     const connection = {
-      run: async (statement) => {
+      run: async (statement: string) => {
         ran = statement;
       },
     };
     await attachPostgres(connection, "indexer", conn);
-    assert.match(ran, /^ATTACH '.*' AS indexer \(TYPE postgres, READ_ONLY\)$/);
-    assert.ok(ran.includes(libpqConnString(conn)));
+    assert.match(ran!, /^ATTACH '.*' AS indexer \(TYPE postgres, READ_ONLY\)$/);
+    assert.ok(ran!.includes(libpqConnString(conn)));
   });
 });

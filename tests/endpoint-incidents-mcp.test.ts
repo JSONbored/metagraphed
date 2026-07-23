@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import * as listQuery from "../workers/list-query.ts";
 import {
   ENDPOINT_INCIDENTS_ARTIFACT,
@@ -12,6 +12,10 @@ import {
   loadEndpointIncidentsList,
 } from "../src/endpoint-incidents-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -41,7 +45,7 @@ const SAMPLE_BLOB = {
   ],
 };
 
-function readArtifact(_env, path) {
+function readArtifact(_env: Env, path: string) {
   if (path === ENDPOINT_INCIDENTS_ARTIFACT) {
     return Promise.resolve({ ok: true, data: SAMPLE_BLOB });
   }
@@ -82,77 +86,77 @@ describe("endpoint-incidents-mcp", () => {
   test("endpointIncidentsQueryUrl rejects invalid severity", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ severity: "bogus" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects invalid state", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ state: "bogus" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects invalid kind", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ kind: "bogus" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects invalid status", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ status: "bogus" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects invalid netuid", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ netuid: -1 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects a fractional netuid", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ netuid: 1.5 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects empty provider", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ provider: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects non-string provider", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ provider: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects negative cursor", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ cursor: -1 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects empty fields projection", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ fields: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects non-string fields", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ fields: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
@@ -164,27 +168,27 @@ describe("endpoint-incidents-mcp", () => {
   test("endpointIncidentsQueryUrl rejects a non-numeric limit", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ limit: "lots" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects a sub-minimum limit", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ limit: 0 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointIncidentsQueryUrl rejects a limit above the MCP maximum", () => {
     assert.throws(
       () => endpointIncidentsQueryUrl({ limit: 500 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadEndpointIncidentsList returns filtered rows with pagination meta", async () => {
     const out = await loadEndpointIncidentsList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { netuid: 7 },
     );
     assert.equal(out.returned, 1);
@@ -194,7 +198,7 @@ describe("endpoint-incidents-mcp", () => {
 
   test("loadEndpointIncidentsList sorts and pages the collection", async () => {
     const out = await loadEndpointIncidentsList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { sort: "netuid", order: "desc", limit: 1 },
     );
     assert.equal(out.returned, 1);
@@ -205,13 +209,16 @@ describe("endpoint-incidents-mcp", () => {
 
   test("loadEndpointIncidentsList uses an injected readArtifact dep", async () => {
     const out = await loadEndpointIncidentsList(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+      {
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
       {},
       {
-        readArtifact: async () => ({
+        readArtifact: (async () => ({
           ok: true,
           data: { incidents: [{ id: "solo" }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
     );
     assert.equal(out.incidents[0].id, "solo");
@@ -222,15 +229,15 @@ describe("endpoint-incidents-mcp", () => {
       () =>
         loadEndpointIncidentsList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_not_found",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -239,15 +246,15 @@ describe("endpoint-incidents-mcp", () => {
       () =>
         loadEndpointIncidentsList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_timeout",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) =>
+      (err: Row) =>
         err.code === "artifact_timeout" &&
         /endpoint-incidents\.json/.test(err.message),
     );
@@ -257,16 +264,16 @@ describe("endpoint-incidents-mcp", () => {
     await assert.rejects(
       () =>
         loadEndpointIncidentsList(
-          { env: {}, readArtifact },
+          { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
           { fields: "not_a_column" },
         ),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadEndpointIncidentsList projects row fields when requested", async () => {
     const out = await loadEndpointIncidentsList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { fields: "netuid,severity", limit: 1 },
     );
     assert.deepEqual(out.incidents[0], { netuid: 7, severity: "critical" });
@@ -274,21 +281,21 @@ describe("endpoint-incidents-mcp", () => {
 
   test("loadEndpointIncidentsList preserves array notes and summary from the artifact", async () => {
     const out = await loadEndpointIncidentsList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { limit: 1 },
     );
     assert.deepEqual(out.notes, ["probe-derived only"]);
-    assert.equal(out.summary.incident_count, 2);
+    assert.equal((out.summary as Row).incident_count, 2);
   });
 
   test("loadEndpointIncidentsList omits nullable artifact metadata when absent", async () => {
     const out = await loadEndpointIncidentsList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { incidents: [{ id: "solo" }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -300,11 +307,11 @@ describe("endpoint-incidents-mcp", () => {
   test("loadEndpointIncidentsList treats a non-array incidents key as empty", async () => {
     const out = await loadEndpointIncidentsList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { incidents: null },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -319,7 +326,7 @@ describe("endpoint-incidents-mcp", () => {
     });
     try {
       const out = await loadEndpointIncidentsList(
-        { env: {}, readArtifact },
+        { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
         {},
       );
       assert.equal(out.total, 2);
@@ -339,12 +346,15 @@ describe("endpoint-incidents-mcp", () => {
       () =>
         loadEndpointIncidentsList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: true, data: null }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: true,
+              data: null,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -353,12 +363,14 @@ describe("endpoint-incidents-mcp", () => {
       () =>
         loadEndpointIncidentsList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: false }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: false,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "artifact_unavailable",
     );
   });
 

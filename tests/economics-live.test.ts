@@ -7,6 +7,7 @@ import {
   ECONOMICS_FRESHNESS_MAX_AGE_MS,
   resolveLiveEconomics,
 } from "../src/health-serving.ts";
+import { mockEnv, type Row } from "./row-type.ts";
 
 const NOW = Date.parse("2026-06-20T12:00:00.000Z");
 const FRESH = "2026-06-20T11:00:00.000Z"; // 1h old
@@ -28,13 +29,13 @@ function validBlob(over = {}) {
   };
 }
 
-const kvOf = (blob) => async (_env, key) =>
+const kvOf = (blob: unknown) => async (_env: Env, key: string) =>
   key === "economics:current" ? blob : null;
 
-const call = (blob, opts = {}) =>
+const call = (blob: unknown, opts: Row = {}) =>
   resolveLiveEconomics({
     readHealthKv: kvOf(blob),
-    env: {},
+    env: mockEnv(),
     contractVersion: CONTRACT,
     now: () => NOW,
     ...opts,
@@ -42,7 +43,7 @@ const call = (blob, opts = {}) =>
 
 describe("resolveLiveEconomics", () => {
   test("serves the KV blob when fresh, on-contract, and integrity-valid", async () => {
-    const out = await call(validBlob());
+    const out = (await call(validBlob())) as Row;
     assert.ok(out);
     assert.equal(out.source, "live-kv");
     assert.equal(out.data.subnets.length, 2);
@@ -51,7 +52,7 @@ describe("resolveLiveEconomics", () => {
   test("returns null (→ R2 fallback) when KV is cold", async () => {
     assert.equal(await call(null), null);
     assert.equal(
-      await resolveLiveEconomics({ readHealthKv: undefined, env: {} }),
+      await resolveLiveEconomics({ readHealthKv: undefined, env: mockEnv() }),
       null,
     );
   });

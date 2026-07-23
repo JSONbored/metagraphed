@@ -5,23 +5,28 @@ import {
   loadBlockChainEvents,
   loadChainEventsFeed,
   loadExtrinsicChainEvents,
+  type DataApiMcpContext,
 } from "../src/data-api-mcp.ts";
+import type { Row } from "./row-type.ts";
 
-function dataApiCtx({ fetchImpl, rateLimit = null } = {}) {
+function dataApiCtx({
+  fetchImpl,
+  rateLimit = null,
+}: { fetchImpl?: typeof fetch; rateLimit?: Row | null } = {}) {
   return {
     clientIp: "127.0.0.1",
     env: {
       DATA_API: fetchImpl ? { fetch: fetchImpl } : undefined,
       DATA_RATE_LIMITER: rateLimit,
     },
-  };
+  } as unknown as DataApiMcpContext;
 }
 
 describe("data-api-mcp", () => {
   test("dataApiFetchJson surfaces tier_unavailable without a binding", async () => {
     await assert.rejects(
       () => dataApiFetchJson(dataApiCtx(), "/api/v1/chain-events/stats"),
-      (err) => err.code === "tier_unavailable",
+      (err: Row) => err.code === "tier_unavailable",
     );
   });
 
@@ -39,21 +44,24 @@ describe("data-api-mcp", () => {
           }),
           "/api/v1/chain-events/stats",
         ),
-      (err) => err.code === "data_rate_limited",
+      (err: Row) => err.code === "data_rate_limited",
     );
   });
 
   test("dataApiFetchJson proceeds when the data API limiter allows the request", async () => {
     const ctx = dataApiCtx({
       rateLimit: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           assert.equal(key, "data:127.0.0.1");
           return { success: true };
         },
       },
       fetchImpl: async () => Response.json({ ok: true }),
     });
-    const out = await dataApiFetchJson(ctx, "/api/v1/chain-events/stats");
+    const out = (await dataApiFetchJson(
+      ctx,
+      "/api/v1/chain-events/stats",
+    )) as Row;
     assert.equal(out.ok, true);
   });
 
@@ -68,7 +76,7 @@ describe("data-api-mcp", () => {
           }),
           "/api/v1/chain-events/stats",
         ),
-      (err) => err.code === "tier_unavailable",
+      (err: Row) => err.code === "tier_unavailable",
     );
   });
 
@@ -79,7 +87,8 @@ describe("data-api-mcp", () => {
     });
     await assert.rejects(
       () => dataApiFetchJson(ctx, "/api/v1/chain-events?method=x"),
-      (err) => err.code === "invalid_params" && /bad filter/.test(err.message),
+      (err: Row) =>
+        err.code === "invalid_params" && /bad filter/.test(err.message),
     );
   });
 
@@ -98,7 +107,7 @@ describe("data-api-mcp", () => {
     });
     await assert.rejects(
       () => dataApiFetchJson(ctx, "/api/v1/chain-events?method=x"),
-      (err) =>
+      (err: Row) =>
         err.code === "invalid_params" &&
         /method filter requires pallet/.test(err.message),
     );
@@ -114,7 +123,7 @@ describe("data-api-mcp", () => {
     });
     await assert.rejects(
       () => dataApiFetchJson(ctx, "/api/v1/chain-events?pallet=bad"),
-      (err) =>
+      (err: Row) =>
         err.code === "invalid_params" &&
         /pallet and method must be valid/.test(err.message),
     );
@@ -129,7 +138,7 @@ describe("data-api-mcp", () => {
           }),
           "/api/v1/chain-events?method=x",
         ),
-      (err) =>
+      (err: Row) =>
         err.code === "invalid_params" &&
         /Invalid request to the all-events data tier/.test(err.message),
     );
@@ -145,7 +154,7 @@ describe("data-api-mcp", () => {
           }),
           "/api/v1/chain-events?method=x",
         ),
-      (err) =>
+      (err: Row) =>
         err.code === "invalid_params" &&
         /Invalid request to the all-events data tier/.test(err.message),
     );
@@ -160,7 +169,7 @@ describe("data-api-mcp", () => {
           }),
           "/api/v1/chain-events/stats",
         ),
-      (err) => err.code === "tier_unavailable" && /502/.test(err.message),
+      (err: Row) => err.code === "tier_unavailable" && /502/.test(err.message),
     );
   });
 
@@ -173,7 +182,7 @@ describe("data-api-mcp", () => {
           }),
           "/api/v1/chain-events/stats",
         ),
-      (err) =>
+      (err: Row) =>
         err.code === "tier_unavailable" &&
         /malformed response/.test(err.message),
     );
@@ -186,13 +195,13 @@ describe("data-api-mcp", () => {
           dataApiCtx({ fetchImpl: async () => new Response("{}") }),
           -1,
         ),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadBlockChainEvents shapes the block sub-resource payload", async () => {
     const ctx = dataApiCtx({
-      fetchImpl: async (request) => {
+      fetchImpl: (async (request: Request) => {
         assert.match(request.url, /\/blocks\/4200000\/chain-events$/);
         return Response.json({
           block_number: 4200000,
@@ -206,9 +215,9 @@ describe("data-api-mcp", () => {
             },
           ],
         });
-      },
+      }) as typeof fetch,
     });
-    const out = await loadBlockChainEvents(ctx, 4200000);
+    const out = (await loadBlockChainEvents(ctx, 4200000)) as Row;
     assert.equal(out.block_number, 4200000);
     assert.equal(out.event_count, 1);
     assert.equal(out.events[0].pallet, "Balances");
@@ -296,21 +305,21 @@ describe("data-api-mcp", () => {
           dataApiCtx({ fetchImpl: async () => new Response("{}") }),
           "0xabc",
         ),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadExtrinsicChainEvents forwards block+extrinsic filters", async () => {
     const ctx = dataApiCtx({
-      fetchImpl: async (request) => {
+      fetchImpl: (async (request: Request) => {
         const url = new URL(request.url);
         assert.equal(url.searchParams.get("block"), "4200000");
         assert.equal(url.searchParams.get("extrinsic"), "3");
         assert.equal(url.searchParams.get("limit"), "50");
         return Response.json({ count: 0, events: [] });
-      },
+      }) as typeof fetch,
     });
-    const out = await loadExtrinsicChainEvents(ctx, "4200000-3");
+    const out = (await loadExtrinsicChainEvents(ctx, "4200000-3")) as Row;
     assert.equal(out.ref, "4200000-3");
     assert.equal(out.extrinsic_index, 3);
     assert.equal(out.limit, 50);
@@ -348,7 +357,7 @@ describe("data-api-mcp", () => {
 
   test("loadExtrinsicChainEvents forwards limit and cursor", async () => {
     const ctx = dataApiCtx({
-      fetchImpl: async (request) => {
+      fetchImpl: (async (request: Request) => {
         const url = new URL(request.url);
         assert.equal(url.searchParams.get("limit"), "25");
         assert.equal(url.searchParams.get("cursor"), "4200000.9");
@@ -357,12 +366,12 @@ describe("data-api-mcp", () => {
           next_cursor: "4200000.8",
           events: [{ pallet: "System", method: "ExtrinsicSuccess" }],
         });
-      },
+      }) as typeof fetch,
     });
-    const out = await loadExtrinsicChainEvents(ctx, "4200000-3", {
+    const out = (await loadExtrinsicChainEvents(ctx, "4200000-3", {
       limit: 25,
       cursor: "4200000.9",
-    });
+    })) as Row;
     assert.equal(out.limit, 25);
     assert.equal(out.next_cursor, "4200000.8");
     assert.equal(out.events[0].method, "ExtrinsicSuccess");
@@ -370,14 +379,14 @@ describe("data-api-mcp", () => {
 
   test("loadExtrinsicChainEvents clamps an oversized limit and tolerates sparse payloads", async () => {
     const ctx = dataApiCtx({
-      fetchImpl: async (request) => {
+      fetchImpl: (async (request: Request) => {
         assert.equal(new URL(request.url).searchParams.get("limit"), "200");
         return Response.json({ events: null });
-      },
+      }) as typeof fetch,
     });
-    const out = await loadExtrinsicChainEvents(ctx, "4200000-3", {
+    const out = (await loadExtrinsicChainEvents(ctx, "4200000-3", {
       limit: 999,
-    });
+    })) as Row;
     assert.equal(out.limit, 200);
     assert.equal(out.event_count, 0);
     assert.deepEqual(out.events, []);
@@ -386,18 +395,20 @@ describe("data-api-mcp", () => {
 
   test("loadExtrinsicChainEvents defaults invalid limits to 50", async () => {
     const ctx = dataApiCtx({
-      fetchImpl: async (request) => {
+      fetchImpl: (async (request: Request) => {
         assert.equal(new URL(request.url).searchParams.get("limit"), "50");
         return Response.json({ count: 0, events: [] });
-      },
+      }) as typeof fetch,
     });
-    const out = await loadExtrinsicChainEvents(ctx, "4200000-3", { limit: 0 });
+    const out = (await loadExtrinsicChainEvents(ctx, "4200000-3", {
+      limit: 0,
+    })) as Row;
     assert.equal(out.limit, 50);
   });
 
   test("loadChainEventsFeed forwards filters and prefers cursor over before", async () => {
     const ctx = dataApiCtx({
-      fetchImpl: async (request) => {
+      fetchImpl: (async (request: Request) => {
         const url = new URL(request.url);
         assert.equal(url.pathname, "/api/v1/chain-events");
         assert.equal(url.searchParams.get("pallet"), "SubtensorModule");
@@ -413,9 +424,9 @@ describe("data-api-mcp", () => {
           next_cursor: "1.2.2",
           events: [{ pallet: "SubtensorModule", method: "WeightsSet" }],
         });
-      },
+      }) as typeof fetch,
     });
-    const out = await loadChainEventsFeed(ctx, {
+    const out = (await loadChainEventsFeed(ctx, {
       pallet: "SubtensorModule",
       method: "WeightsSet",
       block: 9,
@@ -423,7 +434,7 @@ describe("data-api-mcp", () => {
       cursor: "1.2.3",
       before: 99,
       limit: 25,
-    });
+    })) as Row;
     assert.equal(out.count, 1);
     assert.equal(out.next_before, 9);
     assert.equal(out.next_cursor, "1.2.2");
@@ -432,14 +443,14 @@ describe("data-api-mcp", () => {
 
   test("loadChainEventsFeed forwards legacy before when cursor is absent", async () => {
     const ctx = dataApiCtx({
-      fetchImpl: async (request) => {
+      fetchImpl: (async (request: Request) => {
         const url = new URL(request.url);
         assert.equal(url.searchParams.get("before"), "50");
         assert.equal(url.searchParams.get("cursor"), null);
         return Response.json({ events: null });
-      },
+      }) as typeof fetch,
     });
-    const out = await loadChainEventsFeed(ctx, { before: 50 });
+    const out = (await loadChainEventsFeed(ctx, { before: 50 })) as Row;
     assert.equal(out.count, 0);
     assert.deepEqual(out.events, []);
     assert.equal(out.next_before, null);

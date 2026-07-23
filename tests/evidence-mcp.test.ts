@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import * as listQuery from "../workers/list-query.ts";
 import {
   EVIDENCE_LEDGER_ARTIFACT,
@@ -12,6 +12,10 @@ import {
   loadEvidenceList,
 } from "../src/evidence-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -35,7 +39,7 @@ const SAMPLE_BLOB = {
   ],
 };
 
-function readArtifact(_env, path) {
+function readArtifact(_env: Env, path: string) {
   if (path === EVIDENCE_LEDGER_ARTIFACT) {
     return Promise.resolve({ ok: true, data: SAMPLE_BLOB });
   }
@@ -67,33 +71,33 @@ describe("evidence-mcp", () => {
   test("evidenceQueryUrl rejects empty q and invalid sort", () => {
     assert.throws(
       () => evidenceQueryUrl({ q: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
     assert.throws(
       () => evidenceQueryUrl({ sort: "not_a_column" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("evidenceQueryUrl rejects non-string q and invalid order", () => {
     assert.throws(
       () => evidenceQueryUrl({ q: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
     assert.throws(
       () => evidenceQueryUrl({ order: "sideways" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("evidenceQueryUrl rejects empty fields and non-string fields", () => {
     assert.throws(
       () => evidenceQueryUrl({ fields: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
     assert.throws(
       () => evidenceQueryUrl({ fields: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
@@ -105,50 +109,50 @@ describe("evidence-mcp", () => {
   test("evidenceQueryUrl rejects a non-numeric limit", () => {
     assert.throws(
       () => evidenceQueryUrl({ limit: "lots" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("evidenceQueryUrl rejects a sub-minimum limit", () => {
     assert.throws(
       () => evidenceQueryUrl({ limit: 0 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("evidenceQueryUrl rejects a fractional cursor", () => {
     assert.throws(
       () => evidenceQueryUrl({ cursor: 1.5 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("evidenceQueryUrl rejects negative cursor", () => {
     assert.throws(
       () => evidenceQueryUrl({ cursor: -1 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("evidenceQueryUrl rejects a limit above the MCP maximum", () => {
     assert.throws(
       () => evidenceQueryUrl({ limit: 500 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadEvidenceList returns filtered rows with pagination meta", async () => {
     const out = await loadEvidenceList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { q: "openapi" },
     );
     assert.equal(out.returned, 1);
-    assert.match(out.claims[0].claim, /OpenAPI/);
+    assert.match(out.claims[0].claim as string, /OpenAPI/);
   });
 
   test("loadEvidenceList sorts and pages the collection", async () => {
     const out = await loadEvidenceList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { sort: "verified_at", order: "desc", limit: 1 },
     );
     assert.equal(out.returned, 1);
@@ -158,13 +162,16 @@ describe("evidence-mcp", () => {
 
   test("loadEvidenceList uses an injected readArtifact dep", async () => {
     const out = await loadEvidenceList(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+      {
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
       {},
       {
-        readArtifact: async () => ({
+        readArtifact: (async () => ({
           ok: true,
           data: { claims: [{ subject: "SN0", claim: "test claim" }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
     );
     assert.equal(out.claims[0].subject, "SN0");
@@ -175,15 +182,15 @@ describe("evidence-mcp", () => {
       () =>
         loadEvidenceList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_not_found",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -192,15 +199,15 @@ describe("evidence-mcp", () => {
       () =>
         loadEvidenceList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_timeout",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) =>
+      (err: Row) =>
         err.code === "artifact_timeout" &&
         /evidence-ledger\.json/.test(err.message),
     );
@@ -209,14 +216,17 @@ describe("evidence-mcp", () => {
   test("loadEvidenceList rejects invalid list-query params from REST parity", async () => {
     await assert.rejects(
       () =>
-        loadEvidenceList({ env: {}, readArtifact }, { fields: "not_a_column" }),
-      (err) => err.code === "invalid_params",
+        loadEvidenceList(
+          { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
+          { fields: "not_a_column" },
+        ),
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadEvidenceList projects row fields when requested", async () => {
     const out = await loadEvidenceList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { fields: "subject,claim", limit: 1 },
     );
     assert.deepEqual(out.claims[0], {
@@ -226,18 +236,21 @@ describe("evidence-mcp", () => {
   });
 
   test("loadEvidenceList preserves summary from the artifact", async () => {
-    const out = await loadEvidenceList({ env: {}, readArtifact }, {});
+    const out = await loadEvidenceList(
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
+      {},
+    );
     assert.deepEqual(out.summary, { claim_count: 2 });
   });
 
   test("loadEvidenceList omits nullable artifact metadata when absent", async () => {
     const out = await loadEvidenceList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { claims: [{ subject: "SN0", claim: "test" }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -249,11 +262,11 @@ describe("evidence-mcp", () => {
   test("loadEvidenceList treats a non-array claims key as empty", async () => {
     const out = await loadEvidenceList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { claims: null },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -267,7 +280,10 @@ describe("evidence-mcp", () => {
       meta: {},
     });
     try {
-      const out = await loadEvidenceList({ env: {}, readArtifact }, {});
+      const out = await loadEvidenceList(
+        { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
+        {},
+      );
       assert.equal(out.total, 2);
       assert.equal(out.returned, 2);
       assert.equal(out.limit, 2);
@@ -285,12 +301,15 @@ describe("evidence-mcp", () => {
       () =>
         loadEvidenceList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: true, data: null }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: true,
+              data: null,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -299,12 +318,14 @@ describe("evidence-mcp", () => {
       () =>
         loadEvidenceList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: false }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: false,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "artifact_unavailable",
     );
   });
 

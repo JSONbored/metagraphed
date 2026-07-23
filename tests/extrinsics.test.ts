@@ -14,6 +14,7 @@ import {
 } from "../src/extrinsics.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { DAY_MS } from "../workers/config.ts";
+import type { Row } from "./row-type.ts";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
@@ -30,7 +31,7 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
     tip_tao: 0.5,
     success: 1,
     observed_at: 1750000000000,
-  });
+  })!;
   assert.equal(out.block_number, 1000);
   assert.equal(out.extrinsic_index, 4);
   assert.equal(out.extrinsic_hash, "0xhash");
@@ -48,22 +49,22 @@ test("formatExtrinsic drops an out-of-range observed_at instead of throwing", ()
   // A finite but out-of-range epoch (beyond the ±8.64e15 ms JS Date limit) would
   // make new Date(n).toISOString() throw a RangeError and 500 the extrinsics feed.
   // A single corrupt observed_at cell must degrade to null, not crash the row.
-  let out;
+  let out: Row | undefined;
   assert.doesNotThrow(() => {
     out = formatExtrinsic({
       block_number: 5,
       extrinsic_index: 0,
       observed_at: 9e15,
-    });
+    }) as Row;
   });
-  assert.equal(out.observed_at, null);
+  assert.equal(out!.observed_at, null);
   // A valid timestamp still renders as ISO (no regression).
   assert.equal(
     formatExtrinsic({
       block_number: 5,
       extrinsic_index: 0,
       observed_at: 1750000000000,
-    }).observed_at,
+    })!.observed_at,
     new Date(1750000000000).toISOString(),
   );
 });
@@ -78,7 +79,7 @@ test("formatExtrinsic coerces D1 numeric-string fee_tao/tip_tao and rounds to ra
     fee_tao: "0.0125",
     tip_tao: "0.10000000004",
     observed_at: 1750000000000,
-  });
+  })!;
   assert.equal(out.fee_tao, 0.0125);
   assert.equal(typeof out.fee_tao, "number");
   assert.equal(out.tip_tao, 0.1); // rounded to rao (9 dp)
@@ -86,7 +87,7 @@ test("formatExtrinsic coerces D1 numeric-string fee_tao/tip_tao and rounds to ra
 });
 
 test("formatExtrinsic maps a null/absent fee_tao/tip_tao to null", () => {
-  const out = formatExtrinsic({ block_number: 10, extrinsic_index: 0 });
+  const out = formatExtrinsic({ block_number: 10, extrinsic_index: 0 })!;
   assert.equal(out.fee_tao, null);
   assert.equal(out.tip_tao, null);
 });
@@ -99,7 +100,7 @@ test("formatExtrinsic maps a non-numeric fee_tao/tip_tao to null (not NaN)", () 
     extrinsic_index: 0,
     fee_tao: "not-a-number",
     tip_tao: "abc",
-  });
+  })!;
   assert.equal(out.fee_tao, null);
   assert.equal(out.tip_tao, null);
 });
@@ -113,7 +114,7 @@ test("formatExtrinsic rejects blank fee_tao/tip_tao cells that coerce to 0", () 
       fee_tao: blank,
       tip_tao: blank,
       observed_at: 1750000000000,
-    });
+    })!;
     assert.equal(out.fee_tao, null, `fee_tao for ${JSON.stringify(blank)}`);
     assert.equal(out.tip_tao, null, `tip_tao for ${JSON.stringify(blank)}`);
   }
@@ -124,7 +125,7 @@ test("formatExtrinsic rejects blank fee_tao/tip_tao cells that coerce to 0", () 
     fee_tao: 0,
     tip_tao: "0",
     observed_at: 1750000000000,
-  });
+  })!;
   assert.equal(zero.fee_tao, 0);
   assert.equal(zero.tip_tao, 0);
 });
@@ -136,18 +137,21 @@ test("formatExtrinsic coerces a string-typed observed_at cell to an ISO timestam
     block_number: 10,
     extrinsic_index: 0,
     observed_at: "1750000000000",
-  });
+  })!;
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
 test("formatExtrinsic keeps a null/blank/invalid observed_at as null (not epoch 1970)", () => {
   assert.equal(
-    formatExtrinsic({ block_number: 10, extrinsic_index: 0, observed_at: null })
-      .observed_at,
+    formatExtrinsic({
+      block_number: 10,
+      extrinsic_index: 0,
+      observed_at: null,
+    })!.observed_at,
     null,
   );
   assert.equal(
-    formatExtrinsic({ block_number: 10, extrinsic_index: 0, observed_at: "" })
+    formatExtrinsic({ block_number: 10, extrinsic_index: 0, observed_at: "" })!
       .observed_at,
     null,
   );
@@ -156,7 +160,7 @@ test("formatExtrinsic keeps a null/blank/invalid observed_at as null (not epoch 
       block_number: 10,
       extrinsic_index: 0,
       observed_at: "not-a-timestamp",
-    }).observed_at,
+    })!.observed_at,
     null,
   );
 });
@@ -167,24 +171,24 @@ test("formatExtrinsic parses call_args (array, object, parse-failure->null)", ()
     block_number: 1,
     extrinsic_index: 0,
     call_args: '[{"name":"netuid","value":1}]',
-  });
+  })!;
   assert.deepEqual(arr.call_args, [{ name: "netuid", value: 1 }]);
   // An object payload is also tolerated.
   const obj = formatExtrinsic({
     block_number: 1,
     extrinsic_index: 0,
     call_args: '{"netuid":1}',
-  });
+  })!;
   assert.deepEqual(obj.call_args, { netuid: 1 });
   // Malformed JSON -> null (never throws).
   const bad = formatExtrinsic({
     block_number: 1,
     extrinsic_index: 0,
     call_args: "not-json",
-  });
+  })!;
   assert.equal(bad.call_args, null);
   // Absent -> null; fee_tao absent -> null.
-  const sparse = formatExtrinsic({ block_number: 1, extrinsic_index: 0 });
+  const sparse = formatExtrinsic({ block_number: 1, extrinsic_index: 0 })!;
   assert.equal(sparse.call_args, null);
   assert.equal(sparse.fee_tao, null);
 });
@@ -206,9 +210,12 @@ test("formatExtrinsic preserves a U256 value past Number.MAX_SAFE_INTEGER throug
     call_module: "Ethereum",
     call_function: "transact",
     call_args: callArgsText,
-  });
-  assert.equal(out.call_args.transaction.EIP1559.value, "9131459485341369597");
-  assert.equal(out.call_args.transaction.EIP1559.nonce, "69392");
+  })!;
+  assert.equal(
+    (out.call_args as Row).transaction.EIP1559.value,
+    "9131459485341369597",
+  );
+  assert.equal((out.call_args as Row).transaction.EIP1559.nonce, "69392");
 });
 
 test("formatExtrinsic extends the big-int-safe parse to EVERY call type, not just indexer-rs-ethereum-decode.ts's dispatch table (fixed 2026-07-15, was previously scoped narrow)", () => {
@@ -226,9 +233,9 @@ test("formatExtrinsic extends the big-int-safe parse to EVERY call type, not jus
     call_module: "SubtensorModule",
     call_function: "register",
     call_args: '{"nonce":[9131459485341369597]}',
-  });
-  assert.equal(typeof out.call_args.nonce, "string");
-  assert.equal(out.call_args.nonce, "9131459485341369597");
+  })!;
+  assert.equal(typeof (out.call_args as Row).nonce, "string");
+  assert.equal((out.call_args as Row).nonce, "9131459485341369597");
 });
 
 test("formatExtrinsic unwraps a single-element BTreeSet (real SubtensorModule.claim_root, block 8587445/19, #4693)", () => {
@@ -238,8 +245,8 @@ test("formatExtrinsic unwraps a single-element BTreeSet (real SubtensorModule.cl
     call_module: "SubtensorModule",
     call_function: "claim_root",
     call_args: '{"subnets": [[104]]}',
-  });
-  assert.deepEqual(out.call_args.subnets, [104]);
+  })!;
+  assert.deepEqual((out.call_args as Row).subnets, [104]);
 });
 
 test("formatExtrinsic correctly unwraps a BTreeSet nested inside Utility.batch, through the FULL real pipeline (real production fixture, block 8604111/11, fixed 2026-07-12)", () => {
@@ -268,8 +275,8 @@ test("formatExtrinsic correctly unwraps a BTreeSet nested inside Utility.batch, 
     call_module: "Utility",
     call_function: "batch",
     call_args: callArgsText,
-  });
-  const nestedCall = out.call_args[0].value[0];
+  })!;
+  const nestedCall = (out.call_args as Row)[0].value[0];
   assert.equal(nestedCall.call_module, "SubtensorModule");
   assert.equal(nestedCall.call_function, "claim_root");
   assert.deepEqual(nestedCall.call_args.subnets, [1, 2, 3, 4, 5]);
@@ -287,8 +294,8 @@ test("formatExtrinsic preserves SubtensorModule.register's PoW nonce precision e
     call_function: "register",
     call_args:
       '{"work":[16,64,112,106],"nonce":9131459485341369597,"netuid":21}',
-  });
-  assert.equal(out.call_args.nonce, "9131459485341369597");
+  })!;
+  assert.equal((out.call_args as Row).nonce, "9131459485341369597");
 });
 
 test("formatExtrinsic preserves SubtensorModule.set_children's near-u64::MAX sentinel precision exactly (real block 8585337/19, fixed 2026-07-15)", () => {
@@ -303,8 +310,8 @@ test("formatExtrinsic preserves SubtensorModule.set_children's near-u64::MAX sen
     call_function: "set_children",
     call_args:
       '{"netuid":121,"children":[[18446744073709551615,[[100,65,10,124,236,80,140,19,181,73,132,35,107,50,57,120,44,20,174,42,203,246,252,17,211,55,209,239,75,249,82,33]]]]}',
-  });
-  assert.equal(out.call_args.children[0][0], "18446744073709551615");
+  })!;
+  assert.equal((out.call_args as Row).children[0][0], "18446744073709551615");
 });
 
 test("formatExtrinsic preserves SubtensorModule.set_root_weights's version_key precision exactly (real block 4633973/7, found by 2026-07-15 exhaustive audit)", () => {
@@ -315,8 +322,8 @@ test("formatExtrinsic preserves SubtensorModule.set_root_weights's version_key p
     call_function: "set_root_weights",
     call_args:
       '{"hotkey":"5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y","netuid":0,"dests":[1],"weights":[65535],"version_key":18446744073709551615}',
-  });
-  assert.equal(out.call_args.version_key, "18446744073709551615");
+  })!;
+  assert.equal((out.call_args as Row).version_key, "18446744073709551615");
 });
 
 test("formatExtrinsic preserves SubtensorModule.faucet's PoW nonce precision exactly (real block 2351609/48, found by 2026-07-15 exhaustive audit)", () => {
@@ -327,8 +334,8 @@ test("formatExtrinsic preserves SubtensorModule.faucet's PoW nonce precision exa
     call_function: "faucet",
     call_args:
       '{"work":[16,64,112,106],"nonce":13306593199926106273,"netuid":1,"block_number":2351600}',
-  });
-  assert.equal(out.call_args.nonce, "13306593199926106273");
+  })!;
+  assert.equal((out.call_args as Row).nonce, "13306593199926106273");
 });
 
 test("formatExtrinsic preserves a large u64 nested inside Proxy.proxy -> Utility.force_batch -> SubtensorModule.remove_stake (found by 2026-07-15 exhaustive audit, block 8623242/13)", () => {
@@ -349,36 +356,36 @@ test("formatExtrinsic preserves a large u64 nested inside Proxy.proxy -> Utility
     call_module: "Proxy",
     call_function: "proxy",
     call_args: callArgsText,
-  });
-  const nestedCall = out.call_args[2].value.call_args[0][0];
+  })!;
+  const nestedCall = (out.call_args as Row)[2].value.call_args[0][0];
   assert.equal(nestedCall.call_args.amount_unstaked, "18446744073709551615");
 });
 
 test("formatExtrinsic normalizes success (0->false, null->null)", () => {
   assert.equal(
-    formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: 0 })
+    formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: 0 })!
       .success,
     false,
   );
   assert.equal(
-    formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: null })
+    formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: null })!
       .success,
     null,
   );
   assert.equal(
-    formatExtrinsic({ block_number: 1, extrinsic_index: 0 }).success,
+    formatExtrinsic({ block_number: 1, extrinsic_index: 0 })!.success,
     null,
   );
 });
 
 test("formatExtrinsic coerces a string-typed D1 success cell", () => {
   assert.equal(
-    formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: "1" })
+    formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: "1" })!
       .success,
     true,
   );
   assert.equal(
-    formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: "0" })
+    formatExtrinsic({ block_number: 1, extrinsic_index: 0, success: "0" })!
       .success,
     false,
   );
@@ -392,17 +399,20 @@ test("extrinsicsToCsvRows projects composite extrinsic_id and core columns", () 
     call_module: "SubtensorModule",
     call_function: "add_stake",
     success: 1,
-  });
-  assert.deepEqual(extrinsicsToCsvRows([row]), [
-    {
-      extrinsic_id: "100-3",
-      block_number: 100,
-      signer: "5Signer",
-      call_module: "SubtensorModule",
-      call_function: "add_stake",
-      success: true,
-    },
-  ]);
+  })!;
+  assert.deepEqual(
+    extrinsicsToCsvRows([row as unknown as Record<string, unknown>]),
+    [
+      {
+        extrinsic_id: "100-3",
+        block_number: 100,
+        signer: "5Signer",
+        call_module: "SubtensorModule",
+        call_function: "add_stake",
+        success: true,
+      },
+    ],
+  );
   assert.deepEqual(EXTRINSICS_CSV_COLUMNS, [
     "extrinsic_id",
     "block_number",
@@ -463,8 +473,11 @@ test("extrinsicsToCsvRows nulls extrinsic_id when chain position is incomplete",
 
 test("formatExtrinsic is null-safe on junk + sparse rows", () => {
   assert.equal(formatExtrinsic(null), null);
-  assert.equal(formatExtrinsic("x"), null);
-  const out = formatExtrinsic({ block_number: 1, extrinsic_index: 0 });
+  assert.equal(
+    formatExtrinsic("x" as unknown as Record<string, unknown>),
+    null,
+  );
+  const out = formatExtrinsic({ block_number: 1, extrinsic_index: 0 })!;
   assert.equal(out.extrinsic_hash, null);
   assert.equal(out.signer, null);
   assert.equal(out.observed_at, null);
@@ -477,7 +490,7 @@ test("formatExtrinsic coerces string-typed chain-position cells to Numbers", () 
   const out = formatExtrinsic({
     block_number: "8400000",
     extrinsic_index: "3",
-  });
+  })!;
   assert.equal(out.block_number, 8400000);
   assert.equal(typeof out.block_number, "number");
   assert.equal(out.extrinsic_index, 3);
@@ -489,7 +502,7 @@ test("formatExtrinsic coerces a fully missing chain-position to null (both field
   // both — exercises the `value == null` short-circuit in toChainPosition that
   // the partial-row cases above don't reach (every input above was a defined
   // primitive, so the helper's null guard was never hit).
-  const out = formatExtrinsic({});
+  const out = formatExtrinsic({})!;
   assert.equal(out.block_number, null);
   assert.equal(out.extrinsic_index, null);
 });
@@ -498,15 +511,15 @@ test("formatExtrinsic rejects negative or non-integer chain-position cells to nu
   // Guard the toChainPosition helper: negatives and floats are not valid chain
   // positions, so the formatter must fall back to null rather than coerce them.
   assert.equal(
-    formatExtrinsic({ block_number: -1, extrinsic_index: 0 }).block_number,
+    formatExtrinsic({ block_number: -1, extrinsic_index: 0 })!.block_number,
     null,
   );
   assert.equal(
-    formatExtrinsic({ block_number: 1, extrinsic_index: 1.5 }).extrinsic_index,
+    formatExtrinsic({ block_number: 1, extrinsic_index: 1.5 })!.extrinsic_index,
     null,
   );
   assert.equal(
-    formatExtrinsic({ block_number: "abc", extrinsic_index: 0 }).block_number,
+    formatExtrinsic({ block_number: "abc", extrinsic_index: 0 })!.block_number,
     null,
   );
 });
@@ -518,7 +531,7 @@ test("formatExtrinsic rejects blank chain-position cells that coerce to 0", () =
     const out = formatExtrinsic({
       block_number: blank,
       extrinsic_index: blank,
-    });
+    })!;
     assert.equal(
       out.block_number,
       null,
@@ -545,8 +558,8 @@ test("buildExtrinsic wraps a row + is schema-stable when absent (#1345)", () => 
   );
   assert.equal(out.schema_version, 1);
   assert.equal(out.ref, hash);
-  assert.equal(out.extrinsic.block_number, 5);
-  assert.equal(out.extrinsic.extrinsic_index, 1);
+  assert.equal((out.extrinsic as Row).block_number, 5);
+  assert.equal((out.extrinsic as Row).extrinsic_index, 1);
 
   const empty = buildExtrinsic(undefined, "0xdead");
   assert.equal(empty.schema_version, 1);
@@ -590,15 +603,19 @@ test("EXTRINSIC_READ_COLUMNS lists the served extrinsic columns", () => {
 
 // ---- Route/integration (#1345) ---------------------------------------------
 
-function req(path) {
+function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
 // A D1 mock that routes by SQL shape so the extrinsic handlers get realistic rows.
-function dbWith({ feed, detail, events } = {}) {
+function dbWith({
+  feed,
+  detail,
+  events,
+}: { feed?: Row; detail?: Row; events?: Row[] } = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -709,7 +726,7 @@ for (const badRef of [
       badRef,
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.equal(body.data.ref, badRef);
     assert.equal(
       body.data.extrinsic,
@@ -732,15 +749,15 @@ test("GET /extrinsics is schema-stable when D1 is cold (never 404)", async () =>
 
 // ---- loadExtrinsics filters (shared REST + MCP list_extrinsics) ------------
 
-function recordingExtrinsicsD1(capture = []) {
-  return async (sql, params) => {
+function recordingExtrinsicsD1(capture: Row[] = []) {
+  return async (sql: string, params: unknown[]) => {
     capture.push({ sql, params });
     return [];
   };
 }
 
 test("loadExtrinsics applies the conjunctive filter set (#1846)", async () => {
-  const capture = [];
+  const capture: Row[] = [];
   const d1 = recordingExtrinsicsD1(capture);
   const toMs = 1_800_000_000_000;
   const fromMs = toMs - 60_000;
@@ -771,7 +788,7 @@ test("loadExtrinsics applies the conjunctive filter set (#1846)", async () => {
 });
 
 test("loadExtrinsics short-circuits impossible time ranges before D1", async () => {
-  const capture = [];
+  const capture: Row[] = [];
   const d1 = recordingExtrinsicsD1(capture);
   const nowMs = 1_800_000_000_000;
   assert.equal(typeof EXTRINSIC_RETENTION_MS, "number");
@@ -804,7 +821,7 @@ test("loadExtrinsics short-circuits impossible time ranges before D1", async () 
 });
 
 test("loadExtrinsics binds success=true as 1 and omits success when unset", async () => {
-  const capture = [];
+  const capture: Row[] = [];
   const d1 = recordingExtrinsicsD1(capture);
   await loadExtrinsics(d1, { success: true });
   assert.ok(/success = \?/.test(capture[0].sql));
@@ -816,7 +833,7 @@ test("loadExtrinsics binds success=true as 1 and omits success when unset", asyn
 });
 
 test("loadExtrinsics forces observed_at index for a narrow time-only window", async () => {
-  const capture = [];
+  const capture: Row[] = [];
   const d1 = recordingExtrinsicsD1(capture);
   const nowMs = 1_800_000_000_000;
   const fromMs = nowMs - 60_000;
@@ -825,14 +842,14 @@ test("loadExtrinsics forces observed_at index for a narrow time-only window", as
 });
 
 test("loadExtrinsics forces module index for a call_module-only scan", async () => {
-  const capture = [];
+  const capture: Row[] = [];
   const d1 = recordingExtrinsicsD1(capture);
   await loadExtrinsics(d1, { callModule: "SubtensorModule" });
   assert.ok(/INDEXED BY idx_extrinsics_module_block/.test(capture[0].sql));
 });
 
 test("loadExtrinsics ANDs keyset cursor with filters and drops OFFSET", async () => {
-  const capture = [];
+  const capture: Row[] = [];
   const d1 = recordingExtrinsicsD1(capture);
   await loadExtrinsics(d1, {
     signer: "5Signer",
@@ -848,7 +865,7 @@ test("loadExtrinsics ANDs keyset cursor with filters and drops OFFSET", async ()
 
 // #4322 — Multisig approval-chain linking: call_hash filter.
 test("loadExtrinsics binds callHash as a quoted LIKE match and omits it when unset", async () => {
-  const capture = [];
+  const capture: Row[] = [];
   const d1 = recordingExtrinsicsD1(capture);
   const hash = `0x${"a".repeat(64)}`;
   await loadExtrinsics(d1, { callModule: "Multisig", callHash: hash });
@@ -861,7 +878,7 @@ test("loadExtrinsics binds callHash as a quoted LIKE match and omits it when uns
 });
 
 test("loadExtrinsics does not force the module index when callHash is also set", async () => {
-  const capture = [];
+  const capture: Row[] = [];
   const d1 = recordingExtrinsicsD1(capture);
   const hash = `0x${"b".repeat(64)}`;
   await loadExtrinsics(d1, { callModule: "Multisig", callHash: hash });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import * as listQuery from "../workers/list-query.ts";
 import {
   ENRICHMENT_EVIDENCE_ARTIFACT,
@@ -12,6 +12,10 @@ import {
   loadEnrichmentEvidenceList,
 } from "../src/enrichment-evidence-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -37,7 +41,7 @@ const SAMPLE_BLOB = {
   ],
 };
 
-function readArtifact(_env, path) {
+function readArtifact(_env: Env, path: string) {
   if (path === ENRICHMENT_EVIDENCE_ARTIFACT) {
     return Promise.resolve({ ok: true, data: SAMPLE_BLOB });
   }
@@ -80,54 +84,54 @@ describe("enrichment-evidence-mcp", () => {
   test("enrichmentEvidenceQueryUrl rejects invalid lane", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ lane: "bogus" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("enrichmentEvidenceQueryUrl rejects invalid evidence_action", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ evidence_action: "bogus" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("enrichmentEvidenceQueryUrl rejects invalid netuid", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ netuid: -1 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("enrichmentEvidenceQueryUrl rejects empty q and invalid sort", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ q: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ sort: "not_a_column" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("enrichmentEvidenceQueryUrl rejects non-string q and invalid order", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ q: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ order: "sideways" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("enrichmentEvidenceQueryUrl rejects empty fields and non-string fields", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ fields: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ fields: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
@@ -149,21 +153,21 @@ describe("enrichment-evidence-mcp", () => {
   test("enrichmentEvidenceQueryUrl rejects a fractional netuid", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ netuid: 1.5 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("enrichmentEvidenceQueryUrl rejects a fractional cursor", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ cursor: 1.5 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("enrichmentEvidenceQueryUrl rejects negative cursor", () => {
     assert.throws(
       () => enrichmentEvidenceQueryUrl({ cursor: -1 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
@@ -174,7 +178,7 @@ describe("enrichment-evidence-mcp", () => {
 
   test("loadEnrichmentEvidenceList returns filtered rows with pagination meta", async () => {
     const out = await loadEnrichmentEvidenceList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { missing_kinds: "openapi" },
     );
     assert.equal(out.returned, 1);
@@ -184,7 +188,7 @@ describe("enrichment-evidence-mcp", () => {
 
   test("loadEnrichmentEvidenceList sorts and pages the collection", async () => {
     const out = await loadEnrichmentEvidenceList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { sort: "priority_score", order: "desc", limit: 1 },
     );
     assert.equal(out.returned, 1);
@@ -195,15 +199,18 @@ describe("enrichment-evidence-mcp", () => {
 
   test("loadEnrichmentEvidenceList uses an injected readArtifact dep", async () => {
     const out = await loadEnrichmentEvidenceList(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+      {
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
       {},
       {
-        readArtifact: async () => ({
+        readArtifact: (async () => ({
           ok: true,
           data: {
             entries: [{ netuid: 0, lane: "monitoring-followup" }],
           },
-        }),
+        })) as unknown as ReadArtifact,
       },
     );
     assert.equal(out.entries[0].netuid, 0);
@@ -214,15 +221,15 @@ describe("enrichment-evidence-mcp", () => {
       () =>
         loadEnrichmentEvidenceList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_not_found",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -231,15 +238,15 @@ describe("enrichment-evidence-mcp", () => {
       () =>
         loadEnrichmentEvidenceList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_timeout",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) =>
+      (err: Row) =>
         err.code === "artifact_timeout" &&
         /enrichment-evidence\.json/.test(err.message),
     );
@@ -249,16 +256,16 @@ describe("enrichment-evidence-mcp", () => {
     await assert.rejects(
       () =>
         loadEnrichmentEvidenceList(
-          { env: {}, readArtifact },
+          { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
           { fields: "not_a_column" },
         ),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadEnrichmentEvidenceList projects row fields when requested", async () => {
     const out = await loadEnrichmentEvidenceList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { fields: "netuid,lane", limit: 1 },
     );
     assert.deepEqual(out.entries[0], { netuid: 7, lane: "direct-submission" });
@@ -267,11 +274,11 @@ describe("enrichment-evidence-mcp", () => {
   test("loadEnrichmentEvidenceList omits nullable artifact metadata when absent", async () => {
     const out = await loadEnrichmentEvidenceList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { entries: [{ netuid: 0, lane: "direct-submission" }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -282,11 +289,11 @@ describe("enrichment-evidence-mcp", () => {
   test("loadEnrichmentEvidenceList treats a non-array entries key as empty", async () => {
     const out = await loadEnrichmentEvidenceList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { entries: null },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -301,7 +308,7 @@ describe("enrichment-evidence-mcp", () => {
     });
     try {
       const out = await loadEnrichmentEvidenceList(
-        { env: {}, readArtifact },
+        { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
         {},
       );
       assert.equal(out.total, 2);
@@ -321,12 +328,15 @@ describe("enrichment-evidence-mcp", () => {
       () =>
         loadEnrichmentEvidenceList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: true, data: null }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: true,
+              data: null,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -335,12 +345,14 @@ describe("enrichment-evidence-mcp", () => {
       () =>
         loadEnrichmentEvidenceList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: false }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: false,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "artifact_unavailable",
     );
   });
 

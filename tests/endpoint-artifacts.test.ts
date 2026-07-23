@@ -6,6 +6,7 @@ import {
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
 } from "../scripts/lib/endpoint-artifacts.ts";
+import type { Row } from "./row-type.ts";
 
 const GENERATED_AT = "2026-06-25T00:00:00.000Z";
 const CONTRACT = "test-contract";
@@ -80,7 +81,7 @@ describe("buildRpcEndpointArtifact", () => {
 
     // subnet-api filtered out; remaining two sorted by provider (alpha, beta).
     assert.deepEqual(
-      artifact.endpoints.map((endpoint) => endpoint.id),
+      artifact.endpoints.map((endpoint: Row) => endpoint.id),
       ["s1", "s2"],
     );
 
@@ -218,15 +219,18 @@ describe("buildEndpointResourceArtifact", () => {
 
     // Sorted by netuid ascending.
     assert.deepEqual(
-      artifact.endpoints.map((endpoint) => endpoint.surface_id),
+      artifact.endpoints.map((endpoint: Row) => endpoint.surface_id),
       ["r1", "r2", "r3", "r4", "r5"],
     );
 
-    const byId = new Map(
-      artifact.endpoints.map((endpoint) => [endpoint.surface_id, endpoint]),
+    const byId = new Map<string, Row>(
+      artifact.endpoints.map((endpoint: Row): [string, Row] => [
+        endpoint.surface_id,
+        endpoint,
+      ]),
     );
 
-    const r1 = byId.get("r1");
+    const r1 = byId.get("r1")!;
     assert.equal(r1.id, "endpoint-rpc-key-1"); // surface.key wins over surfaceStableKey
     assert.equal(r1.layer, "bittensor-base");
     assert.equal(r1.monitoring_status, "monitored");
@@ -241,7 +245,7 @@ describe("buildEndpointResourceArtifact", () => {
     // Object method-support path: ok 50 + archive 15 + block 10 + methods 10 + latency 19.
     assert.equal(r1.score, 104);
 
-    const r2 = byId.get("r2");
+    const r2 = byId.get("r2")!;
     assert.equal(r2.layer, "subnet-app");
     assert.equal(r2.monitoring_status, "monitored");
     assert.equal(r2.publication_state, "monitored");
@@ -250,7 +254,7 @@ describe("buildEndpointResourceArtifact", () => {
     // Array method-support path: ok 50 + methods 15 + latency 20.
     assert.equal(r2.score, 85);
 
-    const r3 = byId.get("r3");
+    const r3 = byId.get("r3")!;
     assert.equal(r3.layer, "data-provider");
     assert.equal(r3.monitoring_status, "not_monitored");
     assert.equal(r3.publication_state, "disabled");
@@ -259,13 +263,13 @@ describe("buildEndpointResourceArtifact", () => {
     assert.equal(r3.health_source, "not-monitored");
     assert.equal(r3.health_stale, false);
 
-    const r4 = byId.get("r4");
+    const r4 = byId.get("r4")!;
     assert.equal(r4.layer, "docs-provider");
     assert.equal(r4.publication_state, "verified");
     assert.equal(r4.monitoring_policy.enabled, false);
     assert.equal(r4.monitoring_policy.source, "not-configured");
 
-    const r5 = byId.get("r5");
+    const r5 = byId.get("r5")!;
     assert.equal(r5.layer, "subnet-app");
     assert.equal(r5.publication_state, "verified");
     assert.equal(r5.monitoring_policy.enabled, false);
@@ -291,7 +295,7 @@ describe("buildEndpointPoolArtifact", () => {
     assert.equal(artifact.eligibility_policy.source, "probe-derived");
     assert.deepEqual(artifact.provider_scores, []);
     assert.deepEqual(
-      artifact.pools.map((pool) => pool.id),
+      artifact.pools.map((pool: Row) => pool.id),
       ["finney-rpc", "finney-wss", "finney-archive"],
     );
     for (const pool of artifact.pools) {
@@ -320,7 +324,9 @@ describe("buildEndpointPoolArtifact", () => {
     });
     assert.equal(artifact.source, "rpc-endpoint-probes");
     // The endpoint flows into the pool — proving the fallback reads rpcArtifact.
-    const rpcPool = artifact.pools.find((pool) => pool.id === "finney-rpc");
+    const rpcPool = artifact.pools.find(
+      (pool: Row) => pool.id === "finney-rpc",
+    )!;
     assert.equal(rpcPool.endpoint_count, 1);
     assert.equal(rpcPool.best_endpoint_id, "endpoint-rpc");
   });
@@ -396,21 +402,26 @@ describe("buildEndpointPoolArtifact", () => {
 
     assert.equal(artifact.source, "endpoint-resource-probes");
     assert.deepEqual(
-      artifact.pools.map((pool) => pool.id),
+      artifact.pools.map((pool: Row) => pool.id),
       ["finney-rpc", "finney-wss", "finney-archive", "test-rpc", "test-wss"],
     );
 
-    const poolsById = new Map(artifact.pools.map((pool) => [pool.id, pool]));
-    const rpcPool = poolsById.get("finney-rpc");
+    const poolsById = new Map<string, Row>(
+      artifact.pools.map((pool: Row): [string, Row] => [pool.id, pool]),
+    );
+    const rpcPool = poolsById.get("finney-rpc")!;
     assert.equal(rpcPool.endpoint_count, 2); // endpoint-a + endpoint-c
     assert.equal(rpcPool.eligible_count, 1); // only endpoint-a is ok + no auth
     assert.equal(rpcPool.best_endpoint_id, "endpoint-a");
     // The pool builder recomputes eligibility: ok + no-auth → eligible; failed → not.
-    const rpcById = new Map(
-      rpcPool.endpoints.map((endpoint) => [endpoint.id, endpoint]),
+    const rpcById = new Map<string, Row>(
+      (rpcPool as Row).endpoints.map((endpoint: Row): [string, Row] => [
+        endpoint.id,
+        endpoint,
+      ]),
     );
-    assert.equal(rpcById.get("endpoint-a").pool_eligible, true);
-    assert.equal(rpcById.get("endpoint-c").pool_eligible, false);
+    assert.equal(rpcById.get("endpoint-a")!.pool_eligible, true);
+    assert.equal(rpcById.get("endpoint-c")!.pool_eligible, false);
     // auth_required/public_safe must survive onto the served pool endpoint
     // objects themselves, not just feed the pool_eligible computed here: the
     // Worker's live overlay (overlayRpcPoolEligibility, src/health-serving.ts)
@@ -418,20 +429,20 @@ describe("buildEndpointPoolArtifact", () => {
     // if they're dropped here the live proxy permanently excludes every
     // endpoint regardless of real health (a production 503 outage, not caught
     // by only asserting pool_eligible on this build-time snapshot).
-    assert.equal(rpcById.get("endpoint-a").auth_required, false);
-    assert.equal(rpcById.get("endpoint-a").public_safe, true);
+    assert.equal(rpcById.get("endpoint-a")!.auth_required, false);
+    assert.equal(rpcById.get("endpoint-a")!.public_safe, true);
 
-    const wssPool = poolsById.get("finney-wss");
+    const wssPool = poolsById.get("finney-wss")!;
     assert.equal(wssPool.endpoint_count, 1);
     assert.equal(wssPool.eligible_count, 0);
     assert.equal(wssPool.best_endpoint_id, null);
 
-    const archivePool = poolsById.get("finney-archive");
+    const archivePool = poolsById.get("finney-archive")!;
     assert.equal(archivePool.endpoint_count, 1); // only the archive_support endpoint
     assert.equal(archivePool.best_endpoint_id, "endpoint-a");
 
-    assert.equal(poolsById.get("test-rpc").endpoint_count, 1);
-    assert.equal(poolsById.get("test-wss").endpoint_count, 1);
+    assert.equal(poolsById.get("test-rpc")!.endpoint_count, 1);
+    assert.equal(poolsById.get("test-wss")!.endpoint_count, 1);
 
     // Provider scores: alpha is fully operational, beta/gamma score 0.
     assert.equal(artifact.provider_scores[0].provider, "alpha");
@@ -440,13 +451,13 @@ describe("buildEndpointPoolArtifact", () => {
     // average: round(score_total / endpoint_count) = round(104 / 1) = 104.
     assert.equal(artifact.provider_scores[0].average_score, 104);
     const beta = artifact.provider_scores.find(
-      (row) => row.provider === "beta",
-    );
+      (row: Row) => row.provider === "beta",
+    )!;
     assert.equal(beta.operational_score, 0);
     assert.equal(beta.degraded_count, 1);
     const gamma = artifact.provider_scores.find(
-      (row) => row.provider === "gamma",
-    );
+      (row: Row) => row.provider === "gamma",
+    )!;
     assert.equal(gamma.operational_score, 0);
     assert.equal(gamma.failed_count, 1);
   });
@@ -468,7 +479,7 @@ describe("buildEndpointPoolArtifact", () => {
         },
       ],
     });
-    const ids = artifact.pools.map((pool) => pool.id);
+    const ids = artifact.pools.map((pool: Row) => pool.id);
     assert.ok(ids.includes("test-rpc"));
     assert.ok(!ids.includes("test-wss"));
   });
@@ -564,7 +575,7 @@ describe("buildEndpointIncidentArtifact", () => {
     assert.equal(artifact.incidents.length, 3);
     // Critical (failed) sorts ahead of warnings; warnings then sort by netuid.
     assert.deepEqual(
-      artifact.incidents.map((incident) => incident.endpoint_id),
+      artifact.incidents.map((incident: Row) => incident.endpoint_id),
       ["e1", "e2", "e3"],
     );
 

@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
+import type { Row } from "./row-type.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
 const SURFACE_ID = "sn-30-taomarketcap-subnet-api";
@@ -32,7 +33,9 @@ const registry = JSON.parse(
     "utf8",
   ),
 );
-const SURFACE = registry.surfaces.find((surface) => surface.id === SURFACE_ID);
+const SURFACE = registry.surfaces.find(
+  (surface: Row) => surface.id === SURFACE_ID,
+);
 
 // A faithful subset of the live SN30 TaoMarketCap subnet feed.
 const BODY = {
@@ -68,15 +71,15 @@ describe("SN30 Endure Network call_subnet_surface verification (#7058)", () => {
   });
 
   test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
-    let requestedUrl;
-    let requestedMethod;
+    let requestedUrl: string | undefined;
+    let requestedMethod: string | undefined;
     const result = await callSubnetSurface(SURFACE, {
       isUnsafeUrl: async () => false,
-      fetchImpl: async (url, init) => {
+      fetchImpl: (async (url: string | URL, init?: RequestInit) => {
         requestedUrl = String(url);
-        requestedMethod = init.method;
+        requestedMethod = init!.method;
         return upstreamResponse();
-      },
+      }) as typeof fetch,
     });
     assert.equal(result.ok, true);
     assert.equal(requestedUrl, SURFACE.url);
@@ -84,8 +87,8 @@ describe("SN30 Endure Network call_subnet_surface verification (#7058)", () => {
     assert.equal(result.status_code, 200);
     assert.equal(result.content_type, "application/json");
     assert.equal(result.truncated, false);
-    assert.equal(result.body.netuid, NETUID);
-    assert.equal(typeof result.body.is_active, "boolean");
+    assert.equal((result.body as Row).netuid, NETUID);
+    assert.equal(typeof (result.body as Row).is_active, "boolean");
   });
 
   test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
@@ -93,7 +96,7 @@ describe("SN30 Endure Network call_subnet_surface verification (#7058)", () => {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: NETUID }],
     };
     const deps = {
-      readArtifact: async (_env, path) =>
+      readArtifact: async (_env: Row, path: string) =>
         path === "/metagraph/operational-surfaces.json"
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
@@ -126,7 +129,7 @@ describe("SN30 Endure Network call_subnet_surface verification (#7058)", () => {
         {},
         deps,
       );
-      const result = (await response.json()).result;
+      const result = ((await response.json()) as Row).result;
       assert.equal(result.isError, false);
       assert.equal(result.structuredContent.surface_id, SURFACE_ID);
       assert.equal(result.structuredContent.status_code, 200);

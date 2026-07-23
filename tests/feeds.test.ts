@@ -6,35 +6,42 @@ import {
   resolveFeedFormat,
   feedLinkHeader,
   __test,
+  type FeedItem,
 } from "../src/feeds.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { mockEnv, type Row } from "./row-type.ts";
 
-let originalCaches;
+let originalCaches: Row | undefined;
+// `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+// not a `globalThis` property -- so stubbing/restoring it for a test needs
+// this cast (matches workers/request-handlers/analytics.ts's own precedent).
+const globalWithCaches = globalThis as unknown as { caches?: Row };
+
 beforeEach(() => {
-  originalCaches = globalThis.caches;
+  originalCaches = globalWithCaches.caches;
 });
 
 afterEach(() => {
   if (originalCaches === undefined) {
-    delete globalThis.caches;
+    delete globalWithCaches.caches;
   } else {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   }
 });
 
 function installMockCache() {
-  const store = new Map();
+  const store = new Map<string, Response>();
   let putCount = 0;
   let matchCount = 0;
-  globalThis.caches = {
+  globalWithCaches.caches = {
     default: {
-      async match(request) {
+      async match(request: Request) {
         matchCount += 1;
         const cached = store.get(request.url);
         return cached ? cached.clone() : undefined;
       },
-      async put(request, response) {
+      async put(request: Request, response: Response) {
         putCount += 1;
         store.set(request.url, response.clone());
       },
@@ -141,8 +148,8 @@ const ENRICHMENT_QUEUE = {
   ],
 };
 
-function makeReadArtifact(fixtures) {
-  return (_env, path) =>
+function makeReadArtifact(fixtures: Row) {
+  return (_env: Env, path: string) =>
     Promise.resolve(
       Object.prototype.hasOwnProperty.call(fixtures, path)
         ? { ok: true, data: fixtures[path] }
@@ -151,11 +158,21 @@ function makeReadArtifact(fixtures) {
 }
 
 async function feed(
-  pathname,
-  { accept, deps, method = "GET", ifNoneMatch } = {},
+  pathname: string,
+  {
+    accept,
+    deps,
+    method = "GET",
+    ifNoneMatch,
+  }: {
+    accept?: string;
+    deps?: Row;
+    method?: string;
+    ifNoneMatch?: string | null;
+  } = {},
 ) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
-  const headers = {};
+  const headers: Row = {};
   if (accept) headers.accept = accept;
   if (ifNoneMatch) headers["if-none-match"] = ifNoneMatch;
   const request = new Request(url, { method, headers });
@@ -165,11 +182,11 @@ async function feed(
     "/metagraph/health/incidents/7.json": INCIDENTS,
     "/metagraph/review/enrichment-queue.json": ENRICHMENT_QUEUE,
   });
-  let handlerDeps;
+  let handlerDeps: Row;
   if (typeof deps === "function") {
     handlerDeps = {
       readArtifact: deps,
-      loadLiveIncidents: async (env) => {
+      loadLiveIncidents: async (env: Env) => {
         const result = await deps(env, "/metagraph/incidents.json");
         return result?.ok ? result.data : null;
       },
@@ -180,7 +197,7 @@ async function feed(
       loadLiveIncidents: deps?.loadLiveIncidents ?? (async () => INCIDENTS),
     };
   }
-  const res = await handleFeedRequest(request, {}, url, handlerDeps);
+  const res = await handleFeedRequest(request, mockEnv(), url, handlerDeps);
   return { res, text: await res.text() };
 }
 
@@ -225,7 +242,7 @@ describe("feeds — path + format parsing", () => {
 describe("feeds — item builders", () => {
   test("registryItems builds subnet, artifact, and coverage items", () => {
     const items = registryItems(CHANGELOG);
-    const titles = items.map((i) => i.title);
+    const titles = items.map((i: FeedItem) => i.title);
     assert.ok(titles.some((t) => t === "Subnet 7 added — Allways"));
     assert.ok(titles.some((t) => t === "Subnet 12 renamed")); // no-name fallback
     assert.ok(!titles.some((t) => t.includes("no-netuid"))); // skipped
@@ -379,8 +396,8 @@ describe("feeds — item builders", () => {
   test("incidentItems marks ongoing vs resolved + filters by netuid", () => {
     const all = incidentItems(INCIDENTS);
     assert.equal(all.length, 2); // the no-incidents surface contributes none
-    const resolved = all.find((i) => i.tags.includes("resolved"));
-    const ongoing = all.find((i) => i.tags.includes("ongoing"));
+    const resolved = all.find((i) => i.tags.includes("resolved"))!;
+    const ongoing = all.find((i) => i.tags.includes("ongoing"))!;
     assert.match(resolved.title, /^Resolved incident/);
     assert.match(resolved.summary, /was down for ~\d+m, 1945 failed probes/);
     assert.match(ongoing.title, /^Ongoing incident/);
@@ -458,12 +475,12 @@ describe("feeds — item builders", () => {
         { netuid: 1, surface_id: "api", incidents: [{ started_at: 9e15 }] },
       ],
     };
-    let item;
+    let item: FeedItem | undefined;
     assert.doesNotThrow(() => {
       item = incidentItems(incidents)[0];
     });
     // The item is still emitted with a valid fallback (request-time) timestamp.
-    assert.ok(Number.isFinite(Date.parse(item.timestamp)));
+    assert.ok(Number.isFinite(Date.parse(item!.timestamp)));
   });
 
   test("incidentItems survives a string-typed out-of-range started_at (no RangeError)", () => {
@@ -478,11 +495,11 @@ describe("feeds — item builders", () => {
         },
       ],
     };
-    let item;
+    let item: FeedItem | undefined;
     assert.doesNotThrow(() => {
       item = incidentItems(incidents)[0];
     });
-    assert.ok(Number.isFinite(Date.parse(item.timestamp)));
+    assert.ok(Number.isFinite(Date.parse(item!.timestamp)));
   });
 
   test("gapsItems builds ranked enrichment targets with lane/kind tags", () => {
@@ -521,7 +538,7 @@ describe("feeds — filterByTag", () => {
     { id: "a", tags: ["registry", "subnet", "added"] },
     { id: "b", tags: ["registry", "coverage"] },
     { id: "c", tags: ["incident", "sn7", "ongoing"] },
-  ];
+  ] as unknown as FeedItem[];
 
   test("a null/empty tag is a no-op (returns the input)", () => {
     assert.equal(filterByTag(items, null), items);
@@ -531,11 +548,11 @@ describe("feeds — filterByTag", () => {
 
   test("keeps only items carrying the tag", () => {
     assert.deepEqual(
-      filterByTag(items, "incident").map((i) => i.id),
+      filterByTag(items, "incident").map((i: FeedItem) => i.id),
       ["c"],
     );
     assert.deepEqual(
-      filterByTag(items, "registry").map((i) => i.id),
+      filterByTag(items, "registry").map((i: FeedItem) => i.id),
       ["a", "b"],
     );
   });
@@ -545,7 +562,10 @@ describe("feeds — filterByTag", () => {
   });
 
   test("an item with no tags array is safely skipped", () => {
-    assert.deepEqual(filterByTag([{ id: "x" }], "incident"), []);
+    assert.deepEqual(
+      filterByTag([{ id: "x" }] as unknown as FeedItem[], "incident"),
+      [],
+    );
   });
 });
 
@@ -591,7 +611,7 @@ describe("feeds — filterSince", () => {
     { id: "old", timestamp: "2026-06-10T00:00:00.000Z" },
     { id: "new", timestamp: "2026-06-20T00:00:00.000Z" },
     { id: "bad", timestamp: "not-a-date" },
-  ];
+  ] as unknown as FeedItem[];
 
   test("a null bound is a no-op (returns the input)", () => {
     assert.equal(filterSince(items, null), items);
@@ -600,7 +620,7 @@ describe("feeds — filterSince", () => {
   test("keeps items at or after the bound; drops unparseable timestamps", () => {
     const kept = filterSince(items, Date.parse("2026-06-15T00:00:00.000Z"));
     assert.deepEqual(
-      kept.map((i) => i.id),
+      kept.map((i: FeedItem) => i.id),
       ["new"],
     );
   });
@@ -608,7 +628,7 @@ describe("feeds — filterSince", () => {
   test("is inclusive of the exact bound", () => {
     const kept = filterSince(items, Date.parse("2026-06-20T00:00:00.000Z"));
     assert.deepEqual(
-      kept.map((i) => i.id),
+      kept.map((i: FeedItem) => i.id),
       ["new"],
     );
   });
@@ -619,7 +639,7 @@ describe("feeds — filterUntil", () => {
     { id: "old", timestamp: "2026-06-10T00:00:00.000Z" },
     { id: "new", timestamp: "2026-06-20T00:00:00.000Z" },
     { id: "bad", timestamp: "not-a-date" },
-  ];
+  ] as unknown as FeedItem[];
 
   test("a null bound is a no-op (returns the input)", () => {
     assert.equal(filterUntil(items, null), items);
@@ -628,7 +648,7 @@ describe("feeds — filterUntil", () => {
   test("keeps items at or before the bound; drops unparseable timestamps", () => {
     const kept = filterUntil(items, Date.parse("2026-06-15T00:00:00.000Z"));
     assert.deepEqual(
-      kept.map((i) => i.id),
+      kept.map((i: FeedItem) => i.id),
       ["old"],
     );
   });
@@ -636,7 +656,7 @@ describe("feeds — filterUntil", () => {
   test("is inclusive of the exact bound", () => {
     const kept = filterUntil(items, Date.parse("2026-06-10T00:00:00.000Z"));
     assert.deepEqual(
-      kept.map((i) => i.id),
+      kept.map((i: FeedItem) => i.id),
       ["old"],
     );
   });
@@ -695,7 +715,9 @@ describe("feeds — ?since= filter", () => {
     assert.equal(res.status, 200);
     const items = JSON.parse(text).items;
     assert.ok(items.length > 0);
-    assert.ok(items.every((it) => (it.tags || []).includes("registry")));
+    assert.ok(
+      items.every((it: FeedItem) => (it.tags || []).includes("registry")),
+    );
   });
 
   test("a malformed since is rejected with 400", async () => {
@@ -729,7 +751,9 @@ describe("feeds — ?until= filter", () => {
     assert.equal(res.status, 200);
     const items = JSON.parse(text).items;
     assert.ok(items.length > 0);
-    assert.ok(items.every((it) => (it.tags || []).includes("registry")));
+    assert.ok(
+      items.every((it: FeedItem) => (it.tags || []).includes("registry")),
+    );
   });
 
   test("a since/until window excludes items outside the bounds", async () => {
@@ -771,9 +795,9 @@ describe("feeds — ?until= filter", () => {
       { id: "midday", timestamp: "2026-06-30T12:00:00.000Z" },
       { id: "last-tick", timestamp: "2026-06-30T23:59:59.999Z" },
       { id: "next-day", timestamp: "2026-07-01T00:00:00.000Z" },
-    ];
+    ] as unknown as FeedItem[];
     assert.deepEqual(
-      filterUntil(items, untilMs).map((i) => i.id),
+      filterUntil(items, untilMs).map((i: FeedItem) => i.id),
       ["midnight", "midday", "last-tick"],
       "keeps all of June 30, excludes July 1",
     );
@@ -781,7 +805,9 @@ describe("feeds — ?until= filter", () => {
     // A same-day since/until pair is a non-empty single-day window, not empty.
     const sinceMs = parseSinceParam("2026-06-30");
     assert.deepEqual(
-      filterUntil(filterSince(items, sinceMs), untilMs).map((i) => i.id),
+      filterUntil(filterSince(items, sinceMs), untilMs).map(
+        (i: FeedItem) => i.id,
+      ),
       ["midnight", "midday", "last-tick"],
     );
   });
@@ -956,8 +982,8 @@ describe("feeds — handleFeedRequest", () => {
   test("registry feed defaults to JSON Feed", async () => {
     const { res, text } = await feed("/api/v1/feeds/registry");
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /application\/feed\+json/);
-    assert.match(res.headers.get("cache-control"), /max-age=600/);
+    assert.match(res.headers.get("content-type")!, /application\/feed\+json/);
+    assert.match(res.headers.get("cache-control")!, /max-age=600/);
     const parsed = JSON.parse(text);
     assert.equal(parsed.version, "https://jsonfeed.org/version/1.1");
     assert.equal(
@@ -970,11 +996,11 @@ describe("feeds — handleFeedRequest", () => {
     const rss = await feed("/api/v1/feeds/registry.rss", {
       accept: "application/feed+json",
     });
-    assert.match(rss.res.headers.get("content-type"), /application\/rss\+xml/);
+    assert.match(rss.res.headers.get("content-type")!, /application\/rss\+xml/);
     assert.match(rss.text, /<rss version="2\.0"/);
     const atom = await feed("/api/v1/feeds/incidents.atom");
     assert.match(
-      atom.res.headers.get("content-type"),
+      atom.res.headers.get("content-type")!,
       /application\/atom\+xml/,
     );
     assert.match(atom.text, /<feed xmlns/);
@@ -984,7 +1010,7 @@ describe("feeds — handleFeedRequest", () => {
     const { res } = await feed("/api/v1/feeds/registry", {
       accept: "text/html, application/rss+xml",
     });
-    assert.match(res.headers.get("content-type"), /application\/rss\+xml/);
+    assert.match(res.headers.get("content-type")!, /application\/rss\+xml/);
     assert.equal(res.headers.get("vary"), "Accept");
   });
 
@@ -992,8 +1018,10 @@ describe("feeds — handleFeedRequest", () => {
     const { res, text } = await feed("/api/v1/feeds/subnets/7");
     assert.equal(res.status, 200);
     const parsed = JSON.parse(text);
-    assert.ok(parsed.items.some((i) => i.id.startsWith("registry:subnet:7")));
-    assert.ok(parsed.items.some((i) => i.id.startsWith("incident:")));
+    assert.ok(
+      parsed.items.some((i: FeedItem) => i.id.startsWith("registry:subnet:7")),
+    );
+    assert.ok(parsed.items.some((i: FeedItem) => i.id.startsWith("incident:")));
     assert.equal(parsed.home_page_url, "https://metagraph.sh/subnets/7");
   });
 
@@ -1001,7 +1029,7 @@ describe("feeds — handleFeedRequest", () => {
     const { res } = await feed("/api/v1/feeds/nope");
     assert.equal(res.status, 404);
     const url = new URL("https://api.metagraph.sh/api/v1/feeds/registry");
-    const bad = await handleFeedRequest(new Request(url), {}, url, {});
+    const bad = await handleFeedRequest(new Request(url), mockEnv(), url, {});
     assert.equal(bad.status, 404);
   });
 
@@ -1088,11 +1116,11 @@ describe("feeds — handleFeedRequest", () => {
 
   test("incidents feed falls back to static artifact when loadLiveIncidents is absent", async () => {
     const url = new URL("https://api.metagraph.sh/api/v1/feeds/incidents");
-    const res = await handleFeedRequest(new Request(url), {}, url, {
+    const res = await handleFeedRequest(new Request(url), mockEnv(), url, {
       readArtifact: makeReadArtifact({
         "/metagraph/incidents.json": INCIDENTS,
       }),
-    });
+    } as unknown as NonNullable<Parameters<typeof handleFeedRequest>[3]>);
     assert.equal(res.status, 200);
     assert.equal(JSON.parse(await res.text()).items.length, 2);
   });
@@ -1100,23 +1128,29 @@ describe("feeds — handleFeedRequest", () => {
   test("gaps feed serves ranked enrichment targets as JSON Feed", async () => {
     const { res, text } = await feed("/api/v1/feeds/gaps");
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /application\/feed\+json/);
+    assert.match(res.headers.get("content-type")!, /application\/feed\+json/);
     const parsed = JSON.parse(text);
     assert.equal(parsed.feed_url, "https://api.metagraph.sh/api/v1/feeds/gaps");
     assert.equal(parsed.home_page_url, "https://metagraph.sh/gaps");
-    assert.ok(parsed.items.some((i) => i.id.startsWith("gaps:sn7:")));
-    assert.ok(parsed.items.every((i) => i.tags.includes("gaps")));
+    assert.ok(parsed.items.some((i: FeedItem) => i.id.startsWith("gaps:sn7:")));
+    assert.ok(parsed.items.every((i: FeedItem) => i.tags.includes("gaps")));
   });
 
   test("gaps feed supports .rss and ?tag= lane filtering", async () => {
     const rss = await feed("/api/v1/feeds/gaps.rss");
-    assert.match(rss.res.headers.get("content-type"), /application\/rss\+xml/);
+    assert.match(rss.res.headers.get("content-type")!, /application\/rss\+xml/);
     assert.match(rss.text, /SN7 Allways — Submit openapi evidence/);
     const filtered = await feed("/api/v1/feeds/gaps?tag=direct-submission");
     const parsed = JSON.parse(filtered.text);
     assert.ok(parsed.items.length > 0);
-    assert.ok(parsed.items.every((i) => i.tags.includes("direct-submission")));
-    assert.ok(parsed.items.every((i) => !i.tags.includes("maintainer-review")));
+    assert.ok(
+      parsed.items.every((i: FeedItem) => i.tags.includes("direct-submission")),
+    );
+    assert.ok(
+      parsed.items.every(
+        (i: FeedItem) => !i.tags.includes("maintainer-review"),
+      ),
+    );
   });
 
   test("gaps feed with no enrichment artifact is a valid empty feed", async () => {
@@ -1134,14 +1168,18 @@ describe("feeds — handleFeedRequest", () => {
     assert.equal(res.status, 200);
     const parsed = JSON.parse(text);
     assert.ok(parsed.items.length > 0);
-    assert.ok(parsed.items.every((i) => i.id.startsWith("registry:coverage")));
+    assert.ok(
+      parsed.items.every((i: FeedItem) => i.id.startsWith("registry:coverage")),
+    );
   });
 
   test("?tag= on a per-subnet feed keeps only that tag across both sources", async () => {
     const { text } = await feed("/api/v1/feeds/subnets/7?tag=incident");
     const parsed = JSON.parse(text);
     assert.ok(parsed.items.length > 0);
-    assert.ok(parsed.items.every((i) => i.id.startsWith("incident:")));
+    assert.ok(
+      parsed.items.every((i: FeedItem) => i.id.startsWith("incident:")),
+    );
   });
 
   test("an unknown ?tag= yields a valid but empty feed", async () => {
@@ -1173,7 +1211,7 @@ describe("feeds — ETag + conditional requests", () => {
         const path = `/api/v1/feeds/${kind}${ext}`;
         const first = await feed(path);
         assert.equal(first.res.status, 200);
-        const etag = first.res.headers.get("etag");
+        const etag = first.res.headers.get("etag")!;
         assert.match(etag, /^W\/"[0-9a-f]+"$/, "a weak ETag is emitted");
 
         const second = await feed(path, { ifNoneMatch: etag });
@@ -1185,7 +1223,7 @@ describe("feeds — ETag + conditional requests", () => {
           "the 304 echoes the validator",
         );
         assert.match(
-          second.res.headers.get("cache-control"),
+          second.res.headers.get("cache-control")!,
           /max-age=600/,
           "the 304 carries the same cache-control",
         );
@@ -1260,7 +1298,7 @@ describe("feeds — ETag + conditional requests", () => {
   test("weak/strong validators compare equal (RFC 7232 weak comparison)", async () => {
     const { res } = await feed("/api/v1/feeds/registry");
     const weak = res.headers.get("etag"); // W/"…"
-    const strong = weak.replace(/^W\//, ""); // "…"
+    const strong = weak!.replace(/^W\//, ""); // "…"
     const revalidate = await feed("/api/v1/feeds/registry", {
       ifNoneMatch: strong,
     });
@@ -1277,7 +1315,7 @@ describe("feeds — Worker dispatch integration", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /application\/rss\+xml/);
+    assert.match(res.headers.get("content-type")!, /application\/rss\+xml/);
     assert.match(await res.text(), /<rss version="2\.0"/);
   });
 
@@ -1295,7 +1333,7 @@ describe("feeds — Worker dispatch integration", () => {
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key === "health:meta") {
             return { last_run_at: "2026-06-15T00:00:00.000Z" };
           }
@@ -1303,7 +1341,7 @@ describe("feeds — Worker dispatch integration", () => {
         },
       },
     };
-    const ctx = { waitUntil: (promise) => promise };
+    const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
       env,
@@ -1367,7 +1405,7 @@ describe("feeds — Worker dispatch integration", () => {
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key === "health:meta") {
             return { last_run_at: "2026-06-15T00:00:00.000Z" };
           }
@@ -1375,7 +1413,7 @@ describe("feeds — Worker dispatch integration", () => {
         },
       },
     };
-    const ctx = { waitUntil: (promise) => promise };
+    const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
 
     const future = await handleRequest(
       new Request(
@@ -1424,7 +1462,7 @@ describe("feeds — Worker dispatch integration", () => {
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key === "health:meta") {
             return { last_run_at: "2026-06-15T00:00:00.000Z" };
           }
@@ -1432,7 +1470,7 @@ describe("feeds — Worker dispatch integration", () => {
         },
       },
     };
-    const ctx = { waitUntil: (promise) => promise };
+    const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
 
     const past = await handleRequest(
       new Request(
@@ -1475,7 +1513,7 @@ describe("feeds — Worker dispatch integration", () => {
   test("handleRequest keys edge-cached feeds by limit", async () => {
     installMockCache();
     const env = createLocalArtifactEnv();
-    const ctx = { waitUntil: (promise) => promise };
+    const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
 
     // ?limit is threaded into the feed edge-cache key, so a capped request and a
     // later unlimited request do not share a cache slot.
@@ -1514,7 +1552,7 @@ describe("feeds — Worker dispatch integration", () => {
     // The Worker injects the shared errorResponse, so feed errors carry the
     // same envelope + headers as every other API error (not a bare body).
     assert.equal(res.headers.get("x-metagraph-error-code"), "feed_not_found");
-    assert.match(res.headers.get("content-type"), /application\/json/);
+    assert.match(res.headers.get("content-type")!, /application\/json/);
     const body = await res.json();
     assert.equal(body.ok, false);
     assert.equal(body.schema_version, 1);

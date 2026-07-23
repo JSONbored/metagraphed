@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import * as listQuery from "../workers/list-query.ts";
 import {
   ENDPOINT_POOLS_ARTIFACT,
@@ -12,6 +12,10 @@ import {
   loadEndpointPoolsList,
 } from "../src/endpoint-pools-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -38,7 +42,7 @@ const SAMPLE_BLOB = {
   ],
 };
 
-function readArtifact(_env, path) {
+function readArtifact(_env: Env, path: string) {
   if (path === ENDPOINT_POOLS_ARTIFACT) {
     return Promise.resolve({ ok: true, data: SAMPLE_BLOB });
   }
@@ -79,42 +83,42 @@ describe("endpoint-pools-mcp", () => {
   test("endpointPoolsQueryUrl rejects invalid kind", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ kind: "bogus" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointPoolsQueryUrl rejects empty id", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ id: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointPoolsQueryUrl rejects non-string id", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ id: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointPoolsQueryUrl rejects non-numeric range bounds", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ min_eligible_count: "lots" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointPoolsQueryUrl rejects negative cursor", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ cursor: -1 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointPoolsQueryUrl rejects empty fields projection", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ fields: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
@@ -126,34 +130,34 @@ describe("endpoint-pools-mcp", () => {
   test("endpointPoolsQueryUrl rejects a non-numeric limit", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ limit: "lots" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointPoolsQueryUrl rejects a sub-minimum limit", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ limit: 0 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointPoolsQueryUrl rejects non-string fields", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ fields: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("endpointPoolsQueryUrl rejects a limit above the MCP maximum", () => {
     assert.throws(
       () => endpointPoolsQueryUrl({ limit: 500 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadEndpointPoolsList returns filtered rows with pagination meta", async () => {
     const out = await loadEndpointPoolsList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { id: "finney-rpc" },
     );
     assert.equal(out.returned, 1);
@@ -163,7 +167,7 @@ describe("endpoint-pools-mcp", () => {
 
   test("loadEndpointPoolsList applies range filters", async () => {
     const out = await loadEndpointPoolsList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { min_eligible_count: 2 },
     );
     assert.equal(out.returned, 2);
@@ -175,7 +179,7 @@ describe("endpoint-pools-mcp", () => {
 
   test("loadEndpointPoolsList sorts and pages the collection", async () => {
     const out = await loadEndpointPoolsList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { sort: "eligible_count", order: "desc", limit: 1 },
     );
     assert.equal(out.returned, 1);
@@ -186,13 +190,16 @@ describe("endpoint-pools-mcp", () => {
 
   test("loadEndpointPoolsList uses an injected readArtifact dep", async () => {
     const out = await loadEndpointPoolsList(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+      {
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
       {},
       {
-        readArtifact: async () => ({
+        readArtifact: (async () => ({
           ok: true,
           data: { pools: [{ id: "test" }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
     );
     assert.equal(out.pools[0].id, "test");
@@ -203,15 +210,15 @@ describe("endpoint-pools-mcp", () => {
       () =>
         loadEndpointPoolsList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_not_found",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -220,15 +227,15 @@ describe("endpoint-pools-mcp", () => {
       () =>
         loadEndpointPoolsList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_timeout",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) =>
+      (err: Row) =>
         err.code === "artifact_timeout" &&
         /endpoint-pools\.json/.test(err.message),
     );
@@ -238,10 +245,10 @@ describe("endpoint-pools-mcp", () => {
     await assert.rejects(
       () =>
         loadEndpointPoolsList(
-          { env: {}, readArtifact },
+          { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
           { fields: "not_a_column" },
         ),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
@@ -249,16 +256,16 @@ describe("endpoint-pools-mcp", () => {
     await assert.rejects(
       () =>
         loadEndpointPoolsList(
-          { env: {}, readArtifact },
+          { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
           { min_eligible_count: 9, max_eligible_count: 2 },
         ),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadEndpointPoolsList projects row fields when requested", async () => {
     const out = await loadEndpointPoolsList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { fields: "id,eligible_count", limit: 1 },
     );
     assert.deepEqual(out.pools[0], {
@@ -270,14 +277,14 @@ describe("endpoint-pools-mcp", () => {
   test("loadEndpointPoolsList preserves array notes from the artifact", async () => {
     const out = await loadEndpointPoolsList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: {
             notes: ["advisory only"],
             pools: [{ id: "solo" }],
           },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -287,11 +294,11 @@ describe("endpoint-pools-mcp", () => {
   test("loadEndpointPoolsList omits nullable artifact metadata when absent", async () => {
     const out = await loadEndpointPoolsList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { pools: [{ id: "solo" }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -302,11 +309,11 @@ describe("endpoint-pools-mcp", () => {
   test("loadEndpointPoolsList treats a non-array pools key as empty", async () => {
     const out = await loadEndpointPoolsList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { pools: null },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -320,7 +327,10 @@ describe("endpoint-pools-mcp", () => {
       meta: {},
     });
     try {
-      const out = await loadEndpointPoolsList({ env: {}, readArtifact }, {});
+      const out = await loadEndpointPoolsList(
+        { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
+        {},
+      );
       assert.equal(out.total, 2);
       assert.equal(out.returned, 2);
       assert.equal(out.limit, 2);
@@ -338,12 +348,15 @@ describe("endpoint-pools-mcp", () => {
       () =>
         loadEndpointPoolsList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: true, data: null }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: true,
+              data: null,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -352,12 +365,14 @@ describe("endpoint-pools-mcp", () => {
       () =>
         loadEndpointPoolsList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: false }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: false,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "artifact_unavailable",
     );
   });
 
