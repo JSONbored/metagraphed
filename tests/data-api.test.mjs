@@ -5994,11 +5994,15 @@ test("account-balances-sync rejects a body over the byte cap (413)", async () =>
 });
 
 test("account-balances-sync rejects more rows than the per-request cap (413)", async () => {
-  const rows = Array.from({ length: 1_000_001 }, (_, i) =>
-    accountBalanceRow({ ss58: `5Whale${i}` }),
-  );
-  const res = await postAccountBalances(rows, {
+  // #7830: materializing 1,000,001 full accountBalanceRow objects (plus the
+  // ~180MB JSON.stringify) blew vitest's default 5s timeout on a loaded
+  // machine. The handler checks the row cap straight after JSON.parse and
+  // BEFORE any per-row shape validation (deliberately -- the cap exists so a
+  // hostile payload never pays for O(n) validation), so the smallest
+  // parseable element exercises the identical 413 branch at ~2MB.
+  const res = await postAccountBalances(null, {
     secret: ACCOUNT_BALANCES_SYNC_SECRET,
+    raw: "[0" + ",0".repeat(1_000_000) + "]",
   });
   expect(res.status).toBe(413);
 });
