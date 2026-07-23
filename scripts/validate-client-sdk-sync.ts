@@ -53,7 +53,20 @@ export const SYNC_FAILURE_HINT =
 // `changedFiles` is a list of repo-relative POSIX paths (deletions included is
 // fine — a deleted contract file is still a contract change). `versionChanged`
 // is true when packages/client/package.json "version" differs from the base.
-export function evaluateClientSdkSync({ changedFiles, versionChanged }) {
+interface ClientSdkSyncResult {
+  contractChanged: boolean;
+  contractFiles: string[];
+  versionChanged: boolean;
+  ok: boolean;
+}
+
+export function evaluateClientSdkSync({
+  changedFiles,
+  versionChanged,
+}: {
+  changedFiles: string[];
+  versionChanged: boolean;
+}): ClientSdkSyncResult {
   const normalized = changedFiles
     .map((file) => file.trim().replace(/\\/g, "/"))
     .filter(Boolean);
@@ -70,12 +83,12 @@ export function evaluateClientSdkSync({ changedFiles, versionChanged }) {
   };
 }
 
-function valueAfter(flag) {
+function valueAfter(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-function git(args) {
+function git(args: string[]): string {
   return execFileSync("git", args, {
     cwd: repoRoot,
     encoding: "utf8",
@@ -83,11 +96,21 @@ function git(args) {
   }).trim();
 }
 
-function resolveHeadRef() {
+function resolveHeadRef(): string {
   return valueAfter("--head-sha") || process.env.HEAD_SHA || "HEAD";
 }
 
-export function resolveDiffBase({ explicitBase, baseRef, headRef, gitFn }) {
+export function resolveDiffBase({
+  explicitBase,
+  baseRef,
+  headRef,
+  gitFn,
+}: {
+  explicitBase: string | undefined;
+  baseRef: string;
+  headRef: string;
+  gitFn: (args: string[]) => string;
+}): string {
   if (explicitBase) return gitFn(["merge-base", explicitBase, headRef]);
 
   try {
@@ -105,7 +128,7 @@ export function resolveDiffBase({ explicitBase, baseRef, headRef, gitFn }) {
 // PR base tip and head SHA explicitly; do not diff those endpoints directly,
 // because a stale PR would include files changed only on the base branch.
 // Instead, resolve the true merge base for the supplied endpoints.
-function resolveBaseRef(headRef) {
+function resolveBaseRef(headRef: string): string {
   return resolveDiffBase({
     explicitBase: valueAfter("--base-sha") || process.env.BASE_SHA,
     baseRef: valueAfter("--base-ref") || process.env.BASE_REF || "main",
@@ -114,7 +137,7 @@ function resolveBaseRef(headRef) {
   });
 }
 
-function changedFilesFromGit(baseRef, headRef) {
+function changedFilesFromGit(baseRef: string, headRef: string): string[] {
   const out = git(["diff", "--name-only", baseRef, headRef]);
   return out ? out.split(/\r?\n/) : [];
 }
@@ -122,7 +145,7 @@ function changedFilesFromGit(baseRef, headRef) {
 // Read the "version" field of the client manifest as committed at a git ref.
 // Returns null when the file does not exist at that ref (e.g. the package was
 // added in this PR).
-function clientVersionAt(ref) {
+function clientVersionAt(ref: string): string | null {
   try {
     const content = git(["show", `${ref}:${CLIENT_MANIFEST_PATH}`]);
     return JSON.parse(content).version ?? null;
@@ -131,7 +154,7 @@ function clientVersionAt(ref) {
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   const headRef = resolveHeadRef();
   const baseRef = resolveBaseRef(headRef);
 

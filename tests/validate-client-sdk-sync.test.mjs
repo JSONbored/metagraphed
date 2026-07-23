@@ -8,7 +8,7 @@ import {
   CLIENT_MANIFEST_PATH,
   evaluateClientSdkSync,
   resolveDiffBase,
-} from "../scripts/validate-client-sdk-sync.mjs";
+} from "../scripts/validate-client-sdk-sync.ts";
 
 describe("client-SDK drift gate (diff logic)", () => {
   it("fails when a contract file changed but the client version did not", () => {

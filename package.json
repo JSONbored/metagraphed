@@ -63,7 +63,7 @@
     "validate:schema-enums": "node scripts/validate-schema-enums.ts",
     "validate:openapi-examples": "node scripts/validate-openapi-examples.ts",
     "validate:generated-client": "node scripts/validate-generated-client.ts",
-    "validate:client-sdk-sync": "node scripts/validate-client-sdk-sync.mjs",
+    "validate:client-sdk-sync": "node scripts/validate-client-sdk-sync.ts",
     "contract:summary": "node scripts/contract-change-summary.ts",
     "validate:artifact-budgets": "node scripts/validate-artifact-budgets.ts",
     "validate:docs": "node scripts/validate-docs.ts",
