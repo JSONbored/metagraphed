@@ -73,7 +73,7 @@
     "assert:probe-health": "node scripts/assert-published-probe-health.ts",
     "validate:intake": "node scripts/validate-intake.ts",
     "validate:private-boundary": "node scripts/validate-private-boundary.ts",
-    "validate:workflows": "node scripts/validate-workflows.mjs",
+    "validate:workflows": "node scripts/validate-workflows.ts",
     "validate:migrations": "node scripts/validate-migrations.ts",
     "migrate": "node scripts/apply-migrations.ts",
     "migrate:dry-run": "node scripts/apply-migrations.ts --dry-run",

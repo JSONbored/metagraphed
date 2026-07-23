@@ -62,12 +62,12 @@ jobs:
   # `pull_request` event, where a real merge-base diff exists.
   #
   # Two further outputs, independent of docs_only and of each other: `Validate
-  # workflows` (scripts/validate-workflows.mjs) reads ONLY
+  # workflows` (scripts/validate-workflows.ts) reads ONLY
   # `.github/workflows/*.yml`/`.yaml`, and `Validate migration sequence`
   # (scripts/validate-migrations.ts) reads ONLY `migrations/*.sql` — verified
   # by reading each script's full source; neither imports anything outside its
   # own directory. Each flag also matches its OWN validator script path
-  # (scripts/validate-workflows.mjs / scripts/validate-migrations.ts) directly,
+  # (scripts/validate-workflows.ts / scripts/validate-migrations.ts) directly,
   # so editing the validator's logic itself still runs it even when the diff
   # doesn't touch `.github/workflows/` or `migrations/`. A PR can be
   # workflow-only or migration-only without being a docs PR, so these are
@@ -161,7 +161,7 @@ jobs:
           # Narrow, independent skips -- see the job comment above for the
           # file:line evidence that these two validators' entire footprint is
           # their own directory.
-          if grep -qE '^\.github/workflows/|^scripts/validate-workflows\.mjs$' changed-files.txt; then
+          if grep -qE '^\.github/workflows/|^scripts/validate-workflows\.ts$' changed-files.txt; then
             echo "run_workflows_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_workflows_validation=false" >> "$GITHUB_OUTPUT"
@@ -621,7 +621,7 @@ jobs:
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:surface
 
-      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-workflows.mjs
+      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-workflows.ts
       # reads ONLY .github/workflows/*.yml/.yaml, so a PR with zero changes under
       # that path cannot affect this validator's result. See the `changes` job
       # comment for the full rationale.

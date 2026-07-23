@@ -6,7 +6,7 @@ const workflowRoot = path.join(repoRoot, ".github/workflows");
 const workflows = (await fs.readdir(workflowRoot))
   .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
   .sort();
-const errors = [];
+const errors: string[] = [];
 
 // Deploy-only workflows that intentionally never check out repo content are exempt from the
 // "missing checkout action" rule below. ui-preview-deploy.yml (workflow_run-triggered, holds
@@ -263,13 +263,13 @@ if (errors.length > 0) {
 
 console.log(`Validated ${workflows.length} workflow file(s).`);
 
-function check(condition, workflow, message) {
+function check(condition: unknown, workflow: string, message: string): void {
   if (!condition) {
     errors.push(`${workflow}: ${message}`);
   }
 }
 
-function workflowJobBlock(content, jobName) {
+function workflowJobBlock(content: string, jobName: string): string {
   const match = content.match(
     new RegExp(
       String.raw`^  ${escapeRegExp(jobName)}:\n[\s\S]*?(?=^  [A-Za-z0-9_-]+:\n|(?![\s\S]))`,
@@ -279,7 +279,7 @@ function workflowJobBlock(content, jobName) {
   return match?.[0] || "";
 }
 
-function workflowStepBlock(content, stepName) {
+function workflowStepBlock(content: string, stepName: string): string {
   const marker = `- name: ${stepName}`;
   const start = content.indexOf(marker);
   if (start === -1) return "";
@@ -287,14 +287,17 @@ function workflowStepBlock(content, stepName) {
   return content.slice(start, next === -1 ? undefined : next);
 }
 
-function forkCodecovStepUsesForkBranchPrefix(content, stepName) {
+function forkCodecovStepUsesForkBranchPrefix(
+  content: string,
+  stepName: string,
+): boolean {
   const block = workflowStepBlock(content, stepName);
   return /override_branch:\s*\$\{\{\s*github\.event\.pull_request\.head\.repo\.owner\.login\s*\}\}:\$\{\{\s*github\.event\.pull_request\.head\.ref\s*\}\}/.test(
     block,
   );
 }
 
-function stepBlock(content, stepName) {
+function stepBlock(content: string, stepName: string): string {
   const match = content.match(
     new RegExp(
       String.raw`^      - name: ${escapeRegExp(stepName)}\n[\s\S]*?(?=^      - name: |(?![\s\S]))`,
@@ -304,6 +307,6 @@ function stepBlock(content, stepName) {
   return match?.[0] || "";
 }
 
-function escapeRegExp(value) {
+function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

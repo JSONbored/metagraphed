@@ -1,4 +1,4 @@
-// Regression coverage for #6362: scripts/validate-workflows.mjs presence-enforces
+// Regression coverage for #6362: scripts/validate-workflows.ts presence-enforces
 // a set of env vars on the publish workflow (it fails CI if the workflow YAML does
 // not literally set them). Every env var it POSITIVELY requires must actually be
 // read by a script in the tree — otherwise the presence-check guards a documented,
@@ -30,7 +30,7 @@ const PRESENCE_CHECK =
 
 function envVarsEnforcedByWorkflowValidator() {
   const source = readFileSync(
-    path.join(repoRoot, "scripts/validate-workflows.mjs"),
+    path.join(repoRoot, "scripts/validate-workflows.ts"),
     "utf8",
   );
   const required = new Set();
@@ -73,18 +73,18 @@ function isReadSomewhere(sources, name) {
   );
 }
 
-describe("validate-workflows.mjs env-var enforcement (#6362)", () => {
+describe("validate-workflows.ts env-var enforcement (#6362)", () => {
   test("every env var it requires a workflow to set is read by a script", () => {
     const { required } = envVarsEnforcedByWorkflowValidator();
     assert.ok(
       required.size > 0,
-      "expected validate-workflows.mjs to presence-enforce at least one env var",
+      "expected validate-workflows.ts to presence-enforce at least one env var",
     );
     const sources = scriptSourcesJoined();
     for (const name of required) {
       assert.ok(
         isReadSomewhere(sources, name),
-        `${name} is presence-enforced in scripts/validate-workflows.mjs but no script reads process.env.${name}`,
+        `${name} is presence-enforced in scripts/validate-workflows.ts but no script reads process.env.${name}`,
       );
     }
   });
