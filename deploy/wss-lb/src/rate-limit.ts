@@ -53,8 +53,7 @@ interface ConnectionLimiterOptions {
 }
 
 type ConnectionCheckResult =
-  | { ok: true }
-  | { ok: false; reason: string; retryAfterSeconds: number };
+  { ok: true } | { ok: false; reason: string; retryAfterSeconds: number };
 
 interface AttemptWindow {
   count: number;

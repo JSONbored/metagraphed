@@ -1,5 +1,5 @@
 // Drift guard: the wss-lb ships a SELF-CONTAINED copy of the RPC safety policy
-// (deploy/wss-lb/src/rpc-policy.mjs) because its standalone container can't import
+// (deploy/wss-lb/src/rpc-policy.ts) because its standalone container can't import
 // workers/config.mjs. This test fails CI if that copy drifts from the source of
 // truth, so the public WSS proxy never enforces a stale allowlist.
 import assert from "node:assert/strict";
@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import * as worker from "../workers/config.ts";
-import * as wsslb from "../deploy/wss-lb/src/rpc-policy.mjs";
+import * as wsslb from "../deploy/wss-lb/src/rpc-policy.ts";
 
 test("wss-lb RPC policy matches workers/config.mjs (no drift)", () => {
   assert.equal(wsslb.MAX_RPC_BODY_BYTES, worker.MAX_RPC_BODY_BYTES);

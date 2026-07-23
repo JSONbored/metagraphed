@@ -31,7 +31,10 @@ function rpcError(id: unknown, code: number, message: string): string {
 
 type FrameValidation = { ok: true } | { ok: false; reply: string };
 
-function validateClientFrame(data: RawData, isBinary: boolean): FrameValidation {
+function validateClientFrame(
+  data: RawData,
+  isBinary: boolean,
+): FrameValidation {
   if (isBinary)
     return {
       ok: false,

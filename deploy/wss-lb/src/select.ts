@@ -45,9 +45,7 @@ function blockOf(e: PoolEndpoint): number | null {
 // testnet member, liveness via the breaker/failover" for test. We must NOT also
 // require status === "ok": static testnet wss is pool_eligible with
 // status "unknown", and a status gate would drop the whole testnet pool.
-export function isWssUpstream(
-  e: unknown,
-): e is PoolEndpoint & { url: string } {
+export function isWssUpstream(e: unknown): e is PoolEndpoint & { url: string } {
   const candidate = e as PoolEndpoint | null | undefined;
   return (
     Boolean(candidate) &&

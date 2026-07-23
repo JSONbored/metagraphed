@@ -19,7 +19,7 @@
 // src/observability.ts).
 import http from "node:http";
 
-import { WebSocketServer, type WebSocket } from "ws";
+import { WebSocketServer } from "ws";
 
 import { MAX_RPC_BODY_BYTES } from "./rpc-policy.ts";
 import { proxy } from "./proxy.ts";
@@ -102,10 +102,7 @@ async function refresh() {
       lastRefresh = Date.now();
     }
   } catch (e) {
-    log(
-      "refresh failed:",
-      String((e as Error)?.message || e).slice(0, 160),
-    );
+    log("refresh failed:", String((e as Error)?.message || e).slice(0, 160));
   }
   const stale = !lastRefresh || Date.now() - lastRefresh > REFRESH_MS * 3;
   if (stale && !wasStale) {
