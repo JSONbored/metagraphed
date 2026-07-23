@@ -44,8 +44,9 @@ const generatedAt =
 
 const document = buildProvenanceReviewQueue({
   candidates,
-  nativeSubnets: nativeSnapshot.subnets,
-  verificationResults: verification.results || [],
+  nativeSubnets: nativeSnapshot.subnets as Record<string, unknown>[],
+  verificationResults:
+    (verification.results as Record<string, unknown>[]) || [],
   subnets,
   generatedAt,
 });
@@ -55,6 +56,9 @@ if (dryRun) {
 } else {
   await writeRepositoryJson(outputPath, document);
   console.log(
-    stableStringify({ mode: "write", queued: document.queue.length }),
+    stableStringify({
+      mode: "write",
+      queued: (document.queue as unknown[]).length,
+    }),
   );
 }

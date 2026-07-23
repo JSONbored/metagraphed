@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { describe, test } from "vitest";
-import { buildSignedEnvelope } from "../scripts/sign-staged-neurons.mjs";
+import { buildSignedEnvelope } from "../scripts/sign-staged-neurons.ts";
 
 const KEY = "test-staging-signing-key";
 

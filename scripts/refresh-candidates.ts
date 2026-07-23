@@ -35,7 +35,7 @@ const steps: [string, string[]][] = [
   // verification just refreshed above; regenerate it in lockstep so the publish's
   // `npm run validate` (which drift-checks the committed queue) sees a consistent
   // state instead of failing whenever discovery finds something new.
-  ["review-queue", ["scripts/review-queue.mjs", "--write"]],
+  ["review-queue", ["scripts/review-queue.ts", "--write"]],
 ];
 
 for (const [label, args] of steps) {

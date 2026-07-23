@@ -1241,7 +1241,7 @@ async function handleRollupAccountEventsDaily(request, env) {
 // loader (loadStagedSubnetHyperparams) having been retired alongside D1's
 // copy of these two tables. .github/workflows/refresh-subnet-hyperparams.yml's
 // sign-and-stage job POSTs the signed envelope produced by
-// scripts/sign-staged-neurons.mjs (its {schema_version, hmac_sha256, rows}
+// scripts/sign-staged-neurons.ts (its {schema_version, hmac_sha256, rows}
 // shape, kept for the HMAC utility even with no D1 R2-stage step left to
 // authenticate) directly here -- the hmac_sha256 field itself is ignored: it
 // exists to authenticate an R2 object drop across an untrusted intermediate

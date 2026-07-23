@@ -42,7 +42,7 @@ stubs entirely. Remove `submission-policy.mjs`, `submission-pr.mjs`,
 
 Preserve the **only live survivors** — the owner-token match + GitHub-login helpers
 that the build's candidate→surface promotion (`generated-overlays.ts`) and
-`surface:add` depend on — in a focused `scripts/registry-identity.mjs`.
+`surface:add` depend on — in a focused `scripts/registry-identity.ts`.
 
 ## Consequences
 
@@ -54,7 +54,7 @@ that the build's candidate→surface promotion (`generated-overlays.ts`) and
   the preflight and are reviewed by the external gate).
 - **The candidate → verified-surface _trust_ model ([ADR 0004](0004-candidate-trust-model.md))
   endures** — owner-match + liveness-before-promotion still gate
-  machine-discovered surfaces, now via `registry-identity.mjs`; only the
+  machine-discovered surfaces, now via `registry-identity.ts`; only the
   _community-candidate-file intake_ it described is retired.
 - **0009 is now literally true** — "metagraphed pre-gates nothing" no longer has a
   residual pre-gate contradicting it.

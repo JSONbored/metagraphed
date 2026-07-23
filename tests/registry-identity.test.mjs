@@ -6,7 +6,7 @@ import {
   ownerTokensRelated,
   providerIdentityTokens,
   urlOwnerTokens,
-} from "../scripts/registry-identity.mjs";
+} from "../scripts/registry-identity.ts";
 
 // Owner-token matching guards the candidate→surface promotion in
 // scripts/generated-overlays.ts: an ownership-sensitive community surface is

@@ -29,7 +29,7 @@ import {
   subnetSurfaceKey,
   writeRepositoryJson,
 } from "./lib.ts";
-import { normalizeGitHubLogin } from "./registry-identity.mjs";
+import { normalizeGitHubLogin } from "./registry-identity.ts";
 
 const args = process.argv.slice(2);
 const write = args.includes("--write");

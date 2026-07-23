@@ -2,7 +2,7 @@
 
 Status: accepted (2026-06-12) · the **trust model endures** (owner-match +
 liveness-before-promotion still gate machine-discovered surfaces, now via
-`scripts/registry-identity.mjs`); the **community-candidate-file intake** it
+`scripts/registry-identity.ts`); the **community-candidate-file intake** it
 described is superseded by [ADR 0008](0008-subnet-data-model.md) (one file per
 subnet) + [ADR 0011](0011-retire-submission-preflight.md) (preflight retired).
 

@@ -22,7 +22,7 @@ import {
   ownerTokensMatch,
   providerIdentityTokens,
   urlOwnerTokens,
-} from "./registry-identity.mjs";
+} from "./registry-identity.ts";
 
 type Row = Record<string, unknown>;
 
