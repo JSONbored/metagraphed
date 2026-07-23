@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { Skeleton } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { DomainsRollup } from "@/components/metagraphed/domains-rollup";
-import { PageHero, ActionBar, ShareButton } from "@jsonbored/ui-kit";
+import { ActionBar, ShareButton } from "@jsonbored/ui-kit";
+import { AsyncPanel, PageMasthead, PanelSkeleton } from "@/components/metagraphed/primitives";
+import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
 
 export const Route = createFileRoute("/domains")({
   head: () => ({
@@ -27,20 +26,10 @@ export const Route = createFileRoute("/domains")({
   component: DomainsPage,
 });
 
-function DomainsRollupSkeleton() {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: 8 }, (_, i) => (
-        <Skeleton key={i} className="h-12 w-full" />
-      ))}
-    </div>
-  );
-}
-
 function DomainsPage() {
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Domains"
@@ -51,11 +40,13 @@ function DomainsPage() {
           </ActionBar>
         }
       />
-      <QueryErrorBoundary>
-        <Suspense fallback={<DomainsRollupSkeleton />}>
-          <DomainsRollup />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="domains"
+        fallback={<PanelSkeleton height="md" />}
+        retryQueryKeys={[metagraphedQueryKey("domains"), metagraphedQueryKey("subnets")]}
+      >
+        <DomainsRollup />
+      </AsyncPanel>
       <ApiSourceFooter paths={["/api/v1/domains", "/api/v1/subnets"]} />
     </AppShell>
   );
