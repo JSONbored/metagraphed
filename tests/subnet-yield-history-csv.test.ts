@@ -9,7 +9,7 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
   canonicalSubnetYieldHistoryCachePath,
   handleSubnetYieldHistory,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const NETUID = 7;
@@ -51,8 +51,8 @@ describe("handleSubnetYieldHistory CSV export", () => {
   test("returns header-only CSV when D1 is cold", async () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=csv`),
     );
     assert.equal(res.status, 200);
@@ -104,8 +104,8 @@ describe("handleSubnetYieldHistory CSV export", () => {
     };
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
-      env,
-      NETUID,
+      env as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=csv`),
     );
     assert.equal(res.status, 200);
@@ -119,8 +119,8 @@ describe("handleSubnetYieldHistory CSV export", () => {
   test("rejects an unsupported format value", async () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=pdf`),
     );
     const body = await errorJson(res);
@@ -130,8 +130,8 @@ describe("handleSubnetYieldHistory CSV export", () => {
   test("rejects an empty format parameter", async () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/yield/history?format=`),
     );
     const body = await errorJson(res);

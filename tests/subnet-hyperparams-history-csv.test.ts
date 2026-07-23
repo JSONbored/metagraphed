@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
-import { handleSubnetHyperparamsHistory } from "../workers/request-handlers/entities.mjs";
+import { handleSubnetHyperparamsHistory } from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const NETUID = 7;
@@ -45,8 +45,8 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
   test("returns header-only CSV when Postgres is unconfigured", async () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/hyperparameters/history?format=csv`),
     );
     assert.equal(res.status, 200);
@@ -80,8 +80,8 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
     };
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
-      env,
-      NETUID,
+      env as unknown as Env,
+      String(NETUID),
       url(
         `/api/v1/subnets/${NETUID}/hyperparameters/history?limit=50&format=csv`,
       ),
@@ -99,8 +99,8 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
   test("rejects an unsupported format value", async () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/hyperparameters/history?format=pdf`),
     );
     const body = await errorJson(res);
@@ -110,8 +110,8 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
   test("rejects an empty format parameter", async () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/hyperparameters/history?format=`),
     );
     const body = await errorJson(res);

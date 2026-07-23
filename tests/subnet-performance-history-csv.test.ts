@@ -9,7 +9,7 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
   canonicalSubnetPerformanceHistoryCachePath,
   handleSubnetPerformanceHistory,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const NETUID = 7;
@@ -49,8 +49,8 @@ describe("handleSubnetPerformanceHistory CSV export", () => {
   test("returns header-only CSV when D1 is cold", async () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(
         `/api/v1/subnets/${NETUID}/performance/history?window=30d&format=csv`,
       ),
@@ -113,8 +113,8 @@ describe("handleSubnetPerformanceHistory CSV export", () => {
     };
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
-      env,
-      NETUID,
+      env as unknown as Env,
+      String(NETUID),
       url(
         `/api/v1/subnets/${NETUID}/performance/history?window=30d&format=csv`,
       ),
@@ -130,8 +130,8 @@ describe("handleSubnetPerformanceHistory CSV export", () => {
   test("rejects an unsupported format value", async () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(
         `/api/v1/subnets/${NETUID}/performance/history?window=30d&format=pdf`,
       ),
@@ -143,8 +143,8 @@ describe("handleSubnetPerformanceHistory CSV export", () => {
   test("rejects an empty format parameter", async () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/performance/history?format=`),
     );
     const body = await errorJson(res);

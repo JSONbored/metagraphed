@@ -12,7 +12,7 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
   handleAccount,
   handleAccountEntities,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 import { handleRequest } from "../workers/api.mjs";
 import type { Row } from "./row-type.ts";
 
@@ -70,7 +70,7 @@ describe("handleAccountEntities", () => {
     const body = await json(
       await handleAccountEntities(
         req(`/api/v1/accounts/${SS58}/entities`),
-        {},
+        {} as unknown as Env,
         SS58,
       ),
     );
@@ -95,7 +95,7 @@ describe("handleAccountEntities", () => {
     const body = await json(
       await handleAccountEntities(
         req(`/api/v1/accounts/${SS58}/entities`),
-        env,
+        env as unknown as Env,
         SS58,
       ),
     );
@@ -121,7 +121,7 @@ describe("handleAccountEntities", () => {
     const body = await json(
       await handleAccountEntities(
         req(`/api/v1/accounts/${SS58}/entities`),
-        env,
+        env as unknown as Env,
         SS58,
       ),
     );
@@ -144,7 +144,11 @@ describe("handleAccount labels join", () => {
         review: { state: "maintainer-reviewed" },
       },
     ]);
-    const res = await handleAccount(req(`/api/v1/accounts/${SS58}`), env, SS58);
+    const res = await handleAccount(
+      req(`/api/v1/accounts/${SS58}`),
+      env as unknown as Env,
+      SS58,
+    );
     const body = await json(res);
     assert.equal(body.data.labels.length, 1);
     assert.equal(body.data.labels[0].name, "Example Exchange");

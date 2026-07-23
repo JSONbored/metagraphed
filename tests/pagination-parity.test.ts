@@ -15,7 +15,7 @@ import {
   MAX_OFFSET,
   MIN_LIMIT,
 } from "../workers/request-params.ts";
-import { handleAccountHistory } from "../workers/request-handlers/entities.mjs";
+import { handleAccountHistory } from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -50,7 +50,7 @@ const ROUTES = [
     invoke: (qs: string) =>
       handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
-        {},
+        {} as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/history?${qs}`),
       ),

@@ -14,7 +14,7 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { canonicalSubnetStakeTransfersCachePath } from "../workers/request-handlers/entities.mjs";
+import { canonicalSubnetStakeTransfersCachePath } from "../workers/request-handlers/entities.ts";
 
 const NETUID = 7;
 

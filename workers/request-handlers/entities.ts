@@ -27,7 +27,11 @@ import {
   parsePagination,
 } from "../request-params.ts";
 
-import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.ts";
+import {
+  errorResponse,
+  X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
+  type CacheProfile,
+} from "../http.ts";
 import {
   contractVersion,
   envelopeResponse,
@@ -40,6 +44,7 @@ import {
   markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.ts";
+import type { QueryError } from "../list-query.ts";
 import {
   buildGlobalValidators,
   buildSubnetMetagraph,
@@ -559,7 +564,7 @@ const ACCOUNT_IDENTITY_HISTORY_CSV_COLUMNS = [
   "identity_hash",
 ];
 
-function validateResponseFormat(url) {
+function validateResponseFormat(url: URL) {
   const raw = url.searchParams.get("format");
   if (raw === null && !url.searchParams.has("format")) return null;
   const normalized = String(raw || "").toLowerCase();
@@ -570,13 +575,17 @@ function validateResponseFormat(url) {
   };
 }
 
-function validateEntityQuery(url, allowedParams) {
+function validateEntityQuery(url: URL, allowedParams: string[]) {
   const validationError = validateQueryParams(url, allowedParams);
   if (validationError) return validationError;
   return validateResponseFormat(url);
 }
 
-function csvCacheVariant(url, request, canonicalPath) {
+function csvCacheVariant(
+  url: URL,
+  request: Request | null,
+  canonicalPath: string,
+) {
   const format = url.searchParams.get("format")?.toLowerCase();
   const wantsCsv = format === "csv" || (request && csvRequested(url, request));
   if (!wantsCsv) return canonicalPath;
@@ -584,7 +593,11 @@ function csvCacheVariant(url, request, canonicalPath) {
   return `${canonicalPath}${separator}format=csv`;
 }
 
-function parseBoundedIntParam(url, parameter, { def, min, max }) {
+function parseBoundedIntParam(
+  url: URL,
+  parameter: string,
+  { def, min, max }: { def: number; min: number; max: number },
+): { value: number } | { error: QueryError } {
   const raw = url.searchParams.get(parameter);
   if (raw == null || raw === "") return { value: def };
   if (!/^\d+$/.test(raw)) {
@@ -611,7 +624,11 @@ function parseBoundedIntParam(url, parameter, { def, min, max }) {
 // (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
 // unbound/cold D1 returns a schema-stable empty payload, like the other
 // D1-backed analytics routes.
-async function metagraphMeta(env, artifactPath, generatedAt) {
+async function metagraphMeta(
+  env: Env,
+  artifactPath: string,
+  generatedAt: unknown,
+) {
   return {
     artifact_path: artifactPath,
     cache: "short",
@@ -622,7 +639,12 @@ async function metagraphMeta(env, artifactPath, generatedAt) {
   };
 }
 
-export async function handleSubnetMetagraph(request, env, netuid, url) {
+export async function handleSubnetMetagraph(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "validator_permit",
     "format",
@@ -635,11 +657,15 @@ export async function handleSubnetMetagraph(request, env, netuid, url) {
   // validator_permit is still validated above and forwarded to Postgres via
   // the proxied request (tryPostgresTier passes the request through unchanged).
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetMetagraph> | null) ??
     buildSubnetMetagraph([], netuid);
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.neurons,
+      data.neurons as unknown[],
       "subnet-metagraph",
       "short",
       request,
@@ -664,15 +690,24 @@ export async function handleSubnetMetagraph(request, env, netuid, url) {
 // current neurons snapshot, ranked, with a distribution summary (subnet aggregate yield,
 // mean, p25/median/p75/p90), a validator/miner split, and a per-UID vs-median label.
 // neurons-tier (source "metagraph-snapshot"). Cold/absent store → schema-stable empties.
-export async function handleSubnetYield(request, env, netuid, url) {
+export async function handleSubnetYield(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetYield> | null) ??
     buildSubnetYield([], netuid);
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.neurons,
+      data.neurons as unknown[],
       `subnet-${netuid}-yield`,
       "short",
       request,
@@ -693,11 +728,20 @@ export async function handleSubnetYield(request, env, netuid, url) {
   );
 }
 
-export async function handleNeuron(request, env, netuid, uid) {
+export async function handleNeuron(
+  request: Request,
+  env: Env,
+  netuid: string,
+  uid: string,
+) {
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildNeuronDetail> | null) ??
     buildNeuronDetail(null, netuid);
   return envelopeResponse(
     request,
@@ -725,15 +769,21 @@ export async function handleNeuron(request, env, netuid, uid) {
 // ever-staler snapshot instead of the same schema-stable-null cold shape every
 // other cold/absent tier already returns. buildSubnetHyperparams(null, netuid)
 // reproduces that cold shape directly, without querying D1 at all.
-export async function handleSubnetHyperparams(request, env, netuid, url) {
+export async function handleSubnetHyperparams(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(
+    ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-    )) ?? buildSubnetHyperparams(null, netuid);
+    )) as ReturnType<typeof buildSubnetHyperparams> | null) ??
+    buildSubnetHyperparams(null, netuid);
   return envelopeResponse(
     request,
     {
@@ -760,10 +810,10 @@ export async function handleSubnetHyperparams(request, env, netuid, url) {
 // write path; buildSubnetHyperparamsHistory([], ...) reproduces the same
 // schema-stable empty-page shape a cold store returned, without querying D1.
 export async function handleSubnetHyperparamsHistory(
-  request,
-  env,
-  netuid,
-  url,
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
 ) {
   const validationError = validateEntityQuery(url, [
     "limit",
@@ -774,11 +824,11 @@ export async function handleSubnetHyperparamsHistory(
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const data =
-    (await tryPostgresTier(
+    ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-    )) ??
+    )) as ReturnType<typeof buildSubnetHyperparamsHistory> | null) ??
     buildSubnetHyperparamsHistory([], netuid, {
       limit,
       offset,
@@ -789,7 +839,7 @@ export async function handleSubnetHyperparamsHistory(
   // -> empty entries -> header-only CSV.
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.entries,
+      data.entries as unknown[],
       `subnet-${netuid}-hyperparameters-history`,
       "short",
       request,
@@ -803,14 +853,20 @@ export async function handleSubnetHyperparamsHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/hyperparameters/history.json`,
-        data.entries[0]?.observed_at ?? null,
+        (data.entries as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
   );
 }
 
-export async function handleSubnetValidators(request, env, netuid, url) {
+export async function handleSubnetValidators(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
   // Featured-validator pin (#5166): applied once, right where the Postgres/D1
@@ -818,12 +874,16 @@ export async function handleSubnetValidators(request, env, netuid, url) {
   // `sort` param at all -- its ranking is always the stake-DESC default -- so
   // the overlay always applies here (see overlayFeaturedValidators).
   const data = overlayFeaturedValidators(
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetValidators> | null) ??
       buildSubnetValidators([], netuid),
-  );
+  )!;
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.validators,
+      data.validators as unknown[],
       "subnet-validators",
       "short",
       request,
@@ -850,7 +910,9 @@ export async function handleSubnetValidators(request, env, netuid, url) {
 // operator footprint rather than only one subnet at a time. Stake/emission values stay
 // scoped to each membership row because those source units are not globally aggregated.
 // Cold/absent D1 returns a schema-stable empty list.
-function parseGlobalValidatorsQuery(url) {
+function parseGlobalValidatorsQuery(
+  url: URL,
+): { sort: string; limit: number } | { error: QueryError } {
   const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
   if (validationError) return { error: validationError };
 
@@ -871,14 +933,17 @@ function parseGlobalValidatorsQuery(url) {
     min: 1,
     max: GLOBAL_VALIDATOR_LIMIT_MAX,
   });
-  if (limit.error) return { error: limit.error };
+  if ("error" in limit) return { error: limit.error };
 
   return { sort, limit: limit.value };
 }
 
-export function canonicalGlobalValidatorsCachePath(url, request = null) {
+export function canonicalGlobalValidatorsCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const parsed = parseGlobalValidatorsQuery(url);
-  if (parsed.error) {
+  if ("error" in parsed) {
     return { response: analyticsQueryError(parsed.error) };
   }
   const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
@@ -891,24 +956,32 @@ export function canonicalGlobalValidatorsCachePath(url, request = null) {
   };
 }
 
-export async function handleGlobalValidators(request, env, url) {
+export async function handleGlobalValidators(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const parsed = parseGlobalValidatorsQuery(url);
-  if (parsed.error) return analyticsQueryError(parsed.error);
+  if ("error" in parsed) return analyticsQueryError(parsed.error);
   // Featured-validator pin (#5166), applied once at tier convergence -- see
   // handleSubnetValidators above. Unlike that route this one has a `sort`
   // param, so overlayFeaturedValidators only reorders the default (unsorted)
   // view; an explicit non-default ?sort= keeps the caller's exact order while
   // `featured` stays present on every row either way.
   const data = overlayFeaturedValidators(
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildGlobalValidators> | null) ??
       buildGlobalValidators([], {
         sort: parsed.sort,
         limit: parsed.limit,
       }),
-  );
+  )!;
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.validators,
+      data.validators as unknown[],
       "global-validators",
       "short",
       request,
@@ -938,7 +1011,9 @@ export async function handleGlobalValidators(request, env, url) {
 // src/accounts-list.mjs's header for the "Free"/"Total" balance columns this
 // deliberately does NOT carry (no balance-tracking tier exists to derive them
 // from). Cold/absent D1 returns a schema-stable empty list.
-function parseAccountsListQuery(url) {
+function parseAccountsListQuery(
+  url: URL,
+): { sort: string; limit: number } | { error: QueryError } {
   const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
   if (validationError) return { error: validationError };
 
@@ -959,14 +1034,17 @@ function parseAccountsListQuery(url) {
     min: 1,
     max: ACCOUNTS_LIST_LIMIT_MAX,
   });
-  if (limit.error) return { error: limit.error };
+  if ("error" in limit) return { error: limit.error };
 
   return { sort, limit: limit.value };
 }
 
-export function canonicalAccountsListCachePath(url, request = null) {
+export function canonicalAccountsListCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const parsed = parseAccountsListQuery(url);
-  if (parsed.error) {
+  if ("error" in parsed) {
     return { response: analyticsQueryError(parsed.error) };
   }
   const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
@@ -979,18 +1057,22 @@ export function canonicalAccountsListCachePath(url, request = null) {
   };
 }
 
-export async function handleAccountsList(request, env, url) {
+export async function handleAccountsList(request: Request, env: Env, url: URL) {
   const parsed = parseAccountsListQuery(url);
-  if (parsed.error) return analyticsQueryError(parsed.error);
+  if ("error" in parsed) return analyticsQueryError(parsed.error);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildAccountsList> | null) ??
     buildAccountsList([], {
       sort: parsed.sort,
       limit: parsed.limit,
     });
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.accounts,
+      data.accounts as unknown[],
       "accounts-list",
       "short",
       request,
@@ -1017,7 +1099,9 @@ export async function handleAccountsList(request, env, url) {
 // neuron-centric, explicitly missing the Free/Total columns this route
 // exists to add -- see that route's own header). Cold/absent Postgres tier
 // returns a schema-stable empty leaderboard, same posture as accounts-list.
-function parseTopHoldersQuery(url) {
+function parseTopHoldersQuery(
+  url: URL,
+): { sort: string; limit: number } | { error: QueryError } {
   const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
   if (validationError) return { error: validationError };
 
@@ -1038,14 +1122,17 @@ function parseTopHoldersQuery(url) {
     min: 1,
     max: TOP_HOLDERS_LIMIT_MAX,
   });
-  if (limit.error) return { error: limit.error };
+  if ("error" in limit) return { error: limit.error };
 
   return { sort, limit: limit.value };
 }
 
-export function canonicalTopHoldersCachePath(url, request = null) {
+export function canonicalTopHoldersCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const parsed = parseTopHoldersQuery(url);
-  if (parsed.error) {
+  if ("error" in parsed) {
     return { response: analyticsQueryError(parsed.error) };
   }
   const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
@@ -1058,18 +1145,26 @@ export function canonicalTopHoldersCachePath(url, request = null) {
   };
 }
 
-export async function handleTopHoldersList(request, env, url) {
+export async function handleTopHoldersList(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const parsed = parseTopHoldersQuery(url);
-  if (parsed.error) return analyticsQueryError(parsed.error);
+  if ("error" in parsed) return analyticsQueryError(parsed.error);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_TOP_HOLDERS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_TOP_HOLDERS_SOURCE",
+    )) as ReturnType<typeof buildTopHoldersList> | null) ??
     buildTopHoldersList([], {
       sort: parsed.sort,
       limit: parsed.limit,
     });
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.accounts,
+      data.accounts as unknown[],
       "top-holders",
       "short",
       request,
@@ -1096,9 +1191,17 @@ export async function handleTopHoldersList(request, env, url) {
 // (no permit=1 rows anywhere) returns 200 with a zeroed aggregate and an
 // empty subnets array, consistent with handleNeuron's absent-uid contract
 // (never 404 on a cold/absent live D1 tier).
-export async function handleValidatorDetail(request, env, hotkey) {
+export async function handleValidatorDetail(
+  request: Request,
+  env: Env,
+  hotkey: string,
+) {
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildValidatorDetail> | null) ??
     buildValidatorDetail([], hotkey);
   return envelopeResponse(
     request,
@@ -1122,7 +1225,12 @@ export async function handleValidatorDetail(request, env, hotkey) {
 // pair on every row. coldkey= narrows to one nominator's own flow (an
 // exact-match lookup, not fuzzy search). Cold/absent → 200 with an empty
 // list, never 404.
-export async function handleValidatorNominators(request, env, hotkey, url) {
+export async function handleValidatorNominators(
+  request: Request,
+  env: Env,
+  hotkey: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "window",
     "sort",
@@ -1152,13 +1260,13 @@ export async function handleValidatorNominators(request, env, hotkey, url) {
     min: 1,
     max: GLOBAL_VALIDATOR_LIMIT_MAX,
   });
-  if (limit.error) return analyticsQueryError(limit.error);
+  if ("error" in limit) return analyticsQueryError(limit.error);
   const offset = parseBoundedIntParam(url, "offset", {
     def: 0,
     min: 0,
     max: Number.MAX_SAFE_INTEGER,
   });
-  if (offset.error) return analyticsQueryError(offset.error);
+  if ("error" in offset) return analyticsQueryError(offset.error);
   const coldkeyParam = url.searchParams.get("coldkey");
   if (coldkeyParam !== null && !SS58_ADDRESS_PATTERN.test(coldkeyParam)) {
     return analyticsQueryError({
@@ -1166,11 +1274,14 @@ export async function handleValidatorNominators(request, env, hotkey, url) {
       message: `"coldkey" must be a valid SS58 address.`,
     });
   }
-  const { data, generatedAt } = (await tryPostgresTier(
+  const { data, generatedAt } = ((await tryPostgresTier(
     env,
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
+  )) as {
+    data: ReturnType<typeof buildValidatorNominators>;
+    generatedAt: string | null;
+  } | null) ?? {
     data: buildValidatorNominators([], hotkey, {
       window: windowParam,
       sort: sort ?? undefined,
@@ -1185,7 +1296,7 @@ export async function handleValidatorNominators(request, env, hotkey, url) {
   // result yields an empty array → a header-only CSV.
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.nominators,
+      data.nominators as unknown[],
       "validator-nominators",
       "short",
       request,
@@ -1211,15 +1322,25 @@ export async function handleValidatorNominators(request, env, hotkey, url) {
 // one point per snapshot_date summed across every subnet it validates in
 // that day. Rolled up from the neuron_daily tier (idx_neuron_daily_hotkey_date),
 // the same tier the per-UID/per-subnet history routes below already use.
-export async function handleValidatorHistory(request, env, hotkey, url) {
+export async function handleValidatorHistory(
+  request: Request,
+  env: Env,
+  hotkey: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
-  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
-  if (error) return analyticsQueryError(error);
+  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
+  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
+  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildValidatorHistory> | null) ??
     buildValidatorHistory([], hotkey, {
       window: label,
     });
@@ -1243,15 +1364,26 @@ export async function handleValidatorHistory(request, env, hotkey, url) {
 
 // GET /api/v1/subnets/{netuid}/neurons/{uid}/history?window=7d|30d|90d|1y|all
 // Per-UID time series (one point per snapshot_date, newest first, bounded).
-export async function handleNeuronHistory(request, env, netuid, uid, url) {
+export async function handleNeuronHistory(
+  request: Request,
+  env: Env,
+  netuid: string,
+  uid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
-  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
-  if (error) return analyticsQueryError(error);
+  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
+  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
+  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildNeuronHistory> | null) ??
     buildNeuronHistory([], netuid, uid, {
       window: label,
     });
@@ -1262,7 +1394,8 @@ export async function handleNeuronHistory(request, env, netuid, uid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/neurons/${uid}/history.json`,
-        data.points[0]?.captured_at ?? null,
+        (data.points as unknown as Array<Record<string, unknown>>)[0]
+          ?.captured_at ?? null,
       ),
     },
     "short",
@@ -1272,15 +1405,25 @@ export async function handleNeuronHistory(request, env, netuid, uid, url) {
 // GET /api/v1/subnets/{netuid}/history?window=7d|30d|90d|1y|all
 // Per-subnet daily aggregates over time (count + totals) for a history sparkline,
 // without shipping every UID's row.
-export async function handleSubnetHistory(request, env, netuid, url) {
+export async function handleSubnetHistory(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
-  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
-  if (error) return analyticsQueryError(error);
+  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
+  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
+  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetHistory> | null) ??
     buildSubnetHistory([], netuid, {
       window: label,
     });
@@ -1300,7 +1443,12 @@ export async function handleSubnetHistory(request, env, netuid, url) {
 
 // GET /api/v1/subnets/{netuid}/identity-history (#1647): append-only on-chain
 // identity timeline, newest first. Cold/absent store → schema-stable zero.
-export async function handleSubnetIdentityHistory(request, env, netuid, url) {
+export async function handleSubnetIdentityHistory(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -1310,14 +1458,18 @@ export async function handleSubnetIdentityHistory(request, env, netuid, url) {
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_SUBNET_IDENTITY_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+    )) as ReturnType<typeof buildSubnetIdentityHistory> | null) ??
     buildSubnetIdentityHistory([], netuid, { limit, offset, nextCursor: null });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
   // JSON path would. Cold store -> empty entries -> header-only CSV.
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.entries,
+      data.entries as unknown[],
       `subnet-${netuid}-identity-history`,
       "short",
       request,
@@ -1331,7 +1483,8 @@ export async function handleSubnetIdentityHistory(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/identity-history.json`,
-        data.entries[0]?.observed_at ?? null,
+        (data.entries as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -1345,12 +1498,21 @@ export async function handleSubnetIdentityHistory(request, env, netuid, url) {
 // power. Computed from the neurons D1 tier; a cold/absent store or empty
 // subnet → 200 with null blocks (schema-stable, never 404), mirroring the sibling
 // metagraph/history routes.
-export async function handleSubnetConcentration(request, env, netuid, url) {
+export async function handleSubnetConcentration(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildConcentration([], netuid);
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildConcentration> | null) ??
+    buildConcentration([], Number(netuid));
   return envelopeResponse(
     request,
     {
@@ -1372,11 +1534,20 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
 // The reward-flow companion to /concentration (which measures stake/emission).
 // Computed from the neurons D1 tier; a cold/absent store or empty subnet → 200
 // with null blocks (schema-stable, never 404), mirroring the sibling routes.
-export async function handleSubnetPerformance(request, env, netuid, url) {
+export async function handleSubnetPerformance(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetPerformance> | null) ??
     buildSubnetPerformance([], netuid);
   return envelopeResponse(
     request,
@@ -1397,11 +1568,19 @@ export async function handleSubnetPerformance(request, env, netuid, url) {
 // but the entity lenses collapse an operator's hotkeys ACROSS subnets, so this is
 // the true network-level control distribution. neurons-tier (source
 // "metagraph-snapshot"), no params. Cold/absent store → schema-stable empties.
-export async function handleChainConcentration(request, env, url) {
+export async function handleChainConcentration(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildChainConcentration> | null) ??
     buildChainConcentration([]);
   return envelopeResponse(
     request,
@@ -1423,11 +1602,19 @@ export async function handleChainConcentration(request, env, url) {
 // validators, plus the p10–p90 spread of the 0–1 trust/consensus/validator_trust
 // scores, computed live from the neurons D1 tier. The reward-flow companion to
 // /chain/concentration. No params; a cold/absent store → 200 with null blocks.
-export async function handleChainPerformance(request, env, url) {
+export async function handleChainPerformance(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildChainPerformance> | null) ??
     buildChainPerformance([]);
   return envelopeResponse(
     request,
@@ -1450,12 +1637,21 @@ export async function handleChainPerformance(request, env, url) {
 // delegator nothing right now. Computed from the neurons D1 tier; a
 // cold/absent store or empty subnet -> 200 with a zeroed scorecard
 // (schema-stable, never 404), mirroring /concentration and /performance.
-export async function handleSubnetIdleStake(request, env, netuid, url) {
+export async function handleSubnetIdleStake(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildSubnetIdleStake([], netuid);
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetIdleStake> | null) ??
+    buildSubnetIdleStake([], Number(netuid));
   return envelopeResponse(
     request,
     {
@@ -1474,11 +1670,19 @@ export async function handleSubnetIdleStake(request, env, netuid, url) {
 // route above -- every subnet's own idle-stake scorecard ranked by
 // idle_stake_tao descending, plus the network total. No params; a
 // cold/absent store -> 200 with an empty ranking.
-export async function handleChainIdleStake(request, env, url) {
+export async function handleChainIdleStake(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildChainIdleStake> | null) ??
     buildChainIdleStake([]);
   return envelopeResponse(
     request,
@@ -1500,20 +1704,29 @@ export async function handleChainIdleStake(request, env, url) {
 // handleSubnetIdentityHistory — a capped feed (`?limit` default 50, max 200), not a
 // per-subnet timeline. A cold/absent store → 200 with an empty feed (schema-stable,
 // never 404).
-export async function handleChainIdentityHistory(request, env, url) {
+export async function handleChainIdentityHistory(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["limit"]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, error: limitError } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
     maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   });
-  if (limitError) return analyticsQueryError(limitError);
+  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
+  const { limit } = limitResult;
   // D1 retirement: subnet_identity_history's D1 write path is retired
   // (2026-07-16, syncSubnetIdentityToPostgres is the sole writer now), so a
   // Postgres miss/outage degrades to a schema-stable empty feed, never a
   // live D1 read.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_SUBNET_IDENTITY_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_SUBNET_IDENTITY_SOURCE",
+    )) as ReturnType<typeof buildChainIdentityHistory> | null) ??
     buildChainIdentityHistory([], { limit });
   return envelopeResponse(
     request,
@@ -1524,7 +1737,8 @@ export async function handleChainIdentityHistory(request, env, url) {
         "/metagraph/chain/identity-history.json",
         // Freshness = the newest change's observed_at (feed is newest-first), else
         // null when the store is cold.
-        data.changes[0]?.observed_at ?? null,
+        (data.changes as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -1537,12 +1751,15 @@ export async function handleChainIdentityHistory(request, env, url) {
 // per-neuron emission/stake return, computed live from the neurons D1 tier. The
 // return-rate companion to /chain/performance. No params; a cold/absent store →
 // 200 with null blocks.
-export async function handleChainYield(request, env, url) {
+export async function handleChainYield(request: Request, env: Env, url: URL) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildChainYield([]);
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildChainYield> | null) ?? buildChainYield([]);
   return envelopeResponse(
     request,
     {
@@ -1561,14 +1778,15 @@ export async function handleChainYield(request, env, url) {
 // (its only response-changing param) to the default when omitted so a bare request
 // and an explicit-default request share one cache slot; an invalid limit falls
 // through to the raw search so the handler surfaces the 400.
-export function canonicalChainIdentityHistoryCachePath(url) {
+export function canonicalChainIdentityHistoryCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["limit"]);
   if (validationError) return `${url.pathname}${url.search}`;
-  const { limit, error } = parseLimitParam(url, {
+  const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
     maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   });
-  if (error) return `${url.pathname}${url.search}`;
+  if ("error" in limitResult) return `${url.pathname}${url.search}`;
+  const { limit } = limitResult;
   return `${url.pathname}?limit=${limit}`;
 }
 
@@ -1576,34 +1794,43 @@ export function canonicalChainIdentityHistoryCachePath(url) {
 // normalising the ?window= query parameter through the route-specific parse
 // function, so that an omitted window and an explicit default-value window map
 // to the same cache slot.
-function canonicalWindowedCachePath(url, parseWindow) {
+function canonicalWindowedCachePath(
+  url: URL,
+  parseWindow: (
+    raw: string | null,
+  ) =>
+    | { label: string; error?: undefined }
+    | { label?: undefined; error: QueryError },
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
-  const { label, error } = parseWindow(url.searchParams.get("window"));
-  if (error) return `${url.pathname}${url.search}`;
+  const labelResult = parseWindow(url.searchParams.get("window"));
+  if ("error" in labelResult) return `${url.pathname}${url.search}`;
+  const { label } = labelResult;
   return `${url.pathname}?window=${encodeURIComponent(label)}`;
 }
 
-export function canonicalSubnetHistoryCachePath(url) {
+export function canonicalSubnetHistoryCachePath(url: URL) {
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 
-export function canonicalValidatorHistoryCachePath(url) {
+export function canonicalValidatorHistoryCachePath(url: URL) {
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 
 export function canonicalSubnetConcentrationHistoryCachePath(
-  url,
-  request = null,
+  url: URL,
+  request: Request | null = null,
 ) {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
-  const { label, error } = parseConcentrationHistoryWindow(
+  const labelResult = parseConcentrationHistoryWindow(
     url.searchParams.get("window"),
   );
-  if (error) return `${url.pathname}${url.search}`;
+  if ("error" in labelResult) return `${url.pathname}${url.search}`;
+  const { label } = labelResult;
   return csvCacheVariant(
     url,
     request,
@@ -1612,17 +1839,18 @@ export function canonicalSubnetConcentrationHistoryCachePath(
 }
 
 export function canonicalSubnetPerformanceHistoryCachePath(
-  url,
-  request = null,
+  url: URL,
+  request: Request | null = null,
 ) {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
-  const { label, error } = parseSubnetPerformanceHistoryWindow(
+  const labelResult = parseSubnetPerformanceHistoryWindow(
     url.searchParams.get("window"),
   );
-  if (error) return `${url.pathname}${url.search}`;
+  if ("error" in labelResult) return `${url.pathname}${url.search}`;
+  const { label } = labelResult;
   return csvCacheVariant(
     url,
     request,
@@ -1630,15 +1858,19 @@ export function canonicalSubnetPerformanceHistoryCachePath(
   );
 }
 
-export function canonicalSubnetYieldHistoryCachePath(url, request = null) {
+export function canonicalSubnetYieldHistoryCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
-  const { label, error } = parseSubnetYieldHistoryWindow(
+  const labelResult = parseSubnetYieldHistoryWindow(
     url.searchParams.get("window"),
   );
-  if (error) return `${url.pathname}${url.search}`;
+  if ("error" in labelResult) return `${url.pathname}${url.search}`;
+  const { label } = labelResult;
   return csvCacheVariant(
     url,
     request,
@@ -1649,11 +1881,12 @@ export function canonicalSubnetYieldHistoryCachePath(url, request = null) {
 // Canonical edge-cache key for the subnet-turnover route (?window= via
 // parseHistoryWindow). Distinct from canonicalSubnetConcentrationHistoryCachePath
 // which uses a different parse function (parseConcentrationHistoryWindow).
-export function canonicalSubnetTurnoverCachePath(url) {
+export function canonicalSubnetTurnoverCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window", "changes"]);
   if (validationError) return `${url.pathname}${url.search}`;
-  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
-  if (error) return `${url.pathname}${url.search}`;
+  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
+  if ("error" in labelResult) return `${url.pathname}${url.search}`;
+  const { label } = labelResult;
   const changes = url.searchParams.get("changes");
   if (changes != null && changes !== "true") {
     return `${url.pathname}${url.search}`;
@@ -1665,7 +1898,7 @@ export function canonicalSubnetTurnoverCachePath(url) {
 // Canonical edge-cache key for the subnet-stake-flow route. ?window= (one of
 // STAKE_FLOW_WINDOWS) and ?direction= (all|in|out) change the response; omitted
 // window/direction and their explicit defaults must share one cache slot.
-export function canonicalSubnetStakeFlowCachePath(url) {
+export function canonicalSubnetStakeFlowCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window", "direction"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -1686,7 +1919,10 @@ export function canonicalSubnetStakeFlowCachePath(url) {
 
 // Canonical edge-cache key for the cross-subnet movers route: window/sort/limit, each
 // canonicalized to its default when omitted, so equivalent requests share one slot.
-export function canonicalSubnetMoversCachePath(url, request = null) {
+export function canonicalSubnetMoversCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const validationError = validateEntityQuery(url, [
     "window",
     "sort",
@@ -1707,7 +1943,7 @@ export function canonicalSubnetMoversCachePath(url, request = null) {
     min: 1,
     max: MOVERS_LIMIT_MAX,
   });
-  if (limit.error) return `${url.pathname}${url.search}`;
+  if ("error" in limit) return `${url.pathname}${url.search}`;
   return csvCacheVariant(
     url,
     request,
@@ -1718,7 +1954,10 @@ export function canonicalSubnetMoversCachePath(url, request = null) {
 // Canonical edge-cache key for the network turnover route: window + limit collapsed to
 // their resolved defaults so ?window=30d and the bare path share one cached entry. Falls
 // back to the raw path+search when validation fails (the handler will 400 it anyway).
-export function canonicalChainTurnoverCachePath(url, request = null) {
+export function canonicalChainTurnoverCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const validationError = validateEntityQuery(url, [
     "window",
     "limit",
@@ -1735,7 +1974,7 @@ export function canonicalChainTurnoverCachePath(url, request = null) {
     min: 1,
     max: CHAIN_TURNOVER_LIMIT_MAX,
   });
-  if (limit.error) return `${url.pathname}${url.search}`;
+  if ("error" in limit) return `${url.pathname}${url.search}`;
   // CSV and JSON responses must not share one edge-cache entry.
   return csvCacheVariant(
     url,
@@ -1747,7 +1986,11 @@ export function canonicalChainTurnoverCachePath(url, request = null) {
 // GET /api/v1/chain/turnover?window=7d|30d|90d&limit=20: network-wide validator-set churn
 // across all subnets between the window's boundary neuron_daily snapshots — a per-subnet
 // turnover leaderboard plus a network rollup over the union validator set.
-export async function handleChainTurnover(request, env, url) {
+export async function handleChainTurnover(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "window",
     "limit",
@@ -1767,9 +2010,13 @@ export async function handleChainTurnover(request, env, url) {
     min: 1,
     max: CHAIN_TURNOVER_LIMIT_MAX,
   });
-  if (limit.error) return analyticsQueryError(limit.error);
+  if ("error" in limit) return analyticsQueryError(limit.error);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildChainTurnover> | null) ??
     buildChainTurnover([], {
       window: windowParam,
       startDate: null,
@@ -1780,7 +2027,7 @@ export async function handleChainTurnover(request, env, url) {
   // stability distribution stay JSON-only (mirrors the chain-analytics exports).
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.subnets,
+      data.subnets as unknown[],
       "chain-turnover",
       "short",
       request,
@@ -1806,7 +2053,10 @@ export async function handleChainTurnover(request, env, url) {
 // Canonical edge-cache key for the subnet-metagraph route. Only
 // ?validator_permit=true changes the response; omission and =false both serve
 // the full metagraph and must share one cache slot.
-export function canonicalSubnetMetagraphCachePath(url, request = null) {
+export function canonicalSubnetMetagraphCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const validationError = validateEntityQuery(url, [
     "validator_permit",
     "format",
@@ -1821,13 +2071,19 @@ export function canonicalSubnetMetagraphCachePath(url, request = null) {
 
 // Canonical edge-cache key for the subnet validators route. The default JSON
 // envelope and explicit ?format=json share one cache slot; CSV receives its own.
-export function canonicalSubnetValidatorsCachePath(url, request = null) {
+export function canonicalSubnetValidatorsCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   return csvCacheVariant(url, request, url.pathname);
 }
 
-export function canonicalSubnetYieldCachePath(url, request = null) {
+export function canonicalSubnetYieldCachePath(
+  url: URL,
+  request: Request | null = null,
+) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   return csvCacheVariant(url, request, url.pathname);
@@ -1840,29 +2096,36 @@ export function canonicalSubnetYieldCachePath(url, request = null) {
 // GROUP BY) bounded by a row cap; a cold/absent store → 200 with points:[]
 // (schema-stable, never 404).
 export async function handleSubnetConcentrationHistory(
-  request,
-  env,
-  netuid,
-  url,
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { label, error } = parseConcentrationHistoryWindow(
+  const labelResult = parseConcentrationHistoryWindow(
     url.searchParams.get("window"),
   );
-  if (error) return analyticsQueryError(error);
+  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
+  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildConcentrationHistory([], netuid, {
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildConcentrationHistory> | null) ??
+    buildConcentrationHistory([], Number(netuid), {
       window: label,
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [...data.points].sort((a, b) =>
+    const points = [
+      ...(data.points as unknown as Array<Record<string, unknown>>),
+    ].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -1880,7 +2143,8 @@ export async function handleSubnetConcentrationHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration/history.json`,
-        data.points[0]?.snapshot_date ?? null,
+        (data.points as unknown as Array<Record<string, unknown>>)[0]
+          ?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -1895,29 +2159,36 @@ export async function handleSubnetConcentrationHistory(
 // is the raw rows (not a GROUP BY) bounded by a row cap; a cold/absent store → 200
 // with points:[] (schema-stable, never 404).
 export async function handleSubnetPerformanceHistory(
-  request,
-  env,
-  netuid,
-  url,
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { label, error } = parseSubnetPerformanceHistoryWindow(
+  const labelResult = parseSubnetPerformanceHistoryWindow(
     url.searchParams.get("window"),
   );
-  if (error) return analyticsQueryError(error);
+  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
+  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildSubnetPerformanceHistory([], netuid, {
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetPerformanceHistory> | null) ??
+    buildSubnetPerformanceHistory([], Number(netuid), {
       window: label,
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [...data.points].sort((a, b) =>
+    const points = [
+      ...(data.points as unknown as Array<Record<string, unknown>>),
+    ].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -1935,7 +2206,8 @@ export async function handleSubnetPerformanceHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/performance/history.json`,
-        data.points[0]?.snapshot_date ?? null,
+        (data.points as unknown as Array<Record<string, unknown>>)[0]
+          ?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -1949,25 +2221,37 @@ export async function handleSubnetPerformanceHistory(
 // of concentration/history: each day needs its full per-UID distribution, so the read
 // is the raw rows (not a GROUP BY) bounded by a row cap; a cold/absent store → 200
 // with points:[] (schema-stable, never 404).
-export async function handleSubnetYieldHistory(request, env, netuid, url) {
+export async function handleSubnetYieldHistory(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
-  const { label, error } = parseSubnetYieldHistoryWindow(
+  const labelResult = parseSubnetYieldHistoryWindow(
     url.searchParams.get("window"),
   );
-  if (error) return analyticsQueryError(error);
+  if (labelResult.error) return analyticsQueryError(labelResult.error);
+  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildSubnetYieldHistory([], netuid, {
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetYieldHistory> | null) ??
+    buildSubnetYieldHistory([], Number(netuid), {
       window: label,
       capped: false,
     });
   if (csvRequested(url, request)) {
-    const points = [...data.points].sort((a, b) =>
+    const points = [
+      ...(data.points as unknown as Array<Record<string, unknown>>),
+    ].sort((a, b) =>
       String(a.snapshot_date).localeCompare(String(b.snapshot_date)),
     );
     return csvResponse(
@@ -1985,7 +2269,8 @@ export async function handleSubnetYieldHistory(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/yield/history.json`,
-        data.points[0]?.snapshot_date ?? null,
+        (data.points as unknown as Array<Record<string, unknown>>)[0]
+          ?.snapshot_date ?? null,
       ),
     },
     "short",
@@ -1997,11 +2282,17 @@ export async function handleSubnetYieldHistory(request, env, netuid, url) {
 // Add ?changes=true for validator hotkeys entered/exited and UID slots reassigned
 // between the same boundary snapshots. Cold/absent store or a single snapshot →
 // 200 with comparable:false + zeroed metrics (schema-stable, never 404).
-export async function handleSubnetTurnover(request, env, netuid, url) {
+export async function handleSubnetTurnover(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window", "changes"]);
   if (validationError) return analyticsQueryError(validationError);
-  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
-  if (error) return analyticsQueryError(error);
+  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
+  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
+  const { label } = labelResult;
   const changes = url.searchParams.get("changes");
   if (changes != null && changes !== "true") {
     return analyticsQueryError({
@@ -2038,7 +2329,7 @@ export async function handleSubnetTurnover(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-weights route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetWeightsCachePath(url) {
+export function canonicalSubnetWeightsCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2053,7 +2344,12 @@ export function canonicalSubnetWeightsCachePath(url) {
 // one subnet over the window — distinct weight-setting validators, WeightsSet event count, and
 // updates per validator — read live from the account_events WeightsSet stream. The per-subnet
 // drill-in of /api/v1/chain/weights. Cold/absent store → 200 with a zeroed card (never 404).
-export async function handleSubnetWeights(request, env, netuid, url) {
+export async function handleSubnetWeights(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2065,7 +2361,11 @@ export async function handleSubnetWeights(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetWeights> | null) ??
     buildSubnetWeights(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling stake-flow route.
@@ -2085,7 +2385,7 @@ export async function handleSubnetWeights(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-weight-setters route: only ?window= (7d/30d) changes
 // the response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetWeightSettersCachePath(url) {
+export function canonicalSubnetWeightSettersCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2100,7 +2400,12 @@ export function canonicalSubnetWeightSettersCachePath(url) {
 // leaderboard — the individual validators behind /weights, each with its WeightsSet count,
 // share of the subnet's total, and first/last set time, ranked by activity. Read live from the
 // account_events WeightsSet stream. Cold/absent store → 200 with an empty leaderboard (never 404).
-export async function handleSubnetWeightSetters(request, env, netuid, url) {
+export async function handleSubnetWeightSetters(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2115,7 +2420,11 @@ export async function handleSubnetWeightSetters(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetWeightSetters> | null) ??
     buildSubnetWeightSetters([], null, netuid, { window: windowParam });
   // account_events-derived: the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling /weights route.
@@ -2135,7 +2444,7 @@ export async function handleSubnetWeightSetters(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-serving route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetServingCachePath(url) {
+export function canonicalSubnetServingCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2150,7 +2459,12 @@ export function canonicalSubnetServingCachePath(url) {
 // subnet over the window — distinct servers (hotkeys), AxonServed event count, and announcements
 // per server — read live from the account_events AxonServed stream. The per-subnet drill-in of
 // /api/v1/chain/serving. Cold/absent store → 200 with a zeroed card (never 404).
-export async function handleSubnetServing(request, env, netuid, url) {
+export async function handleSubnetServing(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2162,7 +2476,11 @@ export async function handleSubnetServing(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetServing> | null) ??
     buildSubnetServing(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed AxonServed event, mirroring the sibling stake-flow route.
@@ -2182,7 +2500,7 @@ export async function handleSubnetServing(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-prometheus route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetPrometheusCachePath(url) {
+export function canonicalSubnetPrometheusCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2198,7 +2516,12 @@ export function canonicalSubnetPrometheusCachePath(url) {
 // announcements per exporter — read live from the account_events PrometheusServed stream. The
 // per-subnet drill-in of /api/v1/chain/prometheus and the telemetry-endpoint sibling of
 // /api/v1/subnets/{netuid}/serving. Cold/absent store → 200 with a zeroed card (never 404).
-export async function handleSubnetPrometheus(request, env, netuid, url) {
+export async function handleSubnetPrometheus(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2210,7 +2533,11 @@ export async function handleSubnetPrometheus(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetPrometheus> | null) ??
     buildSubnetPrometheus(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed PrometheusServed event, mirroring the sibling serving route.
@@ -2230,7 +2557,7 @@ export async function handleSubnetPrometheus(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-stake-moves route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetStakeMovesCachePath(url) {
+export function canonicalSubnetStakeMovesCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2246,7 +2573,12 @@ export function canonicalSubnetStakeMovesCachePath(url) {
 // movements per mover — read live from the account_events StakeMoved stream. The per-subnet drill-in
 // of /api/v1/chain/stake-moves and the re-delegation-churn sibling of
 // /api/v1/subnets/{netuid}/stake-flow. Cold/absent store → 200 with a zeroed card (never 404).
-export async function handleSubnetStakeMoves(request, env, netuid, url) {
+export async function handleSubnetStakeMoves(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2261,7 +2593,11 @@ export async function handleSubnetStakeMoves(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetStakeMoves> | null) ??
     buildSubnetStakeMoves(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed StakeMoved event, mirroring the sibling stake-flow route.
@@ -2281,7 +2617,7 @@ export async function handleSubnetStakeMoves(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-stake-transfers route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetStakeTransfersCachePath(url) {
+export function canonicalSubnetStakeTransfersCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2297,7 +2633,12 @@ export function canonicalSubnetStakeTransfersCachePath(url) {
 // sender — read live from the account_events StakeTransferred stream. The per-subnet drill-in of
 // /api/v1/chain/stake-transfers and the between-coldkeys sibling of
 // /api/v1/subnets/{netuid}/stake-moves. Cold/absent store → 200 with a zeroed card (never 404).
-export async function handleSubnetStakeTransfers(request, env, netuid, url) {
+export async function handleSubnetStakeTransfers(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2312,7 +2653,11 @@ export async function handleSubnetStakeTransfers(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetStakeTransfers> | null) ??
     buildSubnetStakeTransfers(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed StakeTransferred event, mirroring the sibling stake-moves route.
@@ -2332,7 +2677,7 @@ export async function handleSubnetStakeTransfers(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-registrations route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetRegistrationsCachePath(url) {
+export function canonicalSubnetRegistrationsCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2347,7 +2692,12 @@ export function canonicalSubnetRegistrationsCachePath(url) {
 // subnet over the window — distinct registrants (hotkeys), NeuronRegistered event count, and
 // registrations per registrant — read live from the account_events NeuronRegistered stream. The
 // account_events companion to /turnover. Cold/absent store → 200 with a zeroed card (never 404).
-export async function handleSubnetRegistrations(request, env, netuid, url) {
+export async function handleSubnetRegistrations(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2362,7 +2712,11 @@ export async function handleSubnetRegistrations(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetRegistrations> | null) ??
     buildSubnetRegistrations(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed NeuronRegistered event, mirroring the sibling stake-flow route.
@@ -2382,7 +2736,7 @@ export async function handleSubnetRegistrations(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-axon-removals route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetAxonRemovalsCachePath(url) {
+export function canonicalSubnetAxonRemovalsCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2397,7 +2751,12 @@ export function canonicalSubnetAxonRemovalsCachePath(url) {
 // over the window — distinct removers (hotkeys), AxonInfoRemoved event count, and removals per
 // remover — read live from the account_events AxonInfoRemoved stream. The removal-side companion
 // to /serving. Cold/absent store → 200 with a zeroed card (never 404).
-export async function handleSubnetAxonRemovals(request, env, netuid, url) {
+export async function handleSubnetAxonRemovals(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2412,7 +2771,11 @@ export async function handleSubnetAxonRemovals(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetAxonRemovals> | null) ??
     buildSubnetAxonRemovals(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed AxonInfoRemoved event, mirroring the sibling stake-flow route.
@@ -2432,7 +2795,7 @@ export async function handleSubnetAxonRemovals(request, env, netuid, url) {
 
 // Canonical edge-cache key for the subnet-deregistrations route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
-export function canonicalSubnetDeregistrationsCachePath(url) {
+export function canonicalSubnetDeregistrationsCachePath(url: URL) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2447,7 +2810,12 @@ export function canonicalSubnetDeregistrationsCachePath(url) {
 // subnet over the window — distinct deregistered hotkeys, NeuronDeregistered event count, and
 // deregistrations per hotkey — read live from the account_events NeuronDeregistered stream. The
 // exit-side companion to /registrations. Cold/absent store → 200 with a zeroed card (never 404).
-export async function handleSubnetDeregistrations(request, env, netuid, url) {
+export async function handleSubnetDeregistrations(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2462,7 +2830,11 @@ export async function handleSubnetDeregistrations(request, env, netuid, url) {
     });
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetDeregistrations> | null) ??
     buildSubnetDeregistrations(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed NeuronDeregistered event, mirroring the sibling stake-flow route.
@@ -2487,7 +2859,12 @@ export async function handleSubnetDeregistrations(request, env, netuid, url) {
 // omitted or all sums both. Windows (7d/30d/90d) match the concentration/history
 // route. Cold/absent store → 200 with zeroed totals (schema-stable, never 404),
 // mirroring the sibling routes.
-export async function handleSubnetStakeFlow(request, env, netuid, url) {
+export async function handleSubnetStakeFlow(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window", "direction"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2544,21 +2921,26 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
 // pair share, and entities.mjs deliberately imports leaf modules directly
 // rather than taking injected deps from api.mjs (see this file's header).
 // Null when neither tier has a row for this subnet.
-async function resolveSubnetMarketCapTao(env, netuid) {
+async function resolveSubnetMarketCapTao(env: Env, netuid: string) {
   const live = await resolveLiveEconomics({
     readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
     env,
     contractVersion: contractVersion(env),
   });
-  let rows = Array.isArray(live?.data?.subnets) ? live.data.subnets : null;
+  const liveSubnets = live?.data?.subnets;
+  let rows: Array<Record<string, unknown>> | null = Array.isArray(liveSubnets)
+    ? (liveSubnets as Array<Record<string, unknown>>)
+    : null;
   if (!rows) {
     const artifact = await readArtifact(env, "/metagraph/economics.json");
-    rows =
-      artifact.ok && Array.isArray(artifact.data?.subnets)
-        ? artifact.data.subnets
-        : [];
+    const artifactSubnets = artifact.ok
+      ? (artifact.data as Record<string, unknown> | undefined)?.subnets
+      : undefined;
+    rows = Array.isArray(artifactSubnets)
+      ? (artifactSubnets as Array<Record<string, unknown>>)
+      : [];
   }
-  const row = rows.find((entry) => entry?.netuid === netuid);
+  const row = rows.find((entry) => Number(entry?.netuid) === Number(netuid));
   const marketCap = row?.alpha_market_cap_tao;
   return typeof marketCap === "number" && Number.isFinite(marketCap)
     ? marketCap
@@ -2569,23 +2951,28 @@ async function resolveSubnetMarketCapTao(env, netuid) {
 // stake-quote math needs — resolved from the same live-KV-then-committed-R2
 // economics tiers as resolveSubnetMarketCapTao, plus the blob's freshness stamp
 // for the response meta. Returns { row: null } when neither tier has a row.
-async function resolveSubnetEconomicsRow(env, netuid) {
+async function resolveSubnetEconomicsRow(env: Env, netuid: string) {
   const live = await resolveLiveEconomics({
     readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
     env,
     contractVersion: contractVersion(env),
   });
-  let blob = Array.isArray(live?.data?.subnets) ? live.data : null;
+  let blob: Record<string, unknown> | null = Array.isArray(live?.data?.subnets)
+    ? live.data
+    : null;
   if (!blob) {
     const artifact = await readArtifact(env, "/metagraph/economics.json");
+    const artifactData = artifact.ok
+      ? (artifact.data as Record<string, unknown> | undefined)
+      : undefined;
     blob =
-      artifact.ok && Array.isArray(artifact.data?.subnets)
-        ? artifact.data
-        : null;
+      artifactData && Array.isArray(artifactData.subnets) ? artifactData : null;
   }
-  const rows = Array.isArray(blob?.subnets) ? blob.subnets : [];
+  const rows = Array.isArray(blob?.subnets)
+    ? (blob.subnets as Array<Record<string, unknown>>)
+    : [];
   return {
-    row: rows.find((entry) => entry?.netuid === netuid) ?? null,
+    row: rows.find((entry) => Number(entry?.netuid) === Number(netuid)) ?? null,
     generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
   };
 }
@@ -2596,7 +2983,12 @@ async function resolveSubnetEconomicsRow(env, netuid) {
 // src/stake-quote.ts; this handler just resolves the reserves and maps its
 // typed result onto the API envelope (400 for a bad request, 422 when the pool
 // can't fill the requested swap).
-export async function handleSubnetStakeQuote(request, env, netuid, url) {
+export async function handleSubnetStakeQuote(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, ["amount", "direction"]);
   if (validationError) return analyticsQueryError(validationError);
   // A missing/empty `amount` coerces to 0, which computeStakeQuote rejects as
@@ -2605,7 +2997,7 @@ export async function handleSubnetStakeQuote(request, env, netuid, url) {
   const direction = url.searchParams.get("direction") ?? "stake";
   const { row, generatedAt } = await resolveSubnetEconomicsRow(env, netuid);
   const result = computeStakeQuote({
-    netuid,
+    netuid: Number(netuid),
     taoInPool: row?.tao_in_pool_tao,
     alphaInPool: row?.alpha_in_pool,
     amount,
@@ -2634,16 +3026,24 @@ export async function handleSubnetStakeQuote(request, env, netuid, url) {
 // a fixed 24h window (no ?window= param), matching the issue's framing as a
 // canonical market-depth figure rather than a windowed analytics view. Cold/
 // absent store → 200 with zeroed totals (schema-stable, never 404).
-export async function handleSubnetAlphaVolume(request, env, netuid, url) {
+export async function handleSubnetAlphaVolume(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const marketCapTao = await resolveSubnetMarketCapTao(env, netuid);
-  const { data, generatedAt } = (await tryPostgresTier(
+  const { data, generatedAt } = ((await tryPostgresTier(
     env,
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildAlphaVolume([], netuid, { marketCapTao }),
+  )) as {
+    data: ReturnType<typeof buildAlphaVolume>;
+    generatedAt: string | null;
+  } | null) ?? {
+    data: buildAlphaVolume([], Number(netuid), { marketCapTao }),
     generatedAt: null,
   };
   return envelopeResponse(
@@ -2674,7 +3074,12 @@ export async function handleSubnetAlphaVolume(request, env, netuid, url) {
 // candles) rather than a meaningless flat-line series. Cold/absent store -> 200
 // with an empty candle array (schema-stable, never 404), mirroring the sibling
 // account_events routes.
-export async function handleSubnetOhlc(request, env, netuid, url) {
+export async function handleSubnetOhlc(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["interval", "days"]);
   if (validationError) return analyticsQueryError(validationError);
   const intervalParam = url.searchParams.get("interval");
@@ -2685,18 +3090,21 @@ export async function handleSubnetOhlc(request, env, netuid, url) {
     });
   }
   const interval = intervalParam || OHLC_INTERVAL_DEFAULT;
-  const { error: daysError } = parseBoundedIntParam(url, "days", {
+  const daysResult = parseBoundedIntParam(url, "days", {
     def: DEFAULT_OHLC_WINDOW_DAYS,
     min: 1,
     max: MAX_OHLC_WINDOW_DAYS,
   });
-  if (daysError) return analyticsQueryError(daysError);
-  const { data, generatedAt } = (await tryPostgresTier(
+  if ("error" in daysResult) return analyticsQueryError(daysResult.error);
+  const { data, generatedAt } = ((await tryPostgresTier(
     env,
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
-    data: buildSubnetOhlc([], netuid, { interval }),
+  )) as {
+    data: ReturnType<typeof buildSubnetOhlc>;
+    generatedAt: string | null;
+  } | null) ?? {
+    data: buildSubnetOhlc([], Number(netuid), { interval }),
     generatedAt: null,
   };
   return envelopeResponse(
@@ -2719,7 +3127,7 @@ export async function handleSubnetOhlc(request, env, netuid, url) {
 // neuron_daily rollup (idx_neuron_daily_netuid_date_agg covers the GROUP BY netuid,
 // snapshot_date read). Cold/absent or single-snapshot store → 200 with movers:[]
 // (schema-stable, never 404), mirroring the sibling history/turnover routes.
-export async function handleSubnetMovers(request, env, url) {
+export async function handleSubnetMovers(request: Request, env: Env, url: URL) {
   const validationError = validateEntityQuery(url, [
     "window",
     "sort",
@@ -2748,9 +3156,13 @@ export async function handleSubnetMovers(request, env, url) {
     min: 1,
     max: MOVERS_LIMIT_MAX,
   });
-  if (limit.error) return analyticsQueryError(limit.error);
+  if ("error" in limit) return analyticsQueryError(limit.error);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildMovers> | null) ??
     buildMovers([], [], {
       window: windowParam,
       startDate: null,
@@ -2760,7 +3172,7 @@ export async function handleSubnetMovers(request, env, url) {
     });
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.movers,
+      data.movers as unknown[],
       "subnet-movers",
       "short",
       request,
@@ -2786,7 +3198,11 @@ export async function handleSubnetMovers(request, env, url) {
 // ---- Account entity handlers (#1347) ---------------------------------------
 // SQL + pagination live in src/account-events.mjs (loadAccount*), shared with the
 // MCP account tools; these handlers add only the REST envelope + meta.
-async function accountMeta(env, artifactPath, generatedAt) {
+async function accountMeta(
+  env: Env,
+  artifactPath: string,
+  generatedAt: unknown,
+) {
   return {
     artifact_path: artifactPath,
     cache: "short",
@@ -2798,14 +3214,16 @@ async function accountMeta(env, artifactPath, generatedAt) {
 }
 
 // Account routes stamp meta.source but browsers need the CORS-exposed header too.
+type EnvelopePayload = Parameters<typeof envelopeResponse>[1];
+
 async function accountEnvelopeResponse(
-  request,
-  payload,
-  cacheProfile = "short",
-  extraHeaders = {},
+  request: Request,
+  payload: EnvelopePayload,
+  cacheProfile: CacheProfile = "short",
+  extraHeaders: Record<string, string> = {},
 ) {
   return envelopeResponse(request, payload, cacheProfile, {
-    [X_METAGRAPH_ARTIFACT_SOURCE_HEADER]: payload.meta.source,
+    [X_METAGRAPH_ARTIFACT_SOURCE_HEADER]: payload.meta.source as string,
     ...extraHeaders,
   });
 }
@@ -2814,7 +3232,12 @@ async function accountEnvelopeResponse(
 // per subnet over a 7d/30d/90d window — net + gross flow, an HHI concentration of where
 // its flow is focused, and a direction label. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
-export async function handleAccountStakeFlow(request, env, ss58, url) {
+export async function handleAccountStakeFlow(
+  request: Request,
+  env: Env,
+  ss58: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window", "direction"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
@@ -2837,11 +3260,14 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss
   // (#6016/#6017). Postgres → schema-stable empty stub.
-  const { data, generatedAt } = (await tryPostgresTier(
+  const { data, generatedAt } = ((await tryPostgresTier(
     env,
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? {
+  )) as {
+    data: ReturnType<typeof buildAccountStakeFlow>;
+    generatedAt: string | null;
+  } | null) ?? {
     data: buildAccountStakeFlow([], ss58, { window: windowParam }),
     generatedAt: null,
   };
@@ -2863,8 +3289,27 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
 // endpoint validates ?window=, resolves via the Postgres tier with a schema-stable-zeros fallback,
 // and wraps the result in the standard account envelope — identical control flow across all 7,
 // differing only in the window enum, the shaping builder, and the response artifact's URL suffix.
-function makeAccountEventHandler({ windows, defaultWindow, build, urlSuffix }) {
-  return async function handleAccountEvent(request, env, ss58, url) {
+function makeAccountEventHandler({
+  windows,
+  defaultWindow,
+  build,
+  urlSuffix,
+}: {
+  windows: Record<string, number>;
+  defaultWindow: string;
+  build: (
+    rows: Array<Record<string, unknown>>,
+    address: string,
+    options: { window: string },
+  ) => unknown;
+  urlSuffix: string;
+}) {
+  return async function handleAccountEvent(
+    request: Request,
+    env: Env,
+    ss58: string,
+    url: URL,
+  ) {
     const validationError = validateQueryParams(url, ["window"]);
     if (validationError) return analyticsQueryError(validationError);
     const windowParam = url.searchParams.get("window") || defaultWindow;
@@ -2874,11 +3319,14 @@ function makeAccountEventHandler({ windows, defaultWindow, build, urlSuffix }) {
         message: unsupportedWindowMessage(windowParam, windows),
       });
     }
-    const { data, generatedAt } = (await tryPostgresTier(
+    const { data, generatedAt } = ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-    )) ?? {
+    )) as {
+      data: ReturnType<typeof build>;
+      generatedAt: string | null;
+    } | null) ?? {
       data: build([], ss58, { window: windowParam }),
       generatedAt: null,
     };
@@ -2977,9 +3425,13 @@ export const handleAccountDeregistrations = makeAccountEventHandler({
 // GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates
 // (account_events, matched by hotkey OR coldkey) joined to current registrations
 // (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
-export async function handleAccount(request, env, ss58) {
+export async function handleAccount(request: Request, env: Env, ss58: string) {
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildAccountSummary> | null) ??
     buildAccountSummary(ss58, {});
   // Community-contributable entity labels (#6739): additive field over the
   // baked entities.json artifact, joined by ss58 here rather than in either
@@ -2987,16 +3439,18 @@ export async function handleAccount(request, env, ss58) {
   // artifact degrades to an empty label list, matching this route's own
   // never-404 contract.
   const entitiesArtifact = await readArtifact(env, ENTITY_LABELS_ARTIFACT);
-  data.labels = labelsForSs58(
-    entityLabelsIndex(
-      entitiesArtifact.ok ? entitiesArtifact.data?.entities : [],
-    ),
-    ss58,
-  );
+  const artifactEntities = entitiesArtifact.ok
+    ? ((entitiesArtifact.data as Record<string, unknown> | undefined)
+        ?.entities as Array<Record<string, unknown>> | undefined)
+    : [];
+  const dataWithLabels = {
+    ...data,
+    labels: labelsForSs58(entityLabelsIndex(artifactEntities), ss58),
+  };
   return accountEnvelopeResponse(
     request,
     {
-      data,
+      data: dataWithLabels,
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}.json`,
@@ -3018,22 +3472,32 @@ export async function handleAccount(request, env, ss58) {
 // builds ownership_ties alone (entities: [] on its side); this handler then
 // joins the entities.json artifact's `labels` on top, same join site as
 // handleAccount above.
-export async function handleAccountEntities(request, env, coldkey) {
+export async function handleAccountEntities(
+  request: Request,
+  env: Env,
+  coldkey: string,
+) {
   const [entitiesArtifact, ownershipData] = await Promise.all([
     readArtifact(env, ENTITY_LABELS_ARTIFACT),
-    tryPostgresTier(env, request, "METAGRAPH_SUBNET_OWNERSHIP_SOURCE"),
+    tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_SUBNET_OWNERSHIP_SOURCE" as keyof Env,
+    ),
   ]);
   const data = ownershipData ?? buildAccountEntities(coldkey, { entities: [] });
-  data.labels = labelsForSs58(
-    entityLabelsIndex(
-      entitiesArtifact.ok ? entitiesArtifact.data?.entities : [],
-    ),
-    coldkey,
-  );
+  const artifactEntities = entitiesArtifact.ok
+    ? ((entitiesArtifact.data as Record<string, unknown> | undefined)
+        ?.entities as Array<Record<string, unknown>> | undefined)
+    : [];
+  const dataWithLabels = {
+    ...data,
+    labels: labelsForSs58(entityLabelsIndex(artifactEntities), coldkey),
+  };
   return accountEnvelopeResponse(
     request,
     {
-      data,
+      data: dataWithLabels,
       meta: { contract_version: contractVersion(env) },
     },
     "short",
@@ -3042,7 +3506,12 @@ export async function handleAccountEntities(request, env, coldkey) {
 
 // GET /api/v1/accounts/{ss58}/events: paginated event history (newest first),
 // optional ?kind= filter, ?limit (<=1000) / ?offset.
-export async function handleAccountEvents(request, env, ss58, url) {
+export async function handleAccountEvents(
+  request: Request,
+  env: Env,
+  ss58: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "kind",
     "netuid",
@@ -3062,17 +3531,17 @@ export async function handleAccountEvents(request, env, ss58, url) {
     url.searchParams.get("block_start"),
     "block_start",
   );
-  if (blockStart.error) return analyticsQueryError(blockStart.error);
+  if ("error" in blockStart) return analyticsQueryError(blockStart.error);
   const blockEnd = parseNonNegativeIntParam(
     url.searchParams.get("block_end"),
     "block_end",
   );
-  if (blockEnd.error) return analyticsQueryError(blockEnd.error);
+  if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   const netuid = parseNonNegativeIntParam(
     url.searchParams.get("netuid"),
     "netuid",
   );
-  if (netuid.error) return analyticsQueryError(netuid.error);
+  if ("error" in netuid) return analyticsQueryError(netuid.error);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
@@ -3092,7 +3561,11 @@ export async function handleAccountEvents(request, env, ss58, url) {
     FEED_PAGINATION,
   );
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildAccountEvents> | null) ??
     buildAccountEvents([], ss58, {
       limit: parsedLimit,
       offset: parsedOffset,
@@ -3100,7 +3573,7 @@ export async function handleAccountEvents(request, env, ss58, url) {
     });
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.events,
+      data.events as unknown[],
       "account-events",
       "short",
       request,
@@ -3114,7 +3587,8 @@ export async function handleAccountEvents(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/events.json`,
-        data.events[0]?.observed_at ?? null,
+        (data.events as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -3134,7 +3608,12 @@ export async function handleAccountEvents(request, env, ss58, url) {
 // documented limitation of the hotkey-keyed rollup, not a bug (the contract
 // description spells out the contrast with /events in full).
 
-export async function handleAccountHistory(request, env, ss58, url) {
+export async function handleAccountHistory(
+  request: Request,
+  env: Env,
+  ss58: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "netuid",
     "from",
@@ -3146,7 +3625,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const range = parseDateRange(url);
-  if (range.error) return analyticsQueryError(range.error);
+  if ("error" in range) return analyticsQueryError(range.error);
   const { from, to } = range;
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const netuid = url.searchParams.get("netuid");
@@ -3171,7 +3650,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
     // a header-only CSV rather than a JSON body for a CSV request (#5741).
     if (csvRequested(url, request)) {
       return csvResponse(
-        data.days,
+        data.days as unknown[],
         "account-history",
         "short",
         request,
@@ -3207,14 +3686,18 @@ export async function handleAccountHistory(request, env, ss58, url) {
   // cursor that does not decode to a valid YYYYMMDD day is ignored (falls back to
   // the first page), preserving the never-throw contract.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildAccountHistory> | null) ??
     buildAccountHistory([], ss58, { limit, offset, nextCursor: null });
   // CSV export mirrors handleAccountEvents/Extrinsics/Transfers: the rows are
   // already range/netuid-filtered and paginated, so the CSV path carries the
   // identical set the JSON path would (#5741). Cold → empty array → header-only.
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.days,
+      data.days as unknown[],
       "account-history",
       "short",
       request,
@@ -3241,7 +3724,12 @@ export async function handleAccountHistory(request, env, ss58, url) {
 // since `extrinsics` carries a single `signer` column. ?block_start/?block_end
 // constrain block height; ?limit (<=1000) / ?offset, or ?cursor=. Cold/absent store →
 // schema-stable zero (never 404).
-export async function handleAccountExtrinsics(request, env, ss58, url) {
+export async function handleAccountExtrinsics(
+  request: Request,
+  env: Env,
+  ss58: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "block_start",
     "block_end",
@@ -3255,12 +3743,12 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
     url.searchParams.get("block_start"),
     "block_start",
   );
-  if (blockStart.error) return analyticsQueryError(blockStart.error);
+  if ("error" in blockStart) return analyticsQueryError(blockStart.error);
   const blockEnd = parseNonNegativeIntParam(
     url.searchParams.get("block_end"),
     "block_end",
   );
-  if (blockEnd.error) return analyticsQueryError(blockEnd.error);
+  if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const { limit: parsedLimit, offset: parsedOffset } = parsePagination(
@@ -3268,7 +3756,11 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
     FEED_PAGINATION,
   );
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_EXTRINSICS_SOURCE",
+    )) as ReturnType<typeof buildAccountExtrinsics> | null) ??
     buildAccountExtrinsics([], ss58, {
       limit: parsedLimit,
       offset: parsedOffset,
@@ -3294,7 +3786,8 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/extrinsics.json`,
-        data.extrinsics[0]?.observed_at ?? null,
+        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -3309,7 +3802,12 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
 // height; ?limit (<=1000) / ?offset, or ?cursor=. This is the native-TAO
 // transfer feed only, NOT a full balance ledger. Cold/absent store →
 // schema-stable zero (never 404).
-export async function handleAccountTransfers(request, env, ss58, url) {
+export async function handleAccountTransfers(
+  request: Request,
+  env: Env,
+  ss58: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "direction",
     "block_start",
@@ -3337,16 +3835,20 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     url.searchParams.get("block_start"),
     "block_start",
   );
-  if (blockStart.error) return analyticsQueryError(blockStart.error);
+  if ("error" in blockStart) return analyticsQueryError(blockStart.error);
   const blockEnd = parseNonNegativeIntParam(
     url.searchParams.get("block_end"),
     "block_end",
   );
-  if (blockEnd.error) return analyticsQueryError(blockEnd.error);
+  if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildAccountTransfers> | null) ??
     buildAccountTransfers([], ss58, {
       limit,
       offset,
@@ -3355,7 +3857,7 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     });
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.transfers,
+      data.transfers as unknown[],
       "account-transfers",
       "short",
       request,
@@ -3369,7 +3871,8 @@ export async function handleAccountTransfers(request, env, ss58, url) {
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/transfers.json`,
-        data.transfers[0]?.observed_at ?? null,
+        (data.transfers as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -3382,7 +3885,12 @@ export async function handleAccountTransfers(request, env, ss58, url) {
 // the same route without expanding the public path surface. ?format=csv exports
 // the list-mode leaderboard (mirrors handleAccountsList); it's rejected alongside
 // ?counterparty since the drilldown's single composite object has no CSV rows.
-export async function handleAccountCounterparties(request, env, ss58, url) {
+export async function handleAccountCounterparties(
+  request: Request,
+  env: Env,
+  ss58: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "counterparty",
     "limit",
@@ -3395,7 +3903,7 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
     min: 1,
     max: 100,
   });
-  if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
+  if ("error" in parsedLimit) return analyticsQueryError(parsedLimit.error);
   const limit = parsedLimit.value;
   if (counterparty != null) {
     // CSV export only covers the list-mode leaderboard below -- the
@@ -3452,18 +3960,22 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
         meta: await accountMeta(
           env,
           `/metagraph/accounts/${ss58}/counterparties.json`,
-          data.relationship.last_seen_at,
+          (data.relationship as Record<string, unknown>).last_seen_at,
         ),
       },
       "short",
     );
   }
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildCounterparties> | null) ??
     buildCounterparties([], ss58, { limit });
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.counterparties,
+      data.counterparties as unknown[],
       "account-counterparties",
       "short",
       request,
@@ -3486,9 +3998,17 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
 
 // GET /api/v1/accounts/{ss58}/subnets: the subnets where this hotkey is currently
 // registered (the cross-subnet footprint), from the neurons tier.
-export async function handleAccountSubnets(request, env, ss58) {
+export async function handleAccountSubnets(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildAccountSubnets> | null) ??
     buildAccountSubnets([], ss58);
   return accountEnvelopeResponse(
     request,
@@ -3508,9 +4028,17 @@ export async function handleAccountSubnets(request, env, ss58) {
 // positions with per-position economics + yield and wallet-level aggregates
 // (totals, counts, overall return, stake concentration), from the neurons D1
 // tier. Richer than /subnets (registration footprint only). Cold/absent → empty.
-export async function handleAccountPortfolio(request, env, ss58) {
+export async function handleAccountPortfolio(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildAccountPortfolio> | null) ??
     buildAccountPortfolio([], ss58);
   return accountEnvelopeResponse(
     request,
@@ -3534,9 +4062,17 @@ export async function handleAccountPortfolio(request, env, ss58) {
 // fall back to besides a schema-stable empty card. Reuses
 // METAGRAPH_NEURONS_SOURCE (not a dedicated flag) since this route's stake_tao
 // join reads the same neurons tier that flag already gates in production.
-export async function handleAccountPositions(request, env, ss58) {
+export async function handleAccountPositions(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildAccountPositions> | null) ??
     buildAccountPositions([], new Map(), ss58);
   return accountEnvelopeResponse(
     request,
@@ -3567,19 +4103,24 @@ export async function handleAccountPositions(request, env, ss58) {
 // empty response below. Cold/absent store → 200 with empty points (never
 // 404), matching every sibling history route.
 export async function handleAccountPositionHistory(
-  request,
-  env,
-  ss58,
-  netuid,
-  url,
+  request: Request,
+  env: Env,
+  ss58: string,
+  netuid: string,
+  url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
-  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
-  if (error) return analyticsQueryError(error);
+  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
+  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
+  const { label } = labelResult;
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")) ??
-    buildAccountPositionHistory([], ss58, netuid, { window: label });
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildAccountPositionHistory> | null) ??
+    buildAccountPositionHistory([], ss58, Number(netuid), { window: label });
   return envelopeResponse(
     request,
     {
@@ -3587,7 +4128,8 @@ export async function handleAccountPositionHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/accounts/${ss58}/subnets/${netuid}/history.json`,
-        data.points[0]?.captured_at ?? null,
+        (data.points as unknown as Array<Record<string, unknown>>)[0]
+          ?.captured_at ?? null,
       ),
     },
     "short",
@@ -3608,15 +4150,21 @@ export async function handleAccountPositionHistory(
 // pipeline). D1 fully eliminated (2026-07-16): a Postgres miss/outage now
 // degrades to the schema-stable "no identity" shape, never a live D1 read of
 // D1's frozen copy.
-export async function handleAccountIdentity(request, env, ss58, url) {
+export async function handleAccountIdentity(
+  request: Request,
+  env: Env,
+  ss58: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const data =
-    (await tryPostgresTier(
+    ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-    )) ?? buildAccountIdentity(null, ss58);
+    )) as ReturnType<typeof buildAccountIdentity> | null) ??
+    buildAccountIdentity(null, ss58);
   return envelopeResponse(
     request,
     {
@@ -3636,7 +4184,12 @@ export async function handleAccountIdentity(request, env, ss58, url) {
 // history.mjs), newest first. Mirrors handleSubnetIdentityHistory's shape
 // exactly, keyed by ss58 instead of netuid. Cold/absent store → schema-stable
 // zero entries, never 404.
-export async function handleAccountIdentityHistory(request, env, ss58, url) {
+export async function handleAccountIdentityHistory(
+  request: Request,
+  env: Env,
+  ss58: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -3646,18 +4199,18 @@ export async function handleAccountIdentityHistory(request, env, ss58, url) {
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const data =
-    (await tryPostgresTier(
+    ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-    )) ??
+    )) as ReturnType<typeof buildAccountIdentityHistory> | null) ??
     buildAccountIdentityHistory([], ss58, { limit, offset, nextCursor: null });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
   // JSON path would. Cold store -> empty entries -> header-only CSV.
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.entries,
+      data.entries as unknown[],
       "account-identity-history",
       "short",
       request,
@@ -3671,7 +4224,8 @@ export async function handleAccountIdentityHistory(request, env, ss58, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/accounts/${ss58}/identity-history.json`,
-        data.entries[0]?.observed_at ?? null,
+        (data.entries as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -3683,7 +4237,12 @@ export async function handleAccountIdentityHistory(request, env, ss58, url) {
 // first (the idx_account_events_netuid index this tier was built for). Optional
 // ?kind= filter; ?limit (<=1000)/?offset. Cold/absent store → schema-stable zero
 // (never 404), mirroring handleAccountEvents.
-export async function handleSubnetEvents(request, env, netuid, url) {
+export async function handleSubnetEvents(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "kind",
     "block_start",
@@ -3712,12 +4271,12 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     url.searchParams.get("block_start"),
     "block_start",
   );
-  if (blockStart.error) return analyticsQueryError(blockStart.error);
+  if ("error" in blockStart) return analyticsQueryError(blockStart.error);
   const blockEnd = parseNonNegativeIntParam(
     url.searchParams.get("block_end"),
     "block_end",
   );
-  if (blockEnd.error) return analyticsQueryError(blockEnd.error);
+  if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const { limit: parsedLimit, offset: parsedOffset } = parsePagination(
@@ -3725,15 +4284,19 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     FEED_PAGINATION,
   );
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
-    buildSubnetEvents([], netuid, {
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetEvents> | null) ??
+    buildSubnetEvents([], Number(netuid), {
       limit: parsedLimit,
       offset: parsedOffset,
       nextCursor: null,
     });
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.events,
+      data.events as unknown[],
       "subnet-events",
       "short",
       request,
@@ -3747,7 +4310,8 @@ export async function handleSubnetEvents(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/events.json`,
-        data.events[0]?.observed_at ?? null,
+        (data.events as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -3757,7 +4321,12 @@ export async function handleSubnetEvents(request, env, netuid, url) {
 // GET /api/v1/subnets/{netuid}/event-summary: compact windowed account_events
 // aggregates by kind/category plus a small newest-first evidence slice. This is
 // the dashboard-friendly companion to the raw /events feed.
-export async function handleSubnetEventSummary(request, env, netuid, url) {
+export async function handleSubnetEventSummary(
+  request: Request,
+  env: Env,
+  netuid: string,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, ["window", "limit"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowLabel =
@@ -3777,10 +4346,14 @@ export async function handleSubnetEventSummary(request, env, netuid, url) {
     defaultLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
     maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   });
-  if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
+  if ("error" in parsedLimit) return analyticsQueryError(parsedLimit.error);
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_ACCOUNT_EVENTS_SOURCE")) ??
-    buildSubnetEventSummary([], [], netuid, {
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as ReturnType<typeof buildSubnetEventSummary> | null) ??
+    buildSubnetEventSummary([], [], Number(netuid), {
       window: windowLabel,
       limit: parsedLimit.limit,
     });
@@ -3807,7 +4380,11 @@ export const BALANCE_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // Served through the shared envelopeResponse so it carries the same ok/data
 // envelope, weak ETag, contract-version header, and 304/HEAD handling as every
 // other route — the body matches the AccountBalanceArtifact data schema.
-export async function handleAccountBalance(request, env, ss58) {
+export async function handleAccountBalance(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
   if (!isFinneySs58Address(ss58)) {
     return errorResponse(
       "invalid_ss58",
@@ -3848,7 +4425,11 @@ export async function handleAccountBalance(request, env, ss58) {
 // state for one Finney ss58 account — claim type, per-hotkey claimable rates,
 // cumulative claimed watermarks, and per-netuid thresholds. Read-only; never
 // submits claim_root. Live RPC + KV-cache, same shape as handleAccountBalance.
-export async function handleAccountRootClaim(request, env, ss58) {
+export async function handleAccountRootClaim(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
   if (!isFinneySs58Address(ss58)) {
     return errorResponse(
       "invalid_ss58",
@@ -3891,7 +4472,11 @@ export async function handleAccountRootClaim(request, env, ss58) {
 // RPC + KV-cache route, same shape as handleAccountBalance just above —
 // see src/child-hotkey-delegation.ts's header for the on-chain storage
 // details.
-export async function handleAccountChildren(request, env, ss58) {
+export async function handleAccountChildren(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
   if (!isFinneySs58Address(ss58)) {
     return errorResponse(
       "invalid_ss58",
@@ -3931,7 +4516,11 @@ export async function handleAccountChildren(request, env, ss58) {
 // GET /api/v1/accounts/{ss58}/parents (#6723): every hotkey currently
 // delegating stake-weight to this account, per subnet. Same shape as
 // handleAccountChildren just above, reading ParentKeys instead.
-export async function handleAccountParents(request, env, ss58) {
+export async function handleAccountParents(
+  request: Request,
+  env: Env,
+  ss58: string,
+) {
   if (!isFinneySs58Address(ss58)) {
     return errorResponse(
       "invalid_ss58",
@@ -3976,7 +4565,11 @@ export async function handleAccountParents(request, env, ss58) {
 // controllable cache-busting parameter (like /accounts/{ss58}/balance's
 // ss58), so it shares that route's rate limiter rather than sudo-key's
 // no-limiter reasoning. recycled_tao is null on RPC failure (schema-stable).
-export async function handleSubnetRecycled(request, env, netuid) {
+export async function handleSubnetRecycled(
+  request: Request,
+  env: Env,
+  netuid: string,
+) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(
       "invalid_netuid",
@@ -4018,7 +4611,11 @@ export async function handleSubnetRecycled(request, env, netuid) {
 // bounds (subnet-hyperparams.ts). Same live-RPC + KV-cache + rate-limit
 // shape as handleSubnetRecycled just above (a sibling storage-map read, not
 // the same underlying value).
-export async function handleSubnetBurn(request, env, netuid) {
+export async function handleSubnetBurn(
+  request: Request,
+  env: Env,
+  netuid: string,
+) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(
       "invalid_netuid",
@@ -4063,7 +4660,11 @@ export async function handleSubnetBurn(request, env, netuid) {
 // src/subnet-lease.ts's header for the on-chain storage-key/struct-layout
 // details. The companion /lease/history route (event log) is a Postgres-
 // tier route in workers/data-api.mjs, not here.
-export async function handleSubnetLease(request, env, netuid) {
+export async function handleSubnetLease(
+  request: Request,
+  env: Env,
+  netuid: string,
+) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(
       "invalid_netuid",
@@ -4104,7 +4705,7 @@ export async function handleSubnetLease(request, env, netuid) {
 // `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta
 // (source:"chain-events") since the same first-party poller fills this tier.
-export async function handleBlocks(request, env, url) {
+export async function handleBlocks(request: Request, env: Env, url: URL) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -4135,16 +4736,20 @@ export async function handleBlocks(request, env, url) {
     const raw = sp.get(param);
     if (raw === null) continue;
     const parsed = parseNonNegativeIntParam(raw, param);
-    if (parsed.error) return analyticsQueryError(parsed.error);
+    if ("error" in parsed) return analyticsQueryError(parsed.error);
   }
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_BLOCKS_SOURCE",
+    )) as ReturnType<typeof buildBlockFeed> | null) ??
     buildBlockFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.blocks,
+      data.blocks as unknown[],
       "blocks",
       "short",
       request,
@@ -4158,7 +4763,8 @@ export async function handleBlocks(request, env, url) {
       meta: await accountMeta(
         env,
         "/metagraph/blocks.json",
-        data.blocks[0]?.observed_at ?? null,
+        (data.blocks as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -4171,7 +4777,11 @@ export async function handleBlocks(request, env, url) {
 // decentralization (concentration over each author's block count), and the runtime
 // spec-version spread, computed live from the `blocks` D1 tier. No params; a
 // cold/absent store → 200 with a schema-stable zeroed card.
-export async function handleBlocksSummary(request, env, url) {
+export async function handleBlocksSummary(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const pgData = await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE");
@@ -4195,12 +4805,15 @@ export async function handleBlocksSummary(request, env, url) {
 // block_number OR a 0x block_hash. Served live from the `blocks` D1 tier; an
 // unknown ref / cold store → 200 with block:null (schema-stable, mirrors the
 // neuron detail route — NEVER 404/throw).
-export async function handleBlock(request, env, ref) {
+export async function handleBlock(request: Request, env: Env, ref: string) {
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE")) ??
-    buildBlock(undefined, ref);
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_BLOCKS_SOURCE",
+    )) as ReturnType<typeof buildBlock> | null) ?? buildBlock(undefined, ref);
   // Finalized block detail is immutable once resolved; a cold/unknown ref stays
   // on the short profile so clients re-check when the block lands.
   const cacheProfile = data.block ? "static" : "short";
@@ -4224,7 +4837,12 @@ export async function handleBlock(request, env, ref) {
 // then extrinsics are read by the (block_number, extrinsic_index) PK prefix. ?limit
 // (<=100) / ?offset. Unknown ref / cold store → 200 with block_number:null +
 // extrinsics:[] (schema-stable, never 404).
-export async function handleBlockExtrinsics(request, env, ref, url) {
+export async function handleBlockExtrinsics(
+  request: Request,
+  env: Env,
+  ref: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -4234,16 +4852,20 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
   const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
-  const { data } = (await tryPostgresTier(
+  const { data } = ((await tryPostgresTier(
     env,
     request,
     "METAGRAPH_EXTRINSICS_SOURCE",
-  )) ?? { data: buildBlockExtrinsics([], ref, null, { limit, offset }) };
+  )) as { data: ReturnType<typeof buildBlockExtrinsics> } | null) ?? {
+    data: buildBlockExtrinsics([], ref, null, { limit, offset }),
+  };
   // CSV reuses handleExtrinsics's transform + columns — buildBlockExtrinsics maps
   // the same formatExtrinsic row shape (#5746). Cold block → empty → header-only.
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(data.extrinsics),
+      extrinsicsToCsvRows(
+        data.extrinsics as unknown as Array<Record<string, unknown>>,
+      ),
       `block-${ref}-extrinsics`,
       "short",
       request,
@@ -4257,7 +4879,8 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
       meta: await accountMeta(
         env,
         `/metagraph/blocks/${ref}/extrinsics.json`,
-        data.extrinsics[0]?.observed_at ?? null,
+        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -4270,7 +4893,12 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
 // then events are read by the (block_number, event_index) PK prefix. ?limit
 // (<=1000) / ?offset. Unknown ref / cold store → 200 with block_number:null +
 // events:[] (schema-stable, never 404). Mirrors handleBlockExtrinsics.
-export async function handleBlockEvents(request, env, ref, url) {
+export async function handleBlockEvents(
+  request: Request,
+  env: Env,
+  ref: string,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -4280,16 +4908,18 @@ export async function handleBlockEvents(request, env, ref, url) {
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  const { data } = (await tryPostgresTier(
+  const { data } = ((await tryPostgresTier(
     env,
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) ?? { data: buildBlockEvents([], ref, null, { limit, offset }) };
+  )) as { data: ReturnType<typeof buildBlockEvents> } | null) ?? {
+    data: buildBlockEvents([], ref, null, { limit, offset }),
+  };
   // CSV reuses the account-events EVENTS_CSV_COLUMNS — buildBlockEvents maps the
   // same formatAccountEvent row shape (#5746). Cold block → empty → header-only.
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.events,
+      data.events as unknown[],
       `block-${ref}-events`,
       "short",
       request,
@@ -4303,7 +4933,8 @@ export async function handleBlockEvents(request, env, ref, url) {
       meta: await accountMeta(
         env,
         `/metagraph/blocks/${ref}/events.json`,
-        data.events[0]?.observed_at ?? null,
+        (data.events as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -4323,7 +4954,7 @@ export async function handleBlockEvents(request, env, ref, url) {
 // so it's also safe to interpolate into a LIKE pattern below.
 const CALL_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 
-export async function handleExtrinsics(request, env, url) {
+export async function handleExtrinsics(request: Request, env: Env, url: URL) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -4347,7 +4978,7 @@ export async function handleExtrinsics(request, env, url) {
     const raw = sp.get(param);
     if (raw === null) continue;
     const parsed = parseNonNegativeIntParam(raw, param);
-    if (parsed.error) return analyticsQueryError(parsed.error);
+    if ("error" in parsed) return analyticsQueryError(parsed.error);
   }
   const successRaw = sp.get("success");
   if (successRaw !== null && successRaw !== "true" && successRaw !== "false") {
@@ -4373,11 +5004,17 @@ export async function handleExtrinsics(request, env, url) {
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_EXTRINSICS_SOURCE",
+    )) as ReturnType<typeof buildExtrinsicFeed> | null) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(data.extrinsics),
+      extrinsicsToCsvRows(
+        data.extrinsics as unknown as Array<Record<string, unknown>>,
+      ),
       "extrinsics",
       "short",
       request,
@@ -4391,7 +5028,8 @@ export async function handleExtrinsics(request, env, url) {
       meta: await accountMeta(
         env,
         "/metagraph/extrinsics.json",
-        data.extrinsics[0]?.observed_at ?? null,
+        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -4405,7 +5043,7 @@ export async function handleExtrinsics(request, env, url) {
 // proposal-lifecycle route — same D1 tier + loader as handleExtrinsics, no
 // signer/call_module query params (signer is always the current sudo key, see
 // GET /api/v1/sudo/key; call_module is fixed).
-export async function handleSudo(request, env, url) {
+export async function handleSudo(request: Request, env: Env, url: URL) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -4426,7 +5064,7 @@ export async function handleSudo(request, env, url) {
     const raw = sp.get(param);
     if (raw === null) continue;
     const parsed = parseNonNegativeIntParam(raw, param);
-    if (parsed.error) return analyticsQueryError(parsed.error);
+    if ("error" in parsed) return analyticsQueryError(parsed.error);
   }
   const successRaw = sp.get("success");
   if (successRaw !== null && successRaw !== "true" && successRaw !== "false") {
@@ -4438,11 +5076,17 @@ export async function handleSudo(request, env, url) {
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_EXTRINSICS_SOURCE",
+    )) as ReturnType<typeof buildExtrinsicFeed> | null) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(data.extrinsics),
+      extrinsicsToCsvRows(
+        data.extrinsics as unknown as Array<Record<string, unknown>>,
+      ),
       "sudo-calls",
       "short",
       request,
@@ -4456,7 +5100,8 @@ export async function handleSudo(request, env, url) {
       meta: await accountMeta(
         env,
         "/metagraph/sudo.json",
-        data.extrinsics[0]?.observed_at ?? null,
+        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -4469,7 +5114,11 @@ export async function handleSudo(request, env, url) {
 // handleSudo, just call_module='AdminUtils' — most AdminUtils calls (77 of
 // ~83) don't emit their own dedicated event, so the extrinsic + its decoded
 // call_args is the reliable source, not chain_events.
-export async function handleGovernanceConfigChanges(request, env, url) {
+export async function handleGovernanceConfigChanges(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -4490,7 +5139,7 @@ export async function handleGovernanceConfigChanges(request, env, url) {
     const raw = sp.get(param);
     if (raw === null) continue;
     const parsed = parseNonNegativeIntParam(raw, param);
-    if (parsed.error) return analyticsQueryError(parsed.error);
+    if ("error" in parsed) return analyticsQueryError(parsed.error);
   }
   const successRaw = sp.get("success");
   if (successRaw !== null && successRaw !== "true" && successRaw !== "false") {
@@ -4502,11 +5151,17 @@ export async function handleGovernanceConfigChanges(request, env, url) {
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_EXTRINSICS_SOURCE",
+    )) as ReturnType<typeof buildExtrinsicFeed> | null) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
-      extrinsicsToCsvRows(data.extrinsics),
+      extrinsicsToCsvRows(
+        data.extrinsics as unknown as Array<Record<string, unknown>>,
+      ),
       "governance-config-changes",
       "short",
       request,
@@ -4520,7 +5175,8 @@ export async function handleGovernanceConfigChanges(request, env, url) {
       meta: await accountMeta(
         env,
         "/metagraph/governance/config-changes.json",
-        data.extrinsics[0]?.observed_at ?? null,
+        (data.extrinsics as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
       ),
     },
     "short",
@@ -4542,13 +5198,17 @@ const RUNTIME_VERSIONS_CSV_COLUMNS = [
 // accepted param, #6392). See src/runtime-versions.ts for the coverage caveat
 // (spec_version wasn't tracked before 2026-06-25 and can't be back-filled for
 // rows written before then).
-export async function handleRuntime(request, env, url) {
+export async function handleRuntime(request: Request, env: Env, url: URL) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_BLOCKS_SOURCE",
+    )) as ReturnType<typeof buildRuntimeVersionHistory> | null) ??
     buildRuntimeVersionHistory([]);
   // CSV exports the row-shaped transition timeline -- the same three columns
   // the /runtime page's table renders (#6392). The rollup fields
@@ -4558,7 +5218,7 @@ export async function handleRuntime(request, env, url) {
   // of the CSV. A cold store yields transitions: [] -> a header-only CSV.
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.transitions,
+      data.transitions as unknown[],
       "runtime-versions",
       "short",
       request,
@@ -4572,7 +5232,10 @@ export async function handleRuntime(request, env, url) {
       meta: await accountMeta(
         env,
         "/metagraph/runtime.json",
-        data.transitions[data.transitions.length - 1]?.observed_at ?? null,
+        (data.transitions as unknown as Array<Record<string, unknown>>)[
+          (data.transitions as unknown as Array<Record<string, unknown>>)
+            .length - 1
+        ]?.observed_at ?? null,
       ),
     },
     "short",
@@ -4588,7 +5251,7 @@ export async function handleRuntime(request, env, url) {
 // exists for this route (unlike /accounts/{ss58}/balance), so it doesn't need
 // that route's rate limiter. hotkey is null on RPC failure or an unset sudo
 // key (schema-stable, never throws).
-export async function handleSudoKey(request, env) {
+export async function handleSudoKey(request: Request, env: Env) {
   const data = await loadSudoKey(env);
   return envelopeResponse(
     request,
@@ -4604,7 +5267,11 @@ export const EVM_ADDRESS_MAPPING_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 // at request time. 1h KV cache via METAGRAPH_CONTROL (deterministic given
 // h160, never changes). Returns 400 on invalid h160; 200 with ss58:null on
 // RPC failure (schema-stable, consistent with handleAccountBalance below).
-export async function handleEvmAddressMapping(request, env, h160) {
+export async function handleEvmAddressMapping(
+  request: Request,
+  env: Env,
+  h160: string,
+) {
   if (!H160_PATTERN.test(h160)) {
     return errorResponse(
       "invalid_h160",
@@ -4645,7 +5312,7 @@ export async function handleEvmAddressMapping(request, env, h160) {
 // params, no dedicated rate limiter -- neither is a per-caller-scoped
 // resource). Every field is independently null on RPC failure
 // (schema-stable, never throws).
-export async function handleNetworkParameters(request, env) {
+export async function handleNetworkParameters(request: Request, env: Env) {
   const data = await loadNetworkParameters(env);
   return envelopeResponse(
     request,
@@ -4660,7 +5327,7 @@ export async function handleNetworkParameters(request, env) {
 // as handleNetworkParameters just above (no path params, no dedicated rate
 // limiter). Every field is independently null on RPC failure
 // (schema-stable, never throws).
-export async function handleRandomnessStatus(request, env) {
+export async function handleRandomnessStatus(request: Request, env: Env) {
   const data = await loadRandomnessStatus(env);
   return envelopeResponse(
     request,
@@ -4680,11 +5347,15 @@ export async function handleRandomnessStatus(request, env) {
 // When the extrinsic resolves, the indexed account_events it emitted (#1849) are
 // embedded via a second lookup on (block_number, extrinsic_index) — bounded to 50.
 // Empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store.
-export async function handleExtrinsic(request, env, ref) {
+export async function handleExtrinsic(request: Request, env: Env, ref: string) {
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
-    (await tryPostgresTier(env, request, "METAGRAPH_EXTRINSICS_SOURCE")) ??
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_EXTRINSICS_SOURCE",
+    )) as ReturnType<typeof buildExtrinsic> | null) ??
     buildExtrinsic(undefined, ref);
   return envelopeResponse(
     request,

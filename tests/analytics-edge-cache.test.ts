@@ -9,7 +9,7 @@ import {
 import {
   handleBlocksSummary,
   handleSubnetStakeFlow,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -1076,7 +1076,13 @@ describe("analytics edge cache", () => {
       ctx,
       mockEnv(env),
       "subnet-stake-flow",
-      () => handleSubnetStakeFlow(request, env, 7, routeUrl),
+      () =>
+        handleSubnetStakeFlow(
+          request,
+          env as unknown as Env,
+          String(7),
+          routeUrl,
+        ),
     );
     await Promise.resolve();
 
@@ -1104,7 +1110,7 @@ describe("analytics edge cache", () => {
       ctx,
       mockEnv(env),
       "blocks-summary",
-      () => handleBlocksSummary(request, env, routeUrl),
+      () => handleBlocksSummary(request, env as unknown as Env, routeUrl),
     );
     await Promise.resolve();
 

@@ -9,7 +9,7 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetConcentrationHistory,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const NETUID = 7;
@@ -50,8 +50,8 @@ describe("handleSubnetConcentrationHistory CSV export", () => {
   test("returns header-only CSV when D1 is cold", async () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(
         `/api/v1/subnets/${NETUID}/concentration/history?window=30d&format=csv`,
       ),
@@ -101,8 +101,8 @@ describe("handleSubnetConcentrationHistory CSV export", () => {
     };
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      env,
-      NETUID,
+      env as unknown as Env,
+      String(NETUID),
       url(
         `/api/v1/subnets/${NETUID}/concentration/history?window=30d&format=csv`,
       ),
@@ -118,8 +118,8 @@ describe("handleSubnetConcentrationHistory CSV export", () => {
   test("rejects an unsupported format value", async () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(
         `/api/v1/subnets/${NETUID}/concentration/history?window=30d&format=pdf`,
       ),
@@ -131,8 +131,8 @@ describe("handleSubnetConcentrationHistory CSV export", () => {
   test("rejects an empty format parameter", async () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/concentration/history?format=`),
     );
     const body = await errorJson(res);

@@ -187,7 +187,7 @@ import {
   handleRandomnessStatus,
   handleGovernanceConfigChanges,
   handleRuntime,
-} from "./request-handlers/entities.mjs";
+} from "./request-handlers/entities.ts";
 import {
   canonicalCompareCachePath,
   canonicalEconomicsTrendsCachePath,

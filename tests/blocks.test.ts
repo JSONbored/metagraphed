@@ -5,7 +5,7 @@ import {
   handleBlock,
   handleBlockEvents,
   handleBlockExtrinsics,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 import {
   BLOCK_READ_COLUMNS,
   buildBlock,
@@ -454,7 +454,11 @@ for (const badRef of BAD_BLOCK_REFS) {
     const env = dbWith({
       detail: { block_number: 1, block_hash: "0xabc", observed_at: 5 },
     });
-    const res = await handleBlock(req(`/api/v1/blocks/${badRef}`), env, badRef);
+    const res = await handleBlock(
+      req(`/api/v1/blocks/${badRef}`),
+      env as unknown as Env,
+      badRef,
+    );
     assert.equal(res.status, 200);
     const body = (await res.json()) as Row;
     assert.equal(
@@ -471,7 +475,7 @@ for (const badRef of BAD_BLOCK_REFS) {
     });
     const res = await handleBlockExtrinsics(
       req(`/api/v1/blocks/${badRef}/extrinsics`),
-      env,
+      env as unknown as Env,
       badRef,
       new URL(`https://api.metagraph.sh/api/v1/blocks/${badRef}/extrinsics`),
     );
@@ -487,7 +491,7 @@ for (const badRef of BAD_BLOCK_REFS) {
     });
     const res = await handleBlockEvents(
       req(`/api/v1/blocks/${badRef}/events`),
-      env,
+      env as unknown as Env,
       badRef,
       new URL(`https://api.metagraph.sh/api/v1/blocks/${badRef}/events`),
     );

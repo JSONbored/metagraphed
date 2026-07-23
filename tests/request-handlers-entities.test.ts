@@ -99,7 +99,7 @@ import {
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
   canonicalGlobalValidatorsCachePath,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
@@ -698,8 +698,8 @@ describe("handleSubnetMetagraph", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetMetagraph(
       req(`/api/v1/subnets/${NETUID}/metagraph`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/metagraph?bogus=1`),
     );
     const body = await errorJson(res);
@@ -727,8 +727,8 @@ describe("handleSubnetYield", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetYield(
       req(`/api/v1/subnets/${NETUID}/yield`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/yield?bogus=1`),
     );
     const body = await errorJson(res);
@@ -777,9 +777,9 @@ describe("handleNeuron", () => {
     const body = await json(
       await handleNeuron(
         req(`/api/v1/subnets/${NETUID}/neurons/999`),
-        env,
-        NETUID,
-        999,
+        env as unknown as Env,
+        String(NETUID),
+        String(999),
       ),
     );
     assert.equal(body.data.neuron, null);
@@ -790,8 +790,8 @@ describe("handleSubnetValidators", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetValidators(
       req(`/api/v1/subnets/${NETUID}/validators`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/validators?limit=10`),
     );
     await errorJson(res);
@@ -868,8 +868,8 @@ describe("handleSubnetValidators", () => {
     };
     const res = await handleSubnetValidators(
       req(`/api/v1/subnets/${NETUID}/validators`),
-      env,
-      NETUID,
+      env as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/validators`),
     );
     const body = await json(res);
@@ -889,7 +889,7 @@ describe("handleGlobalValidators", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleGlobalValidators(
       req("/api/v1/validators"),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       url("/api/v1/validators?bogus=1"),
     );
     await errorJson(res);
@@ -957,7 +957,7 @@ describe("handleGlobalValidators", () => {
     };
     const res = await handleGlobalValidators(
       req("/api/v1/validators"),
-      env,
+      env as unknown as Env,
       url("/api/v1/validators"),
     );
     const body = await json(res);
@@ -989,7 +989,7 @@ describe("handleGlobalValidators", () => {
     };
     const res = await handleGlobalValidators(
       req("/api/v1/validators?sort=total_stake"),
-      env,
+      env as unknown as Env,
       url("/api/v1/validators?sort=total_stake"),
     );
     const body = await json(res);
@@ -1063,9 +1063,9 @@ describe("handleNeuronHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleNeuronHistory(
       req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-      emptyEnv(),
-      NETUID,
-      UID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
+      String(UID),
       url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?bogus=1`),
     );
     await errorJson(res);
@@ -1074,9 +1074,9 @@ describe("handleNeuronHistory", () => {
   test("rejects an invalid window param with 400", async () => {
     const res = await handleNeuronHistory(
       req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-      emptyEnv(),
-      NETUID,
-      UID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
+      String(UID),
       url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=400d`),
     );
     const body = await errorJson(res);
@@ -1104,8 +1104,8 @@ describe("handleSubnetHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetHistory(
       req(`/api/v1/subnets/${NETUID}/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/history?offset=0`),
     );
     await errorJson(res);
@@ -1176,8 +1176,8 @@ describe("handleSubnetHistory", () => {
   test("invalid window returns 400", async () => {
     const res = await handleSubnetHistory(
       req(`/api/v1/subnets/${NETUID}/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/history?window=bogus`),
     );
     const body = await errorJson(res);
@@ -1189,8 +1189,8 @@ describe("handleSubnetIdentityHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/identity-history?bogus=1`),
     );
     await errorJson(res);
@@ -1228,8 +1228,8 @@ describe("handleSubnetIdentityHistory", () => {
     const body = await json(
       await handleSubnetIdentityHistory(
         req(`/api/v1/subnets/${NETUID}/identity-history`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/identity-history?limit=20`),
       ),
     );
@@ -1243,8 +1243,8 @@ describe("handleSubnetHyperparams", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetHyperparams(
       req(`/api/v1/subnets/${NETUID}/hyperparameters`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/hyperparameters?bogus=1`),
     );
     await errorJson(res);
@@ -1272,8 +1272,8 @@ describe("handleSubnetHyperparamsHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/hyperparameters/history?bogus=1`),
     );
     await errorJson(res);
@@ -1299,8 +1299,8 @@ describe("handleSubnetPerformance", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetPerformance(
       req(`/api/v1/subnets/${NETUID}/performance`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/performance?window=7d`),
     );
     await errorJson(res);
@@ -1325,8 +1325,8 @@ describe("handleSubnetConcentration", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetConcentration(
       req(`/api/v1/subnets/${NETUID}/concentration`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/concentration?window=7d`),
     );
     await errorJson(res);
@@ -1351,8 +1351,8 @@ describe("handleSubnetConcentration", () => {
     // so the handler still answers 200 with null metric blocks, never 5xx/404.
     const res = await handleSubnetConcentration(
       req(`/api/v1/subnets/${NETUID}/concentration`),
-      dbThrows("no such column: validator_permit"),
-      NETUID,
+      dbThrows("no such column: validator_permit") as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/concentration`),
     );
     assert.equal(res.status, 200);
@@ -1371,8 +1371,8 @@ describe("handleSubnetConcentrationHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/concentration/history?bogus=1`),
     );
     await errorJson(res);
@@ -1381,8 +1381,8 @@ describe("handleSubnetConcentrationHistory", () => {
   test("rejects an out-of-range window with 400", async () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/concentration/history?window=1y`),
     );
     const body = await errorJson(res);
@@ -1406,8 +1406,8 @@ describe("handleSubnetConcentrationHistory", () => {
     // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      dbThrows("d1 timeout"),
-      NETUID,
+      dbThrows("d1 timeout") as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/concentration/history?window=7d`),
     );
     assert.equal(res.status, 200);
@@ -1424,8 +1424,8 @@ describe("handleSubnetPerformanceHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/performance/history?bogus=1`),
     );
     await errorJson(res);
@@ -1434,8 +1434,8 @@ describe("handleSubnetPerformanceHistory", () => {
   test("rejects an out-of-range window with 400", async () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/performance/history?window=1y`),
     );
     const body = await errorJson(res);
@@ -1459,8 +1459,8 @@ describe("handleSubnetPerformanceHistory", () => {
     // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
-      dbThrows("d1 timeout"),
-      NETUID,
+      dbThrows("d1 timeout") as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/performance/history?window=7d`),
     );
     assert.equal(res.status, 200);
@@ -1477,8 +1477,8 @@ describe("handleSubnetYieldHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/yield/history?bogus=1`),
     );
     await errorJson(res);
@@ -1487,8 +1487,8 @@ describe("handleSubnetYieldHistory", () => {
   test("rejects an out-of-range window with 400", async () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/yield/history?window=1y`),
     );
     const body = await errorJson(res);
@@ -1512,8 +1512,8 @@ describe("handleSubnetYieldHistory", () => {
     // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
-      dbThrows("d1 timeout"),
-      NETUID,
+      dbThrows("d1 timeout") as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/yield/history?window=7d`),
     );
     assert.equal(res.status, 200);
@@ -1530,8 +1530,8 @@ describe("handleSubnetTurnover", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetTurnover(
       req(`/api/v1/subnets/${NETUID}/turnover`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/turnover?bogus=1`),
     );
     await errorJson(res);
@@ -1553,8 +1553,8 @@ describe("handleSubnetTurnover", () => {
   test("rejects an invalid changes flag with 400", async () => {
     const res = await handleSubnetTurnover(
       req(`/api/v1/subnets/${NETUID}/turnover`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/turnover?changes=false`),
     );
     await errorJson(res);
@@ -1726,8 +1726,8 @@ describe("handleSubnetWeights", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetWeights(
       req(`/api/v1/subnets/${NETUID}/weights`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/weights?bogus=1`),
     );
     await errorJson(res);
@@ -1736,8 +1736,8 @@ describe("handleSubnetWeights", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetWeights(
       req(`/api/v1/subnets/${NETUID}/weights`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/weights?window=1y`),
     );
     const body = await errorJson(res);
@@ -1800,8 +1800,8 @@ describe("handleSubnetServing", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetServing(
       req(`/api/v1/subnets/${NETUID}/serving`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/serving?bogus=1`),
     );
     await errorJson(res);
@@ -1810,8 +1810,8 @@ describe("handleSubnetServing", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetServing(
       req(`/api/v1/subnets/${NETUID}/serving`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/serving?window=1y`),
     );
     const body = await errorJson(res);
@@ -1874,8 +1874,8 @@ describe("handleSubnetPrometheus", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetPrometheus(
       req(`/api/v1/subnets/${NETUID}/prometheus`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/prometheus?bogus=1`),
     );
     await errorJson(res);
@@ -1884,8 +1884,8 @@ describe("handleSubnetPrometheus", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetPrometheus(
       req(`/api/v1/subnets/${NETUID}/prometheus`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/prometheus?window=1y`),
     );
     const body = await errorJson(res);
@@ -1950,8 +1950,8 @@ describe("handleSubnetStakeMoves", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetStakeMoves(
       req(`/api/v1/subnets/${NETUID}/stake-moves`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/stake-moves?bogus=1`),
     );
     await errorJson(res);
@@ -1960,8 +1960,8 @@ describe("handleSubnetStakeMoves", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetStakeMoves(
       req(`/api/v1/subnets/${NETUID}/stake-moves`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/stake-moves?window=1y`),
     );
     const body = await errorJson(res);
@@ -2028,8 +2028,8 @@ describe("handleSubnetStakeTransfers", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetStakeTransfers(
       req(`/api/v1/subnets/${NETUID}/stake-transfers`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/stake-transfers?bogus=1`),
     );
     await errorJson(res);
@@ -2038,8 +2038,8 @@ describe("handleSubnetStakeTransfers", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetStakeTransfers(
       req(`/api/v1/subnets/${NETUID}/stake-transfers`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/stake-transfers?window=1y`),
     );
     const body = await errorJson(res);
@@ -2106,8 +2106,8 @@ describe("handleSubnetRegistrations", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetRegistrations(
       req(`/api/v1/subnets/${NETUID}/registrations`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/registrations?bogus=1`),
     );
     await errorJson(res);
@@ -2116,8 +2116,8 @@ describe("handleSubnetRegistrations", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetRegistrations(
       req(`/api/v1/subnets/${NETUID}/registrations`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/registrations?window=1y`),
     );
     const body = await errorJson(res);
@@ -2184,8 +2184,8 @@ describe("handleSubnetAxonRemovals", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetAxonRemovals(
       req(`/api/v1/subnets/${NETUID}/axon-removals`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/axon-removals?bogus=1`),
     );
     await errorJson(res);
@@ -2194,8 +2194,8 @@ describe("handleSubnetAxonRemovals", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetAxonRemovals(
       req(`/api/v1/subnets/${NETUID}/axon-removals`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/axon-removals?window=1y`),
     );
     const body = await errorJson(res);
@@ -2262,8 +2262,8 @@ describe("handleSubnetDeregistrations", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetDeregistrations(
       req(`/api/v1/subnets/${NETUID}/deregistrations`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/deregistrations?bogus=1`),
     );
     await errorJson(res);
@@ -2272,8 +2272,8 @@ describe("handleSubnetDeregistrations", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetDeregistrations(
       req(`/api/v1/subnets/${NETUID}/deregistrations`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/deregistrations?window=1y`),
     );
     const body = await errorJson(res);
@@ -2340,8 +2340,8 @@ describe("handleSubnetStakeFlow", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetStakeFlow(
       req(`/api/v1/subnets/${NETUID}/stake-flow`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/stake-flow?bogus=1`),
     );
     await errorJson(res);
@@ -2350,8 +2350,8 @@ describe("handleSubnetStakeFlow", () => {
   test("rejects an out-of-retention window with 400", async () => {
     const res = await handleSubnetStakeFlow(
       req(`/api/v1/subnets/${NETUID}/stake-flow`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/stake-flow?window=1y`),
     );
     await errorJson(res);
@@ -2360,8 +2360,8 @@ describe("handleSubnetStakeFlow", () => {
   test("rejects an unsupported direction enum value with 400", async () => {
     const res = await handleSubnetStakeFlow(
       req(`/api/v1/subnets/${NETUID}/stake-flow`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/stake-flow?direction=invalid`),
     );
     const body = await errorJson(res);
@@ -2474,7 +2474,7 @@ describe("handleSubnetMovers", () => {
     await errorJson(
       await handleSubnetMovers(
         req("/api/v1/subnets/movers"),
-        emptyEnv(),
+        emptyEnv() as unknown as Env,
         url("/api/v1/subnets/movers?bogus=1"),
       ),
     );
@@ -2484,7 +2484,7 @@ describe("handleSubnetMovers", () => {
     const body = await errorJson(
       await handleSubnetMovers(
         req("/api/v1/subnets/movers"),
-        emptyEnv(),
+        emptyEnv() as unknown as Env,
         url("/api/v1/subnets/movers?window=1y"),
       ),
     );
@@ -2499,7 +2499,7 @@ describe("handleSubnetMovers", () => {
     await errorJson(
       await handleSubnetMovers(
         req("/api/v1/subnets/movers"),
-        emptyEnv(),
+        emptyEnv() as unknown as Env,
         url("/api/v1/subnets/movers?sort=bogus"),
       ),
     );
@@ -2509,7 +2509,7 @@ describe("handleSubnetMovers", () => {
     await errorJson(
       await handleSubnetMovers(
         req("/api/v1/subnets/movers"),
-        emptyEnv(),
+        emptyEnv() as unknown as Env,
         url("/api/v1/subnets/movers?limit=0"),
       ),
     );
@@ -2604,7 +2604,7 @@ describe("handleAccount", () => {
   test("exposes x-metagraph-artifact-source matching meta.source", async () => {
     const res = await handleAccount(
       req(`/api/v1/accounts/${SS58}`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
     );
     const body = await json(res);
@@ -2618,7 +2618,7 @@ describe("handleAccount", () => {
   test("304 still carries x-metagraph-artifact-source", async () => {
     const first = await handleAccount(
       req(`/api/v1/accounts/${SS58}`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
     );
     const etag = first.headers.get("etag");
@@ -2627,7 +2627,7 @@ describe("handleAccount", () => {
       new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}`, {
         headers: { "if-none-match": etag },
       }),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
     );
     assert.equal(second.status, 304);
@@ -2643,7 +2643,7 @@ describe("handleAccountEvents", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountEvents(
       req(`/api/v1/accounts/${SS58}/events`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/events?bogus=1`),
     );
@@ -2653,7 +2653,7 @@ describe("handleAccountEvents", () => {
   test("rejects a non-integer block_start with 400", async () => {
     const res = await handleAccountEvents(
       req(`/api/v1/accounts/${SS58}/events`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/events?block_start=abc`),
     );
@@ -2664,7 +2664,7 @@ describe("handleAccountEvents", () => {
   test("rejects a non-integer block_end with 400", async () => {
     const res = await handleAccountEvents(
       req(`/api/v1/accounts/${SS58}/events`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/events?block_end=oops`),
     );
@@ -2675,7 +2675,7 @@ describe("handleAccountEvents", () => {
   test("rejects a malformed netuid with 400", async () => {
     const res = await handleAccountEvents(
       req(`/api/v1/accounts/${SS58}/events`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/events?netuid=abc`),
     );
@@ -2689,7 +2689,7 @@ describe("handleAccountEvents", () => {
     });
     await handleAccountEvents(
       req(`/api/v1/accounts/${SS58}/events`),
-      env,
+      env as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/events`),
     );
@@ -2706,7 +2706,7 @@ describe("handleAccountEvents", () => {
     const body = await json(
       await handleAccountEvents(
         req(`/api/v1/accounts/${SS58}/events`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/events?block_start=500&block_end=100`),
       ),
@@ -2736,7 +2736,7 @@ describe("handleAccountEvents", () => {
     });
     const res = await handleAccountEvents(
       req(`/api/v1/accounts/${SS58}/events`),
-      env,
+      env as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/events?kind=Nonexistent`),
     );
@@ -2751,7 +2751,7 @@ describe("handleAccountHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountHistory(
       req(`/api/v1/accounts/${SS58}/history`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/history?bogus=1`),
     );
@@ -2761,7 +2761,7 @@ describe("handleAccountHistory", () => {
   test("rejects malformed from/to dates with 400", async () => {
     const res = await handleAccountHistory(
       req(`/api/v1/accounts/${SS58}/history`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/history?from=June`),
     );
@@ -2776,7 +2776,7 @@ describe("handleAccountHistory", () => {
     for (const netuid of ["abc", "-1", "7.5", "", "9007199254740993"]) {
       const res = await handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
-        emptyEnv(),
+        emptyEnv() as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/history?netuid=${netuid}`),
       );
@@ -2810,7 +2810,7 @@ describe("handleAccountHistory", () => {
     const body = await json(
       await handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/history?from=2026-06-30&to=2026-06-01`),
       ),
@@ -2825,7 +2825,7 @@ describe("handleAccountExtrinsics", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountExtrinsics(
       req(`/api/v1/accounts/${SS58}/extrinsics`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/extrinsics?bogus=1`),
     );
@@ -2847,7 +2847,7 @@ describe("handleAccountExtrinsics", () => {
   test("rejects a non-integer block_start with 400", async () => {
     const res = await handleAccountExtrinsics(
       req(`/api/v1/accounts/${SS58}/extrinsics`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/extrinsics?block_start=abc`),
     );
@@ -2858,7 +2858,7 @@ describe("handleAccountExtrinsics", () => {
   test("rejects a non-integer block_end with 400", async () => {
     const res = await handleAccountExtrinsics(
       req(`/api/v1/accounts/${SS58}/extrinsics`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/extrinsics?block_end=oops`),
     );
@@ -2871,7 +2871,7 @@ describe("handleAccountExtrinsics", () => {
     const body = await json(
       await handleAccountExtrinsics(
         req(`/api/v1/accounts/${SS58}/extrinsics`),
-        env,
+        env as unknown as Env,
         SS58,
         url(
           `/api/v1/accounts/${SS58}/extrinsics?block_start=500&block_end=100`,
@@ -2889,7 +2889,7 @@ describe("handleAccountTransfers", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountTransfers(
       req(`/api/v1/accounts/${SS58}/transfers`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/transfers?bogus=1`),
     );
@@ -2899,7 +2899,7 @@ describe("handleAccountTransfers", () => {
   test("rejects an unsupported direction enum value with 400", async () => {
     const res = await handleAccountTransfers(
       req(`/api/v1/accounts/${SS58}/transfers`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/transfers?direction=invalid`),
     );
@@ -2911,7 +2911,7 @@ describe("handleAccountTransfers", () => {
   test("rejects a non-integer block_start with 400", async () => {
     const res = await handleAccountTransfers(
       req(`/api/v1/accounts/${SS58}/transfers`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/transfers?block_start=abc`),
     );
@@ -2922,7 +2922,7 @@ describe("handleAccountTransfers", () => {
   test("rejects a non-integer block_end with 400", async () => {
     const res = await handleAccountTransfers(
       req(`/api/v1/accounts/${SS58}/transfers`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/transfers?block_end=oops`),
     );
@@ -2935,7 +2935,7 @@ describe("handleAccountTransfers", () => {
     const body = await json(
       await handleAccountTransfers(
         req(`/api/v1/accounts/${SS58}/transfers`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/transfers?block_start=500&block_end=100`),
       ),
@@ -2963,7 +2963,7 @@ describe("handleAccountCounterparties", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountCounterparties(
       req(`/api/v1/accounts/${SS58}/counterparties`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/counterparties?bogus=1`),
     );
@@ -2976,7 +2976,7 @@ describe("handleAccountCounterparties", () => {
       const { env } = dbWith({ captures, transfers: [transferEventRow()] });
       const res = await handleAccountCounterparties(
         req(`/api/v1/accounts/${SS58}/counterparties?limit=${limit}`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/counterparties?limit=${limit}`),
       );
@@ -3007,7 +3007,7 @@ describe("handleAccountCounterparties", () => {
   test("rejects an unsupported format value with 400", async () => {
     const res = await handleAccountCounterparties(
       req(`/api/v1/accounts/${SS58}/counterparties?format=xml`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/counterparties?format=xml`),
     );
@@ -3043,7 +3043,7 @@ describe("handleAccountCounterparties", () => {
     };
     const res = await handleAccountCounterparties(
       req(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
-      env,
+      env as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
     );
@@ -3061,7 +3061,7 @@ describe("handleAccountCounterparties", () => {
   test("empty CSV export still emits the header row", async () => {
     const res = await handleAccountCounterparties(
       req(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
     );
@@ -3078,7 +3078,7 @@ describe("handleAccountCounterparties", () => {
       req(
         `/api/v1/accounts/${SS58}/counterparties?format=csv&counterparty=${COUNTERPARTY}`,
       ),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(
         `/api/v1/accounts/${SS58}/counterparties?format=csv&counterparty=${COUNTERPARTY}`,
@@ -3095,7 +3095,7 @@ describe("handleAccountCounterparties", () => {
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
         { headers: { accept: "text/csv" } },
       ),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(
         `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
@@ -3114,7 +3114,7 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       const { env } = dbWith({ captures });
       const res = await handleAccountCounterparties(
         req(`/api/v1/accounts/${SS58}/counterparties`),
-        env,
+        env as unknown as Env,
         SS58,
         url(
           `/api/v1/accounts/${SS58}/counterparties?counterparty=${counterparty}`,
@@ -3131,7 +3131,7 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       const { env } = dbWith({ captures });
       const res = await handleAccountCounterparties(
         req(`/api/v1/accounts/${SS58}/counterparties`),
-        env,
+        env as unknown as Env,
         SS58,
         url(
           `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=${limit}`,
@@ -3171,7 +3171,7 @@ describe("handleAccountStakeFlow", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountStakeFlow(
       req(`/api/v1/accounts/${SS58}/stake-flow`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/stake-flow?bogus=1`),
     );
@@ -3181,7 +3181,7 @@ describe("handleAccountStakeFlow", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleAccountStakeFlow(
       req(`/api/v1/accounts/${SS58}/stake-flow`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/stake-flow?window=1y`),
     );
@@ -3191,7 +3191,7 @@ describe("handleAccountStakeFlow", () => {
   test("rejects an unsupported direction enum value with 400 (#2694 parity)", async () => {
     const res = await handleAccountStakeFlow(
       req(`/api/v1/accounts/${SS58}/stake-flow`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/stake-flow?direction=invalid`),
     );
@@ -3228,7 +3228,7 @@ describe("handleAccountStakeMoves", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountStakeMoves(
       req(`/api/v1/accounts/${SS58}/stake-moves`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/stake-moves?bogus=1`),
     );
@@ -3238,7 +3238,7 @@ describe("handleAccountStakeMoves", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleAccountStakeMoves(
       req(`/api/v1/accounts/${SS58}/stake-moves`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/stake-moves?window=1y`),
     );
@@ -3288,8 +3288,8 @@ describe("handleSubnetEvents", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/events?bogus=1`),
     );
     await errorJson(res);
@@ -3311,8 +3311,8 @@ describe("handleSubnetEvents", () => {
   test("rejects an unknown event kind with 400", async () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/events?kind=Nonexistent`),
     );
     const body = await errorJson(res);
@@ -3326,8 +3326,8 @@ describe("handleSubnetEvents", () => {
     const body = await json(
       await handleSubnetEvents(
         req(`/api/v1/subnets/${NETUID}/events`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/events?block_start=500&block_end=100`),
       ),
     );
@@ -3340,8 +3340,8 @@ describe("handleSubnetEvents", () => {
   test("rejects a non-integer block_start with 400", async () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/events?block_start=abc`),
     );
     const body = await errorJson(res);
@@ -3351,8 +3351,8 @@ describe("handleSubnetEvents", () => {
   test("rejects a non-integer block_end with 400", async () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/events?block_end=oops`),
     );
     const body = await errorJson(res);
@@ -3364,8 +3364,8 @@ describe("handleSubnetEventSummary", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetEventSummary(
       req(`/api/v1/subnets/${NETUID}/event-summary`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/event-summary?bogus=1`),
     );
     await errorJson(res);
@@ -3374,8 +3374,8 @@ describe("handleSubnetEventSummary", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetEventSummary(
       req(`/api/v1/subnets/${NETUID}/event-summary`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/event-summary?window=365d`),
     );
     const body = await errorJson(res);
@@ -3385,8 +3385,8 @@ describe("handleSubnetEventSummary", () => {
   test("rejects an invalid recent-event limit with 400", async () => {
     const res = await handleSubnetEventSummary(
       req(`/api/v1/subnets/${NETUID}/event-summary`),
-      emptyEnv(),
-      NETUID,
+      emptyEnv() as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/event-summary?limit=0`),
     );
     const body = await errorJson(res);
@@ -3414,7 +3414,7 @@ describe("handleAccountBalance", () => {
   test("returns 400 for invalid ss58", async () => {
     const res = await handleAccountBalance(
       req("/api/v1/accounts/notanss58address/balance"),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       "notanss58address",
     );
     const body = await errorJson(res);
@@ -3425,7 +3425,7 @@ describe("handleAccountBalance", () => {
     const short = "5" + "a".repeat(45);
     const res = await handleAccountBalance(
       req(`/api/v1/accounts/${short}/balance`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       short,
     );
     await errorJson(res);
@@ -3475,7 +3475,7 @@ describe("handleAccountBalance", () => {
       const body = await json(
         await handleAccountBalance(
           req(`/api/v1/accounts/${SS58}/balance`),
-          env,
+          env as unknown as Env,
           SS58,
         ),
       );
@@ -3503,7 +3503,7 @@ describe("handleAccountBalance", () => {
       const body = await json(
         await handleAccountBalance(
           req(`/api/v1/accounts/${SS58}/balance`),
-          env,
+          env as unknown as Env,
           SS58,
         ),
       );
@@ -3533,7 +3533,7 @@ describe("handleAccountIdentity", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountIdentity(
       req(`/api/v1/accounts/${SS58}/identity`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/identity?bogus=1`),
     );
@@ -3568,7 +3568,7 @@ describe("handleAccountIdentity", () => {
     const body = await json(
       await handleAccountIdentity(
         req(`/api/v1/accounts/${SS58}/identity`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/identity`),
       ),
@@ -3582,7 +3582,7 @@ describe("handleAccountIdentityHistory", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountIdentityHistory(
       req(`/api/v1/accounts/${SS58}/identity-history`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/identity-history?bogus=1`),
     );
@@ -3627,7 +3627,7 @@ describe("handleAccountIdentityHistory", () => {
     const body = await json(
       await handleAccountIdentityHistory(
         req(`/api/v1/accounts/${SS58}/identity-history`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/identity-history?limit=20`),
       ),
@@ -3642,7 +3642,7 @@ describe("handleBlocks", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleBlocks(
       req("/api/v1/blocks"),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       url("/api/v1/blocks?bogus=1"),
     );
     await errorJson(res);
@@ -3666,7 +3666,7 @@ describe("handleBlocks", () => {
       new Request("https://api.metagraph.sh/api/v1/blocks", {
         headers: { accept: "text/csv" },
       }),
-      env,
+      env as unknown as Env,
       url("/api/v1/blocks"),
     );
     assert.equal(res.status, 200);
@@ -3679,7 +3679,7 @@ describe("handleBlocks", () => {
       new Request("https://api.metagraph.sh/api/v1/blocks", {
         headers: { accept: "application/json" },
       }),
-      env,
+      env as unknown as Env,
       url("/api/v1/blocks"),
     );
     assert.equal(res.status, 200);
@@ -3691,7 +3691,7 @@ describe("handleBlocks", () => {
     const { env } = dbWith({ blocksFeed: [] });
     const res = await handleBlocks(
       req("/api/v1/blocks?format=csv"),
-      env,
+      env as unknown as Env,
       url("/api/v1/blocks?format=csv"),
     );
     assert.equal(res.status, 200);
@@ -3708,7 +3708,7 @@ describe("handleBlocks", () => {
       new Request("https://api.metagraph.sh/api/v1/blocks?format=json", {
         headers: { accept: "text/csv" },
       }),
-      env,
+      env as unknown as Env,
       url("/api/v1/blocks?format=json"),
     );
     assert.equal(res.status, 200);
@@ -3722,7 +3722,7 @@ describe("handleBlocks", () => {
     await errorJson(
       await handleBlocks(
         req("/api/v1/blocks?format=xml"),
-        emptyEnv(),
+        emptyEnv() as unknown as Env,
         url("/api/v1/blocks?format=xml"),
       ),
     );
@@ -3733,7 +3733,7 @@ describe("handleBlocks", () => {
     const body = await json(
       await handleBlocks(
         req("/api/v1/blocks"),
-        env,
+        env as unknown as Env,
         url("/api/v1/blocks?limit=999"),
       ),
     );
@@ -3745,7 +3745,7 @@ describe("handleBlocks", () => {
     const body = await json(
       await handleBlocks(
         req("/api/v1/blocks"),
-        env,
+        env as unknown as Env,
         url("/api/v1/blocks?min_events=9007199254740991"),
       ),
     );
@@ -3759,7 +3759,7 @@ describe("handleBlocks", () => {
     const body = await json(
       await handleBlocks(
         req("/api/v1/blocks"),
-        env,
+        env as unknown as Env,
         url("/api/v1/blocks?block_start=20&block_end=10&from=200&to=100"),
       ),
     );
@@ -3786,7 +3786,7 @@ describe("handleBlock", () => {
   test("keeps the short cache profile when the block is unknown", async () => {
     const res = await handleBlock(
       req(`/api/v1/blocks/${BLOCK_NUM}`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       String(BLOCK_NUM),
     );
     assert.equal(res.status, 200);
@@ -3799,7 +3799,7 @@ describe("handleBlockExtrinsics", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleBlockExtrinsics(
       req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       String(BLOCK_NUM),
       url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics?bogus=1`),
     );
@@ -3824,7 +3824,7 @@ describe("handleBlockExtrinsics", () => {
     const body = await json(
       await handleBlockExtrinsics(
         req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-        env,
+        env as unknown as Env,
         String(BLOCK_NUM),
         url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
       ),
@@ -3852,7 +3852,7 @@ describe("handleBlockEvents", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleBlockEvents(
       req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       String(BLOCK_NUM),
       url(`/api/v1/blocks/${BLOCK_NUM}/events?bogus=1`),
     );
@@ -3877,7 +3877,7 @@ describe("handleBlockEvents", () => {
     const body = await json(
       await handleBlockEvents(
         req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-        env,
+        env as unknown as Env,
         String(BLOCK_NUM),
         url(`/api/v1/blocks/${BLOCK_NUM}/events`),
       ),
@@ -3892,7 +3892,7 @@ describe("handleBlockEvents", () => {
     const body = await json(
       await handleBlockEvents(
         req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-        env,
+        env as unknown as Env,
         String(BLOCK_NUM),
         url(`/api/v1/blocks/${BLOCK_NUM}/events`),
       ),
@@ -3920,7 +3920,7 @@ describe("handleExtrinsics", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       url("/api/v1/extrinsics?bogus=1"),
     );
     await errorJson(res);
@@ -3942,7 +3942,7 @@ describe("handleExtrinsics", () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
-      env,
+      env as unknown as Env,
       url("/api/v1/extrinsics?success=1"),
     );
     const body = await errorJson(res);
@@ -3959,7 +3959,7 @@ describe("handleExtrinsics", () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
-      env,
+      env as unknown as Env,
       url("/api/v1/extrinsics?call_hash=not-a-hash"),
     );
     const body = await errorJson(res);
@@ -3976,7 +3976,7 @@ describe("handleExtrinsics", () => {
     const hash = `0x${"c".repeat(64)}`;
     const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
-      env,
+      env as unknown as Env,
       url(`/api/v1/extrinsics?call_hash=${hash}`),
     );
     const body = await errorJson(res);
@@ -4025,7 +4025,7 @@ describe("handleExtrinsics", () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
-      env,
+      env as unknown as Env,
       url("/api/v1/extrinsics?from=abc"),
     );
     await errorJson(res);
@@ -4040,7 +4040,7 @@ describe("handleExtrinsics", () => {
     const body = await json(
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
-        env,
+        env as unknown as Env,
         url("/api/v1/extrinsics?from=9007199254740991"),
       ),
     );
@@ -4058,7 +4058,7 @@ describe("handleExtrinsics", () => {
     const body = await json(
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
-        env,
+        env as unknown as Env,
         url("/api/v1/extrinsics?to=2000"),
       ),
     );
@@ -4075,7 +4075,7 @@ describe("handleExtrinsics", () => {
     const body = await json(
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
-        env,
+        env as unknown as Env,
         url(`/api/v1/extrinsics?from=${now}&to=${now - 60_000}`),
       ),
     );
@@ -4091,7 +4091,7 @@ describe("handleExtrinsics", () => {
     const body = await json(
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
-        env,
+        env as unknown as Env,
         url("/api/v1/extrinsics?block_start=500&block_end=100"),
       ),
     );
@@ -4105,7 +4105,7 @@ describe("handleExtrinsics", () => {
     const body = await json(
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
-        env,
+        env as unknown as Env,
         url("/api/v1/extrinsics?limit=500"),
       ),
     );
@@ -4121,7 +4121,7 @@ describe("handleExtrinsics", () => {
       new Request("https://api.metagraph.sh/api/v1/extrinsics?limit=10", {
         headers: { accept: "text/csv" },
       }),
-      env,
+      env as unknown as Env,
       url("/api/v1/extrinsics?limit=10"),
     );
     assert.equal(res.status, 200);
@@ -4134,7 +4134,7 @@ describe("handleExtrinsics", () => {
   test("?format=csv emits a header-only export on cold D1", async () => {
     const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       url("/api/v1/extrinsics?format=csv"),
     );
     assert.equal(res.status, 200);
@@ -4148,7 +4148,7 @@ describe("handleExtrinsics", () => {
     const body = await errorJson(
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
-        emptyEnv(),
+        emptyEnv() as unknown as Env,
         url("/api/v1/extrinsics?format=pdf"),
       ),
     );
@@ -4173,7 +4173,7 @@ describe("handleExtrinsic", () => {
     const body = await json(
       await handleExtrinsic(
         req("/api/v1/extrinsics/not-a-valid-ref"),
-        emptyEnv(),
+        emptyEnv() as unknown as Env,
         "not-a-valid-ref",
       ),
     );
@@ -4199,7 +4199,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       Response.json({ schema_version: 1, block_count: 99, blocks: [] }),
     );
     const body = await json(
-      await handleBlocks(req("/api/v1/blocks"), env, url("/api/v1/blocks")),
+      await handleBlocks(
+        req("/api/v1/blocks"),
+        env as unknown as Env,
+        url("/api/v1/blocks"),
+      ),
     );
     assert.equal(body.data.block_count, 99); // the Postgres fixture, not D1's
     assert.deepEqual(captures.sql, []); // D1 was never touched
@@ -4220,7 +4224,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleBlock(
         req(`/api/v1/blocks/${BLOCK_NUM}`),
-        env,
+        env as unknown as Env,
         String(BLOCK_NUM),
       ),
     );
@@ -4244,7 +4248,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
-        env,
+        env as unknown as Env,
         url("/api/v1/extrinsics"),
       ),
     );
@@ -4264,7 +4268,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       }),
     );
     const body = await json(
-      await handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), env, HASH),
+      await handleExtrinsic(
+        req(`/api/v1/extrinsics/${HASH}`),
+        env as unknown as Env,
+        HASH,
+      ),
     );
     assert.equal(body.data.extrinsic.signer, "postgres-signer");
     assert.deepEqual(captures.sql, []);
@@ -4286,7 +4294,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/accounts/${SS58}/events`;
     const body = await json(
-      await handleAccountEvents(req(path), env, SS58, url(path)),
+      await handleAccountEvents(
+        req(path),
+        env as unknown as Env,
+        SS58,
+        url(path),
+      ),
     );
     assert.equal(body.data.event_count, 99);
     assert.deepEqual(captures.sql, []);
@@ -4309,7 +4322,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/subnets/${NETUID}/metagraph`;
     const body = await json(
-      await handleSubnetMetagraph(req(path), env, NETUID, url(path)),
+      await handleSubnetMetagraph(
+        req(path),
+        env as unknown as Env,
+        String(NETUID),
+        url(path),
+      ),
     );
     assert.equal(body.data.neuron_count, 99);
     assert.deepEqual(captures.sql, []);
@@ -4330,9 +4348,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleNeuron(
         req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
-        env,
-        NETUID,
-        UID,
+        env as unknown as Env,
+        String(NETUID),
+        String(UID),
       ),
     );
     assert.equal(body.data.neuron.hotkey, "postgres-hotkey");
@@ -4361,7 +4379,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/subnets/${NETUID}/hyperparameters`;
     const body = await json(
-      await handleSubnetHyperparams(req(path), env, NETUID, url(path)),
+      await handleSubnetHyperparams(
+        req(path),
+        env as unknown as Env,
+        String(NETUID),
+        url(path),
+      ),
     );
     assert.equal(body.data.hyperparameters.tempo, 999);
     assert.deepEqual(captures.sql, []);
@@ -4377,7 +4400,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     };
     const path = `/api/v1/subnets/${NETUID}/hyperparameters`;
     const body = await json(
-      await handleSubnetHyperparams(req(path), env, NETUID, url(path)),
+      await handleSubnetHyperparams(
+        req(path),
+        env as unknown as Env,
+        String(NETUID),
+        url(path),
+      ),
     );
     assert.equal(body.data.hyperparameters, null);
     assert.equal(body.data.captured_at, null);
@@ -4401,7 +4429,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/subnets/${NETUID}/hyperparameters/history`;
     const body = await json(
-      await handleSubnetHyperparamsHistory(req(path), env, NETUID, url(path)),
+      await handleSubnetHyperparamsHistory(
+        req(path),
+        env as unknown as Env,
+        String(NETUID),
+        url(path),
+      ),
     );
     assert.equal(body.data.entries[0].hyperparams_hash, "pg-hash");
     assert.deepEqual(captures.sql, []);
@@ -4417,7 +4450,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     };
     const path = `/api/v1/subnets/${NETUID}/hyperparameters/history`;
     const body = await json(
-      await handleSubnetHyperparamsHistory(req(path), env, NETUID, url(path)),
+      await handleSubnetHyperparamsHistory(
+        req(path),
+        env as unknown as Env,
+        String(NETUID),
+        url(path),
+      ),
     );
     assert.equal(body.data.entry_count, 0);
     assert.deepEqual(body.data.entries, []);
@@ -4440,7 +4478,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/accounts/${SS58}/identity`;
     const body = await json(
-      await handleAccountIdentity(req(path), env, SS58, url(path)),
+      await handleAccountIdentity(
+        req(path),
+        env as unknown as Env,
+        SS58,
+        url(path),
+      ),
     );
     assert.equal(body.data.name, "Postgres Team");
     assert.deepEqual(captures.sql, []);
@@ -4456,7 +4499,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     };
     const path = `/api/v1/accounts/${SS58}/identity`;
     const body = await json(
-      await handleAccountIdentity(req(path), env, SS58, url(path)),
+      await handleAccountIdentity(
+        req(path),
+        env as unknown as Env,
+        SS58,
+        url(path),
+      ),
     );
     assert.equal(body.data.has_identity, false);
     assert.equal(body.data.name, null);
@@ -4493,7 +4541,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/accounts/${SS58}/identity-history`;
     const body = await json(
-      await handleAccountIdentityHistory(req(path), env, SS58, url(path)),
+      await handleAccountIdentityHistory(
+        req(path),
+        env as unknown as Env,
+        SS58,
+        url(path),
+      ),
     );
     assert.equal(body.data.entries[0].identity_hash, "pg-hash");
     assert.deepEqual(captures.sql, []);
@@ -4509,7 +4562,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     };
     const path = `/api/v1/accounts/${SS58}/identity-history`;
     const body = await json(
-      await handleAccountIdentityHistory(req(path), env, SS58, url(path)),
+      await handleAccountIdentityHistory(
+        req(path),
+        env as unknown as Env,
+        SS58,
+        url(path),
+      ),
     );
     assert.equal(body.data.entry_count, 0);
     assert.deepEqual(body.data.entries, []);
@@ -4537,7 +4595,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/subnets/${NETUID}/identity-history`;
     const body = await json(
-      await handleSubnetIdentityHistory(req(path), env, NETUID, url(path)),
+      await handleSubnetIdentityHistory(
+        req(path),
+        env as unknown as Env,
+        String(NETUID),
+        url(path),
+      ),
     );
     assert.equal(body.data.entries[0].identity_hash, "pg-hash");
     assert.deepEqual(captures.sql, []);
@@ -4553,7 +4616,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     };
     const path = `/api/v1/subnets/${NETUID}/identity-history`;
     const body = await json(
-      await handleSubnetIdentityHistory(req(path), env, NETUID, url(path)),
+      await handleSubnetIdentityHistory(
+        req(path),
+        env as unknown as Env,
+        String(NETUID),
+        url(path),
+      ),
     );
     assert.equal(body.data.entry_count, 0);
     assert.deepEqual(body.data.entries, []);
@@ -4574,7 +4642,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/subnets/${NETUID}/validators`;
     const body = await json(
-      await handleSubnetValidators(req(path), env, NETUID, url(path)),
+      await handleSubnetValidators(
+        req(path),
+        env as unknown as Env,
+        String(NETUID),
+        url(path),
+      ),
     );
     assert.equal(body.data.validator_count, 99);
     assert.deepEqual(captures.sql, []);
@@ -4599,7 +4672,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleGlobalValidators(
         req("/api/v1/validators"),
-        env,
+        env as unknown as Env,
         url("/api/v1/validators"),
       ),
     );
@@ -4627,7 +4700,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       }),
     );
     const body = await json(
-      await handleValidatorDetail(req(`/api/v1/validators/${SS58}`), env, SS58),
+      await handleValidatorDetail(
+        req(`/api/v1/validators/${SS58}`),
+        env as unknown as Env,
+        SS58,
+      ),
     );
     assert.equal(body.data.subnet_count, 99);
     assert.deepEqual(captures.sql, []);
@@ -4646,7 +4723,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleValidatorNominators(
         req(`/api/v1/validators/${SS58}/nominators`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/validators/${SS58}/nominators`),
       ),
@@ -4668,7 +4745,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountWeightSetters(
         req(`/api/v1/accounts/${SS58}/weight-setters`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/weight-setters`),
       ),
@@ -4686,8 +4763,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetWeightSetters(
         req(`/api/v1/subnets/${NETUID}/weights/setters`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/weights/setters`),
       ),
     );
@@ -4708,7 +4785,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountStakeFlow(
         req(`/api/v1/accounts/${SS58}/stake-flow`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/stake-flow`),
       ),
@@ -4730,8 +4807,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetStakeFlow(
         req(`/api/v1/subnets/${NETUID}/stake-flow`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/stake-flow`),
       ),
     );
@@ -4752,7 +4829,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountStakeMoves(
         req(`/api/v1/accounts/${SS58}/stake-moves`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/stake-moves`),
       ),
@@ -4770,8 +4847,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetStakeMoves(
         req(`/api/v1/subnets/${NETUID}/stake-moves`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/stake-moves`),
       ),
     );
@@ -4788,8 +4865,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetStakeTransfers(
         req(`/api/v1/subnets/${NETUID}/stake-transfers`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/stake-transfers`),
       ),
     );
@@ -4810,7 +4887,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountRegistrations(
         req(`/api/v1/accounts/${SS58}/registrations`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/registrations`),
       ),
@@ -4828,8 +4905,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetRegistrations(
         req(`/api/v1/subnets/${NETUID}/registrations`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/registrations`),
       ),
     );
@@ -4850,7 +4927,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountServing(
         req(`/api/v1/accounts/${SS58}/serving`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/serving`),
       ),
@@ -4868,8 +4945,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetServing(
         req(`/api/v1/subnets/${NETUID}/serving`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/serving`),
       ),
     );
@@ -4890,7 +4967,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountAxonRemovals(
         req(`/api/v1/accounts/${SS58}/axon-removals`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/axon-removals`),
       ),
@@ -4908,8 +4985,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetAxonRemovals(
         req(`/api/v1/subnets/${NETUID}/axon-removals`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/axon-removals`),
       ),
     );
@@ -4930,7 +5007,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountPrometheus(
         req(`/api/v1/accounts/${SS58}/prometheus`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/prometheus`),
       ),
@@ -4948,8 +5025,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetPrometheus(
         req(`/api/v1/subnets/${NETUID}/prometheus`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/prometheus`),
       ),
     );
@@ -4970,7 +5047,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountDeregistrations(
         req(`/api/v1/accounts/${SS58}/deregistrations`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/deregistrations`),
       ),
@@ -4988,8 +5065,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetDeregistrations(
         req(`/api/v1/subnets/${NETUID}/deregistrations`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/deregistrations`),
       ),
     );
@@ -5007,7 +5084,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountTransfers(
         req(`/api/v1/accounts/${SS58}/transfers`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/transfers`),
       ),
@@ -5025,7 +5102,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountCounterparties(
         req(`/api/v1/accounts/${SS58}/counterparties`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/counterparties`),
       ),
@@ -5078,7 +5155,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountCounterparties(
         req(`/api/v1/accounts/${SS58}/counterparties`),
-        env,
+        env as unknown as Env,
         SS58,
         url(
           `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
@@ -5105,7 +5182,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleBlockExtrinsics(
         req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-        env,
+        env as unknown as Env,
         String(BLOCK_NUM),
         url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
       ),
@@ -5126,7 +5203,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleBlockEvents(
         req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-        env,
+        env as unknown as Env,
         String(BLOCK_NUM),
         url(`/api/v1/blocks/${BLOCK_NUM}/events`),
       ),
@@ -5145,7 +5222,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleBlocksSummary(
         req("/api/v1/blocks/summary"),
-        env,
+        env as unknown as Env,
         url("/api/v1/blocks/summary"),
       ),
     );
@@ -5163,7 +5240,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountExtrinsics(
         req(`/api/v1/accounts/${SS58}/extrinsics`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/extrinsics`),
       ),
@@ -5182,7 +5259,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
     };
     const body = await json(
-      await handleSudo(req("/api/v1/sudo"), env, url("/api/v1/sudo")),
+      await handleSudo(
+        req("/api/v1/sudo"),
+        env as unknown as Env,
+        url("/api/v1/sudo"),
+      ),
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
@@ -5200,7 +5281,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleGovernanceConfigChanges(
         req("/api/v1/governance/config-changes"),
-        env,
+        env as unknown as Env,
         url("/api/v1/governance/config-changes"),
       ),
     );
@@ -5216,7 +5297,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         Response.json({ schema_version: 1, marker: "pg", transitions: [] }),
     };
     const body = await json(
-      await handleRuntime(req("/api/v1/runtime"), env, url("/api/v1/runtime")),
+      await handleRuntime(
+        req("/api/v1/runtime"),
+        env as unknown as Env,
+        url("/api/v1/runtime"),
+      ),
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
@@ -5259,7 +5344,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("?format=csv exports the transition timeline with the on-screen columns", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?format=csv"),
-        pgEnv(ROWS),
+        pgEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime?format=csv"),
       );
       assert.equal(res.status, 200);
@@ -5278,7 +5363,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("the default response is still the JSON envelope", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime"),
-        pgEnv(ROWS),
+        pgEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime"),
       );
       assert.match(res.headers.get("content-type") || "", /application\/json/);
@@ -5291,7 +5376,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("?format=json is accepted and keeps the envelope", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?format=json"),
-        pgEnv(ROWS),
+        pgEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime?format=json"),
       );
       assert.equal(res.status, 200);
@@ -5301,7 +5386,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("a cold store yields a header-only CSV, never an error", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?format=csv"),
-        pgEnv([]),
+        pgEnv([]) as unknown as Env,
         url("/api/v1/runtime?format=csv"),
       );
       assert.equal(res.status, 200);
@@ -5314,7 +5399,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("an unsupported format is still rejected", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?format=bogus"),
-        pgEnv(ROWS),
+        pgEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime?format=bogus"),
       );
       assert.equal(res.status, 400);
@@ -5323,7 +5408,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("an unknown query param is still rejected (format is the only one)", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?limit=5"),
-        pgEnv(ROWS),
+        pgEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime?limit=5"),
       );
       assert.equal(res.status, 400);
@@ -5343,8 +5428,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetWeights(
         req(`/api/v1/subnets/${NETUID}/weights`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/weights`),
       ),
     );
@@ -5365,8 +5450,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetAlphaVolume(
         req(`/api/v1/subnets/${NETUID}/volume`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/volume`),
       ),
     );
@@ -5384,8 +5469,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetEvents(
         req(`/api/v1/subnets/${NETUID}/events`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/events`),
       ),
     );
@@ -5406,8 +5491,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetEventSummary(
         req(`/api/v1/subnets/${NETUID}/event-summary`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/event-summary`),
       ),
     );
@@ -5426,7 +5511,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         Response.json({ schema_version: 1, marker: "pg", event_count: 0 }),
     };
     const body = await json(
-      await handleAccount(req(`/api/v1/accounts/${SS58}`), env, SS58),
+      await handleAccount(
+        req(`/api/v1/accounts/${SS58}`),
+        env as unknown as Env,
+        SS58,
+      ),
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
@@ -5442,7 +5531,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountSubnets(
         req(`/api/v1/accounts/${SS58}/subnets`),
-        env,
+        env as unknown as Env,
         SS58,
       ),
     );
@@ -5463,8 +5552,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetConcentration(
         req(`/api/v1/subnets/${NETUID}/concentration`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/concentration`),
       ),
     );
@@ -5482,8 +5571,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetPerformance(
         req(`/api/v1/subnets/${NETUID}/performance`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/performance`),
       ),
     );
@@ -5501,8 +5590,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetYield(
         req(`/api/v1/subnets/${NETUID}/yield`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/yield`),
       ),
     );
@@ -5519,7 +5608,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleChainConcentration(
         req("/api/v1/chain/concentration"),
-        env,
+        env as unknown as Env,
         url("/api/v1/chain/concentration"),
       ),
     );
@@ -5536,7 +5625,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleChainPerformance(
         req("/api/v1/chain/performance"),
-        env,
+        env as unknown as Env,
         url("/api/v1/chain/performance"),
       ),
     );
@@ -5553,7 +5642,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleChainYield(
         req("/api/v1/chain/yield"),
-        env,
+        env as unknown as Env,
         url("/api/v1/chain/yield"),
       ),
     );
@@ -5571,7 +5660,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountPortfolio(
         req(`/api/v1/accounts/${SS58}/portfolio`),
-        env,
+        env as unknown as Env,
         SS58,
       ),
     );
@@ -5589,7 +5678,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountPositions(
         req(`/api/v1/accounts/${SS58}/positions`),
-        env,
+        env as unknown as Env,
         SS58,
       ),
     );
@@ -5608,7 +5697,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountPositions(
         req(`/api/v1/accounts/${SS58}/positions`),
-        env,
+        env as unknown as Env,
         SS58,
       ),
     );
@@ -5630,7 +5719,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountsList(
         req("/api/v1/accounts"),
-        env,
+        env as unknown as Env,
         url("/api/v1/accounts"),
       ),
     );
@@ -5646,7 +5735,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   test("handleTopHoldersList: rejects an unsupported query param with 400", async () => {
     const res = await handleTopHoldersList(
       req("/api/v1/accounts/top-holders?bogus=1"),
-      emptyEnv(),
+      emptyEnv() as unknown as Env,
       url("/api/v1/accounts/top-holders?bogus=1"),
     );
     const body = await errorJson(res);
@@ -5663,7 +5752,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleTopHoldersList(
         req("/api/v1/accounts/top-holders"),
-        env,
+        env as unknown as Env,
         url("/api/v1/accounts/top-holders"),
       ),
     );
@@ -5684,7 +5773,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleValidatorHistory(
         req(`/api/v1/validators/${SS58}/history`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/validators/${SS58}/history`),
       ),
@@ -5703,9 +5792,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleNeuronHistory(
         req(`/api/v1/subnets/${NETUID}/neurons/1/history`),
-        env,
-        NETUID,
-        1,
+        env as unknown as Env,
+        String(NETUID),
+        String(1),
         url(`/api/v1/subnets/${NETUID}/neurons/1/history`),
       ),
     );
@@ -5723,8 +5812,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetHistory(
         req(`/api/v1/subnets/${NETUID}/history`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/history`),
       ),
     );
@@ -5742,8 +5831,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetConcentrationHistory(
         req(`/api/v1/subnets/${NETUID}/concentration/history`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/concentration/history`),
       ),
     );
@@ -5761,8 +5850,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetPerformanceHistory(
         req(`/api/v1/subnets/${NETUID}/performance/history`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/performance/history`),
       ),
     );
@@ -5780,8 +5869,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetYieldHistory(
         req(`/api/v1/subnets/${NETUID}/yield/history`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/yield/history`),
       ),
     );
@@ -5799,7 +5888,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleChainTurnover(
         req("/api/v1/chain/turnover"),
-        env,
+        env as unknown as Env,
         url("/api/v1/chain/turnover"),
       ),
     );
@@ -5817,8 +5906,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetTurnover(
         req(`/api/v1/subnets/${NETUID}/turnover`),
-        env,
-        NETUID,
+        env as unknown as Env,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/turnover`),
       ),
     );
@@ -5836,7 +5925,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSubnetMovers(
         req("/api/v1/subnets/movers"),
-        env,
+        env as unknown as Env,
         url("/api/v1/subnets/movers"),
       ),
     );
@@ -5857,9 +5946,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountPositionHistory(
         req(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
-        env,
+        env as unknown as Env,
         SS58,
-        NETUID,
+        String(NETUID),
         url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
       ),
     );
@@ -5886,9 +5975,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/${NETUID}/history`,
         { method: "HEAD" },
       ),
-      env,
+      env as unknown as Env,
       SS58,
-      NETUID,
+      String(NETUID),
       url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
     );
     assert.equal(res.status, 200);
@@ -5913,9 +6002,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountPositionHistory(
         req(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
-        env,
+        env as unknown as Env,
         SS58,
-        NETUID,
+        String(NETUID),
         url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
       ),
     );
@@ -5938,7 +6027,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/history`),
       ),
@@ -5960,7 +6049,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
-        env,
+        env as unknown as Env,
         SS58,
         url(`/api/v1/accounts/${SS58}/history`),
       ),
@@ -6009,22 +6098,35 @@ describe("entities handler exports (#1900)", () => {
       () =>
         handleSubnetMetagraph(
           req(`/api/v1/subnets/${NETUID}/metagraph`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/metagraph`),
         ),
       () =>
         handleNeuron(
           req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
-          emptyEnv(),
-          NETUID,
-          UID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
+          String(UID),
         ),
-      () => handleAccount(req(`/api/v1/accounts/${SS58}`), emptyEnv(), SS58),
       () =>
-        handleBlocks(req("/api/v1/blocks"), emptyEnv(), url("/api/v1/blocks")),
+        handleAccount(
+          req(`/api/v1/accounts/${SS58}`),
+          emptyEnv() as unknown as Env,
+          SS58,
+        ),
       () =>
-        handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), emptyEnv(), HASH),
+        handleBlocks(
+          req("/api/v1/blocks"),
+          emptyEnv() as unknown as Env,
+          url("/api/v1/blocks"),
+        ),
+      () =>
+        handleExtrinsic(
+          req(`/api/v1/extrinsics/${HASH}`),
+          emptyEnv() as unknown as Env,
+          HASH,
+        ),
     ];
     for (const call of samples) {
       const res = await call();
@@ -6046,8 +6148,8 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleSubnetValidators(
           req(`/api/v1/subnets/${NETUID}/validators`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/validators`),
         ),
       assertData: (d: Row) => assert.equal(d.validator_count, 0),
@@ -6057,9 +6159,9 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleNeuronHistory(
           req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-          emptyEnv(),
-          NETUID,
-          UID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
+          String(UID),
           url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
         ),
       assertData: (d: Row) => assert.equal(d.point_count, 0),
@@ -6069,8 +6171,8 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleSubnetHistory(
           req(`/api/v1/subnets/${NETUID}/history`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/history`),
         ),
       assertData: (d: Row) => assert.equal(d.point_count, 0),
@@ -6080,7 +6182,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleAccountEvents(
           req(`/api/v1/accounts/${SS58}/events`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
           url(`/api/v1/accounts/${SS58}/events`),
         ),
@@ -6091,7 +6193,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleAccountHistory(
           req(`/api/v1/accounts/${SS58}/history`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
           url(`/api/v1/accounts/${SS58}/history`),
         ),
@@ -6102,7 +6204,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleAccountExtrinsics(
           req(`/api/v1/accounts/${SS58}/extrinsics`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
           url(`/api/v1/accounts/${SS58}/extrinsics`),
         ),
@@ -6113,7 +6215,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleAccountTransfers(
           req(`/api/v1/accounts/${SS58}/transfers`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
           url(`/api/v1/accounts/${SS58}/transfers`),
         ),
@@ -6124,7 +6226,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleAccountSubnets(
           req(`/api/v1/accounts/${SS58}/subnets`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
         ),
       assertData: (d: Row) => assert.equal(d.subnet_count, 0),
@@ -6134,8 +6236,8 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleSubnetEvents(
           req(`/api/v1/subnets/${NETUID}/events`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/events`),
         ),
       assertData: (d: Row) => assert.equal(d.event_count, 0),
@@ -6145,7 +6247,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleBlockExtrinsics(
           req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           String(BLOCK_NUM),
           url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
         ),
@@ -6156,7 +6258,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleBlockEvents(
           req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           String(BLOCK_NUM),
           url(`/api/v1/blocks/${BLOCK_NUM}/events`),
         ),
@@ -6167,7 +6269,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       run: () =>
         handleExtrinsics(
           req("/api/v1/extrinsics"),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           url("/api/v1/extrinsics"),
         ),
       assertData: (d: Row) => assert.equal(d.extrinsic_count, 0),
@@ -6192,8 +6294,8 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleSubnetMetagraph(
           req(`/api/v1/subnets/${NETUID}/metagraph`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/metagraph?foo=bar`),
         ),
     },
@@ -6202,8 +6304,8 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleSubnetValidators(
           req(`/api/v1/subnets/${NETUID}/validators`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/validators?foo=bar`),
         ),
     },
@@ -6212,9 +6314,9 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleNeuronHistory(
           req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-          emptyEnv(),
-          NETUID,
-          UID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
+          String(UID),
           url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?foo=bar`),
         ),
     },
@@ -6223,8 +6325,8 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleSubnetHistory(
           req(`/api/v1/subnets/${NETUID}/history`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/history?foo=bar`),
         ),
     },
@@ -6233,8 +6335,8 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleSubnetIdentityHistory(
           req(`/api/v1/subnets/${NETUID}/identity-history`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/identity-history?foo=bar`),
         ),
     },
@@ -6243,7 +6345,7 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleAccountEvents(
           req(`/api/v1/accounts/${SS58}/events`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
           url(`/api/v1/accounts/${SS58}/events?foo=bar`),
         ),
@@ -6253,7 +6355,7 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleAccountHistory(
           req(`/api/v1/accounts/${SS58}/history`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
           url(`/api/v1/accounts/${SS58}/history?foo=bar`),
         ),
@@ -6263,7 +6365,7 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleAccountExtrinsics(
           req(`/api/v1/accounts/${SS58}/extrinsics`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
           url(`/api/v1/accounts/${SS58}/extrinsics?foo=bar`),
         ),
@@ -6273,7 +6375,7 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleAccountTransfers(
           req(`/api/v1/accounts/${SS58}/transfers`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           SS58,
           url(`/api/v1/accounts/${SS58}/transfers?foo=bar`),
         ),
@@ -6283,8 +6385,8 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleSubnetEvents(
           req(`/api/v1/subnets/${NETUID}/events`),
-          emptyEnv(),
-          NETUID,
+          emptyEnv() as unknown as Env,
+          String(NETUID),
           url(`/api/v1/subnets/${NETUID}/events?foo=bar`),
         ),
     },
@@ -6293,7 +6395,7 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleBlocks(
           req("/api/v1/blocks"),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           url("/api/v1/blocks?foo=bar"),
         ),
     },
@@ -6302,7 +6404,7 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleBlockExtrinsics(
           req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           String(BLOCK_NUM),
           url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics?foo=bar`),
         ),
@@ -6312,7 +6414,7 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleBlockEvents(
           req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           String(BLOCK_NUM),
           url(`/api/v1/blocks/${BLOCK_NUM}/events?foo=bar`),
         ),
@@ -6322,7 +6424,7 @@ describe("query-param guard matrix (#1900)", () => {
       run: () =>
         handleExtrinsics(
           req("/api/v1/extrinsics"),
-          emptyEnv(),
+          emptyEnv() as unknown as Env,
           url("/api/v1/extrinsics?foo=bar"),
         ),
     },
@@ -6342,9 +6444,9 @@ describe("envelope + meta contracts (#1900)", () => {
     const body = await json(
       await handleNeuron(
         req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
-        env,
-        NETUID,
-        UID,
+        env as unknown as Env,
+        String(NETUID),
+        String(UID),
       ),
     );
     assert.equal(body.meta.source, "metagraph-snapshot");
@@ -6353,9 +6455,9 @@ describe("envelope + meta contracts (#1900)", () => {
       resHasEtag(
         await handleNeuron(
           req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
-          env,
-          NETUID,
-          UID,
+          env as unknown as Env,
+          String(NETUID),
+          String(UID),
         ),
       ),
     );
@@ -6365,7 +6467,7 @@ describe("envelope + meta contracts (#1900)", () => {
     const { env } = dbWith({ blocksFeed: [blockRow()] });
     const res = await handleBlocks(
       req("/api/v1/blocks"),
-      env,
+      env as unknown as Env,
       url("/api/v1/blocks"),
     );
     const body = await json(res);
@@ -6387,7 +6489,7 @@ describe("envelope + meta contracts (#1900)", () => {
     const body = await json(
       await handleAccountBalance(
         req(`/api/v1/accounts/${SS58}/balance`),
-        env,
+        env as unknown as Env,
         SS58,
       ),
     );

@@ -8,7 +8,7 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
-import { handleChainPerformance } from "../workers/request-handlers/entities.mjs";
+import { handleChainPerformance } from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
@@ -73,7 +73,7 @@ describe("handleChainPerformance happy path", () => {
     const body = await json(
       await handleChainPerformance(
         req("/api/v1/chain/performance"),
-        neuronsEnv([]),
+        neuronsEnv([]) as unknown as Env,
         url("/api/v1/chain/performance"),
       ),
     );
@@ -92,7 +92,7 @@ describe("handleChainPerformance happy path", () => {
     await errorJson(
       await handleChainPerformance(
         req("/api/v1/chain/performance?window=7d"),
-        neuronsEnv([]),
+        neuronsEnv([]) as unknown as Env,
         url("/api/v1/chain/performance?window=7d"),
       ),
     );

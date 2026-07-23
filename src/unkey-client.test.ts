@@ -10,9 +10,9 @@ import {
 const ENV = {
   UNKEY_ROOT_KEY: "test-root-key-placeholder",
   UNKEY_API_ID: "api_test123",
-};
+} as unknown as Env;
 
-function mockJsonResponse(status, data) {
+function mockJsonResponse(status: number, data: unknown) {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -20,20 +20,28 @@ function mockJsonResponse(status, data) {
   };
 }
 
+type CapturedBody = Record<string, unknown>;
+
 describe("createUnkeyKey", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   test("mints a key and returns keyId/key", async () => {
-    let capturedBody;
-    vi.stubGlobal("fetch", async (url, opts) => {
-      capturedBody = JSON.parse(opts.body);
-      assert.equal(url, "https://api.unkey.com/v2/keys.createKey");
-      assert.equal(
-        opts.headers.authorization,
-        "Bearer test-root-key-placeholder",
-      );
-      return mockJsonResponse(200, { keyId: "key_abc", key: "mg_secret123" });
-    });
+    let capturedBody: CapturedBody = {};
+    vi.stubGlobal(
+      "fetch",
+      async (
+        url: string,
+        opts: { body: string; headers: Record<string, string> },
+      ) => {
+        capturedBody = JSON.parse(opts.body);
+        assert.equal(url, "https://api.unkey.com/v2/keys.createKey");
+        assert.equal(
+          opts.headers.authorization,
+          "Bearer test-root-key-placeholder",
+        );
+        return mockJsonResponse(200, { keyId: "key_abc", key: "mg_secret123" });
+      },
+    );
 
     const result = await createUnkeyKey(ENV, {
       externalId: "42",
@@ -52,7 +60,10 @@ describe("createUnkeyKey", () => {
   });
 
   test("fails closed when env is missing UNKEY_ROOT_KEY/UNKEY_API_ID", async () => {
-    const result = await createUnkeyKey({}, { externalId: "42", tier: "free" });
+    const result = await createUnkeyKey({} as unknown as Env, {
+      externalId: "42",
+      tier: "free",
+    });
     assert.deepEqual(result, { ok: false, code: "provider_not_configured" });
   });
 
@@ -100,18 +111,24 @@ describe("verifyUnkeyKey", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   test("returns valid + tier + accountId on a clean verify", async () => {
-    let capturedBody;
-    vi.stubGlobal("fetch", async (url, opts) => {
-      capturedBody = JSON.parse(opts.body);
-      assert.equal(url, "https://api.unkey.com/v2/keys.verifyKey");
-      return mockJsonResponse(200, {
-        valid: true,
-        code: "VALID",
-        keyId: "key_abc",
-        meta: { tier: "free" },
-        identity: { id: "id_1", externalId: "42" },
-      });
-    });
+    let capturedBody: CapturedBody = {};
+    vi.stubGlobal(
+      "fetch",
+      async (
+        url: string,
+        opts: { body: string; headers: Record<string, string> },
+      ) => {
+        capturedBody = JSON.parse(opts.body);
+        assert.equal(url, "https://api.unkey.com/v2/keys.verifyKey");
+        return mockJsonResponse(200, {
+          valid: true,
+          code: "VALID",
+          keyId: "key_abc",
+          meta: { tier: "free" },
+          identity: { id: "id_1", externalId: "42" },
+        });
+      },
+    );
 
     const result = await verifyUnkeyKey(ENV, "mg_secret123");
 
@@ -131,9 +148,9 @@ describe("verifyUnkeyKey", () => {
       mockJsonResponse(200, { valid: false, code: "NOT_FOUND" }),
     );
     const result = await verifyUnkeyKey(ENV, "mg_bogus");
-    assert.equal(result.ok, true);
-    assert.equal(result.valid, false);
-    assert.equal(result.code, "NOT_FOUND");
+    assert.equal((result as CapturedBody).ok, true);
+    assert.equal((result as CapturedBody).valid, false);
+    assert.equal((result as CapturedBody).code, "NOT_FOUND");
   });
 
   test("null tier/accountId when meta/identity are absent", async () => {
@@ -141,8 +158,8 @@ describe("verifyUnkeyKey", () => {
       mockJsonResponse(200, { valid: true, code: "VALID" }),
     );
     const result = await verifyUnkeyKey(ENV, "mg_secret123");
-    assert.equal(result.tier, null);
-    assert.equal(result.accountId, null);
+    assert.equal((result as CapturedBody).tier, null);
+    assert.equal((result as CapturedBody).accountId, null);
   });
 
   test("fails closed when Unkey is unreachable", async () => {
@@ -158,12 +175,18 @@ describe("updateUnkeyKeyTier", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   test("updates the display-only meta.tier by keyId", async () => {
-    let capturedBody;
-    vi.stubGlobal("fetch", async (url, opts) => {
-      capturedBody = JSON.parse(opts.body);
-      assert.equal(url, "https://api.unkey.com/v2/keys.updateKey");
-      return mockJsonResponse(200, {});
-    });
+    let capturedBody: CapturedBody = {};
+    vi.stubGlobal(
+      "fetch",
+      async (
+        url: string,
+        opts: { body: string; headers: Record<string, string> },
+      ) => {
+        capturedBody = JSON.parse(opts.body);
+        assert.equal(url, "https://api.unkey.com/v2/keys.updateKey");
+        return mockJsonResponse(200, {});
+      },
+    );
 
     const result = await updateUnkeyKeyTier(ENV, {
       keyId: "key_abc",
@@ -182,12 +205,18 @@ describe("revokeUnkeyKey", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   test("disables (not deletes) by keyId", async () => {
-    let capturedBody;
-    vi.stubGlobal("fetch", async (url, opts) => {
-      capturedBody = JSON.parse(opts.body);
-      assert.equal(url, "https://api.unkey.com/v2/keys.updateKey");
-      return mockJsonResponse(200, {});
-    });
+    let capturedBody: CapturedBody = {};
+    vi.stubGlobal(
+      "fetch",
+      async (
+        url: string,
+        opts: { body: string; headers: Record<string, string> },
+      ) => {
+        capturedBody = JSON.parse(opts.body);
+        assert.equal(url, "https://api.unkey.com/v2/keys.updateKey");
+        return mockJsonResponse(200, {});
+      },
+    );
 
     const result = await revokeUnkeyKey(ENV, "key_abc");
 

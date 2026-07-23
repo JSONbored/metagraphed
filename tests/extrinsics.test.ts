@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { handleExtrinsic } from "../workers/request-handlers/entities.mjs";
+import { handleExtrinsic } from "../workers/request-handlers/entities.ts";
 import {
   EXTRINSIC_READ_COLUMNS,
   EXTRINSIC_RETENTION_MS,
@@ -722,7 +722,7 @@ for (const badRef of [
     });
     const res = await handleExtrinsic(
       req(`/api/v1/extrinsics/${badRef}`),
-      env,
+      env as unknown as Env,
       badRef,
     );
     assert.equal(res.status, 200);

@@ -13,7 +13,7 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
   handleChainIdleStake,
   handleSubnetIdleStake,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -71,7 +71,7 @@ describe("handleSubnetIdleStake", () => {
       await handleSubnetIdleStake(
         req(`/api/v1/subnets/${NETUID}/idle-stake?window=7d`),
         emptyEnv(),
-        NETUID,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/idle-stake?window=7d`),
       ),
     );
@@ -82,7 +82,7 @@ describe("handleSubnetIdleStake", () => {
       await handleSubnetIdleStake(
         req(`/api/v1/subnets/${NETUID}/idle-stake`),
         emptyEnv(),
-        NETUID,
+        String(NETUID),
         url(`/api/v1/subnets/${NETUID}/idle-stake`),
       ),
     );

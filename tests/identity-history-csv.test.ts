@@ -12,7 +12,7 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
   handleSubnetIdentityHistory,
   handleAccountIdentityHistory,
-} from "../workers/request-handlers/entities.mjs";
+} from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const NETUID = 7;
@@ -70,8 +70,8 @@ describe("handleSubnetIdentityHistory CSV export", () => {
   test("returns header-only CSV on cold D1", async () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/identity-history?format=csv`),
     );
     assert.equal(res.status, 200);
@@ -105,8 +105,8 @@ describe("handleSubnetIdentityHistory CSV export", () => {
     });
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
-      env,
-      NETUID,
+      env as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/identity-history?limit=50&format=csv`),
     );
     assert.equal(res.status, 200);
@@ -128,8 +128,8 @@ describe("handleSubnetIdentityHistory CSV export", () => {
     });
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
-      env,
-      NETUID,
+      env as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/identity-history`),
     );
     assert.equal(res.status, 200);
@@ -141,8 +141,8 @@ describe("handleSubnetIdentityHistory CSV export", () => {
   test("rejects an unsupported format value", async () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/identity-history?format=pdf`),
     );
     const body = await errorJson(res);
@@ -152,8 +152,8 @@ describe("handleSubnetIdentityHistory CSV export", () => {
   test("rejects an empty format parameter", async () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
-      {},
-      NETUID,
+      {} as unknown as Env,
+      String(NETUID),
       url(`/api/v1/subnets/${NETUID}/identity-history?format=`),
     );
     const body = await errorJson(res);
@@ -165,7 +165,7 @@ describe("handleAccountIdentityHistory CSV export", () => {
   test("returns header-only CSV on cold D1", async () => {
     const res = await handleAccountIdentityHistory(
       req(`/api/v1/accounts/${SS58}/identity-history`),
-      {},
+      {} as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/identity-history?format=csv`),
     );
@@ -199,7 +199,7 @@ describe("handleAccountIdentityHistory CSV export", () => {
     });
     const res = await handleAccountIdentityHistory(
       req(`/api/v1/accounts/${SS58}/identity-history`),
-      env,
+      env as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/identity-history?limit=50&format=csv`),
     );
@@ -225,7 +225,7 @@ describe("handleAccountIdentityHistory CSV export", () => {
     });
     const res = await handleAccountIdentityHistory(
       req(`/api/v1/accounts/${SS58}/identity-history`),
-      env,
+      env as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/identity-history`),
     );
@@ -238,7 +238,7 @@ describe("handleAccountIdentityHistory CSV export", () => {
   test("rejects an unsupported format value", async () => {
     const res = await handleAccountIdentityHistory(
       req(`/api/v1/accounts/${SS58}/identity-history`),
-      {},
+      {} as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/identity-history?format=pdf`),
     );
@@ -249,7 +249,7 @@ describe("handleAccountIdentityHistory CSV export", () => {
   test("rejects an empty format parameter", async () => {
     const res = await handleAccountIdentityHistory(
       req(`/api/v1/accounts/${SS58}/identity-history`),
-      {},
+      {} as unknown as Env,
       SS58,
       url(`/api/v1/accounts/${SS58}/identity-history?format=`),
     );

@@ -5,7 +5,7 @@
 // api-coverage.test.mjs.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleSubnetStakeQuote } from "../workers/request-handlers/entities.mjs";
+import { handleSubnetStakeQuote } from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const NETUID = 64;
@@ -60,14 +60,14 @@ async function call(env: Row, path: string) {
   return body(
     await handleSubnetStakeQuote(
       req(path),
-      env,
+      env as unknown as Env,
       extractNetuid(path),
       url(path),
     ),
   );
 }
 function extractNetuid(path: string) {
-  return Number(path.match(/\/subnets\/(\d+)\//)![1]);
+  return path.match(/\/subnets\/(\d+)\//)![1];
 }
 
 describe("handleSubnetStakeQuote (#5235)", () => {
