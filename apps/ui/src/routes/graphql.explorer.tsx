@@ -4,6 +4,7 @@ import { CopyableCode } from "@jsonbored/ui-kit";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { GraphiqlExplorer } from "@/components/metagraphed/graphiql-explorer";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { toGraphqlSubscriptionUrl } from "@/lib/metagraphed/graphql-subscription-url";
 
@@ -39,13 +40,13 @@ function GraphqlExplorerPage() {
         <ArrowLeft aria-hidden className="size-3.5" />
         GraphQL docs
       </Link>
-      <h1 className="mt-2 font-display text-2xl font-semibold text-ink-strong md:text-3xl">
-        Explorer
-      </h1>
-      <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">
-        Schema-aware autocomplete, docs, and history against the live GraphQL endpoint — queries
-        over HTTP, live chainEvents subscriptions over WebSocket. No API key.
-      </p>
+      <PageMasthead
+        eyebrow="GraphQL"
+        title="Explorer"
+        description="Schema-aware autocomplete, docs, and history against the live GraphQL endpoint — queries over HTTP, live chainEvents subscriptions over WebSocket. No API key."
+        hideBreadcrumbs
+        className="mt-2"
+      />
 
       {/* Same CopyableCode row treatment as EndpointSnippet / ApiSourceFooter —
           one labeled chip per transport, each with its own copy control. */}
