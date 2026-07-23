@@ -352,7 +352,7 @@ export function MegaPanelBody({
         ) : null}
 
         {recents.length > 0 && !ql ? (
-          <div className="mt-5">
+          <div className="mt-4">
             <div className="mg-label mb-2">Recent</div>
             <ul className="flex flex-wrap gap-1">
               {recents.map((r) => {

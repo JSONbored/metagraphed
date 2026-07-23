@@ -445,7 +445,7 @@ function StatusBoard({ interval }: { interval: number | false }) {
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
         <BoardCard title="Status mix">
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
             <Donut
               segments={segs}
               size={112}
@@ -494,7 +494,7 @@ function StatusBoard({ interval }: { interval: number | false }) {
 function BoardCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Panel as="div" flush>
-      <div className="p-5">
+      <div className="p-4">
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted mb-3">
           {title}
         </div>
@@ -546,19 +546,19 @@ function SourceHealth({ interval }: { interval: number | false }) {
       <table className="w-full text-sm">
         <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
           <tr>
-            <th className="px-5 py-3 text-left">Source</th>
-            <th className="px-5 py-3">Status</th>
-            <th className="px-5 py-3 text-right">Last seen</th>
+            <th className="px-4 py-3 text-left">Source</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3 text-right">Last seen</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {rows.map((s) => (
             <tr key={s.name} className="mg-row-hover">
-              <td className="px-5 py-3 font-medium">{s.name}</td>
-              <td className="px-5 py-3">
+              <td className="px-4 py-3 font-medium">{s.name}</td>
+              <td className="px-4 py-3">
                 <HealthPill state={s.ok === false ? "down" : s.ok ? "ok" : "unknown"} />
               </td>
-              <td className="px-5 py-3 text-right font-mono text-[11px] text-ink-muted">
+              <td className="px-4 py-3 text-right font-mono text-[11px] text-ink-muted">
                 <TimeAgo at={s.last_seen} />
               </td>
             </tr>

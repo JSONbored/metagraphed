@@ -387,8 +387,8 @@ export function AppShell({
               fullBleedMain
                 ? ""
                 : classNames(
-                    "px-4 md:px-10 max-w-shell-max mx-auto pb-10 md:pb-14",
-                    flushTop ? "pt-0" : "pt-10 md:pt-14",
+                    "px-4 md:px-10 max-w-shell-max mx-auto pb-10 md:pb-12",
+                    flushTop ? "pt-0" : "pt-10 md:pt-12",
                   ),
             )}
           >
@@ -424,7 +424,7 @@ function SiteFooter() {
         aria-hidden
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
       />
-      <div className="max-w-shell-max mx-auto px-4 md:px-10 py-14 grid gap-10 md:grid-cols-5 text-[12px] text-ink-muted">
+      <div className="max-w-shell-max mx-auto px-4 md:px-10 py-12 grid gap-10 md:grid-cols-5 text-[12px] text-ink-muted">
         <div className="md:col-span-2">
           <div className="font-display text-base font-semibold text-ink-strong inline-flex items-baseline gap-1">
             Metagraphed

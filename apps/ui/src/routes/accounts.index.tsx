@@ -95,7 +95,7 @@ function AccountsPage() {
         </p>
       </form>
       <section
-        className="mx-auto mt-10 w-full max-w-2xl rounded-lg border border-border bg-card p-5"
+        className="mx-auto mt-10 w-full max-w-2xl rounded-lg border border-border bg-card p-4"
         data-testid="top-active-accounts-section"
       >
         <h2 className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">

@@ -294,7 +294,7 @@ function Verdict() {
         />
       ) : null}
       <div
-        className={classNames("flex items-center gap-4 rounded-lg border bg-card p-5", toneBorder)}
+        className={classNames("flex items-center gap-4 rounded-lg border bg-card p-4", toneBorder)}
         role="status"
       >
         <verdict.Icon className={classNames("size-9 shrink-0", toneText)} aria-hidden="true" />

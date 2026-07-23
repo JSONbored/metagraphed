@@ -30,7 +30,7 @@ function DelegatePage() {
           <h1 className="mg-fade-in mg-fade-in-delay-1 mt-4 font-display text-4xl md:text-5xl font-semibold leading-[1.05] tracking-tight text-ink-strong">
             Delegate τ to <span className="text-accent">Ventura Labs</span>.
           </h1>
-          <p className="mg-fade-in mg-fade-in-delay-2 mt-5 max-w-2xl text-base text-ink-muted leading-relaxed">
+          <p className="mg-fade-in mg-fade-in-delay-2 mt-4 max-w-2xl text-base text-ink-muted leading-relaxed">
             {PARTNER_ORG.tagline} Pick a subnet below to stake τ, or redelegate from your current
             validator. All flows sign in your own wallet — Metagraphed never custodies keys.
           </p>
@@ -71,7 +71,7 @@ function DelegatePage() {
               <Link
                 to={p.live ? "/validators/$hotkey" : "/subnets/$netuid"}
                 params={p.live ? { hotkey: p.hotkey } : { netuid: p.netuid }}
-                className="mg-metric-tile group flex h-full flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-accent/60"
+                className="mg-metric-tile group flex h-full flex-col rounded-xl border border-border bg-card p-4 transition-colors hover:border-accent/60"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -102,7 +102,7 @@ function DelegatePage() {
       </section>
 
       {/* Disclosure */}
-      <section className="mt-10 rounded-xl border border-border bg-card/60 p-5">
+      <section className="mt-10 rounded-xl border border-border bg-card/60 p-4">
         <div className="mg-label mb-2">Disclosure</div>
         <p className="text-[13px] text-ink-muted leading-relaxed">{PARTNER_ORG.disclosure}</p>
       </section>

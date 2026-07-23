@@ -57,7 +57,7 @@ export function RegistryTicker() {
     <div className="hidden md:block border-t border-border/60 bg-surface/40">
       <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center justify-between gap-6 text-[11px] font-mono">
         {/* Left cluster */}
-        <div className="flex items-center gap-5 min-w-0 overflow-visible">
+        <div className="flex items-center gap-4 min-w-0 overflow-visible">
           <span className="inline-flex items-center gap-1.5 shrink-0 pl-1">
             <span className="mg-live-dot" aria-hidden />
             <span className="uppercase tracking-[0.22em] text-ink-muted">Bittensor ecosystem</span>
@@ -114,7 +114,7 @@ export function RegistryTicker() {
         </div>
 
         {/* Right cluster — market aggregates */}
-        <div className="hidden min-[1120px]:flex items-center gap-5 shrink-0">
+        <div className="hidden min-[1120px]:flex items-center gap-4 shrink-0">
           <span className="inline-flex items-baseline gap-1.5">
             <span className="text-ink-muted">mkt cap</span>
             <span className="text-ink-strong tabular-nums">

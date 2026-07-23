@@ -514,11 +514,11 @@ export function NavOmnibox({ onOpenPalette }: Props) {
 
               {/* Search hits */}
               {isFetching && hits.length === 0 ? (
-                <div className="px-3 py-5 text-center font-mono text-[11px] text-ink-muted">
+                <div className="px-3 py-4 text-center font-mono text-[11px] text-ink-muted">
                   Searching…
                 </div>
               ) : hits.length === 0 && navTargets.length === 0 ? (
-                <div className="px-3 py-5 text-center font-mono text-[11px] text-ink-muted">
+                <div className="px-3 py-4 text-center font-mono text-[11px] text-ink-muted">
                   No results. Try pasting a wallet address, block number, or tx hash.
                 </div>
               ) : hits.length > 0 ? (

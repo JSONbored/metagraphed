@@ -203,7 +203,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
       ) : null}
 
       <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/95 mg-card-glow">
-        <div className="grid gap-4 border-b border-border/70 px-5 py-5 md:grid-cols-3">
+        <div className="grid gap-4 border-b border-border/70 px-4 py-4 md:grid-cols-3">
           <MetricBlock
             label="Total activity"
             value={eventCountLabel(totalEvents)}
@@ -223,8 +223,8 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
           />
         </div>
 
-        <div className="bg-accent-surface px-4 py-4 md:px-5 md:py-5">
-          <div className="rounded-2xl border border-border/70 bg-paper/70 px-4 py-4 md:px-5 md:py-5">
+        <div className="bg-accent-surface px-4 py-4 md:px-6 md:py-6">
+          <div className="rounded-2xl border border-border/70 bg-paper/70 px-4 py-4 md:px-6 md:py-6">
             <Sparkline
               values={values}
               points={points}

@@ -131,7 +131,7 @@ function FeesTrendCard() {
 
   return (
     <Panel as="section" flush className="mb-6">
-      <div className="p-4 sm:p-5">
+      <div className="p-4 sm:p-6">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-2">
             <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">

@@ -85,7 +85,7 @@ export function ApiDrawer() {
           }
         }}
       >
-        <SheetHeader className="px-5 py-4 border-b border-border space-y-1">
+        <SheetHeader className="px-4 py-4 border-b border-border space-y-1">
           <SheetTitle className="font-display text-base font-semibold text-ink-strong inline-flex items-center gap-2">
             <Code2 className="size-4 text-accent" /> API source
           </SheetTitle>
@@ -96,7 +96,7 @@ export function ApiDrawer() {
         </SheetHeader>
 
         {sources.length > 1 ? (
-          <div className="px-5 py-2 border-b border-border flex flex-wrap gap-1">
+          <div className="px-4 py-2 border-b border-border flex flex-wrap gap-1">
             {sources.map((s) => (
               <button
                 key={s.path}
@@ -119,7 +119,7 @@ export function ApiDrawer() {
           {activePath ? (
             <ApiSourceBody source={sources.find((s) => s.path === activePath)!} />
           ) : (
-            <div className="p-5 text-sm text-ink-muted">No source registered.</div>
+            <div className="p-4 text-sm text-ink-muted">No source registered.</div>
           )}
         </div>
       </SheetContent>
@@ -158,7 +158,7 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
   }, [data]);
 
   return (
-    <div className="p-5 space-y-4">
+    <div className="p-4 space-y-4">
       <section className="space-y-2">
         <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
           Request

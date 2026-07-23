@@ -295,28 +295,28 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 : "live RPC"
           }
           tone={balanceResult.isError ? "down" : "accent"}
-          className="rounded-2xl bg-card/95 p-5 mg-card-glow-accent"
+          className="rounded-2xl bg-card/95 p-4 mg-card-glow-accent"
         />
         <StatTile
           icon={Activity}
           eyebrow="Events"
           value={formatNumber(account.event_count)}
           hint="indexed first-party"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
+          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
         />
         <StatTile
           icon={Boxes}
           eyebrow="Subnets"
           value={formatNumber(account.subnet_count)}
           hint="active footprint"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
+          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
         />
         <StatTile
           icon={Clock}
           eyebrow="Last seen"
           value={<TimeAgo at={account.last_seen_at ?? undefined} />}
           hint="near-realtime · chain-direct index"
-          className="rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow"
+          className="rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow"
         />
       </div>
 
@@ -509,7 +509,7 @@ function SectionBadge({
   );
 }
 
-const TH = "px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+const TH = "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
 
 function AccountFeedSectionSkeleton({
   id,
@@ -606,7 +606,7 @@ function AccountExtrinsicsSection({
                 key={x.extrinsic_hash ?? `${x.block_number}-${x.extrinsic_index}-${i}`}
                 className="hover:bg-surface/30"
               >
-                <td className="px-5 py-4 font-mono text-[12px]">
+                <td className="px-4 py-4 font-mono text-[12px]">
                   {x.block_number != null ? (
                     <Link
                       to="/blocks/$ref"
@@ -622,7 +622,7 @@ function AccountExtrinsicsSection({
                     "—"
                   )}
                 </td>
-                <td className="px-5 py-4 font-mono text-[11px] text-ink">
+                <td className="px-4 py-4 font-mono text-[11px] text-ink">
                   {x.extrinsic_hash ? (
                     <Link
                       to="/extrinsics/$hash"
@@ -635,7 +635,7 @@ function AccountExtrinsicsSection({
                     extrinsicCall(x.call_module, x.call_function)
                   )}
                 </td>
-                <td className="px-5 py-4 font-mono text-[11px]">
+                <td className="px-4 py-4 font-mono text-[11px]">
                   {x.success == null ? (
                     <span className="text-ink-muted">—</span>
                   ) : x.success ? (
@@ -644,7 +644,7 @@ function AccountExtrinsicsSection({
                     <span className="text-health-down">fail</span>
                   )}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-4 text-right font-mono text-[11px] text-ink-muted">
                   <TimeAgo at={x.observed_at} />
                 </td>
               </tr>
@@ -733,7 +733,7 @@ function AccountTransfersSection({
               const counterparty = t.direction === "sent" ? t.to : t.from;
               return (
                 <tr key={`${t.block_number}-${t.event_index}-${i}`} className="hover:bg-surface/30">
-                  <td className="px-5 py-4 font-mono text-[12px]">
+                  <td className="px-4 py-4 font-mono text-[12px]">
                     {t.block_number != null ? (
                       <Link
                         to="/blocks/$ref"
@@ -746,7 +746,7 @@ function AccountTransfersSection({
                       "—"
                     )}
                   </td>
-                  <td className="px-5 py-4 font-mono text-[11px]">
+                  <td className="px-4 py-4 font-mono text-[11px]">
                     {t.direction === "received" ? (
                       <span className="text-health-ok">received</span>
                     ) : t.direction === "sent" ? (
@@ -756,7 +756,7 @@ function AccountTransfersSection({
                     )}
                   </td>
                   <td
-                    className="px-5 py-4 font-mono text-[11px] text-ink-muted"
+                    className="px-4 py-4 font-mono text-[11px] text-ink-muted"
                     title={counterparty ?? undefined}
                   >
                     {counterparty && counterparty !== ss58 ? (
@@ -771,10 +771,10 @@ function AccountTransfersSection({
                       (shortHash(counterparty) ?? "—")
                     )}
                   </td>
-                  <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                     {t.amount_tao != null ? `${formatNumber(t.amount_tao)} τ` : "—"}
                   </td>
-                  <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                  <td className="px-4 py-4 text-right font-mono text-[11px] text-ink-muted">
                     <TimeAgo at={t.observed_at} />
                   </td>
                 </tr>
@@ -801,7 +801,7 @@ function fmtAlphaPrice(v: number | null | undefined): string {
   return `${v < 1 ? v.toFixed(4) : v.toFixed(3)} τ`;
 }
 
-const KPI_TILE = "rounded-2xl border-border/80 bg-card/95 p-5 mg-card-glow";
+const KPI_TILE = "rounded-2xl border-border/80 bg-card/95 p-4 mg-card-glow";
 
 // Compact TAO formatter for the portfolio KPI tiles — a long raw value like
 // "338,030.153 τ" wraps + overflows a narrow StatTile, so summarise it (338.0k τ).
@@ -907,7 +907,7 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
           <tbody className="divide-y divide-border">
             {rows.map((s) => (
               <tr key={s.netuid} className="hover:bg-surface/30">
-                <td className="px-5 py-4 font-mono text-[12px]">
+                <td className="px-4 py-4 font-mono text-[12px]">
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: s.netuid }}
@@ -916,13 +916,13 @@ function AccountStakeMovesSection({ ss58 }: { ss58: string }) {
                     SN{s.netuid}
                   </Link>
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
                   {formatNumber(s.movements)}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-4 text-right font-mono text-[11px] text-ink-muted">
                   {s.last_moved_at ? <TimeAgo at={s.last_moved_at} /> : "—"}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                   {fmtAlphaPrice(s.price_tao_at_last_move)}
                 </td>
               </tr>
@@ -1029,7 +1029,7 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
           <tbody className="divide-y divide-border">
             {rows.map((p, i) => (
               <tr key={`${p.address}-${i}`} className="hover:bg-surface/30">
-                <td className="px-5 py-4 font-mono text-[11px] text-ink-muted" title={p.address}>
+                <td className="px-4 py-4 font-mono text-[11px] text-ink-muted" title={p.address}>
                   {p.address !== ss58 ? (
                     <Link
                       to="/accounts/$ss58"
@@ -1042,13 +1042,13 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
                     (shortHash(p.address) ?? "—")
                   )}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                   {p.sent_tao != null ? `${formatNumber(p.sent_tao)} τ` : "—"}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                   {p.received_tao != null ? `${formatNumber(p.received_tao)} τ` : "—"}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums">
+                <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums">
                   {p.net_tao == null ? (
                     <span className="text-ink-muted">—</span>
                   ) : (
@@ -1058,10 +1058,10 @@ function AccountCounterpartiesSection({ ss58 }: { ss58: string }) {
                     </span>
                   )}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                   {formatNumber(p.transfer_count ?? 0)}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[12px]">
+                <td className="px-4 py-4 text-right font-mono text-[12px]">
                   {p.last_block != null ? (
                     <Link
                       to="/blocks/$ref"
@@ -1435,7 +1435,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
                     key={`${tie.netuid}-${tie.block_number}-${i}`}
                     className="hover:bg-surface/30"
                   >
-                    <td className="whitespace-nowrap px-5 py-4 font-mono text-[12px]">
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-[12px]">
                       {tie.netuid != null ? (
                         <Link
                           to="/subnets/$netuid"
@@ -1448,7 +1448,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
                         <span className="text-ink-muted">—</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-4 text-[11px]">
+                    <td className="whitespace-nowrap px-4 py-4 text-[11px]">
                       <span
                         className={
                           tie.role === "gained_ownership"
@@ -1461,7 +1461,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
                         {ownershipRoleLabel(tie.role)}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-5 py-4 text-right font-mono text-[12px]">
+                    <td className="whitespace-nowrap px-4 py-4 text-right font-mono text-[12px]">
                       {tie.block_number != null ? (
                         <Link
                           to="/blocks/$ref"
@@ -1474,7 +1474,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
                         <span className="text-ink-muted">—</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                    <td className="whitespace-nowrap px-4 py-4 text-right font-mono text-[11px] text-ink-muted">
                       {tie.observed_at ? <TimeAgo at={tie.observed_at} /> : "—"}
                     </td>
                   </tr>
@@ -1624,7 +1624,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
       </div>
 
       {bars.length > 0 ? (
-        <div className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-5 py-4 mg-card-glow">
+        <div className="mb-4 rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-card-glow">
           <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             gross flow by subnet (τ)
           </div>
@@ -1650,7 +1650,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
                 .slice(0, 20)
                 .map((s) => (
                   <tr key={s.netuid} className="hover:bg-surface/30">
-                    <td className="px-5 py-4 font-mono text-[12px]">
+                    <td className="px-4 py-4 font-mono text-[12px]">
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: s.netuid }}
@@ -1659,10 +1659,10 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
                         SN{s.netuid}
                       </Link>
                     </td>
-                    <td className="px-5 py-4 font-mono text-[11px]">
+                    <td className="px-4 py-4 font-mono text-[11px]">
                       <span className={stakeFlowDirClass(s.direction)}>{s.direction ?? "—"}</span>
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums">
+                    <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums">
                       {s.net_flow_tao == null ? (
                         <span className="text-ink-muted">—</span>
                       ) : (
@@ -1676,10 +1676,10 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                    <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                       {fmtStake(s.gross_flow_tao)}
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                       {formatNumber((s.stake_events ?? 0) + (s.unstake_events ?? 0))}
                     </td>
                   </tr>
@@ -1688,7 +1688,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
           </table>
         </DataPanel>
       ) : (
-        <p className="rounded-2xl border border-border/80 bg-card/95 px-5 py-4 font-mono text-[11px] text-ink-muted">
+        <p className="rounded-2xl border border-border/80 bg-card/95 px-4 py-4 font-mono text-[11px] text-ink-muted">
           No stake or unstake flow recorded for this account over the {f?.window ?? window} window.
         </p>
       )}
@@ -1808,7 +1808,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
                         />
                       </button>
                     </td>
-                    <td className="px-5 py-4 font-mono text-[12px]">
+                    <td className="px-4 py-4 font-mono text-[12px]">
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: pos.netuid }}
@@ -1817,7 +1817,7 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
                         SN{pos.netuid}
                       </Link>
                     </td>
-                    <td className="px-5 py-4 font-mono text-[11px]">
+                    <td className="px-4 py-4 font-mono text-[11px]">
                       {pos.role === "validator" ? (
                         <span className="text-health-ok">validator</span>
                       ) : pos.role === "miner" ? (
@@ -1826,19 +1826,19 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
                         <span className="text-ink-muted">{"—"}</span>
                       )}
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                    <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                       {fmtStake(pos.stake_tao)}
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                    <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                       {fmtStake(pos.emission_tao)}
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                    <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink-muted">
                       {pos.incentive != null ? pos.incentive.toFixed(4) : "—"}
                     </td>
                   </tr>
                   {expanded ? (
                     <tr className="bg-surface/20">
-                      <td colSpan={6} className="px-5 py-4">
+                      <td colSpan={6} className="px-4 py-4">
                         <AccountPositionHistoryChart ss58={ss58} netuid={pos.netuid} />
                       </td>
                     </tr>
@@ -1890,7 +1890,7 @@ function AccountIdentitySection({ ss58 }: { ss58: string }) {
       tone="accent"
       info="GET /api/v1/accounts/{ss58}/identity — the coldkey's own on-chain identity, distinct from subnet identity and the validator directory's coldkey-identity join."
     >
-      <div className="rounded-2xl border border-border/80 bg-card/95 p-5 mg-card-glow">
+      <div className="rounded-2xl border border-border/80 bg-card/95 p-4 mg-card-glow">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="font-display text-lg font-semibold text-ink-strong">
             {identity.name ?? "Unnamed identity"}
@@ -2210,7 +2210,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
         />
       ) : (
         <>
-          <div className="mb-5 grid max-w-2xl gap-4 sm:grid-cols-2">
+          <div className="mb-4 grid max-w-2xl gap-4 sm:grid-cols-2">
             <StatTile
               icon={Scale}
               eyebrow="Weight sets"
@@ -2239,7 +2239,7 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
               <tbody className="divide-y divide-border">
                 {subnets.map((row) => (
                   <tr key={row.netuid} className="hover:bg-surface/30">
-                    <td className="px-5 py-4 font-mono text-[12px]">
+                    <td className="px-4 py-4 font-mono text-[12px]">
                       <Link
                         to="/subnets/$netuid"
                         params={{ netuid: row.netuid }}
@@ -2248,10 +2248,10 @@ function AccountWeightSettingSection({ ss58 }: { ss58: string }) {
                         SN{row.netuid}
                       </Link>
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                    <td className="px-4 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
                       {formatNumber(row.weight_sets)}
                     </td>
-                    <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                    <td className="px-4 py-4 text-right font-mono text-[11px] text-ink-muted">
                       <TimeAgo at={row.last_set_at ?? undefined} />
                     </td>
                   </tr>
@@ -2446,7 +2446,7 @@ function AccountFootprintSection({
       right={<SectionBadge>{formatNumber(rows.length)} subnets</SectionBadge>}
     >
       {staked.length > 0 ? (
-        <div className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-5 py-4 mg-card-glow">
+        <div className="mb-4 rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-card-glow">
           <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             stake by subnet (τ)
           </div>
@@ -2473,7 +2473,7 @@ function AccountFootprintSection({
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface/30">
-                <td className="px-5 py-4 font-mono text-[12px]">
+                <td className="px-4 py-4 font-mono text-[12px]">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -2489,20 +2489,20 @@ function AccountFootprintSection({
                     "—"
                   )}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
                   {r.uid != null ? formatNumber(r.uid) : "—"}
                 </td>
-                <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
+                <td className="px-4 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
                   {fmtStake(r.stake_tao)}
                 </td>
-                <td className="px-5 py-4 font-mono text-[11px]">
+                <td className="px-4 py-4 font-mono text-[11px]">
                   {r.validator_permit ? (
                     <ValidatorPermitBadge ss58={ss58} />
                   ) : (
                     <span className="text-ink-muted">—</span>
                   )}
                 </td>
-                <td className="px-5 py-4 font-mono text-[11px]">
+                <td className="px-4 py-4 font-mono text-[11px]">
                   {r.active ? (
                     <span className="inline-flex rounded-full bg-health-ok/10 px-2 py-0.5 text-health-ok">
                       active
@@ -2698,7 +2698,7 @@ function AccountEventsSection({
                   key={`${ev.block_number}-${ev.event_index}-${i}`}
                   className="hover:bg-surface/30"
                 >
-                  <td className="px-5 py-4 font-mono text-[12px]">
+                  <td className="px-4 py-4 font-mono text-[12px]">
                     {ev.block_number != null ? (
                       <Link
                         to="/blocks/$ref"
@@ -2712,12 +2712,12 @@ function AccountEventsSection({
                     )}
                   </td>
                   <td
-                    className="px-5 py-4 font-mono text-[11px] text-ink-strong"
+                    className="px-4 py-4 font-mono text-[11px] text-ink-strong"
                     title={ev.event_kind ?? undefined}
                   >
                     {eventKindLabel(ev.event_kind)}
                   </td>
-                  <td className="px-5 py-4 font-mono text-[11px] text-ink-muted">
+                  <td className="px-4 py-4 font-mono text-[11px] text-ink-muted">
                     {ev.netuid != null ? (
                       <Link
                         to="/subnets/$netuid"
@@ -2730,17 +2730,17 @@ function AccountEventsSection({
                       "—"
                     )}
                   </td>
-                  <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                     {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
                   </td>
-                  <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                  <td className="px-4 py-4 text-right font-mono text-[11px] text-ink-muted">
                     <TimeAgo at={ev.observed_at} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-5 py-3 font-mono text-[11px] text-ink-muted">
+          <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-3 font-mono text-[11px] text-ink-muted">
             <span>
               {events.length
                 ? `${formatNumber(offset + 1)}–${formatNumber(offset + events.length)}`
@@ -2818,7 +2818,7 @@ function AccountHeroAside({
   firstSeenAt: string | null;
 }) {
   return (
-    <div className="w-[20rem] rounded-2xl border border-border/80 bg-card/95 p-5 mg-card-glow">
+    <div className="w-[20rem] rounded-2xl border border-border/80 bg-card/95 p-4 mg-card-glow">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
@@ -2833,7 +2833,7 @@ function AccountHeroAside({
         </div>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-4 space-y-3">
         <HeroAsideRow
           icon={Rows3}
           label="Registered subnets"
