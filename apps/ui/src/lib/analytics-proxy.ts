@@ -57,9 +57,23 @@ declare const caches:
 export async function retrieveAnalyticsAsset(
   request: Request,
   pathWithParams: string,
-  ctx: PostHogAssetContext,
+  ctx: PostHogAssetContext | undefined,
 ): Promise<Response> {
-  const hasEdgeCache = typeof caches !== "undefined";
+  // Root cause of a real production incident, found via `wrangler tail`
+  // against the live Worker: `ctx` itself arrived `undefined` for this
+  // request path (`ctx.waitUntil` throwing "Cannot read properties of
+  // undefined (reading 'waitUntil')"), not a Cache API rejection -- the
+  // earlier .catch()/try-catch additions around match()/put() were real
+  // hardening but didn't address the actual trigger. server.ts casts its
+  // own `ctx: unknown` parameter straight through (`ctx as
+  // PostHogAssetContext`), a compile-time-only assertion with no runtime
+  // guarantee -- whatever produces an undefined ctx for some requests
+  // (still unconfirmed) is upstream of this module, so the only correct fix
+  // here is to never assume the type-level contract holds at runtime.
+  // Edge caching is a best-effort optimization; treat a missing/unusable
+  // ctx exactly like a missing `caches` global -- degrade to an uncached
+  // passthrough fetch, never throw.
+  const hasEdgeCache = typeof caches !== "undefined" && typeof ctx?.waitUntil === "function";
   // Same best-effort posture as the put() below -- a read failure must fall
   // through to a normal upstream fetch, never take the whole request down.
   let cached: Response | undefined;
@@ -76,13 +90,11 @@ export async function retrieveAnalyticsAsset(
   // rejection at the Worker's global scope -- Nitro/h3's own safety net
   // (src/lib/error-capture.ts's "error"/"unhandledrejection" listeners)
   // then turns that into a generic 500 for the CURRENT request, even though
-  // the response below was already computed correctly (confirmed live:
-  // every /ingest/static/* and /ingest/array/* request 500'd this way in
-  // production, while /ingest/e/ -- forwardToAnalyticsHost, which never
-  // touches ctx.waitUntil -- kept working). The edge cache is a best-effort
-  // optimization; a write failure (a malformed Vary header from upstream, a
-  // transient Cache API error, anything) must never take down the response
-  // that's already correct and already on its way to the browser.
+  // the response below was already computed correctly. The edge cache is a
+  // best-effort optimization; a write failure (a malformed Vary header from
+  // upstream, a transient Cache API error, anything) must never take down
+  // the response that's already correct and already on its way to the
+  // browser.
   if (hasEdgeCache) {
     ctx.waitUntil(
       caches.default.put(request, upstream.clone()).catch((err) => {
@@ -148,7 +160,7 @@ export async function forwardToAnalyticsHost(
 // above is the actual abuse control (bounded body size), not path filtering.
 export async function handleAnalyticsProxy(
   request: Request,
-  ctx: PostHogAssetContext,
+  ctx: PostHogAssetContext | undefined,
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith(`${ANALYTICS_PREFIX}/`)) return null;

@@ -275,6 +275,28 @@ describe("retrieveAnalyticsAsset", () => {
     );
     consoleErrorSpy.mockRestore();
   });
+
+  it("degrades to an uncached passthrough fetch when ctx is undefined, instead of throwing", async () => {
+    // Regression test for the actual confirmed root cause of the production
+    // incident the two tests above were hardening against: `wrangler tail`
+    // against the live Worker showed `ctx` itself arriving `undefined` for
+    // this request path ("Cannot read properties of undefined (reading
+    // 'waitUntil')"), not a Cache API rejection. server.ts's own `ctx:
+    // unknown` parameter is cast, not runtime-checked, so this module can't
+    // assume the type-level contract holds.
+    const match = vi.fn(async () => undefined);
+    const put = vi.fn(async () => {});
+    // @ts-expect-error -- test-only stub of the ambient Cloudflare `caches` global.
+    globalThis.caches = { default: { match, put } };
+    globalThis.fetch = vi.fn(async () => new Response("/* js */", { status: 200 })) as typeof fetch;
+
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/static/array.js`);
+    const response = await retrieveAnalyticsAsset(request, "/static/array.js", undefined);
+
+    expect(response.status).toBe(200);
+    expect(match).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+  });
 });
 
 describe("handleAnalyticsProxy routing", () => {
@@ -311,6 +333,19 @@ describe("handleAnalyticsProxy routing", () => {
     const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/array/phc_test/config.js`);
     await handleAnalyticsProxy(request, fakeCtx());
     expect(calls[0]).toBe("https://us-assets.i.posthog.com/array/phc_test/config.js");
+  });
+
+  it(`routes ${ANALYTICS_PREFIX}/array/* correctly even when ctx is undefined (the confirmed production root cause)`, async () => {
+    const calls: string[] = [];
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      calls.push(String(url));
+      return new Response(null, { status: 200 });
+    }) as typeof fetch;
+
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/array/phc_test/config.js`);
+    const response = await handleAnalyticsProxy(request, undefined);
+    expect(calls[0]).toBe("https://us-assets.i.posthog.com/array/phc_test/config.js");
+    expect(response?.status).toBe(200);
   });
 
   it(`routes everything else under ${ANALYTICS_PREFIX} to the main API host`, async () => {
