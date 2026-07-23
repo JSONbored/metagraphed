@@ -41,7 +41,7 @@ const chainEventsDocs = readFileSync(
 const wranglerConfig = readFileSync("wrangler.jsonc", "utf8");
 
 /** Extracts a markdown table row's "Value" cell (2nd column) by its exact "Label" cell text. */
-function tableValue(text, label) {
+function tableValue(text: string, label: string) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(`^\\|\\s*${escaped}\\s*\\|\\s*([^|]+?)\\s*\\|`, "m");
   const match = text.match(re);
@@ -50,13 +50,13 @@ function tableValue(text, label) {
 }
 
 /** Mirrors the deleted graphql-docs.ts/rpc-docs.ts formatByteBudget helpers. */
-function formatBytes(bytes) {
+function formatBytes(bytes: number) {
   if (bytes % 1024 === 0) return `${bytes / 1024} KiB`;
   return `${bytes} B`;
 }
 
 /** Extracts a JSONC ratelimit binding's {limit, period} by its "name". */
-function wranglerRateLimit(name) {
+function wranglerRateLimit(name: string) {
   const re = new RegExp(
     `"name":\\s*"${name}"[\\s\\S]*?"limit":\\s*(\\d+),[\\s\\S]*?"period":\\s*(\\d+),`,
   );

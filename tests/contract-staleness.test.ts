@@ -13,11 +13,11 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 const ARTIFACT_ROUTE = "https://metagraph.sh/api/v1/subnets";
 
 describe("serve-time contract staleness (#1001)", () => {
-  function parseExposeHeader(response) {
+  function parseExposeHeader(response: Response) {
     return new Set(
       (response.headers.get("access-control-expose-headers") || "")
         .split(",")
-        .map((name) => name.trim().toLowerCase())
+        .map((name: string) => name.trim().toLowerCase())
         .filter(Boolean),
     );
   }
@@ -63,7 +63,8 @@ describe("serve-time contract staleness (#1001)", () => {
   });
 
   it("orders contract versions by date then numeric revision", () => {
-    const live = (v) => ({ METAGRAPH_CONTRACT_VERSION: v });
+    const live = (v: string) =>
+      ({ METAGRAPH_CONTRACT_VERSION: v }) as unknown as Env;
     // older date -> stale
     expect(contractStaleness(live("2026-06-07.1"), "2026-06-06.9")).toEqual({
       built_under: "2026-06-06.9",

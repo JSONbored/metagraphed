@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { csvValue, toCsv, buildDatasetExports } from "../scripts/datasets.ts";
+import type { Row } from "./row-type.ts";
 
 describe("csvValue", () => {
   test("RFC-4180 quotes commas, quotes, and newlines; doubles quotes", () => {
@@ -61,33 +62,35 @@ describe("buildDatasetExports", () => {
   };
 
   test("emits one CSV per table and a manifest", () => {
-    const { files, manifest } = buildDatasetExports(input);
-    const paths = files.map((file) => file.relativePath).sort();
+    const { files, manifest } = buildDatasetExports(input) as Row;
+    const paths = files.map((file: Row) => file.relativePath).sort();
     assert.deepEqual(paths, [
       "datasets/providers.csv",
       "datasets/subnets.csv",
       "datasets/surfaces.csv",
     ]);
     assert.equal(
-      files.every((file) => file.contentType === "text/csv; charset=utf-8"),
+      files.every(
+        (file: Row) => file.contentType === "text/csv; charset=utf-8",
+      ),
       true,
     );
     assert.equal(manifest.dataset_count, 3);
     assert.equal(manifest.generated_at, "1970-01-01T00:00:00.000Z");
-    const subnets = manifest.datasets.find((d) => d.id === "subnets");
+    const subnets = manifest.datasets.find((d: Row) => d.id === "subnets");
     assert.equal(subnets.rows, 1);
     assert.equal(subnets.path, "/datasets/subnets.csv");
   });
 
   test("flattens surface.probe.status and joins categories", () => {
-    const { files } = buildDatasetExports(input);
+    const { files } = buildDatasetExports(input) as Row;
     const surfacesCsv = files.find(
-      (file) => file.relativePath === "datasets/surfaces.csv",
+      (file: Row) => file.relativePath === "datasets/surfaces.csv",
     ).body;
     assert.match(surfacesCsv, /probe_status/);
     assert.match(surfacesCsv, /ok/);
     const subnetsCsv = files.find(
-      (file) => file.relativePath === "datasets/subnets.csv",
+      (file: Row) => file.relativePath === "datasets/subnets.csv",
     ).body;
     assert.match(subnetsCsv, /allways/);
   });
@@ -97,18 +100,18 @@ describe("buildDatasetExports", () => {
   });
 
   test("carries published_at + a deterministic content_hash (#349)", () => {
-    const hashJson = (value) => JSON.stringify(value);
+    const hashJson = (value: unknown) => JSON.stringify(value);
     const a = buildDatasetExports({
       ...input,
       publishedAt: "2026-06-12T10:00:00.000Z",
       hashJson,
-    });
+    }) as Row;
     assert.equal(a.manifest.published_at, "2026-06-12T10:00:00.000Z");
     assert.equal(
       a.manifest.content_hash,
       hashJson({
         datasets: a.manifest.datasets,
-        files: a.files.map(({ relativePath, contentType, body }) => ({
+        files: a.files.map(({ relativePath, contentType, body }: Row) => ({
           relativePath,
           contentType,
           body,
@@ -118,7 +121,11 @@ describe("buildDatasetExports", () => {
     // generated_at stays the deterministic stamp, independent of published_at
     assert.equal(a.manifest.generated_at, input.generatedAt);
     // content_hash ignores published_at — same content, same hash
-    const b = buildDatasetExports({ ...input, publishedAt: null, hashJson });
+    const b = buildDatasetExports({
+      ...input,
+      publishedAt: null,
+      hashJson,
+    }) as Row;
     assert.equal(a.manifest.content_hash, b.manifest.content_hash);
 
     // content_hash includes exported CSV content, not just dataset metadata
@@ -126,12 +133,12 @@ describe("buildDatasetExports", () => {
       ...input,
       subnets: [{ ...input.subnets[0], name: "Changed" }],
       hashJson,
-    });
+    }) as Row;
     assert.notEqual(a.manifest.content_hash, changed.manifest.content_hash);
   });
 
   test("published_at + content_hash default to null without injection", () => {
-    const { manifest } = buildDatasetExports(input);
+    const { manifest } = buildDatasetExports(input) as Row;
     assert.equal(manifest.published_at, null);
     assert.equal(manifest.content_hash, null);
   });

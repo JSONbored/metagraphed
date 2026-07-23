@@ -63,8 +63,8 @@ describe("buildCounterparties", () => {
       ME,
       { limit: 20 },
     );
-    const newer = data.counterparties.find((c) => c.address === "NEW");
-    const older = data.counterparties.find((c) => c.address === "OLD");
+    const newer = data.counterparties.find((c) => c.address === "NEW")!;
+    const older = data.counterparties.find((c) => c.address === "OLD")!;
     assert.equal(newer.last_block, 9);
     assert.equal(older.last_block, 5);
     // Equal volume (100 each) -> the newer last_block ranks first.
@@ -496,7 +496,7 @@ describe("buildCounterpartyRelationship", () => {
           amount_tao: "",
           observed_at: "not-a-date",
         },
-      ],
+      ] as unknown as Array<Record<string, unknown>>,
       ME,
       "A",
       {},
@@ -787,7 +787,7 @@ describe("buildCounterparties — regressions", () => {
         null,
         { hotkey: "ME", coldkey: "A", amount_tao: 5, block_number: 1 },
         undefined,
-      ],
+      ] as unknown as Array<Record<string, unknown>>,
       ME,
       {},
     );

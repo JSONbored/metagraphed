@@ -6,7 +6,7 @@ import { DOMAIN_TAGS } from "../src/domain-tags.ts";
 
 describe("GET /api/v1/domains", () => {
   const env = createLocalArtifactEnv();
-  const get = async (path) => {
+  const get = async (path: string) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
       env,
@@ -22,7 +22,7 @@ describe("GET /api/v1/domains", () => {
     assert.equal(body.data.domain_count, DOMAIN_TAGS.length);
     assert.equal(body.data.domains.length, DOMAIN_TAGS.length);
     assert.deepEqual(
-      body.data.domains.map((d) => d.domain).sort(),
+      body.data.domains.map((d: { domain: string }) => d.domain).sort(),
       [...DOMAIN_TAGS].sort(),
     );
     assert.equal(body.meta.artifact_path, "/metagraph/domains.json");
@@ -78,7 +78,7 @@ describe("GET /api/v1/domains", () => {
   test("tolerates a committed economics artifact with no captured_at", async () => {
     const noTimestampEnv = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: {
-        async get(key) {
+        async get(key: string) {
           if (!key.endsWith("economics.json")) return null;
           return {
             async json() {
@@ -107,7 +107,7 @@ describe("GET /api/v1/domains", () => {
   test("prefers a fresh live-KV economics blob over the R2 fallback", async () => {
     const liveEnv = createLocalArtifactEnv({
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key !== "economics:current") return null;
           return {
             schema_version: 1,
@@ -125,8 +125,8 @@ describe("GET /api/v1/domains", () => {
     );
     const body = await res.json();
     assert.equal(res.status, 200);
-    const domainWithSubnet1 = body.data.domains.find((d) =>
-      d.netuids.includes(1),
+    const domainWithSubnet1 = body.data.domains.find(
+      (d: { netuids: number[] }) => d.netuids.includes(1),
     );
     assert.ok(
       domainWithSubnet1,
@@ -138,7 +138,7 @@ describe("GET /api/v1/domains", () => {
 
 describe("GET /api/v1/domains/{tag}/summary", () => {
   const env = createLocalArtifactEnv();
-  const get = async (path) => {
+  const get = async (path: string) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
       env,
@@ -156,7 +156,7 @@ describe("GET /api/v1/domains/{tag}/summary", () => {
     assert.equal(body.data.domain, "inference");
     assert.ok(body.data.subnet_count > 0);
     const fromOverview = overview.data.domains.find(
-      (d) => d.domain === "inference",
+      (d: { domain: string }) => d.domain === "inference",
     );
     assert.deepEqual(body.data, fromOverview);
     assert.equal(

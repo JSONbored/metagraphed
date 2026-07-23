@@ -45,9 +45,9 @@ describe("buildDomainSummary", () => {
     assert.equal(inference.emission_concentration.holders, 2);
     // A single-member domain (finance: only netuid 3) is maximally concentrated.
     const finance = buildDomainSummary("finance", SUBNETS, ECONOMICS);
-    assert.equal(finance.emission_concentration.holders, 1);
-    assert.equal(finance.emission_concentration.gini, 0);
-    assert.equal(finance.emission_concentration.hhi, 1);
+    assert.equal(finance.emission_concentration!.holders, 1);
+    assert.equal(finance.emission_concentration!.gini, 0);
+    assert.equal(finance.emission_concentration!.hhi, 1);
   });
 
   test("a tag with zero member subnets returns a schema-stable empty rollup", () => {

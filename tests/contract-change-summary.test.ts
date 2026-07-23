@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { classifyContractChanges } from "../scripts/contract-change-summary.ts";
+import type { Row } from "./row-type.ts";
 
 describe("classifyContractChanges", () => {
   test("an enum-only addition is additive, not risky", () => {
@@ -36,7 +37,7 @@ describe("classifyContractChanges", () => {
       { component: "Authority", reason: "schema_changed" },
     ]);
     assert.equal(result.classification, "risky");
-    assert.equal(result.counts.risky_changes, 1);
+    assert.equal((result.counts as Row).risky_changes, 1);
   });
 
   test("a non-enum structural change with no enum delta is risky", () => {

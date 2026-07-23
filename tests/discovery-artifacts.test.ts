@@ -7,15 +7,18 @@ import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { repoRoot, loadSubnets } from "../scripts/lib.ts";
 import { PRIMARY_DOMAIN } from "../src/contracts.mjs";
 import { MCP_REGISTRY_NAME, MCP_SERVER_INFO } from "../src/mcp-server.mjs";
 import { mcpServerCardResponse } from "../workers/request-handlers/discovery.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 const publicDir = path.join(repoRoot, "public");
-const readJson = async (rel) =>
+const readJson = async (rel: string) =>
   JSON.parse(await fs.readFile(path.join(publicDir, rel), "utf8"));
 
 describe("Discovery artifacts", () => {
@@ -23,10 +26,10 @@ describe("Discovery artifacts", () => {
     // Card is now worker-computed; test via the handler (no committed file).
     const res = await mcpServerCardResponse(
       new Request("https://api.metagraph.sh/.well-known/mcp/server-card.json"),
-      {},
+      mockEnv(),
     );
     assert.equal(res.status, 200);
-    const card = await res.json();
+    const card = (await res.json()) as Row;
     assert.deepEqual(card.serverInfo, {
       name: MCP_SERVER_INFO.name,
       version: MCP_SERVER_INFO.version,
@@ -103,7 +106,7 @@ describe("Discovery artifacts", () => {
       path.join(publicDir, ".well-known/security.txt"),
       "utf8",
     );
-    const field = (name) =>
+    const field = (name: string) =>
       txt.match(new RegExp(`^${name}:\\s*(.+)$`, "mi"))?.[1]?.trim();
     // Contact is REQUIRED by RFC 9116; it must be the private advisory channel
     // documented in SECURITY.md (never a public issue / personal address).
@@ -179,8 +182,10 @@ describe("Discovery artifacts", () => {
       ...xml.matchAll(/<loc>[^<]*\/api\/v1\/agent-catalog\/(\d+)<\/loc>/g),
     ]
       .map((m) => Number(m[1]))
-      .sort((a, b) => a - b);
-    const expected = subnets.map((s) => s.netuid).sort((a, b) => a - b);
+      .sort((a: number, b: number) => a - b);
+    const expected = subnets
+      .map((s) => s.netuid as number)
+      .sort((a: number, b: number) => a - b);
     // One entry per subnet, no duplicates, no orphaned/off-registry netuid.
     assert.deepEqual(perSubnet, expected);
     for (const netuid of expected) {

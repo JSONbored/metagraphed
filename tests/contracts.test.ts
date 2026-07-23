@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { describe, test } from "vitest";
 import {
   API_ROUTES,
@@ -19,6 +19,9 @@ import {
 import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.ts";
 import { evaluateArtifactBudgets } from "../scripts/artifact-budgets.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
+import type { Row } from "./row-type.ts";
+
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 describe("artifact lifecycle status (#6358)", () => {
   // The catalog advertised health-latest/health-summary/health-subnet as
@@ -29,7 +32,7 @@ describe("artifact lifecycle status (#6358)", () => {
   // The retirement pattern matches concrete paths (subnets/7.json), while the
   // catalog stores templates (subnets/{netuid}.json). Substitute before
   // matching or health-subnet silently escapes the check.
-  const concrete = (template) =>
+  const concrete = (template: string) =>
     artifactPathFromTemplate(template, {
       netuid: 7,
       uid: 1,
@@ -118,7 +121,7 @@ describe("public contract registry", () => {
     assert.equal(CONTRACT_VERSION, "2026-07-03.2");
     assert.equal(CACHE_SECONDS.short, 60);
     assert.equal(
-      new Set(API_ROUTES.map((route) => route.id)).size,
+      new Set(API_ROUTES.map((route: Row) => route.id)).size,
       API_ROUTES.length,
     );
     assert.equal(
@@ -127,7 +130,7 @@ describe("public contract registry", () => {
     );
     assert.equal(
       API_ROUTES.every(
-        (route) =>
+        (route: Row) =>
           route.path === "/api/v1" || route.path.startsWith("/api/v1/"),
       ),
       true,
@@ -142,13 +145,13 @@ describe("public contract registry", () => {
 
   test("compiles templated route and artifact paths", () => {
     const subnetPattern = compileRoutePattern("/api/v1/subnets/{netuid}");
-    const subnetMatch = subnetPattern.exec("/api/v1/subnets/74");
-    assert.equal(subnetMatch.groups.netuid, "74");
+    const subnetMatch = subnetPattern.exec("/api/v1/subnets/74")!;
+    assert.equal(subnetMatch.groups!.netuid, "74");
     assert.equal(subnetPattern.test("/api/v1/subnets/not-a-number"), false);
 
     const adapterPattern = compileRoutePattern("/api/v1/adapters/{slug}");
-    const adapterMatch = adapterPattern.exec("/api/v1/adapters/gittensor");
-    assert.equal(adapterMatch.groups.slug, "gittensor");
+    const adapterMatch = adapterPattern.exec("/api/v1/adapters/gittensor")!;
+    assert.equal(adapterMatch.groups!.slug, "gittensor");
     assert.equal(adapterPattern.test("/api/v1/adapters/Gittensor"), false);
 
     assert.equal(
@@ -167,8 +170,8 @@ describe("public contract registry", () => {
     const historyPattern = compileRoutePattern("/api/v1/health/history/{date}");
     const historyMatch = historyPattern.exec(
       "/api/v1/health/history/2026-06-06",
-    );
-    assert.equal(historyMatch.groups.date, "2026-06-06");
+    )!;
+    assert.equal(historyMatch.groups!.date, "2026-06-06");
     assert.equal(historyPattern.test("/api/v1/health/history/today"), false);
     assert.equal(
       artifactPathFromTemplate("/metagraph/health/history/{date}.json", {
@@ -182,12 +185,12 @@ describe("public contract registry", () => {
     );
     const schemaMatch = schemaPattern.exec(
       "/metagraph/schemas/sn-56-gradients-openapi.json",
-    );
-    assert.equal(schemaMatch.groups.surface_id, "sn-56-gradients-openapi");
+    )!;
+    assert.equal(schemaMatch.groups!.surface_id, "sn-56-gradients-openapi");
     const aliasMatch = schemaPattern.exec(
       "/metagraph/schemas/7:subnet-api:new_v2.json",
-    );
-    assert.equal(aliasMatch.groups.surface_id, "7:subnet-api:new_v2");
+    )!;
+    assert.equal(aliasMatch.groups!.surface_id, "7:subnet-api:new_v2");
     assert.equal(
       schemaPattern.test("/metagraph/schemas/../secrets.json"),
       false,
@@ -202,12 +205,12 @@ describe("public contract registry", () => {
 
   test("builds contracts, API index, and OpenAPI from one route table", async () => {
     const generatedAt = "1970-01-01T00:00:00.000Z";
-    const contracts = buildContractsArtifact(generatedAt);
-    const apiIndex = buildApiIndexArtifact(generatedAt, contracts);
+    const contracts = buildContractsArtifact(generatedAt) as Row;
+    const apiIndex = buildApiIndexArtifact(generatedAt, contracts) as Row;
     const openapi = buildOpenApiArtifact(
       generatedAt,
       await loadOpenApiComponentSchemas(generatedAt),
-    );
+    ) as Row;
 
     assert.equal(contracts.primary_domain, "api.metagraph.sh");
     assert.equal(contracts.openapi_url, "/metagraph/openapi.json");
@@ -215,19 +218,20 @@ describe("public contract registry", () => {
     assert.equal(apiIndex.openapi_url, "/api/v1/openapi.json");
     assert.equal(apiIndex.routes.length, API_ROUTES.length);
     assert.equal(
-      apiIndex.routes.find((route) => route.id === "subnets").query_collection,
+      apiIndex.routes.find((route: Row) => route.id === "subnets")
+        .query_collection,
       "subnets",
     );
     assert.equal(
       apiIndex.routes
-        .find((route) => route.id === "subnets")
-        .query_parameters.some((parameter) => parameter.name === "fields"),
+        .find((route: Row) => route.id === "subnets")
+        .query_parameters.some((parameter: Row) => parameter.name === "fields"),
       true,
     );
     assert.equal(
       apiIndex.routes
-        .find((route) => route.id === "subnet-surfaces")
-        .query_parameters.some((parameter) => parameter.name === "netuid"),
+        .find((route: Row) => route.id === "subnet-surfaces")
+        .query_parameters.some((parameter: Row) => parameter.name === "netuid"),
       false,
     );
     assert.equal(openapi.openapi, "3.1.0");
@@ -236,12 +240,12 @@ describe("public contract registry", () => {
     const fixtureArtifactSchema = openapi.components.schemas.FixtureArtifact;
     assert.equal(
       fixtureArtifactSchema.allOf.some(
-        (branch) => branch.$ref === "#/components/schemas/ArtifactBase",
+        (branch: Row) => branch.$ref === "#/components/schemas/ArtifactBase",
       ),
       true,
     );
     const fixtureDetailSchema = fixtureArtifactSchema.allOf.find(
-      (branch) => branch.properties?.response,
+      (branch: Row) => branch.properties?.response,
     );
     assert.equal(
       fixtureDetailSchema.properties.surface_id.pattern,
@@ -259,7 +263,7 @@ describe("public contract registry", () => {
       fixtureDetailSchema.properties.response.properties.body;
     assert.equal(
       fixtureBodySchema.anyOf.some(
-        (branch) => branch.$ref === "#/components/schemas/JsonObject",
+        (branch: Row) => branch.$ref === "#/components/schemas/JsonObject",
       ),
       true,
     );
@@ -338,18 +342,19 @@ describe("public contract registry", () => {
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
     assert.equal(
-      subnetParameters.find((parameter) => parameter.name === "fields").schema
-        .pattern,
+      subnetParameters.find((parameter: Row) => parameter.name === "fields")
+        .schema.pattern,
       "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
     );
     assert.deepEqual(
-      subnetParameters.find((parameter) => parameter.name === "sort").schema
-        .enum,
+      subnetParameters.find((parameter: Row) => parameter.name === "sort")
+        .schema.enum,
       API_QUERY_COLLECTIONS.subnets.sort_fields,
     );
     assert.deepEqual(
-      subnetParameters.find((parameter) => parameter.name === "coverage_level")
-        .schema.enum,
+      subnetParameters.find(
+        (parameter: Row) => parameter.name === "coverage_level",
+      ).schema.enum,
       ["native-only", "manifested", "probed"],
     );
 
@@ -357,7 +362,7 @@ describe("public contract registry", () => {
       openapi.paths["/api/v1/candidates"].get.parameters;
     assert.equal(
       candidateParameters
-        .find((parameter) => parameter.name === "state")
+        .find((parameter: Row) => parameter.name === "state")
         .schema.enum.includes("schema-valid"),
       true,
     );
@@ -365,13 +370,13 @@ describe("public contract registry", () => {
     const endpointParameters =
       openapi.paths["/api/v1/endpoints"].get.parameters;
     assert.deepEqual(
-      endpointParameters.find((parameter) => parameter.name === "layer").schema
-        .enum,
+      endpointParameters.find((parameter: Row) => parameter.name === "layer")
+        .schema.enum,
       ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
     );
     assert.equal(
       endpointParameters
-        .find((parameter) => parameter.name === "sort")
+        .find((parameter: Row) => parameter.name === "sort")
         .schema.enum.includes("score"),
       true,
     );
@@ -379,13 +384,13 @@ describe("public contract registry", () => {
     const incidentParameters =
       openapi.paths["/api/v1/endpoint-incidents"].get.parameters;
     assert.deepEqual(
-      incidentParameters.find((parameter) => parameter.name === "severity")
+      incidentParameters.find((parameter: Row) => parameter.name === "severity")
         .schema.enum,
       ["critical", "warning", "info"],
     );
     assert.deepEqual(
-      incidentParameters.find((parameter) => parameter.name === "state").schema
-        .enum,
+      incidentParameters.find((parameter: Row) => parameter.name === "state")
+        .schema.enum,
       ["active", "resolved"],
     );
   });
@@ -402,7 +407,7 @@ describe("public contract registry", () => {
     const openapi = buildOpenApiArtifact(
       generatedAt,
       await loadOpenApiComponentSchemas(generatedAt),
-    );
+    ) as Row;
     const ajv = new Ajv2020({ strict: false, allErrors: true });
     addFormats(ajv);
     const validate = ajv.compile({
@@ -463,7 +468,7 @@ describe("public contract registry", () => {
     const openapi = buildOpenApiArtifact(
       generatedAt,
       await loadOpenApiComponentSchemas(generatedAt),
-    );
+    ) as Row;
     const genericAliases = Object.entries(openapi.components.schemas)
       .filter(
         ([name, schema]) =>

@@ -13,9 +13,12 @@ import {
   resolveClientIp,
 } from "../workers/config.ts";
 
-const fakeRequest = (headers) => ({
-  headers: { get: (name) => headers[name.toLowerCase()] ?? null },
-});
+const fakeRequest = (headers: Record<string, string>) =>
+  ({
+    headers: {
+      get: (name: string) => headers[name.toLowerCase()] ?? null,
+    },
+  }) as unknown as Request;
 
 describe("clampInt (#2568)", () => {
   test("returns the default when raw is null or empty", () => {

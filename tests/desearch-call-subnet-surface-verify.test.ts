@@ -1,45 +1,40 @@
-// SN52 (Dojo) end-to-end verification for the call_subnet_surface MCP tool
-// (metagraphed#7058, MCP execute Phase 1 follow-up #7014/#7215; issue #7065).
-// Unlike tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring
-// with synthetic surfaces -- this file pins SN52's *real* registry surface
-// config (registry/subnets/dojo.json) to the tool's contract, so a future edit
-// that regresses its callability (flipping to HEAD, marking it auth_required,
-// disabling its probe, moving the url) is caught here.
+// SN22 (Desearch) end-to-end verification for the call_subnet_surface MCP tool
+// (metagraphed#7038, MCP execute Phase 1 follow-up #7014/#7215). Unlike
+// tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring with
+// synthetic surfaces -- this file pins SN22's *real* registry surface config
+// (registry/subnets/desearch.json) to the tool's contract, so a future edit that
+// regresses its callability (flipping to HEAD, marking it auth_required,
+// disabling its probe) is caught here.
 //
-// The surface is the public no-auth SN52 indexed subnet feed on TaoMarketCap
-// (sn-52-taomarketcap-subnet-api, GET
-// https://api.taomarketcap.com/public/v1/subnets/52/, JSON, single fixed
-// endpoint -- no schema). Live-verified 2026-07-21 to return HTTP 200
-// application/json -- an object self-reporting netuid 52 (id, is_active,
-// mechanism_count, latest_snapshot). The fixture below mirrors that live
-// response rather than fetching it, keeping the test hermetic while still
-// exercising the tool's JSON parse-and-return path.
+// The surface is the public no-auth SN22 API health endpoint
+// (sn-22-desearch-health, GET https://api.desearch.ai/health, JSON, single fixed endpoint -- no schema). Live-verified
+// 2026-07-21 to return HTTP 200 application/json {"status":"health"}. The
+// fixture below mirrors that live response rather than fetching it, keeping the
+// test hermetic while still exercising the JSON parse-and-return path.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
+import type { Row } from "./row-type.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 
-const SURFACE_ID = "sn-52-taomarketcap-subnet-api";
-const NETUID = 52;
+const SURFACE_ID = "sn-22-desearch-health";
 
 const registry = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/dojo.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../registry/subnets/desearch.json", import.meta.url),
+    ),
     "utf8",
   ),
 );
-const SURFACE = registry.surfaces.find((surface) => surface.id === SURFACE_ID);
+const SURFACE = registry.surfaces.find(
+  (surface: Row) => surface.id === SURFACE_ID,
+);
 
-// A faithful subset of the live SN52 TaoMarketCap subnet feed.
-const BODY = {
-  id: "52",
-  netuid: 52,
-  is_active: true,
-  mechanism_count: 1,
-  latest_snapshot_id: "8667931-52",
-};
+// A faithful subset of the live https://api.desearch.ai/health response body.
+const BODY = { status: "health" };
 
 function upstreamResponse() {
   return new Response(JSON.stringify(BODY), {
@@ -48,7 +43,7 @@ function upstreamResponse() {
   });
 }
 
-describe("SN52 Dojo call_subnet_surface verification (#7058)", () => {
+describe("SN22 Desearch call_subnet_surface verification (#7038)", () => {
   test("the registry surface exists and is configured to be callable", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
@@ -57,24 +52,21 @@ describe("SN52 Dojo call_subnet_surface verification (#7058)", () => {
     // No-auth GET returning JSON.
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
-    assert.equal(
-      SURFACE.url,
-      "https://api.taomarketcap.com/public/v1/subnets/52/",
-    );
+    assert.equal(SURFACE.url, "https://api.desearch.ai/health");
     // Single fixed endpoint -- no machine-readable schema is expected.
     assert.equal(SURFACE.schema_url, undefined);
   });
 
   test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
-    let requestedUrl;
-    let requestedMethod;
+    let requestedUrl: string | undefined;
+    let requestedMethod: string | undefined;
     const result = await callSubnetSurface(SURFACE, {
       isUnsafeUrl: async () => false,
-      fetchImpl: async (url, init) => {
+      fetchImpl: (async (url: string | URL, init?: RequestInit) => {
         requestedUrl = String(url);
-        requestedMethod = init.method;
+        requestedMethod = init!.method;
         return upstreamResponse();
-      },
+      }) as typeof fetch,
     });
     assert.equal(result.ok, true);
     assert.equal(requestedUrl, SURFACE.url);
@@ -82,16 +74,15 @@ describe("SN52 Dojo call_subnet_surface verification (#7058)", () => {
     assert.equal(result.status_code, 200);
     assert.equal(result.content_type, "application/json");
     assert.equal(result.truncated, false);
-    assert.equal(result.body.netuid, NETUID);
-    assert.equal(typeof result.body.is_active, "boolean");
+    assert.equal((result.body as Row).status, "health");
   });
 
   test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
     const catalog = {
-      surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: NETUID }],
+      surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 22 }],
     };
     const deps = {
-      readArtifact: async (_env, path) =>
+      readArtifact: async (_env: Row, path: string) =>
         path === "/metagraph/operational-surfaces.json"
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
@@ -124,11 +115,11 @@ describe("SN52 Dojo call_subnet_surface verification (#7058)", () => {
         {},
         deps,
       );
-      const result = (await response.json()).result;
+      const result = ((await response.json()) as Row).result;
       assert.equal(result.isError, false);
       assert.equal(result.structuredContent.surface_id, SURFACE_ID);
       assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(result.structuredContent.body.netuid, NETUID);
+      assert.equal(result.structuredContent.body.status, "health");
     } finally {
       globalThis.fetch = originalFetch;
     }

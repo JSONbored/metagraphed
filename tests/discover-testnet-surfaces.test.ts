@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 
 vi.mock("../scripts/lib.ts", async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = (await importOriginal()) as object;
   return {
     ...actual,
     isUnsafeResolvedUrl: vi.fn(async () => false),
@@ -17,7 +17,7 @@ const subnet = {
   url: "https://api.example.test",
 };
 
-function jsonResponse(body, contentType = "application/json") {
+function jsonResponse(body: BodyInit, contentType = "application/json") {
   return new Response(body, {
     status: 200,
     headers: { "content-type": contentType },

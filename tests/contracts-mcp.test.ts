@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   CONTRACTS_ARTIFACT,
   GET_CONTRACTS_INSTRUCTIONS,
@@ -10,6 +10,10 @@ import {
   loadContracts,
 } from "../src/contracts-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_CONTRACTS = {
   schema_version: 1,
@@ -40,42 +44,45 @@ describe("contracts-mcp", () => {
 
   test("loadContracts returns the baked artifact payload", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async (_env, path) => ({
+      env: mockEnv(),
+      readArtifact: (async (_env: Env, path: string) => ({
         ok: true,
         data: path === CONTRACTS_ARTIFACT ? SAMPLE_CONTRACTS : null,
-      }),
+      })) as ReadArtifact,
     };
-    const out = await loadContracts(ctx);
+    const out = (await loadContracts(ctx)) as Row;
     assert.equal(out.schema_version, 1);
     assert.equal(out.artifacts.length, 1);
     assert.equal(out.artifacts[0].id, "contracts");
   });
 
   test("loadContracts uses an injected readArtifact dep", async () => {
-    const out = await loadContracts(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+    const out = (await loadContracts(
       {
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
+      {
+        readArtifact: (async () => ({
           ok: true,
           data: { schema_version: 1, artifacts: [] },
-        }),
+        })) as unknown as ReadArtifact,
       },
-    );
+    )) as Row;
     assert.deepEqual(out.artifacts, []);
   });
 
   test("loadContracts maps artifact_not_found to not_found", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_not_found",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadContracts(ctx),
-      (err) =>
+      (err: Row) =>
         err.code === "not_found" &&
         err.toolError === true &&
         /unavailable in this environment/.test(err.message),
@@ -84,27 +91,27 @@ describe("contracts-mcp", () => {
 
   test("loadContracts surfaces other artifact failures with the path", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_timeout",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadContracts(ctx),
-      (err) =>
+      (err: Row) =>
         err.code === "artifact_timeout" && /contracts\.json/.test(err.message),
     );
   });
 
   test("loadContracts defaults code when the read result is bare", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({ ok: false }),
+      env: mockEnv(),
+      readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadContracts(ctx),
-      (err) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "artifact_unavailable",
     );
   });
 

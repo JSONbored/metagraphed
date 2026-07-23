@@ -11,10 +11,13 @@ import {
   homepageResponse,
   mcpServerCardResponse,
 } from "../workers/request-handlers/discovery.ts";
+import { mockEnv, type Row } from "./row-type.ts";
 
 // Re-run a handler with each conditional variant and assert the 304/200 outcome.
 // `call(headers)` returns the handler's Response for the given request headers.
-async function assertConditional(call) {
+async function assertConditional(
+  call: (headers: Record<string, string>) => Promise<Response>,
+) {
   const full = await call({});
   assert.equal(full.status, 200);
   const etag = full.headers.get("etag");
@@ -35,12 +38,12 @@ async function assertConditional(call) {
 
 describe("discovery conditional requests", () => {
   test("agent tool specs honor If-None-Match lists and the * wildcard", async () => {
-    await assertConditional((headers) =>
+    await assertConditional((headers: Record<string, string>) =>
       agentToolsResponse(
         new Request("https://api.metagraph.sh/agent-tools/openai.json", {
           headers,
         }),
-        {},
+        mockEnv(),
         "openai",
       ),
     );
@@ -50,8 +53,12 @@ describe("discovery conditional requests", () => {
     // An empty env makes readArtifact/readHealthKv miss, so the handler renders
     // the graceful fallback badge — which still sets an etag + conditional path.
     const url = "https://api.metagraph.sh/metagraph/health/badges/7.svg";
-    await assertConditional((headers) =>
-      handleBadgeSvgRequest(new Request(url, { headers }), {}, new URL(url)),
+    await assertConditional((headers: Record<string, string>) =>
+      handleBadgeSvgRequest(
+        new Request(url, { headers }),
+        mockEnv(),
+        new URL(url),
+      ),
     );
   });
 
@@ -67,18 +74,18 @@ describe("discovery conditional requests", () => {
     };
     const res = await handleBadgeSvgRequest(
       new Request(url),
-      env,
+      env as unknown as Env,
       new URL(url),
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
+    assert.match(res.headers.get("content-type")!, /image\/svg\+xml/);
     // The live status word + its mapped shields color (degraded → yellow #dfb317)
     // reach the rendered SVG, and the available path caches at standard max-age.
     const svg = await res.text();
     assert.match(svg, /SN7/);
     assert.match(svg, /degraded/);
     assert.match(svg, /#dfb317/); // BADGE_STATUS_COLOR.degraded → yellow
-    assert.match(res.headers.get("cache-control"), /max-age=300/);
+    assert.match(res.headers.get("cache-control")!, /max-age=300/);
   });
 
   test("badge SVG maps an UNKNOWN live status to the neutral lightgrey color", async () => {
@@ -92,7 +99,7 @@ describe("discovery conditional requests", () => {
     };
     const res = await handleBadgeSvgRequest(
       new Request(url),
-      env,
+      env as unknown as Env,
       new URL(url),
     );
     assert.equal(res.status, 200);
@@ -105,22 +112,26 @@ describe("discovery conditional requests", () => {
     // No live KV + no static artifact → the graceful neutral badge, cached at the
     // short max-age so a not-yet-published subnet badge recovers quickly.
     const url = "https://api.metagraph.sh/metagraph/health/badges/4242.svg";
-    const res = await handleBadgeSvgRequest(new Request(url), {}, new URL(url));
+    const res = await handleBadgeSvgRequest(
+      new Request(url),
+      mockEnv(),
+      new URL(url),
+    );
     assert.equal(res.status, 200);
     const svg = await res.text();
     assert.match(svg, /SN4242/);
     assert.match(svg, /unavailable/);
-    assert.match(res.headers.get("cache-control"), /max-age=60/);
+    assert.match(res.headers.get("cache-control")!, /max-age=60/);
   });
 
-  function badgeArchiveEnv(netuid, data) {
+  function badgeArchiveEnv(netuid: number, data: unknown) {
     // health/badges/*.json is R2-only (src/artifact-storage.mjs's
     // R2_ONLY_PATTERNS), so readArtifact resolves it via METAGRAPH_ARCHIVE,
     // not ASSETS. No METAGRAPH_CONTROL binding -> latestR2Key falls back to
     // the bare "latest/" prefix (workers/storage.ts's latestPointer).
     return {
       METAGRAPH_ARCHIVE: {
-        async get(key) {
+        async get(key: string) {
           if (key === `latest/health/badges/${netuid}.json`) {
             return { json: async () => data };
           }
@@ -138,7 +149,7 @@ describe("discovery conditional requests", () => {
     const env = badgeArchiveEnv(9, {});
     const res = await handleBadgeSvgRequest(
       new Request(url),
-      env,
+      env as unknown as Env,
       new URL(url),
     );
     assert.equal(res.status, 200);
@@ -146,7 +157,7 @@ describe("discovery conditional requests", () => {
     assert.match(svg, /SN9/); // badge.label fallback
     assert.match(svg, /unknown/); // badge.message fallback
     assert.match(svg, /#9f9f9f/); // badge.color fallback -> "lightgrey" -> its hex
-    assert.match(res.headers.get("cache-control"), /max-age=300/); // artifact.ok+data → "available"
+    assert.match(res.headers.get("cache-control")!, /max-age=300/); // artifact.ok+data → "available"
   });
 
   test("badge SVG maps an unmapped static-artifact color to the neutral lightgrey hex", async () => {
@@ -157,7 +168,7 @@ describe("discovery conditional requests", () => {
     const env = badgeArchiveEnv(10, { color: "not-a-real-color" });
     const res = await handleBadgeSvgRequest(
       new Request(url),
-      env,
+      env as unknown as Env,
       new URL(url),
     );
     assert.equal(res.status, 200);
@@ -169,11 +180,11 @@ describe("discovery conditional requests", () => {
     const url = "https://api.metagraph.sh/metagraph/health/badges/7.svg";
     const res = await handleBadgeSvgRequest(
       new Request(url, { method: "HEAD" }),
-      {},
+      mockEnv(),
       new URL(url),
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
+    assert.match(res.headers.get("content-type")!, /image\/svg\+xml/);
     assert.ok(res.headers.get("etag"));
     assert.equal(await res.text(), "", "HEAD carries no body");
   });
@@ -181,7 +192,7 @@ describe("discovery conditional requests", () => {
   test("agent-tools serves the anthropic + index kinds (kind dispatch)", async () => {
     const anthropic = await agentToolsResponse(
       new Request("https://api.metagraph.sh/agent-tools/anthropic.json"),
-      {},
+      mockEnv(),
       "anthropic",
     );
     assert.equal(anthropic.status, 200);
@@ -194,11 +205,11 @@ describe("discovery conditional requests", () => {
 
     const index = await agentToolsResponse(
       new Request("https://api.metagraph.sh/agent-tools/index.json"),
-      {},
+      mockEnv(),
       "index",
     );
     assert.equal(index.status, 200);
-    const iBody = await index.json();
+    const iBody = (await index.json()) as Row;
     assert.ok(iBody.specs, "the index advertises the spec urls");
   });
 
@@ -206,12 +217,12 @@ describe("discovery conditional requests", () => {
     const url = "https://api.metagraph.sh/metagraph/health/badges/7.svg";
     const res = await handleBadgeSvgRequest(
       new Request(url, { method: "POST" }),
-      {},
+      mockEnv(),
       new URL(url),
     );
     assert.equal(res.status, 405);
     assert.equal(res.headers.get("allow"), "GET, HEAD, OPTIONS");
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.equal(body.error.code, "method_not_allowed");
   });
 
@@ -229,7 +240,7 @@ describe("discovery conditional requests", () => {
     const url = "https://api.metagraph.sh/.well-known/api-catalog";
     const res = await apiCatalogResponse(new Request(url, { method: "GET" }));
     assert.equal(res.status, 200);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.ok(Array.isArray(body.linkset));
     assert.ok(body.linkset[0]["service-desc"]);
   });
@@ -240,7 +251,7 @@ describe("discovery conditional requests", () => {
       new Request("https://api.metagraph.sh/.well-known/mcp/server-card.json", {
         method: "HEAD",
       }),
-      {},
+      mockEnv(),
     );
     assert.equal(res.status, 200);
     assert.ok(res.headers.get("etag"));
@@ -252,7 +263,7 @@ describe("discovery conditional requests", () => {
       new Request("https://api.metagraph.sh/agent-tools/openai.json", {
         method: "HEAD",
       }),
-      {},
+      mockEnv(),
       "openai",
     );
     assert.equal(res.status, 200);
@@ -262,19 +273,19 @@ describe("discovery conditional requests", () => {
 
   test("MCP server card honors If-None-Match lists and the * wildcard", async () => {
     // Card is now worker-computed; ASSETS binding is not required.
-    await assertConditional((headers) =>
+    await assertConditional((headers: Record<string, string>) =>
       mcpServerCardResponse(
         new Request(
           "https://api.metagraph.sh/.well-known/mcp/server-card.json",
           { headers },
         ),
-        {},
+        mockEnv(),
       ),
     );
   });
 
   test("api catalog honors If-None-Match lists and the * wildcard", async () => {
-    await assertConditional((headers) =>
+    await assertConditional((headers: Record<string, string>) =>
       apiCatalogResponse(
         new Request("https://api.metagraph.sh/.well-known/api-catalog", {
           headers,
@@ -284,7 +295,7 @@ describe("discovery conditional requests", () => {
   });
 
   test("homepage honors If-None-Match lists and the * wildcard", async () => {
-    await assertConditional((headers) =>
+    await assertConditional((headers: Record<string, string>) =>
       homepageResponse(new Request("https://api.metagraph.sh/", { headers })),
     );
   });

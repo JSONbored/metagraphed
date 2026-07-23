@@ -17,7 +17,7 @@ test("encodeCursor round-trips a single-part (blocks) key", () => {
 });
 
 test("cursor tokens are URL-safe (digits + dots only)", () => {
-  const token = encodeCursor([4294967295, 4294967294]);
+  const token = encodeCursor([4294967295, 4294967294])!;
   assert.ok(/^[0-9.]+$/.test(token), `token not URL-safe: ${token}`);
   assert.deepEqual(decodeCursor(token, 2), [4294967295, 4294967294]);
 });
@@ -33,7 +33,7 @@ test("encodeCursor rejects empty/negative/non-integer input", () => {
   assert.equal(encodeCursor([]), null);
   assert.equal(encodeCursor([-1]), null);
   assert.equal(encodeCursor([1.5]), null);
-  assert.equal(encodeCursor("nope"), null);
+  assert.equal(encodeCursor("nope" as unknown as number[]), null);
   assert.equal(encodeCursor(["12x"]), null);
   assert.equal(encodeCursor(["9007199254740993"]), null);
 });

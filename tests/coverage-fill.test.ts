@@ -13,6 +13,7 @@ import {
   selectReviewableReadmeLinks,
 } from "../scripts/lib.ts";
 import { schemaDetailArtifactRelativePath } from "../src/artifact-storage.ts";
+import type { Row } from "./row-type.ts";
 
 describe("artifact-storage schema detail guards", () => {
   test("rejects schema detail paths containing a backslash segment", () => {
@@ -73,14 +74,17 @@ describe("lib JSON directory listing error propagation", () => {
       await writeFile(filePath, "{}", "utf8");
       // Reading a file as a directory raises ENOTDIR (not ENOENT), which must
       // propagate rather than being swallowed as "no files".
-      await assert.rejects(listJsonFiles(filePath), (error) => {
-        assert.equal(error.code, "ENOTDIR");
+      await assert.rejects(listJsonFiles(filePath), (error: unknown) => {
+        assert.equal((error as Row).code, "ENOTDIR");
         return true;
       });
-      await assert.rejects(listJsonFilesRecursive(filePath), (error) => {
-        assert.equal(error.code, "ENOTDIR");
-        return true;
-      });
+      await assert.rejects(
+        listJsonFilesRecursive(filePath),
+        (error: unknown) => {
+          assert.equal((error as Row).code, "ENOTDIR");
+          return true;
+        },
+      );
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

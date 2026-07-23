@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import * as listQuery from "../workers/list-query.ts";
 import {
   CURATION_ARTIFACT,
@@ -12,6 +12,10 @@ import {
   loadCurationList,
 } from "../src/curation-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -32,7 +36,7 @@ const SAMPLE_BLOB = {
   ],
 };
 
-function readArtifact(_env, path) {
+function readArtifact(_env: Env, path: string) {
   if (path === CURATION_ARTIFACT) {
     return Promise.resolve({ ok: true, data: SAMPLE_BLOB });
   }
@@ -65,35 +69,35 @@ describe("curation-mcp", () => {
   test("curationQueryUrl rejects invalid coverage_level", () => {
     assert.throws(
       () => curationQueryUrl({ coverage_level: "bogus" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("curationQueryUrl rejects invalid netuid", () => {
     assert.throws(
       () => curationQueryUrl({ netuid: -1 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("curationQueryUrl rejects empty fields projection", () => {
     assert.throws(
       () => curationQueryUrl({ fields: "   " }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("curationQueryUrl rejects negative cursor", () => {
     assert.throws(
       () => curationQueryUrl({ cursor: -1 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("curationQueryUrl rejects non-string fields", () => {
     assert.throws(
       () => curationQueryUrl({ fields: 42 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
@@ -105,34 +109,34 @@ describe("curation-mcp", () => {
   test("curationQueryUrl rejects a non-numeric limit", () => {
     assert.throws(
       () => curationQueryUrl({ limit: "lots" }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("curationQueryUrl rejects a sub-minimum limit", () => {
     assert.throws(
       () => curationQueryUrl({ limit: 0 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("curationQueryUrl rejects a limit above the MCP maximum", () => {
     assert.throws(
       () => curationQueryUrl({ limit: 500 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("curationQueryUrl rejects a fractional netuid", () => {
     assert.throws(
       () => curationQueryUrl({ netuid: 1.5 }),
-      (err) => err.code === "invalid_params",
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadCurationList returns filtered rows with pagination meta", async () => {
     const out = await loadCurationList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { netuid: 7 },
     );
     assert.equal(out.returned, 1);
@@ -142,7 +146,7 @@ describe("curation-mcp", () => {
 
   test("loadCurationList sorts and pages the collection", async () => {
     const out = await loadCurationList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { sort: "netuid", order: "desc", limit: 1 },
     );
     assert.equal(out.returned, 1);
@@ -153,13 +157,16 @@ describe("curation-mcp", () => {
 
   test("loadCurationList uses an injected readArtifact dep", async () => {
     const out = await loadCurationList(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+      {
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
       {},
       {
-        readArtifact: async () => ({
+        readArtifact: (async () => ({
           ok: true,
           data: { curation: [{ netuid: 0 }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
     );
     assert.equal(out.curation[0].netuid, 0);
@@ -170,15 +177,15 @@ describe("curation-mcp", () => {
       () =>
         loadCurationList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_not_found",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -187,15 +194,15 @@ describe("curation-mcp", () => {
       () =>
         loadCurationList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_timeout",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) =>
+      (err: Row) =>
         err.code === "artifact_timeout" && /curation\.json/.test(err.message),
     );
   });
@@ -203,14 +210,17 @@ describe("curation-mcp", () => {
   test("loadCurationList rejects invalid list-query params from REST parity", async () => {
     await assert.rejects(
       () =>
-        loadCurationList({ env: {}, readArtifact }, { fields: "not_a_column" }),
-      (err) => err.code === "invalid_params",
+        loadCurationList(
+          { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
+          { fields: "not_a_column" },
+        ),
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
   test("loadCurationList projects row fields when requested", async () => {
     const out = await loadCurationList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
       { fields: "netuid,coverage_level", limit: 1 },
     );
     assert.deepEqual(out.curation[0], {
@@ -222,11 +232,11 @@ describe("curation-mcp", () => {
   test("loadCurationList omits nullable artifact metadata when absent", async () => {
     const out = await loadCurationList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { curation: [{ netuid: 0 }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -237,11 +247,11 @@ describe("curation-mcp", () => {
   test("loadCurationList treats a non-array curation key as empty", async () => {
     const out = await loadCurationList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { curation: null },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -255,7 +265,10 @@ describe("curation-mcp", () => {
       meta: {},
     });
     try {
-      const out = await loadCurationList({ env: {}, readArtifact }, {});
+      const out = await loadCurationList(
+        { env: mockEnv(), readArtifact: readArtifact as ReadArtifact },
+        {},
+      );
       assert.equal(out.total, 2);
       assert.equal(out.returned, 2);
       assert.equal(out.limit, 2);
@@ -273,12 +286,15 @@ describe("curation-mcp", () => {
       () =>
         loadCurationList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: true, data: null }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: true,
+              data: null,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      (err: Row) => err.code === "not_found",
     );
   });
 
@@ -287,12 +303,14 @@ describe("curation-mcp", () => {
       () =>
         loadCurationList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: false }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: false,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "artifact_unavailable",
     );
   });
 
