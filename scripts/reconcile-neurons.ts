@@ -25,7 +25,7 @@
 // why this is two containers, not one: same fetch/authenticated-step trust
 // split every other chain-reading box job already uses).
 //
-// Usage: node scripts/reconcile-neurons.mjs
+// Usage: node scripts/reconcile-neurons.ts
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -48,15 +48,37 @@ export {
   fieldsDiffer,
 } from "./lib/reconcile-neurons-tolerance.mjs";
 
+type Row = Record<string, unknown>;
+
 const MAX_EXAMPLES_IN_ALERT = 10;
 
-async function main() {
+interface Mismatch {
+  netuid: unknown;
+  uid: unknown;
+  reason: "missing_in_postgres" | "value_drift";
+  fields?: string[];
+  live_stake_tao?: unknown;
+  stored_stake_tao?: unknown;
+}
+
+interface Summary {
+  compared: number;
+  mismatches: number;
+  mismatch_ratio: number;
+  tolerance: {
+    absolute_floor_tao: number;
+    relative: number;
+    alert_ratio: number;
+  };
+}
+
+async function main(): Promise<void> {
   const snapshotPath = process.env.LIVE_SNAPSHOT_JSON;
   if (!snapshotPath) throw new Error("LIVE_SNAPSHOT_JSON env var required");
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL env var required");
 
-  const liveRows = JSON.parse(await readFile(snapshotPath, "utf8"));
+  const liveRows: Row[] = JSON.parse(await readFile(snapshotPath, "utf8"));
   if (!Array.isArray(liveRows) || !liveRows.length) {
     throw new Error(
       `LIVE_SNAPSHOT_JSON (${snapshotPath}) is empty or not an array`,
@@ -64,7 +86,7 @@ async function main() {
   }
 
   const sql = postgres(databaseUrl, { max: 1 });
-  let storedRows;
+  let storedRows: Row[];
   try {
     storedRows = await sql`
       SELECT netuid, uid, stake_tao, emission_tao FROM neurons
@@ -77,7 +99,7 @@ async function main() {
     storedRows.map((row) => [`${row.netuid}:${row.uid}`, row]),
   );
 
-  const mismatches = [];
+  const mismatches: Mismatch[] = [];
   for (const live of liveRows) {
     const key = `${live.netuid}:${live.uid}`;
     const stored = storedByKey.get(key);
@@ -89,7 +111,7 @@ async function main() {
       });
       continue;
     }
-    const fields = [];
+    const fields: string[] = [];
     if (fieldsDiffer(live.stake_tao, stored.stake_tao))
       fields.push("stake_tao");
     if (fieldsDiffer(live.emission_tao, stored.emission_tao))
@@ -107,7 +129,7 @@ async function main() {
   }
 
   const mismatchRatio = mismatches.length / liveRows.length;
-  const summary = {
+  const summary: Summary = {
     compared: liveRows.length,
     mismatches: mismatches.length,
     mismatch_ratio: Number(mismatchRatio.toFixed(4)),
@@ -124,7 +146,10 @@ async function main() {
   }
 }
 
-async function sendAlert(summary, examples) {
+async function sendAlert(
+  summary: Summary,
+  examples: Mismatch[],
+): Promise<void> {
   const webhookUrl = process.env.LIVE_ALERT_WEBHOOK_URL;
   if (!webhookUrl) {
     console.log(
@@ -136,7 +161,7 @@ async function sendAlert(summary, examples) {
     .map((m) =>
       m.reason === "missing_in_postgres"
         ? `netuid ${m.netuid} uid ${m.uid}: missing in Postgres`
-        : `netuid ${m.netuid} uid ${m.uid}: ${m.fields.join(",")} live=${m.live_stake_tao} stored=${m.stored_stake_tao}`,
+        : `netuid ${m.netuid} uid ${m.uid}: ${(m.fields || []).join(",")} live=${m.live_stake_tao} stored=${m.stored_stake_tao}`,
     )
     .join("\n");
   const pct = (summary.mismatch_ratio * 100).toFixed(1);

@@ -179,7 +179,7 @@ case "$STEP" in
     : "${LIVE_SNAPSHOT_JSON:?LIVE_SNAPSHOT_JSON env var required for the reconcile-neurons step}"
     : "${DATABASE_URL:?DATABASE_URL env var required for the reconcile-neurons step}"
     echo "entrypoint: reconciling neurons against a fresh chain snapshot"
-    exec node scripts/reconcile-neurons.mjs
+    exec node scripts/reconcile-neurons.ts
     ;;
   *)
     echo "entrypoint: unknown STEP '$STEP' (want registry-sync|registry-sync-fast|testnet-discovery|export-parquet|reconcile-neurons)" >&2

@@ -1,4 +1,4 @@
-// Pure drift-tolerance helpers for scripts/reconcile-neurons.mjs.
+// Pure drift-tolerance helpers for scripts/reconcile-neurons.ts.
 // Kept dependency-free so unit tests can import without loading Postgres /
 // lib.mjs / observability.
 
