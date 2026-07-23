@@ -1,16 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { ChevronDown, Download, Scale, UserMinus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { RegistryLeaderboards } from "@/components/metagraphed/registry-leaderboards";
 import {
-  PageHero,
   BrandIcon,
   TimeAgo,
   StatTile,
@@ -25,6 +24,7 @@ import {
   chainDeregistrationsQuery,
   chainWeightsQuery,
   economicsQuery,
+  metagraphedQueryKey,
   subnetsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/leaderboards")({
   component: LeaderboardsPage,
 });
 
-const TH = "px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+const TH = "px-4 py-2.5 mg-type-micro text-[10px] text-ink-muted";
 const WINDOW_BTN_ACTIVE =
   "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent-text";
 const WINDOW_BTN =
@@ -116,7 +116,7 @@ function LeaderboardsPage() {
 
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Leaderboards"
@@ -144,26 +144,37 @@ function LeaderboardsPage() {
         ))}
       </div>
       <div className="space-y-12">
-        <QueryErrorBoundary>
-          <Suspense fallback={<RegistryLeaderboardsSkeleton />}>
-            <RegistryLeaderboards />
-          </Suspense>
-        </QueryErrorBoundary>
-        <QueryErrorBoundary>
-          <Suspense fallback={<LeaderboardSkeleton />}>
-            <WeightSettingLeaderboard win={win} />
-          </Suspense>
-        </QueryErrorBoundary>
-        <QueryErrorBoundary>
-          <Suspense fallback={<LeaderboardSkeleton />}>
-            <DeregistrationsLeaderboard win={win} />
-          </Suspense>
-        </QueryErrorBoundary>
-        <QueryErrorBoundary>
-          <Suspense fallback={<LeaderboardSkeleton />}>
-            <EmissionsLeaderboard />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          context="registry leaderboards"
+          fallback={<RegistryLeaderboardsSkeleton />}
+          retryQueryKeys={[metagraphedQueryKey("registry-leaderboards")]}
+        >
+          <RegistryLeaderboards />
+        </AsyncPanel>
+        <AsyncPanel
+          context="weight-setting activity"
+          fallback={<LeaderboardSkeleton />}
+          retryQueryKeys={[metagraphedQueryKey("chain-weights"), metagraphedQueryKey("subnets")]}
+        >
+          <WeightSettingLeaderboard win={win} />
+        </AsyncPanel>
+        <AsyncPanel
+          context="deregistrations"
+          fallback={<LeaderboardSkeleton />}
+          retryQueryKeys={[
+            metagraphedQueryKey("chain-deregistrations"),
+            metagraphedQueryKey("subnets"),
+          ]}
+        >
+          <DeregistrationsLeaderboard win={win} />
+        </AsyncPanel>
+        <AsyncPanel
+          context="top emitters"
+          fallback={<LeaderboardSkeleton />}
+          retryQueryKeys={[metagraphedQueryKey("economics"), metagraphedQueryKey("subnets")]}
+        >
+          <EmissionsLeaderboard />
+        </AsyncPanel>
       </div>
       <ApiSourceFooter
         paths={[
