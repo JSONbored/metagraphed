@@ -570,17 +570,26 @@ export async function withUsageTelemetry(request, env, ctx, handle, deps = {}) {
 
   const startedAt = Date.now();
   let ok = false;
+  // metagraphed#7733: errorResponse() (workers/http.ts) already sets this on
+  // every REST error -- the same established code (invalid_query,
+  // method_not_allowed, ai_error, ...) every route handler already uses, not
+  // a new taxonomy. Undefined for a success response or one that predates
+  // this convention, same "omitted, not just falsy" contract as MCP's
+  // errorCode (#7726).
+  let errorCode;
   try {
     const response = await handle();
     // 4xx is a route correctly rejecting a bad request, not a broken route;
     // only 5xx (and a thrown handler, which leaves ok false) is a failure.
     ok = response.status < 500;
+    errorCode = response.headers.get("x-metagraph-error-code") ?? undefined;
     return response;
   } finally {
     scheduleUsageEvent(env, ctx, record, {
       route,
       ok,
       durationMs: Date.now() - startedAt,
+      ...(errorCode ? { errorCode } : {}),
     });
   }
 }

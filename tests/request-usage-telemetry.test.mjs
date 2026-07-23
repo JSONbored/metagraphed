@@ -181,6 +181,68 @@ describe("withUsageTelemetry", () => {
     assert.equal(broken.events[0].event.ok, false);
   });
 
+  // metagraphed#7733: threads errorResponse()'s own x-metagraph-error-code
+  // header into usage telemetry -- the same established code every REST
+  // route handler already sets, not a new taxonomy, and does not change the
+  // ok:true-for-4xx semantics the test above locks in.
+  test("threads x-metagraph-error-code into errorCode, without changing the ok/4xx semantics", async () => {
+    const spy = recorder();
+    await withUsageTelemetry(
+      req(),
+      CONFIGURED_ENV,
+      fakeCtx(),
+      async () =>
+        new Response("nope", {
+          status: 400,
+          headers: { "x-metagraph-error-code": "invalid_query" },
+        }),
+      spy,
+    );
+    assert.equal(spy.events[0].event.ok, true);
+    assert.equal(spy.events[0].event.errorCode, "invalid_query");
+  });
+
+  test("threads errorCode for a 5xx too, alongside ok:false", async () => {
+    const spy = recorder();
+    await withUsageTelemetry(
+      req(),
+      CONFIGURED_ENV,
+      fakeCtx(),
+      async () =>
+        new Response("boom", {
+          status: 502,
+          headers: { "x-metagraph-error-code": "data_query_failed" },
+        }),
+      spy,
+    );
+    assert.equal(spy.events[0].event.ok, false);
+    assert.equal(spy.events[0].event.errorCode, "data_query_failed");
+  });
+
+  test("omits errorCode entirely when the response carries no error-code header", async () => {
+    const success = recorder();
+    await withUsageTelemetry(
+      req(),
+      CONFIGURED_ENV,
+      fakeCtx(),
+      async () => new Response("ok", { status: 200 }),
+      success,
+    );
+    assert.equal("errorCode" in success.events[0].event, false);
+
+    // A route that predates the x-metagraph-error-code convention (or a
+    // plain non-JSON error) must not surface a stale/empty errorCode either.
+    const uncoded = recorder();
+    await withUsageTelemetry(
+      req(),
+      CONFIGURED_ENV,
+      fakeCtx(),
+      async () => new Response("nope", { status: 404 }),
+      uncoded,
+    );
+    assert.equal("errorCode" in uncoded.events[0].event, false);
+  });
+
   test("does not record a subscription upgrade as a request", async () => {
     const spy = recorder();
     const response = await withUsageTelemetry(
