@@ -13,7 +13,7 @@
 // it on a schedule is exactly how the machine-discovered half of the data
 // stays fresh (native chain snapshot + candidate verification refresh on
 // their own cadence, independent of any contributor PR merging) --
-// scripts/sync-registry-to-postgres.mjs is the faster, event-driven path for
+// scripts/sync-registry-to-postgres.ts is the faster, event-driven path for
 // the human-authored half specifically, triggered by a merge instead of a
 // clock.
 //

@@ -8,6 +8,21 @@ import {
   writeJson,
 } from "./lib.ts";
 
+interface NativeSubnet {
+  netuid: number;
+  name: string;
+  symbol?: string;
+  block: number;
+  [key: string]: unknown;
+}
+
+interface NativeSnapshot {
+  network?: string;
+  source?: string;
+  captured_at?: string;
+  subnets: NativeSubnet[];
+}
+
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
@@ -66,7 +81,7 @@ console.log(stableStringify(summary));
 
 // Best-effort testnet capture: never throws (a failure is logged + skipped so
 // the finney sync still succeeds).
-function fetchTestnetSnapshot() {
+function fetchTestnetSnapshot(): NativeSnapshot | null {
   if (process.env.METAGRAPH_SKIP_TESTNET_SYNC === "1") {
     return null;
   }
@@ -74,7 +89,7 @@ function fetchTestnetSnapshot() {
     return fetchNativeSnapshot("test");
   } catch (error) {
     console.warn(
-      `::warning::testnet native fetch failed (best-effort; finney sync unaffected): ${error.message}`,
+      `::warning::testnet native fetch failed (best-effort; finney sync unaffected): ${(error as Error).message}`,
     );
     return null;
   }
@@ -82,16 +97,16 @@ function fetchTestnetSnapshot() {
 
 // Synchronous backoff between retries (spawnSync is blocking; Atomics.wait gives
 // a clean sync sleep without a busy-loop).
-function sleepSync(ms) {
+function sleepSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 // The chain RPC the Bittensor SDK hits is rate-limited and occasionally flaky —
 // the failure mode that previously stalled the sync for ~40h and cascaded into a
 // blocked publish. Retry with exponential backoff before giving up.
-function fetchNativeSnapshot(network = "finney") {
+function fetchNativeSnapshot(network = "finney"): NativeSnapshot {
   const maxAttempts = Number(process.env.METAGRAPH_NATIVE_FETCH_ATTEMPTS) || 3;
-  let lastError = null;
+  let lastError: Error | null = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const result = spawnSync(
       "uvx",
@@ -115,7 +130,7 @@ function fetchNativeSnapshot(network = "finney") {
         return JSON.parse(result.stdout);
       } catch (error) {
         lastError = new Error(
-          `Native subnet snapshot was not valid JSON: ${error.message}`,
+          `Native subnet snapshot was not valid JSON: ${(error as Error).message}`,
         );
       }
     } else {
@@ -157,18 +172,20 @@ function fetchNativeSnapshot(network = "finney") {
   throw lastError;
 }
 
-async function readExistingSnapshot(snapshotFilePath) {
+async function readExistingSnapshot(
+  snapshotFilePath: string,
+): Promise<NativeSnapshot> {
   try {
     return await readJson(snapshotFilePath);
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { subnets: [] };
     }
     throw error;
   }
 }
 
-async function fetchTaoMarketCapCount() {
+async function fetchTaoMarketCapCount(): Promise<number | null> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -186,33 +203,44 @@ async function fetchTaoMarketCapCount() {
     if (!response.ok) {
       return null;
     }
-    const body = await response.json();
-    return Number.isInteger(body.count) ? body.count : null;
+    const body = (await response.json()) as { count?: unknown };
+    return Number.isInteger(body.count) ? (body.count as number) : null;
   } catch {
     return null;
   }
 }
 
-function diffSnapshots(existing, current) {
+function diffSnapshots(existing: NativeSnapshot, current: NativeSnapshot) {
   const existingByNetuid = new Map(
     (existing.subnets || []).map((subnet) => [subnet.netuid, subnet]),
   );
   const currentByNetuid = new Map(
     current.subnets.map((subnet) => [subnet.netuid, subnet]),
   );
-  const added = [];
-  const removed = [];
-  const renamed = [];
-  const identityWarnings = [];
-  const symbolChanged = [];
+  const added: number[] = [];
+  const removed: number[] = [];
+  const renamed: { netuid: number; before: string; after: string }[] = [];
+  const identityWarnings: {
+    netuid: number;
+    before: string;
+    after: string;
+    before_quality: unknown;
+    after_quality: unknown;
+    reason: string;
+  }[] = [];
+  const symbolChanged: {
+    netuid: number;
+    before: string | undefined;
+    after: string | undefined;
+  }[] = [];
 
   for (const netuid of currentByNetuid.keys()) {
     if (!existingByNetuid.has(netuid)) {
       added.push(netuid);
       continue;
     }
-    const before = existingByNetuid.get(netuid);
-    const after = currentByNetuid.get(netuid);
+    const before = existingByNetuid.get(netuid) as NativeSubnet;
+    const after = currentByNetuid.get(netuid) as NativeSubnet;
     const beforeNameQuality = nativeNameQuality(before);
     const afterNameQuality = nativeNameQuality(after);
     if (before.name !== after.name) {

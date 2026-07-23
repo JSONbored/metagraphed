@@ -4,7 +4,7 @@
 // (issue #597) — but it must NEVER fail the data publish.
 //
 // Chain RPC rate-limits made ~half of standalone sync runs fail, so this wraps
-// scripts/sync-subnets.mjs and SWALLOWS failure: sync-subnets writes the
+// scripts/sync-subnets.ts and SWALLOWS failure: sync-subnets writes the
 // snapshot only after a successful fetch, so on failure the previous committed
 // snapshot is left intact and build-artifacts proceeds with the last-good data
 // (the only consequence is the existing 7-day completeness soft-demotion if the
@@ -22,7 +22,7 @@ const startedAt = process.env.METAGRAPH_BUILD_TIMESTAMP || null;
 
 const result = spawnSync(
   process.execPath,
-  ["scripts/sync-subnets.mjs", "--write"],
+  ["scripts/sync-subnets.ts", "--write"],
   { cwd: process.cwd(), stdio: "inherit", env: process.env },
 );
 

@@ -120,7 +120,7 @@ if [ "$STEP" = "registry-sync-fast" ]; then
   install_deps
 
   : "${REGISTRY_SYNC_SECRET:?REGISTRY_SYNC_SECRET env var required for the registry-sync-fast step}"
-  node scripts/sync-registry-to-postgres.mjs --base "$LAST_SYNCED" --head "$NEW_HEAD"
+  node scripts/sync-registry-to-postgres.ts --base "$LAST_SYNCED" --head "$NEW_HEAD"
   echo "$NEW_HEAD" > "$STATE_FILE"
   exit 0
 fi

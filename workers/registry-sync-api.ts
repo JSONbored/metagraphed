@@ -11,7 +11,7 @@
 // which forwards the request here unchanged. This Worker's shared-secret
 // check below is the only auth gate in the whole path.
 //
-// This is the write path scripts/sync-registry-to-postgres.mjs (merge-
+// This is the write path scripts/sync-registry-to-postgres.ts (merge-
 // triggered) and scripts/backfill-registry-postgres.ts (scheduled full
 // resync) call over HTTPS from GitHub Actions -- there is no Tailscale, SSH,
 // or direct network path from CI to the database at all. GitHub Actions
@@ -260,7 +260,7 @@ export default {
             .filter((surface) => surface?.kind && surface?.url)
             .map((surface) => [surface.kind, surface.url]);
           // `authority_scope: "community"` (set by the merge-triggered fast path,
-          // scripts/sync-registry-to-postgres.mjs) bounds this prune to ONLY the
+          // scripts/sync-registry-to-postgres.ts) bounds this prune to ONLY the
           // community-authority rows for the subnet -- the fast path's
           // current_surfaces comes from a single registry/subnets/<slug>.json file
           // and has no visibility into machine-generated/candidate-promoted

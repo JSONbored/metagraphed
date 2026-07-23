@@ -31,6 +31,15 @@ import {
 } from "./lib.ts";
 import { normalizeGitHubLogin } from "./registry-identity.ts";
 
+// A registered surface/provider is only ever written after independent
+// verification (verifyAndEnrich probes the live URL, validate-surface.mjs
+// re-checks the schema in CI) — typing every dynamic hop here through
+// `unknown` would force a cast at every `?.` for no real safety gain over
+// what those two checks already provide. Mirrors the readJson/
+// readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const args = process.argv.slice(2);
 const write = args.includes("--write");
 // Live verification is ON by default — it probes the real URLs so a contributor
@@ -43,7 +52,7 @@ const url = normalizePublicUrl(valueAfter("--url"));
 const sourceUrls = valuesAfter("--source-url")
   .concat((valueAfter("--source-urls") || "").split(",").filter(Boolean))
   .map((value) => normalizePublicUrl(value))
-  .filter(Boolean);
+  .filter(Boolean) as string[];
 const provider = slugify(valueAfter("--provider") || "community");
 const submittedBy = normalizeGitHubLogin(
   valueAfter("--submitted-by") || process.env.GITHUB_ACTOR || process.env.USER,
@@ -61,7 +70,9 @@ const providerGithub = valueAfter("--provider-github")
   : null;
 
 const native = await loadNativeSnapshot();
-const subnet = native.subnets.find((entry) => entry.netuid === netuid);
+const subnet = ((native as Row).subnets as Row[]).find(
+  (entry) => entry.netuid === netuid,
+);
 
 if (!subnet) fail("--netuid must be an active Finney netuid");
 if (!kind) fail("--kind is required");
@@ -78,6 +89,7 @@ if (!document) {
       `  npm run subnet:new -- --netuid ${netuid} --write`,
   );
 }
+const subnetFilePath = filePath as string;
 
 // Provider must be a registered slug to pass validate:surface + CI. For a debut
 // provider, auto-scaffold a flat registry/providers/<slug>.json stub in the same
@@ -91,7 +103,7 @@ const providerFilePath = path.join(
   "registry/providers",
   `${provider}.json`,
 );
-let providerStub = null;
+let providerStub: Row | null = null;
 if (!providerIds.has(provider)) {
   if (!providerName || !providerUrl) {
     fail(
@@ -113,7 +125,9 @@ if (!providerIds.has(provider)) {
   };
 }
 
-const surfaces = Array.isArray(document.surfaces) ? document.surfaces : [];
+const surfaces: Row[] = Array.isArray(document.surfaces)
+  ? document.surfaces
+  : [];
 // Key both sides under this netuid so a true duplicate is actually caught.
 const newKey = subnetSurfaceKey({ kind, url }, netuid);
 if (surfaces.some((surface) => subnetSurfaceKey(surface, netuid) === newKey)) {
@@ -124,7 +138,7 @@ if (surfaces.some((surface) => subnetSurfaceKey(surface, netuid) === newKey)) {
 }
 
 const id = uniqueSurfaceId(surfaces, netuid, provider, kind, url);
-const surface = {
+const surface: Row = {
   id,
   name: name || `${subnet.name} ${kind}`,
   kind,
@@ -146,7 +160,7 @@ const findings = skipVerify
 document.surfaces = [...surfaces, surface];
 
 if (write) {
-  await writeRepositoryJson(filePath, document);
+  await writeRepositoryJson(subnetFilePath, document);
   if (providerStub) {
     await writeRepositoryJson(providerFilePath, providerStub);
   }
@@ -155,7 +169,7 @@ if (write) {
 console.log(
   stableStringify({
     mode: write ? "write" : "dry-run",
-    subnet_file: path.relative(repoRoot, filePath),
+    subnet_file: path.relative(repoRoot, subnetFilePath),
     surface_count: document.surfaces.length,
     verification: findings,
     surface,
@@ -178,10 +192,10 @@ console.log(
 // for openapi auto-discover the spec → set schema_url/schema_status + name from
 // the live title (closing the gap where a hand-added openapi surface had no schema
 // fields and failed CI). Network-dependent; --skip-verify bypasses it offline.
-async function verifyAndEnrich(target) {
+async function verifyAndEnrich(target: Row): Promise<string[]> {
   const checks = [
     ["url", target.url],
-    ...target.source_urls.map((value) => ["source_url", value]),
+    ...target.source_urls.map((value: string) => ["source_url", value]),
   ];
   for (const [label, value] of checks) {
     if (await isUnsafeResolvedUrl(value)) {
@@ -190,7 +204,7 @@ async function verifyAndEnrich(target) {
       );
     }
   }
-  const out = [];
+  const out: string[] = [];
   const urlProbe = await probeUrl(target.url);
   if (!urlProbe.ok) {
     out.push(
@@ -211,7 +225,7 @@ async function verifyAndEnrich(target) {
       target.schema_url = spec.schemaUrl;
       target.schema_status = "machine-readable";
       if (!name && spec.document.info?.title) {
-        target.name = `${subnet.name} ${spec.document.info.title}`;
+        target.name = `${subnet!.name} ${spec.document.info.title}`;
       }
       const paths = spec.document.paths
         ? Object.keys(spec.document.paths).length
@@ -229,7 +243,9 @@ async function verifyAndEnrich(target) {
   return out;
 }
 
-async function probeUrl(target) {
+async function probeUrl(
+  target: string,
+): Promise<{ ok: boolean; detail?: string }> {
   // safeFetch re-checks every redirect hop, so a public host can't redirect into
   // a private address to defeat the public-safe guard.
   const result = await safeFetch(target, { accept: "*/*" });
@@ -243,7 +259,9 @@ async function probeUrl(target) {
     : { ok: false, detail: `HTTP ${result.status}` };
 }
 
-async function fetchOpenApi(target) {
+async function fetchOpenApi(
+  target: string,
+): Promise<{ document: Row; schemaUrl: string } | null> {
   const candidates = [target];
   try {
     const parsed = new URL(target);
@@ -277,7 +295,7 @@ async function fetchOpenApi(target) {
           typeof document.swagger === "string" ||
           Boolean(document.paths));
       // result.url is the final URL after safe redirects — the real spec location.
-      if (looksOpenApi) return { document, schemaUrl: result.url };
+      if (looksOpenApi) return { document, schemaUrl: result.url as string };
     } catch {
       // not JSON / not a spec — try the next candidate
     }
@@ -285,7 +303,9 @@ async function fetchOpenApi(target) {
   return null;
 }
 
-async function resolveSubnetFile(targetNetuid) {
+async function resolveSubnetFile(
+  targetNetuid: number,
+): Promise<{ filePath: string | null; document: Row | null }> {
   const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
   for (const file of files) {
     const doc = await readJson(file);
@@ -294,7 +314,13 @@ async function resolveSubnetFile(targetNetuid) {
   return { filePath: null, document: null };
 }
 
-function uniqueSurfaceId(existing, uid, prov, srfKind, srfUrl) {
+function uniqueSurfaceId(
+  existing: Row[],
+  uid: number,
+  prov: string,
+  srfKind: string,
+  srfUrl: string,
+): string {
   const ids = new Set(existing.map((surface) => surface.id));
   const base = `sn-${uid}-${prov}-${srfKind}`;
   if (!ids.has(base)) return base;
@@ -306,7 +332,7 @@ function uniqueSurfaceId(existing, uid, prov, srfKind, srfUrl) {
   return `${withHost}-${counter}`;
 }
 
-function hostnameOf(value) {
+function hostnameOf(value: string): string {
   try {
     return new URL(value).hostname.replace(/^www\./, "");
   } catch {
@@ -314,20 +340,20 @@ function hostnameOf(value) {
   }
 }
 
-function valueAfter(flag) {
+function valueAfter(flag: string): string | null {
   const index = args.indexOf(flag);
   return index === -1 ? null : args[index + 1] || null;
 }
 
-function valuesAfter(flag) {
-  const values = [];
+function valuesAfter(flag: string): string[] {
+  const values: string[] = [];
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === flag && args[index + 1]) values.push(args[index + 1]);
   }
   return values;
 }
 
-function parseBoolean(value) {
+function parseBoolean(value: string): boolean | null {
   const normalized = String(value || "")
     .trim()
     .toLowerCase();
@@ -336,7 +362,7 @@ function parseBoolean(value) {
   return null;
 }
 
-function fail(message) {
+function fail(message: string): never {
   console.error(message);
   process.exit(1);
 }

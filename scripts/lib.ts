@@ -966,7 +966,7 @@ export const REGISTRY_SYNC_DEFAULT_URL =
 export const REGISTRY_SYNC_MAX_BODY_BYTES = 3_500_000;
 export const REGISTRY_SYNC_MAX_ROWS_PER_KIND = 2_000;
 
-// Shared POST client for scripts/sync-registry-to-postgres.mjs (merge-
+// Shared POST client for scripts/sync-registry-to-postgres.ts (merge-
 // triggered) and scripts/backfill-registry-postgres.ts (scheduled full
 // resync) -- both send {providers, subnets, surfaces} row arrays to the
 // registry-sync Worker over HTTPS instead of touching Postgres directly (see
@@ -1617,7 +1617,7 @@ export function normalizePublicUrl(value: unknown): string | null {
       // #5990: the brand-impersonation guard (ADR 0004) previously ran only on
       // the deprecated discovery path's local copy; run it here too so every
       // contributor-submitted surface URL -- the path that actually ships today
-      // (validate-surface.mjs / surface-add.mjs) -- is checked, not just
+      // (validate-surface.mjs / surface-add.ts) -- is checked, not just
       // auto-discovered candidates.
       isBrandImpersonationUrl(url.toString())
     ) {

@@ -45,7 +45,7 @@ registry tree as homogeneous, but it is not — it mixes two provenance classes:
 A field-level audit found the bot PR is **~95% machine telemetry** (chain `block`
 height advancing, `captured_at` wall-clock timestamps, adapter `latency_ms`). The
 root cause of "a diff even when nothing changed": `fetch-native-subnets.py`
-stamps `captured_at = datetime.now()` and `sync-subnets.mjs` writes it
+stamps `captured_at = datetime.now()` and `sync-subnets.ts` writes it
 unconditionally with no content-stability guard, so the timestamp propagates into
 `subnets.json` → `coverage.json` → `build-summary.json` and guarantees a
 non-empty allowlisted diff every successful run. Committing machine-probed chain

@@ -37,7 +37,7 @@
 // REGISTRY_SYNC_SECRET, this exits 0 having done nothing.
 //
 // Usage:
-//   REGISTRY_SYNC_SECRET=... node scripts/sync-registry-to-postgres.mjs \
+//   REGISTRY_SYNC_SECRET=... node scripts/sync-registry-to-postgres.ts \
 //     --base <sha> --head <sha>
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -51,12 +51,25 @@ import {
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { initSentry, endSessionAndFlush } from "./observability.ts";
 
+// Registry overlay files here are read via readJson (already `any`) and
+// re-validated against the schema (validate-surface.mjs) before this script
+// ever sends them anywhere -- typing every dynamic hop through `unknown`
+// would force a cast at every `?.` in a script whose real safety net is the
+// schema, not TS. Mirrors the readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+interface ParsedArgs {
+  base?: string;
+  head?: string;
+}
+
 initSentry("sync-registry-to-postgres");
 
 const args = parseArgs(process.argv.slice(2));
 const operationalKindSet = new Set(OPERATIONAL_SURFACE_KINDS);
 
-async function main() {
+async function main(): Promise<void> {
   if (!process.env.REGISTRY_SYNC_SECRET) {
     console.log(
       "REGISTRY_SYNC_SECRET not set — registry-to-Postgres sync isn't provisioned yet, nothing to do.",
@@ -82,12 +95,12 @@ async function main() {
     stableStringify({ base: args.base, head: args.head, changedFiles }),
   );
 
-  const providers = [];
-  const subnets = [];
-  const surfaces = [];
-  const pruneSurfaces = [];
-  const deleteSubnets = [];
-  const skippedInvalid = [];
+  const providers: Row[] = [];
+  const subnets: Row[] = [];
+  const surfaces: Row[] = [];
+  const pruneSurfaces: Row[] = [];
+  const deleteSubnets: Row[] = [];
+  const skippedInvalid: string[] = [];
 
   for (const file of changedFiles) {
     const stillExists = fileExistsAtHead(file);
@@ -152,11 +165,11 @@ async function main() {
       prune_surfaces: pruneSurfaces,
       delete_subnets: safeDeleteSubnets,
     });
-    summary.providers_written = result?.providers_written ?? 0;
-    summary.subnets_written = result?.subnets_written ?? 0;
-    summary.surfaces_written = result?.surfaces_written ?? 0;
-    summary.surfaces_deleted = result?.surfaces_deleted ?? 0;
-    summary.subnets_deleted = result?.subnets_deleted ?? 0;
+    summary.providers_written = (result?.providers_written as number) ?? 0;
+    summary.subnets_written = (result?.subnets_written as number) ?? 0;
+    summary.surfaces_written = (result?.surfaces_written as number) ?? 0;
+    summary.surfaces_deleted = (result?.surfaces_deleted as number) ?? 0;
+    summary.subnets_deleted = (result?.subnets_deleted as number) ?? 0;
   }
 
   console.log(stableStringify(summary));
@@ -168,7 +181,10 @@ async function main() {
   }
 }
 
-async function collectProviderFile(absolutePath, providersOut) {
+async function collectProviderFile(
+  absolutePath: string,
+  providersOut: Row[],
+): Promise<void> {
   const overlay = await readJson(absolutePath);
   if (!overlay.id) {
     console.error(`skipping ${absolutePath}: missing required "id" field`);
@@ -178,11 +194,11 @@ async function collectProviderFile(absolutePath, providersOut) {
 }
 
 async function collectSubnetFile(
-  absolutePath,
-  subnetsOut,
-  surfacesOut,
-  pruneSurfacesOut,
-) {
+  absolutePath: string,
+  subnetsOut: Row[],
+  surfacesOut: Row[],
+  pruneSurfacesOut: Row[],
+): Promise<void> {
   const overlay = await readJson(absolutePath);
   if (!Number.isInteger(overlay.netuid) || !overlay.slug || !overlay.name) {
     console.error(
@@ -206,7 +222,7 @@ async function collectSubnetFile(
     source_commit: args.head,
   });
 
-  const currentSurfaces = [];
+  const currentSurfaces: Row[] = [];
   for (const surface of surfaces) {
     currentSurfaces.push({ kind: surface.kind, url: surface.url });
     surfacesOut.push({
@@ -241,7 +257,7 @@ async function collectSubnetFile(
   });
 }
 
-function gitDiffFiles(base, head) {
+function gitDiffFiles(base: string, head: string): string[] {
   const result = spawnSync("git", ["diff", "--name-only", `${base}..${head}`], {
     cwd: repoRoot,
     encoding: "utf8",
@@ -252,7 +268,7 @@ function gitDiffFiles(base, head) {
   return result.stdout.split("\n").filter(Boolean);
 }
 
-function readSubnetFromCommit(commit, file) {
+function readSubnetFromCommit(commit: string, file: string): Row | null {
   const result = spawnSync("git", ["show", `${commit}:${file}`], {
     cwd: repoRoot,
     encoding: "utf8",
@@ -267,15 +283,15 @@ function readSubnetFromCommit(commit, file) {
   return null;
 }
 
-function fileExistsAtHead(file) {
+function fileExistsAtHead(file: string): boolean {
   const result = spawnSync("git", ["cat-file", "-e", `${args.head}:${file}`], {
     cwd: repoRoot,
   });
   return result.status === 0;
 }
 
-function parseArgs(argv) {
-  const parsed = {};
+function parseArgs(argv: string[]): ParsedArgs {
+  const parsed: ParsedArgs = {};
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--base") parsed.base = argv[++i];
     if (argv[i] === "--head") parsed.head = argv[++i];

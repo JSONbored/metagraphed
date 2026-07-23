@@ -632,7 +632,7 @@ describe("script utility contracts", () => {
   test("native subnet sync reports missing uvx without masking the error", () => {
     const result = spawnSync(
       process.execPath,
-      ["scripts/sync-subnets.mjs", "--dry-run"],
+      ["scripts/sync-subnets.ts", "--dry-run"],
       {
         cwd: repoRoot,
         encoding: "utf8",
