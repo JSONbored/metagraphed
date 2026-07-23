@@ -173,7 +173,7 @@ function productionSteps(): Step[] {
     // get_api_schema. build-artifacts grabs the document before its staging wipe
     // and re-attaches it; the index stays light. Degrades to digests if a spec
     // is unreachable (snapshot-openapi handles unavailable surfaces).
-    nodeStep("schemas-snapshot", "scripts/snapshot-openapi.mjs", "--write"),
+    nodeStep("schemas-snapshot", "scripts/snapshot-openapi.ts", "--write"),
     // Re-snapshot adapters from live GitHub metadata so the publish is
     // self-sufficient for freshness: adapter-snapshots are then fresh by
     // construction at publish time (the publish already re-probes health),

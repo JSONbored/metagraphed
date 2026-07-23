@@ -3,7 +3,7 @@
 // agent sees what a surface actually returns, not just what its schema claims.
 // Network step (runs in the refresh pipeline, NOT the deterministic build):
 // writes R2-staging fixtures/{surface_id}.json that build-artifacts re-attaches
-// and indexes. Mirrors snapshot-openapi.mjs's safe-fetch + DoS bounds.
+// and indexes. Mirrors snapshot-openapi.ts's safe-fetch + DoS bounds.
 import http from "node:http";
 import https from "node:https";
 import {

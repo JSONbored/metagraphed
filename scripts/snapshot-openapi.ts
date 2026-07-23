@@ -16,6 +16,15 @@ import {
   writeJson,
 } from "./lib.ts";
 
+// Untrusted OpenAPI/Swagger JSON fetched from arbitrary subnet-declared URLs --
+// every deep field below (info.title, components.schemas, ...) is read for
+// best-effort snapshot/drift reporting only, never trusted for control flow.
+// Typing each hop through `unknown` would force a cast at every access for no
+// real safety gain over the byte/depth/node bounds already enforced below.
+// Mirrors the readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
@@ -27,7 +36,7 @@ const observedAt =
 const contractVersion = CONTRACT_VERSION;
 
 class SchemaSnapshotLimitError extends Error {
-  constructor(message) {
+  constructor(message: string) {
     super(message);
     this.name = "SchemaSnapshotLimitError";
   }
@@ -52,7 +61,7 @@ const surfaces = flattenSurfaces(subnets).filter(
   (surface) => surface.kind === "openapi" && surface.public_safe,
 );
 const existingBySurface = await loadExistingSchemaIndex();
-const results = [];
+const results: Row[] = [];
 
 await mapLimit(surfaces, 8, async (surface) => {
   const result = await snapshotSurface(surface);
@@ -135,7 +144,7 @@ console.log(
   }),
 );
 
-async function snapshotSurface(surface) {
+async function snapshotSurface(surface: Row): Promise<Row> {
   const candidates = candidateSchemaUrls(surface);
   for (const schemaUrl of candidates) {
     const response = await fetchJson(schemaUrl);
@@ -152,10 +161,10 @@ async function snapshotSurface(surface) {
       continue;
     }
 
-    let normalized;
+    let normalized: Row;
     try {
       assertNormalizationBounds(response.body);
-      normalized = sanitizeOpenApiDocument(response.body);
+      normalized = sanitizeOpenApiDocument(response.body) as Row;
     } catch (error) {
       if (error instanceof SchemaSnapshotLimitError) {
         return unavailable(surface, schemaUrl, "too-large", error.message);
@@ -163,7 +172,7 @@ async function snapshotSurface(surface) {
       throw error;
     }
     const hash = hashJson(normalized);
-    const previous = existingBySurface.get(surface.id);
+    const previous = existingBySurface.get(surface.id as string);
     const driftStatus = previous?.hash
       ? previous.hash === hash
         ? "unchanged"
@@ -229,8 +238,13 @@ async function snapshotSurface(surface) {
   );
 }
 
-function unavailable(surface, schemaUrl, status, error) {
-  const previous = existingBySurface.get(surface.id);
+function unavailable(
+  surface: Row,
+  schemaUrl: string | null | undefined,
+  status: string,
+  error: string | null | undefined,
+): Row {
+  const previous = existingBySurface.get(surface.id as string);
   return {
     netuid: surface.netuid,
     subnet_slug: surface.subnet_slug,
@@ -248,8 +262,8 @@ function unavailable(surface, schemaUrl, status, error) {
   };
 }
 
-function candidateSchemaUrls(surface) {
-  const urls = [];
+function candidateSchemaUrls(surface: Row): string[] {
+  const urls: string[] = [];
   if (surface.schema_url) {
     urls.push(surface.schema_url);
   }
@@ -276,7 +290,7 @@ function candidateSchemaUrls(surface) {
   return [...new Set(urls.filter((url) => !isUnsafeUrl(url)))];
 }
 
-async function fetchJson(url) {
+async function fetchJson(url: string): Promise<Row> {
   try {
     const fetched = await safeFetch(url, {
       headers: {
@@ -329,24 +343,31 @@ async function fetchJson(url) {
       status_code: response.status,
     };
   } catch (error) {
-    return { ok: false, error: error.message, error_class: error.name };
+    return {
+      ok: false,
+      error: (error as Error).message,
+      error_class: (error as Error).name,
+    };
   }
 }
 
-function isLimitResponse(response) {
+function isLimitResponse(response: Row): boolean {
   return (
     response.error_class === "SchemaSnapshotLimitError" ||
     response.error?.includes("byte limit")
   );
 }
 
-async function readBoundedResponseText(response, maxBytes) {
+async function readBoundedResponseText(
+  response: Response,
+  maxBytes: number,
+): Promise<string> {
   if (!response.body) {
     return "";
   }
 
   const reader = response.body.getReader();
-  const chunks = [];
+  const chunks: Uint8Array[] = [];
   let receivedBytes = 0;
 
   try {
@@ -382,11 +403,15 @@ async function readBoundedResponseText(response, maxBytes) {
 // pathological within-budget structure (deep nesting / huge fan-out). Kept
 // local to the snapshot step rather than folded into the shared lib.ts
 // sanitizer so the limit policy stays with the untrusted-fetch threat.
-function assertNormalizationBounds(value) {
+function assertNormalizationBounds(value: unknown): void {
   walkNormalizationBounds(value, { nodes: 0 }, 0);
 }
 
-function walkNormalizationBounds(value, state, depth) {
+function walkNormalizationBounds(
+  value: unknown,
+  state: { nodes: number },
+  depth: number,
+): void {
   if (depth > OPENAPI_SNAPSHOT_LIMITS.normalizeDepth) {
     throw new SchemaSnapshotLimitError(
       `OpenAPI document exceeds ${OPENAPI_SNAPSHOT_LIMITS.normalizeDepth} level normalization depth limit`,
@@ -411,7 +436,7 @@ function walkNormalizationBounds(value, state, depth) {
   }
 }
 
-function parseContentLength(value) {
+function parseContentLength(value: string | null): number {
   if (!value) {
     return 0;
   }
@@ -419,7 +444,7 @@ function parseContentLength(value) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
 }
 
-function positiveIntegerEnv(name, fallback) {
+function positiveIntegerEnv(name: string, fallback: number): number {
   const value = process.env[name];
   if (value === undefined) {
     return fallback;
@@ -428,39 +453,43 @@ function positiveIntegerEnv(name, fallback) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function isOpenApiLike(value) {
+function isOpenApiLike(value: unknown): boolean {
   return Boolean(
     value &&
     typeof value === "object" &&
     !Array.isArray(value) &&
-    (typeof value.openapi === "string" ||
-      typeof value.swagger === "string" ||
-      value.paths),
+    (typeof (value as Row).openapi === "string" ||
+      typeof (value as Row).swagger === "string" ||
+      (value as Row).paths),
   );
 }
 
-async function loadExistingSchemaIndex() {
+async function loadExistingSchemaIndex(): Promise<Map<string, Row>> {
   try {
     const index = JSON.parse(
       await fs.readFile(artifactFilePath("schemas/index.json"), "utf8"),
     );
     return new Map(
       (index.schemas || [])
-        .filter((entry) => entry.hash)
-        .map((entry) => [entry.surface_id, entry]),
+        .filter((entry: Row) => entry.hash)
+        .map((entry: Row) => [entry.surface_id, entry]),
     );
   } catch {
     return new Map();
   }
 }
 
-async function mapLimit(items, limit, mapper) {
+async function mapLimit(
+  items: Row[],
+  limit: number,
+  mapper: (item: Row) => Promise<void>,
+): Promise<void> {
   const queue = [...items];
   const workers = Array.from(
     { length: Math.min(limit, queue.length) },
     async () => {
       while (queue.length > 0) {
-        const item = queue.shift();
+        const item = queue.shift() as Row;
         await mapper(item);
       }
     },
@@ -468,10 +497,10 @@ async function mapLimit(items, limit, mapper) {
   await Promise.all(workers);
 }
 
-function countBy(items, key) {
+function countBy(items: Row[], key: string): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
-      items.reduce((accumulator, item) => {
+      items.reduce<Record<string, number>>((accumulator, item) => {
         accumulator[item[key]] = (accumulator[item[key]] || 0) + 1;
         return accumulator;
       }, {}),
@@ -479,13 +508,13 @@ function countBy(items, key) {
   );
 }
 
-async function updateFreshnessSchemaSnapshot(drift) {
+async function updateFreshnessSchemaSnapshot(drift: Row): Promise<void> {
   const freshnessPath = artifactFilePath("freshness.json");
-  let freshness;
+  let freshness: Row;
   try {
     freshness = JSON.parse(await fs.readFile(freshnessPath, "utf8"));
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return;
     }
     throw error;
@@ -505,7 +534,7 @@ async function updateFreshnessSchemaSnapshot(drift) {
     stale_window_warnings: (
       freshness.summary?.stale_window_warnings || []
     ).filter(
-      (warning) =>
+      (warning: unknown) =>
         !String(warning).startsWith("schema-drift has no observed timestamp"),
     ),
   };
@@ -525,19 +554,21 @@ async function updateFreshnessSchemaSnapshot(drift) {
     timestamp_field: "schema_snapshot_as_of",
   };
   const sources = (freshness.sources || []).filter(
-    (entry) => entry.id !== "schema-drift",
+    (entry: Row) => entry.id !== "schema-drift",
   );
   sources.push(source);
-  freshness.sources = sources.sort((a, b) => a.id.localeCompare(b.id));
+  freshness.sources = sources.sort((a: Row, b: Row) =>
+    a.id.localeCompare(b.id),
+  );
 
   await writeJson(freshnessPath, freshness);
 }
 
-function nonPlaceholderTimestamp(value) {
+function nonPlaceholderTimestamp(value: unknown): string | null {
   if (!value || value === "1970-01-01T00:00:00.000Z") {
     return null;
   }
-  const date = new Date(value);
+  const date = new Date(value as string);
   if (Number.isNaN(date.getTime())) {
     return null;
   }

@@ -11,7 +11,7 @@ name: Sync schema snapshots
 # was actually keeping the committed copy fresh: `scripts/build.ts`
 # unconditionally auto-reverts this file (see DEPLOY_OWNED_ARTIFACTS in
 # scripts/lib.ts) after every local/CI build, and no other workflow ever
-# calls scripts/snapshot-openapi.mjs directly or commits the result back to
+# calls scripts/snapshot-openapi.ts directly or commits the result back to
 # git. The committed copy was found 22 days stale during an audit, with
 # every entry carrying drift_status "new" (only emitted when there's no
 # previous_hash to compare against) -- proof it had never been refreshed
@@ -24,7 +24,7 @@ name: Sync schema snapshots
 # regeneration on a schedule, and open an auto-PR only when the result
 # actually differs from what's committed.
 #
-# Regenerating this file means calling scripts/snapshot-openapi.mjs
+# Regenerating this file means calling scripts/snapshot-openapi.ts
 # directly (via its `schemas:snapshot` npm alias) -- NOT `npm run build`,
 # which goes through scripts/build.ts and would just auto-revert this
 # exact file back to what's already committed, silently no-op-ing every run.
@@ -70,8 +70,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Calls scripts/snapshot-openapi.mjs --write directly -- NOT `npm run
-      # build`, which would auto-revert this exact file via build.mjs's
+      # Calls scripts/snapshot-openapi.ts --write directly -- NOT `npm run
+      # build`, which would auto-revert this exact file via build.ts's
       # DEPLOY_OWNED_ARTIFACTS handling and silently no-op this whole job.
       - name: Snapshot OpenAPI schemas
         run: npm run schemas:snapshot
