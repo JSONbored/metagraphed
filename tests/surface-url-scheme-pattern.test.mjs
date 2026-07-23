@@ -1,6 +1,6 @@
 // #5582: Surface.url / Surface.schema_url (and the candidate-surface url) were
 // declared with `format: uri` only, which ajv-formats accepts for any RFC-3986
-// scheme (javascript:, ftp:, mailto:, data:). scripts/validate.mjs's isValidUrl
+// scheme (javascript:, ftp:, mailto:, data:). scripts/validate.ts's isValidUrl
 // already restricts these to http/https/ws/wss at runtime, so this closed the
 // gap between the schema's documented contract and that enforcement. Unlike the
 // Provider fix (#5553, http(s)-only), a Surface may legitimately point at a

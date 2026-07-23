@@ -2394,7 +2394,7 @@ export function computeProvenanceElevations({
 // a maintainer should elevate next, i.e. provenance-strong live APIs whose subnet
 // is NOT already at the top trust tier (maintainer-reviewed / adapter-backed).
 // Deterministic (generated_at is the fixed build placeholder) so the committed
-// queue is drift-checked by validate.mjs. Pure — takes the already-loaded inputs.
+// queue is drift-checked by validate.ts. Pure — takes the already-loaded inputs.
 const TOP_TRUST_LEVELS = new Set(["maintainer-reviewed", "adapter-backed"]);
 export function buildProvenanceReviewQueue({
   candidates = [],

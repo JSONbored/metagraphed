@@ -1,6 +1,6 @@
 // Coverage for #5992: promote-reviewed.ts must promote curation.level to
 // maintainer-reviewed from ANY lower pre-tier (not just machine-verified), and
-// validate.mjs must catch a recorded maintainer-reviewed decision that never
+// validate.ts must catch a recorded maintainer-reviewed decision that never
 // materialized on its overlay. Both behaviours live in the pure, side-effect-free
 // helpers in scripts/lib.ts (promoteCurationLevel /
 // findUnmaterializedMaintainerReviews) so they unit-test directly.

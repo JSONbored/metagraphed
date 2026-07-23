@@ -20,7 +20,7 @@ import {
 // provenance: chain-asserted domain + live probe), the human disposes by moving an
 // entry into maintainer-reviewed.json. Replaces blind hunting through the 2k-row
 // candidate pool. Pure transform of committed data (no network) → deterministic and
-// drift-checkable; validate.mjs fails if the committed queue is stale.
+// drift-checkable; validate.ts fails if the committed queue is stale.
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");

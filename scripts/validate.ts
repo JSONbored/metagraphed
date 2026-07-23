@@ -35,7 +35,11 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.ts";
-import { githubSignalsForSubnet, loadGithubSignals } from "./github-signals.ts";
+import {
+  type GithubSignalEntry,
+  githubSignalsForSubnet,
+  loadGithubSignals,
+} from "./github-signals.ts";
 
 const providerKinds = new Set([
   "subnet-team",
@@ -121,22 +125,29 @@ const reviewDecisions = new Set([
 
 const slugPattern = /^[a-z0-9][a-z0-9-]*$/;
 
-const errors = [];
+// Registry documents (providers/subnets/surfaces/candidates/artifacts) are
+// untrusted, deeply-nested JSON validated field-by-field below -- never
+// trusted for control flow. Mirrors the readJson/readArtifactJson precedent
+// in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
 
-function assert(condition, message) {
+const errors: string[] = [];
+
+function assert(condition: unknown, message: string): void {
   if (!condition) {
     errors.push(message);
   }
 }
 
-function assertPublicHttpUrl(owner, key, value) {
+function assertPublicHttpUrl(owner: string, key: string, value: unknown): void {
   assert(
     normalizePublicHttpUrl(value),
     `${owner}: ${key} must be a public HTTP(S) URL`,
   );
 }
 
-function validateProvider(provider) {
+function validateProvider(provider: Row): void {
   assert(
     provider.schema_version === 1,
     `${provider.id || "provider"}: schema_version must be 1`,
@@ -170,12 +181,12 @@ function validateProvider(provider) {
 }
 
 function validateSubnet(
-  subnet,
-  providerIds,
-  surfaceIds,
-  surfaceLocators,
-  registryVerificationEvidence,
-) {
+  subnet: Row,
+  providerIds: Set<string>,
+  surfaceIds: Set<string>,
+  surfaceLocators: Set<string>,
+  registryVerificationEvidence: Row,
+): void {
   assert(
     subnet.schema_version === 1,
     `${subnet.slug || "subnet"}: schema_version must be 1`,
@@ -352,7 +363,7 @@ function validateSubnet(
   }
 }
 
-function validateCuration(key, curation) {
+function validateCuration(key: string, curation: Row): void {
   assert(
     curation && typeof curation === "object",
     `${key}: curation is required`,
@@ -385,7 +396,7 @@ function validateCuration(key, curation) {
   );
 }
 
-function validateLinks(key, links) {
+function validateLinks(key: string, links: Row[]): void {
   assert(Array.isArray(links), `${key}: links must be an array`);
   for (const [index, link] of links.entries()) {
     assert(Boolean(link.label), `${key}: links[${index}].label is required`);
@@ -399,7 +410,10 @@ function validateLinks(key, links) {
   }
 }
 
-function validatePublicSafeJson(value, pathSegments = []) {
+function validatePublicSafeJson(
+  value: unknown,
+  pathSegments: (string | number)[] = [],
+): void {
   if (Array.isArray(value)) {
     for (const [index, nested] of value.entries()) {
       validatePublicSafeJson(nested, [...pathSegments, index]);
@@ -422,7 +436,7 @@ function validatePublicSafeJson(value, pathSegments = []) {
   }
 }
 
-function validateVerification(key, verification) {
+function validateVerification(key: string, verification: Row): void {
   assert(
     verification && typeof verification === "object",
     `${key}: verification must be an object`,
@@ -452,7 +466,7 @@ function validateVerification(key, verification) {
   }
 }
 
-function validatePromotionEvidence(key, verification) {
+function validatePromotionEvidence(key: string, verification: Row): void {
   assert(
     verification && typeof verification === "object",
     `${key}: verification evidence must be an object`,
@@ -472,7 +486,7 @@ function validatePromotionEvidence(key, verification) {
   }
 }
 
-function validateNativeSnapshot(snapshot) {
+function validateNativeSnapshot(snapshot: Row): Set<number> {
   assert(
     snapshot.schema_version === 1,
     "native snapshot: schema_version must be 1",
@@ -499,7 +513,7 @@ function validateNativeSnapshot(snapshot) {
   );
 
   let previousNetuid = -1;
-  const netuids = new Set();
+  const netuids = new Set<number>();
   for (const subnet of snapshot.subnets || []) {
     const key = `native:${subnet.netuid}`;
     assert(
@@ -556,7 +570,9 @@ function validateNativeSnapshot(snapshot) {
     );
   }
 
-  const root = snapshot.subnets.find((subnet) => subnet.netuid === 0);
+  const root = (snapshot.subnets as Row[]).find(
+    (subnet) => subnet.netuid === 0,
+  );
   assert(
     root?.subnet_type === "root",
     "native snapshot: netuid 0 must be labeled root",
@@ -564,7 +580,11 @@ function validateNativeSnapshot(snapshot) {
   return netuids;
 }
 
-function validateCandidate(candidate, nativeNetuids, providerIds) {
+function validateCandidate(
+  candidate: Row,
+  nativeNetuids: Set<number>,
+  providerIds: Set<string>,
+): void {
   const key = `candidate:${candidate.id || "unknown"}`;
   assert(candidate.schema_version === 1, `${key}: schema_version must be 1`);
   assert(slugPattern.test(candidate.id || ""), `${key}: invalid id`);
@@ -627,7 +647,10 @@ function validateCandidate(candidate, nativeNetuids, providerIds) {
   );
 }
 
-function validateReviewDecision(decision, nativeNetuids) {
+function validateReviewDecision(
+  decision: Row,
+  nativeNetuids: Set<number>,
+): void {
   const key = `review:${decision.netuid ?? "unknown"}`;
   assert(
     Number.isInteger(decision.netuid) && decision.netuid >= 0,
@@ -660,7 +683,10 @@ function validateReviewDecision(decision, nativeNetuids) {
   );
 }
 
-function buildGeneratedArtifactGaps(surfaces, overlay) {
+function buildGeneratedArtifactGaps(
+  surfaces: Row[],
+  overlay: Row | undefined,
+): Row {
   const kinds = new Set(surfaces.map((surface) => surface.kind));
   if (overlay?.docs_url) {
     kinds.add("docs");
@@ -692,14 +718,16 @@ function buildGeneratedArtifactGaps(surfaces, overlay) {
 }
 
 function buildExpectedGeneratedSubnet(
-  nativeSnapshot,
-  overlay,
-  candidateCount,
-  githubSignals,
-) {
+  nativeSnapshot: Row,
+  overlay: Row | undefined,
+  candidateCount: number,
+  githubSignals: Map<string, GithubSignalEntry>,
+): Row {
   const surfaceCount = overlay?.surfaces?.length || 0;
   const probedSurfaceCount =
-    overlay?.surfaces?.filter((surface) => surface.probe?.enabled).length || 0;
+    (overlay?.surfaces as Row[] | undefined)?.filter(
+      (surface) => surface.probe?.enabled,
+    ).length || 0;
   const coverageLevel =
     surfaceCount === 0
       ? "native-only"
@@ -715,7 +743,13 @@ function buildExpectedGeneratedSubnet(
       : nativeSubnet.name || null;
   const displayName =
     overlay?.name ||
-    nativeDisplayName(nativeSubnet, `Subnet ${nativeSubnet.netuid}`);
+    // scripts/lib/formatting.mjs isn't converted yet (Phase 4 batch 7), so its
+    // `fallbackName = null` default infers as null-only instead of
+    // string | null -- correct the signature to what it actually accepts.
+    (nativeDisplayName as (subnet: Row, fallback?: string | null) => string)(
+      nativeSubnet,
+      `Subnet ${nativeSubnet.netuid}`,
+    );
   const nativeSlug =
     nameQuality === "chain" && nativeName
       ? slugify(nativeName)
@@ -823,15 +857,15 @@ function buildExpectedGeneratedSubnet(
   };
 }
 
-async function readArtifactJson(relativePath) {
+async function readArtifactJson(relativePath: string): Promise<Row> {
   return readJson(artifactPathForRelative(relativePath));
 }
 
-function artifactPath(relativePath) {
+function artifactPath(relativePath: string): string {
   return artifactPathForRelative(relativePath);
 }
 
-function artifactPathForRelative(relativePath) {
+function artifactPathForRelative(relativePath: string): string {
   const tier = artifactStorageTierForRelativePath(relativePath);
   const r2Path = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativePath);
   if (tier === "r2" && existsSync(r2Path)) {
@@ -840,7 +874,7 @@ function artifactPathForRelative(relativePath) {
   return path.join(repoRoot, "public/metagraph", relativePath);
 }
 
-async function validateR2OnlyArtifactsStayOutOfPublicGit() {
+async function validateR2OnlyArtifactsStayOutOfPublicGit(): Promise<void> {
   const files = await listJsonFilesRecursive(publicMetagraphRoot);
   for (const filePath of files) {
     const relativePath = path
@@ -854,10 +888,10 @@ async function validateR2OnlyArtifactsStayOutOfPublicGit() {
 }
 
 async function validateGeneratedArtifacts(
-  nativeSnapshot,
-  overlays,
-  candidates,
-) {
+  nativeSnapshot: Row,
+  overlays: Row[],
+  candidates: Row[],
+): Promise<void> {
   await validateR2OnlyArtifactsStayOutOfPublicGit();
 
   const providersArtifact = await readArtifactJson("providers.json");
@@ -903,12 +937,14 @@ async function validateGeneratedArtifacts(
     ["public candidates", candidatesArtifact],
     ["public review queue", reviewQueueArtifact],
     ["public verification", verificationArtifact],
-  ]) {
+  ] as [string, Row][]) {
     validatePublicSafeJson(artifact, [artifactName]);
   }
 
-  const nativeNetuids = nativeSnapshot.subnets.map((subnet) => subnet.netuid);
-  const generatedNetuids = subnetsArtifact.subnets.map(
+  const nativeNetuids = (nativeSnapshot.subnets as Row[]).map(
+    (subnet) => subnet.netuid,
+  );
+  const generatedNetuids = (subnetsArtifact.subnets as Row[]).map(
     (subnet) => subnet.netuid,
   );
   assert(
@@ -945,7 +981,7 @@ async function validateGeneratedArtifacts(
     (candidate) => candidate.netuid,
   );
   const endpointsByNetuid = Map.groupBy(
-    endpointsArtifact.endpoints || [],
+    (endpointsArtifact.endpoints as Row[] | undefined) || [],
     (endpoint) => endpoint.netuid,
   );
   // Group surfaces by netuid once (mirrors activeCandidatesByNetuid /
@@ -958,7 +994,7 @@ async function validateGeneratedArtifacts(
   // build-artifacts.mjs) so the reproducibility check matches.
   const githubSignals = await loadGithubSignals();
   const expectedSubnetsByNetuid = new Map(
-    nativeSnapshot.subnets.map((nativeSubnet) => [
+    (nativeSnapshot.subnets as Row[]).map((nativeSubnet) => [
       nativeSubnet.netuid,
       buildExpectedGeneratedSubnet(
         {
@@ -1007,7 +1043,7 @@ async function validateGeneratedArtifacts(
         `generated:${subnet.netuid}: per-subnet detail artifact is not reproducible from registry inputs`,
       );
     } catch (error) {
-      if (error.code === "ENOENT") {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         assert(
           false,
           `generated:${subnet.netuid}: missing per-subnet detail artifact`,
@@ -1028,7 +1064,7 @@ async function validateGeneratedArtifacts(
   // (b) assert chain-backfilled index links (display-only) never satisfy
   // completeness. See ADR 0003 / docs/integration-readiness.md.
   const indexByNetuid = new Map(
-    subnetsArtifact.subnets.map((subnet) => [subnet.netuid, subnet]),
+    (subnetsArtifact.subnets as Row[]).map((subnet) => [subnet.netuid, subnet]),
   );
   const REQUIRED_IDENTITY = [
     ["source-repo", "source_repo"],
@@ -1058,7 +1094,7 @@ async function validateGeneratedArtifacts(
 
   const curatedNetuids = new Set(overlays.map((overlay) => overlay.netuid));
   const surfaceNetuids = new Set(
-    surfacesArtifact.surfaces.map((surface) => surface.netuid),
+    (surfacesArtifact.surfaces as Row[]).map((surface) => surface.netuid),
   );
   for (const netuid of surfaceNetuids) {
     assert(
@@ -1157,14 +1193,15 @@ async function validateGeneratedArtifacts(
     "contracts artifact: artifacts must be an array",
   );
   assert(
-    contractsArtifact.artifacts.every((artifact) =>
+    (contractsArtifact.artifacts as Row[]).every((artifact) =>
       String(artifact.path || "").startsWith("/metagraph/"),
     ),
     "contracts artifact: all artifact paths must stay under /metagraph",
   );
   assert(
-    new Set(contractsArtifact.artifacts.map((artifact) => artifact.id)).size ===
-      contractsArtifact.artifacts.length,
+    new Set(
+      (contractsArtifact.artifacts as Row[]).map((artifact) => artifact.id),
+    ).size === contractsArtifact.artifacts.length,
     "contracts artifact: artifact ids must be unique",
   );
   for (const expectedArtifact of [
@@ -1176,7 +1213,7 @@ async function validateGeneratedArtifacts(
     "type-definitions",
   ]) {
     assert(
-      contractsArtifact.artifacts.some(
+      (contractsArtifact.artifacts as Row[]).some(
         (artifact) => artifact.id === expectedArtifact,
       ),
       `contracts artifact: missing ${expectedArtifact}`,
@@ -1191,7 +1228,7 @@ async function validateGeneratedArtifacts(
     "api index: routes must be an array",
   );
   assert(
-    apiIndexArtifact.routes.every(
+    (apiIndexArtifact.routes as Row[]).every(
       (route) =>
         route.path === "/api/v1" ||
         String(route.path || "").startsWith("/api/v1/"),
@@ -1206,7 +1243,9 @@ async function validateGeneratedArtifacts(
     "/api/v1/build",
   ]) {
     assert(
-      apiIndexArtifact.routes.some((route) => route.path === expectedRoute),
+      (apiIndexArtifact.routes as Row[]).some(
+        (route) => route.path === expectedRoute,
+      ),
       `api index: missing ${expectedRoute}`,
     );
   }
@@ -1225,9 +1264,9 @@ async function validateGeneratedArtifacts(
     freshnessArtifact.summary?.native_data_as_of === nativeSnapshot.captured_at,
     "freshness: native_data_as_of mismatch",
   );
-  const candidateVerificationFreshness = freshnessArtifact.sources.find(
-    (source) => source.id === "candidate-verification",
-  );
+  const candidateVerificationFreshness = (
+    freshnessArtifact.sources as Row[]
+  ).find((source) => source.id === "candidate-verification");
   assert(
     freshnessArtifact.summary?.verification_as_of ===
       candidateVerificationFreshness?.as_of,
@@ -1235,14 +1274,14 @@ async function validateGeneratedArtifacts(
   );
   assert(
     freshnessArtifact.summary?.blocking_source_count ===
-      freshnessArtifact.sources.filter(
+      (freshnessArtifact.sources as Row[]).filter(
         (source) => source.stale_behavior === "block",
       ).length,
     "freshness: blocking source count mismatch",
   );
   assert(
     freshnessArtifact.summary?.missing_blocking_source_count ===
-      freshnessArtifact.sources.filter(
+      (freshnessArtifact.sources as Row[]).filter(
         (source) =>
           source.stale_behavior === "block" && source.status === "missing",
       ).length,
@@ -1277,7 +1316,7 @@ async function validateGeneratedArtifacts(
     "source snapshots: source_count mismatch",
   );
   assert(
-    sourceSnapshotsArtifact.sources.some(
+    (sourceSnapshotsArtifact.sources as Row[]).some(
       (source) =>
         source.id === "native-subnets" &&
         source.record_count === nativeSnapshot.subnets.length,
@@ -1293,13 +1332,15 @@ async function validateGeneratedArtifacts(
   // there is no longer a committed health/latest|summary to validate here.
   assert(
     rpcEndpointsArtifact.endpoints.length ===
-      surfacesArtifact.surfaces.filter((surface) =>
+      (surfacesArtifact.surfaces as Row[]).filter((surface) =>
         ["subtensor-rpc", "subtensor-wss"].includes(surface.kind),
       ).length,
     "rpc endpoints artifact: endpoint count mismatch",
   );
   assert(
-    rpcEndpointsArtifact.endpoints.every((endpoint) => endpoint.netuid === 0),
+    (rpcEndpointsArtifact.endpoints as Row[]).every(
+      (endpoint) => endpoint.netuid === 0,
+    ),
     "rpc endpoints artifact: base-layer RPC endpoints must be rooted at netuid 0",
   );
   assert(
@@ -1327,7 +1368,7 @@ async function validateGeneratedArtifacts(
   // r2-tier artifacts via the FULL manifest and intentionally excluded from the
   // compact (committed cold-start) manifest, which only carries dual-tier paths.
   assert(
-    !r2ManifestArtifact.artifacts.some(
+    !(r2ManifestArtifact.artifacts as Row[]).some(
       (artifact) => artifact.path === "/metagraph/changelog.json",
     ),
     "R2 manifest (compact): changelog is r2-tier and must be excluded",
@@ -1336,7 +1377,7 @@ async function validateGeneratedArtifacts(
     r2ManifestArtifact.required_artifact_paths?.includes(
       "/metagraph/source-snapshots.json",
     ) ||
-      r2ManifestArtifact.artifacts.some(
+      (r2ManifestArtifact.artifacts as Row[]).some(
         (artifact) => artifact.path === "/metagraph/source-snapshots.json",
       ),
     "R2 manifest: source snapshots must be uploaded",
@@ -1345,7 +1386,7 @@ async function validateGeneratedArtifacts(
     r2ManifestArtifact.required_artifact_paths?.includes(
       "/metagraph/types.d.ts",
     ) ||
-      r2ManifestArtifact.artifacts.some(
+      (r2ManifestArtifact.artifacts as Row[]).some(
         (artifact) =>
           artifact.path === "/metagraph/types.d.ts" &&
           artifact.content_type === "text/plain; charset=utf-8",
@@ -1355,8 +1396,9 @@ async function validateGeneratedArtifacts(
   assert(
     (schemaDriftArtifact.openapi_surface_count ??
       schemaDriftArtifact.summary?.surface_count) ===
-      surfacesArtifact.surfaces.filter((surface) => surface.kind === "openapi")
-        .length,
+      (surfacesArtifact.surfaces as Row[]).filter(
+        (surface) => surface.kind === "openapi",
+      ).length,
     "schema drift: OpenAPI surface count mismatch",
   );
   assert(
@@ -1413,7 +1455,7 @@ async function validateGeneratedArtifacts(
   }
 }
 
-function requiresFreshness() {
+function requiresFreshness(): boolean {
   if (process.env.METAGRAPH_REQUIRE_FRESHNESS === "1") {
     return true;
   }
@@ -1424,10 +1466,10 @@ function requiresFreshness() {
   );
 }
 
-function validateFreshnessForPublish(freshnessArtifact) {
+function validateFreshnessForPublish(freshnessArtifact: Row): void {
   const now = Date.now();
-  const failures = [];
-  for (const source of freshnessArtifact.sources.filter(
+  const failures: string[] = [];
+  for (const source of (freshnessArtifact.sources as Row[]).filter(
     (entry) => entry.stale_behavior === "block",
   )) {
     if (source.status === "missing" || !source.as_of) {
@@ -1461,35 +1503,35 @@ function validateFreshnessForPublish(freshnessArtifact) {
   );
 }
 
-const providers = await loadProviders();
-const subnets = await loadSubnets();
-const nativeSnapshot = await loadNativeSnapshot();
-const candidates = await loadCandidates();
+const providers = (await loadProviders()) as Row[];
+const subnets = (await loadSubnets()) as Row[];
+const nativeSnapshot = (await loadNativeSnapshot()) as Row;
+const candidates = (await loadCandidates()) as Row[];
 const reviewDecisionsDocument = await readJson(
   path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
 );
 const verificationDocument = await loadVerification({ preferDetailed: false });
 validatePublicSafeJson(verificationDocument, ["registry verification"]);
-const providerIds = new Set();
-const netuids = new Set();
-const slugs = new Set();
-const surfaceIds = new Set();
-const surfaceLocators = new Set();
+const providerIds = new Set<string>();
+const netuids = new Set<number>();
+const slugs = new Set<string>();
+const surfaceIds = new Set<string>();
+const surfaceLocators = new Set<string>();
 const nativeNetuids = validateNativeSnapshot(nativeSnapshot);
 const registryVerificationEvidence = {
-  byCandidateId: new Map(
-    (verificationDocument.results || [])
+  byCandidateId: new Map<string, Row>(
+    ((verificationDocument.results as Row[] | undefined) || [])
       .filter((result) => result.candidate_id)
       .map((result) => [result.candidate_id, result]),
   ),
-  byLocator: new Map(
-    (verificationDocument.results || [])
+  byLocator: new Map<string, Row>(
+    ((verificationDocument.results as Row[] | undefined) || [])
       .filter((result) => result.url)
       .map((result) => [registrySurfaceKey(result), result]),
   ),
 };
-const candidateIds = new Set();
-const candidateLocators = new Set();
+const candidateIds = new Set<string>();
+const candidateLocators = new Set<string>();
 
 // Guard the single-file naming convention itself: registry/subnets/<slug>.json's
 // filename must equal slugify(name), falling back to sn-<netuid> ONLY when the
@@ -1594,7 +1636,7 @@ for (const decision of reviewDecisionsDocument.decisions || []) {
 // unauditable drift. The decisions file is now the ONLY sanctioned way to reach
 // the tier, so the provenance of every top-tier subnet is recorded and reviewable.
 const maintainerReviewedNetuids = new Set(
-  (reviewDecisionsDocument.decisions || [])
+  ((reviewDecisionsDocument.decisions as Row[] | undefined) || [])
     .filter((decision) => decision.decision === "maintainer-reviewed")
     .map((decision) => decision.netuid),
 );
@@ -1641,16 +1683,16 @@ if (unmaterializedReviews.length > 0) {
 // or accidental duplicate name on another subnet could otherwise wedge registry
 // publishes. Emit an actionable warning instead; maintainers can cross-check
 // registry/native/finney-subnets.json and re-key confirmed stale overlays.
-const normIdentityName = (value) =>
+const normIdentityName = (value: unknown) =>
   String(value || "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
-const chainNetuidsByName = new Map();
+const chainNetuidsByName = new Map<string, number[]>();
 for (const native of nativeSnapshot.subnets || []) {
   const key = normIdentityName(native.chain_identity?.subnet_name);
   if (!key) continue;
   if (!chainNetuidsByName.has(key)) chainNetuidsByName.set(key, []);
-  chainNetuidsByName.get(key).push(native.netuid);
+  chainNetuidsByName.get(key)!.push(native.netuid);
 }
 for (const subnet of subnets) {
   const matchNetuids = chainNetuidsByName.get(normIdentityName(subnet.name));

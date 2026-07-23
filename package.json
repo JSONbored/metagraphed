@@ -20,7 +20,7 @@
     "packages/ui-kit"
   ],
   "scripts": {
-    "validate": "node scripts/validate.mjs",
+    "validate": "node scripts/validate.ts",
     "build": "node scripts/build.ts",
     "build:artifacts": "node scripts/build-artifacts.mjs",
     "pipeline:check": "node scripts/pipeline.ts --check",

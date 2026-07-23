@@ -162,7 +162,7 @@ test("llms.txt family is generated with the expected structure", async () => {
 }, 30_000);
 
 test("registry validates", () => {
-  runNode("scripts/validate.mjs");
+  runNode("scripts/validate.ts");
 });
 
 test("registry validation accepts the community-seeded curation level", () => {
@@ -174,7 +174,7 @@ test("registry validation accepts the community-seeded curation level", () => {
   let result;
   try {
     writeFileSync(overlayPath, `${JSON.stringify(fixture, null, 2)}\n`);
-    result = spawnSync(process.execPath, ["scripts/validate.mjs"], {
+    result = spawnSync(process.execPath, ["scripts/validate.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
@@ -209,7 +209,7 @@ test("registry validation warns but does not block on cross-netuid on-chain name
   let result;
   try {
     writeFileSync(nativePath, `${JSON.stringify(nativeSnapshot, null, 2)}\n`);
-    result = spawnSync(process.execPath, ["scripts/validate.mjs"], {
+    result = spawnSync(process.execPath, ["scripts/validate.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
@@ -249,7 +249,7 @@ test("registry validation rejects registry-observed surfaces without verificatio
   let failure;
   try {
     writeFileSync(overlayPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    runNode("scripts/validate.mjs");
+    runNode("scripts/validate.ts");
   } catch (error) {
     failure = error;
   } finally {
@@ -289,7 +289,7 @@ test("registry validation rejects registry-observed surfaces with only inline ve
   let failure;
   try {
     writeFileSync(overlayPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    runNode("scripts/validate.mjs");
+    runNode("scripts/validate.ts");
   } catch (error) {
     failure = error;
   } finally {
@@ -337,7 +337,7 @@ test("registry validation rejects tampered per-subnet artifacts", () => {
   let failure;
   try {
     writeFileSync(artifactPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    runNode("scripts/validate.mjs");
+    runNode("scripts/validate.ts");
   } catch (error) {
     failure = error;
   } finally {

@@ -311,7 +311,7 @@ for (const artifact of artifactTargets) {
 // `$defs.contractsArtifact`. This enforces the constraints that schema promises
 // (schema_version: 1, network: "finney", required per-kind fields), which were
 // previously only ajv.compile()-syntax-checked and fs.access()-existence-checked
-// (scripts/validate.mjs), never validated against real data. Artifacts the
+// (scripts/validate.ts), never validated against real data. Artifacts the
 // schema does not document (e.g. openapi) carry no matching property and are
 // skipped; the per-component schema_ref check above still covers every artifact.
 const publicArtifactProperties = publicArtifactsSchema.properties || {};

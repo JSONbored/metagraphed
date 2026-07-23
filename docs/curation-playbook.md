@@ -151,7 +151,7 @@ observed health directly.
 ## Maintainer Review & Trust Elevation
 
 `registry/reviews/maintainer-reviewed.json` is the single source of truth for the
-`maintainer-reviewed` trust tier. `validate.mjs` fails CI if any overlay sits at
+`maintainer-reviewed` trust tier. `validate.ts` fails CI if any overlay sits at
 `curation.level: maintainer-reviewed` without a backing decision there, so the tier
 is reached ONLY by adding a decision — never by hand-editing `curation.level` in a
 `registry/subnets/*.json` overlay.

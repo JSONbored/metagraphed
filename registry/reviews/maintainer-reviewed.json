@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "notes": "Public-safe maintainer review decisions. This file records provenance and review state only; it must not contain secrets, wallet paths, PATs, private dashboards, or validator-local data. Decisions are the single source of truth for the maintainer-reviewed trust tier (enforced by scripts/validate.mjs).",
+  "notes": "Public-safe maintainer review decisions. This file records provenance and review state only; it must not contain secrets, wallet paths, PATs, private dashboards, or validator-local data. Decisions are the single source of truth for the maintainer-reviewed trust tier (enforced by scripts/validate.ts).",
   "decisions": [
     {
       "netuid": 0,

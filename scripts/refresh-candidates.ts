@@ -1,6 +1,6 @@
 // Tolerant candidate-discovery + verification refresh for the PRODUCTION publish
 // (issue #599 / ADR 0006). candidate-discovery and candidate-verification are
-// block-behavior freshness sources (validate.mjs validateFreshnessForPublish):
+// block-behavior freshness sources (validate.ts validateFreshnessForPublish):
 // once either is >24h old the scheduled publish HARD-FAILS. #571 retired the
 // scheduled sync-subnets PR that used to refresh them, so without this the
 // event-driven + daily-floor publish starts failing ~24h after the last manual sync.

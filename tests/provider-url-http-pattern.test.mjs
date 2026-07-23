@@ -2,7 +2,7 @@
 // http(s)-only `pattern` on top of `format: uri`, but the sibling URL fields
 // website_url / docs_url / github_url / team_url / contact_url only had
 // `format: uri` — which ajv-formats accepts for any RFC-3986 scheme
-// (mailto:, ftp:, javascript:). scripts/validate.mjs's assertPublicHttpUrl
+// (mailto:, ftp:, javascript:). scripts/validate.ts's assertPublicHttpUrl
 // already enforces http(s) uniformly across all nine fields at the mandatory
 // gate, so this only closed a gap between the schema's own documented
 // guarantee and that enforced behavior. These tests exercise the schema
