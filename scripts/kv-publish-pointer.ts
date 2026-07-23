@@ -8,17 +8,21 @@ import {
   stableStringify,
 } from "./lib.mjs";
 
+type Row = Record<string, unknown>;
+
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
-const manifest = await readJson(
+const manifest: Row = await readJson(
   path.join(repoRoot, "public/metagraph/r2-manifest.json"),
 );
 // build-summary.json is R2-only (#1003); resolve via artifactFilePath (dist/).
 // r2-manifest.json stays committed (publish infra), read from public/ above.
-const buildSummary = await readJson(artifactFilePath("build-summary.json"));
+const buildSummary: Row = await readJson(
+  artifactFilePath("build-summary.json"),
+);
 // Tier-aware: freshness.json is R2-only (ADR 0001), so resolve it through
 // artifactFilePath (dist/) rather than a hardcoded public/ path.
-const freshness = await readJson(artifactFilePath("freshness.json"));
+const freshness: Row = await readJson(artifactFilePath("freshness.json"));
 
 const pointer = {
   contract_version: manifest.contract_version,
@@ -35,15 +39,16 @@ const pointer = {
   run_prefix: manifest.run_prefix,
   manifest_hash: hashJson(manifest),
   artifact_count: manifest.artifact_count,
-  native_snapshot_captured_at: freshness.summary.native_snapshot_captured_at,
-  health_surface_count: freshness.summary.health_surface_count,
+  native_snapshot_captured_at: (freshness.summary as Row)
+    .native_snapshot_captured_at,
+  health_surface_count: (freshness.summary as Row).health_surface_count,
 };
 // metagraph:latest is the ONLY KV control record: the pointer the Worker reads to
 // resolve the live immutable R2 run prefix. (The former feature-flags /
 // endpoint-pools / source-freshness sidecars were written here every publish but
 // read by nothing — Worker, UI, or otherwise — so they were removed; reintroduce
 // such a blob only together with its reader so it can't drift unread.)
-const kvEntries = [["metagraph:latest", pointer]];
+const kvEntries: [string, unknown][] = [["metagraph:latest", pointer]];
 
 if (!write) {
   console.log(
@@ -73,7 +78,7 @@ for (const [key, value] of kvEntries) {
 
 console.log(`Published ${kvEntries.length} KV control record(s).`);
 
-function putKv(key, value) {
+function putKv(key: string, value: unknown): void {
   const wranglerBin = path.join(
     repoRoot,
     "node_modules",
@@ -89,7 +94,7 @@ function putKv(key, value) {
       key,
       JSON.stringify(value),
       "--namespace-id",
-      process.env.METAGRAPH_KV_NAMESPACE_ID,
+      process.env.METAGRAPH_KV_NAMESPACE_ID as string,
       "--remote",
     ],
     {

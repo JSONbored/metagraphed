@@ -455,7 +455,7 @@ api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs
   `npm run build` fully populates R2 staging (per ADR-0001) and rewrites both to reflect that local/CI
   build, but their committed copies on `main` reflect the last real deploy/publish — not a local build —
   for reasons unrelated to your change: `r2-manifest.json` is publish infrastructure read from its
-  committed path by `scripts/kv-publish-pointer.mjs` / `scripts/cloudflare-verify.mjs` /
+  committed path by `scripts/kv-publish-pointer.ts` / `scripts/cloudflare-verify.mjs` /
   `scripts/sync-summary.mjs` during the actual publish, and its `*_artifact_size_bytes` totals are
   inherently non-deterministic build-to-build; `schemas/index.json` is a network-capture cache the build
   "reconciles in place". Both are explicitly excluded from the derived-artifact freshness gate in

@@ -246,7 +246,7 @@ export async function readR2Object(
 
 // Artifacts that read through the literal "latest/" prefix instead of the
 // versioned run-prefix the KV pointer names. Every OTHER artifact resolves
-// through that run-prefix pointer deliberately (see kv-publish-pointer.mjs's
+// through that run-prefix pointer deliberately (see kv-publish-pointer.ts's
 // own comment: pointing latest_prefix at the immutable run prefix, not the
 // mutable literal "latest/" prefix, avoids ever serving a mix of stale +
 // fresh artifacts from a partially-uploaded publish). That atomicity

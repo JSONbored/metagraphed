@@ -6,7 +6,7 @@
 // committed R2 economics.json when the KV blob is cold/stale/invalid.
 //
 // KV-only: a single atomic PUT of the JSON blob via the same arg-array wrangler
-// idiom as kv-publish-pointer.mjs (no shell, no hand-built SQL). Tolerant — a
+// idiom as kv-publish-pointer.ts (no shell, no hand-built SQL). Tolerant — a
 // wrangler failure is a warning, never a hard error (the serve path falls back to
 // R2). Run by the indexer-box data-refresh-economics systemd timer
 // (JSONbored/metagraphed-infra, moved off the former GitHub Actions
@@ -94,7 +94,7 @@ if (!floor.publish) {
 // KV 'economics:current' — the live source. Gated on METAGRAPH_ALLOW_KV_WRITE so a
 // misconfigured run can't touch prod KV. The ~100 KB blob is passed via --path (a
 // temp file), not argv, to stay clear of the per-arg byte limit. Mirrors the
-// kv-publish-pointer.mjs idiom.
+// kv-publish-pointer.ts idiom.
 let kvStatus = "skipped";
 if (process.env.METAGRAPH_ALLOW_KV_WRITE === "1") {
   if (!process.env.METAGRAPH_KV_NAMESPACE_ID) {
