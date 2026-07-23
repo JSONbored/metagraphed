@@ -137,7 +137,7 @@ function Ss58ToolPage() {
         ) : null}
 
         <Panel as="section" flush bodyClassName="text-[13px] leading-relaxed text-ink-muted">
-          <div className="p-5">
+          <div className="p-4">
             <h2 className="mb-2 font-display text-sm font-semibold text-ink-strong">
               How this works
             </h2>
@@ -176,7 +176,7 @@ function ResultCard({
   return (
     <div
       className={classNames(
-        "rounded-lg border p-5",
+        "rounded-lg border p-4",
         tone === "ok" && "border-health-ok/30 bg-health-ok/5",
         tone === "warn" && "border-health-warn/30 bg-health-warn/5",
         tone === "error" && "border-health-down/30 bg-health-down/5",

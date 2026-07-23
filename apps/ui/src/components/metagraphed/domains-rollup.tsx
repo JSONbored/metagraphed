@@ -111,7 +111,7 @@ function DomainRow({
       </button>
 
       {open ? (
-        <div id={panelId} className="space-y-4 px-4 pb-5 pt-1">
+        <div id={panelId} className="space-y-4 px-4 pb-4 pt-1">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
             <Metric label="Total stake" value={formatTao(domain.total_stake_tao)} />
             <Metric label="Emission share" value={pct(domain.total_emission_share)} />

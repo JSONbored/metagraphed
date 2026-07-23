@@ -490,7 +490,7 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="border-b border-border p-5">
+      <header className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <button
@@ -550,7 +550,7 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto p-5 space-y-3">
+      <div className="flex-1 overflow-auto p-4 space-y-3">
         <SchemaSnapshotSummary schema={schema} />
       </div>
     </div>

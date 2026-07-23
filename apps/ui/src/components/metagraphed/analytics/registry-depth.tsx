@@ -41,7 +41,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
 
   return (
     <Panel as="div" flush className={className}>
-      <div className="p-5">
+      <div className="p-4">
         <header className="mb-2 flex items-center justify-between">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
@@ -168,7 +168,7 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
 
   return (
     <Panel as="div" flush className={className}>
-      <div className="p-5">
+      <div className="p-4">
         <header className="mb-4 flex items-center justify-between">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">

@@ -48,7 +48,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
 
   return (
     <Panel as="div" flush className={className}>
-      <div className="p-5">
+      <div className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">

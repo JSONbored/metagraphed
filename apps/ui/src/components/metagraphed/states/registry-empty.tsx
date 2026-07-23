@@ -85,7 +85,7 @@ export function RegistryEmpty({
   return (
     <div
       role={variant === "error" ? "alert" : "status"}
-      className={classNames("rounded-xl border p-5 sm:p-6", tone.ring, className)}
+      className={classNames("rounded-xl border p-4 sm:p-6", tone.ring, className)}
     >
       <div className="flex items-start gap-3">
         <div

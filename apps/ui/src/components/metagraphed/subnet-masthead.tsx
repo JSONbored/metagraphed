@@ -478,7 +478,7 @@ export function SubnetMasthead({
       <Panel
         as="div"
         flush
-        className="mt-5 flex flex-wrap divide-x divide-border overflow-hidden [&>*]:grow [&>*]:basis-[150px] [&>*]:min-w-[150px]"
+        className="mt-4 flex flex-wrap divide-x divide-border overflow-hidden [&>*]:grow [&>*]:basis-[150px] [&>*]:min-w-[150px]"
       >
         <StatWithSpark
           label="Netuid"

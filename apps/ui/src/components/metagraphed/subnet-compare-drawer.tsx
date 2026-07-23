@@ -124,7 +124,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
             ) : null}
           </form>
 
-          <div className="mt-5">
+          <div className="mt-4">
             {peer == null ? (
               <p className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center text-[12px] text-ink-muted">
                 Enter a netuid above to load a side-by-side comparison.

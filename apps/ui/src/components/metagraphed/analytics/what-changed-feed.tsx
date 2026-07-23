@@ -70,7 +70,7 @@ export function WhatChangedFeed({ className, limit = 10 }: { className?: string;
 
   return (
     <Panel as="div" flush className={className}>
-      <div className="p-5">
+      <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
