@@ -404,8 +404,16 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires validator signature headers; the exact format is not fully documented by the subnet. Contact the subnet operator for details."
+        "scheme": "signature",
+        "scopes_note": "Requires a hotkey-signed request: the X-Validator-Hotkey, X-Validator-Signature, X-Validator-Timestamp, X-Validator-Nonce, and X-Validator-Action headers proving control of a registered hotkey -- X-Validator-Action must be the exact literal string \"epoch_summary\" for this route, since it's part of the signed message. Confirmed live 2026-07-22: supplying all five moves the error from \"missing validator signature headers\" to a signature-byte-length check. No bearer token or API key is accepted, despite this API's own OpenAPI spec declaring an unused x-api-key scheme.",
+        "location": "header",
+        "names": [
+          "X-Validator-Hotkey",
+          "X-Validator-Signature",
+          "X-Validator-Timestamp",
+          "X-Validator-Nonce",
+          "X-Validator-Action"
+        ]
       },
       "auth_required": true,
       "authority": "community",
