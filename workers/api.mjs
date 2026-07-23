@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/cloudflare";
 import {
   API_QUERY_COLLECTIONS,
   API_ROUTES,
@@ -4766,6 +4767,20 @@ async function handleEventsRequest(request, env) {
 
 // --- AI search / ask (semantic + RAG) --------------------------------------
 
+// metagraphed#7731: this Worker's own equivalent of data-api.mjs's
+// captureDataApiError (#6769) -- a caught error converted to a clean
+// errorResponse() here never reaches Sentry via api.sentry.ts's withSentry()
+// wrap, since that only instruments genuinely UNCAUGHT exceptions. The AI
+// routes below are the only two places in this file that catch a real
+// (non-caller-input) failure and swallow it into a clean 502; every other
+// catch block either handles an expected condition inline or re-throws to
+// the top-level wrap. Sentry.captureException is a safe no-op with no
+// active client (confirmed live, same as captureDataApiError's own note),
+// which is every test importing this raw handler directly.
+function captureAiRouteError(error, route) {
+  Sentry.captureException(error, { tags: { route } });
+}
+
 function aiUnavailableResponse() {
   return errorResponse(
     "ai_unavailable",
@@ -4867,6 +4882,7 @@ async function handleSemanticSearchRequest(request, env, url) {
     logEvent(env, "error", "semantic_search_failed", {
       message: error?.message,
     });
+    captureAiRouteError(error, "semantic_search");
     return errorResponse(
       "ai_error",
       "Semantic search failed. Please retry shortly.",
@@ -4932,6 +4948,7 @@ async function handleAskRequest(request, env) {
       return errorResponse("invalid_request", error.message, 400);
     }
     logEvent(env, "error", "ask_failed", { message: error?.message });
+    captureAiRouteError(error, "ask");
     return errorResponse(
       "ai_error",
       "The answer service failed. Please retry shortly.",
