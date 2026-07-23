@@ -60,7 +60,16 @@ export async function retrieveAnalyticsAsset(
   ctx: PostHogAssetContext,
 ): Promise<Response> {
   const hasEdgeCache = typeof caches !== "undefined";
-  const cached = hasEdgeCache ? await caches.default.match(request) : undefined;
+  // Same best-effort posture as the put() below -- a read failure must fall
+  // through to a normal upstream fetch, never take the whole request down.
+  let cached: Response | undefined;
+  if (hasEdgeCache) {
+    try {
+      cached = await caches.default.match(request);
+    } catch (err) {
+      console.error("[analytics-proxy] edge-cache match failed:", err);
+    }
+  }
   if (cached) return cached;
   const upstream = await fetch(`https://${POSTHOG_ASSET_HOST}${pathWithParams}`);
   // A rejected promise passed to ctx.waitUntil() becomes an unhandled

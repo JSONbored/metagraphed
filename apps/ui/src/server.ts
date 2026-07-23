@@ -572,7 +572,21 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const statsResponse = await handleStatsProxy(request);
     if (statsResponse) return statsResponse;
-    const analyticsResponse = await handleAnalyticsProxy(request, ctx as PostHogAssetContext);
+    // A top-level safety net, not just belt-and-suspenders: this proxy's own
+    // internal error handling (analytics-proxy.ts) has already had one real
+    // production incident where an unguarded background failure escaped as
+    // an unhandled rejection and corrupted the response for every
+    // /ingest/static/* and /ingest/array/* request. A public analytics
+    // proxy must never be able to take down request handling -- catch
+    // ANYTHING it throws and treat it as "not handled" so the request falls
+    // through to the real SSR app below, rather than surfacing a broken
+    // response for a concern this unrelated to the page being requested.
+    let analyticsResponse: Response | null = null;
+    try {
+      analyticsResponse = await handleAnalyticsProxy(request, ctx as PostHogAssetContext);
+    } catch (error) {
+      console.error("[analytics-proxy] request handling failed:", error);
+    }
     if (analyticsResponse) return analyticsResponse;
     const ogResponse = await handleOgImage(request);
     if (ogResponse) return ogResponse;

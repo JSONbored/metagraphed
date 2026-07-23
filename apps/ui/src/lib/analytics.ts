@@ -90,6 +90,30 @@ function loadPostHog(): Promise<PostHog | null> {
         ui_host: POSTHOG_UI_HOST,
         defaults: SDK_DEFAULTS_DATE,
         capture_pageview: false,
+        // posthog-js's own default for capture_pageleave is
+        // 'if_capture_pageview' -- i.e. it piggybacks on capture_pageview's
+        // value and is OFF whenever that's `false` (see @posthog/types' own
+        // doc comment on the option). This app disables capture_pageview
+        // deliberately (manual SPA-aware pageviews below), which would
+        // silently take pageleave down with it unless overridden here --
+        // pageleave has no such caveat itself (driven by the page-unload
+        // event, which fires correctly regardless of client-side routing),
+        // so there's no reason to lose it. PostHog's own Installation
+        // Health check flagged this gap directly ("Without $pageleave
+        // events, bounce rate and session duration might be inaccurate").
+        capture_pageleave: true,
+        // Native Core Web Vitals capture (LCP/INP/CLS/FCP as posthog-js's
+        // own $web_vitals events), independent of and in addition to this
+        // app's existing custom 'web_vitals' event (src/server.ts's
+        // WEB_VITALS_SNIPPET, which also feeds Umami -- kept as-is, this
+        // doesn't replace it). Explicit here rather than relying solely on
+        // the dashboard's own "Web vitals autocapture" project setting: that
+        // setting only reaches the client via the /array/*/config remote-
+        // config fetch, so a client-side default keeps this working even if
+        // that fetch is ever degraded, matching this module's established
+        // "don't depend on state this code can't guarantee" posture (see
+        // the persistence choice below).
+        capture_performance: { web_vitals: true },
         // metagraphed#7760's own explicit requirement: "respect DNT, no
         // cookies beyond what's justified" -- parity with the self-hosted
         // Umami tracker this sits alongside, which never sets cookies either.
