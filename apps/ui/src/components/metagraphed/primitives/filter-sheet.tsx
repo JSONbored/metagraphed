@@ -51,7 +51,7 @@ export function FilterSheet({
         aria-haspopup="dialog"
         className={classNames(
           "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1",
-          "font-mono text-[11px] uppercase tracking-widest transition-colors",
+          "mg-type-label uppercase transition-colors",
           activeCount > 0
             ? "border-accent/40 bg-accent/10 text-accent"
             : "border-border bg-card text-ink-strong hover:border-accent/40",
@@ -87,7 +87,7 @@ export function FilterSheet({
             )}
           >
             <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
-              <span className="font-mono text-[11px] uppercase tracking-widest text-ink-strong">
+              <span className="mg-type-label uppercase text-ink-strong">
                 {label}
                 {activeCount > 0 ? (
                   <span className="ml-2 text-ink-muted">· {activeCount} active</span>

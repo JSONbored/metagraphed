@@ -43,7 +43,7 @@ export function Indicator({
     >
       <span
         className={classNames(
-          "inline-flex items-center gap-1 font-mono text-[9.5px] uppercase tracking-widest text-ink-muted",
+          "inline-flex items-center gap-1 mg-type-micro text-ink-muted",
           isRow ? "self-center" : null,
         )}
       >

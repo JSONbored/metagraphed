@@ -49,9 +49,7 @@ export function FilterChipRow({ items, onRemove, onClearAll, className }: Filter
           )}
         >
           {item.icon ? <span className="text-ink-muted">{item.icon}</span> : null}
-          <span className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
-            {item.label}
-          </span>
+          <span className="mg-type-micro text-ink-muted">{item.label}</span>
           <span className="font-medium text-ink-strong">{item.value}</span>
           <X
             aria-hidden
@@ -63,7 +61,7 @@ export function FilterChipRow({ items, onRemove, onClearAll, className }: Filter
         <button
           type="button"
           onClick={onClearAll}
-          className="mg-focus-ring ml-1 rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+          className="mg-focus-ring ml-1 rounded px-1.5 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong"
         >
           Clear all
         </button>

@@ -34,7 +34,7 @@ export function ColumnCustomizer({
         aria-haspopup="menu"
         aria-expanded={open}
         title="Customize visible columns"
-        className="mg-focus-ring inline-flex items-center gap-1.5 h-9 rounded border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-ink/25 transition-colors"
+        className="mg-focus-ring inline-flex items-center gap-1.5 h-9 rounded border border-border bg-card px-2.5 mg-type-micro text-ink-muted hover:text-ink-strong hover:border-ink/25 transition-colors"
       >
         <Columns3 className="size-3" aria-hidden />
         <span className="hidden sm:inline">Columns</span>
@@ -55,9 +55,7 @@ export function ColumnCustomizer({
             className="absolute right-0 z-40 mt-1.5 w-64 rounded border border-border bg-card p-1 mg-card-glow"
           >
             <div className="flex items-center justify-between px-2 py-1.5">
-              <span className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
-                Columns
-              </span>
+              <span className="mg-type-micro text-ink-muted">Columns</span>
               <button
                 type="button"
                 onClick={onReset}
@@ -87,9 +85,7 @@ export function ColumnCustomizer({
                     />
                     <span className="flex-1 truncate">{c.label}</span>
                     {c.required ? (
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-ink-subtle-text">
-                        Locked
-                      </span>
+                      <span className="mg-type-micro text-ink-subtle-text">Locked</span>
                     ) : null}
                   </label>
                 );

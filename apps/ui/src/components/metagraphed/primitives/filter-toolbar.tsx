@@ -33,7 +33,7 @@ export function FilterField({
         className,
       )}
     >
-      <span className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted inline-flex items-center gap-1.5">
+      <span className="mg-type-micro text-ink-muted inline-flex items-center gap-1.5">
         {label}
         {hint ? <span className="opacity-70">{hint}</span> : null}
       </span>

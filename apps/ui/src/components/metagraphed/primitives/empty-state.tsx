@@ -81,7 +81,7 @@ export function EmptyState({
               href={evidenceHref}
               target="_blank"
               rel="noreferrer"
-              className="mg-focus-ring inline-flex items-center gap-1 text-[11px] font-mono uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+              className="mg-focus-ring inline-flex items-center gap-1 mg-type-label uppercase text-ink-muted hover:text-ink-strong"
             >
               {evidenceLabel}
               <ExternalLink className="size-3" aria-hidden />

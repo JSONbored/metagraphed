@@ -295,9 +295,7 @@ function QueryBarFilterTrigger(props: QueryBarFilterTriggerProps) {
           )}
         >
           {icon ? <span className="shrink-0 text-ink-muted">{icon}</span> : null}
-          <span className="font-mono text-[10px] uppercase tracking-widest opacity-80">
-            {label}
-          </span>
+          <span className="mg-type-micro opacity-80">{label}</span>
           <span
             className={classNames(
               "truncate max-w-[120px] font-medium",
@@ -350,16 +348,14 @@ function QueryBarFilterTrigger(props: QueryBarFilterTriggerProps) {
           </CommandList>
           {active ? (
             <div className="flex items-center justify-between border-t border-border px-2 py-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                {selected.length} selected
-              </span>
+              <span className="mg-type-micro text-ink-muted">{selected.length} selected</span>
               <button
                 type="button"
                 onClick={() => {
                   clear();
                   if (!props.multi) setOpen(false);
                 }}
-                className="mg-focus-ring rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+                className="mg-focus-ring rounded px-2 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong"
               >
                 Clear
               </button>
@@ -404,7 +400,7 @@ function QueryBarMetaRow({
     <div
       className={classNames(
         "flex w-full items-center gap-2 pt-1.5",
-        "font-mono text-[10.5px] uppercase tracking-widest text-ink-muted",
+        "mg-type-micro text-ink-muted",
         className,
       )}
     >

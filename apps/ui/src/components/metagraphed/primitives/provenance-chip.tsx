@@ -46,7 +46,7 @@ export function ProvenanceChip({ level, className }: { level?: string; className
       title={item.description}
       aria-label={`${item.label}: ${item.description}`}
       className={classNames(
-        "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider",
+        "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 mg-type-micro",
         item.className,
         className,
       )}

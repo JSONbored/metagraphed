@@ -68,7 +68,7 @@ export function PanelError({
                 window.setTimeout(() => setCopied(false), 1400);
               });
             }}
-            className="mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+            className="mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong"
             aria-label={`Copy error id ${errorId}`}
           >
             {copied ? (

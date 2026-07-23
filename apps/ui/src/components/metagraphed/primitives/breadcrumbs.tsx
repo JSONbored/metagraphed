@@ -30,7 +30,7 @@ export function Breadcrumbs({ pathname, crumbs, className }: BreadcrumbsProps) {
     <nav
       aria-label="Breadcrumb"
       className={classNames(
-        "flex flex-wrap items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted",
+        "flex flex-wrap items-center gap-1 mg-type-micro text-ink-muted",
         className,
       )}
     >
