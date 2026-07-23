@@ -336,6 +336,24 @@
     // this remains a single-flag revert (D1's copy is frozen from this point
     // on, not actively wrong).
     "METAGRAPH_HEALTH_SOURCE": "postgres",
+    // subnet-ownership ties (#6740/#6737): GET /api/v1/accounts/{coldkey}/entities
+    // reads chain_events' SubnetOwnerChanged stream via workers/data-api.mjs
+    // (which has carried a complete Postgres implementation since Phase 3's
+    // #7592 landed #6740) -- but this flag itself was never added, so
+    // tryPostgresTier's `env[flagName] !== "postgres"` check has always been
+    // true and the route has been silently stuck on the empty
+    // buildAccountEntities(coldkey, { entities: [] }) fallback (ownership_ties
+    // always []) since the route shipped. Found via the Phase 3
+    // workers/request-handlers/entities.mjs->.ts conversion (metagraphed#7510),
+    // which forces every tryPostgresTier flag name to be a real Env key.
+    // Unlike this file's other _SOURCE flags, this one has NOT had a live
+    // parity pass against sampled production rows -- data-api.mjs's query
+    // reads real columns (block_number, pallet, method, args, observed_at)
+    // that the general chain_events poller already populates, so it should
+    // behave the same as the already-live /subnets/{netuid}/ownership-history
+    // route reading the same table, but that equivalence hasn't been
+    // independently verified the way the other flags' comments document.
+    "METAGRAPH_SUBNET_OWNERSHIP_SOURCE": "postgres",
     // GitHub OAuth App for MCP/API auth (metagraphed#7151) -- identity check
     // only (no repo-scoped permissions requested), plugged into our own
     // OAuth 2.1 authorization server (@cloudflare/workers-oauth-provider) as
