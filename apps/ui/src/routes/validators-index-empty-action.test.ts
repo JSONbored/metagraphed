@@ -19,7 +19,7 @@ const feed = readFileSync(
   "utf8",
 );
 
-describe("empty-state 'Open the API' actions (#6340)", () => {
+describe("empty-state 'Open the API' actions", () => {
   it("Validators index links its empty state to /api/v1/validators", () => {
     const empty = validators.slice(
       validators.indexOf("No validators indexed yet"),

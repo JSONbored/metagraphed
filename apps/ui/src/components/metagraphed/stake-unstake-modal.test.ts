@@ -14,7 +14,7 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("StakeUnstakeModal returns focus to its trigger (#6415)", () => {
+describe("StakeUnstakeModal returns focus to its trigger", () => {
   it("wraps the render-prop trigger in a SheetTrigger", () => {
     expect(source).toContain("<SheetTrigger asChild>{trigger(() => setOpen(true))}</SheetTrigger>");
   });

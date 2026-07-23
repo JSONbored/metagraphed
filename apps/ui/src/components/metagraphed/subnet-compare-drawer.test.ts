@@ -15,7 +15,7 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("SubnetCompareDrawer returns focus to its trigger (#6420)", () => {
+describe("SubnetCompareDrawer returns focus to its trigger", () => {
   it("wraps the Compare button in a SheetTrigger", () => {
     // The trigger must be a SheetTrigger with the button as its asChild child —
     // that is the only thing that makes Radix restore focus on close.

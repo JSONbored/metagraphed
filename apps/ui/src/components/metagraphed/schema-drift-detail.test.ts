@@ -35,7 +35,7 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("SchemaDriftDetail returns focus to its opener on close (#6555)", () => {
+describe("SchemaDriftDetail returns focus to its opener on close", () => {
   it("records document.activeElement when the dialog opens", () => {
     expect(source).toContain("restoreFocusRef");
     expect(source).toContain("document.activeElement");

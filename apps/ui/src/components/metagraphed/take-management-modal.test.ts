@@ -17,7 +17,7 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("TakeManagementModal returns focus to its trigger (#6419)", () => {
+describe("TakeManagementModal returns focus to its trigger", () => {
   it("wraps the render-prop trigger in a SheetTrigger", () => {
     expect(source).toContain("<SheetTrigger asChild>{trigger(() => setOpen(true))}</SheetTrigger>");
   });

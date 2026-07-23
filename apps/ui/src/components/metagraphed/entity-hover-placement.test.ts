@@ -5,7 +5,7 @@ import {
   resolveEntityHoverPlacement,
 } from "./entity-hover-placement";
 
-describe("entity hover placement tokens (#5337)", () => {
+describe("entity hover placement tokens", () => {
   it("defaults entity cells to top-start with a 250ms open delay", () => {
     expect(ENTITY_HOVER_DEFAULTS).toEqual({
       side: "top",

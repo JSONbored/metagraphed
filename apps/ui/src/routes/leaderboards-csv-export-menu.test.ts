@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 // validators-index-empty-action.test.ts's own convention.
 const source = readFileSync(fileURLToPath(new URL("./leaderboards.tsx", import.meta.url)), "utf8");
 
-describe("leaderboards ActionBar CSV export (#6577)", () => {
+describe("leaderboards ActionBar CSV export", () => {
   it("renders exactly one CsvExportMenu trigger in the ActionBar, not a DownloadCsvButton per board", () => {
     const actionBar = source.slice(source.indexOf("<ActionBar>"), source.indexOf("</ActionBar>"));
     expect(actionBar).toContain("<CsvExportMenu");

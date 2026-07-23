@@ -5,7 +5,7 @@ import { buildUnifiedPositions } from "./your-positions-panel";
 // portfolio + coldkey-delegated nominator positions) into one list, deriving
 // each alpha holding from the per-subnet price so a slippage-aware exit quote
 // can be requested. buildUnifiedPositions is the pure core of that.
-describe("buildUnifiedPositions (#5243)", () => {
+describe("buildUnifiedPositions", () => {
   const prices = new Map<number, number>([
     [1, 0.5],
     [2, 2],

@@ -15,7 +15,7 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("NetworkSwitcher custom API-origin input has an accessible name (#6422)", () => {
+describe("NetworkSwitcher custom API-origin input has an accessible name", () => {
   it("gives the origin input an aria-label", () => {
     // The input is the one carrying the localhost placeholder; its opening tag
     // must now also carry a non-empty aria-label.
@@ -35,7 +35,7 @@ describe("NetworkSwitcher custom API-origin input has an accessible name (#6422)
 // by collapsing to icon+dot only below `sm`, so the network stays reachable
 // on mobile (tap still opens the same popover) instead of overflowing or
 // being silently removed.
-describe("NetworkSwitcher trigger collapses to icon-only on mobile (#6902)", () => {
+describe("NetworkSwitcher trigger collapses to icon-only on mobile", () => {
   const triggerButton = (() => {
     const start = source.indexOf("<PopoverTrigger asChild>");
     const open = source.indexOf("<button", start);

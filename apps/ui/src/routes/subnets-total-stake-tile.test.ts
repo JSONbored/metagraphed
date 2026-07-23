@@ -23,7 +23,7 @@ const strip = source.slice(
   source.indexOf("function ExcludeToggle"),
 );
 
-describe("subnets.index.tsx Total stake tile (#6271)", () => {
+describe("subnets.index.tsx Total stake tile", () => {
   it("uses flex-wrap for the stat strip, not a fixed-column grid", () => {
     expect(strip).toContain("flex flex-wrap");
     expect(strip).not.toMatch(/grid grid-cols-\d/);

@@ -41,7 +41,7 @@ function elementCarrying(source: string, label: string) {
   return source.slice(open, close);
 }
 
-describe("colour-only status indicators expose their label (#6423)", () => {
+describe("colour-only status indicators expose their label", () => {
   for (const [name, file, label] of SITES) {
     it(`${name} carries role="img" beside its aria-label`, () => {
       const el = elementCarrying(read(file), label);

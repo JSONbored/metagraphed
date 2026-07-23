@@ -7,7 +7,7 @@ import {
   explorerLeaderboardScrollClass,
 } from "./explorer-leaderboard-layout";
 
-describe("explorer leaderboard layout tokens (#3932)", () => {
+describe("explorer leaderboard layout tokens", () => {
   it("enables horizontal scroll via a dedicated inner wrapper", () => {
     expect(EXPLORER_LEADERBOARD_SCROLL_CLASS).toBe("overflow-x-auto");
   });

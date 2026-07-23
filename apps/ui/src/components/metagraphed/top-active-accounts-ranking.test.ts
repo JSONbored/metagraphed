@@ -6,7 +6,7 @@ import {
   formatTopActiveShare,
 } from "./top-active-accounts-ranking";
 
-describe("top-active-accounts ranking (#5315)", () => {
+describe("top-active-accounts ranking", () => {
   const sample = [
     { signer: "5AAA", tx_count: 100 },
     { signer: "5BBB", tx_count: 50 },

@@ -7,7 +7,7 @@ import type { MegaMenuLivePreviewItem } from "./mega-menu-live-preview-link";
  * to `.test.ts` (no RTL), so we pin the placement wiring the component relies
  * on rather than mounting React.
  */
-describe("MegaMenuLivePreviewLink contract (#5337)", () => {
+describe("MegaMenuLivePreviewLink contract", () => {
   it("accepts subnet and provider live items with a numeric/string preview id", () => {
     const subnet: MegaMenuLivePreviewItem = {
       kind: "subnet",

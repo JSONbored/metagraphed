@@ -22,7 +22,7 @@ const providerRouteSource = readFileSync(
   "utf8",
 );
 
-describe("subnet-masthead ShareButton (#5481)", () => {
+describe("subnet-masthead ShareButton", () => {
   it("imports ShareButton from @jsonbored/ui-kit", () => {
     const importBlock = mastheadSource.slice(
       0,
@@ -77,7 +77,7 @@ describe("subnet-masthead ShareButton (#5481)", () => {
   });
 });
 
-describe("subnets.$netuid.tsx ApiSourceFooter (#5481)", () => {
+describe("subnets.$netuid.tsx ApiSourceFooter", () => {
   it("imports ApiSourceFooter", () => {
     expect(subnetRouteSource).toContain(
       'import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";',
@@ -93,7 +93,7 @@ describe("subnets.$netuid.tsx ApiSourceFooter (#5481)", () => {
   });
 });
 
-describe("providers.$slug.tsx ShareButton + ApiSourceFooter (#5481)", () => {
+describe("providers.$slug.tsx ShareButton + ApiSourceFooter", () => {
   it("imports both ShareButton and ApiSourceFooter", () => {
     expect(providerRouteSource).toContain(
       'import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";',

@@ -23,19 +23,19 @@ const METRICS: Array<{ term: string; def: string }> = [
   },
   {
     term: "Operator",
-    def: "The coldkey's self-declared on-chain identity (name, logo, links) joined server-side (#5234). It belongs to the operator's coldkey, not the hotkey — the same operator can run multiple validators.",
+    def: "The coldkey's self-declared on-chain identity (name, logo, links) joined server-side. It belongs to the operator's coldkey, not the hotkey — the same operator can run multiple validators.",
   },
   {
     term: "Take",
-    def: "The validator's commission (#2548): the fraction of delegator rewards the validator keeps (0–100%). Lower take means nominators keep more of the emission flow.",
+    def: "The validator's commission: the fraction of delegator rewards the validator keeps (0–100%). Lower take means nominators keep more of the emission flow.",
   },
   {
     term: "Est. APY",
-    def: "Annualized delegator yield estimated from emission÷stake, net of take — the latest captured rate scaled to a year, not a forecast of future returns. On the directory this uses the latest metagraph snapshot; on a validator detail page, 7d/30d/90d windows use daily neuron_daily history. Root stake (netuid 0) is TAO-denominated with no principal risk; alpha stake is price-exposed, so a positive nominal APY here can still net-lose TAO if the alpha token's price falls faster than the yield accrues. Server-side modelling (#2551) will supersede these client estimates.",
+    def: "Annualized delegator yield estimated from emission÷stake, net of take — the latest captured rate scaled to a year, not a forecast of future returns. On the directory this uses the latest metagraph snapshot; on a validator detail page, 7d/30d/90d windows use daily neuron_daily history. Root stake (netuid 0) is TAO-denominated with no principal risk; alpha stake is price-exposed, so a positive nominal APY here can still net-lose TAO if the alpha token's price falls faster than the yield accrues. Server-side modelling will supersede these client estimates.",
   },
   {
     term: "Nominators",
-    def: "How many distinct coldkeys currently have stake delegated to this hotkey, network-wide (#2549). Sourced from a lower-frequency chain scan than the other columns, so it can lag them briefly — a dash means no count has been captured for this hotkey yet, not zero nominators.",
+    def: "How many distinct coldkeys currently have stake delegated to this hotkey, network-wide. Sourced from a lower-frequency chain scan than the other columns, so it can lag them briefly — a dash means no count has been captured for this hotkey yet, not zero nominators.",
   },
   {
     term: "Dominance",

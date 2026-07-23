@@ -35,7 +35,7 @@ function findElement(
 
 const linkIn = (node: ReactNode) => findElement(node, (p) => p.to === "/accounts/$ss58");
 
-describe("AccountAddress links ss58 values to their account page (#6424)", () => {
+describe("AccountAddress links ss58 values to their account page", () => {
   it("renders a /accounts/$ss58 link for a valid ss58", () => {
     const tree = AccountAddress({ ss58: SS58, fallback: "—" });
     const link = linkIn(tree);
@@ -66,7 +66,7 @@ describe("AccountAddress links ss58 values to their account page (#6424)", () =>
     }
   });
 
-  it("valueClassName merges onto the link's own hover:underline class (#6427)", () => {
+  it("valueClassName merges onto the link's own hover:underline class", () => {
     const link = linkIn(
       AccountAddress({
         ss58: SS58,

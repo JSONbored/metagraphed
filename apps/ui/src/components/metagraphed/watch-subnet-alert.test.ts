@@ -13,7 +13,7 @@ const subnetForm = readFileSync(
   "utf8",
 );
 
-describe("WatchSubnetAlert posts a netuid-scoped trigger (#6558)", () => {
+describe("WatchSubnetAlert posts a netuid-scoped trigger", () => {
   it("sends netuid, not account, to the alert-triggers endpoint", () => {
     const body = subnetForm.slice(
       subnetForm.indexOf("body: JSON.stringify"),

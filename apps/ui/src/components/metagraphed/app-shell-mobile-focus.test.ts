@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 // the suite is node-environment.
 const source = readFileSync(fileURLToPath(new URL("./app-shell.tsx", import.meta.url)), "utf8");
 
-describe("mobile nav Sheet returns focus to the hamburger (#6416)", () => {
+describe("mobile nav Sheet returns focus to the hamburger", () => {
   it("keeps a ref on the hamburger button", () => {
     expect(source).toContain("const hamburgerRef = useRef<HTMLButtonElement | null>(null)");
     // The ref is attached to the aria-label="Open menu" button.
