@@ -16589,6 +16589,63 @@ function bodyTooLargeResponse() {
   );
 }
 
+// Streams the request body with an early-abort byte counter instead of
+// buffering it whole via request.text() first -- a missing, chunked, or
+// simply untruthful Content-Length header bypasses a pre-read
+// `contentLength > MAX_MCP_BODY_BYTES` check entirely (this endpoint is
+// public and unauthenticated, rate-limited by IP only -- rate limiting
+// throttles request COUNT, not a single request's body size), so the
+// declared length can only ever be a fast-path optimization, never the
+// actual enforcement. Mirrors src/graphql.mjs's readLimitedJson (same
+// vulnerability class, already fixed there) -- kept as its own copy rather
+// than a shared helper since the two files' error-response shapes
+// (JSON-RPC vs GraphQL) differ enough that a shared abstraction would need
+// to take a response-builder callback for no real reuse benefit.
+async function readLimitedMcpBody(request) {
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_MCP_BODY_BYTES) {
+    return { error: bodyTooLargeResponse() };
+  }
+
+  const chunks = [];
+  let total = 0;
+  if (request.body) {
+    const reader = request.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > MAX_MCP_BODY_BYTES) {
+          await reader.cancel();
+          return { error: bodyTooLargeResponse() };
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return { value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return {
+      error: jsonResponse(
+        rpcError(null, RPC_PARSE_ERROR, "Request body is not valid JSON."),
+        400,
+      ),
+    };
+  }
+}
+
 // MCP-Protocol-Version header (2025-06-18+): every request after the first
 // carries this; the first (`initialize`) negotiates the version in its BODY
 // instead, since the client has nothing to declare in a header yet. Per spec,
@@ -16763,24 +16820,8 @@ export async function handleMcpRequest(request, env = {}, deps = {}) {
     );
   }
 
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_MCP_BODY_BYTES) {
-    return bodyTooLargeResponse();
-  }
-
-  let body;
-  try {
-    const bodyText = await request.text();
-    if (new TextEncoder().encode(bodyText).length > MAX_MCP_BODY_BYTES) {
-      return bodyTooLargeResponse();
-    }
-    body = JSON.parse(bodyText);
-  } catch {
-    return jsonResponse(
-      rpcError(null, RPC_PARSE_ERROR, "Request body is not valid JSON."),
-      400,
-    );
-  }
+  const { value: body, error: bodyError } = await readLimitedMcpBody(request);
+  if (bodyError) return bodyError;
 
   const versionError = validateMcpProtocolVersionHeader(request);
   if (versionError) return versionError;

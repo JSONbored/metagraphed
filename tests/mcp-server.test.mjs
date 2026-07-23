@@ -1063,6 +1063,94 @@ describe("MCP transport handling", () => {
     assert.equal(body.error.code, -32600);
   });
 
+  test("a truthful, oversized Content-Length is rejected by the fast-path pre-check", async () => {
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": String(MAX_MCP_BODY_BYTES + 1),
+      },
+      body: "{}",
+    });
+    const response = await handleMcpRequest(request, {}, makeDeps());
+    assert.equal(response.status, 413);
+    const responseBody = await response.json();
+    assert.equal(responseBody.error.code, -32600);
+  });
+
+  test("a POST with no body at all is rejected as invalid JSON, not treated as a valid empty request", async () => {
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    });
+    assert.equal(request.body, null);
+    const response = await handleMcpRequest(request, {}, makeDeps());
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.error.code, -32700);
+  });
+
+  test("a malformed Content-Length does not bypass the size guard", async () => {
+    // Number("not-a-real-length") is NaN, so the fast-path pre-check in
+    // readLimitedMcpBody can't reject this early; enforcement has to come
+    // from the reader loop's own running byte count instead.
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": "not-a-real-length",
+      },
+      body: `"${"x".repeat(MAX_MCP_BODY_BYTES)}"`,
+    });
+    const response = await handleMcpRequest(request, {}, makeDeps());
+    assert.equal(response.status, 413);
+    const body = await response.json();
+    assert.equal(body.error.code, -32600);
+  });
+
+  test("an oversized body is aborted mid-stream, never buffered to completion (regression: a missing/lying Content-Length must not force the whole body into memory first)", async () => {
+    // Without a real upper bound, this stream would never end -- exactly the
+    // shape of the actual DoS: an attacker doesn't send a big-but-finite
+    // body, they send one with no natural end and let a buffer-then-check
+    // implementation (the old `await request.text()`) keep draining it
+    // forever. This body has NO content-length header at all (undici/fetch
+    // never auto-sets one for a stream body), so the fast-path pre-check in
+    // readLimitedMcpBody is a no-op here too -- the only thing that can stop
+    // this is the reader loop cancelling once its running total crosses
+    // MAX_MCP_BODY_BYTES.
+    const CHUNK_BYTES = 8 * 1024;
+    let bytesProduced = 0;
+    let cancelled = false;
+    const stream = new ReadableStream({
+      pull(controller) {
+        if (cancelled) return;
+        bytesProduced += CHUNK_BYTES;
+        controller.enqueue(new Uint8Array(CHUNK_BYTES).fill(0x78));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const request = new Request(MCP_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: stream,
+      duplex: "half",
+    });
+
+    const response = await handleMcpRequest(request, {}, makeDeps());
+
+    assert.equal(response.status, 413);
+    assert.equal(cancelled, true);
+    // A few chunks of overshoot past the limit is expected (the loop only
+    // notices *after* a chunk lands); draining indefinitely would mean the
+    // fix regressed back to buffer-then-check.
+    assert.ok(
+      bytesProduced < MAX_MCP_BODY_BYTES + CHUNK_BYTES * 4,
+      `expected the stream to be cancelled shortly after crossing the limit, but ${bytesProduced} bytes were produced before cancellation`,
+    );
+  });
+
   test("the MCP rate limiter also covers GET and DELETE before session routing", async () => {
     for (const method of ["GET", "DELETE"]) {
       const hub = fakeMcpSessionHubBinding();
