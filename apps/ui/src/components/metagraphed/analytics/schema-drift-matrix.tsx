@@ -13,6 +13,7 @@ import { schemasQuery, evidenceQuery } from "@/lib/metagraphed/queries";
 import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { classNames } from "@/lib/metagraphed/format";
 import { TimeAgo, InfoTooltip, safeExternalUrl } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { SchemaInfo, EvidenceItem } from "@/lib/metagraphed/types";
 
 type DriftKind = "breaking" | "additive" | "new" | "unchanged" | "unknown";
@@ -143,7 +144,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
   };
 
   return (
-    <section className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper/30">
         <div className="min-w-0">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
@@ -241,7 +242,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
           <Pin className="size-3" aria-hidden /> click a tile to inspect snapshot &amp; diff
         </div>
       </footer>
-    </section>
+    </Panel>
   );
 }
 

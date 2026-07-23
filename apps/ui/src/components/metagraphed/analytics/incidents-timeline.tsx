@@ -6,6 +6,7 @@ import { endpointIncidentsQuery, endpointsQuery, rpcPoolsQuery } from "@/lib/met
 import { classNames, durationLabel } from "@/lib/metagraphed/format";
 import { TimeAgo, InfoTooltip } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { useTimeRange, RANGE_HOURS, RANGE_LABEL } from "./time-range-context";
 import type { Endpoint, EndpointIncident, HealthState, RpcPool } from "@/lib/metagraphed/types";
 
@@ -144,9 +145,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
   }, [pools]);
 
   return (
-    <div
-      className={classNames("rounded-xl border border-border bg-card overflow-hidden", className)}
-    >
+    <Panel as="div" flush className={classNames("overflow-hidden", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
@@ -250,7 +249,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
           })}
         </ul>
       )}
-    </div>
+    </Panel>
   );
 }
 

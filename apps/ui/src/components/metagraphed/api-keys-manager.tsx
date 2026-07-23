@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, ApiError } from "@/lib/metagraphed/client";
 import { SectionHeading, CopyableCode } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
 import { useApiSession } from "@/hooks/use-api-session";
 
@@ -58,7 +59,7 @@ export function ApiKeysManager() {
         title="API keys"
         intro="Real fullnode RPC access -- not just the keyless read-only proxy. Requires a wallet-signed login; no invite code."
       />
-      <div className="rounded border border-border bg-card p-4">
+      <Panel as="div" dense>
         {walletStatus !== "connected" || !wallet ? (
           <EmptyState
             title="Connect your wallet"
@@ -77,7 +78,7 @@ export function ApiKeysManager() {
             onSignIn={apiSession.signIn}
           />
         )}
-      </div>
+      </Panel>
     </section>
   );
 }

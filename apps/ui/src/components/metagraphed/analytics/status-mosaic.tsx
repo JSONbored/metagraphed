@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { endpointsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { InfoTooltip } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { useTimeRange, RANGE_HOURS, RANGE_LABEL } from "./time-range-context";
 import type { Endpoint, HealthState } from "@/lib/metagraphed/types";
 
@@ -46,86 +47,88 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
     filter === "all" ? endpoints : endpoints.filter((e) => (e.health ?? "unknown") === filter);
 
   return (
-    <div className={classNames("rounded-lg border border-border bg-card p-5", className)}>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Status mosaic · {RANGE_LABEL[range]}
+    <Panel as="div" flush className={className}>
+      <div className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              Status mosaic · {RANGE_LABEL[range]}
+            </div>
+            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+              {rows.length} endpoint{rows.length === 1 ? "" : "s"}
+            </h3>
           </div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
-            {rows.length} endpoint{rows.length === 1 ? "" : "s"}
-          </h3>
+          <div className="flex flex-wrap items-center gap-1">
+            {(["all", "ok", "warn", "down", "unknown"] as const).map((k) => {
+              const active = filter === k;
+              const n = k === "all" ? endpoints.length : (counts[k] ?? 0);
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setFilter(k)}
+                  className={classNames(
+                    "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors",
+                    active
+                      ? "border-accent/60 bg-accent/10 text-accent"
+                      : "border-border text-ink-muted hover:text-ink-strong hover:border-ink-muted/50",
+                  )}
+                  aria-pressed={active}
+                >
+                  {k !== "all" ? (
+                    <span
+                      className={classNames("inline-block size-1.5 rounded-sm", TONE[k])}
+                      aria-hidden
+                    />
+                  ) : null}
+                  {k} <span className="text-ink-muted/80 tabular-nums">{n}</span>
+                </button>
+              );
+            })}
+            <InfoTooltip label="One tile per monitored endpoint, colored by latest probe state. Click a tile to open the host subnet." />
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {(["all", "ok", "warn", "down", "unknown"] as const).map((k) => {
-            const active = filter === k;
-            const n = k === "all" ? endpoints.length : (counts[k] ?? 0);
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setFilter(k)}
+        <div
+          className="grid gap-[3px]"
+          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(14px, 1fr))" }}
+          role="list"
+        >
+          {rows.map((e) => {
+            const state = (e.health ?? "unknown") as HealthState;
+            const tile = (
+              <span
                 className={classNames(
-                  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors",
-                  active
-                    ? "border-accent/60 bg-accent/10 text-accent"
-                    : "border-border text-ink-muted hover:text-ink-strong hover:border-ink-muted/50",
+                  "block aspect-square rounded-[2px] transition-transform hover:scale-110 hover:ring-1 hover:ring-accent/60",
+                  TONE[state] ?? TONE.unknown,
                 )}
-                aria-pressed={active}
-              >
-                {k !== "all" ? (
-                  <span
-                    className={classNames("inline-block size-1.5 rounded-sm", TONE[k])}
-                    aria-hidden
-                  />
-                ) : null}
-                {k} <span className="text-ink-muted/80 tabular-nums">{n}</span>
-              </button>
+                title={`${e.kind ?? "endpoint"} · ${e.provider ?? e.provider_slug ?? "—"} · ${state}${
+                  e.latency_ms != null ? ` · ${e.latency_ms}ms` : ""
+                }${e.netuid != null ? ` · SN${e.netuid}` : ""}`}
+              />
+            );
+            return (
+              <span key={e.id} role="listitem">
+                {e.netuid != null ? (
+                  <Link
+                    to="/subnets/$netuid"
+                    params={{ netuid: e.netuid }}
+                    className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-[2px]"
+                  >
+                    {tile}
+                  </Link>
+                ) : (
+                  tile
+                )}
+              </span>
             );
           })}
-          <InfoTooltip label="One tile per monitored endpoint, colored by latest probe state. Click a tile to open the host subnet." />
+          {rows.length === 0 ? (
+            <div className="col-span-full py-6 text-center font-mono text-[10px] text-ink-muted">
+              No endpoints match this filter.
+            </div>
+          ) : null}
         </div>
       </div>
-      <div
-        className="grid gap-[3px]"
-        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(14px, 1fr))" }}
-        role="list"
-      >
-        {rows.map((e) => {
-          const state = (e.health ?? "unknown") as HealthState;
-          const tile = (
-            <span
-              className={classNames(
-                "block aspect-square rounded-[2px] transition-transform hover:scale-110 hover:ring-1 hover:ring-accent/60",
-                TONE[state] ?? TONE.unknown,
-              )}
-              title={`${e.kind ?? "endpoint"} · ${e.provider ?? e.provider_slug ?? "—"} · ${state}${
-                e.latency_ms != null ? ` · ${e.latency_ms}ms` : ""
-              }${e.netuid != null ? ` · SN${e.netuid}` : ""}`}
-            />
-          );
-          return (
-            <span key={e.id} role="listitem">
-              {e.netuid != null ? (
-                <Link
-                  to="/subnets/$netuid"
-                  params={{ netuid: e.netuid }}
-                  className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-[2px]"
-                >
-                  {tile}
-                </Link>
-              ) : (
-                tile
-              )}
-            </span>
-          );
-        })}
-        {rows.length === 0 ? (
-          <div className="col-span-full py-6 text-center font-mono text-[10px] text-ink-muted">
-            No endpoints match this filter.
-          </div>
-        ) : null}
-      </div>
-    </div>
+    </Panel>
   );
 }

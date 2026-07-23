@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { accountPositionHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { AccountPositionHistoryPoint } from "@/lib/metagraphed/types";
@@ -93,7 +94,7 @@ export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; ne
           description="Daily snapshots will appear here once enough chain history has accumulated for this position."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <Panel as="div" dense bodyClassName="space-y-3">
           {series.stake.length > 0 ? (
             <HistoryRow
               label="Staked"
@@ -118,7 +119,7 @@ export function AccountPositionHistoryChart({ ss58, netuid }: { ss58: string; ne
               format={yieldStr}
             />
           ) : null}
-        </div>
+        </Panel>
       )}
     </div>
   );

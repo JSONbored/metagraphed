@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { coverageQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { InfoTooltip } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { Coverage } from "@/lib/metagraphed/types";
 
 interface Step {
@@ -67,71 +68,73 @@ export function CoverageFunnel({ className }: { className?: string }) {
   const max = Math.max(1, ...steps.map((s) => s.value));
 
   return (
-    <div className={classNames("rounded-lg border border-border bg-card p-5", className)}>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Curation funnel
+    <Panel as="div" flush className={className}>
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              Curation funnel
+            </div>
+            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+              Registry depth
+            </h3>
           </div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
-            Registry depth
-          </h3>
+          <InfoTooltip label="Each step's bar is scaled to the largest step; the % shows conversion from the previous step." />
         </div>
-        <InfoTooltip label="Each step's bar is scaled to the largest step; the % shows conversion from the previous step." />
-      </div>
-      <ol className="space-y-3">
-        {steps.map((s, i) => {
-          const prev = i === 0 ? null : steps[i - 1]!.value;
-          const conv = prev && prev > 0 ? (s.value / prev) * 100 : null;
-          const width = (s.value / max) * 100;
-          return (
-            <li key={s.key} className="space-y-1">
-              <div className="flex items-baseline justify-between text-xs">
-                <div className="flex items-baseline gap-2 min-w-0">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted shrink-0">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="font-display font-medium text-ink-strong truncate">
-                    {s.label}
-                  </span>
-                  <span className="font-mono text-[10px] text-ink-muted truncate">{s.hint}</span>
-                </div>
-                <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
-                  {conv != null ? (
-                    <span
-                      className={classNames(
-                        "font-mono text-[10px]",
-                        conv >= 90
-                          ? "text-health-ok"
-                          : conv >= 50
-                            ? "text-ink-muted"
-                            : "text-health-warn",
-                      )}
-                      title={`${conv.toFixed(1)}% of previous step`}
-                    >
-                      {conv.toFixed(0)}%
+        <ol className="space-y-3">
+          {steps.map((s, i) => {
+            const prev = i === 0 ? null : steps[i - 1]!.value;
+            const conv = prev && prev > 0 ? (s.value / prev) * 100 : null;
+            const width = (s.value / max) * 100;
+            return (
+              <li key={s.key} className="space-y-1">
+                <div className="flex items-baseline justify-between text-xs">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted shrink-0">
+                      {String(i + 1).padStart(2, "0")}
                     </span>
-                  ) : null}
-                  <span className="font-display text-sm font-semibold text-ink-strong">
-                    {formatNumber(s.value)}
-                  </span>
+                    <span className="font-display font-medium text-ink-strong truncate">
+                      {s.label}
+                    </span>
+                    <span className="font-mono text-[10px] text-ink-muted truncate">{s.hint}</span>
+                  </div>
+                  <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
+                    {conv != null ? (
+                      <span
+                        className={classNames(
+                          "font-mono text-[10px]",
+                          conv >= 90
+                            ? "text-health-ok"
+                            : conv >= 50
+                              ? "text-ink-muted"
+                              : "text-health-warn",
+                        )}
+                        title={`${conv.toFixed(1)}% of previous step`}
+                      >
+                        {conv.toFixed(0)}%
+                      </span>
+                    ) : null}
+                    <span className="font-display text-sm font-semibold text-ink-strong">
+                      {formatNumber(s.value)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="h-1.5 rounded-full bg-border/40 overflow-hidden" aria-hidden>
-                <div
-                  className={classNames(
-                    "h-full rounded-full transition-all duration-500",
-                    s.tone === "accent" && "bg-accent",
-                    s.tone === "warn" && "bg-health-warn",
-                    s.tone === "default" && "bg-ink-muted/60",
-                  )}
-                  style={{ width: `${width}%` }}
-                />
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
+                <div className="h-1.5 rounded-full bg-border/40 overflow-hidden" aria-hidden>
+                  <div
+                    className={classNames(
+                      "h-full rounded-full transition-all duration-500",
+                      s.tone === "accent" && "bg-accent",
+                      s.tone === "warn" && "bg-health-warn",
+                      s.tone === "default" && "bg-ink-muted/60",
+                    )}
+                    style={{ width: `${width}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </Panel>
   );
 }

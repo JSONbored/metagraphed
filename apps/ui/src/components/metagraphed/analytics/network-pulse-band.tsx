@@ -9,6 +9,7 @@ import {
 import { classNames } from "@/lib/metagraphed/format";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
 import { InfoTooltip } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import {
   useTimeRange,
   RANGE_HOURS,
@@ -101,94 +102,103 @@ export function NetworkPulseBand({ className }: { className?: string }) {
   const colW = W / renderedCount;
 
   return (
-    <div className={classNames("rounded-lg border border-border bg-card p-5", className)}>
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Network pulse · {RANGE_LABEL[range]}
+    <Panel as="div" flush className={className}>
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              Network pulse · {RANGE_LABEL[range]}
+            </div>
+            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+              ok / warn / down
+            </h3>
           </div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
-            ok / warn / down
-          </h3>
+          <div className="flex items-center gap-2">
+            <Legend swatch="bg-health-ok" label="ok" />
+            <Legend swatch="bg-health-warn" label="warn" />
+            <Legend swatch="bg-health-down" label="down" />
+            <InfoTooltip label="For 7d/30d each bar is the real sample-weighted daily uptime from /api/v1/health/trends (down = 1 − uptime); 1h/24h fall back to the live current ok/warn/down snapshot. Markers indicate incident starts per bucket." />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Legend swatch="bg-health-ok" label="ok" />
-          <Legend swatch="bg-health-warn" label="warn" />
-          <Legend swatch="bg-health-down" label="down" />
-          <InfoTooltip label="For 7d/30d each bar is the real sample-weighted daily uptime from /api/v1/health/trends (down = 1 − uptime); 1h/24h fall back to the live current ok/warn/down snapshot. Markers indicate incident starts per bucket." />
+        <svg
+          width="100%"
+          height={H + 16}
+          viewBox={`0 0 ${W} ${H + 16}`}
+          preserveAspectRatio="none"
+          className="block w-full"
+          role="img"
+          aria-label={`Network status distribution over ${RANGE_LABEL[range]}`}
+        >
+          {buckets.map((b, i) => {
+            const x = i * colW;
+            const okH = b.ok * H;
+            const warnH = b.warn * H;
+            const downH = b.down * H;
+            const day = usingTrend ? trendDays.slice(-renderedCount)[i] : undefined;
+            const title = day
+              ? `${day.date} · ${(day.uptime_ratio * 100).toFixed(1)}% uptime · ${day.subnet_count} subnets`
+              : `${(b.ok * 100).toFixed(1)}% ok · ${(b.down * 100).toFixed(1)}% down (current snapshot)`;
+            return (
+              <g key={i}>
+                <title>{title}</title>
+                <rect
+                  x={x + 0.5}
+                  y={H - okH}
+                  width={colW - 1}
+                  height={okH}
+                  fill="var(--health-ok)"
+                  opacity={0.85}
+                />
+                <rect
+                  x={x + 0.5}
+                  y={H - okH - warnH}
+                  width={colW - 1}
+                  height={warnH}
+                  fill="var(--health-warn)"
+                  opacity={0.85}
+                />
+                <rect
+                  x={x + 0.5}
+                  y={0}
+                  width={colW - 1}
+                  height={downH}
+                  fill="var(--health-down)"
+                  opacity={0.85}
+                />
+              </g>
+            );
+          })}
+          {Array.from(incidentBucket.entries()).map(([bucket, count]) => {
+            const x = bucket * colW + colW / 2;
+            const hoursAgo = Math.round(
+              (renderedCount - 1 - bucket) * (RANGE_HOURS[range] / renderedCount),
+            );
+            return (
+              <g key={bucket}>
+                <line
+                  x1={x}
+                  x2={x}
+                  y1={H}
+                  y2={H + 8}
+                  stroke="var(--health-down)"
+                  strokeWidth={1.5}
+                />
+                <circle cx={x} cy={H + 11} r={3} fill="var(--health-down)" opacity={0.9}>
+                  <title>{`${count} incident${count > 1 ? "s" : ""} ~${hoursAgo}h ago`}</title>
+                </circle>
+              </g>
+            );
+          })}
+        </svg>
+        <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-ink-muted">
+          <span>-{RANGE_LABEL[range]}</span>
+          <span>
+            {usingTrend ? "daily uptime · incident markers" : "current snapshot · incident markers"}
+          </span>
+          <span>now</span>
         </div>
       </div>
-      <svg
-        width="100%"
-        height={H + 16}
-        viewBox={`0 0 ${W} ${H + 16}`}
-        preserveAspectRatio="none"
-        className="block w-full"
-        role="img"
-        aria-label={`Network status distribution over ${RANGE_LABEL[range]}`}
-      >
-        {buckets.map((b, i) => {
-          const x = i * colW;
-          const okH = b.ok * H;
-          const warnH = b.warn * H;
-          const downH = b.down * H;
-          const day = usingTrend ? trendDays.slice(-renderedCount)[i] : undefined;
-          const title = day
-            ? `${day.date} · ${(day.uptime_ratio * 100).toFixed(1)}% uptime · ${day.subnet_count} subnets`
-            : `${(b.ok * 100).toFixed(1)}% ok · ${(b.down * 100).toFixed(1)}% down (current snapshot)`;
-          return (
-            <g key={i}>
-              <title>{title}</title>
-              <rect
-                x={x + 0.5}
-                y={H - okH}
-                width={colW - 1}
-                height={okH}
-                fill="var(--health-ok)"
-                opacity={0.85}
-              />
-              <rect
-                x={x + 0.5}
-                y={H - okH - warnH}
-                width={colW - 1}
-                height={warnH}
-                fill="var(--health-warn)"
-                opacity={0.85}
-              />
-              <rect
-                x={x + 0.5}
-                y={0}
-                width={colW - 1}
-                height={downH}
-                fill="var(--health-down)"
-                opacity={0.85}
-              />
-            </g>
-          );
-        })}
-        {Array.from(incidentBucket.entries()).map(([bucket, count]) => {
-          const x = bucket * colW + colW / 2;
-          const hoursAgo = Math.round(
-            (renderedCount - 1 - bucket) * (RANGE_HOURS[range] / renderedCount),
-          );
-          return (
-            <g key={bucket}>
-              <line x1={x} x2={x} y1={H} y2={H + 8} stroke="var(--health-down)" strokeWidth={1.5} />
-              <circle cx={x} cy={H + 11} r={3} fill="var(--health-down)" opacity={0.9}>
-                <title>{`${count} incident${count > 1 ? "s" : ""} ~${hoursAgo}h ago`}</title>
-              </circle>
-            </g>
-          );
-        })}
-      </svg>
-      <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-ink-muted">
-        <span>-{RANGE_LABEL[range]}</span>
-        <span>
-          {usingTrend ? "daily uptime · incident markers" : "current snapshot · incident markers"}
-        </span>
-        <span>now</span>
-      </div>
-    </div>
+    </Panel>
   );
 }
 
