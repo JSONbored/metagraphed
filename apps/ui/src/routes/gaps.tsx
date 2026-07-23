@@ -263,7 +263,7 @@ function GapsKpiStrip() {
     <Panel
       as="div"
       flush
-      className="grid grid-cols-2 md:grid-cols-5 divide-x divide-border overflow-hidden"
+      bodyClassName="grid grid-cols-2 md:grid-cols-5 divide-x divide-border overflow-hidden"
     >
       <StatWithSpark
         label="Open gaps"

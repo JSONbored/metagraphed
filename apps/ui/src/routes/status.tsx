@@ -309,7 +309,7 @@ function Verdict() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Panel dense className="flex items-center gap-4">
+        <Panel dense bodyClassName="flex items-center gap-4">
           <Donut
             segments={segs}
             size={96}
@@ -325,7 +325,7 @@ function Verdict() {
             <DonutLegend segments={segs} />
           </div>
         </Panel>
-        <Panel dense className="grid grid-cols-2 gap-2 md:col-span-2">
+        <Panel dense className="md:col-span-2" bodyClassName="grid grid-cols-2 gap-2">
           <Kpi label="Healthy" num={ok} accent="text-health-ok" />
           <Kpi label="Degraded" num={warn} accent="text-health-warn" />
           <Kpi label="Down" num={down} accent="text-health-down" />

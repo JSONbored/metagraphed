@@ -979,7 +979,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
                   onClick={() => setDirection(d)}
                   onKeyDown={directionKeyDown(i)}
                   className={classNames(
-                    "min-h-8 rounded px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest transition-colors",
+                    "min-h-8 rounded px-3 py-1.5 mg-type-label uppercase transition-colors",
                     active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
                   )}
                 >
@@ -1190,7 +1190,7 @@ function EventKindFilterChip({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label="Filter by event kind"
-        className="min-w-0 max-w-[85px] truncate bg-transparent font-mono text-[11px] uppercase tracking-widest text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        className="min-w-0 max-w-[85px] truncate bg-transparent mg-type-label uppercase text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
       >
         <option value="">All</option>
         {EVENT_KIND_OPTIONS.map((o) => (
@@ -1453,11 +1453,7 @@ function AgentReadinessCard({
             {tier}
           </span>
         ) : null}
-        {status ? (
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            {status}
-          </span>
-        ) : null}
+        {status ? <span className="mg-type-micro text-ink-muted">{status}</span> : null}
       </div>
       {blockers.length > 0 ? (
         <div className="mt-3 border-t border-border pt-3">
@@ -1493,7 +1489,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
         <span className="ml-auto inline-flex items-center gap-2">
           <span
             className={classNames(
-              "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest",
+              "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro",
               service.auth_required
                 ? "border-health-warn/40 text-health-warn"
                 : "border-border text-ink-muted",
@@ -1664,11 +1660,12 @@ function WeightsSummaryLoader({ netuid }: { netuid: number }) {
     <Panel
       as="div"
       flush
-      className="mb-4 grid grid-cols-1 divide-y divide-border overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+      className="mb-4"
+      bodyClassName="grid grid-cols-1 divide-y divide-border overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0"
     >
       {cells.map((c) => (
         <div key={c.label} className="px-4 py-3">
-          <div className="mg-type-micro text-[10px] text-ink-muted">{c.label}</div>
+          <div className="mg-type-micro text-ink-muted">{c.label}</div>
           <div className="mt-0.5 font-mono text-lg tabular-nums text-ink-strong">{c.value}</div>
         </div>
       ))}
@@ -1964,7 +1961,7 @@ function boolBadge(v: boolean) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro",
         v ? "border-accent/40 bg-accent-surface text-accent-text" : "border-border text-ink-muted",
       )}
     >
