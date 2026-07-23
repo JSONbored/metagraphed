@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleOgImage } from "./lib/og-image";
+import { handleAnalyticsProxy, type PostHogAssetContext } from "./lib/analytics-proxy";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -424,15 +425,19 @@ const RESOURCE_HINTS =
   `<link rel="preconnect" href="${API_ORIGIN}" crossorigin>` +
   `<link rel="dns-prefetch" href="${API_ORIGIN}">`;
 
-// Dependency-free Web Vitals beacon → first-party Umami. LCP (last entry), CLS
-// (recent-input-excluded sum), and an INP proxy (worst slow-event duration) are
-// flushed once on page hide. Wrapped in try/catch so it can never break the page,
-// and no-ops if Umami hasn't loaded. Consistent with the first-party analytics
-// ethos (no third-party web-vitals CDN).
+// Dependency-free Web Vitals beacon → first-party Umami + PostHog
+// (metagraphed#7760: ported to PostHog alongside, not instead of, Umami --
+// both sinks stay live until the Umami decommission issue). LCP (last
+// entry), CLS (recent-input-excluded sum), and an INP proxy (worst
+// slow-event duration) are flushed once on page hide. Wrapped in try/catch
+// per sink so one missing/broken global can never break the page or block
+// the other sink, and no-ops if neither has loaded. Consistent with the
+// first-party analytics ethos (no third-party web-vitals CDN).
 const WEB_VITALS_SNIPPET =
   `<script>(function(){` +
-  `function send(n,v){try{if(window.umami&&typeof window.umami.track==='function'){` +
-  `window.umami.track('web-vitals',{metric:n,value:Math.round(v)});}}catch(e){}}` +
+  `function send(n,v){var d={metric:n,value:Math.round(v)};` +
+  `try{if(window.umami&&typeof window.umami.track==='function'){window.umami.track('web-vitals',d);}}catch(e){}` +
+  `try{if(window.posthog&&typeof window.posthog.capture==='function'){window.posthog.capture('web_vitals',d);}}catch(e){}}` +
   `function obs(t,cb){try{new PerformanceObserver(cb).observe({type:t,buffered:true});}catch(e){}}` +
   `var lcp=0,cls=0,inp=0;` +
   `obs('largest-contentful-paint',function(l){var e=l.getEntries();var x=e[e.length-1];if(x)lcp=x.startTime;});` +
@@ -567,6 +572,8 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const statsResponse = await handleStatsProxy(request);
     if (statsResponse) return statsResponse;
+    const analyticsResponse = await handleAnalyticsProxy(request, ctx as PostHogAssetContext);
+    if (analyticsResponse) return analyticsResponse;
     const ogResponse = await handleOgImage(request);
     if (ogResponse) return ogResponse;
     const discoveryResponse = await handleDiscovery(request);

@@ -22,6 +22,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { initAnalytics, capturePageview } from "../lib/analytics";
 import { Toaster } from "@jsonbored/ui-kit";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
@@ -326,6 +327,24 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  // metagraphed#7760: PostHog web analytics. Separate effect from the
+  // hydration-watchdog one below -- unrelated concerns, and this one only
+  // needs `router` (stable for the app's lifetime), not `queryClient`.
+  // capture_pageview is disabled in analytics.ts's own posthog.init() call
+  // (an SPA's `defaults` auto-pageview only covers the very first load), so
+  // every pageview -- including this initial one -- is captured explicitly
+  // here: once on mount, then once per navigation whose URL actually changed
+  // (onResolved also fires for e.g. a route re-resolving after
+  // `router.invalidate()`, which isn't a real new pageview).
+  useEffect(() => {
+    initAnalytics();
+    capturePageview(window.location.href);
+    return router.subscribe("onResolved", (event) => {
+      if (event.hrefChanged) capturePageview(window.location.href);
+    });
+  }, [router]);
 
   useEffect(() => {
     // Handshake with the dependency-free <head> recovery script. This must be
