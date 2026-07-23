@@ -5,11 +5,11 @@ import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { Panel, PageMasthead } from "@/components/metagraphed/primitives";
 import {
   TimeAgo,
   CopyableCode,
   ExternalLink,
-  PageHero,
   PageSection,
   AnimatedNumber,
   MethodologyCallout,
@@ -190,7 +190,7 @@ function SchemasHero() {
   const contractsCount = (cRes.data ?? []).length;
 
   return (
-    <PageHero
+    <PageMasthead
       eyebrow="Operations"
       live
       title="Schemas & contracts"
@@ -262,7 +262,7 @@ function ContractsList() {
       {rows.map((c) => {
         const artifactUrl = sameOriginApiUrl(c.path);
         return (
-          <div key={c.id} className="rounded-xl border border-border bg-card p-4 mg-hover-lift">
+          <Panel key={c.id} dense interactive>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="font-display text-sm font-semibold text-ink-strong">{c.id}</div>
@@ -279,7 +279,7 @@ function ContractsList() {
                 </ExternalLink>
               </div>
             ) : null}
-          </div>
+          </Panel>
         );
       })}
     </div>
@@ -371,7 +371,7 @@ function SchemaExplorer() {
                   type="button"
                   onClick={() => setSearch({ drift: v })}
                   className={classNames(
-                    "flex-1 rounded-full border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-all duration-150",
+                    "mg-type-micro flex-1 rounded-full border px-2 py-1 text-[10px] transition-all duration-150",
                     search.drift === v
                       ? "border-ink/40 bg-ink-strong text-paper"
                       : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-accent/40",
@@ -382,7 +382,7 @@ function SchemaExplorer() {
               ))}
             </div>
             <div className="flex items-center justify-between gap-2">
-              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              <div className="mg-type-micro text-[10px] text-ink-muted">
                 {filtered.length} of {all.length}
               </div>
               {/* One-click way back to the unfiltered view for a shared
@@ -487,7 +487,7 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                   replace: true,
                 })
               }
-              className="lg:hidden inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong mb-2"
+              className="mg-type-micro lg:hidden inline-flex items-center gap-1 text-[10px] text-ink-muted hover:text-ink-strong mb-2"
             >
               <ChevronLeft className="size-3" /> back
             </button>
@@ -496,11 +496,11 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                 {schema.name ?? schema.id}
               </h3>
               {schema.drift ? (
-                <span className="inline-flex items-center rounded-full border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-health-warn">
+                <span className="mg-type-micro inline-flex items-center rounded-full border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 text-[10px] text-health-warn">
                   drift
                 </span>
               ) : (
-                <span className="inline-flex items-center rounded-full border border-health-ok/40 bg-health-ok/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-health-ok">
+                <span className="mg-type-micro inline-flex items-center rounded-full border border-health-ok/40 bg-health-ok/10 px-2 py-0.5 text-[10px] text-health-ok">
                   stable
                 </span>
               )}
