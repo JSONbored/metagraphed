@@ -23,6 +23,7 @@ import {
   AsyncPanel,
   CopyLinkButton,
   MobileCollapse,
+  Panel,
   ResponsiveTable,
 } from "@/components/metagraphed/primitives";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -753,7 +754,7 @@ function SubnetLineageSection({ netuid }: { netuid: number }) {
       subtitle={`Paired across networks — ${selfNetwork} ↔ ${counterpartNetwork}.`}
       info="Cross-network lineage links the testnet and mainnet deployments of the same subnet, matched by chain name or source repo."
     >
-      <section className="rounded-lg border border-border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+      <Panel dense bodyClassName="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="mg-label">{counterpartNetwork} counterpart</span>
           <span className="font-display text-sm font-semibold text-ink-strong">
@@ -766,7 +767,7 @@ function SubnetLineageSection({ netuid }: { netuid: number }) {
             matched by {matchedBy}
           </span>
         ) : null}
-      </section>
+      </Panel>
     </SectionAnchor>
   );
 }
@@ -1431,7 +1432,7 @@ function AgentReadinessCard({
 }) {
   const tone = SERVICE_READINESS_TONE[tier ?? ""] ?? "text-ink-muted border-border";
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <Panel dense>
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <div className="mg-label">Integration readiness</div>
@@ -1471,7 +1472,7 @@ function AgentReadinessCard({
           </ul>
         </div>
       ) : null}
-    </div>
+    </Panel>
   );
 }
 
@@ -1660,14 +1661,18 @@ function WeightsSummaryLoader({ netuid }: { netuid: number }) {
     // AccountWeightSettingSection (accounts.$ss58.tsx) already uses for its
     // sibling weight-setting KPI strip -- divide-y/divide-x swap with it so
     // the stacked cells still get a separator line at mobile.
-    <div className="mb-4 grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+    <Panel
+      as="div"
+      flush
+      className="mb-4 grid grid-cols-1 divide-y divide-border overflow-hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+    >
       {cells.map((c) => (
         <div key={c.label} className="px-4 py-3">
           <div className="mg-type-micro text-[10px] text-ink-muted">{c.label}</div>
           <div className="mt-0.5 font-mono text-lg tabular-nums text-ink-strong">{c.value}</div>
         </div>
       ))}
-    </div>
+    </Panel>
   );
 }
 
@@ -1689,7 +1694,7 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
   const windowLabel = d.window ?? "30d";
   return (
     <div className="mt-6 min-w-0" data-weight-setters-leaderboard>
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <Panel flush className="overflow-hidden">
         <div className="flex flex-nowrap items-center justify-between gap-3 border-b border-border px-4 py-3">
           <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted sm:hidden">
             Weight-setters
@@ -1733,7 +1738,7 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
             </tbody>
           </table>
         </ResponsiveTable>
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -1864,7 +1869,7 @@ function GapsList({ netuid }: { netuid: number }) {
     );
   }
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+    <Panel dense bodyClassName="space-y-3">
       {missing.length > 0 ? (
         <div>
           <div className="mg-label mb-1">Missing kinds</div>
@@ -1890,7 +1895,7 @@ function GapsList({ netuid }: { netuid: number }) {
       <div className="border-t border-border pt-2 text-[11px] text-ink-muted">
         Help close these gaps by opening a PR against the public registry repo.
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -2178,7 +2183,7 @@ function HyperparamGroupsTable({ h }: { h: SubnetHyperparameters }) {
   return (
     <div className="space-y-6">
       {HYPERPARAM_GROUPS.map((group) => (
-        <div key={group.title} className="rounded-xl border border-border bg-card">
+        <Panel as="div" flush key={group.title}>
           <div className="border-b border-border px-4 py-2.5">
             <h3 className="font-display text-sm font-semibold text-ink-strong">{group.title}</h3>
           </div>
@@ -2190,7 +2195,7 @@ function HyperparamGroupsTable({ h }: { h: SubnetHyperparameters }) {
               </div>
             ))}
           </div>
-        </div>
+        </Panel>
       ))}
     </div>
   );
