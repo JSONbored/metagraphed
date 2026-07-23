@@ -51,8 +51,20 @@ const BASE_DESIGN_RULES = [
 // showcase.
 const PRIMITIVE_STEER_RULES = [
   {
+    // Scoped to plain `<div>`/`<section>` className literals only -- an
+    // unscoped `Literal[value=/regex/]` (the original form of this rule)
+    // matched the same rounded/border/bg-card substrings on buttons, `<a>`/
+    // `<Link>` nav pills, `<input>` fields, and existing styled components
+    // (e.g. `<StatTile className="rounded-2xl border-border/80 bg-card/95 ...">`,
+    // which already owns its own card rendering) -- none of those are the
+    // hand-rolled content-shell divs this rule exists to catch. Also excludes
+    // `mg-card-glow`/`mg-card-glow-accent` (packages/ui-kit/src/styles.css)
+    // matches -- that's a real, already-documented soft-elevation variant for
+    // detail-page panels (#6398), not drift; <Panel> has no glow variant to
+    // migrate it to. A 2026-07-23 audit found the unscoped selector's false
+    // positives outnumbered genuine hits roughly 3-to-1.
     selector:
-      "Literal[value=/\\brounded\\b.*\\bborder\\b.*\\bbg-card\\b|\\bborder\\b.*\\bbg-card\\b.*\\brounded\\b/]",
+      "JSXOpeningElement[name.name=/^(?:div|section)$/] JSXAttribute[name.name='className'] Literal[value=/\\brounded\\b.*\\bborder\\b.*\\bbg-card\\b|\\bborder\\b.*\\bbg-card\\b.*\\brounded\\b/][value!=/mg-card-glow/]",
     message:
       "Wrap card shells in <Panel> from '@/components/metagraphed/primitives' instead of re-authoring rounded/border/bg-card by hand.",
   },

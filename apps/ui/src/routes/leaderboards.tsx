@@ -7,7 +7,7 @@ import { ChevronDown, Download, Scale, UserMinus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { RegistryLeaderboards } from "@/components/metagraphed/registry-leaderboards";
 import {
   BrandIcon,
@@ -314,7 +314,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
           lastChecked={board.observed_at ?? undefined}
         />
       ) : (
-        <section className="rounded-lg border border-border bg-card">
+        <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Per-subnet rankings
@@ -338,7 +338,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
               const subnet = subnetById.get(row.netuid);
               const name = subnet?.name ?? `Subnet ${row.netuid}`;
               return (
-                <div key={row.netuid} className="rounded border border-border bg-card p-3">
+                <Panel as="div" dense key={row.netuid}>
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
@@ -367,7 +367,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
                     <span>{formatNumber(row.weight_sets)} weight-sets</span>
                     <span>{formatNumber(row.distinct_setters)} setters</span>
                   </div>
-                </div>
+                </Panel>
               );
             })}
           </div>
@@ -422,7 +422,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
               </tbody>
             </table>
           </div>
-        </section>
+        </Panel>
       )}
     </div>
   );
@@ -492,7 +492,7 @@ function EmissionsLeaderboard() {
           description="The economics snapshot has no per-subnet emission share for this network yet."
         />
       ) : (
-        <section className="rounded-lg border border-border bg-card">
+        <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Per-subnet rankings
@@ -506,7 +506,7 @@ function EmissionsLeaderboard() {
               const subnet = subnetById.get(row.netuid);
               const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
               return (
-                <div key={row.netuid} className="rounded border border-border bg-card p-3">
+                <Panel as="div" dense key={row.netuid}>
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
@@ -529,7 +529,7 @@ function EmissionsLeaderboard() {
                       {pct(row.emission_share)}
                     </span>
                   </div>
-                </div>
+                </Panel>
               );
             })}
           </div>
@@ -576,7 +576,7 @@ function EmissionsLeaderboard() {
               </tbody>
             </table>
           </div>
-        </section>
+        </Panel>
       )}
     </div>
   );
@@ -633,7 +633,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
           lastChecked={board.observed_at ?? undefined}
         />
       ) : (
-        <section className="rounded-lg border border-border bg-card">
+        <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
               Per-subnet rankings
@@ -654,7 +654,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
               const subnet = subnetById.get(row.netuid);
               const name = subnet?.name ?? `Subnet ${row.netuid}`;
               return (
-                <div key={row.netuid} className="rounded border border-border bg-card p-3">
+                <Panel as="div" dense key={row.netuid}>
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       to="/subnets/$netuid"
@@ -683,7 +683,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
                     <span>{formatNumber(row.deregistrations)} deregistrations</span>
                     <span>{formatNumber(row.distinct_deregistered_hotkeys)} hotkeys</span>
                   </div>
-                </div>
+                </Panel>
               );
             })}
           </div>
@@ -740,7 +740,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
               </tbody>
             </table>
           </div>
-        </section>
+        </Panel>
       )}
     </div>
   );
