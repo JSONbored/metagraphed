@@ -12,6 +12,7 @@ import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
 import { TopShareCaption } from "@/components/metagraphed/top-share-caption";
+import { Panel } from "@/components/metagraphed/primitives";
 
 const TOP_N = 10;
 
@@ -73,7 +74,7 @@ export function ValidatorsTableLoader({
     <div className="space-y-4">
       {sponsored ? <SponsoredValidatorCallout netuid={netuid} validator={sponsored} /> : null}
       {stakeBars.length > 0 ? (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <Panel as="div" dense>
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
               Validator stake · top {stakeBars.length}
@@ -99,7 +100,7 @@ export function ValidatorsTableLoader({
               />
             </div>
           ) : null}
-        </div>
+        </Panel>
       ) : (
         <div className="flex items-center justify-end">{freshness}</div>
       )}

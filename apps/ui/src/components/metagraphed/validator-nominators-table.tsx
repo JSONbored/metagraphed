@@ -8,6 +8,7 @@ import {
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
+import { Panel } from "@/components/metagraphed/primitives";
 import { formatNumber } from "@/lib/metagraphed/format";
 import type { validatorNominatorsQuery } from "@/lib/metagraphed/queries";
 import type { ValidatorNominatorEntry } from "@/lib/metagraphed/types";
@@ -156,7 +157,7 @@ export function ValidatorNominatorsTable({ queryOptions, search, setSearch }: Pr
 
 function NominatorCard({ n }: { n: ValidatorNominatorEntry }) {
   return (
-    <div className="block rounded border border-border bg-card p-3 min-h-11">
+    <Panel as="div" dense className="block min-h-11">
       <div className="flex items-center justify-between gap-2">
         <CopyableCode value={n.coldkey} className="max-w-[70%]" />
         <span className="font-mono text-[11px] text-ink-muted shrink-0">
@@ -168,6 +169,6 @@ function NominatorCard({ n }: { n: ValidatorNominatorEntry }) {
         <span>gross {taoCompact(n.gross_staked_tao)}</span>
         <span>{formatNumber(n.event_count)} events</span>
       </div>
-    </div>
+    </Panel>
   );
 }

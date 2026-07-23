@@ -5,6 +5,7 @@ import { classNames } from "@/lib/metagraphed/format";
 import { CopyableCode, SectionHeading } from "@jsonbored/ui-kit";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { SettingsSummaryStrip } from "@/components/metagraphed/settings-summary-strip";
+import { Panel } from "@/components/metagraphed/primitives";
 import { CHANGE_KINDS } from "@/lib/metagraphed/settings-summary";
 import type {
   WebhookDeliveryStatus,
@@ -341,7 +342,7 @@ function LookupSubscriptionSection() {
       ) : null}
 
       {result ? (
-        <div className="mt-3 space-y-3 rounded border border-border bg-card p-4">
+        <Panel as="div" dense className="mt-3" bodyClassName="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <DeliveryStatusPill status={result.delivery.status} />
             <span
@@ -376,7 +377,7 @@ function LookupSubscriptionSection() {
               after {result.delivery.last_failure.attempts ?? "?"} attempt(s).
             </div>
           ) : null}
-        </div>
+        </Panel>
       ) : null}
     </section>
   );

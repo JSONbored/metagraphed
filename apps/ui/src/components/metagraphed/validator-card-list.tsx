@@ -5,6 +5,7 @@ import { taoCompact, SponsoredBadge } from "@/components/metagraphed/neuron-form
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { ValidatorCompareToggle } from "@/components/metagraphed/validators-compare-drawer";
 import { resolveValidatorCard } from "@/lib/metagraphed/validator-card-fields";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 
 export interface ValidatorCardListProps {
@@ -26,10 +27,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
       {validators.map((v) => {
         const f = resolveValidatorCard(v);
         return (
-          <div
-            key={v.hotkey}
-            className="min-w-0 space-y-2 rounded-lg border border-border bg-card p-3"
-          >
+          <Panel as="div" dense key={v.hotkey} className="min-w-0" bodyClassName="space-y-2">
             <div className="flex min-w-0 items-center gap-1.5">
               {v.featured ? <SponsoredBadge /> : null}
               <Link
@@ -63,7 +61,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
               <Stat label="Total emission" value={taoCompact(v.total_emission_tao)} />
               <Stat label="Est. APY" value={f.apyLabel} />
             </dl>
-          </div>
+          </Panel>
         );
       })}
     </div>
