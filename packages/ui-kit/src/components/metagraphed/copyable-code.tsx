@@ -35,9 +35,7 @@ export function CopyableCode({
         )}
       >
         {label ? (
-          <span className="shrink-0 text-ink-muted uppercase tracking-wider text-[10px]">
-            {label}
-          </span>
+          <span className="shrink-0 text-ink-muted mg-type-micro">{label}</span>
         ) : null}
         <code
           className={classNames(

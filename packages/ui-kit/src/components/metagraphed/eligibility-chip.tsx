@@ -82,7 +82,7 @@ export function EligibilityChip({
           side="top"
           className="max-w-[240px] text-[11px] leading-relaxed"
         >
-          <div className="font-mono uppercase tracking-widest text-[9px] opacity-70 mb-1">
+          <div className="mg-type-micro opacity-70 mb-1">
             {ELIGIBILITY_LABEL[eligibility]}
           </div>
           {RULE[eligibility]}

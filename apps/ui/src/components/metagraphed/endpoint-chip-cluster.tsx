@@ -5,7 +5,7 @@ import {
   ELIGIBILITY_LABEL,
   type PoolEligibility,
 } from "@/lib/metagraphed/endpoint-pool";
-import type { ChipTone } from "@/components/metagraphed/primitives/chip";
+import type { ChipTone } from "@jsonbored/ui-kit";
 
 const ELIGIBILITY_CHIP_TONE: Record<PoolEligibility, ChipTone> = {
   "proxy-enabled": "accent",

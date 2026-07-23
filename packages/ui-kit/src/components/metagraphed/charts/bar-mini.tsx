@@ -48,7 +48,7 @@ export function BarMini({
             key={d.label}
             className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-2"
           >
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted truncate">
+            <span className="mg-type-micro text-ink-muted truncate">
               {d.label}
             </span>
             <span className="relative h-1.5 rounded-full bg-surface overflow-hidden">

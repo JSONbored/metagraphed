@@ -44,7 +44,7 @@ import {
   economicsTrendsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
-import { rovingTabIndex, useRovingTablist } from "@/hooks/use-roving-tablist";
+import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import type {
   ChainCalls,

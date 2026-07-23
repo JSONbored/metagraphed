@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { classNames } from "@/lib/metagraphed/format";
-import { rovingTabIndex, useRovingTablist } from "@/hooks/use-roving-tablist";
-import { ScrollShadow } from "@/components/metagraphed/primitives/scroll-shadow";
+import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
+import { ScrollShadow } from "@jsonbored/ui-kit";
 
 export interface ProfileTabSpec {
   id: string;

@@ -1,7 +1,7 @@
 import { Clock } from "lucide-react";
+import { Chip } from "@jsonbored/ui-kit";
 import { formatFreshness, formatFreshnessAbsolute } from "@/lib/metagraphed/freshness";
 import { useHydrated } from "@/hooks/use-hydrated";
-import { Chip } from "./chip";
 
 export interface FreshnessPillProps {
   updatedAt?: string | null;

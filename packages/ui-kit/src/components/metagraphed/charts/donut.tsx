@@ -102,7 +102,7 @@ export function Donut({
             </span>
           ) : null}
           {centerSub ? (
-            <span className="font-mono text-[9px] uppercase tracking-widest text-ink-muted mt-0.5">
+            <span className="mg-type-micro text-ink-muted mt-0.5">
               {centerSub}
             </span>
           ) : null}
@@ -118,7 +118,7 @@ export function DonutLegend({ segments }: { segments: DonutSegment[] }) {
       {segments.map((s) => (
         <li
           key={s.label}
-          className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+          className="flex items-center gap-2 mg-type-micro text-ink-muted"
         >
           <span
             aria-hidden

@@ -19,7 +19,7 @@ import {
   type FilterChipItem,
 } from "@/components/metagraphed/primitives";
 import { CopyLinkButton } from "@/components/metagraphed/primitives/copy-link-button";
-import { ResponsiveTable } from "@/components/metagraphed/primitives/responsive-table";
+import { ResponsiveTable } from "@jsonbored/ui-kit";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import {
   providersQuery,

@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { ScrollShadow } from "@/components/metagraphed/primitives/scroll-shadow";
+import { ScrollShadow } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 
 type Patch = Record<string, string | number | undefined>;

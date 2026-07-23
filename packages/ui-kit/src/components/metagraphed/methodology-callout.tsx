@@ -39,7 +39,7 @@ export function MethodologyCallout({
       >
         <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
         <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+          <span className="block mg-type-micro text-ink-muted">
             Data freshness &amp; methodology
           </span>
           {freshLine ? (
@@ -61,9 +61,7 @@ export function MethodologyCallout({
       {open ? (
         <div className="grid gap-3 border-t border-border px-3 py-3 text-[11.5px] leading-relaxed text-ink-muted md:grid-cols-2">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-strong">
-              Sparklines
-            </div>
+            <div className="mg-type-micro text-ink-strong">Sparklines</div>
             <p className="mt-1">
               Uptime &amp; latency sparklines plot the active health window (7d
               default, switchable to 30d). Each point is the mean across every
@@ -72,7 +70,7 @@ export function MethodologyCallout({
             </p>
           </div>
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-strong">
+            <div className="mg-type-micro text-ink-strong">
               Donuts &amp; mosaics
             </div>
             <p className="mt-1">
@@ -82,9 +80,7 @@ export function MethodologyCallout({
             </p>
           </div>
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-strong">
-              Staleness
-            </div>
+            <div className="mg-type-micro text-ink-strong">Staleness</div>
             <p className="mt-1">
               Tiles show a <span className="text-health-warn-text">stale</span>{" "}
               chip when the snapshot is older than the refresh budget. Visuals
@@ -95,7 +91,7 @@ export function MethodologyCallout({
             </p>
           </div>
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-strong">
+            <div className="mg-type-micro text-ink-strong">
               Verified vs. candidate
             </div>
             <p className="mt-1">
@@ -106,7 +102,7 @@ export function MethodologyCallout({
           </div>
           {stakeRisk ? (
             <div>
-              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-strong">
+              <div className="mg-type-micro text-ink-strong">
                 Root vs. alpha risk
               </div>
               <p className="mt-1">

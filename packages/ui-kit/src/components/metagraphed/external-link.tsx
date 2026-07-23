@@ -109,7 +109,7 @@ export function ExternalLink({
       {authRequired ? (
         <span
           title="Authentication required"
-          className="inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 text-[9px] uppercase tracking-wider text-ink-muted"
+          className="inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 mg-type-micro text-ink-muted"
         >
           <Lock className="size-2.5" /> auth
         </span>
@@ -117,7 +117,7 @@ export function ExternalLink({
       {!publicSafe ? (
         <span
           title="Not public-safe — handle with care"
-          className="inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 text-[9px] uppercase tracking-wider text-health-warn"
+          className="inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 mg-type-micro text-health-warn"
         >
           <AlertTriangle className="size-2.5" /> private
         </span>

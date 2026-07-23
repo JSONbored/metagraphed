@@ -65,9 +65,7 @@ export function KeyChip({
           side="top"
           className="max-w-[90vw] break-all font-mono text-[11px]"
         >
-          <span className="mr-1 uppercase tracking-widest text-[9px] opacity-70">
-            {label}
-          </span>
+          <span className="mr-1 mg-type-micro opacity-70">{label}</span>
           {value}
         </TooltipContent>
       </Tooltip>

@@ -55,21 +55,17 @@ export function SparkLegend({
           avoidCollisions
           className="max-w-xs text-[11px] leading-relaxed"
         >
-          <div className="font-mono text-[10px] uppercase tracking-widest mb-1">
+          <div className="mg-type-micro mb-1">
             {metric}
             {windowLabel ? ` · ${windowLabel}` : ""}
           </div>
           <div className="mb-1">
-            <span className="font-mono text-[9.5px] uppercase tracking-widest opacity-70">
-              source ·{" "}
-            </span>
+            <span className="mg-type-micro opacity-70">source · </span>
             {source}
           </div>
           {staleness ? (
             <div className="mb-1">
-              <span className="font-mono text-[9.5px] uppercase tracking-widest opacity-70">
-                staleness ·{" "}
-              </span>
+              <span className="mg-type-micro opacity-70">staleness · </span>
               {staleness}
             </div>
           ) : null}

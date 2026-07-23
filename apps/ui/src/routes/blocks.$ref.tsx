@@ -51,7 +51,7 @@ import { eventKindLabel } from "@/lib/metagraphed/event-kinds";
 import { BLOCK_SECTION_HINTS, BLOCK_TERM_HINTS } from "@/lib/metagraphed/section-hints";
 import { TaoValue } from "@/components/metagraphed/tao-value";
 import { ValueUnitProvider, useValueUnit, type ValueUnit } from "@/lib/metagraphed/value-unit";
-import { nextTabIndex } from "@/hooks/use-roving-tablist";
+import { nextTabIndex } from "@jsonbored/ui-kit";
 
 export const Route = createFileRoute("/blocks/$ref")({
   // #3422: validate the ref at the router level so an invalid one renders the

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
+import { Panel } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
-import { Panel } from "./panel";
 import { FreshnessPill } from "./freshness-pill";
 
 export interface ChartCardProps {

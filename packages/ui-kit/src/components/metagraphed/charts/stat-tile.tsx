@@ -71,7 +71,7 @@ export function StatTile({
         />
       ) : null}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        <div className="flex items-center gap-1 mg-type-micro text-ink-muted">
           <span className={truncate ? "truncate" : "leading-tight"}>
             {eyebrow}
           </span>

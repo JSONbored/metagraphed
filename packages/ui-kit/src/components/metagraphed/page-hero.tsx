@@ -55,7 +55,7 @@ export function PageHero({
       <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <div className="min-w-0 max-w-3xl">
           {eyebrow ? (
-            <div className="mg-fade-in font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted inline-flex items-center gap-2">
+            <div className="mg-fade-in mg-type-micro text-ink-muted inline-flex items-center gap-2">
               {live ? <span className="mg-live-dot" /> : null}
               {eyebrow}
             </div>
@@ -85,9 +85,7 @@ export function PageHero({
         <div className="mg-fade-in mg-fade-in-delay-3 mg-kpi-strip mt-12 md:mt-16">
           {kpis.map((k) => (
             <div key={k.label}>
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-                {k.label}
-              </div>
+              <div className="mg-type-micro text-ink-muted">{k.label}</div>
               <div className="mt-1.5 flex items-baseline gap-2">
                 <span className="font-display text-2xl md:text-[1.75rem] font-semibold tabular-nums text-ink-strong leading-none tracking-[-0.01em]">
                   {k.value}

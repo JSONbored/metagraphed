@@ -2,8 +2,12 @@ import { Suspense, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ErrorState } from "@/components/metagraphed/states";
-import { EmptyState, type EmptyStateProps } from "./empty-state";
-import { PanelSkeleton, type PanelSkeletonHeight } from "./panel-skeleton";
+import {
+  EmptyState,
+  type EmptyStateProps,
+  PanelSkeleton,
+  type PanelSkeletonHeight,
+} from "@jsonbored/ui-kit";
 
 export interface AsyncPanelProps {
   /** Panel content — usually a component with useSuspenseQuery inside. */

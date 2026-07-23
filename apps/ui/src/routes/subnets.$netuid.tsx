@@ -93,7 +93,7 @@ import {
   subnetAxonRemovalsQuery,
 } from "@/lib/metagraphed/queries";
 import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
-import { rovingTabIndex, useRovingTablist } from "@/hooks/use-roving-tablist";
+import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import {
   eventKindCategory,

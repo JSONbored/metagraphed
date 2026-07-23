@@ -1,6 +1,6 @@
 import { classNames } from "@/lib/metagraphed/format";
 import { CATEGORY_LABEL, type EndpointCategory } from "@/lib/metagraphed/endpoint-pool";
-import { rovingTabIndex, useRovingTablist } from "@/hooks/use-roving-tablist";
+import { rovingTabIndex, useRovingTablist } from "@jsonbored/ui-kit";
 
 interface Props {
   value: EndpointCategory | "all";

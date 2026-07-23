@@ -1,7 +1,7 @@
 import * as React3 from 'react';
-import { useState, useRef, useEffect, useMemo, useCallback, useLayoutEffect, useId } from 'react';
+import { forwardRef, createContext, useId, useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, useContext } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { ChevronDown, X, Search, ArrowUp, Check, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Lock, AlertTriangle } from 'lucide-react';
+import { ChevronDown, X, Search, Check, ArrowUp, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Columns3, RotateCcw, AlertTriangle, Filter, Loader2, MoreHorizontal, Lock } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
@@ -657,7 +657,7 @@ function BackToTop({ threshold = 600 }) {
       className: classNames(
         "fixed z-40 bottom-5 right-5 md:bottom-7 md:right-7",
         "inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 backdrop-blur",
-        "px-3 py-2 text-[11px] font-mono uppercase tracking-widest text-ink-strong",
+        "px-3 py-2 mg-type-label uppercase text-ink-strong",
         "shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] hover:border-accent/60 hover:text-accent",
         "transition-[opacity,transform,border-color,color] duration-200",
         visible ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-2 pointer-events-none"
@@ -1450,7 +1450,7 @@ function CopyableCode({
           className
         ),
         children: [
-          label ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted uppercase tracking-wider text-[10px]", children: label }) : null,
+          label ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted mg-type-micro", children: label }) : null,
           /* @__PURE__ */ jsx(
             "code",
             {
@@ -1607,7 +1607,7 @@ function EligibilityChip({
         side: "top",
         className: "max-w-[240px] text-[11px] leading-relaxed",
         children: [
-          /* @__PURE__ */ jsx("div", { className: "font-mono uppercase tracking-widest text-[9px] opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
+          /* @__PURE__ */ jsx("div", { className: "mg-type-micro opacity-70 mb-1", children: ELIGIBILITY_LABEL[eligibility] }),
           RULE[eligibility]
         ]
       }
@@ -1665,7 +1665,7 @@ function ExternalLink({
       "span",
       {
         title: "Authentication required",
-        className: "inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 text-[9px] uppercase tracking-wider text-ink-muted",
+        className: "inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1 mg-type-micro text-ink-muted",
         children: [
           /* @__PURE__ */ jsx(Lock, { className: "size-2.5" }),
           " auth"
@@ -1676,7 +1676,7 @@ function ExternalLink({
       "span",
       {
         title: "Not public-safe \u2014 handle with care",
-        className: "inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 text-[9px] uppercase tracking-wider text-health-warn",
+        className: "inline-flex items-center gap-0.5 rounded border border-health-warn/30 bg-health-warn/5 px-1 mg-type-micro text-health-warn",
         children: [
           /* @__PURE__ */ jsx(AlertTriangle, { className: "size-2.5" }),
           " private"
@@ -1869,7 +1869,7 @@ function KeyChip({
             side: "top",
             className: "max-w-[90vw] break-all font-mono text-[11px]",
             children: [
-              /* @__PURE__ */ jsx("span", { className: "mr-1 uppercase tracking-widest text-[9px] opacity-70", children: label }),
+              /* @__PURE__ */ jsx("span", { className: "mr-1 mg-type-micro opacity-70", children: label }),
               value
             ]
           }
@@ -2041,7 +2041,7 @@ function PageHero({
         caption ? /* @__PURE__ */ jsx("div", { className: "absolute right-0 top-4 hidden md:block", children: /* @__PURE__ */ jsx("span", { className: "mg-hero-caption", children: caption }) }) : null,
         /* @__PURE__ */ jsxs("div", { className: "grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end", children: [
           /* @__PURE__ */ jsxs("div", { className: "min-w-0 max-w-3xl", children: [
-            eyebrow ? /* @__PURE__ */ jsxs("div", { className: "mg-fade-in font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted inline-flex items-center gap-2", children: [
+            eyebrow ? /* @__PURE__ */ jsxs("div", { className: "mg-fade-in mg-type-micro text-ink-muted inline-flex items-center gap-2", children: [
               live ? /* @__PURE__ */ jsx("span", { className: "mg-live-dot" }) : null,
               eyebrow
             ] }) : null,
@@ -2052,7 +2052,7 @@ function PageHero({
           aside ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-2 hidden md:block shrink-0", children: aside }) : null
         ] }),
         kpis && kpis.length > 0 ? /* @__PURE__ */ jsx("div", { className: "mg-fade-in mg-fade-in-delay-3 mg-kpi-strip mt-12 md:mt-16", children: kpis.map((k) => /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted", children: k.label }),
+          /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted", children: k.label }),
           /* @__PURE__ */ jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
             /* @__PURE__ */ jsx("span", { className: "font-display text-2xl md:text-[1.75rem] font-semibold tabular-nums text-ink-strong leading-none tracking-[-0.01em]", children: k.value }),
             k.hint ? /* @__PURE__ */ jsx("span", { className: "font-mono text-[11px] text-ink-muted", children: k.hint }) : null
@@ -2159,7 +2159,7 @@ function EntityHero({
               display ? "mt-12 md:mt-16" : "mt-8 md:mt-10"
             ),
             children: visibleStats.map((s) => /* @__PURE__ */ jsxs("div", { children: [
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted", children: s.label }),
+              /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted", children: s.label }),
               /* @__PURE__ */ jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
                 /* @__PURE__ */ jsx(
                   "span",
@@ -2215,7 +2215,7 @@ function PageSection({
             ),
             children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-                eyebrow ? /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted inline-flex items-center gap-2", children: eyebrow }) : null,
+                eyebrow ? /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted inline-flex items-center gap-2", children: eyebrow }) : null,
                 title ? /* @__PURE__ */ jsxs("h2", { className: "group/anchor mt-2 flex items-baseline gap-2 font-display text-2xl md:text-[1.875rem] font-semibold tracking-[-0.02em] text-ink-strong", children: [
                   /* @__PURE__ */ jsx("span", { children: title }),
                   id ? /* @__PURE__ */ jsx(
@@ -2939,7 +2939,7 @@ function MethodologyCallout({
             children: [
               /* @__PURE__ */ jsx(Info, { className: "mt-0.5 size-3.5 shrink-0 text-accent" }),
               /* @__PURE__ */ jsxs("span", { className: "min-w-0 flex-1", children: [
-                /* @__PURE__ */ jsx("span", { className: "block font-mono text-[10px] uppercase tracking-widest text-ink-muted", children: "Data freshness & methodology" }),
+                /* @__PURE__ */ jsx("span", { className: "block mg-type-micro text-ink-muted", children: "Data freshness & methodology" }),
                 freshLine ? /* @__PURE__ */ jsx(
                   "span",
                   {
@@ -2963,15 +2963,15 @@ function MethodologyCallout({
         ),
         open ? /* @__PURE__ */ jsxs("div", { className: "grid gap-3 border-t border-border px-3 py-3 text-[11.5px] leading-relaxed text-ink-muted md:grid-cols-2", children: [
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-strong", children: "Sparklines" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Sparklines" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Uptime & latency sparklines plot the active health window (7d default, switchable to 30d). Each point is the mean across every tracked endpoint in that bucket \u2014 gaps mean no probe landed in the window, not zero." })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-strong", children: "Donuts & mosaics" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Donuts & mosaics" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Pool ratio comes from on-chain AMM reserves; endpoint topology counts tracked public surfaces by kind. The mosaic in Operational status colors one cell per endpoint by its last probe result." })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-strong", children: "Staleness" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Staleness" }),
             /* @__PURE__ */ jsxs("p", { className: "mt-1", children: [
               "Tiles show a ",
               /* @__PURE__ */ jsx("span", { className: "text-health-warn-text", children: "stale" }),
@@ -2983,11 +2983,11 @@ function MethodologyCallout({
             ] })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-strong", children: "Verified vs. candidate" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Verified vs. candidate" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Only curated surfaces feed donuts and the topology breakdown. Unverified leads live in the Candidates tab and never count toward health, completeness, or pool ratios." })
           ] }),
           stakeRisk ? /* @__PURE__ */ jsxs("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-strong", children: "Root vs. alpha risk" }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-strong", children: "Root vs. alpha risk" }),
             /* @__PURE__ */ jsx("p", { className: "mt-1", children: "Root stake (netuid 0) is TAO-denominated with no principal risk \u2014 what you stake is what you can unstake. Alpha stake is price-exposed: it's held in the subnet's own token, so a positive nominal APY can still net-lose TAO if the alpha price falls faster than the yield accrues." })
           ] }) : null
         ] }) : null
@@ -3035,7 +3035,7 @@ function BarMini({
           {
             className: "grid grid-cols-[5.5rem_1fr_auto] items-center gap-2",
             children: [
-              /* @__PURE__ */ jsx("span", { className: "font-mono text-[10px] uppercase tracking-widest text-ink-muted truncate", children: d.label }),
+              /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted truncate", children: d.label }),
               /* @__PURE__ */ jsx("span", { className: "relative h-1.5 rounded-full bg-surface overflow-hidden", children: /* @__PURE__ */ jsx(
                 "span",
                 {
@@ -3320,7 +3320,7 @@ function Donut({
             },
             children: [
               centerLabel ? /* @__PURE__ */ jsx("span", { className: "font-display text-base font-semibold tabular-nums text-ink-strong leading-none", children: centerLabel }) : null,
-              centerSub ? /* @__PURE__ */ jsx("span", { className: "font-mono text-[9px] uppercase tracking-widest text-ink-muted mt-0.5", children: centerSub }) : null
+              centerSub ? /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted mt-0.5", children: centerSub }) : null
             ]
           }
         ) : null
@@ -3332,7 +3332,7 @@ function DonutLegend({ segments }) {
   return /* @__PURE__ */ jsx("ul", { className: "space-y-1", children: segments.map((s) => /* @__PURE__ */ jsxs(
     "li",
     {
-      className: "flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted",
+      className: "flex items-center gap-2 mg-type-micro text-ink-muted",
       children: [
         /* @__PURE__ */ jsx(
           "span",
@@ -3380,22 +3380,16 @@ function SparkLegend({
           avoidCollisions: true,
           className: "max-w-xs text-[11px] leading-relaxed",
           children: [
-            /* @__PURE__ */ jsxs("div", { className: "font-mono text-[10px] uppercase tracking-widest mb-1", children: [
+            /* @__PURE__ */ jsxs("div", { className: "mg-type-micro mb-1", children: [
               metric,
               windowLabel ? ` \xB7 ${windowLabel}` : ""
             ] }),
             /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
-              /* @__PURE__ */ jsxs("span", { className: "font-mono text-[9.5px] uppercase tracking-widest opacity-70", children: [
-                "source \xB7",
-                " "
-              ] }),
+              /* @__PURE__ */ jsx("span", { className: "mg-type-micro opacity-70", children: "source \xB7 " }),
               source
             ] }),
             staleness ? /* @__PURE__ */ jsxs("div", { className: "mb-1", children: [
-              /* @__PURE__ */ jsxs("span", { className: "font-mono text-[9.5px] uppercase tracking-widest opacity-70", children: [
-                "staleness \xB7",
-                " "
-              ] }),
+              /* @__PURE__ */ jsx("span", { className: "mg-type-micro opacity-70", children: "staleness \xB7 " }),
               staleness
             ] }) : null,
             fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] opacity-80", children: [
@@ -3606,7 +3600,7 @@ function StatTile({
           }
         ) : null,
         /* @__PURE__ */ jsxs("div", { className: "min-w-0 flex-1", children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted", children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 mg-type-micro text-ink-muted", children: [
             /* @__PURE__ */ jsx("span", { className: truncate ? "truncate" : "leading-tight", children: eyebrow }),
             tooltip ? /* @__PURE__ */ jsx(InfoTooltip, { label: tooltip, className: "shrink-0" }) : null
           ] }),
@@ -3665,7 +3659,7 @@ function StatWithSpark({
             className
           ),
           children: [
-            /* @__PURE__ */ jsx("div", { className: "font-mono text-[9.5px] uppercase tracking-widest text-ink-muted truncate", children: label }),
+            /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted truncate", children: label }),
             /* @__PURE__ */ jsxs("div", { className: "flex items-baseline gap-1.5 min-w-0", children: [
               /* @__PURE__ */ jsx(
                 "span",
@@ -3680,7 +3674,7 @@ function StatWithSpark({
                   children: value
                 }
               ),
-              unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 font-mono text-[9px] uppercase tracking-widest text-ink-muted", children: unit }) : null,
+              unit ? /* @__PURE__ */ jsx("span", { className: "shrink-0 mg-type-micro text-ink-muted", children: unit }) : null,
               delta
             ] }),
             viz ? /* @__PURE__ */ jsx("div", { className: "mt-0.5 min-h-[18px]", children: viz }) : null,
@@ -3852,7 +3846,7 @@ function NoDataSpark({
                 className: "inline-block size-1 rounded-full bg-ink-muted/60"
               }
             ),
-            /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[9px] uppercase tracking-widest text-ink-muted/80", children: freshLine ?? reason })
+            /* @__PURE__ */ jsx("span", { className: "truncate mg-type-micro text-ink-muted/80", children: freshLine ?? reason })
           ]
         }
       ) }),
@@ -3981,5 +3975,2076 @@ function TreemapMini({
     }
   );
 }
+var TONE_CLASSES = {
+  default: "border-border bg-paper text-ink",
+  ok: "border-health-ok/40 bg-health-ok/10 text-health-ok",
+  warn: "border-health-warn/40 bg-health-warn/10 text-health-warn-text",
+  down: "border-health-down/40 bg-health-down/10 text-health-down",
+  accent: "border-accent/45 bg-primary-soft text-accent-text",
+  muted: "border-border bg-surface-2 text-ink-muted"
+};
+function Chip({
+  tone = "default",
+  icon,
+  dot,
+  label,
+  children,
+  title,
+  className,
+  as = "span",
+  onClick
+}) {
+  const Cmp = as;
+  return /* @__PURE__ */ jsxs(
+    Cmp,
+    {
+      title,
+      onClick,
+      className: classNames(
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5",
+        "font-mono text-[10px] leading-none whitespace-nowrap transition-colors",
+        onClick ? "mg-focus-ring hover:border-ink/30 cursor-pointer" : null,
+        TONE_CLASSES[tone],
+        className
+      ),
+      children: [
+        dot ? /* @__PURE__ */ jsx(
+          "span",
+          {
+            "aria-hidden": true,
+            className: "mg-health-dot",
+            style: { color: "currentColor" }
+          }
+        ) : icon ? /* @__PURE__ */ jsx(
+          "span",
+          {
+            "aria-hidden": true,
+            className: "inline-flex size-3 items-center justify-center",
+            children: icon
+          }
+        ) : null,
+        label ? /* @__PURE__ */ jsx("span", { className: "uppercase tracking-widest opacity-70", children: label }) : null,
+        children != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-strong normal-case tracking-normal", children }) : null
+      ]
+    }
+  );
+}
+var STATUS_LABEL = {
+  ok: "Healthy",
+  warn: "Degraded",
+  down: "Down",
+  unknown: "Unknown"
+};
+var STATUS_TONE = {
+  ok: "ok",
+  warn: "warn",
+  down: "down",
+  unknown: "muted"
+};
+function StatusBadge({
+  status,
+  label,
+  live,
+  title,
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    Chip,
+    {
+      tone: STATUS_TONE[status],
+      dot: live,
+      title: title ?? STATUS_LABEL[status],
+      className,
+      children: label ?? STATUS_LABEL[status]
+    }
+  );
+}
+function Indicator({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  title,
+  className,
+  orientation = "row"
+}) {
+  const isRow = orientation === "row";
+  return /* @__PURE__ */ jsxs(
+    "span",
+    {
+      title,
+      className: classNames(
+        "inline-flex min-w-0",
+        isRow ? "items-baseline gap-1.5" : "flex-col gap-0.5",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxs(
+          "span",
+          {
+            className: classNames(
+              "inline-flex items-center gap-1 mg-type-micro text-ink-muted",
+              isRow ? "self-center" : null
+            ),
+            children: [
+              Icon ? /* @__PURE__ */ jsx(Icon, { className: "size-3", "aria-hidden": true }) : null,
+              label
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxs("span", { className: "font-mono text-[11px] tabular-nums text-ink-strong truncate", children: [
+          value,
+          hint ? /* @__PURE__ */ jsx("span", { className: "ml-1 text-ink-muted normal-case", children: hint }) : null
+        ] })
+      ]
+    }
+  );
+}
+function FilterField({
+  label,
+  htmlFor,
+  hint,
+  children,
+  className,
+  grow
+}) {
+  return /* @__PURE__ */ jsxs(
+    "label",
+    {
+      htmlFor,
+      className: classNames(
+        "flex flex-col gap-1 min-w-0",
+        grow ? "flex-1 min-w-[180px]" : null,
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxs("span", { className: "mg-type-micro text-ink-muted inline-flex items-center gap-1.5", children: [
+          label,
+          hint ? /* @__PURE__ */ jsx("span", { className: "opacity-70", children: hint }) : null
+        ] }),
+        children
+      ]
+    }
+  );
+}
+var CONTROL_CLASSES = "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 text-[12px] text-ink-strong placeholder:text-ink-subtle-text mg-focus-ring hover:border-ink/25 transition-colors";
+function FilterInput({
+  className,
+  leadingIcon = true,
+  ...props
+}) {
+  if (!leadingIcon) {
+    return /* @__PURE__ */ jsx("input", { ...props, className: classNames(CONTROL_CLASSES, className) });
+  }
+  return /* @__PURE__ */ jsxs("span", { className: "relative inline-flex w-full items-center", children: [
+    /* @__PURE__ */ jsx(
+      Search,
+      {
+        className: "pointer-events-none absolute left-2.5 size-3.5 text-ink-muted",
+        "aria-hidden": true
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "input",
+      {
+        ...props,
+        className: classNames(CONTROL_CLASSES, "pl-8", className)
+      }
+    )
+  ] });
+}
+function FilterSelect({
+  className,
+  children,
+  ...props
+}) {
+  return /* @__PURE__ */ jsx(
+    "select",
+    {
+      ...props,
+      className: classNames(CONTROL_CLASSES, "pr-6 appearance-none", className),
+      children
+    }
+  );
+}
+function FilterToolbar({
+  children,
+  trailing,
+  className
+}) {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: classNames(
+        "flex w-full flex-wrap items-end gap-2 md:gap-3",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsx("div", { className: "flex flex-1 flex-wrap items-end gap-2 md:gap-3 min-w-0", children }),
+        trailing ? /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-1.5 shrink-0", children: trailing }) : null
+      ]
+    }
+  );
+}
+function ColumnCustomizer({
+  columns,
+  isVisible,
+  onToggle,
+  onReset,
+  className
+}) {
+  const [open, setOpen] = useState(false);
+  const visibleCount = columns.filter((c) => isVisible(c.id)).length;
+  return /* @__PURE__ */ jsxs("div", { className: classNames("relative", className), children: [
+    /* @__PURE__ */ jsxs(
+      "button",
+      {
+        type: "button",
+        onClick: () => setOpen((v) => !v),
+        "aria-haspopup": "menu",
+        "aria-expanded": open,
+        title: "Customize visible columns",
+        className: "mg-focus-ring inline-flex items-center gap-1.5 h-9 rounded border border-border bg-card px-2.5 mg-type-micro text-ink-muted hover:text-ink-strong hover:border-ink/25 transition-colors",
+        children: [
+          /* @__PURE__ */ jsx(Columns3, { className: "size-3", "aria-hidden": true }),
+          /* @__PURE__ */ jsx("span", { className: "hidden sm:inline", children: "Columns" }),
+          /* @__PURE__ */ jsxs("span", { className: "text-ink-strong tabular-nums normal-case tracking-normal", children: [
+            visibleCount,
+            "/",
+            columns.length
+          ] })
+        ]
+      }
+    ),
+    open ? /* @__PURE__ */ jsxs(Fragment, { children: [
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          type: "button",
+          "aria-label": "Close column menu",
+          className: "fixed inset-0 z-30 cursor-default",
+          onClick: () => setOpen(false)
+        }
+      ),
+      /* @__PURE__ */ jsxs(
+        "div",
+        {
+          role: "menu",
+          className: "absolute right-0 z-40 mt-1.5 w-64 rounded border border-border bg-card p-1 mg-card-glow",
+          children: [
+            /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-2 py-1.5", children: [
+              /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted", children: "Columns" }),
+              /* @__PURE__ */ jsxs(
+                "button",
+                {
+                  type: "button",
+                  onClick: onReset,
+                  className: "mg-focus-ring inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted hover:text-ink-strong",
+                  title: "Reset to defaults",
+                  children: [
+                    /* @__PURE__ */ jsx(RotateCcw, { className: "size-3", "aria-hidden": true }),
+                    " Reset"
+                  ]
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "max-h-72 overflow-y-auto py-0.5", children: columns.map((c) => {
+              const checked = isVisible(c.id);
+              return /* @__PURE__ */ jsxs(
+                "label",
+                {
+                  className: classNames(
+                    "flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-ink hover:bg-surface-2 cursor-pointer",
+                    c.required ? "opacity-60 cursor-not-allowed" : null
+                  ),
+                  children: [
+                    /* @__PURE__ */ jsx(
+                      "input",
+                      {
+                        type: "checkbox",
+                        checked,
+                        disabled: c.required,
+                        onChange: () => onToggle(c.id),
+                        className: "accent-accent size-3.5"
+                      }
+                    ),
+                    /* @__PURE__ */ jsx("span", { className: "flex-1 truncate", children: c.label }),
+                    c.required ? /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-subtle-text", children: "Locked" }) : null
+                  ]
+                },
+                c.id
+              );
+            }) })
+          ]
+        }
+      )
+    ] }) : null
+  ] });
+}
+var STORAGE_PREFIX = "mg:cols:v1:";
+function readPersisted(key) {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((v) => typeof v === "string");
+  } catch {
+    return null;
+  }
+}
+function writePersisted(key, visible) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(visible));
+  } catch {
+  }
+}
+function defaultVisible(columns) {
+  return columns.filter((c) => c.required || c.defaultVisible !== false).map((c) => c.id);
+}
+function useColumnVisibility(pageKey, columns) {
+  const initial = useMemo(() => defaultVisible(columns), [columns]);
+  const [visible, setVisible] = useState(initial);
+  useEffect(() => {
+    const persisted = readPersisted(pageKey);
+    if (!persisted) return;
+    const set = new Set(persisted);
+    for (const c of columns) if (c.required) set.add(c.id);
+    const known = new Set(columns.map((c) => c.id));
+    setVisible(Array.from(set).filter((id) => known.has(id)));
+  }, [pageKey, columns]);
+  useEffect(() => {
+    writePersisted(pageKey, visible);
+  }, [pageKey, visible]);
+  const isVisible = useCallback(
+    (id) => visible.includes(id),
+    [visible]
+  );
+  const toggle = useCallback(
+    (id) => {
+      const col = columns.find((c) => c.id === id);
+      if (col?.required) return;
+      setVisible(
+        (prev) => prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]
+      );
+    },
+    [columns]
+  );
+  const reset = useCallback(() => {
+    setVisible(defaultVisible(columns));
+  }, [columns]);
+  return { visible, isVisible, toggle, reset, setVisible };
+}
+var TONE_CLASSES2 = {
+  default: "text-ink-muted",
+  muted: "text-ink-subtle-text",
+  accent: "text-accent-text",
+  warn: "text-health-warn-text",
+  down: "text-health-down"
+};
+function SectionLabel({
+  children,
+  size = "micro",
+  tone = "default",
+  icon,
+  hint,
+  as,
+  className,
+  title
+}) {
+  const Cmp = as ?? "span";
+  return /* @__PURE__ */ jsxs(
+    Cmp,
+    {
+      title,
+      className: classNames(
+        size === "micro" ? "mg-type-micro" : "mg-type-label",
+        "inline-flex items-center gap-1.5",
+        TONE_CLASSES2[tone],
+        className
+      ),
+      children: [
+        icon ? /* @__PURE__ */ jsx(
+          "span",
+          {
+            "aria-hidden": true,
+            className: "inline-flex size-3 items-center justify-center",
+            children: icon
+          }
+        ) : null,
+        /* @__PURE__ */ jsx("span", { className: "truncate", children }),
+        hint != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-subtle-text normal-case tracking-normal", children: hint }) : null
+      ]
+    }
+  );
+}
+var TONE_CLASSES3 = {
+  default: "border-border bg-card",
+  accent: "border-accent/40 bg-primary-soft",
+  warn: "border-health-warn/40 bg-health-warn/5",
+  down: "border-health-down/40 bg-health-down/5",
+  muted: "border-border bg-surface-2"
+};
+function Panel({
+  title,
+  action,
+  caption,
+  dense,
+  flush,
+  interactive,
+  tone = "default",
+  as,
+  className,
+  bodyClassName,
+  children
+}) {
+  const Cmp = as ?? "section";
+  const hasHeader = title != null || action != null || caption != null;
+  const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
+  return /* @__PURE__ */ jsxs(
+    Cmp,
+    {
+      className: classNames(
+        "rounded border",
+        TONE_CLASSES3[tone],
+        interactive ? "mg-hover-lift" : null,
+        className
+      ),
+      children: [
+        hasHeader ? /* @__PURE__ */ jsxs(
+          "header",
+          {
+            className: classNames(
+              "flex items-start justify-between gap-3 border-b border-border/70",
+              dense ? "mg-panel-pad-dense" : "mg-panel-pad"
+            ),
+            style: {
+              paddingTop: "var(--mg-space-sm)",
+              paddingBottom: "var(--mg-space-sm)"
+            },
+            children: [
+              /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+                title != null ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : null,
+                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 text-[13px] text-ink-muted", children: caption }) : null
+              ] }),
+              action != null ? /* @__PURE__ */ jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
+            ]
+          }
+        ) : null,
+        /* @__PURE__ */ jsx("div", { className: classNames(padClass, bodyClassName), children })
+      ]
+    }
+  );
+}
+var VARIANT_ICON = {
+  empty: Inbox,
+  filtered: Filter,
+  error: AlertTriangle,
+  stale: RotateCcw
+};
+var VARIANT_TONE = {
+  empty: "text-ink-muted",
+  filtered: "text-ink-muted",
+  error: "text-health-down",
+  stale: "text-health-warn-text"
+};
+function EmptyState({
+  variant = "empty",
+  title,
+  hint,
+  action,
+  evidenceHref,
+  evidenceLabel = "Source",
+  icon,
+  className,
+  dense
+}) {
+  const Icon = icon ?? VARIANT_ICON[variant];
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      role: variant === "error" ? "alert" : "status",
+      "aria-live": variant === "error" ? "assertive" : "polite",
+      className: classNames(
+        "flex flex-col items-center justify-center text-center gap-3",
+        dense ? "py-8" : "py-16",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsx(
+          "span",
+          {
+            "aria-hidden": true,
+            className: classNames(
+              "inline-flex size-10 items-center justify-center rounded-full border border-border bg-surface-2",
+              VARIANT_TONE[variant]
+            ),
+            children: /* @__PURE__ */ jsx(Icon, { className: "size-4" })
+          }
+        ),
+        /* @__PURE__ */ jsxs("div", { className: "max-w-sm space-y-1", children: [
+          /* @__PURE__ */ jsx("p", { className: "font-display text-[15px] font-medium text-ink-strong", children: title }),
+          hint != null ? /* @__PURE__ */ jsx("p", { className: "text-[13px] leading-relaxed text-ink-muted", children: hint }) : null
+        ] }),
+        action != null || evidenceHref ? /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center justify-center gap-2 pt-1", children: [
+          action,
+          evidenceHref ? /* @__PURE__ */ jsxs(
+            "a",
+            {
+              href: evidenceHref,
+              target: "_blank",
+              rel: "noreferrer",
+              className: "mg-focus-ring inline-flex items-center gap-1 mg-type-label uppercase text-ink-muted hover:text-ink-strong",
+              children: [
+                evidenceLabel,
+                /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3", "aria-hidden": true })
+              ]
+            }
+          ) : null
+        ] }) : null
+      ]
+    }
+  );
+}
+function TableSkeleton({
+  rows = 8,
+  columns = 5,
+  density = "comfortable",
+  withHeader = true,
+  className
+}) {
+  const rowPad = density === "compact" ? "py-2" : "py-3";
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      role: "status",
+      "aria-live": "polite",
+      "aria-busy": "true",
+      className: classNames(
+        "rounded border border-border bg-card overflow-hidden",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Loading table\u2026" }),
+        withHeader ? /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: "grid gap-3 border-b border-border bg-surface-2 px-4 py-2",
+            style: { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` },
+            children: Array.from({ length: columns }).map((_, c) => /* @__PURE__ */ jsx(
+              "span",
+              {
+                className: "h-3 rounded bg-border/70",
+                style: { width: `${40 + c * 17 % 40}%` }
+              },
+              `h-${c}`
+            ))
+          }
+        ) : null,
+        /* @__PURE__ */ jsx("div", { children: Array.from({ length: rows }).map((_, r) => /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: classNames(
+              "grid gap-3 border-b border-border/60 px-4 last:border-b-0",
+              rowPad
+            ),
+            style: {
+              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`
+            },
+            children: Array.from({ length: columns }).map((_2, c) => /* @__PURE__ */ jsx(
+              "span",
+              {
+                className: "h-3 rounded bg-border/50",
+                style: {
+                  width: `${45 + (r * 13 + c * 29) % 45}%`,
+                  animation: "mg-skel-pulse 1.4s ease-in-out infinite",
+                  animationDelay: `${(r + c) % 6 * 90}ms`
+                }
+              },
+              `${r}-${c}`
+            ))
+          },
+          r
+        )) })
+      ]
+    }
+  );
+}
+var colMap = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+  6: "grid-cols-6"
+};
+var smMap = { 2: "sm:grid-cols-2", 3: "sm:grid-cols-3" };
+var mdMap = {
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-4"
+};
+var lgMap = {
+  2: "lg:grid-cols-2",
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+  6: "lg:grid-cols-6"
+};
+var gapMap = { sm: "gap-2", md: "gap-3", lg: "gap-4" };
+function MetricGrid({
+  children,
+  cols = { base: 1, sm: 2, lg: 3 },
+  gap = "md",
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: cn(
+        "grid",
+        colMap[cols.base ?? 1],
+        cols.sm ? smMap[cols.sm] : void 0,
+        cols.md ? mdMap[cols.md] : void 0,
+        cols.lg ? lgMap[cols.lg] : void 0,
+        gapMap[gap],
+        className
+      ),
+      children
+    }
+  );
+}
+function PanelHeader({
+  title,
+  description,
+  actions,
+  variant = "display",
+  className
+}) {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: cn(
+        "flex flex-wrap items-start justify-between gap-3",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+          variant === "micro" ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : /* @__PURE__ */ jsx("h2", { className: "font-display text-base font-medium leading-tight text-ink-strong", children: title }),
+          description ? /* @__PURE__ */ jsx("p", { className: "mt-1 text-xs leading-relaxed text-ink-muted", children: description }) : null
+        ] }),
+        actions ? /* @__PURE__ */ jsx("div", { className: "flex shrink-0 flex-wrap items-center gap-2", children: actions }) : null
+      ]
+    }
+  );
+}
+function Divider({
+  tone = "default",
+  pip = false,
+  className
+}) {
+  const bar = tone === "accent" ? "bg-accent/40" : "bg-border";
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: cn("relative h-px w-full", bar, className),
+      role: "separator",
+      "aria-hidden": true,
+      children: pip ? /* @__PURE__ */ jsx("span", { className: "absolute left-0 top-1/2 -translate-y-1/2 size-1.5 rounded-[1px] bg-accent" }) : null
+    }
+  );
+}
+function nextTabIndex(current, key, count) {
+  if (count <= 0) return null;
+  switch (key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      return (current + 1) % count;
+    case "ArrowLeft":
+    case "ArrowUp":
+      return (current - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}
+function isTablistNavKey(key) {
+  return key === "ArrowRight" || key === "ArrowLeft" || key === "ArrowDown" || key === "ArrowUp" || key === "Home" || key === "End";
+}
+function rovingTabIndex(index, activeIndex) {
+  return index === activeIndex ? 0 : -1;
+}
+function useRovingTablist(count, onSelect) {
+  const refs = useRef([]);
+  const tabRef = useCallback(
+    (index) => (el) => {
+      refs.current[index] = el;
+    },
+    []
+  );
+  const onKeyDown = useCallback(
+    (index) => (e) => {
+      const next = nextTabIndex(index, e.key, count);
+      if (next == null) return;
+      e.preventDefault();
+      refs.current[next]?.focus();
+      onSelect(next);
+    },
+    [count, onSelect]
+  );
+  return { tabRef, onKeyDown };
+}
+function TabStrip({
+  items,
+  value,
+  onChange,
+  ariaLabel,
+  size = "md",
+  className
+}) {
+  const activeIndex = Math.max(
+    0,
+    items.findIndex((i) => i.id === value)
+  );
+  const { tabRef, onKeyDown } = useRovingTablist(items.length, (i) => {
+    const it = items[i];
+    if (it && !it.disabled) onChange(it.id);
+  });
+  const pad = size === "sm" ? "px-2 py-1.5" : "px-3 py-2";
+  const text = size === "sm" ? "text-[12px]" : "text-[13px]";
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      role: "tablist",
+      "aria-label": ariaLabel,
+      className: classNames(
+        "flex items-center gap-1 border-b border-border",
+        className
+      ),
+      children: items.map((it, i) => {
+        const selected = it.id === value;
+        return /* @__PURE__ */ jsxs(
+          "button",
+          {
+            ref: tabRef(i),
+            role: "tab",
+            type: "button",
+            "aria-selected": selected,
+            tabIndex: rovingTabIndex(i, activeIndex),
+            disabled: it.disabled,
+            onKeyDown: onKeyDown(i),
+            onClick: () => !it.disabled && onChange(it.id),
+            className: classNames(
+              "-mb-px inline-flex items-center gap-2 border-b-2 font-medium transition-colors",
+              pad,
+              text,
+              selected ? "border-accent text-ink-strong" : "border-transparent text-ink-muted hover:text-ink-strong",
+              it.disabled ? "opacity-50 cursor-not-allowed" : null
+            ),
+            children: [
+              /* @__PURE__ */ jsx("span", { children: it.label }),
+              it.meta != null ? /* @__PURE__ */ jsx("span", { className: "text-ink-muted", children: it.meta }) : null
+            ]
+          },
+          it.id
+        );
+      })
+    }
+  );
+}
+function isScrolledPast(scrollY, threshold) {
+  return scrollY > threshold;
+}
+function useScrolled(threshold = 4) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onScroll = () => {
+      setScrolled(isScrolledPast(window.scrollY, threshold));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [threshold]);
+  return scrolled;
+}
+function StickyToolbar({
+  children,
+  offset,
+  hairline = true,
+  className
+}) {
+  const scrolled = useScrolled(4);
+  const top = offset != null ? { top: offset } : { top: "var(--mg-sticky-offset, 0px)" };
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      style: top,
+      className: cn(
+        "sticky z-20 -mx-4 border-b bg-paper/95 px-4 py-2 backdrop-blur transition-[border-color,box-shadow] sm:mx-0 sm:px-0",
+        hairline && scrolled ? "border-border" : "border-transparent",
+        className
+      ),
+      children: /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-2", children })
+    }
+  );
+}
+function DefinitionList({
+  items,
+  layout = "inline",
+  className
+}) {
+  if (layout === "grid") {
+    return /* @__PURE__ */ jsx(
+      "dl",
+      {
+        className: cn(
+          "grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2",
+          className
+        ),
+        children: items.map((it, i) => /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+          /* @__PURE__ */ jsx("dt", { title: it.title, className: "mg-type-micro text-ink-muted", children: it.term }),
+          /* @__PURE__ */ jsx("dd", { className: "mt-1 truncate text-sm text-ink-strong", children: it.detail })
+        ] }, i))
+      }
+    );
+  }
+  if (layout === "stacked") {
+    return /* @__PURE__ */ jsx("dl", { className: cn("space-y-3", className), children: items.map((it, i) => /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+      /* @__PURE__ */ jsx("dt", { title: it.title, className: "mg-type-micro text-ink-muted", children: it.term }),
+      /* @__PURE__ */ jsx("dd", { className: "mt-1 text-sm text-ink-strong", children: it.detail })
+    ] }, i)) });
+  }
+  return /* @__PURE__ */ jsx("dl", { className: cn("divide-y divide-border/70", className), children: items.map((it, i) => /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: "flex items-baseline justify-between gap-4 py-2 first:pt-0 last:pb-0",
+      children: [
+        /* @__PURE__ */ jsx(
+          "dt",
+          {
+            title: it.title,
+            className: "mg-type-label shrink-0 text-ink-muted",
+            children: it.term
+          }
+        ),
+        /* @__PURE__ */ jsx("dd", { className: "min-w-0 truncate text-right text-sm text-ink-strong", children: it.detail })
+      ]
+    },
+    i
+  )) });
+}
+function LoadingPill({
+  children = "Loading",
+  tone = "muted",
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    Chip,
+    {
+      tone,
+      icon: /* @__PURE__ */ jsx(Loader2, { className: "size-3 animate-spin" }),
+      className,
+      children
+    }
+  );
+}
+var SIZE = {
+  sm: "min-h-8 px-2.5 text-xs",
+  md: "min-h-10 px-4 text-sm",
+  lg: "min-h-11 px-5 text-sm"
+};
+var TONE2 = {
+  default: "border-border text-ink-muted hover:border-accent/60 hover:text-ink-strong",
+  accent: "border-accent/60 bg-primary-soft text-ink-strong hover:border-accent",
+  warn: "border-health-warn/60 text-health-warn-text hover:border-health-warn",
+  down: "border-health-down/60 text-health-down hover:border-health-down"
+};
+var GhostButton = forwardRef(
+  function GhostButton2({
+    size = "sm",
+    tone = "default",
+    icon,
+    iconRight,
+    className,
+    children,
+    type,
+    ...rest
+  }, ref) {
+    return /* @__PURE__ */ jsxs(
+      "button",
+      {
+        ref,
+        type: type ?? "button",
+        className: cn(
+          "inline-flex items-center justify-center gap-1.5 rounded-md border bg-card transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          SIZE[size],
+          TONE2[tone],
+          className
+        ),
+        ...rest,
+        children: [
+          icon,
+          children != null ? /* @__PURE__ */ jsx("span", { className: "min-w-0 truncate", children }) : null,
+          iconRight
+        ]
+      }
+    );
+  }
+);
+function PagerFooter({
+  summary,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
+  loading,
+  className
+}) {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: cn(
+        "flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 text-[12px] text-ink-muted",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsx("div", { className: "min-w-0 truncate", "aria-live": "polite", children: loading ? "Loading\u2026" : summary }),
+        /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsx(
+            GhostButton,
+            {
+              onClick: onPrev,
+              disabled: !hasPrev || loading,
+              icon: /* @__PURE__ */ jsx(ChevronLeft, { className: "size-3.5" }),
+              "aria-label": "Previous page",
+              children: "Prev"
+            }
+          ),
+          /* @__PURE__ */ jsx(
+            GhostButton,
+            {
+              onClick: onNext,
+              disabled: !hasNext || loading,
+              iconRight: /* @__PURE__ */ jsx(ChevronRight, { className: "size-3.5" }),
+              "aria-label": "Next page",
+              children: "Next"
+            }
+          )
+        ] })
+      ]
+    }
+  );
+}
+function MetaStrip({
+  items,
+  separator = "dot",
+  className
+}) {
+  const sep = separator === "pipe" ? "|" : "\xB7";
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: cn(
+        "flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-ink-muted",
+        className
+      ),
+      children: items.map((it, i) => /* @__PURE__ */ jsxs(
+        "span",
+        {
+          title: it.title,
+          className: "inline-flex items-center gap-1.5",
+          children: [
+            i > 0 ? /* @__PURE__ */ jsx("span", { "aria-hidden": true, className: "text-ink-subtle-text", children: sep }) : null,
+            /* @__PURE__ */ jsx("span", { className: "mg-type-micro", children: it.label }),
+            /* @__PURE__ */ jsx("span", { className: "text-ink-strong", children: it.value })
+          ]
+        },
+        i
+      ))
+    }
+  );
+}
+function ScrollShadow({
+  orientation = "horizontal",
+  className,
+  innerClassName,
+  children
+}) {
+  const ref = useRef(null);
+  const [state, setState] = useState({ start: false, end: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      if (orientation === "horizontal") {
+        setState({
+          start: el.scrollLeft > 2,
+          end: el.scrollLeft + el.clientWidth < el.scrollWidth - 2
+        });
+      } else {
+        setState({
+          start: el.scrollTop > 2,
+          end: el.scrollTop + el.clientHeight < el.scrollHeight - 2
+        });
+      }
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [orientation]);
+  const isH = orientation === "horizontal";
+  return /* @__PURE__ */ jsxs("div", { className: classNames("relative", className), children: [
+    /* @__PURE__ */ jsx(
+      "div",
+      {
+        ref,
+        className: classNames(
+          isH ? "overflow-x-auto" : "overflow-y-auto",
+          "mg-scroll overscroll-contain",
+          innerClassName
+        ),
+        style: isH ? { overflowY: "hidden", scrollbarWidth: "none" } : { overflowX: "hidden" },
+        children
+      }
+    ),
+    state.start ? /* @__PURE__ */ jsx(
+      "div",
+      {
+        "aria-hidden": true,
+        className: classNames(
+          "pointer-events-none absolute z-10",
+          isH ? "left-0 top-0 h-full w-6 bg-gradient-to-r from-card to-transparent" : "left-0 top-0 h-6 w-full bg-gradient-to-b from-card to-transparent"
+        )
+      }
+    ) : null,
+    state.end ? /* @__PURE__ */ jsx(
+      "div",
+      {
+        "aria-hidden": true,
+        className: classNames(
+          "pointer-events-none absolute z-10",
+          isH ? "right-0 top-0 h-full w-6 bg-gradient-to-l from-card to-transparent" : "bottom-0 left-0 h-6 w-full bg-gradient-to-t from-card to-transparent"
+        )
+      }
+    ) : null
+  ] });
+}
+var HIDE_TABLE = {
+  sm: "hidden sm:block",
+  md: "hidden md:block",
+  lg: "hidden lg:block"
+};
+var SHOW_CARDS = {
+  sm: "sm:hidden",
+  md: "md:hidden",
+  lg: "lg:hidden"
+};
+function ResponsiveTable({
+  cardsFallback,
+  cardsBelow = "md",
+  minWidth = 720,
+  className,
+  children
+}) {
+  const min = typeof minWidth === "number" ? `${minWidth}px` : minWidth;
+  if (cardsFallback != null) {
+    return /* @__PURE__ */ jsxs("div", { className, children: [
+      /* @__PURE__ */ jsx("div", { className: SHOW_CARDS[cardsBelow], children: cardsFallback }),
+      /* @__PURE__ */ jsx("div", { className: HIDE_TABLE[cardsBelow], children: /* @__PURE__ */ jsx(ScrollShadow, { children: /* @__PURE__ */ jsx("div", { style: { minWidth: min }, children }) }) })
+    ] });
+  }
+  return /* @__PURE__ */ jsx(ScrollShadow, { className: classNames(className), children: /* @__PURE__ */ jsx("div", { style: { minWidth: min }, children }) });
+}
+function FilterSheet({
+  label = "Filters",
+  activeCount = 0,
+  children,
+  className
+}) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+  return /* @__PURE__ */ jsxs("div", { className, children: [
+    /* @__PURE__ */ jsxs(
+      "button",
+      {
+        type: "button",
+        onClick: () => setOpen(true),
+        "aria-expanded": open,
+        "aria-haspopup": "dialog",
+        className: classNames(
+          "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1",
+          "mg-type-label uppercase transition-colors",
+          activeCount > 0 ? "border-accent/40 bg-accent/10 text-accent" : "border-border bg-card text-ink-strong hover:border-accent/40"
+        ),
+        children: [
+          /* @__PURE__ */ jsx(Filter, { className: "size-3.5", "aria-hidden": true }),
+          label,
+          activeCount > 0 ? /* @__PURE__ */ jsx("span", { className: "ml-0.5 inline-flex size-4 items-center justify-center rounded-full bg-accent text-[9px] text-accent-foreground", children: activeCount }) : null
+        ]
+      }
+    ),
+    open ? /* @__PURE__ */ jsxs(
+      "div",
+      {
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": label,
+        className: "fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center",
+        children: [
+          /* @__PURE__ */ jsx(
+            "div",
+            {
+              className: "absolute inset-0 bg-ink-strong/30 backdrop-blur-sm",
+              onClick: () => setOpen(false),
+              "aria-hidden": true
+            }
+          ),
+          /* @__PURE__ */ jsxs(
+            "div",
+            {
+              className: classNames(
+                "relative z-10 w-full max-h-[85vh] overflow-y-auto",
+                "rounded-t-xl border-t border-border bg-card p-4",
+                "sm:max-w-md sm:rounded-xl sm:border sm:mx-4",
+                "mg-scroll"
+              ),
+              children: [
+                /* @__PURE__ */ jsxs("div", { className: "mb-4 flex items-center justify-between border-b border-border pb-3", children: [
+                  /* @__PURE__ */ jsxs("span", { className: "mg-type-label uppercase text-ink-strong", children: [
+                    label,
+                    activeCount > 0 ? /* @__PURE__ */ jsxs("span", { className: "ml-2 text-ink-muted", children: [
+                      "\xB7 ",
+                      activeCount,
+                      " active"
+                    ] }) : null
+                  ] }),
+                  /* @__PURE__ */ jsx(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: () => setOpen(false),
+                      "aria-label": "Close filters",
+                      className: "inline-flex size-8 items-center justify-center rounded text-ink-muted hover:text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      children: /* @__PURE__ */ jsx(X, { className: "size-4", "aria-hidden": true })
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ jsx("div", { className: "flex flex-col gap-3", children })
+              ]
+            }
+          )
+        ]
+      }
+    ) : null
+  ] });
+}
+var INLINE_FROM = {
+  sm: "sm:flex",
+  md: "md:flex",
+  lg: "lg:flex"
+};
+var HIDE_UNTIL = {
+  sm: "hidden sm:flex",
+  md: "hidden md:flex",
+  lg: "hidden lg:flex"
+};
+var SHOW_UNTIL = {
+  sm: "sm:hidden",
+  md: "md:hidden",
+  lg: "lg:hidden"
+};
+function PageActions({
+  primary,
+  secondary,
+  inlineFrom = "md",
+  className
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target))
+        setOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  return /* @__PURE__ */ jsxs("div", { className: classNames("flex items-center gap-2", className), children: [
+    primary,
+    secondary ? /* @__PURE__ */ jsxs(Fragment, { children: [
+      /* @__PURE__ */ jsx(
+        "div",
+        {
+          className: classNames(
+            HIDE_UNTIL[inlineFrom],
+            INLINE_FROM[inlineFrom],
+            "items-center gap-2"
+          ),
+          children: secondary
+        }
+      ),
+      /* @__PURE__ */ jsxs(
+        "div",
+        {
+          className: classNames("relative", SHOW_UNTIL[inlineFrom]),
+          ref,
+          children: [
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => setOpen((v) => !v),
+                "aria-label": "More actions",
+                "aria-expanded": open,
+                "aria-haspopup": "menu",
+                className: "inline-flex size-9 items-center justify-center rounded border border-border bg-card text-ink-strong hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                children: /* @__PURE__ */ jsx(MoreHorizontal, { className: "size-4", "aria-hidden": true })
+              }
+            ),
+            open ? /* @__PURE__ */ jsx(
+              "div",
+              {
+                role: "menu",
+                className: "absolute right-0 top-full z-30 mt-2 min-w-[180px] rounded border border-border bg-card p-2 shadow-lg",
+                children: /* @__PURE__ */ jsx("div", { className: "flex flex-col items-stretch gap-1 [&>*]:w-full [&>*]:justify-start", children: secondary })
+              }
+            ) : null
+          ]
+        }
+      )
+    ] }) : null
+  ] });
+}
+var HEIGHT = {
+  xs: "h-16",
+  sm: "h-24",
+  md: "h-32",
+  lg: "h-48",
+  xl: "h-64"
+};
+function PanelSkeleton({
+  height = "md",
+  label = "Loading panel\u2026",
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      role: "status",
+      "aria-live": "polite",
+      "aria-busy": "true",
+      className: classNames(
+        "w-full rounded border border-border bg-card overflow-hidden",
+        "animate-pulse",
+        HEIGHT[height],
+        className
+      ),
+      children: /* @__PURE__ */ jsx("span", { className: "sr-only", children: label })
+    }
+  );
+}
+function MobileCollapse({
+  label,
+  hint,
+  trailing,
+  defaultOpen = false,
+  children,
+  className
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return /* @__PURE__ */ jsxs("div", { className, children: [
+    /* @__PURE__ */ jsxs(
+      "button",
+      {
+        type: "button",
+        onClick: () => setOpen((v) => !v),
+        "aria-expanded": open,
+        className: classNames(
+          "md:hidden w-full flex items-center justify-between gap-3",
+          "rounded border border-border bg-card px-3 py-2 mg-focus-ring",
+          "text-left transition-colors hover:border-accent/40"
+        ),
+        children: [
+          /* @__PURE__ */ jsxs("span", { className: "flex min-w-0 flex-1 flex-col", children: [
+            /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-strong", children: label }),
+            hint ? /* @__PURE__ */ jsx("span", { className: "mt-0.5 truncate font-mono text-[11px] text-ink-muted", children: hint }) : null
+          ] }),
+          /* @__PURE__ */ jsxs("span", { className: "flex shrink-0 items-center gap-2", children: [
+            trailing,
+            /* @__PURE__ */ jsx(
+              ChevronDown,
+              {
+                "aria-hidden": true,
+                className: classNames(
+                  "size-4 text-ink-muted transition-transform",
+                  open ? "rotate-180" : "rotate-0"
+                )
+              }
+            )
+          ] })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "div",
+      {
+        className: classNames(
+          open ? "mt-3 block" : "hidden",
+          "md:mt-0 md:block"
+        ),
+        children
+      }
+    )
+  ] });
+}
+var tierLabels = {
+  buildable: "Buildable",
+  emerging: "Emerging",
+  "identity-only": "Identity only",
+  dormant: "Dormant"
+};
+function ReadinessGauge({
+  score,
+  tier,
+  details,
+  compact = false,
+  className
+}) {
+  if (score == null && !tier) {
+    return /* @__PURE__ */ jsx("span", { className: "font-mono text-[11px] text-ink-muted", children: "\u2014" });
+  }
+  const value = Math.max(0, Math.min(100, score ?? 0));
+  const label = tierLabels[tier ?? ""] ?? tier ?? "Not classified";
+  const fill = value >= 75 ? "bg-health-ok" : value >= 45 ? "bg-health-warn" : value > 0 ? "bg-health-down" : "bg-health-unknown";
+  const detail = details?.length ? ` Services: ${details.join(", ")}.` : "";
+  const description = `Integration readiness ${value} out of 100. ${label}.${detail}`;
+  return /* @__PURE__ */ jsxs(
+    "span",
+    {
+      tabIndex: 0,
+      "aria-label": description,
+      title: description,
+      className: classNames(
+        "mg-focus-ring inline-grid items-center gap-2",
+        compact ? "min-w-[78px] grid-cols-[minmax(0,1fr)_1.75rem]" : "min-w-[96px] grid-cols-[minmax(0,1fr)_2rem]",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsx(
+          "span",
+          {
+            className: "relative h-1.5 overflow-hidden rounded-full bg-surface-2",
+            "aria-hidden": true,
+            children: /* @__PURE__ */ jsx(
+              "span",
+              {
+                className: classNames("absolute inset-y-0 left-0 rounded-full", fill),
+                style: { width: `${value}%` }
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsx("span", { className: "text-right font-mono text-[11px] tabular-nums text-ink-strong", children: value })
+      ]
+    }
+  );
+}
+var provenance = {
+  native: {
+    label: "Native",
+    description: "Native chain metadata",
+    className: "border-ink-strong/40 text-ink-strong"
+  },
+  "candidate-discovered": {
+    label: "Candidate",
+    description: "Discovered lead; not yet verified",
+    className: "border-dashed border-ink-subtle text-ink-muted"
+  },
+  "community-seeded": {
+    label: "Community",
+    description: "Community-sourced registry metadata",
+    className: "border-curation-seeded/45 text-curation-seeded"
+  },
+  "machine-verified": {
+    label: "Machine",
+    description: "Automatically verified registry metadata",
+    className: "border-curation-machine/45 text-curation-machine"
+  },
+  "maintainer-reviewed": {
+    label: "Reviewed",
+    description: "Reviewed by a registry maintainer",
+    className: "border-curation-verified/45 bg-primary-soft text-curation-verified"
+  },
+  "adapter-backed": {
+    label: "Adapter",
+    description: "Backed by a first-party registry adapter",
+    className: "border-curation-adapter/45 text-curation-adapter"
+  }
+};
+function ProvenanceChip({
+  level,
+  className
+}) {
+  const item = provenance[level ?? ""] ?? {
+    label: level || "Unknown",
+    description: "Curation provenance not classified",
+    className: "border-border text-ink-muted"
+  };
+  return /* @__PURE__ */ jsx(
+    "span",
+    {
+      tabIndex: 0,
+      title: item.description,
+      "aria-label": `${item.label}: ${item.description}`,
+      className: classNames(
+        "mg-focus-ring inline-flex items-center rounded border bg-transparent px-1.5 py-0.5 mg-type-micro",
+        item.className,
+        className
+      ),
+      children: item.label
+    }
+  );
+}
+function QueryBarRoot({
+  children,
+  className,
+  ariaLabel = "Filter bar"
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      role: "search",
+      "aria-label": ariaLabel,
+      className: classNames(
+        "mg-query-shell",
+        "flex w-full items-center gap-1 min-w-0",
+        "h-10 rounded-lg border border-border bg-card/60",
+        "px-1 transition-colors",
+        "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
+        "focus-within:ring-2 focus-within:ring-ring/60",
+        className
+      ),
+      children
+    }
+  );
+}
+function QueryBarSearch({
+  value,
+  onChange,
+  placeholder = "Search\u2026",
+  shortcut = true,
+  debounceMs = 0,
+  className,
+  ...props
+}) {
+  const ref = useRef(null);
+  const [local, setLocal] = useState(value);
+  useEffect(() => {
+    setLocal(value);
+  }, [value]);
+  useEffect(() => {
+    if (local === value) return;
+    if (debounceMs <= 0) {
+      onChange(local);
+      return;
+    }
+    const t = window.setTimeout(() => onChange(local), debounceMs);
+    return () => window.clearTimeout(t);
+  }, [local, debounceMs]);
+  useEffect(() => {
+    if (!shortcut || typeof window === "undefined") return;
+    const onKey = (e) => {
+      if (e.key !== "/") return;
+      const target = e.target;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable)
+        return;
+      e.preventDefault();
+      ref.current?.focus();
+      ref.current?.select();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcut]);
+  return /* @__PURE__ */ jsxs("div", { className: "relative flex flex-1 items-center gap-2 min-w-0 pl-2", children: [
+    /* @__PURE__ */ jsx(Search, { className: "size-3.5 shrink-0 text-ink-muted", "aria-hidden": true }),
+    /* @__PURE__ */ jsx(
+      "input",
+      {
+        ...props,
+        ref,
+        type: "text",
+        value: local,
+        onChange: (e) => setLocal(e.target.value),
+        onKeyDown: (e) => {
+          if (e.key === "Enter" && debounceMs > 0 && local !== value) {
+            onChange(local);
+          }
+          if (e.key === "Escape" && local) {
+            e.preventDefault();
+            setLocal("");
+            onChange("");
+          }
+          props.onKeyDown?.(e);
+        },
+        placeholder,
+        "aria-label": placeholder,
+        className: classNames(
+          "peer flex-1 min-w-0 bg-transparent border-0 outline-none",
+          "py-1.5 text-[13px] text-ink-strong placeholder:text-ink-subtle-text",
+          "focus:outline-none focus:ring-0",
+          className
+        )
+      }
+    ),
+    local ? /* @__PURE__ */ jsx(
+      "button",
+      {
+        type: "button",
+        onClick: () => {
+          setLocal("");
+          onChange("");
+          ref.current?.focus();
+        },
+        "aria-label": "Clear search",
+        className: "mg-focus-ring inline-flex size-6 items-center justify-center rounded text-ink-muted hover:text-ink-strong",
+        children: /* @__PURE__ */ jsx(X, { className: "size-3.5", "aria-hidden": true })
+      }
+    ) : shortcut ? /* @__PURE__ */ jsx(
+      "kbd",
+      {
+        "aria-hidden": true,
+        className: "pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 font-mono text-[10px] text-ink-muted",
+        children: "/"
+      }
+    ) : null
+  ] });
+}
+function QueryBarDivider() {
+  return /* @__PURE__ */ jsx(
+    "span",
+    {
+      "aria-hidden": true,
+      className: "mx-0.5 hidden sm:block h-5 w-px shrink-0 bg-border"
+    }
+  );
+}
+function QueryBarUtility({
+  children,
+  className
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: classNames(
+        "flex items-center gap-0.5 shrink-0 pr-1",
+        className
+      ),
+      children
+    }
+  );
+}
+function QueryBarFilterTrigger(props) {
+  const {
+    label,
+    options,
+    placeholder = "Any",
+    icon,
+    align = "start",
+    className
+  } = props;
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  const selected = props.multi ? props.value : props.value ? [props.value] : [];
+  const active = selected.length > 0;
+  const preview = useMemo(() => {
+    if (!active) return placeholder;
+    const labels = selected.map(
+      (v) => options.find((o) => o.value === v)?.label ?? v
+    );
+    if (labels.length === 1) return labels[0];
+    return `${labels[0]} +${labels.length - 1}`;
+  }, [selected, options, active, placeholder]);
+  const toggle = useCallback(
+    (v) => {
+      if (props.multi) {
+        const next = selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v];
+        props.onChange(next);
+      } else {
+        props.onChange(selected[0] === v ? "" : v);
+        setOpen(false);
+      }
+    },
+    [props, selected]
+  );
+  const clear = useCallback(() => {
+    if (props.multi) props.onChange([]);
+    else props.onChange("");
+  }, [props]);
+  return /* @__PURE__ */ jsxs(Popover, { open, onOpenChange: setOpen, children: [
+    /* @__PURE__ */ jsx(PopoverTrigger, { asChild: true, children: /* @__PURE__ */ jsxs(
+      "button",
+      {
+        id,
+        type: "button",
+        "aria-label": `${label} filter${active ? `, ${selected.length} selected` : ""}`,
+        className: classNames(
+          "mg-ghost-trigger group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2",
+          "text-[12px] transition-colors",
+          "hover:bg-surface-2",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          active ? "text-ink-strong" : "text-ink-muted",
+          className
+        ),
+        children: [
+          icon ? /* @__PURE__ */ jsx("span", { className: "shrink-0 text-ink-muted", children: icon }) : null,
+          /* @__PURE__ */ jsx("span", { className: "mg-type-micro opacity-80", children: label }),
+          /* @__PURE__ */ jsx(
+            "span",
+            {
+              className: classNames(
+                "truncate max-w-[120px] font-medium",
+                active ? "text-ink-strong border-b border-accent" : "text-ink-subtle-text"
+              ),
+              children: preview
+            }
+          ),
+          /* @__PURE__ */ jsx(
+            ChevronDown,
+            {
+              className: classNames(
+                "size-3 shrink-0 text-ink-muted transition-transform",
+                open && "rotate-180"
+              ),
+              "aria-hidden": true
+            }
+          )
+        ]
+      }
+    ) }),
+    /* @__PURE__ */ jsx(
+      PopoverContent,
+      {
+        align,
+        sideOffset: 6,
+        className: "w-64 p-0 border-border bg-popover",
+        children: /* @__PURE__ */ jsxs(Command, { children: [
+          /* @__PURE__ */ jsx(
+            CommandInput,
+            {
+              placeholder: `Filter ${label.toLowerCase()}\u2026`,
+              className: "h-9"
+            }
+          ),
+          /* @__PURE__ */ jsxs(CommandList, { className: "max-h-72", children: [
+            /* @__PURE__ */ jsx(CommandEmpty, { children: "No matches." }),
+            /* @__PURE__ */ jsx(CommandGroup, { children: options.map((o) => {
+              const on = selected.includes(o.value);
+              return /* @__PURE__ */ jsxs(
+                CommandItem,
+                {
+                  value: o.label,
+                  ...o.keywords ? { keywords: o.keywords } : {},
+                  onSelect: () => toggle(o.value),
+                  className: "cursor-pointer aria-selected:bg-surface-2",
+                  children: [
+                    /* @__PURE__ */ jsx(
+                      "span",
+                      {
+                        className: classNames(
+                          "inline-flex size-4 shrink-0 items-center justify-center rounded border",
+                          on ? "border-accent bg-accent text-accent-foreground" : "border-border bg-transparent"
+                        ),
+                        "aria-hidden": true,
+                        children: on ? /* @__PURE__ */ jsx(Check, { className: "size-3" }) : null
+                      }
+                    ),
+                    /* @__PURE__ */ jsx("span", { className: "truncate", children: o.label })
+                  ]
+                },
+                o.value
+              );
+            }) })
+          ] }),
+          active ? /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between border-t border-border px-2 py-1.5", children: [
+            /* @__PURE__ */ jsxs("span", { className: "mg-type-micro text-ink-muted", children: [
+              selected.length,
+              " selected"
+            ] }),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => {
+                  clear();
+                  if (!props.multi) setOpen(false);
+                },
+                className: "mg-focus-ring rounded px-2 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong",
+                children: "Clear"
+              }
+            )
+          ] }) : null
+        ] })
+      }
+    )
+  ] });
+}
+function QueryBarMetaRow({
+  count,
+  total,
+  noun = "results",
+  activeCount = 0,
+  onReset,
+  trailing,
+  className
+}) {
+  const showTotal = total != null && total !== count;
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: classNames(
+        "flex w-full items-center gap-2 pt-1.5",
+        "mg-type-micro text-ink-muted",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxs("span", { "aria-live": "polite", children: [
+          /* @__PURE__ */ jsx("span", { className: "text-ink-strong", children: count.toLocaleString() }),
+          showTotal ? /* @__PURE__ */ jsxs("span", { className: "opacity-70", children: [
+            " of ",
+            total.toLocaleString()
+          ] }) : null,
+          " ",
+          noun
+        ] }),
+        activeCount > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
+          /* @__PURE__ */ jsx("span", { "aria-hidden": true, className: "opacity-40", children: "\xB7" }),
+          /* @__PURE__ */ jsxs("span", { children: [
+            activeCount,
+            " filter",
+            activeCount === 1 ? "" : "s"
+          ] }),
+          onReset ? /* @__PURE__ */ jsx(
+            "button",
+            {
+              type: "button",
+              onClick: onReset,
+              className: "mg-focus-ring rounded text-accent hover:text-ink-strong transition-colors",
+              children: "Reset"
+            }
+          ) : null
+        ] }) : null,
+        trailing ? /* @__PURE__ */ jsx("span", { className: "ml-auto flex items-center gap-2", children: trailing }) : null
+      ]
+    }
+  );
+}
+var _ctx = createContext(null);
+function useQueryBarContext() {
+  return useContext(_ctx);
+}
+var QueryBar = Object.assign(QueryBarRoot, {
+  Search: QueryBarSearch,
+  Divider: QueryBarDivider,
+  Utility: QueryBarUtility,
+  FilterTrigger: QueryBarFilterTrigger,
+  MetaRow: QueryBarMetaRow
+});
+function ChartSkeleton({
+  height = 40,
+  variant = "spark",
+  className,
+  label = "Loading chart"
+}) {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      role: "img",
+      "aria-label": label,
+      className: classNames(
+        "mg-chart-skeleton relative w-full overflow-hidden rounded-md",
+        "border border-border/60 bg-surface-2/40",
+        className
+      ),
+      style: { height },
+      children: [
+        /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: "pointer-events-none absolute inset-x-2 bottom-1 h-px bg-border",
+            "aria-hidden": true
+          }
+        ),
+        variant === "bars" ? /* @__PURE__ */ jsx("div", { className: "absolute inset-2 flex items-end gap-[3px]", "aria-hidden": true, children: Array.from({ length: 16 }).map((_, i) => /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: "flex-1 rounded-sm bg-ink-strong/10 animate-pulse",
+            style: { height: `${20 + i * 17 % 70}%` }
+          },
+          i
+        )) }) : null,
+        variant === "area" ? /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: "absolute inset-0 animate-pulse",
+            "aria-hidden": true,
+            style: {
+              background: "linear-gradient(to top, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%)"
+            }
+          }
+        ) : null,
+        /* @__PURE__ */ jsx(
+          "div",
+          {
+            className: "pointer-events-none absolute inset-y-0 -left-full w-1/2 mg-shimmer-sweep",
+            "aria-hidden": true
+          }
+        )
+      ]
+    }
+  );
+}
+var HEIGHTS = {
+  sm: "min-h-[120px]",
+  md: "min-h-[200px]",
+  lg: "min-h-[320px]"
+};
+function PanelError({
+  title = "Couldn't load this panel",
+  message = "Something went wrong fetching this data. Retry, or try again in a moment.",
+  errorId,
+  onRetry,
+  height = "md",
+  trailing,
+  className
+}) {
+  const [copied, setCopied] = useState(false);
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      role: "alert",
+      className: classNames(
+        "mg-panel-error flex flex-col items-center justify-center gap-3 rounded-xl",
+        "border border-border/70 bg-card p-6 text-center",
+        HEIGHTS[height],
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsx("div", { className: "grid size-9 place-items-center rounded-full bg-surface-2 text-health-warn", children: /* @__PURE__ */ jsx(AlertTriangle, { className: "size-4", "aria-hidden": true }) }),
+        /* @__PURE__ */ jsxs("div", { className: "max-w-sm space-y-1", children: [
+          /* @__PURE__ */ jsx("div", { className: "font-display text-[13px] font-semibold text-ink-strong", children: title }),
+          /* @__PURE__ */ jsx("p", { className: "text-[12px] leading-relaxed text-ink-muted", children: message })
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center justify-center gap-2 pt-1", children: [
+          onRetry ? /* @__PURE__ */ jsx(
+            GhostButton,
+            {
+              size: "sm",
+              onClick: onRetry,
+              icon: /* @__PURE__ */ jsx(RefreshCw, { className: "size-3" }),
+              children: "Retry"
+            }
+          ) : null,
+          errorId ? /* @__PURE__ */ jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                void navigator.clipboard.writeText(errorId).then(() => {
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 1400);
+                });
+              },
+              className: "mg-focus-ring inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong",
+              "aria-label": `Copy error id ${errorId}`,
+              children: [
+                copied ? /* @__PURE__ */ jsx(Check, { className: "size-3", "aria-hidden": true }) : /* @__PURE__ */ jsx(Copy, { className: "size-3", "aria-hidden": true }),
+                /* @__PURE__ */ jsxs("span", { className: "tracking-normal normal-case", children: [
+                  "id \xB7 ",
+                  errorId.slice(0, 8)
+                ] })
+              ]
+            }
+          ) : null,
+          trailing
+        ] })
+      ]
+    }
+  );
+}
+function QueryProgress({
+  active,
+  position = "absolute",
+  className,
+  ariaLabel = "Updating results"
+}) {
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      role: "progressbar",
+      "aria-label": ariaLabel,
+      "aria-hidden": !active,
+      className: classNames(
+        "mg-query-progress pointer-events-none overflow-hidden",
+        position === "absolute" && "absolute inset-x-0 top-0 z-10",
+        position === "fixed" && "fixed inset-x-0 top-0 z-50",
+        position === "sticky" && "sticky top-0 z-10 -mt-px",
+        "h-[2px]",
+        active ? "opacity-100" : "opacity-0 transition-opacity duration-300",
+        className
+      ),
+      children: /* @__PURE__ */ jsx(
+        "div",
+        {
+          className: classNames(
+            "h-full w-1/3 rounded-full",
+            active && "mg-query-progress-track"
+          ),
+          style: {
+            background: "linear-gradient(90deg, transparent, color-mix(in oklab, var(--accent) 90%, transparent), transparent)"
+          }
+        }
+      )
+    }
+  );
+}
+function FilterChipRow({
+  items,
+  onRemove,
+  onClearAll,
+  className
+}) {
+  if (items.length === 0) return null;
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      role: "list",
+      "aria-label": "Active filters",
+      className: classNames(
+        "flex flex-wrap items-center gap-1.5 pt-2",
+        className
+      ),
+      children: [
+        items.map((item) => /* @__PURE__ */ jsxs(
+          "button",
+          {
+            role: "listitem",
+            type: "button",
+            onClick: () => onRemove(item.id),
+            "aria-label": `Remove ${item.label} filter (${item.value})`,
+            className: classNames(
+              "group inline-flex h-6 items-center gap-1.5 rounded-full border border-border bg-card px-2",
+              "text-[11px] transition-colors",
+              "hover:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            ),
+            children: [
+              item.icon ? /* @__PURE__ */ jsx("span", { className: "text-ink-muted", children: item.icon }) : null,
+              /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted", children: item.label }),
+              /* @__PURE__ */ jsx("span", { className: "font-medium text-ink-strong", children: item.value }),
+              /* @__PURE__ */ jsx(
+                X,
+                {
+                  "aria-hidden": true,
+                  className: "size-3 text-ink-muted transition-colors group-hover:text-health-down"
+                }
+              )
+            ]
+          },
+          item.id
+        )),
+        onClearAll && items.length > 1 ? /* @__PURE__ */ jsx(
+          "button",
+          {
+            type: "button",
+            onClick: onClearAll,
+            className: "mg-focus-ring ml-1 rounded px-1.5 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong",
+            children: "Clear all"
+          }
+        ) : null
+      ]
+    }
+  );
+}
+function RoutePending({
+  title,
+  panels = 2,
+  panelHeight = "md",
+  header,
+  className
+}) {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      "aria-busy": "true",
+      "aria-live": "polite",
+      className: classNames(
+        "mg-route-pending mx-auto w-full max-w-shell px-4 py-6 md:px-6",
+        className
+      ),
+      children: [
+        header ?? /* @__PURE__ */ jsxs("div", { className: "mb-6 space-y-3", children: [
+          /* @__PURE__ */ jsx(
+            "div",
+            {
+              className: "h-3 w-32 animate-pulse rounded bg-surface-2",
+              "aria-hidden": true
+            }
+          ),
+          /* @__PURE__ */ jsxs("div", { className: "flex items-baseline gap-3", children: [
+            /* @__PURE__ */ jsx(
+              "div",
+              {
+                className: "h-7 w-64 animate-pulse rounded bg-surface-2",
+                "aria-hidden": true
+              }
+            ),
+            title ? /* @__PURE__ */ jsxs("span", { className: "sr-only", children: [
+              "Loading ",
+              title
+            ] }) : /* @__PURE__ */ jsx("span", { className: "sr-only", children: "Loading page" })
+          ] }),
+          /* @__PURE__ */ jsx(
+            "div",
+            {
+              className: "h-3 w-96 max-w-full animate-pulse rounded bg-surface-2/70",
+              "aria-hidden": true
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsx("div", { className: "space-y-4", children: Array.from({ length: panels }).map((_, i) => /* @__PURE__ */ jsx(PanelSkeleton, { height: panelHeight }, i)) })
+      ]
+    }
+  );
+}
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EntityHero, ExternalLink, FreshnessIndicator, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, InfoTooltip, Kbd, KeyChip, ListShell, LoadMore, McpToolsList, MethodologyCallout, MiniRadial, MiniStack, NoDataSpark, PageHero, PageSection, PagerBar, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, RealtimeFreshness, ReviewChip, SCOPES, ScrollReveal, SectionAnchor, SectionHeading, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, fmtYield, prefetchBrandIcon, safeExternalUrl, tierFreshnessLabel };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, defaultVisible, fmtYield, isScrolledPast, isTablistNavKey, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useQueryBarContext, useRovingTablist, useScrolled };

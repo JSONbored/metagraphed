@@ -118,6 +118,58 @@
   --mg-dot-size: 24px;
   --mg-grid-color: color-mix(in oklab, var(--ink-strong) 3.5%, transparent);
 }
+:root {
+  --mg-space-3xs: 0.125rem;
+  --mg-space-2xs: 0.25rem;
+  --mg-space-xs: 0.5rem;
+  --mg-space-sm: 0.75rem;
+  --mg-space-md: 1rem;
+  --mg-space-lg: 1.5rem;
+  --mg-space-xl: 2rem;
+  --mg-space-2xl: 3rem;
+  --mg-space-3xl: 4rem;
+  --mg-panel-pad: var(--mg-space-lg);
+  --mg-panel-pad-dense: var(--mg-space-md);
+  --mg-type-micro: 9.5px;
+  --mg-type-label: 11px;
+  --mg-tracking-label: 0.14em;
+  --mg-tracking-micro: 0.18em;
+}
+.mg-panel-pad {
+  padding: var(--mg-panel-pad);
+}
+.mg-panel-pad-dense {
+  padding: var(--mg-panel-pad-dense);
+}
+.mg-panel-pad-flush {
+  padding: 0;
+}
+.mg-type-micro {
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: var(--mg-tracking-micro);
+}
+.mg-type-label {
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-label);
+  line-height: 1.25;
+  letter-spacing: var(--mg-tracking-label);
+}
+@keyframes mg-skel-pulse {
+  0%, 100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*=mg-skel-pulse] {
+    animation: none !important;
+  }
+}
 .dark {
   --paper: oklch(0.14 0.003 250);
   --surface: oklch(0.175 0.003 250);
