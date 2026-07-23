@@ -9,7 +9,7 @@ import { RefreshCw, Pause, Play, ChevronDown, ChevronRight, ArrowUpRight } from 
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { StaleBanner } from "@/components/metagraphed/states";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import {
   HealthPill,
@@ -493,12 +493,14 @@ function StatusBoard({ interval }: { interval: number | false }) {
 
 function BoardCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted mb-3">
-        {title}
+    <Panel as="div" flush>
+      <div className="p-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted mb-3">
+          {title}
+        </div>
+        {children}
       </div>
-      {children}
-    </div>
+    </Panel>
   );
 }
 
@@ -540,7 +542,7 @@ function SourceHealth({ interval }: { interval: number | false }) {
     );
   }
   return (
-    <div className="rounded-xl border border-border bg-card overflow-x-auto">
+    <Panel as="div" flush className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
           <tr>
@@ -563,7 +565,7 @@ function SourceHealth({ interval }: { interval: number | false }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </Panel>
   );
 }
 
@@ -689,7 +691,7 @@ function Incidents({ interval }: { interval: number | false }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
+      <Panel as="div" dense bodyClassName="flex items-center gap-4">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted">
             Incidents · 14d
@@ -706,7 +708,7 @@ function Incidents({ interval }: { interval: number | false }) {
           ariaLabel="Incidents over time"
           className="ml-auto"
         />
-      </div>
+      </Panel>
 
       <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
         {FILTER_OPTIONS.map((opt) => (
