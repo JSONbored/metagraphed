@@ -41,52 +41,69 @@
  * ============================================================ */
 :root {
   /* 4pt base scale — the only allowed padding/gap steps. */
-  --mg-space-3xs: 0.125rem;   /* 2  */
-  --mg-space-2xs: 0.25rem;    /* 4  */
-  --mg-space-xs:  0.5rem;     /* 8  */
-  --mg-space-sm:  0.75rem;    /* 12 */
-  --mg-space-md:  1rem;       /* 16 */
-  --mg-space-lg:  1.5rem;     /* 24 */
-  --mg-space-xl:  2rem;       /* 32 */
-  --mg-space-2xl: 3rem;       /* 48 */
-  --mg-space-3xl: 4rem;       /* 64 */
+  --mg-space-3xs: 0.125rem; /* 2  */
+  --mg-space-2xs: 0.25rem; /* 4  */
+  --mg-space-xs: 0.5rem; /* 8  */
+  --mg-space-sm: 0.75rem; /* 12 */
+  --mg-space-md: 1rem; /* 16 */
+  --mg-space-lg: 1.5rem; /* 24 */
+  --mg-space-xl: 2rem; /* 32 */
+  --mg-space-2xl: 3rem; /* 48 */
+  --mg-space-3xl: 4rem; /* 64 */
 
   /* Semantic layout rhythm — use in page/panel/hero shells. */
-  --mg-section-gap:     var(--mg-space-2xl);
-  --mg-section-gap-sm:  var(--mg-space-xl);
-  --mg-stack-gap:       var(--mg-space-md);
+  --mg-section-gap: var(--mg-space-2xl);
+  --mg-section-gap-sm: var(--mg-space-xl);
+  --mg-stack-gap: var(--mg-space-md);
   --mg-stack-gap-tight: var(--mg-space-sm);
-  --mg-panel-pad:       var(--mg-space-lg);
+  --mg-panel-pad: var(--mg-space-lg);
   --mg-panel-pad-dense: var(--mg-space-md);
-  --mg-hero-pad-y:      var(--mg-space-2xl);
-  --mg-hero-pad-y-sm:   var(--mg-space-xl);
-  --mg-toolbar-pad-y:   var(--mg-space-sm);
-  --mg-gutter-x:        clamp(1rem, 4vw, 1.5rem);
+  --mg-hero-pad-y: var(--mg-space-2xl);
+  --mg-hero-pad-y-sm: var(--mg-space-xl);
+  --mg-toolbar-pad-y: var(--mg-space-sm);
+  --mg-gutter-x: clamp(1rem, 4vw, 1.5rem);
 
   /* Type scale — locks the micro/label idiom into named tokens. */
-  --mg-type-micro:      9.5px;
-  --mg-type-label:      11px;
-  --mg-type-body:       14px;
-  --mg-type-body-lg:    15px;
-  --mg-type-h4:         16px;
-  --mg-type-h3:         18px;
-  --mg-type-h2:         22px;
-  --mg-type-h1:         28px;
-  --mg-tracking-label:  0.14em;
-  --mg-tracking-micro:  0.18em;
+  --mg-type-micro: 9.5px;
+  --mg-type-label: 11px;
+  --mg-type-body: 14px;
+  --mg-type-body-lg: 15px;
+  --mg-type-h4: 16px;
+  --mg-type-h3: 18px;
+  --mg-type-h2: 22px;
+  --mg-type-h1: 28px;
+  --mg-tracking-label: 0.14em;
+  --mg-tracking-micro: 0.18em;
 }
 
 /* Page-level rhythm helpers — reserved for Panel / PageHero / route shells. */
-.mg-section-stack > * + * { margin-top: var(--mg-section-gap); }
-@media (max-width: 640px) {
-  .mg-section-stack > * + * { margin-top: var(--mg-section-gap-sm); }
+.mg-section-stack > * + * {
+  margin-top: var(--mg-section-gap);
 }
-.mg-panel-pad       { padding: var(--mg-panel-pad); }
-.mg-panel-pad-dense { padding: var(--mg-panel-pad-dense); }
-.mg-panel-pad-flush { padding: 0; }
-.mg-stack-gap       > * + * { margin-top: var(--mg-stack-gap); }
-.mg-stack-gap-tight > * + * { margin-top: var(--mg-stack-gap-tight); }
-.mg-gutter-x        { padding-left: var(--mg-gutter-x); padding-right: var(--mg-gutter-x); }
+@media (max-width: 640px) {
+  .mg-section-stack > * + * {
+    margin-top: var(--mg-section-gap-sm);
+  }
+}
+.mg-panel-pad {
+  padding: var(--mg-panel-pad);
+}
+.mg-panel-pad-dense {
+  padding: var(--mg-panel-pad-dense);
+}
+.mg-panel-pad-flush {
+  padding: 0;
+}
+.mg-stack-gap > * + * {
+  margin-top: var(--mg-stack-gap);
+}
+.mg-stack-gap-tight > * + * {
+  margin-top: var(--mg-stack-gap-tight);
+}
+.mg-gutter-x {
+  padding-left: var(--mg-gutter-x);
+  padding-right: var(--mg-gutter-x);
+}
 
 .mg-type-micro {
   font-family: var(--font-mono);
@@ -142,11 +159,18 @@
 
 /* Skeleton pulse used by TableSkeleton primitive. */
 @keyframes mg-skel-pulse {
-  0%, 100% { opacity: 0.55; }
-  50%      { opacity: 0.9; }
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  [style*="mg-skel-pulse"] { animation: none !important; }
+  [style*="mg-skel-pulse"] {
+    animation: none !important;
+  }
 }
 
 /* ============================================================
@@ -158,12 +182,20 @@
  * Keep motion as a transform-only enhancement with visible endpoints.
  * ============================================================ */
 @keyframes mg-safe-rise {
-  from { transform: translateY(8px); }
-  to   { transform: translateY(0); }
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 @keyframes mg-safe-scale {
-  from { transform: scale(0.8); }
-  to   { transform: scale(1); }
+  from {
+    transform: scale(0.8);
+  }
+  to {
+    transform: scale(1);
+  }
 }
 .mg-fade-in {
   opacity: 1;
@@ -228,8 +260,12 @@
  * QueryProgress). Both respect prefers-reduced-motion.
  * ============================================================ */
 @keyframes mg-shimmer-sweep {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(400%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
 .mg-shimmer-sweep {
   background: linear-gradient(
@@ -241,8 +277,12 @@
   animation: mg-shimmer-sweep 1.6s ease-in-out infinite;
 }
 @keyframes mg-query-progress-track {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(400%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
 .mg-query-progress-track {
   animation: mg-query-progress-track 1.2s ease-in-out infinite;

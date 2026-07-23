@@ -1365,7 +1365,8 @@ html[data-density="compact"] .bg-card > table td {
      page scroll (under the filter bar) via --mg-sticky-offset, so the
      wrapper itself never needs to scroll vertically -- no nested scrollbar. */
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklab, var(--ink-strong) 20%, transparent) transparent;
+  scrollbar-color: color-mix(in oklab, var(--ink-strong) 20%, transparent)
+    transparent;
 }
 /* Only apply the mask when the table actually overflows — on desktop where
    everything fits, the mask would fade content pointlessly. */
