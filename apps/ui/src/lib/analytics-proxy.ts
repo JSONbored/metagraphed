@@ -110,6 +110,16 @@ export async function forwardToAnalyticsHost(
 
 // Proxy every PostHog request through this origin. Returns null for
 // everything else (the caller falls through to the SSR app).
+//
+// No allow-list on the forwarded path/method beyond the ANALYTICS_PREFIX
+// match below -- anything not `/static/*` or `/array/*` forwards verbatim to
+// POSTHOG_API_HOST. Deliberate, not an oversight: PostHog's own Cloudflare
+// proxy guide proxies its ENTIRE capture/decide/flags surface this way (it
+// doesn't publish a fixed path list, and posthog-js itself decides which
+// sub-paths it calls per SDK version/feature), so a narrower allow-list here
+// would silently break future posthog-js features without any code change on
+// our side to explain why. forwardToAnalyticsHost's own content-length gate
+// above is the actual abuse control (bounded body size), not path filtering.
 export async function handleAnalyticsProxy(
   request: Request,
   ctx: PostHogAssetContext,

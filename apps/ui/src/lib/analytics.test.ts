@@ -74,6 +74,16 @@ describe("analytics (PostHog web analytics)", () => {
       expect(options.defaults.length).toBeGreaterThan(0);
     });
 
+    it("respects DNT and uses memory-only (cookieless) persistence, matching Umami's no-cookie posture", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const { initAnalytics } = await import("./analytics");
+      initAnalytics();
+      await vi.waitFor(() => expect(init).toHaveBeenCalled());
+      const options = init.mock.calls[0][1];
+      expect(options.respect_dnt).toBe(true);
+      expect(options.persistence).toBe("memory");
+    });
+
     it("honors VITE_POSTHOG_HOST / VITE_POSTHOG_UI_HOST overrides", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
       vi.stubEnv("VITE_POSTHOG_HOST", "https://e.example.com");

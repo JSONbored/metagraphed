@@ -63,6 +63,11 @@ const POSTHOG_UI_HOST =
 
 // Tracks PostHog's own "SDK defaults" versioning (posthog.com/docs/libraries/js#sdk-defaults) --
 // bump deliberately when adopting a newer default set, not on every release.
+// A typo here can't silently fall back to posthog-js's own default handling:
+// posthog-js's `defaults` option is typed as a closed string-literal union
+// (`ConfigDefaults` in @posthog/types, not a bare `string`), and this `const`
+// (no explicit type annotation) infers that literal type -- an invalid date
+// fails `npm run typecheck` outright rather than degrading quietly at runtime.
 const SDK_DEFAULTS_DATE = "2026-05-30";
 
 let posthogInit: Promise<PostHog | null> | null = null;
@@ -76,6 +81,24 @@ function loadPostHog(): Promise<PostHog | null> {
         ui_host: POSTHOG_UI_HOST,
         defaults: SDK_DEFAULTS_DATE,
         capture_pageview: false,
+        // metagraphed#7760's own explicit requirement: "respect DNT, no
+        // cookies beyond what's justified" -- parity with the self-hosted
+        // Umami tracker this sits alongside, which never sets cookies either.
+        respect_dnt: true,
+        // "memory", not posthog-js's own 'localStorage+cookie' default: no
+        // cookie or localStorage write at all, matching Umami's cookieless
+        // posture directly. Deliberately NOT `cookieless_mode` (posthog-js's
+        // other no-cookie option) -- that one requires ALSO flipping a
+        // matching toggle in this project's PostHog dashboard settings or
+        // every event is silently dropped server-side (confirmed via
+        // node_modules/@posthog/types' own doc comment on the option); a
+        // config value here can't guarantee that dashboard-side state, so it
+        // would be a silent-data-loss trap the day someone forgets. The
+        // tradeoff: identity resets every reload/tab close (each is a new
+        // anonymous visitor) rather than persisting client-side -- accepted
+        // for a public dashboard that doesn't need cross-session user
+        // profiles for pageview-level web analytics.
+        persistence: "memory",
       });
       return posthog;
     })
