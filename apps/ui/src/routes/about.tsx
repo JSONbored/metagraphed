@@ -11,7 +11,7 @@ import {
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode, ExternalLink } from "@jsonbored/ui-kit";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import { PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -241,7 +241,7 @@ function AtAGlance() {
     },
   ];
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Panel as="div" dense>
       <div className="mg-label mb-3 inline-flex items-center gap-2">
         <span className="mg-live-dot" /> At a glance
       </div>
@@ -286,6 +286,6 @@ function AtAGlance() {
           → Registry gaps
         </Link>
       </div>
-    </div>
+    </Panel>
   );
 }

@@ -28,6 +28,7 @@ import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
 import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
 import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";
 import { GlobalErrorBoundary } from "@/components/metagraphed/global-error-boundary";
+import { Panel } from "@/components/metagraphed/primitives";
 import {
   mountBlankScreenWatchdog,
   PRE_HYDRATION_RECOVERY_SCRIPT,
@@ -89,7 +90,7 @@ function NotFoundComponent() {
           </p>
 
           {/* Attempted URL + copy */}
-          <div className="mt-6 rounded-xl border border-border bg-card p-3">
+          <Panel as="div" dense className="mt-6">
             <div className="flex items-center gap-2 mg-label">
               <AlertTriangle className="size-3.5 text-health-warn" /> Attempted URL
             </div>
@@ -112,7 +113,7 @@ function NotFoundComponent() {
                 {copied ? "Copied" : "Copy URL"}
               </button>
             </div>
-          </div>
+          </Panel>
 
           {/* Search */}
           <form onSubmit={onSubmit} className="mt-4" role="search" aria-label="Find a subnet">
