@@ -174,7 +174,7 @@ test("readR2 delegates to readR2Object and JSON-parses its object on a hit", asy
 // versioned run-prefix the KV pointer names (atomic reads across a whole
 // publish). health/history is write-once per date, so it bypasses that
 // pointer and always reads the literal "latest/" prefix -- the one key
-// space r2-upload.mjs actually accumulates one file per date into.
+// space r2-upload.ts actually accumulates one file per date into.
 
 test("latestR2Key resolves a health/history date through the literal latest/ prefix, ignoring the run-prefix pointer", async () => {
   const env = {

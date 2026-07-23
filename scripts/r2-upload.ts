@@ -7,6 +7,39 @@ import {
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
 
+type Row = Record<string, unknown>;
+
+interface Artifact {
+  content_type: string;
+  key: string;
+  latest_key: string;
+  path: string;
+  sha256: string;
+  size_bytes: number;
+  storage_tier: string;
+}
+
+interface ControlArtifact {
+  content_type: string;
+  key: string;
+  latest_key: string;
+  local_path: string;
+  path: string;
+}
+
+interface UploadJob {
+  bucketName: string;
+  contentType: string;
+  key: string;
+  kind: string;
+  localPath: string;
+}
+
+interface RemoteManifestResult {
+  status: string;
+  manifest: Row | null;
+}
+
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
 const uploadHistory = process.env.METAGRAPH_R2_UPLOAD_HISTORY === "1";
@@ -23,12 +56,13 @@ const uploadRetryBaseDelayMs =
   1000;
 const uploadTimeoutMs =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_TIMEOUT_MS) || 45_000;
-const manifest = await readJson(
+const manifest: Row = await readJson(
   path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
+const allArtifacts = manifest.artifacts as Artifact[];
 const plannedArtifacts = uploadLimit
-  ? manifest.artifacts.slice(0, uploadLimit)
-  : manifest.artifacts;
+  ? allArtifacts.slice(0, uploadLimit)
+  : allArtifacts;
 const controlArtifacts = buildControlArtifacts(manifest);
 const plannedControlArtifacts = uploadLimit ? [] : controlArtifacts;
 const plannedObjectCount =
@@ -69,19 +103,21 @@ if (process.env.METAGRAPH_ALLOW_R2_UPLOAD !== "1") {
   process.exit(1);
 }
 
-const remoteManifestResult = forceUpload
+const remoteManifestResult: RemoteManifestResult = forceUpload
   ? { status: "not-checked", manifest: null }
-  : getRemoteManifest(manifest.bucket_name, "latest/r2-manifest.json");
+  : getRemoteManifest(
+      manifest.bucket_name as string,
+      "latest/r2-manifest.json",
+    );
 const remoteManifestShaByPath = new Map(
-  (remoteManifestResult.manifest?.artifacts ?? []).map((artifact) => [
-    artifact.path,
-    artifact.sha256,
-  ]),
+  (
+    (remoteManifestResult.manifest?.artifacts as Artifact[] | undefined) ?? []
+  ).map((artifact) => [artifact.path, artifact.sha256]),
 );
 let changedArtifactCount = 0;
 let skippedArtifactCount = 0;
-const artifactUploadJobs = [];
-const controlUploadJobs = [];
+const artifactUploadJobs: UploadJob[] = [];
+const controlUploadJobs: UploadJob[] = [];
 
 for (const artifact of plannedArtifacts) {
   const localPath = artifactLocalPath(artifact.path);
@@ -96,7 +132,7 @@ for (const artifact of plannedArtifacts) {
       uploadJob(
         localPath,
         artifact.latest_key,
-        manifest.bucket_name,
+        manifest.bucket_name as string,
         artifact.content_type,
         "latest",
       ),
@@ -109,7 +145,7 @@ for (const artifact of plannedArtifacts) {
       uploadJob(
         localPath,
         artifact.key,
-        manifest.bucket_name,
+        manifest.bucket_name as string,
         artifact.content_type,
         "history",
       ),
@@ -122,7 +158,7 @@ for (const controlArtifact of plannedControlArtifacts) {
     uploadJob(
       controlArtifact.local_path,
       controlArtifact.latest_key,
-      manifest.bucket_name,
+      manifest.bucket_name as string,
       controlArtifact.content_type,
       "control",
     ),
@@ -132,7 +168,7 @@ for (const controlArtifact of plannedControlArtifacts) {
       uploadJob(
         controlArtifact.local_path,
         controlArtifact.key,
-        manifest.bucket_name,
+        manifest.bucket_name as string,
         controlArtifact.content_type,
         "history",
       ),
@@ -193,7 +229,7 @@ console.log(
   }),
 );
 
-function parsePositiveInteger(value) {
+function parsePositiveInteger(value: string | undefined): number | null {
   if (!value) {
     return null;
   }
@@ -204,7 +240,7 @@ function parsePositiveInteger(value) {
   return parsed;
 }
 
-function parseNonNegativeInteger(value) {
+function parseNonNegativeInteger(value: string | undefined): number | null {
   if (!value) {
     return null;
   }
@@ -215,7 +251,7 @@ function parseNonNegativeInteger(value) {
   return parsed;
 }
 
-function verifyLocalArtifact(localPath, artifact) {
+function verifyLocalArtifact(localPath: string, artifact: Artifact): void {
   const actual = sha256Hex(readFileSync(localPath));
   if (actual !== artifact.sha256) {
     throw new Error(
@@ -224,7 +260,7 @@ function verifyLocalArtifact(localPath, artifact) {
   }
 }
 
-function artifactLocalPath(artifactPath) {
+function artifactLocalPath(artifactPath: string): string {
   const relativePath = artifactPath.replace(/^\/metagraph\//, "");
   const tier = artifactStorageTierForPath(artifactPath);
   return path.join(
@@ -234,7 +270,7 @@ function artifactLocalPath(artifactPath) {
   );
 }
 
-function buildControlArtifacts(manifest) {
+function buildControlArtifacts(manifest: Row): ControlArtifact[] {
   return [
     {
       content_type: "application/json; charset=utf-8",
@@ -272,7 +308,13 @@ function buildControlArtifacts(manifest) {
   ];
 }
 
-function uploadJob(localPath, key, bucketName, contentType, kind) {
+function uploadJob(
+  localPath: string,
+  key: string,
+  bucketName: string,
+  contentType: string,
+  kind: string,
+): UploadJob {
   return {
     bucketName,
     contentType,
@@ -282,7 +324,10 @@ function uploadJob(localPath, key, bucketName, contentType, kind) {
   };
 }
 
-function getRemoteManifest(bucketName, key) {
+function getRemoteManifest(
+  bucketName: string,
+  key: string,
+): RemoteManifestResult {
   const result = spawnSync(
     wranglerBin(),
     ["r2", "object", "get", `${bucketName}/${key}`, "--remote", "--pipe"],
@@ -307,9 +352,19 @@ function getRemoteManifest(bucketName, key) {
 }
 
 async function putObjects(
-  jobs,
-  { concurrency, progressInterval, retries, retryBaseDelayMs },
-) {
+  jobs: UploadJob[],
+  {
+    concurrency,
+    progressInterval,
+    retries,
+    retryBaseDelayMs,
+  }: {
+    concurrency: number;
+    progressInterval: number;
+    retries: number;
+    retryBaseDelayMs: number;
+  },
+): Promise<void> {
   if (jobs.length === 0) {
     return;
   }
@@ -337,7 +392,10 @@ async function putObjects(
   );
 }
 
-async function putObject(job, { retries, retryBaseDelayMs }) {
+async function putObject(
+  job: UploadJob,
+  { retries, retryBaseDelayMs }: { retries: number; retryBaseDelayMs: number },
+): Promise<void> {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       await putObjectOnce(job);
@@ -355,7 +413,12 @@ async function putObject(job, { retries, retryBaseDelayMs }) {
   }
 }
 
-function putObjectOnce({ localPath, key, bucketName, contentType }) {
+function putObjectOnce({
+  localPath,
+  key,
+  bucketName,
+  contentType,
+}: UploadJob): Promise<void> {
   const args = [
     "r2",
     "object",
@@ -375,12 +438,12 @@ function putObjectOnce({ localPath, key, bucketName, contentType }) {
     let stdout = "";
     let stderr = "";
     let settled = false;
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => {
+    child.stdout?.setEncoding("utf8");
+    child.stderr?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk) => {
       stdout += chunk;
     });
-    child.stderr.on("data", (chunk) => {
+    child.stderr?.on("data", (chunk) => {
       stderr += chunk;
     });
     // A single stalled wrangler call (network stall, hung TLS handshake, R2
@@ -429,19 +492,19 @@ function putObjectOnce({ localPath, key, bucketName, contentType }) {
   });
 }
 
-function sleep(ms) {
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function summarizeError(error) {
-  return String(error?.message || error)
+function summarizeError(error: unknown): string | undefined {
+  return String((error as Error)?.message || error)
     .split("\n")
     .find((line) => line.trim())
     ?.trim()
     .slice(0, 240);
 }
 
-function wranglerBin() {
+function wranglerBin(): string {
   return (
     process.env.METAGRAPH_WRANGLER_BIN ||
     path.join(

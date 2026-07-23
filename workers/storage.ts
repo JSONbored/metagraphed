@@ -268,7 +268,7 @@ export async function readR2Object(
 //     run-prefix entirely -- even though a perfectly good prior capture is
 //     still sitting untouched under the literal "latest/" key.
 //
-// r2-upload.mjs already uploads every artifact to BOTH keys
+// r2-upload.ts already uploads every artifact to BOTH keys
 // (METAGRAPH_R2_UPLOAD_HISTORY=1 in production); the literal "latest/"
 // prefix is only ever updated on a SUCCESSFUL capture for these artifacts
 // (never deleted on failure), so reading it directly is strictly safer than

@@ -66,7 +66,7 @@ process.exit(2);
   try {
     const output = execFileSync(
       process.execPath,
-      ["scripts/r2-upload.mjs", "--write"],
+      ["scripts/r2-upload.ts", "--write"],
       {
         cwd: process.cwd(),
         encoding: "utf8",

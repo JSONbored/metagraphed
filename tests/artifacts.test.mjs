@@ -2403,7 +2403,7 @@ process.exit(2);
   try {
     const output = execFileSync(
       process.execPath,
-      ["scripts/r2-upload.mjs", "--write"],
+      ["scripts/r2-upload.ts", "--write"],
       {
         cwd: process.cwd(),
         encoding: "utf8",
@@ -2451,7 +2451,7 @@ process.exit(2);
 test("limited R2 upload dry run skips control manifests", () => {
   const output = execFileSync(
     process.execPath,
-    ["scripts/r2-upload.mjs", "--dry-run"],
+    ["scripts/r2-upload.ts", "--dry-run"],
     {
       cwd: process.cwd(),
       encoding: "utf8",

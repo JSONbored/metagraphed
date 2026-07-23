@@ -13,7 +13,7 @@
 // process's own memory beyond what DuckDB's COPY needs.
 //
 // R2 upload goes through `wrangler r2 object put --remote`, the same
-// mechanism scripts/r2-upload.mjs already uses (CLOUDFLARE_API_TOKEN +
+// mechanism scripts/r2-upload.ts already uses (CLOUDFLARE_API_TOKEN +
 // CLOUDFLARE_ACCOUNT_ID env vars) -- there is no S3-compatible credential
 // anywhere in this codebase, and this doesn't introduce one.
 //
