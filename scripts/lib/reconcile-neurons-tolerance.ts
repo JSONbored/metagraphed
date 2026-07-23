@@ -26,7 +26,10 @@ export const RELATIVE_TOLERANCE = 0.02;
 // a wide margin rather than needing to be tuned razor-close to it.
 export const ALERT_THRESHOLD_RATIO = 0.3;
 
-export function fieldsDiffer(liveValue: unknown, storedValue: unknown): boolean {
+export function fieldsDiffer(
+  liveValue: unknown,
+  storedValue: unknown,
+): boolean {
   const live = Number(liveValue);
   const stored = storedValue === null ? null : Number(storedValue);
   if (!Number.isFinite(live)) return false; // fetch didn't produce a value for this field -- not this reconciler's problem
