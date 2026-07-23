@@ -138,6 +138,24 @@ const API_KEY_QUERY_SURFACE = {
   probe: { method: "GET", enabled: true },
 };
 
+// #7722: auth.scheme:"basic" -- plain HTTP Basic Auth, same single-value
+// shape as bearer/api-key (a pre-computed opaque string), just a different
+// value_format convention.
+const BASIC_AUTH_SURFACE = {
+  surface_id: "x:api:21",
+  netuid: 25,
+  kind: "subnet-api",
+  url: "https://x.example/basic-gated",
+  auth_required: true,
+  auth: {
+    scheme: "basic",
+    location: "header",
+    name: "Authorization",
+    value_format: "Basic <base64(username:password)>",
+  },
+  probe: { method: "GET", enabled: true },
+};
+
 const CUSTOM_AUTH_SURFACE = {
   surface_id: "x:api:8",
   netuid: 12,
@@ -319,6 +337,7 @@ const CATALOG = {
     SELF_SCHEMA_SURFACE,
     BEARER_SURFACE,
     API_KEY_QUERY_SURFACE,
+    BASIC_AUTH_SURFACE,
     CUSTOM_AUTH_SURFACE,
     INCOMPLETE_AUTH_SURFACE,
     DISABLED_PROBE_BEARER_SURFACE,
@@ -872,6 +891,35 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       );
       assert.equal(result.isError, false);
       assert.equal(new URL(requestedUrl).searchParams.get("api_key"), "abc123");
+    });
+
+    test("a basic-auth surface with a credential injects it as the documented header (#7722)", async () => {
+      let sentHeader;
+      const result = await callTool(
+        {
+          surface_id: "x:api:21",
+          credential: "Basic dXNlcjpwYXNz",
+        },
+        async (url, init) => {
+          sentHeader = init.headers.Authorization;
+          return new Response("{}", {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      );
+      assert.equal(result.isError, false);
+      assert.equal(sentHeader, "Basic dXNlcjpwYXNz");
+    });
+
+    test("an object credential on a basic-auth surface is invalid_params -- basic requires a string", async () => {
+      const result = await callTool({
+        surface_id: "x:api:21",
+        credential: { user: "u", pass: "p" },
+      });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /invalid_params/);
+      assert.match(result.content[0].text, /not an object/);
     });
 
     test("no credential on an auth_required surface is still auth_required (Phase 1/2 unchanged)", async () => {

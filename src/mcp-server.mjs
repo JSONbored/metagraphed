@@ -11066,7 +11066,7 @@ export const MCP_TOOLS = [
         credential: {
           type: ["string", "object"],
           description:
-            "Credential for an auth_required surface -- see this surface's auth details (list_subnet_apis/get_api_schema) for which shape it needs. For auth.scheme bearer/api-key: a single string, already formatted per auth.value_format (e.g. \"Bearer <token>\"). For auth.scheme signature (e.g. a Bittensor hotkey-signed request): an object mapping every name in auth.names to a value YOU have already computed -- this tool never signs anything itself, you must compute the signature yourself (with your own wallet/key, exactly as if calling the subnet directly) before calling this tool; the object's keys must exactly match auth.names, no more, no fewer. Any other scheme (custom, or incompletely documented) is rejected. Never obtains a credential on your behalf, never stores or reuses one past this single call.",
+            'Credential for an auth_required surface -- see this surface\'s auth details (list_subnet_apis/get_api_schema) for which shape it needs. For auth.scheme bearer/api-key/basic: a single string, already formatted per auth.value_format (e.g. "Bearer <token>" or "Basic <base64(username:password)>"). For auth.scheme signature (e.g. a Bittensor hotkey-signed request): an object mapping every name in auth.names to a value YOU have already computed -- this tool never signs anything itself, you must compute the signature yourself (with your own wallet/key, exactly as if calling the subnet directly) before calling this tool; the object\'s keys must exactly match auth.names, no more, no fewer. Any other scheme (custom, oauth2, or incompletely documented) is rejected. Never obtains a credential on your behalf, never stores or reuses one past this single call.',
         },
       },
       required: ["surface_id"],
@@ -11161,7 +11161,7 @@ export const MCP_TOOLS = [
         }
         const scheme = surface.auth?.scheme;
         const location = surface.auth?.location;
-        if (scheme === "bearer" || scheme === "api-key") {
+        if (scheme === "bearer" || scheme === "api-key" || scheme === "basic") {
           const name = surface.auth?.name;
           if (
             !name ||
@@ -11266,7 +11266,7 @@ export const MCP_TOOLS = [
         } else {
           throw toolError(
             "credential_not_supported",
-            `This surface's auth scheme ("${scheme || "undocumented"}") is not one this tool can attach a credential to (only bearer/api-key/signature are supported). Use list_subnet_apis / how_do_i_call to see how to call it directly.`,
+            `This surface's auth scheme ("${scheme || "undocumented"}") is not one this tool can attach a credential to (only bearer/api-key/basic/signature are supported). Use list_subnet_apis / how_do_i_call to see how to call it directly.`,
           );
         }
       }
