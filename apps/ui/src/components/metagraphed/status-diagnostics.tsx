@@ -16,6 +16,7 @@ import {
 } from "@/components/metagraphed/table-controls";
 import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { HealthHistorySurface, SourceHealthProvider } from "@/lib/metagraphed/types";
 
 /* ================================================================== *
@@ -58,7 +59,7 @@ export function HealthHistoryDrilldown() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 rounded border border-border bg-card p-3">
+      <Panel dense bodyClassName="flex flex-wrap items-center gap-3">
         <div>
           <div className="mg-label">Probe date</div>
           <div className="font-display text-sm font-semibold text-ink-strong">{date}</div>
@@ -76,7 +77,7 @@ export function HealthHistoryDrilldown() {
             aria-label="Probe history date"
           />
         </label>
-      </div>
+      </Panel>
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-48 w-full" />}>
           <HealthHistoryBody date={date} />
@@ -164,7 +165,7 @@ function HealthHistoryBody({ date }: { date: string }) {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded border border-border bg-card p-3">
+        <Panel as="div" dense>
           <div className="mg-label mb-1">Status counts</div>
           <div className="flex items-center gap-4 font-mono text-[12px] tabular-nums">
             <span className="text-health-ok">{okCount} ok</span>
@@ -172,11 +173,11 @@ function HealthHistoryBody({ date }: { date: string }) {
             <span className="text-health-down">{failed} failed</span>
             <span className="text-ink-muted">{summary.surface_count ?? rows.length} probed</span>
           </div>
-        </div>
-        <div className="rounded border border-border bg-card p-3">
+        </Panel>
+        <Panel as="div" dense>
           <div className="mg-label mb-1.5">Classification mix</div>
           <BarMini data={classData} showValue />
-        </div>
+        </Panel>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -205,7 +206,7 @@ function HealthHistoryBody({ date }: { date: string }) {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <Panel flush className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
             <tr>
@@ -268,7 +269,7 @@ function HealthHistoryBody({ date }: { date: string }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -366,7 +367,7 @@ export function SourceHealthTable() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-4 rounded border border-border bg-card p-3 font-mono text-[12px] tabular-nums">
+      <Panel dense bodyClassName="flex flex-wrap items-center gap-4 font-mono text-[12px] tabular-nums">
         <span className="text-health-ok">{summary.status_counts.ok ?? 0} ok</span>
         <span className="text-health-warn">{summary.status_counts.degraded ?? 0} degraded</span>
         <span className="text-health-down">{summary.status_counts.failed ?? 0} failed</span>
@@ -375,7 +376,7 @@ export function SourceHealthTable() {
           {summary.provider_count ?? rows.length} providers · {summary.endpoint_count ?? 0}{" "}
           endpoints
         </span>
-      </div>
+      </Panel>
 
       <div className="flex flex-wrap items-center gap-2">
         <SelectFilter
@@ -394,7 +395,7 @@ export function SourceHealthTable() {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <Panel flush className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
             <tr>
@@ -460,7 +461,7 @@ export function SourceHealthTable() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
     </div>
   );
 }
