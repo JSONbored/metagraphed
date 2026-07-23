@@ -430,7 +430,7 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   worker-computed. Mirror an existing route end-to-end; the build's derived-artifact freshness gate
   fails if a committed `public/metagraph/*` is stale. It also trips gates the "new route" framing
   above doesn't cover, caught live 2026-07-18 shipping two routes with none of these:
-  `scripts/validate-api.mjs`'s own `checks` array needs a matching `[route, assertion]` entry (it
+  `scripts/validate-api.ts`'s own `checks` array needs a matching `[route, assertion]` entry (it
   asserts `checks.length === API_ROUTES.length`, a **live RPC call** against real finney, not a
   stub); codecov/patch (99%, branch-counted) needs GraphQL/MCP test coverage in the _centralized_
   `tests/graphql.test.mjs`/`tests/mcp-server.test.mjs` files specifically, not just a per-feature

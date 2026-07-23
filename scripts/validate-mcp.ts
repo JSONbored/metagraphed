@@ -2,7 +2,7 @@
 //
 // Exercises the JSON-RPC lifecycle (initialize + tools/list) and a tools/call
 // for every registered tool against a cold local artifact env, asserting the
-// MCP result envelope shape. Kept separate from validate-api.mjs because the
+// MCP result envelope shape. Kept separate from validate-api.ts because the
 // MCP endpoint is not artifact-backed and must not enter the
 // `checks.length === API_ROUTES.length` invariant.
 import assert from "node:assert/strict";

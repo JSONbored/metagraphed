@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import {
   API_ROUTES,
@@ -27,7 +27,13 @@ import {
   FEED_PAGINATION,
 } from "../workers/request-params.ts";
 
-const openapi = await readJson(
+// OpenAPI document + Worker response bodies are dynamic JSON read only for
+// assertion purposes -- never trusted for control flow. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+const openapi: Row = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
 );
 const ajv = new Ajv2020({
@@ -36,6 +42,9 @@ const ajv = new Ajv2020({
   strict: false,
   validateFormats: true,
 });
+// ajv-formats has no named export to sidestep the NodeNext/esModuleInterop
+// resolution -- cast to its real callable signature. Mirrors validate-schemas.ts.
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 addFormats(ajv);
 
 const fixtureDetail = {
@@ -68,12 +77,12 @@ ajv.addSchema(
 // Rewrite every internal `#/components/...` reference to its absolute form so it
 // resolves against the registered components schema. Pure structural transform —
 // validation behaviour and error text are unchanged.
-function absolutizeComponentRefs(node) {
+function absolutizeComponentRefs(node: unknown): unknown {
   if (Array.isArray(node)) {
     return node.map(absolutizeComponentRefs);
   }
   if (node && typeof node === "object") {
-    const out = {};
+    const out: Row = {};
     for (const [key, value] of Object.entries(node)) {
       out[key] =
         key === "$ref" &&
@@ -89,13 +98,13 @@ function absolutizeComponentRefs(node) {
 
 // Memoize compiled validators by their (rewritten) schema, so repeated routes
 // and the shared ErrorEnvelope reuse one compiled function.
-const responseValidatorCache = new Map();
-function compileResponseValidator(schema) {
+const responseValidatorCache = new Map<string, ValidateFunction>();
+function compileResponseValidator(schema: unknown): ValidateFunction {
   const rewritten = absolutizeComponentRefs(schema);
   const key = JSON.stringify(rewritten);
   let validator = responseValidatorCache.get(key);
   if (!validator) {
-    validator = ajv.compile(rewritten);
+    validator = ajv.compile(rewritten as Row);
     responseValidatorCache.set(key, validator);
   }
   return validator;
@@ -105,10 +114,10 @@ function compileResponseValidator(schema) {
 // service binding). It's a separate Worker not present in this harness, so mock it
 // with the bare response shapes it serves (ADR 0013) — api.mjs rewraps them in the
 // canonical envelope, which is what the checks below assert.
-const baseEnv = createLocalArtifactEnv();
+const baseEnv = createLocalArtifactEnv() as Row;
 const env = createLocalArtifactEnv({
   DATA_API: {
-    async fetch(request) {
+    async fetch(request: Request) {
       const pathname = new URL(request.url).pathname;
       const headers = { "content-type": "application/json" };
       if (pathname === "/api/v1/chain-events") {
@@ -171,7 +180,7 @@ const env = createLocalArtifactEnv({
     },
   },
   METAGRAPH_ARCHIVE: {
-    async get(key) {
+    async get(key: string) {
       if (key === "latest/fixtures/7:subnet-api:new_v2.json") {
         return {
           async json() {
@@ -192,7 +201,7 @@ assert.ok(
   "validate:api requires a local health/history/YYYY-MM-DD.json artifact; run `npm run build` before validating the API",
 );
 
-const checks = [
+const checks: [string, (body: Row) => void][] = [
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],
   [
     "/api/v1/subnets",
@@ -1438,7 +1447,7 @@ const checks = [
     "/api/v1/profiles?profile_level=adapter-backed",
     (body) =>
       assert.equal(
-        body.data.profiles.every(
+        (body.data.profiles as Row[]).every(
           (profile) => profile.profile_level === "adapter-backed",
         ),
         true,
@@ -1474,7 +1483,7 @@ const checks = [
     "/api/v1/subnets/7/surfaces?kind=subnet-api&limit=3",
     (body) =>
       assert.equal(
-        body.data.surfaces.every(
+        (body.data.surfaces as Row[]).every(
           (surface) => surface.netuid === 7 && surface.kind === "subnet-api",
         ),
         true,
@@ -1484,7 +1493,7 @@ const checks = [
     "/api/v1/endpoints?layer=bittensor-base&limit=2",
     (body) =>
       assert.equal(
-        body.data.endpoints.every(
+        (body.data.endpoints as Row[]).every(
           (endpoint) => endpoint.layer === "bittensor-base",
         ),
         true,
@@ -1494,7 +1503,7 @@ const checks = [
     "/api/v1/subnets/7/endpoints?kind=subnet-api",
     (body) =>
       assert.equal(
-        body.data.endpoints.every(
+        (body.data.endpoints as Row[]).every(
           (endpoint) => endpoint.netuid === 7 && endpoint.kind === "subnet-api",
         ),
         true,
@@ -1504,7 +1513,9 @@ const checks = [
     "/api/v1/subnets/7/candidates?limit=2",
     (body) =>
       assert.equal(
-        body.data.candidates.every((candidate) => candidate.netuid === 7),
+        (body.data.candidates as Row[]).every(
+          (candidate) => candidate.netuid === 7,
+        ),
         true,
       ),
   ],
@@ -1512,7 +1523,7 @@ const checks = [
     "/api/v1/subnets/7/health?status=ok",
     (body) =>
       assert.equal(
-        body.data.surfaces.every(
+        (body.data.surfaces as Row[]).every(
           (surface) => surface.netuid === 7 && surface.status === "ok",
         ),
         true,
@@ -1522,7 +1533,9 @@ const checks = [
     "/api/v1/surfaces?kind=openapi",
     (body) =>
       assert.equal(
-        body.data.surfaces.every((surface) => surface.kind === "openapi"),
+        (body.data.surfaces as Row[]).every(
+          (surface) => surface.kind === "openapi",
+        ),
         true,
       ),
   ],
@@ -1530,7 +1543,7 @@ const checks = [
     "/api/v1/candidates?state=schema-valid",
     (body) =>
       assert.equal(
-        body.data.candidates.every(
+        (body.data.candidates as Row[]).every(
           (candidate) => candidate.state === "schema-valid",
         ),
         true,
@@ -1548,7 +1561,7 @@ const checks = [
     "/api/v1/providers/allways/endpoints",
     (body) =>
       assert.equal(
-        body.data.endpoints.every(
+        (body.data.endpoints as Row[]).every(
           (endpoint) => endpoint.provider === "allways",
         ),
         true,
@@ -1566,7 +1579,7 @@ const checks = [
       assert.equal(Array.isArray(body.data.rows), true);
       assert.equal(body.data.rows.length <= 3, true);
       assert.equal(
-        body.data.rows.every((row) => row.tier === "machine-usable"),
+        (body.data.rows as Row[]).every((row) => row.tier === "machine-usable"),
         true,
       );
       assert.equal(Array.isArray(body.data.ranked_queue), true);
@@ -1579,7 +1592,7 @@ const checks = [
       assert.equal(Number.isInteger(body.data.summary.total_validators), true);
       // Rows are ordered by emission share, highest first.
       assert.equal(
-        body.data.subnets.every(
+        (body.data.subnets as Row[]).every(
           (row, i) =>
             i === 0 ||
             (row.emission_share ?? -1) <=
@@ -1593,7 +1606,9 @@ const checks = [
     "/api/v1/curation?coverage_level=probed",
     (body) =>
       assert.equal(
-        body.data.curation.every((entry) => entry.coverage_level === "probed"),
+        (body.data.curation as Row[]).every(
+          (entry) => entry.coverage_level === "probed",
+        ),
         true,
       ),
   ],
@@ -1645,7 +1660,9 @@ const checks = [
       assert.equal(Array.isArray(body.data.priorities), true);
       assert.equal(Array.isArray(body.data.enrichment_queue), true);
       assert.equal(
-        body.data.priorities.every((priority) => priority.netuid === 7),
+        (body.data.priorities as Row[]).every(
+          (priority) => priority.netuid === 7,
+        ),
         true,
       );
     },
@@ -1658,7 +1675,7 @@ const checks = [
     (body) => {
       assert.equal(Array.isArray(body.data.profiles), true);
       assert.equal(
-        body.data.profiles.every((profile) =>
+        (body.data.profiles as Row[]).every((profile) =>
           profile.identity_promotion_kinds.includes("source-repo"),
         ),
         true,
@@ -1674,7 +1691,7 @@ const checks = [
     (body) => {
       assert.equal(body.data.queue.length <= 3, true);
       assert.equal(
-        body.data.queue.every(
+        (body.data.queue as Row[]).every(
           (entry) =>
             entry.lane === "direct-submission" &&
             entry.direct_submission_kinds.includes("openapi"),
@@ -1688,7 +1705,7 @@ const checks = [
     (body) => {
       assert.equal(body.data.entries.length <= 3, true);
       assert.equal(
-        body.data.entries.every(
+        (body.data.entries as Row[]).every(
           (entry) =>
             entry.evidence_action === "replace-stale-evidence" &&
             entry.missing_kinds.includes("openapi"),
@@ -1702,7 +1719,7 @@ const checks = [
     (body) => {
       assert.equal(body.data.targets.length <= 3, true);
       assert.equal(
-        body.data.targets.every(
+        (body.data.targets as Row[]).every(
           (target) =>
             target.target_type === "surface-candidate" &&
             target.kind === "openapi",
@@ -1777,7 +1794,7 @@ const checks = [
     "/api/v1/endpoint-incidents?severity=critical",
     (body) =>
       assert.equal(
-        body.data.incidents.every(
+        (body.data.incidents as Row[]).every(
           (incident) => incident.severity === "critical",
         ),
         true,
@@ -1800,7 +1817,9 @@ const checks = [
     (body) =>
       assert.equal(
         body.data.documents.length > 0 &&
-          body.data.documents.every((document) => !("tokens" in document)),
+          (body.data.documents as Row[]).every(
+            (document) => !("tokens" in document),
+          ),
         true,
       ),
   ],
@@ -1839,7 +1858,7 @@ for (const [route, assertion] of checks) {
     CONTRACT_VERSION,
     `${route}: missing contract header`,
   );
-  const body = await response.json();
+  const body = (await response.json()) as Row;
   assert.equal(body.ok, true, `${route}: expected ok envelope`);
   assert.equal(body.schema_version, 1, `${route}: expected schema_version 1`);
   validateWorkerResponse(route, body);
@@ -1954,7 +1973,15 @@ for (const [route, assertion] of checks) {
     identity_hash: IDENTITY_HASH,
   };
 
-  const postgresTierChecks = [
+  interface PostgresTierCheck {
+    flag: string;
+    route: string;
+    upstreamPath: string;
+    data: unknown;
+    assertion: (body: Row) => void;
+  }
+
+  const postgresTierChecks: PostgresTierCheck[] = [
     {
       flag: "METAGRAPH_BLOCKS_SOURCE",
       route: "/api/v1/blocks",
@@ -2069,11 +2096,11 @@ for (const [route, assertion] of checks) {
     data,
     assertion,
   } of postgresTierChecks) {
-    let capturedPath = null;
+    let capturedPath: string | null = null;
     const postgresEnv = createLocalArtifactEnv({
       [flag]: "postgres",
       DATA_API: {
-        async fetch(request) {
+        async fetch(request: Request) {
           const url = new URL(request.url);
           capturedPath = `${url.pathname}${url.search}`;
           return new Response(JSON.stringify(data), {
@@ -2094,7 +2121,7 @@ for (const [route, assertion] of checks) {
       upstreamPath,
       `${flag}: DATA_API must receive the forwarded path`,
     );
-    const body = await response.json();
+    const body = (await response.json()) as Row;
     assert.equal(body.ok, true, `${flag} ${route}: expected ok envelope`);
     assert.equal(body.schema_version, 1, `${flag} ${route}: schema_version`);
     validateWorkerResponse(route, body);
@@ -2113,7 +2140,7 @@ const paginated = await handleRequest(
   env,
   {},
 );
-const paginatedBody = await paginated.json();
+const paginatedBody = (await paginated.json()) as Row;
 assert.equal(paginated.status, 200, "paginated subnets should return 200");
 assert.equal(paginatedBody.data.subnets.length, 2);
 assert.equal(paginatedBody.meta.pagination.returned, 2);
@@ -2152,7 +2179,7 @@ const etagSource = await handleRequest(
 const cached = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets/7", {
     headers: {
-      "if-none-match": etagSource.headers.get("etag"),
+      "if-none-match": etagSource.headers.get("etag")!,
     },
   }),
   env,
@@ -2167,7 +2194,7 @@ const missing = await handleRequest(
 );
 assert.equal(missing.status, 404, "missing subnet should return 404");
 assert.equal(
-  validateErrorEnvelope(await missing.json()).ok,
+  validateErrorEnvelope((await missing.json()) as Row).ok,
   false,
   "missing subnet should return error envelope",
 );
@@ -2232,13 +2259,13 @@ const r2Fallback = await handleRequest(
       },
     },
     METAGRAPH_CONTROL: {
-      async get(key) {
+      async get(key: string) {
         assert.equal(key, "metagraph:latest");
         return { latest_prefix: "latest/" };
       },
     },
     METAGRAPH_ARCHIVE: {
-      async get(key) {
+      async get(key: string) {
         assert.equal(key, "latest/changelog.json");
         return {
           async json() {
@@ -2263,7 +2290,7 @@ assert.equal(
 
 console.log(`Validated ${checks.length} Worker API route(s).`);
 
-function validateWorkerResponse(route, body) {
+function validateWorkerResponse(route: string, body: Row): void {
   const url = new URL(`https://metagraph.sh${route}`);
   const routeContract = API_ROUTES.find((entry) =>
     compileRoutePattern(entry.path).test(url.pathname),
@@ -2286,7 +2313,7 @@ function validateWorkerResponse(route, body) {
   );
 }
 
-function validateErrorEnvelope(body) {
+function validateErrorEnvelope(body: Row): Row {
   const validator = compileResponseValidator({
     $ref: "#/components/schemas/ErrorEnvelope",
   });

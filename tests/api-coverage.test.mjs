@@ -3077,7 +3077,7 @@ describe("Access-Control-Expose-Headers", () => {
 
 // --- inverse contract coverage ------------------------------------------------
 // The FORWARD direction (every contract route is reachable + serves a 200) is
-// covered by validate-api.mjs + smoke-route-substitution. This is the INVERSE: a
+// covered by validate-api.ts + smoke-route-substitution. This is the INVERSE: a
 // /api/v1 path dispatched by workers/api.mjs that has NO matching API_ROUTES entry
 // in contracts.mjs is invisible to OpenAPI/types/SDK. That gap let the chain-events
 // routes ship dispatched-but-uncontracted; this guard fails CI on any new one.

@@ -53,7 +53,7 @@
     "sync:summary": "node scripts/sync-summary.ts",
     "scan:public-safety": "node scripts/scan-public-safety.ts",
     "validate:schemas": "node scripts/validate-schemas.ts",
-    "validate:api": "node scripts/validate-api.mjs",
+    "validate:api": "node scripts/validate-api.ts",
     "validate:committed-seed": "node scripts/validate-committed-seed.ts",
     "validate:mcp": "node scripts/validate-mcp.ts",
     "validate:ai": "node scripts/validate-ai-routes.ts",
