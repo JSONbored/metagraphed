@@ -18,6 +18,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import type { Endpoint } from "@/lib/metagraphed/types";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 
 /**
  * Side-by-side compare drawer. The chosen peer netuid is persisted in the
@@ -240,7 +241,7 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
         delta={null}
       />
 
-      <section className="rounded-lg border border-border bg-card overflow-hidden">
+      <Panel flush className="overflow-hidden">
         <div className="border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
           Top providers
         </div>
@@ -248,22 +249,26 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
           <ProviderColumn rows={baseProviders} other={peerProviders} />
           <ProviderColumn rows={peerProviders} other={baseProviders} />
         </div>
-      </section>
+      </Panel>
     </div>
   );
 }
 
 function Header({ label, name, netuid }: { label: string; name?: string; netuid: number }) {
   return (
-    <div className="rounded border border-border bg-card px-2.5 py-2">
-      <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">{label}</div>
-      <div className="mt-0.5 truncate font-display text-sm font-semibold text-ink-strong">
-        {name ?? `Subnet ${netuid}`}
+    <Panel as="div" flush>
+      <div className="px-2.5 py-2">
+        <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
+          {label}
+        </div>
+        <div className="mt-0.5 truncate font-display text-sm font-semibold text-ink-strong">
+          {name ?? `Subnet ${netuid}`}
+        </div>
+        <div className="font-mono text-[10px] text-ink-muted">
+          netuid {String(netuid).padStart(3, "0")}
+        </div>
       </div>
-      <div className="font-mono text-[10px] text-ink-muted">
-        netuid {String(netuid).padStart(3, "0")}
-      </div>
-    </div>
+    </Panel>
   );
 }
 
