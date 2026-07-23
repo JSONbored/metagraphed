@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { ClientOnly } from "@tanstack/react-router";
 import { classNames } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 
 const GraphiqlExplorerBody = lazy(() =>
   import("./graphiql-explorer-body").then((m) => ({ default: m.GraphiqlExplorerBody })),
@@ -41,13 +42,15 @@ export function GraphiqlExplorer({
 
 function ExplorerFallback({ heightClassName }: { heightClassName: string }) {
   return (
-    <div
+    <Panel
+      as="div"
+      flush
       className={classNames(
-        "flex items-center justify-center rounded-lg border border-border bg-card font-mono text-xs text-ink-muted",
+        "flex items-center justify-center font-mono text-xs text-ink-muted",
         heightClassName,
       )}
     >
       Loading explorer…
-    </div>
+    </Panel>
   );
 }

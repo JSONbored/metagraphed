@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, TrendingUp, Timer } from "lucide-react";
 import { endpointsQuery, endpointIncidentsQuery } from "@/lib/metagraphed/queries";
 import type { Endpoint } from "@/lib/metagraphed/types";
-import { Chip } from "@/components/metagraphed/primitives";
+import { Chip, Panel } from "@/components/metagraphed/primitives";
 import { HealthDot } from "@jsonbored/ui-kit";
 
 interface Item {
@@ -97,7 +97,7 @@ export function EndpointsPriorityStrip() {
 function PriorityCard({ item }: { item: Item }) {
   const Icon = item.icon;
   const body = (
-    <div className="mg-hover-lift rounded border border-border bg-card p-3 h-full">
+    <Panel as="div" dense interactive className="h-full">
       <div className="flex items-center justify-between gap-2">
         <span className="mg-label inline-flex items-center gap-1.5">
           <Icon className="size-3" aria-hidden />
@@ -133,7 +133,7 @@ function PriorityCard({ item }: { item: Item }) {
           <Chip tone="muted">Nothing to review</Chip>
         </div>
       )}
-    </div>
+    </Panel>
   );
   if (!item.href) return body;
   return (

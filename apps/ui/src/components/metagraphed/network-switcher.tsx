@@ -5,6 +5,7 @@ import { ClampedPopoverContent } from "./clamped-popover-content";
 import { useApiBase, useNetwork } from "@/hooks/use-api-base";
 import { CHAIN_NETWORKS, LOCAL_DEV, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 
 interface Reach {
   ok: boolean;
@@ -122,28 +123,32 @@ export function NetworkSwitcher() {
               );
             })}
             <li>
-              <div className="rounded border border-dashed border-border bg-card px-2 py-2">
-                <div className="flex items-center gap-2">
-                  <TerminalSquare className="size-3.5 text-ink-muted shrink-0" />
-                  <span className="text-[12px] font-medium text-ink-strong">{LOCAL_DEV.label}</span>
+              <Panel as="div" flush className="border-dashed">
+                <div className="px-2 py-2">
+                  <div className="flex items-center gap-2">
+                    <TerminalSquare className="size-3.5 text-ink-muted shrink-0" />
+                    <span className="text-[12px] font-medium text-ink-strong">
+                      {LOCAL_DEV.label}
+                    </span>
+                  </div>
+                  <span className="mt-0.5 block text-[10px] text-ink-muted">
+                    {LOCAL_DEV.description}
+                  </span>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <code className="font-mono text-[10px] text-ink-muted truncate">
+                      {LOCAL_DEV.rpc}
+                    </code>
+                    <a
+                      href={LOCAL_DEV.guideUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] text-ink-muted hover:text-ink-strong underline underline-offset-2 shrink-0"
+                    >
+                      setup →
+                    </a>
+                  </div>
                 </div>
-                <span className="mt-0.5 block text-[10px] text-ink-muted">
-                  {LOCAL_DEV.description}
-                </span>
-                <div className="mt-1 flex items-center justify-between gap-2">
-                  <code className="font-mono text-[10px] text-ink-muted truncate">
-                    {LOCAL_DEV.rpc}
-                  </code>
-                  <a
-                    href={LOCAL_DEV.guideUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] text-ink-muted hover:text-ink-strong underline underline-offset-2 shrink-0"
-                  >
-                    setup →
-                  </a>
-                </div>
-              </div>
+              </Panel>
             </li>
           </ul>
         </div>

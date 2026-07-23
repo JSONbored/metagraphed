@@ -7,6 +7,7 @@ import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
+import { Panel } from "@/components/metagraphed/primitives";
 import { taoCompact, scoreStr, SponsoredBadge } from "@/components/metagraphed/neuron-format";
 import {
   annualizedDelegatorApyPct,
@@ -135,7 +136,7 @@ export function NeuronTable({
   );
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel as="div" flush className="overflow-hidden">
       {/* Mobile card fallback (#6335): the 8-10 column table is unreadable on a
           narrow viewport, so mirror ValidatorCardList's per-row cards (one per
           neuron, each metric labelled by its field). The desktop table below is
@@ -329,7 +330,7 @@ export function NeuronTable({
           Download CSV
         </a>
       </div>
-    </div>
+    </Panel>
   );
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, Radio, Database, AlertOctagon } from "lucide-react";
 import { HealthDot } from "@jsonbored/ui-kit";
 import { EmptyState, RECOVERY } from "./states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { classNames } from "@/lib/metagraphed/format";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Endpoint } from "@/lib/metagraphed/types";
@@ -105,7 +106,7 @@ export function EndpointsGlance({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <Panel as="div" flush>
       <ul className="divide-y divide-border">
         {BUCKETS.map((b) => {
           const items = endpoints.filter(b.match);
@@ -164,6 +165,6 @@ export function EndpointsGlance({
           <div className="p-3">{fullList()}</div>
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

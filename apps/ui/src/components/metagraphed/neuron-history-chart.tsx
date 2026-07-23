@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { subnetNeuronHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetNeuronHistoryPoint } from "@/lib/metagraphed/types";
 
@@ -93,7 +94,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
           description="Daily snapshots for this neuron will appear here once enough chain history has accumulated."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <Panel as="div" dense bodyClassName="space-y-3">
           {series.stake.length > 0 ? (
             <HistoryRow
               label="Stake"
@@ -137,7 +138,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
           {series.rank.length > 0 ? (
             <HistoryRow label="Rank" series={series.rank} color="var(--chart-6)" />
           ) : null}
-        </div>
+        </Panel>
       )}
     </div>
   );

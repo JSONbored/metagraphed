@@ -6,6 +6,7 @@ import { TableState, RealtimeFreshness, StatTile, BarMini } from "@jsonbored/ui-
 import { NeuronTable } from "@/components/metagraphed/neuron-table";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { MetagraphNeuron } from "@/lib/metagraphed/types";
 
 const TOP_N = 12;
@@ -91,7 +92,7 @@ export function MetagraphTableLoader({
 
       {/* Stake distribution across the leading UIDs. */}
       {stakeBars.length > 0 ? (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <Panel as="div" dense>
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
               Stake distribution · top {stakeBars.length} UIDs
@@ -104,7 +105,7 @@ export function MetagraphTableLoader({
             </span>
           </div>
           <BarMini data={stakeBars} />
-        </div>
+        </Panel>
       ) : (
         <div className="flex items-center justify-end">{freshness}</div>
       )}

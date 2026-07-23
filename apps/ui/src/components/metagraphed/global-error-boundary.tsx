@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, Copy, Home, RefreshCw } from "lucide-react";
 import { reportError } from "@/lib/error-reporting";
+import { Panel } from "@/components/metagraphed/primitives";
 
 interface Props {
   children: ReactNode;
@@ -90,12 +91,12 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               overview, or copy the error details for a bug report.
             </p>
 
-            <div className="mt-6 rounded-xl border border-border bg-card p-4">
+            <Panel as="div" dense className="mt-6">
               <div className="mg-label">Error message</div>
               <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-paper p-2 font-mono text-[12px] text-ink">
                 {message || "Unknown error"}
               </pre>
-            </div>
+            </Panel>
 
             <div className="mt-6 flex flex-wrap gap-2">
               <button

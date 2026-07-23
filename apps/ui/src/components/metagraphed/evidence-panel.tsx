@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/metagraphed/client";
 import { metagraphedQueryKey } from "@/lib/metagraphed/queries";
 import { ExternalLink, HoverPreview, TimeAgo } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "./states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { formatRelative } from "@/lib/metagraphed/format";
 import type { ApiMeta, EvidenceItem } from "@/lib/metagraphed/types";
 
@@ -145,7 +146,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
       </div>
 
       {sortedGroups.map(([source, items]) => (
-        <div key={source} className="rounded border border-border bg-card p-3">
+        <Panel as="div" dense key={source}>
           <div className="flex items-center justify-between mb-2 gap-3">
             <span className="mg-label">{source}</span>
             <span className="flex items-center gap-2 font-mono text-[10px] text-ink-muted">
@@ -197,7 +198,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
               <li className="text-[11px] text-ink-muted self-center">+{items.length - 24} more</li>
             ) : null}
           </ul>
-        </div>
+        </Panel>
       ))}
 
       <div className="flex items-center justify-between gap-3 pt-1">
