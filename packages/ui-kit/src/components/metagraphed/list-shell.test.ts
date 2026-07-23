@@ -23,7 +23,9 @@ describe("ListShell sticky table wrappers", () => {
     // root wrapper -- the sticky offset math reads --mg-sticky-offset
     // (from AppShell) plus this to land the <thead> just below the filter bar.
     expect(source).toContain("--mg-list-filter-offset");
-    expect(source).toContain('style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}');
+    expect(source).toContain(
+      'style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}',
+    );
   });
 
   it("keeps the card wrapper's rounded-corner clipping the same for both modes", () => {
