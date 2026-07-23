@@ -875,9 +875,11 @@ jobs:
       # own separate chunk, never in __root__/"/"'s static preloads), but the
       # thin always-loaded wrapper (init/capture/captureException, wired into
       # routes/__root.tsx) pushed the real baseline from ~303 KB to ~305 KB
-      # gzipped. Budget keeps a deliberate margin above that new baseline;
-      # raise it again the same way when a real feature legitimately grows
-      # the initial load further.
+      # gzipped. The Lovable-sync registry-ticker redesign (global AppShell
+      # chrome on every page) landed around the same time and separately adds
+      # a chain-head query and a market-data server function -- both already
+      # covered by the same 320 KB budget. Raise it again the same way when a
+      # real feature legitimately grows the initial load further.
       #
       # dist/, not Nitro's library-default .output/ -- this project's
       # vite.config.ts (@lovable.dev/vite-tanstack-config) is customized to
