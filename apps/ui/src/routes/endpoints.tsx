@@ -1,46 +1,48 @@
-import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useSuspenseQuery, useIsFetching } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
-import { Search, SlidersHorizontal, X } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
 import {
-  TimeAgo,
-  HealthPill,
   HealthDot,
-  CopyButton,
-  BrandIcon,
   SectionHeading,
-  PageHero,
-  ExternalLink,
-  ViewModeToggle,
   DownloadCsvButton,
-  SparkLegend,
   StatTile,
   ShareButton,
 } from "@jsonbored/ui-kit";
+import {
+  AsyncPanel,
+  FilterChipRow,
+  FilterSheet,
+  PageMasthead,
+  PagerFooter,
+  PanelSkeleton,
+  QueryBar,
+  QueryProgress,
+  ResponsiveTable,
+  RoutePending,
+  TabStrip,
+  type FilterChipItem,
+} from "@/components/metagraphed/primitives";
+import { EndpointsPriorityStrip } from "@/components/metagraphed/endpoints-priority-strip";
+import { EndpointOperationalList } from "@/components/metagraphed/endpoint-operational-list";
+import { EndpointComparePanel } from "@/components/metagraphed/endpoint-compare-panel";
+
 import { Radio, Server, ShieldCheck, Activity } from "lucide-react";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { LatencyHeatmap } from "@/components/metagraphed/charts/latency-heatmap";
 import { IncidentsTimeline } from "@/components/metagraphed/analytics/incidents-timeline";
-import {
-  TimeRangeProvider,
-  useTimeRange,
-  RANGE_LABEL,
-} from "@/components/metagraphed/analytics/time-range-context";
+import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
-import { EndpointKindTabs } from "@/components/metagraphed/endpoint-kind-tabs";
-import { EndpointCardList } from "@/components/metagraphed/endpoint-card-list";
 import { ProxyHero, ProxyUsagePanel } from "@/components/metagraphed/rpc-proxy";
 import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
 import { rpcEndpointsSummaryLine } from "@/lib/metagraphed/rpc-endpoints-summary";
 import { buildUrl } from "@/lib/metagraphed/client";
-import { useScrolled } from "@/hooks/use-scrolled";
 import {
   endpointsQuery,
   endpointIncidentsQuery,
@@ -50,6 +52,7 @@ import {
   statusToHealth,
   providersQuery,
   subnetsQuery,
+  metagraphedQueryKey,
 } from "@/lib/metagraphed/queries";
 import {
   endpointCategory,
@@ -61,9 +64,15 @@ import {
   type PoolEligibility,
 } from "@/lib/metagraphed/endpoint-pool";
 
-import type { Endpoint, RpcPool, RpcEndpoint, Provider, Subnet } from "@/lib/metagraphed/types";
-import { endpointsFiltersActive } from "@/lib/metagraphed/endpoints-filters";
-import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
+import type {
+  Endpoint,
+  EndpointIncident,
+  RpcPool,
+  RpcEndpoint,
+  Provider,
+  Subnet,
+} from "@/lib/metagraphed/types";
+import { activeFilterCount } from "@/lib/metagraphed/filter-disclosure";
 
 const endpointsSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -90,6 +99,10 @@ const endpointsSearchSchema = z.object({
   // #3976: ProxyUsagePanel's 7d/30d window is URL-backed (like /explorer) so a
   // shared /endpoints link restores the same window and back/forward works.
   window: fallback(z.enum(["7d", "30d"]), "7d").default("7d"),
+  // Deep-linkable expanded endpoint row. Empty string = collapsed.
+  endpoint: fallback(z.string(), "").default(""),
+  // Comma-separated endpoint IDs selected for side-by-side comparison.
+  compare: fallback(z.string(), "").default(""),
 });
 
 type EndpointsSearch = z.infer<typeof endpointsSearchSchema>;
@@ -112,14 +125,18 @@ export const Route = createFileRoute("/endpoints")({
       },
     ],
   }),
+  pendingComponent: () => <RoutePending panels={3} />,
   component: EndpointsPage,
 });
 
-type EndpointsTab = "proxy" | "endpoints" | "advanced" | "incidents";
-const ENDPOINTS_TABS: { id: EndpointsTab; label: string }[] = [
-  { id: "proxy", label: "Proxy" },
-  { id: "endpoints", label: "Endpoints" },
-  { id: "advanced", label: "Advanced" },
+// Endpoints is the primary product on this page; proxy is one surface among
+// several. Order tabs so the directory is the default landing view rather
+// than making users click past the marketing panel to reach it.
+type EndpointsTab = "endpoints" | "proxy" | "advanced" | "incidents";
+const ENDPOINTS_TABS: ReadonlyArray<{ id: EndpointsTab; label: string }> = [
+  { id: "endpoints", label: "Directory" },
+  { id: "proxy", label: "Managed RPC" },
+  { id: "advanced", label: "Pools" },
   { id: "incidents", label: "Incidents" },
 ];
 
@@ -140,96 +157,107 @@ function EndpointsPage() {
   // #5329: the page stacked ~9 full-width panels into one ~95,000px feed on
   // mobile. Split its distinct concerns into tabs; each section fetches its own
   // data, so only the active tab's panels mount (and query) at a time.
-  const [tab, setTab] = useState<EndpointsTab>("proxy");
+  const [tab, setTab] = useState<EndpointsTab>("endpoints");
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Infrastructure"
         live
         title="Endpoints"
-        description="A load-balanced reverse proxy for Bittensor RPC, plus the registry of callable Subtensor and subnet endpoints behind it."
+        description="Callable Subtensor and subnet endpoints — health, latency, and pool eligibility, plus a managed RPC proxy that fans requests across the healthiest members."
         actions={<ShareButton />}
       />
       <div className="space-y-section">
         {/* Endpoint KPIs stay visible above the tabs so the tab bar has context
             and doesn't float alone under the hero. */}
-        <QueryErrorBoundary>
-          <Suspense
-            fallback={
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Skeleton className="h-20" />
-                <Skeleton className="h-20" />
-                <Skeleton className="h-20" />
-                <Skeleton className="h-20" />
-              </div>
-            }
-          >
-            <EndpointsStatStrip />
-          </Suspense>
-        </QueryErrorBoundary>
-        <div
-          className="flex flex-wrap gap-2 border-b border-border pb-3"
-          role="tablist"
-          aria-label="Endpoints sections"
+        <AsyncPanel
+          context="endpoints overview"
+          retryQueryKeys={[metagraphedQueryKey("endpoints"), metagraphedQueryKey("rpc-pools")]}
+          fallback={
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <PanelSkeleton height="sm" />
+              <PanelSkeleton height="sm" />
+              <PanelSkeleton height="sm" />
+              <PanelSkeleton height="sm" />
+            </div>
+          }
         >
-          {ENDPOINTS_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
-              className={
-                tab === t.id
-                  ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent-text"
-                  : "rounded-full border border-border bg-card px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30 hover:text-ink-strong"
-              }
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+          <EndpointsStatStrip />
+        </AsyncPanel>
+        <TabStrip
+          items={ENDPOINTS_TABS}
+          value={tab}
+          onChange={(v: EndpointsTab) => setTab(v)}
+          ariaLabel="Endpoints sections"
+        />
 
         {tab === "proxy" && (
           <>
-            {/* The headline feature: the live reverse proxy + its usage analytics. */}
             <section>
               <ProxyHero />
             </section>
             <section>
               <SectionHeading title="Proxy usage" />
-              <QueryErrorBoundary>
-                <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-                  <ProxyUsagePanel />
-                </Suspense>
-              </QueryErrorBoundary>
+              <AsyncPanel
+                height="md"
+                context="proxy usage"
+                retryQueryKeys={[metagraphedQueryKey("rpc-usage")]}
+              >
+                <ProxyUsagePanel />
+              </AsyncPanel>
             </section>
           </>
         )}
 
         {tab === "endpoints" && (
           <>
+            <AsyncPanel
+              context="priority signals"
+              retryQueryKeys={[
+                metagraphedQueryKey("endpoints"),
+                metagraphedQueryKey("endpoint-incidents"),
+              ]}
+              fallback={
+                <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <PanelSkeleton key={i} height="sm" />
+                  ))}
+                </div>
+              }
+            >
+              <EndpointsPriorityStrip />
+            </AsyncPanel>
+            <section>
+              <SectionHeading title="Endpoint directory" />
+              <AsyncPanel
+                height="lg"
+                context="endpoints"
+                retryQueryKeys={[
+                  metagraphedQueryKey("endpoints"),
+                  metagraphedQueryKey("rpc-pools"),
+                  metagraphedQueryKey("endpoint-incidents"),
+                  metagraphedQueryKey("providers"),
+                  metagraphedQueryKey("subnets"),
+                ]}
+              >
+                <EndpointsTable />
+              </AsyncPanel>
+            </section>
             <TimeRangeProvider>
               <section>
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-2">
-                  <SectionHeading title="Latency & severity heatmap" />
+                  <SectionHeading title="Latency diagnostics" />
                   <TimeRangeScrub />
                 </div>
-                <QueryErrorBoundary>
-                  <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-                    <LatencyHeatmapSection />
-                  </Suspense>
-                </QueryErrorBoundary>
+                <AsyncPanel
+                  height="lg"
+                  context="latency heatmap"
+                  retryQueryKeys={[metagraphedQueryKey("endpoints")]}
+                >
+                  <LatencyHeatmapSection />
+                </AsyncPanel>
               </section>
             </TimeRangeProvider>
-            <section>
-              <SectionHeading title="Callable endpoints" />
-              <QueryErrorBoundary>
-                <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-                  <EndpointsTable />
-                </Suspense>
-              </QueryErrorBoundary>
-            </section>
           </>
         )}
 
@@ -237,27 +265,33 @@ function EndpointsPage() {
           <>
             <section>
               <SectionHeading title="RPC pools" />
-              <QueryErrorBoundary>
-                <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-                  <PoolsTable />
-                </Suspense>
-              </QueryErrorBoundary>
+              <AsyncPanel
+                height="sm"
+                context="RPC pools"
+                retryQueryKeys={[metagraphedQueryKey("rpc-pools")]}
+              >
+                <PoolsTable />
+              </AsyncPanel>
             </section>
             <section>
               <SectionHeading title="Endpoint pools" />
-              <QueryErrorBoundary>
-                <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-                  <EndpointPoolsTable />
-                </Suspense>
-              </QueryErrorBoundary>
+              <AsyncPanel
+                height="sm"
+                context="endpoint pools"
+                retryQueryKeys={[metagraphedQueryKey("endpoint-pools")]}
+              >
+                <EndpointPoolsTable />
+              </AsyncPanel>
             </section>
             <section>
               <SectionHeading title="Root RPC/WSS endpoints" />
-              <QueryErrorBoundary>
-                <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-                  <RpcEndpointsTable />
-                </Suspense>
-              </QueryErrorBoundary>
+              <AsyncPanel
+                height="sm"
+                context="root RPC/WSS endpoints"
+                retryQueryKeys={[metagraphedQueryKey("rpc-endpoints")]}
+              >
+                <RpcEndpointsTable />
+              </AsyncPanel>
             </section>
           </>
         )}
@@ -266,11 +300,13 @@ function EndpointsPage() {
           <>
             <section>
               <SectionHeading title="Incidents timeline" />
-              <QueryErrorBoundary>
-                <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-                  <IncidentsTimeline />
-                </Suspense>
-              </QueryErrorBoundary>
+              <AsyncPanel
+                height="md"
+                context="incidents"
+                retryQueryKeys={[metagraphedQueryKey("endpoint-incidents")]}
+              >
+                <IncidentsTimeline />
+              </AsyncPanel>
             </section>
           </>
         )}
@@ -326,11 +362,14 @@ function EndpointsStatStrip() {
 }
 
 function LatencyHeatmapSection() {
-  const rows = (useSuspenseQuery(endpointsQuery()).data.data ?? []) as Endpoint[];
+  const { data } = useSuspenseQuery(endpointsQuery());
   // The callable-endpoints table below is scoped to callable kinds (rpc/wss/api/
   // sse/data — i.e. not "other" directory links). Feed the heatmap the same
   // callable-scoped population so both describe the same set of endpoints.
-  const callable = useMemo(() => rows.filter((e) => endpointCategory(e.kind) !== "other"), [rows]);
+  const callable = useMemo(() => {
+    const rows = (data.data ?? []) as Endpoint[];
+    return rows.filter((e) => endpointCategory(e.kind) !== "other");
+  }, [data]);
   return <LatencyHeatmap endpoints={callable} />;
 }
 
@@ -357,9 +396,9 @@ function PoolsTable() {
           ]}
         />
       ) : null}
-      <div className="rounded border border-border bg-card overflow-x-auto">
+      <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
         <table className="w-full text-sm">
-          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Pool</th>
               <th className="px-3 py-2 text-left">Region</th>
@@ -390,7 +429,7 @@ function PoolsTable() {
                   <td className="px-3 py-2 text-center">
                     <span
                       className={classNames(
-                        "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest",
+                        "mg-type-micro inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
                         ELIGIBILITY_TONE[eligibility],
                       )}
                     >
@@ -402,7 +441,7 @@ function PoolsTable() {
             })}
           </tbody>
         </table>
-      </div>
+      </ResponsiveTable>
       <p className="px-1 font-mono text-[10px] text-ink-muted">
         Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
         in-sync, healthy nodes and fails over automatically.
@@ -434,9 +473,9 @@ function EndpointPoolsTable() {
           ]}
         />
       ) : null}
-      <div className="rounded border border-border bg-card overflow-x-auto">
+      <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
         <table className="w-full text-sm">
-          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Pool</th>
               <th className="px-3 py-2 text-left">Kind</th>
@@ -480,7 +519,7 @@ function EndpointPoolsTable() {
             })}
           </tbody>
         </table>
-      </div>
+      </ResponsiveTable>
       <p className="px-1 font-mono text-[10px] text-ink-muted">
         Covers all pool kinds (subtensor-rpc, subtensor-wss, archive) from the generalized
         endpoint-pools artifact — distinct from the Bittensor RPC proxy pools above.
@@ -520,9 +559,9 @@ function RpcEndpointsTable() {
           refreshQueryKeys={[rpcEndpointsQuery().queryKey]}
         />
       ) : null}
-      <div className="rounded border border-border bg-card overflow-x-auto">
+      <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
         <table className="w-full text-sm">
-          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
             <tr>
               <th className="px-3 py-2 text-left">Provider</th>
               <th className="px-3 py-2 text-left">Kind</th>
@@ -540,7 +579,7 @@ function RpcEndpointsTable() {
                 <td className="px-3 py-2">
                   <span
                     className={classNames(
-                      "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest",
+                      "mg-type-micro inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
                       CLASSIFICATION_TONE[e.classification ?? "unknown"] ??
                         CLASSIFICATION_TONE.unknown,
                     )}
@@ -561,7 +600,7 @@ function RpcEndpointsTable() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ResponsiveTable>
       {summaryLine ? (
         <p className="px-1 font-mono text-[10px] text-ink-muted">{summaryLine}</p>
       ) : null}
@@ -570,8 +609,6 @@ function RpcEndpointsTable() {
 }
 
 type SortKey = "netuid" | "kind" | "provider" | "region" | "health" | "latency" | "probed";
-type SortOrder = "asc" | "desc";
-
 const HEALTH_RANK: Record<string, number> = { ok: 0, warn: 1, down: 2, unknown: 3 };
 
 function endpointValue(e: Endpoint, k: SortKey): string | number | null {
@@ -594,16 +631,18 @@ function endpointValue(e: Endpoint, k: SortKey): string | number | null {
 }
 
 function EndpointsTable() {
-  const scrolled = useScrolled(8);
   const { data } = useSuspenseQuery(endpointsQuery());
   const { data: poolsRes } = useSuspenseQuery(rpcPoolsQuery());
+  const { data: incRes } = useSuspenseQuery(endpointIncidentsQuery());
   const rows = useMemo(() => (data.data ?? []) as Endpoint[], [data]);
   const pools = useMemo(() => (poolsRes.data ?? []) as RpcPool[], [poolsRes]);
+  const incidents = useMemo(() => (incRes.data ?? []) as EndpointIncident[], [incRes]);
   // O(1) pool lookup — index once, reuse for every endpoint's eligibility.
   const poolsById = useMemo(() => indexPoolsById(pools), [pools]);
   const generatedAt = data.meta?.generated_at as string | undefined;
-  const { range } = useTimeRange();
-  const windowLabel = `${RANGE_LABEL[range]} window · latest probe`;
+  const stale = isStaleFreshness(generatedAt);
+  // expandedId is URL-driven so the drawer is deep-linkable and preserved on
+  // back/forward without stacking history entries.
 
   // Lookup maps for inline subnet + provider logos.
   const { data: provRes } = useSuspenseQuery(providersQuery());
@@ -621,6 +660,43 @@ function EndpointsTable() {
 
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const expandedId = search.endpoint || null;
+  const toggleExpanded = (id: string) =>
+    navigate({
+      search: (prev: Record<string, unknown>) =>
+        ({ ...prev, endpoint: prev.endpoint === id ? "" : id }) as never,
+      resetScroll: false,
+      replace: true,
+    });
+
+  // Compare state: URL-driven CSV of endpoint IDs (capped at 4).
+  const COMPARE_MAX = 4;
+  const compareIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const raw of (search.compare ?? "").split(",")) {
+      const id = raw.trim();
+      if (id) set.add(id);
+      if (set.size >= COMPARE_MAX) break;
+    }
+    return set;
+  }, [search.compare]);
+  const toggleCompare = (id: string) => {
+    const next = new Set(compareIds);
+    if (next.has(id)) next.delete(id);
+    else if (next.size < COMPARE_MAX) next.add(id);
+    navigate({
+      search: (prev: Record<string, unknown>) =>
+        ({ ...prev, compare: Array.from(next).join(",") }) as never,
+      resetScroll: false,
+      replace: true,
+    });
+  };
+  const clearCompare = () =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, compare: "" }) as never,
+      resetScroll: false,
+      replace: true,
+    });
 
   const setSearch = (patch: Partial<EndpointsSearch>) => {
     // Any filter change resets page to 1 unless caller specifies otherwise.
@@ -762,20 +838,6 @@ function EndpointsTable() {
   const safePage = Math.min(search.page, totalPages);
   const pageRows = sorted.slice((safePage - 1) * search.pageSize, safePage * search.pageSize);
 
-  const hasFilters = endpointsFiltersActive({
-    q: search.q,
-    category: search.category,
-    provider: search.provider,
-    health: search.health,
-    netuid: search.netuid,
-    region: search.region,
-    eligibility: search.eligibility,
-    callable: search.callable,
-    sort: search.sort,
-    order: search.order,
-    page: search.page,
-  });
-
   // Same mobile-disclosure treatment as /blocks and /extrinsics (#5323): this
   // toolbar has even more controls, so an always-visible filter bar pushed the
   // first endpoint row down on a 375px viewport (#6580). Count only the six
@@ -788,19 +850,15 @@ function EndpointsTable() {
     search.health,
     search.eligibility,
   ]);
-  const [filtersOpen, setFiltersOpen] = useState(activeCount > 0);
 
   // The table filters client-side over the full fetched list; the CSV export
   // hits the backend route directly (full endpoint snapshot, no client filters).
   const endpointsCsvUrl = buildUrl("/api/v1/endpoints");
-
-  function toggleSort(k: SortKey) {
-    if (search.sort === k) {
-      setSearch({ order: search.order === "asc" ? "desc" : "asc" });
-    } else {
-      setSearch({ sort: k, order: "asc" });
-    }
-  }
+  const sortPreset = `${search.sort}:${search.order}`;
+  const setSortPreset = (value: string) => {
+    const [sort, order] = value.split(":") as [EndpointsSearch["sort"], EndpointsSearch["order"]];
+    setSearch({ sort, order, page: 1 });
+  };
 
   // Reset clears search/filters/sort/page but keeps page size, view, and the
   // callable-only default (true).
@@ -809,6 +867,9 @@ function EndpointsTable() {
       search: { pageSize: search.pageSize, view: search.view } as never,
       replace: true,
     });
+
+  // Hooks must run unconditionally, before the early-empty-state return below.
+  const isFetchingRows = useIsFetching({ queryKey: metagraphedQueryKey("endpoints") }) > 0;
 
   if (rows.length === 0)
     return (
@@ -834,134 +895,244 @@ function EndpointsTable() {
     );
 
   return (
-    <div className="space-y-3">
-      {/* Kind chip rail */}
-      <EndpointKindTabs
-        value={search.category}
-        counts={categoryCounts}
-        onChange={(v) => setSearch({ category: v as EndpointsSearch["category"] })}
+    <div className="space-y-3 relative">
+      <QueryProgress active={isFetchingRows} position="sticky" />
+      {/* One shared command surface replaces the previous stacked category,
+          search, select, toggle, and view-control bars. */}
+      <div
+        className="sticky z-20 -mx-1 bg-paper/92 px-1 py-2 backdrop-blur"
+        style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
+      >
+        <QueryBar ariaLabel="Filter endpoint directory">
+          <QueryBar.Search
+            value={search.q}
+            onChange={(v) => setSearch({ q: v })}
+            debounceMs={180}
+            placeholder="Search URL, provider, netuid…"
+          />
+          <QueryBar.Divider />
+          <div className="hidden items-center sm:flex">
+            <QueryBar.FilterTrigger
+              label="Kind"
+              value={search.category === "all" ? "" : search.category}
+              onChange={(v) => setSearch({ category: (v || "all") as EndpointsSearch["category"] })}
+              options={(
+                [
+                  ["rpc", "RPC"],
+                  ["wss", "WSS"],
+                  ["api", "API"],
+                  ["sse", "SSE"],
+                  ["data", "Data"],
+                  ["other", "Other"],
+                ] as const
+              )
+                .filter(([value]) => (categoryCounts[value] ?? 0) > 0)
+                .map(([value, label]) => ({
+                  value,
+                  label: `${label} · ${categoryCounts[value] ?? 0}`,
+                }))}
+            />
+            <QueryBar.FilterTrigger
+              label="Health"
+              value={search.health}
+              onChange={(v) => setSearch({ health: v })}
+              options={["ok", "warn", "down", "unknown"].map((value) => ({ value, label: value }))}
+            />
+            <QueryBar.FilterTrigger
+              label="Sort"
+              value={sortPreset}
+              onChange={setSortPreset}
+              options={[
+                { value: "netuid:asc", label: "Subnet number" },
+                { value: "health:asc", label: "Health first" },
+                { value: "latency:asc", label: "Fastest latency" },
+                { value: "latency:desc", label: "Slowest latency" },
+                { value: "probed:desc", label: "Newest probe" },
+                { value: "provider:asc", label: "Provider A–Z" },
+              ]}
+            />
+            <div className="hidden xl:contents">
+              <QueryBar.FilterTrigger
+                label="Provider"
+                value={search.provider}
+                onChange={(v) => setSearch({ provider: v })}
+                options={providers.map((value) => ({ value, label: value }))}
+              />
+              <QueryBar.FilterTrigger
+                label="Region"
+                value={search.region}
+                onChange={(v) => setSearch({ region: v })}
+                options={regions.map((value) => ({ value, label: value }))}
+              />
+              <QueryBar.FilterTrigger
+                label="Access"
+                value={search.eligibility}
+                onChange={(v) => setSearch({ eligibility: v })}
+                options={[
+                  { value: "proxy-enabled", label: "Proxy enabled" },
+                  { value: "pool-member", label: "Pool member" },
+                  { value: "archive-capable", label: "Archive capable" },
+                  { value: "unassigned", label: "Unassigned" },
+                ]}
+              />
+            </div>
+          </div>
+          <QueryBar.Utility>
+            <FilterSheet
+              label="More filters"
+              activeCount={activeFilterCount([
+                search.netuid,
+                search.provider,
+                search.region,
+                search.eligibility,
+              ])}
+              className="xl:hidden"
+            >
+              <label className="grid gap-1">
+                <span className="mg-label">Subnet number</span>
+                <input
+                  value={search.netuid}
+                  onChange={(event) =>
+                    setSearch({ netuid: event.target.value.replace(/[^0-9]/g, "") })
+                  }
+                  inputMode="numeric"
+                  placeholder="Any subnet"
+                  className="h-9 rounded border border-border bg-paper px-2 font-mono text-[12px] text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </label>
+              <QueryBar.FilterTrigger
+                label="Provider"
+                value={search.provider}
+                onChange={(value) => setSearch({ provider: value })}
+                options={providers.map((value) => ({ value, label: value }))}
+                className="w-full justify-between border border-border"
+              />
+              <QueryBar.FilterTrigger
+                label="Region"
+                value={search.region}
+                onChange={(value) => setSearch({ region: value })}
+                options={regions.map((value) => ({ value, label: value }))}
+                className="w-full justify-between border border-border"
+              />
+              <QueryBar.FilterTrigger
+                label="Access"
+                value={search.eligibility}
+                onChange={(value) => setSearch({ eligibility: value })}
+                options={[
+                  { value: "proxy-enabled", label: "Proxy enabled" },
+                  { value: "pool-member", label: "Pool member" },
+                  { value: "archive-capable", label: "Archive capable" },
+                  { value: "unassigned", label: "Unassigned" },
+                ]}
+                className="w-full justify-between border border-border"
+              />
+              <QueryBar.FilterTrigger
+                label="Sort"
+                value={sortPreset}
+                onChange={setSortPreset}
+                options={[
+                  { value: "netuid:asc", label: "Subnet number" },
+                  { value: "health:asc", label: "Health first" },
+                  { value: "latency:asc", label: "Fastest latency" },
+                  { value: "latency:desc", label: "Slowest latency" },
+                  { value: "probed:desc", label: "Newest probe" },
+                  { value: "provider:asc", label: "Provider A–Z" },
+                ]}
+                className="w-full justify-between border border-border"
+              />
+            </FilterSheet>
+            <button
+              type="button"
+              onClick={() =>
+                setSearch({
+                  callable: !search.callable,
+                  ...(!search.callable && search.category === "other"
+                    ? { category: "all" as const }
+                    : {}),
+                })
+              }
+              aria-pressed={search.callable}
+              title={
+                search.callable
+                  ? `Showing callable endpoints — ${directoryCount} reference links hidden`
+                  : "Showing all endpoint records"
+              }
+              className={classNames(
+                "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 font-mono text-[10px] uppercase tracking-widest",
+                search.callable ? "text-accent-text" : "text-ink-muted hover:text-ink-strong",
+              )}
+            >
+              <span
+                className={classNames(
+                  "size-1.5 rounded-full",
+                  search.callable ? "bg-accent" : "bg-ink-subtle",
+                )}
+                aria-hidden
+              />
+              <span className="hidden xl:inline">Callable</span>
+            </button>
+            <DownloadCsvButton url={endpointsCsvUrl} />
+          </QueryBar.Utility>
+        </QueryBar>
+        <QueryBar.MetaRow
+          count={sorted.length}
+          total={scoped.length}
+          noun="endpoints"
+          activeCount={
+            activeCount + (search.category !== "all" ? 1 : 0) + (search.callable ? 1 : 0)
+          }
+          onReset={resetAll}
+          trailing={
+            <span>
+              {search.callable && directoryCount > 0
+                ? `${directoryCount} reference links hidden`
+                : "All records visible"}
+            </span>
+          }
+        />
+      </div>
+
+      <FilterChipRow
+        items={[
+          ...(search.q ? [{ id: "q", label: "Search", value: search.q } as FilterChipItem] : []),
+          ...(search.netuid
+            ? [{ id: "netuid", label: "Netuid", value: search.netuid } as FilterChipItem]
+            : []),
+          ...(search.provider
+            ? [{ id: "provider", label: "Provider", value: search.provider } as FilterChipItem]
+            : []),
+          ...(search.region
+            ? [{ id: "region", label: "Region", value: search.region } as FilterChipItem]
+            : []),
+          ...(search.health
+            ? [{ id: "health", label: "Health", value: search.health } as FilterChipItem]
+            : []),
+          ...(search.eligibility
+            ? [
+                {
+                  id: "eligibility",
+                  label: "Eligibility",
+                  value: search.eligibility,
+                } as FilterChipItem,
+              ]
+            : []),
+          ...(search.callable
+            ? [{ id: "callable", label: "Scope", value: "callable only" } as FilterChipItem]
+            : []),
+        ]}
+        onRemove={(id) => {
+          if (id === "callable") setSearch({ callable: false });
+          else setSearch({ [id]: "" } as Partial<EndpointsSearch>);
+        }}
+        onClearAll={resetAll}
       />
 
-      {/* Toolbar */}
-      <div
-        data-scrolled={scrolled ? "true" : "false"}
-        className="mg-sticky-toolbar sticky top-14 z-20 -mx-1 px-1 py-2 backdrop-blur bg-paper/90 border-b border-border/60 flex flex-wrap items-center gap-2"
-      >
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((open) => !open)}
-          aria-expanded={filtersOpen}
-          aria-controls="endpoints-filter-fields"
-          className="md:hidden inline-flex min-h-11 items-center gap-1.5 rounded border border-border bg-card px-2.5 font-mono text-[11px] text-ink-muted hover:border-ink/30 hover:text-ink-strong transition-colors"
-        >
-          <SlidersHorizontal className="size-3" aria-hidden="true" />
-          {filterToggleLabel(activeCount)}
-        </button>
-        {/* `md:contents` dissolves this wrapper at md and up, so the fields lay
-            out as direct children of the toolbar exactly as they did before. */}
-        <div
-          id="endpoints-filter-fields"
-          className={classNames(
-            "w-full flex-wrap items-center gap-2 md:contents",
-            filtersOpen ? "flex" : "hidden",
-          )}
-        >
-          <div className="relative flex-1 min-w-[180px] max-w-sm">
-            <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-ink-muted" />
-            <input
-              value={search.q}
-              onChange={(e) => setSearch({ q: e.target.value })}
-              placeholder="Search URL, provider, netuid…"
-              className="w-full rounded border border-border bg-card pl-7 pr-2 py-1.5 text-[12px] focus:outline-none focus:border-ink/30"
-              aria-label="Search endpoints"
-            />
-          </div>
-          <label className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
-            <span className="font-mono uppercase tracking-widest text-[10px]">Netuid</span>
-            <input
-              value={search.netuid}
-              onChange={(e) => setSearch({ netuid: e.target.value.replace(/[^0-9]/g, "") })}
-              inputMode="numeric"
-              placeholder="any"
-              className="w-16 rounded border border-border bg-card px-1.5 py-1 text-[11px] focus:outline-none focus:border-ink/30"
-              aria-label="Filter by netuid"
-            />
-          </label>
-          <FilterSelect
-            label="Provider"
-            value={search.provider}
-            onChange={(v) => setSearch({ provider: v })}
-            options={providers}
-          />
-          <FilterSelect
-            label="Region"
-            value={search.region}
-            onChange={(v) => setSearch({ region: v })}
-            options={regions}
-          />
-          <FilterSelect
-            label="Health"
-            value={search.health}
-            onChange={(v) => setSearch({ health: v })}
-            options={["ok", "warn", "down", "unknown"]}
-          />
-          <FilterSelect
-            label="Eligibility"
-            value={search.eligibility}
-            onChange={(v) => setSearch({ eligibility: v })}
-            options={["proxy-enabled", "pool-member", "archive-capable", "unassigned"]}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={resetAll}
-          disabled={!hasFilters}
-          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[11px] text-ink-muted hover:text-ink-strong disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Clear search, filters, sort, and page"
-        >
-          <X className="size-3" /> Reset filters
-        </button>
-        <DownloadCsvButton url={endpointsCsvUrl} />
-        <button
-          type="button"
-          onClick={() => {
-            setSearch({
-              callable: !search.callable,
-              // Leaving callable-only while viewing the "other" tab would show 0
-              // rows; snap back to "all" so the toggle is never a dead end.
-              ...(!search.callable && search.category === "other"
-                ? { category: "all" as const }
-                : {}),
-            });
-          }}
-          aria-pressed={search.callable}
-          title={
-            search.callable
-              ? `Showing callable endpoints — ${directoryCount} directory links hidden`
-              : "Showing all endpoints, including directory links"
-          }
-          className={classNames(
-            "inline-flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
-            search.callable
-              ? "border-accent/40 bg-accent/10 text-accent"
-              : "border-border bg-card text-ink-muted hover:text-ink-strong",
-          )}
-        >
-          <span className={classNames("size-1.5 rounded-full", search.callable && "bg-accent")} />
-          Callable only
-          {directoryCount > 0 ? (
-            <span className="text-ink-muted">· {directoryCount} links</span>
-          ) : null}
-        </button>
-        <ViewModeToggle
-          value={search.view}
-          options={["table", "grid"]}
-          onChange={(v) => setSearch({ view: v as "table" | "grid" })}
+      {stale ? (
+        <StaleBanner
+          generatedAt={generatedAt}
+          refreshQueryKeys={[endpointsQuery().queryKey, endpointIncidentsQuery().queryKey]}
         />
-        <span className="font-mono text-[10px] text-ink-muted">
-          {sorted.length} of {scoped.length}
-        </span>
-      </div>
+      ) : null}
 
       {sorted.length === 0 ? (
         <StateBlock
@@ -978,307 +1149,38 @@ function EndpointsTable() {
         />
       ) : (
         <>
-          {search.view === "grid" ? (
-            <EndpointCardList
-              rows={pageRows}
+          {compareIds.size > 0 ? (
+            <EndpointComparePanel
+              endpoints={rows.filter((r) => compareIds.has(r.id))}
+              incidents={incidents}
+              poolsById={poolsById}
               providerById={providerById}
               subnetById={subnetById}
-              windowLabel={windowLabel}
-              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-            />
-          ) : (
-            <div className="hidden md:block rounded border border-border bg-card overflow-x-clip">
-              <table className="w-full text-sm">
-                <thead className="sticky top-[6.75rem] z-10 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85 text-[10px] font-mono uppercase tracking-widest text-ink-muted shadow-[0_1px_0_0_var(--border)]">
-                  <tr>
-                    <Th
-                      label="Netuid"
-                      k="netuid"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                    />
-                    <Th
-                      label="Kind"
-                      k="kind"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                    />
-                    <th className="px-3 py-2 text-left">URL</th>
-                    <Th
-                      label="Provider"
-                      k="provider"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                    />
-                    <Th
-                      label="Region"
-                      k="region"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                    />
-                    <Th
-                      label="Health"
-                      k="health"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                      align="center"
-                    />
-                    <Th
-                      label="Latency"
-                      k="latency"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                      align="right"
-                    />
-                    <Th
-                      label="Probed"
-                      k="probed"
-                      sortKey={search.sort}
-                      sortOrder={search.order}
-                      onSort={toggleSort}
-                      align="right"
-                    />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {pageRows.map((e) => {
-                    const provSlug = e.provider_slug;
-                    const prov = provSlug ? providerById.get(provSlug) : undefined;
-                    const sn = e.netuid != null ? subnetById.get(e.netuid) : undefined;
-                    return (
-                      <tr key={e.id} className="mg-row-accent hover:bg-surface/40">
-                        <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                          {e.netuid != null ? (
-                            <Link
-                              to="/subnets/$netuid"
-                              params={{ netuid: e.netuid }}
-                              className="inline-flex items-center gap-1.5 hover:text-ink-strong"
-                            >
-                              <BrandIcon
-                                url={sn?.website}
-                                iconUrl={sn?.icon_url}
-                                netuid={e.netuid}
-                                name={sn?.name}
-                                fallback={e.netuid}
-                                size={14}
-                              />
-                              {String(e.netuid).padStart(3, "0")}
-                            </Link>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-[11px]">{e.kind ?? "—"}</td>
-                        <td className="px-3 py-2 font-mono text-[11px] max-w-[36ch]">
-                          {e.url ? (
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <ExternalLink href={e.url} className="truncate text-[11px]">
-                                {e.url}
-                              </ExternalLink>
-                              <CopyButton value={e.url} label="URL" compact />
-                            </div>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-[12px]">
-                          {provSlug ? (
-                            <Link
-                              to="/providers/$slug"
-                              params={{ slug: provSlug }}
-                              className="inline-flex items-center gap-1.5 hover:underline min-w-0"
-                            >
-                              <BrandIcon
-                                url={prov?.website ?? prov?.homepage}
-                                iconUrl={prov?.icon_url}
-                                repoUrl={prov?.repo}
-                                providerSlug={provSlug}
-                                name={prov?.name ?? e.provider ?? provSlug}
-                                fallback={provSlug}
-                                size={16}
-                              />
-                              <span className="truncate">
-                                {e.provider ?? prov?.name ?? provSlug}
-                              </span>
-                            </Link>
-                          ) : (
-                            (e.provider ?? "—")
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-[12px]">{e.region ?? "—"}</td>
-                        <td className="px-3 py-2 text-center">
-                          <SparkLegend
-                            metric="Endpoint health"
-                            source="/api/v1/endpoints"
-                            windowLabel={windowLabel}
-                            updatedAt={e.last_probed_at}
-                            staleness="Falls back to last known state when the probe hasn't completed."
-                          >
-                            <HealthPill state={e.health} />
-                          </SparkLegend>
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-[11px]">
-                          {e.latency_ms != null ? (
-                            <SparkLegend
-                              metric="Latency"
-                              source="/api/v1/endpoints (last probe)"
-                              windowLabel={windowLabel}
-                              updatedAt={e.last_probed_at}
-                              staleness="No new measurement is taken between probes — last measured value is shown."
-                            >
-                              <span>{e.latency_ms}ms</span>
-                            </SparkLegend>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
-                          <SparkLegend
-                            metric="Last probe"
-                            source="/api/v1/endpoints"
-                            windowLabel={windowLabel}
-                            updatedAt={e.last_probed_at}
-                            staleness="Rows older than the probe cycle are dimmed in tooltips elsewhere."
-                          >
-                            <TimeAgo at={e.last_probed_at} />
-                          </SparkLegend>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {search.view === "table" ? (
-            <EndpointCardList
-              rows={pageRows}
-              providerById={providerById}
-              subnetById={subnetById}
-              windowLabel={windowLabel}
-              className="grid gap-3 sm:grid-cols-2 md:hidden"
+              onRemove={toggleCompare}
+              onClear={clearCompare}
             />
           ) : null}
-
-          <div className="flex flex-wrap items-center gap-3 px-1 py-1 text-[11px] text-ink-muted">
-            <span className="font-mono">
-              Page {safePage} of {totalPages} · showing {pageRows.length} of {sorted.length}
-            </span>
-            <span className="ml-auto inline-flex items-center gap-1">
-              <label htmlFor="ep-page-size" className="font-mono">
-                Per page
-              </label>
-              <select
-                id="ep-page-size"
-                value={search.pageSize}
-                onChange={(e) => setSearch({ pageSize: Number(e.target.value), page: 1 })}
-                className="rounded border border-border bg-card px-1 py-0.5 text-[11px]"
-              >
-                {[25, 50, 100].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </span>
-            <button
-              type="button"
-              disabled={safePage <= 1}
-              onClick={() => setSearch({ page: Math.max(1, safePage - 1) })}
-              className="rounded border border-border bg-card px-2 py-0.5 disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <button
-              type="button"
-              disabled={safePage >= totalPages}
-              onClick={() => setSearch({ page: Math.min(totalPages, safePage + 1) })}
-              className="rounded border border-border bg-card px-2 py-0.5 disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
+          <EndpointOperationalList
+            rows={pageRows}
+            incidents={incidents}
+            poolsById={poolsById}
+            providerById={providerById}
+            subnetById={subnetById}
+            expandedId={expandedId}
+            onToggle={toggleExpanded}
+            compareIds={compareIds}
+            onToggleCompare={toggleCompare}
+            compareMax={4}
+          />
+          <PagerFooter
+            summary={`Page ${safePage} of ${totalPages} · ${pageRows.length} shown · ${sorted.length} total`}
+            hasPrev={safePage > 1}
+            hasNext={safePage < totalPages}
+            onPrev={() => setSearch({ page: Math.max(1, safePage - 1) })}
+            onNext={() => setSearch({ page: Math.min(totalPages, safePage + 1) })}
+          />
         </>
       )}
     </div>
-  );
-}
-
-function Th({
-  label,
-  k,
-  sortKey,
-  sortOrder,
-  onSort,
-  align = "left",
-}: {
-  label: string;
-  k: SortKey;
-  sortKey: SortKey;
-  sortOrder: SortOrder;
-  onSort: (k: SortKey) => void;
-  align?: "left" | "right" | "center";
-}) {
-  const active = sortKey === k;
-  const arrow = active ? (sortOrder === "asc" ? "▲" : "▼") : "";
-  const alignCls =
-    align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
-  return (
-    <th
-      className={classNames("px-3 py-2", alignCls)}
-      aria-sort={active ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}
-    >
-      <button
-        type="button"
-        onClick={() => onSort(k)}
-        aria-label={`Sort by ${label}${active ? `, sorted ${sortOrder === "asc" ? "ascending" : "descending"}` : ""}`}
-        className={classNames(
-          "inline-flex items-center gap-1 uppercase tracking-widest hover:text-ink-strong",
-          active ? "text-ink-strong" : "text-ink-muted",
-        )}
-      >
-        {label}
-        <span className="text-[8px]" aria-hidden>
-          {arrow}
-        </span>
-      </button>
-    </th>
-  );
-}
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-}) {
-  return (
-    <label className="inline-flex items-center gap-1 text-[11px] text-ink-muted">
-      <span className="font-mono uppercase tracking-widest text-[10px]">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-border bg-card px-1.5 py-1 text-[11px] text-ink focus:outline-none focus:border-ink/30"
-      >
-        <option value="">all</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }

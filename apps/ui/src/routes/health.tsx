@@ -4,17 +4,16 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { resolveRefetchInterval, usePageVisible } from "@/hooks/use-refetch-interval";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, Pause, Play, ChevronDown, ChevronRight, ArrowUpRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { Skeleton, StaleBanner } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { StaleBanner } from "@/components/metagraphed/states";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
 import {
   HealthPill,
   TableState,
-  PageHero,
   ActionBar,
   PageSection,
   TimeAgo,
@@ -128,33 +127,31 @@ function HealthPage() {
 
   return (
     <AppShell>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-          <HealthHero
-            interval={effectiveInterval}
-            controls={
-              <>
-                <ActionBar>
-                  <Link
-                    to="/status"
-                    className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
-                  >
-                    Public status
-                    <ArrowUpRight className="size-3" aria-hidden="true" />
-                  </Link>
-                </ActionBar>
-                <AutoRefreshControl
-                  enabled={enabled}
-                  visible={visible}
-                  intervalMs={intervalMs}
-                  onToggle={() => setEnabled((v) => !v)}
-                  onIntervalChange={setIntervalMs}
-                />
-              </>
-            }
-          />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="xl">
+        <HealthHero
+          interval={effectiveInterval}
+          controls={
+            <>
+              <ActionBar>
+                <Link
+                  to="/status"
+                  className="inline-flex items-center gap-1 rounded px-2 py-1 min-h-8 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                >
+                  Public status
+                  <ArrowUpRight className="size-3" aria-hidden="true" />
+                </Link>
+              </ActionBar>
+              <AutoRefreshControl
+                enabled={enabled}
+                visible={visible}
+                intervalMs={intervalMs}
+                onToggle={() => setEnabled((v) => !v)}
+                onIntervalChange={setIntervalMs}
+              />
+            </>
+          }
+        />
+      </AsyncPanel>
 
       <main className="space-y-20 md:space-y-24">
         <TimeRangeProvider>
@@ -166,11 +163,9 @@ function HealthPage() {
             toolbar={<TimeRangeScrub />}
             className={sectionRing("status-board")}
           >
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-56 w-full" />}>
-                <StatusBoard interval={effectiveInterval} />
-              </Suspense>
-            </QueryErrorBoundary>
+            <AsyncPanel height="lg">
+              <StatusBoard interval={effectiveInterval} />
+            </AsyncPanel>
           </PageSection>
 
           <PageSection
@@ -179,11 +174,9 @@ function HealthPage() {
             title="ok / warn / down distribution"
             description="Aggregate status over the selected range, with incident markers per bucket."
           >
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-                <NetworkPulseBand />
-              </Suspense>
-            </QueryErrorBoundary>
+            <AsyncPanel height="lg">
+              <NetworkPulseBand />
+            </AsyncPanel>
           </PageSection>
 
           <PageSection
@@ -192,11 +185,9 @@ function HealthPage() {
             title="Live status mosaic"
             description="Every monitored endpoint, colored by latest probe state. Filter by state; click a tile to open."
           >
-            <QueryErrorBoundary>
-              <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-                <StatusMosaic />
-              </Suspense>
-            </QueryErrorBoundary>
+            <AsyncPanel height="lg">
+              <StatusMosaic />
+            </AsyncPanel>
           </PageSection>
         </TimeRangeProvider>
 
@@ -217,11 +208,9 @@ function HealthPage() {
           description="Where the registry pulls evidence from and how fresh each source is."
           className={sectionRing("source-health")}
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <SourceHealth interval={effectiveInterval} />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <SourceHealth interval={effectiveInterval} />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -231,11 +220,9 @@ function HealthPage() {
           description="Grouped by host. Ongoing incidents bubble to the top."
           className={sectionRing("incidents")}
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <Incidents interval={effectiveInterval} />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <Incidents interval={effectiveInterval} />
+          </AsyncPanel>
         </PageSection>
       </main>
 
@@ -273,7 +260,7 @@ function HealthHero({
   const ongoing = incidents.filter((i) => !i.ended_at).length;
 
   return (
-    <PageHero
+    <PageMasthead
       eyebrow="Operations"
       live
       title="Health & freshness"
@@ -392,9 +379,7 @@ function AutoRefreshControl({
       >
         {enabled ? <Pause className="size-3" /> : <Play className="size-3" />}
         {pauseLabel ? (
-          <span className="font-mono uppercase tracking-widest text-[10px] text-ink-muted">
-            {pauseLabel}
-          </span>
+          <span className="mg-type-micro text-[10px] text-ink-muted">{pauseLabel}</span>
         ) : (
           <span aria-hidden="true" className="font-mono text-ink-muted">
             in <AnimatedNumber value={secondsLeft} flashOnChange={false} duration={250} />s
@@ -405,7 +390,7 @@ function AutoRefreshControl({
       <button
         type="button"
         onClick={() => qc.invalidateQueries({ queryKey: ["metagraphed"] })}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono uppercase tracking-widest text-[10px] text-ink-muted hover:text-ink-strong hover:bg-surface/60 transition-colors"
+        className="mg-type-micro inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-ink-muted hover:text-ink-strong hover:bg-surface/60 transition-colors"
         title={fetching ? "Refreshing…" : "Refresh now"}
         aria-label="Refresh now"
       >
@@ -530,7 +515,7 @@ function Cell({
 }) {
   return (
     <div className="rounded-lg border border-border/60 bg-paper/40 px-3 py-2.5">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{label}</div>
+      <div className="mg-type-micro text-[10px] text-ink-muted">{label}</div>
       <div
         className={`mt-1 font-display text-lg font-semibold tabular-nums leading-none ${accent ?? "text-ink-strong"}`}
       >
@@ -557,7 +542,7 @@ function SourceHealth({ interval }: { interval: number | false }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="bg-surface-2/60 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+        <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
           <tr>
             <th className="px-5 py-3 text-left">Source</th>
             <th className="px-5 py-3">Status</th>
@@ -776,7 +761,7 @@ function Incidents({ interval }: { interval: number | false }) {
                     )}
                     <HealthPill state={g.dominantState} />
                     <span className="font-mono text-[12px] text-ink-strong truncate">{g.host}</span>
-                    <span className="ml-auto inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
+                    <span className="mg-type-micro ml-auto inline-flex items-center gap-2 text-[10px] text-ink-muted shrink-0">
                       {g.ongoing > 0 ? (
                         <span className="text-health-down">{g.ongoing} ongoing</span>
                       ) : null}

@@ -105,26 +105,22 @@ describe("providers.$slug.tsx ShareButton + ApiSourceFooter (#5481)", () => {
     expect(importBlock).toContain("ShareButton");
   });
 
-  it("shares one connected bar between PrimaryLinksRail and ShareButton via EntityHero's links prop, not the separate actions slot", () => {
-    const heroCall = providerRouteSource.slice(
-      providerRouteSource.indexOf("<EntityHero"),
-      providerRouteSource.indexOf("<ProfileTabs"),
+  it("shares one connected bar between PrimaryLinksRail and ShareButton via PageMasthead's actions prop", () => {
+    const mastheadCall = providerRouteSource.slice(
+      providerRouteSource.indexOf("<PageMasthead"),
+      providerRouteSource.indexOf("<TabStrip"),
     );
-    // EntityHero renders `links` and `actions` as two separate rows -- a
-    // ShareButton passed via `actions` would land on its own line below the
-    // link pills instead of sharing their row. Assert it's NOT used that way.
-    expect(heroCall).not.toContain("actions={<ShareButton");
-    const linksBlock = heroCall.slice(heroCall.indexOf("links={"), heroCall.indexOf("stats={"));
+    expect(mastheadCall).toContain("actions={");
     // `bare` so PrimaryLinksRail contributes bare icon segments (no own
     // border/rounded) into the shared divide-x bar below, instead of its own
     // separately-boxed connected bar nested inside this one.
-    expect(linksBlock).toContain("<PrimaryLinksRail");
-    expect(linksBlock).toContain("bare");
+    expect(mastheadCall).toContain("<PrimaryLinksRail");
+    expect(mastheadCall).toContain("bare");
     // `connected` so Share is a borderless segment matching the link icons --
     // one shared bar (SegmentedToggle/ViewModeToggle's look), not a separately
     // spaced, individually-boxed button.
-    expect(linksBlock).toContain("<ShareButton connected />");
-    expect(linksBlock).toContain("divide-x divide-border");
+    expect(mastheadCall).toContain("<ShareButton connected />");
+    expect(mastheadCall).toContain("divide-x divide-border");
   });
 
   it("renders exactly one ApiSourceFooter citing the provider + provider-endpoints paths", () => {
