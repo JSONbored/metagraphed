@@ -6,6 +6,7 @@ import {
   specifiedRules,
   validate,
 } from "graphql";
+import * as Sentry from "@sentry/cloudflare";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
@@ -10146,10 +10147,19 @@ const rootValue = {
 const GRAPHQL_CONTENT_TYPE = "application/graphql-response+json";
 const SDL_CONTENT_TYPE = "application/graphql; charset=utf-8";
 
-const graphqlError = (message, status = 400, extraHeaders = {}) =>
+// metagraphed#7734: `code` mirrors errorResponse()'s own x-metagraph-error-code
+// convention (workers/http.ts, #7733) so withUsageTelemetry can categorize a
+// GraphQL transport-level rejection the same way it already does for every
+// REST route -- this file had no such header at all before. Required (every
+// call site below already has one), not optional -- no path should ever
+// produce an error response with no category.
+const graphqlError = (message, status, code, extraHeaders = {}) =>
   new Response(JSON.stringify({ errors: [{ message }] }), {
     status,
-    headers: graphqlHeaders(extraHeaders),
+    headers: graphqlHeaders({
+      "x-metagraph-error-code": code,
+      ...extraHeaders,
+    }),
   });
 
 const graphqlHeaders = (extra = {}) => ({
@@ -10167,12 +10177,20 @@ async function readLimitedJson(request) {
     const length = Number(declaredLength);
     if (!Number.isFinite(length) || length < 0) {
       return {
-        error: graphqlError("Invalid Content-Length header."),
+        error: graphqlError(
+          "Invalid Content-Length header.",
+          400,
+          "graphql_invalid_json",
+        ),
       };
     }
     if (length > GRAPHQL_MAX_BODY_BYTES) {
       return {
-        error: graphqlError("GraphQL request body is too large.", 413),
+        error: graphqlError(
+          "GraphQL request body is too large.",
+          413,
+          "graphql_payload_too_large",
+        ),
       };
     }
   }
@@ -10193,7 +10211,11 @@ async function readLimitedJson(request) {
       if (total > GRAPHQL_MAX_BODY_BYTES) {
         await reader.cancel();
         return {
-          error: graphqlError("GraphQL request body is too large.", 413),
+          error: graphqlError(
+            "GraphQL request body is too large.",
+            413,
+            "graphql_payload_too_large",
+          ),
         };
       }
       chunks.push(value);
@@ -10213,7 +10235,11 @@ async function readLimitedJson(request) {
     return { value: JSON.parse(new TextDecoder().decode(bytes)) };
   } catch {
     return {
-      error: graphqlError("Request body must be valid JSON."),
+      error: graphqlError(
+        "Request body must be valid JSON.",
+        400,
+        "graphql_invalid_json",
+      ),
     };
   }
 }
@@ -10248,7 +10274,10 @@ export async function handleGraphQLRequest(request, env) {
       }),
       {
         status: 405,
-        headers: graphqlHeaders({ allow: "GET, POST" }),
+        headers: graphqlHeaders({
+          allow: "GET, POST",
+          "x-metagraph-error-code": "graphql_bad_method",
+        }),
       },
     );
   }
@@ -10262,12 +10291,21 @@ export async function handleGraphQLRequest(request, env) {
       JSON.stringify({
         errors: [{ message: "Missing required field: query." }],
       }),
-      { status: 400, headers: graphqlHeaders() },
+      {
+        status: 400,
+        headers: graphqlHeaders({
+          "x-metagraph-error-code": "graphql_missing_query",
+        }),
+      },
     );
   }
 
   if (utf8ByteLength(query) > GRAPHQL_MAX_QUERY_BYTES) {
-    return graphqlError("GraphQL query is too large.", 413);
+    return graphqlError(
+      "GraphQL query is too large.",
+      413,
+      "graphql_payload_too_large",
+    );
   }
 
   let document;
@@ -10276,7 +10314,12 @@ export async function handleGraphQLRequest(request, env) {
   } catch (err) {
     return new Response(
       JSON.stringify({ errors: [{ message: err.message }] }),
-      { status: 400, headers: graphqlHeaders() },
+      {
+        status: 400,
+        headers: graphqlHeaders({
+          "x-metagraph-error-code": "graphql_parse_error",
+        }),
+      },
     );
   }
 
@@ -10293,7 +10336,12 @@ export async function handleGraphQLRequest(request, env) {
           extensions: e.extensions,
         })),
       }),
-      { status: 400, headers: graphqlHeaders() },
+      {
+        status: 400,
+        headers: graphqlHeaders({
+          "x-metagraph-error-code": "graphql_validation_error",
+        }),
+      },
     );
   }
 
@@ -10306,6 +10354,34 @@ export async function handleGraphQLRequest(request, env) {
     operationName: operationName ?? undefined,
   });
 
+  // metagraphed#7734: execute() catches every resolver throw into
+  // result.errors rather than letting it propagate -- api.sentry.ts's
+  // withSentry() (uncaught exceptions only) never sees any of these, so this
+  // is the only place a genuine resolver fault can reach Sentry at all. A
+  // deliberately-thrown `new GraphQLError(...)` (validation, "netuid must be
+  // non-negative", etc. -- expected, caller-fixable, the GraphQL analogue of
+  // a REST 4xx) is NOT the same as a resolver's raw Error wrapping a real
+  // backend failure -- both get an `originalError`, so presence alone can't
+  // tell them apart (confirmed directly against graphql-js's own execute(),
+  // not assumed). The one reliable signal: a deliberate throw's
+  // originalError is ITSELF a GraphQLError instance; a wrapped raw
+  // exception's is not.
+  const genuineFaults =
+    result.errors?.filter(
+      (e) => e.originalError && !(e.originalError instanceof GraphQLError),
+    ) ?? [];
+  for (const fault of genuineFaults) {
+    Sentry.captureException(fault.originalError, {
+      tags: { route: "graphql" },
+    });
+  }
+  const errorCode =
+    genuineFaults.length > 0
+      ? "graphql_execution_error"
+      : result.errors?.length
+        ? "graphql_field_error"
+        : undefined;
+
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: graphqlHeaders({
@@ -10315,6 +10391,7 @@ export async function handleGraphQLRequest(request, env) {
         ? "no-store"
         : "public, max-age=60, stale-while-revalidate=300",
       vary: "Accept-Encoding",
+      ...(errorCode ? { "x-metagraph-error-code": errorCode } : {}),
     }),
   });
 }

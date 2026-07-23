@@ -243,6 +243,60 @@ describe("withUsageTelemetry", () => {
     assert.equal("errorCode" in uncoded.events[0].event, false);
   });
 
+  // metagraphed#7734: GraphQL execution errors are a spec-mandated 200 with
+  // a populated `errors` array (src/graphql.mjs) -- status alone can't tell
+  // that apart from a real success, so this one code is a narrow, explicit
+  // exception to the status<500 rule. Every other error code (including a
+  // GraphQL transport-level one like graphql_bad_method) keeps the existing
+  // status-based ok, proving the exception is scoped to exactly one code.
+  test("graphql_execution_error flips ok to false even at HTTP 200; no other code does", async () => {
+    const executionError = recorder();
+    await withUsageTelemetry(
+      req("/api/v1/graphql"),
+      CONFIGURED_ENV,
+      fakeCtx(),
+      async () =>
+        new Response("{}", {
+          status: 200,
+          headers: { "x-metagraph-error-code": "graphql_execution_error" },
+        }),
+      executionError,
+    );
+    assert.equal(executionError.events[0].event.ok, false);
+    assert.equal(
+      executionError.events[0].event.errorCode,
+      "graphql_execution_error",
+    );
+
+    const fieldError = recorder();
+    await withUsageTelemetry(
+      req("/api/v1/graphql"),
+      CONFIGURED_ENV,
+      fakeCtx(),
+      async () =>
+        new Response("{}", {
+          status: 200,
+          headers: { "x-metagraph-error-code": "graphql_field_error" },
+        }),
+      fieldError,
+    );
+    assert.equal(fieldError.events[0].event.ok, true);
+
+    const transportError = recorder();
+    await withUsageTelemetry(
+      req("/api/v1/graphql"),
+      CONFIGURED_ENV,
+      fakeCtx(),
+      async () =>
+        new Response("nope", {
+          status: 405,
+          headers: { "x-metagraph-error-code": "graphql_bad_method" },
+        }),
+      transportError,
+    );
+    assert.equal(transportError.events[0].event.ok, true);
+  });
+
   test("does not record a subscription upgrade as a request", async () => {
     const spy = recorder();
     const response = await withUsageTelemetry(

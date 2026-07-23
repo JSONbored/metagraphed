@@ -584,6 +584,17 @@ export async function withUsageTelemetry(request, env, ctx, handle, deps = {}) {
     // only 5xx (and a thrown handler, which leaves ok false) is a failure.
     ok = response.status < 500;
     errorCode = response.headers.get("x-metagraph-error-code") ?? undefined;
+    // metagraphed#7734: GraphQL execution errors are a spec-mandated 200
+    // with a populated `errors` array (src/graphql.mjs) -- status alone
+    // can't distinguish that from a real success, so this one code (set
+    // only when execute() surfaced a genuine resolver fault, never a
+    // deliberate/expected GraphQLError -- see graphql.mjs's own
+    // genuineFaults comment) is a narrow, explicit exception to the
+    // status-based rule above. Every other route/code keeps the existing
+    // status<500 semantics untouched.
+    if (errorCode === "graphql_execution_error") {
+      ok = false;
+    }
     return response;
   } finally {
     scheduleUsageEvent(env, ctx, record, {
