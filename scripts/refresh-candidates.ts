@@ -28,7 +28,7 @@ const env = {
   METAGRAPH_VERIFICATION_OBSERVED_AT: buildTimestamp,
 };
 
-const steps = [
+const steps: [string, string[]][] = [
   ["discover-candidates", ["scripts/discover-candidates.ts", "--write"]],
   ["verify-candidates", ["scripts/verify-candidates.mjs", "--write"]],
   // The provenance review queue is a pure transform of the candidates +
