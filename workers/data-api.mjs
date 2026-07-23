@@ -2494,10 +2494,12 @@ async function handleSubnetIdentitySync(request, env) {
 // surface_checks/surface_status so the Postgres tier can eventually take
 // over the read side. surface_status uses ON CONFLICT (surface_id) only
 // (not D1's dual surface_key/surface_id conflict targets -- Postgres allows
-// one conflict target per INSERT): a surface rename mid-migration can
-// briefly fail this route's UPSERT on the surface_key unique index rather
-// than silently duplicate a row, which is an acceptable degrade for a
-// mirror that isn't yet the read source of truth.
+// one conflict target per INSERT), so the handler compensates for the
+// surface_key unique index (idx_surface_status_key_unique) itself: it dedupes
+// the batch and evicts stale key-holders before the upsert (METAGRAPHED-B).
+// The original "a rename can briefly fail this route, acceptable degrade"
+// stance was wrong in practice -- one stale key-holder row aborted the WHOLE
+// single-transaction mirror write on every 15-min probe run, permanently.
 const HEALTH_CHECKS_SYNC_TOKEN_HEADER = "x-health-checks-sync-token";
 // One probe run today is ~150-200 surfaces; generous headroom.
 const HEALTH_CHECKS_SYNC_MAX_BODY_BYTES = 2_000_000;
@@ -2600,6 +2602,28 @@ async function handleHealthChecksSync(request, env) {
       : 0,
     updated_at: row.checked_at_ms,
   }));
+  // METAGRAPHED-B: the ON CONFLICT (surface_id) upsert below tolerates only
+  // ONE row per surface_id in a single INSERT ("cannot affect row a second
+  // time") and one live row per surface_key (idx_surface_status_key_unique,
+  // deploy/postgres/schema.sql). A batch carrying the same surface twice, or
+  // two ids sharing a key, aborted the whole transaction -- and with it the
+  // surface_checks insert -- on every probe run. Later row wins, matching the
+  // upsert's own last-write semantics; keyless rows are all kept (the index
+  // is partial on surface_key IS NOT NULL).
+  const lastRowWins = (rows, keyOf) => {
+    const byKey = new Map();
+    const keyless = [];
+    for (const row of rows) {
+      const key = keyOf(row);
+      if (key === null) keyless.push(row);
+      else byKey.set(key, row);
+    }
+    return [...keyless, ...byKey.values()];
+  };
+  const dedupedStatusRows = lastRowWins(
+    lastRowWins(statusRows, (row) => row.surface_id),
+    (row) => row.surface_key,
+  );
 
   try {
     return await sql.begin(async (sql) => {
@@ -2619,9 +2643,32 @@ async function handleHealthChecksSync(request, env) {
           "checked_at",
         )}
         ON CONFLICT (surface_id, checked_at) DO NOTHING`;
+      // METAGRAPHED-B: evict any stale row still holding one of this batch's
+      // surface_keys under a DIFFERENT surface_id -- a surface rename leaves
+      // the old id's row behind, and idx_surface_status_key_unique then
+      // rejects the new id's insert (the upsert's conflict target is
+      // surface_id, so the key collision surfaces as a hard error, not an
+      // update). Scalar positional binds via a VALUES join -- this Worker's
+      // fetch_types:false Hyperdrive setting breaks postgres.js's bound-array
+      // ANY($1) serialization (see the neurons-sync prune query's comment).
+      const keyedRows = dedupedStatusRows.filter(
+        (row) => row.surface_key !== null,
+      );
+      if (keyedRows.length) {
+        const valuesSql = keyedRows
+          .map((_, i) => `($${i * 2 + 1}::text, $${i * 2 + 2}::text)`)
+          .join(", ");
+        await sql.unsafe(
+          `DELETE FROM surface_status s
+           USING (VALUES ${valuesSql}) AS incoming(surface_key, surface_id)
+           WHERE s.surface_key = incoming.surface_key
+             AND s.surface_id <> incoming.surface_id`,
+          keyedRows.flatMap((row) => [row.surface_key, row.surface_id]),
+        );
+      }
       await sql`
         INSERT INTO surface_status ${sql(
-          statusRows,
+          dedupedStatusRows,
           "surface_id",
           "surface_key",
           "netuid",
@@ -2654,7 +2701,7 @@ async function handleHealthChecksSync(request, env) {
       return writeJson({
         ok: true,
         checks_written: checkRows.length,
-        status_written: statusRows.length,
+        status_written: dedupedStatusRows.length,
       });
     });
   } catch (err) {

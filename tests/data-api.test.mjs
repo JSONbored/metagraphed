@@ -6611,7 +6611,14 @@ test("health-checks-sync silently skips a row missing a required field, no error
 
 test("health-checks-sync bulk-inserts surface_checks and upserts surface_status", async () => {
   const res = await postHealthChecks(
-    { probed: [probedRow(), probedRow({ surface_id: "sn-2-other-api" })] },
+    {
+      probed: [
+        probedRow(),
+        // Distinct surface_key too -- two DIFFERENT surfaces, not a rename
+        // pair (METAGRAPHED-B dedupes id/key collisions; tests below).
+        probedRow({ surface_id: "sn-2-other-api", surface_key: "srf-def456" }),
+      ],
+    },
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
@@ -6648,6 +6655,97 @@ test("health-checks-sync defaults every optional field to null/0 when absent", a
     /INSERT INTO surface_status\b/.test(c.text),
   );
   expect(statusInsert.values).toContain(0); // consecutive_failures default
+});
+
+// METAGRAPHED-B regression block: a stale surface_status row holding one of
+// the batch's surface_keys under a different surface_id (a rename's leftover),
+// or an id/key collision INSIDE one batch, violated the partial unique index
+// idx_surface_status_key_unique (or "cannot affect row a second time") and
+// aborted the whole single-transaction mirror write on every probe run.
+test("REGRESSION (METAGRAPHED-B): evicts a stale surface_key holder before the surface_status upsert", async () => {
+  const res = await postHealthChecks(
+    { probed: [probedRow()] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const deleteIdx = sqlCalls.findIndex((c) =>
+    /DELETE FROM surface_status s\b[\s\S]*USING \(VALUES/.test(c.text),
+  );
+  const statusInsertIdx = sqlCalls.findIndex((c) =>
+    /INSERT INTO surface_status\b/.test(c.text),
+  );
+  expect(deleteIdx).toBeGreaterThan(-1);
+  // The eviction must run BEFORE the upsert, inside the same transaction.
+  expect(deleteIdx).toBeLessThan(statusInsertIdx);
+  expect(sqlCalls[deleteIdx].text).toMatch(
+    /s\.surface_key = incoming\.surface_key[\s\S]*s\.surface_id <> incoming\.surface_id/,
+  );
+  expect(sqlCalls[deleteIdx].values).toEqual([
+    "srf-abc123",
+    "sn-1-example-api",
+  ]);
+});
+
+test("REGRESSION (METAGRAPHED-B): two batch rows sharing a surface_key collapse to the later row", async () => {
+  // A mid-migration rename probed under both ids in one run: old id + new id,
+  // same surface_key. One INSERT carrying both would violate the key index.
+  const res = await postHealthChecks(
+    {
+      probed: [
+        probedRow({ surface_id: "sn-1-old-id", status: "failed" }),
+        probedRow({ surface_id: "sn-1-new-id", status: "ok" }),
+      ],
+    },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  // surface_checks keeps BOTH probes (no key constraint there); the status
+  // upsert keeps only the later row.
+  expect(body).toEqual({ ok: true, checks_written: 2, status_written: 1 });
+  const statusInsert = sqlCalls.find((c) =>
+    /INSERT INTO surface_status\b/.test(c.text),
+  );
+  expect(statusInsert.values).toContain("sn-1-new-id");
+  expect(statusInsert.values).not.toContain("sn-1-old-id");
+});
+
+test("REGRESSION (METAGRAPHED-B): a duplicate surface_id within one batch collapses to the later row", async () => {
+  const res = await postHealthChecks(
+    {
+      probed: [
+        probedRow({ status: "failed", surface_key: null }),
+        probedRow({ status: "ok", surface_key: null }),
+      ],
+    },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, checks_written: 2, status_written: 1 });
+  const statusInsert = sqlCalls.find((c) =>
+    /INSERT INTO surface_status\b/.test(c.text),
+  );
+  expect(statusInsert.values).toContain("ok");
+  expect(statusInsert.values).not.toContain("failed");
+});
+
+test("METAGRAPHED-B: keyless rows skip the eviction query and are all kept", async () => {
+  // The unique index is partial (surface_key IS NOT NULL), so keyless rows
+  // can't collide on it -- no DELETE should be issued for an all-null batch.
+  const res = await postHealthChecks(
+    {
+      probed: [
+        probedRow({ surface_key: null }),
+        probedRow({ surface_id: "sn-2-other-api", surface_key: null }),
+      ],
+    },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toEqual({ ok: true, checks_written: 2, status_written: 2 });
+  expect(queryText()).not.toMatch(/DELETE FROM surface_status/);
 });
 
 test("health-checks-sync maps a DB failure to a clean 502 instead of throwing", async () => {
