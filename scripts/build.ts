@@ -211,7 +211,7 @@ function productionSteps(): Step[] {
     // tree, so r2-manifest below picks it up like any other artifact (#6502).
     // Tolerant like native-snapshot/refresh-candidates -- never fails the
     // build; see that script's own header.
-    nodeStep("refresh-og-image", "scripts/refresh-og-image.mjs"),
+    nodeStep("refresh-og-image", "scripts/refresh-og-image.ts"),
     nodeStep("r2-manifest", "scripts/r2-manifest.ts", "--write"),
   ];
 }

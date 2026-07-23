@@ -418,7 +418,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^surface-aliases\.json$/,
   /^surfaces\.json$/,
   // The rendered Open Graph card (#6502): built at publish time
-  // (scripts/refresh-og-image.mjs, Node context) from the same live stats as
+  // (scripts/refresh-og-image.ts, Node context) from the same live stats as
   // registry-summary.json above, so it's R2-only too -- served by the live
   // Worker's /og.png route via a plain binary R2 read (src/og-image.ts).
   /^og-image\.png$/,

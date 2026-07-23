@@ -11,7 +11,7 @@
 // left no headroom for @sentry/cloudflare. Since the underlying stats only
 // change once per data publish anyway (this route was re-rendering an
 // unchanged image on every cache miss), the render moved to publish time:
-// scripts/refresh-og-image.mjs runs in plain Node, using the SAME renderMarkup
+// scripts/refresh-og-image.ts runs in plain Node, using the SAME renderMarkup
 // below plus satori + satori-html + @resvg/resvg-js (Node-native bindings,
 // not wasm-import — workers-og itself can't load outside workerd, see that
 // script's own header), and stores the PNG in R2 like every other artifact.
@@ -44,7 +44,7 @@ const FALLBACK_ASSET_PATH = "/brand/og-fallback.png";
 // new version renders fresh on the next deploy instead of serving the previous
 // design from cache for up to an hour.
 const CARD_VERSION = "2";
-// The R2 artifact scripts/refresh-og-image.mjs publishes the rendered card to,
+// The R2 artifact scripts/refresh-og-image.ts publishes the rendered card to,
 // read tier-aware (latest-prefix + timeout guard) via readR2Object -- same
 // convention as every other /metagraph/* artifact.
 export const OG_IMAGE_ARTIFACT_PATH = "/metagraph/og-image.png";
@@ -112,7 +112,7 @@ function formatCount(value: unknown): string | null {
 
 // Pull the live counts off registry-summary.json's data into an array of stat
 // strings, or null when there are no formattable counts (the caller then shows
-// a generic fallback line). Pure -- scripts/refresh-og-image.mjs is the only
+// a generic fallback line). Pure -- scripts/refresh-og-image.ts is the only
 // caller now (it reads registry-summary.json off disk at publish time); the
 // live route no longer computes stats at all, it just serves the pre-rendered
 // card.

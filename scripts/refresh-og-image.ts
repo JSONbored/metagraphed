@@ -87,7 +87,7 @@ try {
 await endSessionAndFlush();
 process.exit(0);
 
-async function loadStatParts() {
+async function loadStatParts(): Promise<string[] | null> {
   try {
     const raw = await readFile(SUMMARY_PATH, "utf8");
     return buildStatParts(JSON.parse(raw));
@@ -96,12 +96,12 @@ async function loadStatParts() {
   }
 }
 
-async function renderCard(statParts) {
+async function renderCard(statParts: string[] | null): Promise<Buffer> {
   const [bold, medium] = await Promise.all([
     loadGoogleFont("Space Grotesk", 700),
     loadGoogleFont("Space Grotesk", 500),
   ]);
-  const svg = await satori(html(renderMarkup(statParts)), {
+  const svg = await satori(html(renderMarkup(statParts)) as never, {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     fonts: [
@@ -112,14 +112,17 @@ async function renderCard(statParts) {
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: CARD_WIDTH },
   });
-  return resvg.render().asPng();
+  return Buffer.from(resvg.render().asPng());
 }
 
 // No per-request latency pressure at build time (unlike the old live path),
 // so this fetches the standard Latin subset rather than reproducing
 // workers-og's loadGoogleFont per-glyph subsetting -- one Google Fonts CSS2
 // API call per weight, immune to drift if the rendered copy changes later.
-async function loadGoogleFont(family, weight) {
+async function loadGoogleFont(
+  family: string,
+  weight: number,
+): Promise<ArrayBuffer> {
   const cssUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}`;
   const cssResponse = await fetch(cssUrl, {
     // Google Fonts serves modern woff2 only to browser-like UAs; a bare
@@ -146,8 +149,8 @@ async function loadGoogleFont(family, weight) {
   return await fontResponse.arrayBuffer();
 }
 
-function summarizeError(error) {
-  return String(error?.message || error)
+function summarizeError(error: unknown): string | undefined {
+  return String((error as { message?: unknown })?.message || error)
     .split("\n")[0]
     ?.slice(0, 240);
 }

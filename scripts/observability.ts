@@ -7,7 +7,7 @@
 // script" shape. Used by refresh-economics.ts, refresh-native-snapshot.ts,
 // backfill-registry-postgres.ts, discover-testnet-surfaces.ts,
 // export-parquet.ts, reconcile-neurons.ts, sync-registry-to-postgres.mjs,
-// and refresh-og-image.mjs so all eight report to the same consolidated
+// and refresh-og-image.ts so all eight report to the same consolidated
 // `metagraphed` Sentry project with a consistent `component` tag --
 // matching scripts/observability.py's own Python-side convention for the
 // chain-fetch scripts.

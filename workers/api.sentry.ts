@@ -24,7 +24,7 @@
 // ceiling (#6502). The ~545 KiB gzipped cost was workers-og (satori +
 // resvg-wasm), imported for the live OG-card render at GET /og.png. Fixed
 // by moving that render out of the request path entirely: it now runs at
-// publish time in Node (scripts/refresh-og-image.mjs) and the result is
+// publish time in Node (scripts/refresh-og-image.ts) and the result is
 // stored in R2 like every other artifact, so api.mjs never imports
 // workers-og at all -- see src/og-image.ts's own header. That freed
 // comfortable headroom for Sentry here without a second Worker.

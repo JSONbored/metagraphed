@@ -1790,7 +1790,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   }
 
   // Dynamic Open Graph card (/og.png, alias /og) for the landing page's
-  // link-unfurl. Rendered at publish time (scripts/refresh-og-image.mjs,
+  // link-unfurl. Rendered at publish time (scripts/refresh-og-image.ts,
   // Node context) and stored in R2 like every other artifact -- the live
   // route here is just a binary R2 read, never a satori/resvg render (#6502:
   // the workers-og wasm cost ~545 KiB gzipped and pushed this Worker's own

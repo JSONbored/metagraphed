@@ -2,6 +2,15 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { artifactFilePath } from "./lib.ts";
 
+// This script only formats a best-effort PR-description report from committed
+// JSON artifacts that may be missing/cold/reshaped -- every field access below
+// is already `?.`-guarded in the original JS, so typing each hop through
+// `unknown` would force a cast at every guard for no real safety gain (the
+// values are only ever interpolated into strings or diffed by key). Mirrors
+// the readJson/readArtifactJson precedent in scripts/lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const files = {
   subnets: "public/metagraph/subnets.json",
   surfaces: "public/metagraph/surfaces.json",
@@ -21,10 +30,10 @@ const files = {
   adaptersGittensor: "public/metagraph/adapters/gittensor.json",
 };
 
-const previous = Object.fromEntries(
+const previous: Record<string, Row | null> = Object.fromEntries(
   Object.entries(files).map(([key, file]) => [key, readHeadJson(file)]),
 );
-const current = Object.fromEntries(
+const current: Record<string, Row | null> = Object.fromEntries(
   Object.entries(files).map(([key, file]) => [key, readWorktreeJson(file)]),
 );
 
@@ -38,18 +47,18 @@ const surfaceDiff = diffByKey(
   current.surfaces?.surfaces || [],
   "id",
 );
-const renamed = (current.subnets?.subnets || [])
+const renamed = ((current.subnets?.subnets || []) as Row[])
   .map((subnet) => {
-    const oldSubnet = (previous.subnets?.subnets || []).find(
+    const oldSubnet = ((previous.subnets?.subnets || []) as Row[]).find(
       (candidate) => candidate.netuid === subnet.netuid,
     );
     return oldSubnet && oldSubnet.name !== subnet.name
       ? `${subnet.netuid}: ${oldSubnet.name} -> ${subnet.name}`
       : null;
   })
-  .filter(Boolean);
+  .filter(Boolean) as string[];
 
-const lines = [];
+const lines: string[] = [];
 lines.push("## Summary");
 lines.push(
   "- refresh Metagraphed backend registry artifacts for `metagraph.sh`",
@@ -103,10 +112,10 @@ lines.push(
   `- RPC archive-supported endpoints: ${current.rpc?.summary?.archive_supported_count ?? 0}`,
 );
 lines.push(
-  `- generalized endpoint pools: ${(current.endpointPools?.pools || []).map((pool) => `${pool.id}: ${pool.eligible_count}/${pool.endpoint_count}`).join(", ") || "none"}`,
+  `- generalized endpoint pools: ${(current.endpointPools?.pools || []).map((pool: Row) => `${pool.id}: ${pool.eligible_count}/${pool.endpoint_count}`).join(", ") || "none"}`,
 );
 lines.push(
-  `- endpoint pools: ${(current.rpcPools?.pools || []).map((pool) => `${pool.id}: ${pool.eligible_count}/${pool.endpoint_count}`).join(", ") || "none"}`,
+  `- endpoint pools: ${(current.rpcPools?.pools || []).map((pool: Row) => `${pool.id}: ${pool.eligible_count}/${pool.endpoint_count}`).join(", ") || "none"}`,
 );
 lines.push("");
 lines.push("## Schema And Adapters");
@@ -156,7 +165,7 @@ lines.push("- `npm run scan:public-safety`");
 
 console.log(lines.join("\n"));
 
-function readWorktreeJson(file) {
+function readWorktreeJson(file: string): Row | null {
   try {
     return JSON.parse(readFileSync(worktreePath(file), "utf8"));
   } catch {
@@ -164,14 +173,14 @@ function readWorktreeJson(file) {
   }
 }
 
-function worktreePath(file) {
+function worktreePath(file: string): string {
   if (file.startsWith("public/metagraph/")) {
     return artifactFilePath(file.replace(/^public\/metagraph\//, ""));
   }
   return file;
 }
 
-function readHeadJson(file) {
+function readHeadJson(file: string): Row | null {
   try {
     return JSON.parse(
       execFileSync("git", ["show", `HEAD:${file}`], {
@@ -184,7 +193,11 @@ function readHeadJson(file) {
   }
 }
 
-function diffByKey(oldItems, newItems, key) {
+function diffByKey(
+  oldItems: Row[],
+  newItems: Row[],
+  key: string,
+): { added: Row[]; removed: Row[] } {
   const oldMap = new Map(oldItems.map((item) => [String(item[key]), item]));
   const newMap = new Map(newItems.map((item) => [String(item[key]), item]));
   return {
@@ -197,17 +210,17 @@ function diffByKey(oldItems, newItems, key) {
   };
 }
 
-function countLine(oldValue, newValue) {
+function countLine(oldValue: unknown, newValue: unknown): string {
   const oldCount = Number.isFinite(oldValue) ? oldValue : "n/a";
   const newCount = Number.isFinite(newValue) ? newValue : "n/a";
   if (!Number.isFinite(oldValue) || !Number.isFinite(newValue)) {
     return `${newCount} (previous ${oldCount})`;
   }
-  const delta = newValue - oldValue;
+  const delta = (newValue as number) - (oldValue as number);
   return `${newValue} (${delta >= 0 ? "+" : ""}${delta})`;
 }
 
-function formatList(items, limit = 20) {
+function formatList(items: string[], limit = 20): string {
   if (!items.length) {
     return "none";
   }
@@ -217,7 +230,9 @@ function formatList(items, limit = 20) {
   return `${shown.join(", ")}${suffix}`;
 }
 
-function formatCounts(counts) {
+function formatCounts(
+  counts: Record<string, unknown> | null | undefined,
+): string {
   if (!counts || Object.keys(counts).length === 0) {
     return "none";
   }
