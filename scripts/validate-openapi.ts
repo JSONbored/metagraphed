@@ -7,13 +7,19 @@ import {
 } from "../src/contracts.mjs";
 import { readJson, repoRoot } from "./lib.ts";
 
+// The OpenAPI document + api-index are generated JSON, deep-traversed only to
+// check shape/coverage invariants -- never trusted for control flow. Mirrors
+// the readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
 );
 const apiIndex = await readJson(
   path.join(repoRoot, "public/metagraph/api-index.json"),
 );
-const errors = [];
+const errors: string[] = [];
 
 check(openapi.openapi === "3.1.0", "OpenAPI document must use version 3.1.0");
 check(
@@ -46,8 +52,10 @@ check(
   "OpenAPI must define CandidateSurface",
 );
 
-const documentedRoutes = new Set();
-for (const [pathValue, methods] of Object.entries(openapi.paths || {})) {
+const documentedRoutes = new Set<string>();
+for (const [pathValue, methods] of Object.entries(
+  (openapi.paths as Row | undefined) || {},
+)) {
   for (const method of Object.keys(methods || {})) {
     documentedRoutes.add(`${method.toUpperCase()} ${pathValue}`);
   }
@@ -100,7 +108,7 @@ for (const route of API_ROUTES) {
 }
 
 for (const [artifactName, schema] of Object.entries(
-  openapi.components?.schemas || {},
+  (openapi.components?.schemas as Row | undefined) || {},
 )) {
   if (artifactName.endsWith("Artifact")) {
     check(
@@ -129,7 +137,7 @@ if (errors.length > 0) {
 assert.equal(documentedRoutes.size, API_ROUTES.length);
 console.log(`OpenAPI validation passed for ${API_ROUTES.length} route(s).`);
 
-function check(condition, message) {
+function check(condition: unknown, message: string): void {
   if (!condition) {
     errors.push(message);
   }
