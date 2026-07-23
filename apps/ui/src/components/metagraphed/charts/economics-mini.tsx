@@ -15,6 +15,7 @@ import {
   Donut,
   DonutLegend,
 } from "@jsonbored/ui-kit";
+import { useHydrated } from "@/hooks/use-hydrated";
 import type { SurfaceUptime } from "@/lib/metagraphed/types";
 
 interface Props {
@@ -61,9 +62,13 @@ export function EconomicsMini({ netuid }: Props) {
 
   // economicsQuery already returns the per-subnet array at res.data.
   const econ = (econRes?.data ?? []).find((r) => r.netuid === netuid);
+  // Plain (non-suspense) queries can already be resolved by hydration time
+  // even though SSR committed the loading branch — stay loading until
+  // hydration completes so both passes render the same skeleton.
+  const hydrated = useHydrated();
   const isLoading = ecLoading || uLoading;
 
-  if (isLoading) return <Skeleton className="h-44 w-full" />;
+  if (!hydrated || isLoading) return <Skeleton className="h-44 w-full" />;
 
   const price = numOrNull(econ?.alpha_price_tao);
   const inP = num(econ?.alpha_in_pool);

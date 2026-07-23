@@ -52,6 +52,7 @@ import {
   type ViewMode,
 } from "@jsonbored/ui-kit";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useInView } from "@/hooks/use-in-view";
 import { SubnetsHighlights } from "@/components/metagraphed/subnets-highlights";
 import { EntityHoverCard } from "@/components/metagraphed/entity-hover-card";
 import {
@@ -1675,14 +1676,18 @@ function FinancialTrendCell({
   symbol?: string;
 }) {
   const usesTrajectory = field === "alpha_price_tao" || field === "alpha_market_cap_tao";
+  // Trend data is per-netuid (react-query can't dedupe across rows), and a
+  // page can hold up to 200 rows — fetch only once a row has actually
+  // scrolled into view instead of firing a query for every mounted row.
+  const [cellRef, inView] = useInView<HTMLTableCellElement>();
   const historyRes = useQuery({
     ...subnetHistoryQuery(netuid, win),
-    enabled: !usesTrajectory,
+    enabled: inView && !usesTrajectory,
     staleTime: 60_000,
   });
   const trajectoryRes = useQuery({
     ...subnetTrajectoryQuery(netuid),
-    enabled: usesTrajectory,
+    enabled: inView && usesTrajectory,
     staleTime: 60_000,
   });
 
@@ -1741,6 +1746,7 @@ function FinancialTrendCell({
   };
   return (
     <td
+      ref={cellRef}
       className={classNames(
         compact ? "px-3 py-1.5" : "px-4 py-2.5",
         "text-right font-mono text-[11px] tabular-nums",

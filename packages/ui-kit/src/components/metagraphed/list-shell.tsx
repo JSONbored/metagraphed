@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { classNames } from "@/lib/format";
 import { Skeleton } from "./skeleton";
@@ -53,7 +59,9 @@ export function ListShell({
     const el = filterRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver((entries) => {
-      const h = Math.round(entries[0]?.contentRect.height ?? el.getBoundingClientRect().height);
+      const h = Math.round(
+        entries[0]?.contentRect.height ?? el.getBoundingClientRect().height,
+      );
       setFilterH((prev) => (prev === h ? prev : h));
     });
     ro.observe(el);
@@ -62,7 +70,10 @@ export function ListShell({
 
   const tableCard = "rounded border border-border bg-card overflow-hidden";
   return (
-    <div ref={rootRef} style={{ ["--mg-list-filter-offset" as string]: `${filterH}px` }}>
+    <div
+      ref={rootRef}
+      style={{ ["--mg-list-filter-offset" as string]: `${filterH}px` }}
+    >
       <div
         ref={filterRef}
         className={classNames(

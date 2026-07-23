@@ -1,6 +1,7 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { GitMerge, ArrowRight } from "lucide-react";
+import { useHydrated } from "@/hooks/use-hydrated";
 import {
   economicsQuery,
   lineageQuery,
@@ -105,6 +106,11 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
   const { data: econRes } = useQuery(economicsQuery());
   const { data: lineageRes } = useQuery(lineageQuery());
   const { data: endpointsRes } = useQuery(subnetEndpointsQuery(netuid));
+  // lineageQuery is a plain (non-suspense) query, so its cache can already be
+  // resolved by hydration time even though SSR committed the "not paired"
+  // branch — gate the paired-callout swap behind hydration so both passes
+  // agree, matching useHydrated's documented use.
+  const hydrated = useHydrated();
   // economicsQuery already returns the per-subnet array at res.data (the
   // `.subnets` hop is unwrapped inside the query) — find our netuid directly.
   const econ = (econRes?.data ?? []).find((r) => r.netuid === netuid);
@@ -219,7 +225,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
 
         {/* Lineage callout — the canonical #lineage anchor lives in the route's
             SubnetLineageSection; this is an inline summary, so it carries no id. */}
-        {lineagePeer ? (
+        {hydrated && lineagePeer ? (
           <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border bg-surface/20">
             <GitMerge className="size-3.5 text-accent" />
             <span className="text-[12px] text-ink">
@@ -241,8 +247,9 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
 
         {/* Visualizations row — pool composition donut + endpoint topology
             donut + top providers lockup. Always rendered, falls back per
-            slot when data is absent. */}
-        {poolSegments.some((s) => s.value > 0) || topology.length > 0 ? (
+            slot when data is absent. econ/endpoints are plain (non-suspense)
+            queries, so gate behind hydration — see the lineage callout above. */}
+        {hydrated && (poolSegments.some((s) => s.value > 0) || topology.length > 0) ? (
           <div className="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border border-b border-border">
             <div className="flex items-center gap-4 p-4">
               {poolSegments.some((s) => s.value > 0) ? (
@@ -345,8 +352,9 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
           </div>
         ) : null}
 
-        {/* Economics strip */}
-        {econ ? (
+        {/* Economics strip — econ is a plain (non-suspense) query, same hydration
+            gate as the lineage callout and visualizations row above. */}
+        {hydrated && econ ? (
           <div className="grid grid-cols-3 md:grid-cols-6 divide-x divide-border border-b border-border">
             {primary.map((f) => (
               <Stat key={f.label} field={f} />
@@ -361,8 +369,10 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
               Ownership
             </div>
             {(() => {
-              const coldkey = str(econ?.owner_coldkey);
-              const hotkey = str(econ?.owner_hotkey);
+              // econ is a plain (non-suspense) query — same hydration gate as
+              // the other econ-derived conditionals in this component.
+              const coldkey = hydrated ? str(econ?.owner_coldkey) : undefined;
+              const hotkey = hydrated ? str(econ?.owner_hotkey) : undefined;
               return coldkey || hotkey ? (
                 <>
                   {coldkey ? (

@@ -27,6 +27,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { useCopy } from "@/hooks/use-copy";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { classNames } from "@/lib/metagraphed/format";
 import {
   useSubnetFilter,
@@ -281,6 +282,11 @@ function EndpointsView({
   const epRes = epQ.data;
   const allRows = (epRes?.data ?? []) as Endpoint[];
   void (poolsQ.data?.data as RpcPool[] | undefined);
+  // epQ is a plain (non-suspense) query, so its cache can already be resolved
+  // by the time the client hydrates even though SSR committed the loading
+  // branch — treat the component as loading until hydration completes so both
+  // passes render the same skeleton, matching useHydrated's documented use.
+  const hydrated = useHydrated();
 
   const retry = () =>
     Promise.all([
@@ -288,7 +294,7 @@ function EndpointsView({
       queryClient.invalidateQueries({ queryKey: poolOpts.queryKey, refetchType: "active" }),
     ]);
 
-  if (epQ.isPending) return <Skeleton className="h-48 w-full" />;
+  if (!hydrated || epQ.isPending) return <Skeleton className="h-48 w-full" />;
   if (epQ.error) {
     return (
       <div className="p-4">
@@ -503,11 +509,15 @@ function SurfacesView({
   const surfaceQ = useQuery(surfaceOpts);
   const data = surfaceQ.data;
   const allRows = (data?.data ?? []) as Surface[];
+  // See EndpointsView above: gate the loading branch behind hydration so SSR
+  // and the client's first paint agree even when surfaceQ's cache is already
+  // resolved by hydration time.
+  const hydrated = useHydrated();
 
   const retry = () =>
     queryClient.invalidateQueries({ queryKey: surfaceOpts.queryKey, refetchType: "active" });
 
-  if (surfaceQ.isPending) return <Skeleton className="h-48 w-full" />;
+  if (!hydrated || surfaceQ.isPending) return <Skeleton className="h-48 w-full" />;
   if (surfaceQ.error) {
     return (
       <div className="p-4">

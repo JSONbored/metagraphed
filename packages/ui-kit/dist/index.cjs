@@ -1930,39 +1930,48 @@ function ListShell({
     const el = filterRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver((entries) => {
-      const h = Math.round(entries[0]?.contentRect.height ?? el.getBoundingClientRect().height);
+      const h = Math.round(
+        entries[0]?.contentRect.height ?? el.getBoundingClientRect().height
+      );
       setFilterH((prev) => prev === h ? prev : h);
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
   const tableCard = "rounded border border-border bg-card overflow-hidden";
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { ref: rootRef, style: { ["--mg-list-filter-offset"]: `${filterH}px` }, children: [
-    /* @__PURE__ */ jsxRuntime.jsx(
-      "div",
-      {
-        ref: filterRef,
-        className: classNames(
-          // Sticky filter bar. Offset reads --mg-sticky-offset (published by
-          // AppShell to match real header + ticker height) with a fallback.
-          "sticky z-20 -mx-4 md:mx-0 mb-3",
-          "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
-          "border-b border-border md:border md:rounded md:bg-card",
-          "px-3 py-2 md:p-2.5"
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    "div",
+    {
+      ref: rootRef,
+      style: { ["--mg-list-filter-offset"]: `${filterH}px` },
+      children: [
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "div",
+          {
+            ref: filterRef,
+            className: classNames(
+              // Sticky filter bar. Offset reads --mg-sticky-offset (published by
+              // AppShell to match real header + ticker height) with a fallback.
+              "sticky z-20 -mx-4 md:mx-0 mb-3",
+              "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
+              "border-b border-border md:border md:rounded md:bg-card",
+              "px-3 py-2 md:p-2.5"
+            ),
+            style: { top: "var(--mg-sticky-offset, 3.5rem)" },
+            children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap items-center gap-2", children: filters })
+          }
         ),
-        style: { top: "var(--mg-sticky-offset, 3.5rem)" },
-        children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap items-center gap-2", children: filters })
-      }
-    ),
-    isEmpty ? empty : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
-      cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
-      /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: tableCard, children: [
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-table-scroll overflow-x-auto", children: table }),
-        footer
-      ] }) }),
-      cards && footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden mt-3", children: footer }) : null
-    ] })
-  ] });
+        isEmpty ? empty : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
+          cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
+          /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: tableCard, children: [
+            /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-table-scroll overflow-x-auto", children: table }),
+            footer
+          ] }) }),
+          cards && footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden mt-3", children: footer }) : null
+        ] })
+      ]
+    }
+  );
 }
 function LoadMore({
   hasMore,

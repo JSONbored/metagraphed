@@ -7,6 +7,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { Skeleton } from "@/components/metagraphed/states";
 import { Tooltip, TooltipContent, TooltipTrigger, InfoTooltip } from "@jsonbored/ui-kit";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 interface Props {
   netuid: number;
@@ -34,6 +35,10 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
   // drive the heatmap from the daily uptime rows and the incident SLA rows.
   const { data: uptimeRes, isLoading: tLoading } = useQuery(subnetUptimeQuery(netuid));
   const { data: incRes } = useQuery(subnetHealthIncidentsQuery(netuid));
+  // Plain (non-suspense) queries can already be resolved by hydration time
+  // even though SSR committed the loading branch — stay "loading" until
+  // hydration completes so both passes render the same skeleton.
+  const hydrated = useHydrated();
 
   const cells = useMemo<Cell[]>(() => {
     const days = weeks * 7;
@@ -97,7 +102,7 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
     return cols;
   }, [cells, weeks]);
 
-  if (tLoading) return <Skeleton className="h-44 w-full" />;
+  if (!hydrated || tLoading) return <Skeleton className="h-44 w-full" />;
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
