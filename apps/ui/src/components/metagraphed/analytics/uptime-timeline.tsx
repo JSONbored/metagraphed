@@ -9,6 +9,7 @@ import {
 import { classNames, durationLabel, formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { Tooltip, TooltipContent, TooltipTrigger, InfoTooltip, TimeAgo } from "@jsonbored/ui-kit";
 import { useTimeRange, RANGE_LABEL } from "./time-range-context";
 import type { FlatSurfaceIncident, HealthTrendSurface } from "@/lib/metagraphed/types";
@@ -109,21 +110,21 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
 
   if (isError) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6">
+      <Panel as="div">
         <ErrorState error={error} onRetry={() => refetch()} context="uptime timeline" />
-      </div>
+      </Panel>
     );
   }
 
   if (surfaces.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6">
+      <Panel as="div">
         <EmptyState
           title="No trend data"
           description="Per-surface uptime &amp; latency will appear here once the prober has collected enough samples for this subnet."
           lastChecked={trendsAt}
         />
-      </div>
+      </Panel>
     );
   }
 
@@ -139,9 +140,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
   const hasIncidents = incidents.length > 0;
 
   return (
-    <div
-      className={classNames("rounded-xl border border-border bg-card overflow-hidden", className)}
-    >
+    <Panel as="div" flush className={classNames("overflow-hidden", className)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 border-b border-border bg-paper/40">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Uptime by surface · {RANGE_LABEL[range]}
@@ -312,6 +311,6 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
           </div>
         </div>
       ) : null}
-    </div>
+    </Panel>
   );
 }
