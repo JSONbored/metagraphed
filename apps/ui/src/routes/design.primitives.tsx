@@ -17,6 +17,7 @@ import {
   MetaStrip,
   PagerFooter,
   Panel,
+  PageMasthead,
   SectionLabel,
   StatusBadge,
   StickyToolbar,
@@ -24,7 +25,7 @@ import {
   useColumnVisibility,
   type ColumnDef,
 } from "@/components/metagraphed/primitives";
-import { DensityToggle, PageHero } from "@jsonbored/ui-kit";
+import { DensityToggle } from "@jsonbored/ui-kit";
 import { useState } from "react";
 
 export const Route = createFileRoute("/design/primitives")({
@@ -69,7 +70,7 @@ function PrimitivesPreview() {
           ]}
         />
       </div>
-      <PageHero
+      <PageMasthead
         eyebrow="Design system"
         title="Registry primitives"
         description="Shared building blocks — chips, badges, filter toolbars, freshness pills, breadcrumbs, density and column controls — used across the subnets, surfaces, endpoints, providers, and blocks tables."
