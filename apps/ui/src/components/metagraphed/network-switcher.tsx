@@ -75,7 +75,7 @@ export function NetworkSwitcher() {
         <button
           type="button"
           aria-label={`Network: ${network.label}`}
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink hover:border-ink/30 transition-colors min-h-11"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-1 mg-type-micro text-ink hover:border-ink/30 transition-colors min-h-11"
           title={`Network: ${network.label} · ${base}`}
         >
           <Globe2 className="size-3 text-ink-muted" />
@@ -229,9 +229,7 @@ export function NetworkSwitcher() {
           ) : null}
         </div>
 
-        <p className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
-          Unofficial registry · public read-only data
-        </p>
+        <p className="mg-type-micro text-ink-muted">Unofficial registry · public read-only data</p>
       </ClampedPopoverContent>
     </Popover>
   );

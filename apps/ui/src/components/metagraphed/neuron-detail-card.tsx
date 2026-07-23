@@ -46,19 +46,17 @@ export function NeuronDetailCard({
     <div className="space-y-4 rounded-xl border border-border bg-surface/30 p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Neuron
-          </span>
+          <span className="mg-type-micro text-ink-muted">Neuron</span>
           <span className="font-display text-lg font-semibold tabular-nums text-ink-strong leading-none">
             UID {n.uid}
           </span>
           {n.validator_permit ? (
-            <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+            <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
               Validator
             </span>
           ) : null}
           {n.active === false ? (
-            <span className="inline-flex items-center rounded border border-border px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-ink-muted">
+            <span className="inline-flex items-center rounded border border-border px-1.5 py-0.5 mg-type-micro text-ink-muted">
               Inactive
             </span>
           ) : null}
@@ -70,7 +68,7 @@ export function NeuronDetailCard({
               type="button"
               onClick={onClose}
               aria-label="Close neuron detail"
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-ink-muted hover:text-ink-strong"
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong"
             >
               <X className="size-3" aria-hidden /> Close
             </button>

@@ -274,7 +274,7 @@ export function NeuronTable({
                   )}
                   <td className="px-3 py-2.5 text-center">
                     {n.validator_permit ? (
-                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
                         Validator
                       </span>
                     ) : (
@@ -315,7 +315,7 @@ export function NeuronTable({
           href={csvUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-surface/40 px-2.5 py-1 mg-type-label uppercase text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={(e) => e.stopPropagation()}
         >
           <Download className="size-3" aria-hidden />
@@ -363,7 +363,7 @@ function NeuronCard({
           )}
         </div>
         {n.validator_permit ? (
-          <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+          <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
             Validator
           </span>
         ) : null}

@@ -52,7 +52,7 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
                   <div className="truncate text-ink-strong" title={inc.surface_id}>
                     {shortSurfaceId(inc.surface_id, netuid)}
                   </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 mg-type-micro text-ink-muted">
                     {inc.started_at ? (
                       <span>
                         started <TimeAgo at={inc.started_at} />
@@ -64,7 +64,7 @@ export function IncidentTimeline({ netuid }: { netuid: number }) {
                 </div>
                 <span
                   className={classNames(
-                    "shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                    "shrink-0 rounded-full border px-2 py-0.5 mg-type-micro",
                     open
                       ? "border-health-down/40 bg-health-down/10 text-health-down"
                       : "border-border bg-surface/40 text-ink-muted",

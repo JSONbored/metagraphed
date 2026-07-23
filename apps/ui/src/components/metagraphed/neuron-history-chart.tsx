@@ -66,7 +66,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
           aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
-            "px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors",
+            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
             w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >
@@ -160,9 +160,7 @@ function HistoryRow({
     last == null ? "—" : format ? format(last) : Number.isFinite(last) ? formatNumber(last) : "—";
   return (
     <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 font-mono text-[11px] uppercase tracking-wider text-ink-muted">
-        {label}
-      </span>
+      <span className="w-28 shrink-0 mg-type-label uppercase text-ink-muted">{label}</span>
       <div className="flex-1 min-w-0">
         <Sparkline
           values={series}

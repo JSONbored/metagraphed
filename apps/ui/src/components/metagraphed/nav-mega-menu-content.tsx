@@ -247,7 +247,7 @@ export function MegaPanelBody({
               className="w-full rounded-md border border-border bg-card pl-8 pr-3 py-1.5 text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
             />
           </div>
-          <div className="hidden md:flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <div className="hidden md:flex items-center gap-2 mg-type-micro text-ink-muted">
             <span>type to jump</span>
             <span aria-hidden>·</span>
             <span>↑↓ move</span>
@@ -421,9 +421,7 @@ export function MegaPanelBody({
           <div className="grid grid-cols-2 gap-2">
             {snapshot.tiles.map((s) => (
               <div key={s.label} className="rounded-md border border-border bg-paper p-2.5">
-                <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">
-                  {s.label}
-                </div>
+                <div className="mg-type-micro text-ink-muted">{s.label}</div>
                 <div className="mt-0.5 mg-num text-lg font-semibold text-ink-strong">{s.value}</div>
               </div>
             ))}

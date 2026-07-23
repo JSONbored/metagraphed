@@ -37,7 +37,7 @@ export function scoreStr(v?: number | null): string {
 export function SponsoredBadge() {
   return (
     <span
-      className="inline-flex items-center rounded border border-ink-muted/40 bg-surface px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-ink-muted"
+      className="inline-flex items-center rounded border border-ink-muted/40 bg-surface px-1.5 py-0.5 mg-type-micro text-ink-muted"
       title="Sponsored placement — this validator paid for visibility here. It is not ranked or endorsed; see the validator directory's own stake/trust/APY columns for objective standing."
     >
       Sponsored

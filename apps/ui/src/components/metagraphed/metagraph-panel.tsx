@@ -120,7 +120,7 @@ export function MetagraphTableLoader({
           onClick={() => setPermitOnly((v) => !v)}
           aria-pressed={permitOnly}
           className={classNames(
-            "inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider transition-colors",
+            "inline-flex items-center gap-1.5 rounded border px-2.5 py-1 mg-type-label uppercase transition-colors",
             permitOnly
               ? "border-accent/40 bg-accent-surface text-accent-text"
               : "border-border bg-surface/40 text-ink-muted hover:text-ink-strong",

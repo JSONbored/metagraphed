@@ -503,7 +503,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                             {n.hint}
                           </span>
                         </span>
-                        <span className="shrink-0 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-accent/80">
+                        <span className="shrink-0 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 mg-type-micro text-accent/80">
                           {n.badge}
                         </span>
                       </button>
