@@ -4,14 +4,8 @@ import { Suspense, type ReactNode } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import {
-  PageHero,
-  ShareButton,
-  DownloadCsvButton,
-  ActionBar,
-  TableState,
-  TimeAgo,
-} from "@jsonbored/ui-kit";
+import { ShareButton, DownloadCsvButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   RuntimeUpgradeCardList,
@@ -46,7 +40,7 @@ function RuntimePage() {
   const runtimeCsvUrl = buildUrl("/api/v1/runtime", { format: "csv" });
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Runtime"
@@ -91,17 +85,13 @@ function RuntimeContent() {
           <div className="hidden md:block rounded-xl border border-border bg-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+                <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
                   <tr>
-                    <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
+                    <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">
                       Spec Version
                     </th>
-                    <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
-                      Block
-                    </th>
-                    <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
-                      Observed
-                    </th>
+                    <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">Block</th>
+                    <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">Observed</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -171,7 +161,7 @@ function PageHeroKpis({ history }: { history: RuntimeVersionHistory }) {
 function KpiTile({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
     <div className="rounded-xl border border-border bg-card px-4 py-3">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{label}</div>
+      <div className="mg-type-micro text-[10px] text-ink-muted">{label}</div>
       <div className="mt-1 font-mono text-lg text-ink-strong tabular-nums">{value}</div>
       {hint ? <div className="mt-0.5 text-xs text-ink-muted">{hint}</div> : null}
     </div>

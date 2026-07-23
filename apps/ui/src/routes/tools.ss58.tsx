@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CopyableCode, PageHero } from "@jsonbored/ui-kit";
+import { CopyableCode } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { decodeSs58, DEFAULT_SS58_FORMAT } from "@/lib/metagraphed/ss58";
 import { classNames } from "@/lib/metagraphed/format";
 
@@ -40,7 +41,7 @@ function Ss58ToolPage() {
 
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Tools"
         title="SS58 address inspector"
         description="Paste any SS58-formatted Substrate address to decode its network prefix and public key, and verify its checksum. Runs entirely in your browser — nothing here is ever sent anywhere."
@@ -107,24 +108,18 @@ function Ss58ToolPage() {
             }
           >
             <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2.5 text-sm">
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Network prefix
-              </dt>
+              <dt className="mg-type-micro text-[10px] text-ink-muted">Network prefix</dt>
               <dd className="font-mono text-ink-strong">
                 {decoded.format}
                 {KNOWN_FORMATS[decoded.format] ? (
                   <span className="ml-2 text-ink-muted">({KNOWN_FORMATS[decoded.format]})</span>
                 ) : null}
               </dd>
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Public key
-              </dt>
+              <dt className="mg-type-micro text-[10px] text-ink-muted">Public key</dt>
               <dd className="min-w-0">
                 <CopyableCode value={toHex(decoded.pubkey)} className="w-full" />
               </dd>
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Checksum
-              </dt>
+              <dt className="mg-type-micro text-[10px] text-ink-muted">Checksum</dt>
               <dd className="text-health-ok">Valid</dd>
             </dl>
             {decoded.format !== DEFAULT_SS58_FORMAT ? (

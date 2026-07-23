@@ -9,7 +9,6 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
-  PageHero,
   ShareButton,
   ActionBar,
   ListShell,
@@ -20,6 +19,7 @@ import {
   Donut,
   CopyButton,
 } from "@jsonbored/ui-kit";
+import { PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { ChainEventsFeed } from "@/components/metagraphed/chain-events-feed";
@@ -121,7 +121,7 @@ function fmtTaoSigned(v: number): string {
 function ExplorerPage() {
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Chain explorer"
@@ -241,7 +241,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   );
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Call mix
@@ -280,8 +280,8 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
                       <span
                         className={
                           active
-                            ? "truncate font-mono text-[10px] uppercase tracking-widest text-accent"
-                            : "truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
+                            ? "mg-type-micro truncate text-[10px] text-accent"
+                            : "mg-type-micro truncate text-[10px] text-ink-muted"
                         }
                       >
                         {c.call_module}
@@ -319,7 +319,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
       ) : (
         <EmptyState title="No calls yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -333,7 +333,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
   const cap = Math.max(1, ...rows.map((r) => r.count));
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Pallet event mix
@@ -349,10 +349,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
             const label = r.method ? `${r.pallet}.${r.method}` : r.pallet;
             return (
               <li key={label} className="grid grid-cols-[10rem_1fr_auto] items-center gap-2">
-                <span
-                  className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-                  title={label}
-                >
+                <span className="mg-type-micro truncate text-[10px] text-ink-muted" title={label}>
                   {label}
                 </span>
                 <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -371,7 +368,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
       ) : (
         <EmptyState title="No raw pallet events indexed yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -415,7 +412,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
   const cap = Math.max(1, ...inflows.map((s) => s.net_flow_tao));
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Stake flow
@@ -437,7 +434,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
             <StakeFlowMetric label="Staked" value={formatTao(net.total_staked_tao)} />
             <StakeFlowMetric label="Unstaked" value={formatTao(net.total_unstaked_tao)} />
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest">
+          <div className="mg-type-micro flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
             <span className="text-health-ok">{formatNumber(net.gaining)} gaining</span>
             <span className="text-health-down">{formatNumber(net.losing)} losing</span>
             <span className="text-ink-muted">{formatNumber(net.flat)} flat</span>
@@ -464,7 +461,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    <span className="mg-type-micro truncate text-[10px] text-ink-muted">
                       SN{s.netuid}
                     </span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -499,7 +496,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
           {fmtTaoSigned(dist.min ?? 0)} across {formatNumber(dist.count)} subnets.
         </p>
       ) : null}
-    </section>
+    </Panel>
   );
 }
 
@@ -517,7 +514,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
   const cap = Math.max(1, ...busiest.map((s) => s.movements));
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Stake moves
@@ -550,7 +547,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    <span className="mg-type-micro truncate text-[10px] text-ink-muted">
                       SN{s.netuid}
                     </span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -578,7 +575,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
           in the busiest subnet, across {formatNumber(dist.count)} subnets.
         </p>
       ) : null}
-    </section>
+    </Panel>
   );
 }
 
@@ -611,7 +608,7 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
   const net = board.network;
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Axon serving
@@ -674,7 +671,7 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
       ) : (
         <EmptyState title="No serving activity in this window yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -682,7 +679,7 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
   const net = board.network;
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Prometheus telemetry
@@ -745,7 +742,7 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
       ) : (
         <EmptyState title="No Prometheus telemetry in this window yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -757,7 +754,7 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
  */
 function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <div>
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
@@ -810,7 +807,7 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
       ) : (
         <EmptyState title="No axon teardowns in this window yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -825,7 +822,7 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
     0,
   );
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <div>
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
@@ -902,7 +899,7 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
       ) : (
         <EmptyState title="No idle stake in this snapshot yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -914,7 +911,7 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
   const net = registrations.network;
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Network registrations
@@ -992,7 +989,7 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
       ) : (
         <EmptyState title="No registrations in this window yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -1011,7 +1008,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
     .slice(0, 12);
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Validator turnover
@@ -1059,7 +1056,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
                     params={{ netuid: s.netuid }}
                     className="grid w-full grid-cols-[3.5rem_1fr_6rem] items-center gap-2 text-left hover:opacity-80"
                   >
-                    <span className="truncate font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    <span className="mg-type-micro truncate text-[10px] text-ink-muted">
                       SN{s.netuid}
                     </span>
                     <span className="relative h-1.5 overflow-hidden rounded-full bg-surface">
@@ -1089,7 +1086,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
           over {turnover.window}, across {formatNumber(turnover.subnet_count)} subnets.
         </p>
       ) : null}
-    </section>
+    </Panel>
   );
 }
 
@@ -1102,7 +1099,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
 function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
   const chrono = [...trends.days].reverse();
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Network economics trend
@@ -1150,7 +1147,7 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
       ) : (
         <EmptyState title="No economics snapshots in this window yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -1179,7 +1176,7 @@ function weightSetterLabel(setter: { netuid?: number | null; uid: number | null 
  */
 function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers }) {
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Transfers leaderboard
@@ -1292,7 +1289,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
           )}
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }
 
@@ -1486,7 +1483,7 @@ function ExplorerDashboard() {
       {tab === "activity" && (
         <>
           {/* daily activity series */}
-          <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+          <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                 Daily activity
@@ -1536,13 +1533,13 @@ function ExplorerDashboard() {
             ) : (
               <EmptyState title="No activity indexed yet — the chain poller fills this every few minutes." />
             )}
-          </section>
+          </Panel>
           <div className="grid gap-6 lg:grid-cols-2">
             {/* call mix */}
             <CallMixSection calls={calls} />
 
             {/* top signers */}
-            <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+            <Panel className="min-w-0">
               <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                 Most active accounts
               </h2>
@@ -1604,7 +1601,7 @@ function ExplorerDashboard() {
               ) : (
                 <EmptyState title="No signers in this window yet." />
               )}
-            </section>
+            </Panel>
           </div>
           <NetworkOperationsSection serving={serving} prometheus={prometheus} />
           <AxonChurnSection churn={axonChurn} />
@@ -1614,7 +1611,7 @@ function ExplorerDashboard() {
 
       {tab === "fees" && (
         <div className="grid gap-6 lg:grid-cols-2">
-          <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+          <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                 Daily fees &amp; tips
@@ -1655,8 +1652,8 @@ function ExplorerDashboard() {
             ) : (
               <EmptyState title="No fees in this window yet." />
             )}
-          </section>
-          <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+          </Panel>
+          <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                 Top fee payers
@@ -1709,7 +1706,7 @@ function ExplorerDashboard() {
             ) : (
               <EmptyState title="No fee payers in this window yet." />
             )}
-          </section>
+          </Panel>
         </div>
       )}
 
@@ -1725,7 +1722,7 @@ function ExplorerDashboard() {
           <StakeMovesSection moves={stakeMoves} />
           <NetworkIdleStakeSection idleStake={idleStake} />
           {/* stake-transfer leaderboard */}
-          <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+          <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <div>
                 <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
@@ -1811,13 +1808,13 @@ function ExplorerDashboard() {
             ) : (
               <EmptyState title="No stake transfers in this window yet." />
             )}
-          </section>
+          </Panel>
         </>
       )}
 
       {tab === "governance" && (
         <>
-          <section className="min-w-0 rounded-lg border border-border bg-card p-5 lg:col-span-2">
+          <Panel className="min-w-0 lg:col-span-2">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                 Network weight-setters
@@ -1879,7 +1876,7 @@ function ExplorerDashboard() {
             ) : (
               <EmptyState title="No weight-setters in this window yet." />
             )}
-          </section>
+          </Panel>
           <ValidatorTurnoverSection turnover={turnover} />
           <NetworkRegistrationsSection registrations={registrations} />
         </>
@@ -1898,7 +1895,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
   const rows = pairs?.pairs ?? [];
 
   return (
-    <section className="min-w-0 rounded-lg border border-border bg-card p-5">
+    <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div>
           <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
@@ -2010,7 +2007,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
       ) : (
         <EmptyState title="No transfer pairs in this window yet." />
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -2026,7 +2023,7 @@ function ChainEventsFeedSection() {
     });
 
   return (
-    <section className="mt-10 rounded-lg border border-border bg-card p-5">
+    <Panel className="mt-10">
       <div className="mb-4">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
           Chain events
@@ -2041,6 +2038,6 @@ function ChainEventsFeedSection() {
         cursor={search.events_cursor}
         onFilter={onFilter}
       />
-    </section>
+    </Panel>
   );
 }

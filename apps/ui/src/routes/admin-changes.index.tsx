@@ -7,7 +7,8 @@ import { Scale, Coins, Timer } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { PageHero, ShareButton, DownloadCsvButton, ActionBar, StatTile } from "@jsonbored/ui-kit";
+import { ShareButton, DownloadCsvButton, ActionBar, StatTile } from "@jsonbored/ui-kit";
+import { PageMasthead, TableSkeleton } from "@/components/metagraphed/primitives";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { governanceConfigChangesQuery, networkParametersQuery } from "@/lib/metagraphed/queries";
@@ -64,7 +65,7 @@ function AdminChangesPage() {
 
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Admin changes"
@@ -96,11 +97,13 @@ function AdminChangesPage() {
           <NetworkParametersCard />
         </Suspense>
       </QueryErrorBoundary>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <AdminChangesTable />
-        </Suspense>
-      </QueryErrorBoundary>
+      <div className="min-w-0">
+        <QueryErrorBoundary>
+          <Suspense fallback={<TableSkeleton rows={10} columns={6} />}>
+            <AdminChangesTable />
+          </Suspense>
+        </QueryErrorBoundary>
+      </div>
       <ApiSourceFooter
         paths={["/api/v1/governance/config-changes", "/api/v1/network/parameters"]}
         artifacts={["/metagraph/governance/config-changes.json"]}
@@ -121,7 +124,7 @@ function NetworkParametersCard() {
 
   return (
     <div className="mb-6">
-      <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+      <div className="mg-type-micro mb-2 text-[10px] text-ink-muted">
         Current network parameters
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

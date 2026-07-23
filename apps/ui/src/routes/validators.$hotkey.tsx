@@ -9,8 +9,8 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { PageHero, ShareButton, SectionAnchor, StatTile, ActionBar } from "@jsonbored/ui-kit";
+import { ShareButton, SectionAnchor, StatTile, ActionBar } from "@jsonbored/ui-kit";
+import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
 import { ValidatorHistoryChart } from "@/components/metagraphed/validator-history-chart";
 import { ValidatorApyPanel } from "@/components/metagraphed/validator-apy-panel";
 import { AccountAddress } from "@/components/metagraphed/account-address";
@@ -22,7 +22,11 @@ import {
   type ValidatorNominatorsSearch,
 } from "@/components/metagraphed/validator-nominators-table";
 import { taoCompact, scoreStr } from "@/components/metagraphed/neuron-format";
-import { validatorDetailQuery, validatorNominatorsQuery } from "@/lib/metagraphed/queries";
+import {
+  validatorDetailQuery,
+  validatorNominatorsQuery,
+  metagraphedQueryKey,
+} from "@/lib/metagraphed/queries";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -105,11 +109,13 @@ function ValidatorDetailPage() {
   const { hotkey } = Route.useParams();
   return (
     <AppShell>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <ValidatorDetailGate hotkey={hotkey} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="validator"
+        fallback={<Skeleton className="h-96 w-full" />}
+        retryQueryKeys={[validatorDetailQuery(hotkey).queryKey]}
+      >
+        <ValidatorDetailGate hotkey={hotkey} />
+      </AsyncPanel>
     </AppShell>
   );
 }
@@ -120,7 +126,7 @@ function ValidatorDetailGate({ hotkey }: { hotkey: string }) {
   return <ValidatorDetail hotkey={hotkey} />;
 }
 
-const TH = "px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted";
+const TH = "mg-type-micro px-3 py-2 text-[10px] text-ink-muted";
 
 function SubnetPerformanceTable({
   hotkey,
@@ -286,7 +292,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
 
   return (
     <>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer · validator"
         live
         title={displayName}
@@ -483,11 +489,13 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
         subtitle="Derived from stake-delegation events"
         tone="muted"
       >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-            <NominatorsSection hotkey={hotkey} />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          context="nominators"
+          fallback={<Skeleton className="h-64 w-full" />}
+          retryQueryKeys={[metagraphedQueryKey("validator-nominators", hotkey)]}
+        >
+          <NominatorsSection hotkey={hotkey} />
+        </AsyncPanel>
       </SectionAnchor>
 
       <SectionAnchor
@@ -543,9 +551,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-      <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted sm:w-20 sm:shrink-0">
-        {label}
-      </dt>
+      <dt className="mg-type-micro text-[10px] text-ink-muted sm:w-20 sm:shrink-0">{label}</dt>
       <dd className="min-w-0 w-full sm:flex-1">{children}</dd>
     </div>
   );

@@ -19,7 +19,6 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import {
   TimeAgo,
-  PageHero,
   ListShell,
   ShareButton,
   ActionBar,
@@ -27,8 +26,8 @@ import {
   CopyButton,
   DownloadCsvButton,
   Sparkline,
-  PagerBar,
 } from "@jsonbored/ui-kit";
+import { PageMasthead, PagerFooter } from "@/components/metagraphed/primitives";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
@@ -89,7 +88,7 @@ function ExtrinsicsPage() {
 
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Extrinsics"
@@ -281,13 +280,18 @@ function ExtrinsicsTable() {
   );
 
   const footerNode = (
-    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 text-[11px] font-mono text-ink-muted">
-      <span>
-        {rows.length
-          ? `${formatNumber(search.offset + 1)}–${formatNumber(search.offset + rows.length)}`
-          : "0"}
-      </span>
-      <PagerBar hasPrev={hasPrev} hasNext={hasNext} onPrev={goPrev} onNext={goNext} />
+    <div className="px-4 py-2">
+      <PagerFooter
+        summary={
+          rows.length
+            ? `${formatNumber(search.offset + 1)}–${formatNumber(search.offset + rows.length)}`
+            : "0"
+        }
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        onPrev={goPrev}
+        onNext={goNext}
+      />
     </div>
   );
 

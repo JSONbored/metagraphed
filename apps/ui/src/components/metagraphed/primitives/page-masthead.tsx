@@ -104,12 +104,18 @@ export function PageMasthead({
                 the type so call sites don't break. */}
           </div>
           {description ? (
-            <p
+            // `description` is typed as ReactNode -- some callers pass block
+            // content (e.g. a <dl> of account fields), which a <p> can't
+            // validly contain (browsers silently un-nest it, desyncing SSR
+            // from the client and throwing a hydration mismatch). A <div>
+            // renders identically for the plain-text case this line-clamp
+            // styling targets, while staying valid for the richer one.
+            <div
               className="mt-1 max-w-3xl text-[13px] text-ink-muted leading-snug line-clamp-2"
               title={typeof description === "string" ? description : undefined}
             >
               {description}
-            </p>
+            </div>
           ) : null}
         </div>
         {actions ? (

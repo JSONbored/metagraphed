@@ -5,13 +5,13 @@ import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import {
-  PageHero,
   ShareButton,
   DownloadCsvButton,
   ActionBar,
   DensityToggle,
   type Density,
 } from "@jsonbored/ui-kit";
+import { PageMasthead, TableSkeleton } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { API_BASE } from "@/lib/metagraphed/config";
@@ -117,7 +117,7 @@ function ValidatorsPage() {
     });
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Directory"
         live
         title="Validators"
@@ -133,7 +133,7 @@ function ValidatorsPage() {
       />
       <ValidatorGuide />
       <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+        <Suspense fallback={<TableSkeleton rows={10} columns={6} />}>
           <ValidatorsTable
             sort={sort}
             order={order}

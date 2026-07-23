@@ -6,14 +6,8 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import {
-  PageHero,
-  ShareButton,
-  DownloadCsvButton,
-  ActionBar,
-  CopyButton,
-  TimeAgo,
-} from "@jsonbored/ui-kit";
+import { ShareButton, DownloadCsvButton, ActionBar, CopyButton, TimeAgo } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { sudoCallsQuery, sudoKeyQuery } from "@/lib/metagraphed/queries";
@@ -84,7 +78,7 @@ function SudoPage() {
 
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Sudo"
@@ -109,11 +103,13 @@ function SudoPage() {
           },
         ]}
       />
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <SudoTable />
-        </Suspense>
-      </QueryErrorBoundary>
+      <div className="min-w-0">
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+            <SudoTable />
+          </Suspense>
+        </QueryErrorBoundary>
+      </div>
       <ApiSourceFooter
         paths={["/api/v1/sudo", "/api/v1/sudo/key"]}
         artifacts={["/metagraph/sudo.json"]}

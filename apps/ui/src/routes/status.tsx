@@ -8,6 +8,7 @@ import { Suspense, useMemo, useState } from "react";
 import { AlertTriangle, ArrowUpRight, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { Panel } from "@/components/metagraphed/primitives";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
@@ -291,7 +292,7 @@ function Verdict() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded border border-border bg-card p-3 flex items-center gap-4">
+        <Panel dense className="flex items-center gap-4">
           <Donut
             segments={segs}
             size={96}
@@ -306,13 +307,13 @@ function Verdict() {
             </div>
             <DonutLegend segments={segs} />
           </div>
-        </div>
-        <div className="rounded border border-border bg-card p-3 grid grid-cols-2 gap-2 md:col-span-2">
+        </Panel>
+        <Panel dense className="grid grid-cols-2 gap-2 md:col-span-2">
           <Kpi label="Healthy" num={ok} accent="text-health-ok" />
           <Kpi label="Degraded" num={warn} accent="text-health-warn" />
           <Kpi label="Down" num={down} accent="text-health-down" />
           <Kpi label="Monitored" num={total} />
-        </div>
+        </Panel>
       </div>
     </div>
   );
@@ -453,7 +454,7 @@ function IncidentsFeedSubscribe() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded border border-border bg-card p-3 space-y-3">
+      <Panel dense className="space-y-3">
         {feed?.description ? <p className="text-sm text-ink-muted">{feed.description}</p> : null}
         <div className="space-y-2">
           {INCIDENTS_FEED_FORMATS.map(({ label, suffix }) => {
@@ -470,7 +471,7 @@ function IncidentsFeedSubscribe() {
             );
           })}
         </div>
-      </div>
+      </Panel>
       {items.length === 0 ? <EmptyState title="No incidents in feed" /> : null}
     </div>
   );

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageHero } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { WebhookSubscriptionManager } from "@/components/metagraphed/webhook-subscription-manager";
 import { ApiKeysManager } from "@/components/metagraphed/api-keys-manager";
@@ -28,7 +28,7 @@ function SettingsPage() {
   const kpis = buildSettingsHeroKpis();
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Developer"
         live
         title="Developer settings"

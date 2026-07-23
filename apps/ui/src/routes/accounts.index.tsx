@@ -7,7 +7,8 @@ import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { TopActiveAccounts } from "@/components/metagraphed/top-active-accounts";
 import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-active-accounts-ranking";
-import { PageHero, ActionBar, ShareButton } from "@jsonbored/ui-kit";
+import { ActionBar, ShareButton } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 
 export const Route = createFileRoute("/accounts/")({
@@ -45,7 +46,7 @@ function AccountsPage() {
 
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Accounts"

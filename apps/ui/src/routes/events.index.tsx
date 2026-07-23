@@ -4,7 +4,8 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { ChainEventsFeed, chainEventsBaseParams } from "@/components/metagraphed/chain-events-feed";
-import { PageHero, ShareButton, DownloadCsvButton, ActionBar } from "@jsonbored/ui-kit";
+import { ShareButton, DownloadCsvButton, ActionBar } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { buildUrl } from "@/lib/metagraphed/client";
 
 const eventsSearchSchema = z.object({
@@ -52,7 +53,7 @@ function EventsPage() {
 
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer"
         live
         title="Chain events"

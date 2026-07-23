@@ -5,7 +5,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { PageHero } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
 import { WalletConnectButton } from "@/components/metagraphed/wallet-connect";
 import { YourPositionsPanel } from "@/components/metagraphed/your-positions-panel";
@@ -39,7 +39,7 @@ function PortfolioPage() {
 
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Wallet"
         live
         title="Your positions"

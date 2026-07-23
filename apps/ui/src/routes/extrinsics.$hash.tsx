@@ -10,13 +10,13 @@ import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import {
   CopyableCode,
   TimeAgo,
-  PageHero,
   ShareButton,
   ActionBar,
   SectionAnchor,
   StatTile,
   TableState,
 } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
@@ -173,7 +173,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
 
   return (
     <>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer · extrinsic"
         live
         title={shortHash(extrinsic.extrinsic_hash, 10) ?? "Extrinsic"}
@@ -626,9 +626,7 @@ function formatCallArgValue(value: unknown): string {
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-      <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted sm:w-40 sm:shrink-0">
-        {label}
-      </dt>
+      <dt className="mg-type-micro text-[10px] text-ink-muted sm:w-40 sm:shrink-0">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>
   );

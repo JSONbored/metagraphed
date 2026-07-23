@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Fragment, Suspense, useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import {
   Activity,
   AlertCircle,
@@ -37,7 +37,6 @@ import {
   CopyableCode,
   TimeAgo,
   TableState,
-  PageHero,
   ShareButton,
   ActionBar,
   SectionAnchor,
@@ -46,7 +45,7 @@ import {
   DownloadCsvButton,
   ExternalLink,
 } from "@jsonbored/ui-kit";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { PageMasthead, AsyncPanel } from "@/components/metagraphed/primitives";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { AccountPositionHistoryChart } from "@/components/metagraphed/account-position-history-chart";
 import {
@@ -174,11 +173,13 @@ function AccountDetailPage() {
   const { ss58 } = Route.useParams();
   return (
     <AppShell>
-      <QueryErrorBoundary>
-        <Suspense fallback={<DetailSkeleton />}>
-          <AccountDetail ss58={ss58} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="account"
+        fallback={<DetailSkeleton />}
+        retryQueryKeys={[accountQuery(ss58).queryKey]}
+      >
+        <AccountDetail ss58={ss58} />
+      </AsyncPanel>
     </AppShell>
   );
 }
@@ -230,7 +231,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
 
   return (
     <>
-      <PageHero
+      <PageMasthead
         eyebrow="Explorer · account"
         live
         title={shortHash(ss58, 8) ?? "Account"}
@@ -2547,15 +2548,11 @@ function AccountFootprintSection({
               )}
             </div>
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                UID
-              </dt>
+              <dt className="mg-type-micro text-[10px] text-ink-muted">UID</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {r.uid != null ? formatNumber(r.uid) : "—"}
               </dd>
-              <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Stake
-              </dt>
+              <dt className="mg-type-micro text-[10px] text-ink-muted">Stake</dt>
               <dd className="text-right font-mono tabular-nums text-ink">
                 {fmtStake(r.stake_tao)}
               </dd>

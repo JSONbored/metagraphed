@@ -1,160 +1,131 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import {
-  buildQuery,
-  freshnessQuery,
-  gapsQuery,
-  healthQuery,
-  subnetsQuery,
-} from "@/lib/metagraphed/queries";
-import { API_BASE } from "@/lib/metagraphed/config";
-import { Tooltip, TooltipContent, TooltipTrigger, CopyButton, TimeAgo } from "@jsonbored/ui-kit";
-import { classNames } from "@/lib/metagraphed/format";
+import { blocksQuery, healthQuery, subnetsQuery } from "@/lib/metagraphed/queries";
+import { Tooltip, TooltipContent, TooltipTrigger, TimeAgo } from "@jsonbored/ui-kit";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { getTaoMarket } from "@/lib/metagraphed/market.functions";
+import type { Subnet } from "@/lib/metagraphed/types";
 import { useHydrated } from "@/hooks/use-hydrated";
 
-interface Stat {
-  label: string;
-  value: React.ReactNode;
-  to?: string;
-  search?: Record<string, string>;
-  tooltip: string;
-}
-
+/**
+ * Secondary "ecosystem" strip beneath the primary nav — matches the
+ * production reference: pulse dot + BITTENSOR ECOSYSTEM, chain head,
+ * τ price / active-subnets counter, curated count, endpoints up X/Y;
+ * right-aligned network mkt cap + 24h vol (aggregated from /api/v1/subnets).
+ * Renders "—" for any cell whose upstream is still cold — never a fabricated
+ * number.
+ */
 export function RegistryTicker() {
-  // Gate every query on hydration: SSR and the first client render must emit
-  // the same "—" placeholders, or React logs a hydration mismatch and
-  // discards the SSR-rendered tree (#7744 -- caught live via the
-  // hydration-capture handshake in __root.tsx).
   const hydrated = useHydrated();
-  const subnets = useQuery({ ...subnetsQuery(), retry: 0, enabled: hydrated });
-  const health = useQuery({ ...healthQuery(), retry: 0, enabled: hydrated });
-  const fresh = useQuery({ ...freshnessQuery(), retry: 0, enabled: hydrated });
-  const gaps = useQuery({ ...gapsQuery(), retry: 0, enabled: hydrated });
-  const build = useQuery({ ...buildQuery(), retry: 0, enabled: hydrated });
 
-  const all = hydrated ? (subnets.data?.data ?? []) : [];
-  const curated = all.filter((s) => {
+  const subnetsQ = useQuery({ ...subnetsQuery({ limit: 128 }), retry: 0, enabled: hydrated });
+  const healthQ = useQuery({ ...healthQuery(), retry: 0, enabled: hydrated });
+  const blockQ = useQuery({ ...blocksQuery({ limit: 1 }), retry: 0, enabled: hydrated });
+  // Same query key/staleTime as use-tao-price.ts's shared hook so this
+  // global ticker's fetch dedupes against /subnets' own market-strip query
+  // instead of hitting the (rate-limited, external) CoinPaprika API twice.
+  const marketQ = useQuery({
+    queryKey: ["tao-market"],
+    queryFn: () => getTaoMarket(),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    enabled: hydrated,
+  });
+
+  // `enabled: false` prevents a pre-hydration fetch, but it does not hide data
+  // that another route component already restored into the shared QueryClient.
+  // Gate every rendered value too, so SSR and the first client pass are
+  // guaranteed to produce the same placeholders.
+  const subnets = hydrated ? ((subnetsQ.data?.data as Subnet[] | undefined) ?? []) : [];
+  const app = subnets.filter((s) => s.netuid > 0);
+  const curated = app.filter((s) => {
     const c = (s as { curation_level?: string }).curation_level;
-    return c && c !== "native";
+    return c && c !== "native" && c !== "candidate";
   }).length;
-  const machineVerified = all.filter(
-    (s) => (s as { curation_level?: string }).curation_level === "machine-verified",
-  ).length;
-  const h = hydrated ? health.data?.data : undefined;
-  const f = hydrated ? fresh.data?.data : undefined;
-  const openGaps = hydrated ? (gaps.data?.data?.length ?? 0) : 0;
-  const b = hydrated ? (build.data?.data as { version?: string } | undefined) : undefined;
 
-  // Freshness “live” pulse only when latest source < 5 minutes old.
-  const isFresh = typeof f?.avg_age_seconds === "number" ? f.avg_age_seconds < 300 : false;
+  const h = hydrated ? healthQ.data?.data : undefined;
+  const endpointsUp =
+    typeof h?.ok === "number" && typeof h?.total === "number" ? `${h.ok}/${h.total}` : null;
 
-  const stats: Stat[] = [
-    {
-      label: "Active subnets",
-      value: all.length || "—",
-      to: "/subnets",
-      tooltip: "Active Finney netuids (incl. root)",
-    },
-    {
-      label: "Curated",
-      value: curated || "—",
-      to: "/subnets",
-      search: { curation: "verified" },
-      tooltip: "Subnets with maintainer-reviewed overlay",
-    },
-    {
-      label: "Machine-verified",
-      value: machineVerified || "—",
-      to: "/subnets",
-      search: { curation: "machine-verified" },
-      tooltip: "Subnets verified by automated probes",
-    },
-    {
-      label: "Endpoints up",
-      value: typeof h?.ok === "number" && typeof h?.total === "number" ? `${h.ok}/${h.total}` : "—",
-      to: "/health",
-      tooltip: "OK endpoints out of total probed",
-    },
-    {
-      label: "Open gaps",
-      value: openGaps || "—",
-      to: "/gaps",
-      search: { status: "open" },
-      tooltip: "Registry items missing evidence or review",
-    },
-  ];
+  const head = blockQ.data?.data?.[0];
+  const blockNumber = hydrated ? head?.block_number : undefined;
 
-  // Rotate on small screens; full row on xl+.
-  const [rot, setRot] = useState(0);
-  useEffect(() => {
-    const t = window.setInterval(() => setRot((i) => (i + 1) % stats.length), 6000);
-    return () => window.clearInterval(t);
-  }, [stats.length]);
-
-  const lastSeen =
-    f?.sources && f.sources.length
-      ? f.sources
-          .map((s) => s.last_seen)
-          .filter(Boolean)
-          .sort()
-          .pop()
-      : undefined;
+  const market = hydrated ? marketQ.data : undefined;
 
   return (
     <div className="hidden md:block border-t border-border/60 bg-surface/40">
-      <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center justify-between gap-4">
-        {/* Left: rotating stat on md, full row on xl */}
-        <div className="flex items-center gap-5 min-w-0">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className={classNames(
-                "size-1.5 rounded-full",
-                isFresh ? "bg-health-ok mg-pulse" : "bg-ink-muted/60",
-              )}
-              aria-hidden
-            />
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted">
-              registry pulse
-            </span>
+      <div className="max-w-shell-max mx-auto px-4 md:px-8 h-9 flex items-center justify-between gap-6 text-[11px] font-mono">
+        {/* Left cluster */}
+        <div className="flex items-center gap-5 min-w-0 overflow-visible">
+          <span className="inline-flex items-center gap-1.5 shrink-0 pl-1">
+            <span className="mg-live-dot" aria-hidden />
+            <span className="uppercase tracking-[0.22em] text-ink-muted">Bittensor ecosystem</span>
           </span>
-          <span className="hidden xl:flex items-center gap-5">
-            {stats.map((s) => (
-              <StatChip key={s.label} stat={s} />
-            ))}
-          </span>
-          <span className="xl:hidden inline-flex" aria-live="polite" aria-atomic="true">
-            <StatChip stat={stats[rot]!} />
-          </span>
-        </div>
 
-        {/* Right: build + api */}
-        <div className="flex items-center gap-3 text-[11px] font-mono text-ink-muted shrink-0">
-          {lastSeen ? (
+          {blockNumber != null ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="hidden lg:inline">
-                  <span className="text-ink-muted">last snapshot</span>{" "}
-                  <span className="text-ink-strong">
-                    <TimeAgo at={lastSeen} />
-                  </span>
-                </span>
+                <Link
+                  to="/blocks/$ref"
+                  params={{ ref: String(blockNumber) }}
+                  className="hidden lg:inline-flex items-baseline gap-1.5 shrink-0 hover:opacity-80 transition-opacity"
+                >
+                  <span className="text-ink-muted">block</span>
+                  <span className="text-ink-strong tabular-nums">#{formatNumber(blockNumber)}</span>
+                </Link>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-[11px]">
-                Most recent source capture
+                Chain head · <TimeAgo at={head?.observed_at} />
               </TooltipContent>
             </Tooltip>
           ) : null}
-          {b?.version ? (
-            <span className="hidden lg:inline">
-              <span className="text-ink-muted">build</span>{" "}
-              <span className="text-ink-strong">{b.version}</span>
-            </span>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-baseline gap-1.5 shrink-0">
+                <span className="text-ink-muted">τ</span>
+                <span className="text-ink-strong tabular-nums">{formatUsd(market?.price)}</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-[11px]">
+              Current TAO price · CoinPaprika
+            </TooltipContent>
+          </Tooltip>
+
+          <Link
+            to="/subnets"
+            search={{ curation: "verified" } as never}
+            className="hidden lg:inline-flex items-baseline gap-1.5 shrink-0 hover:opacity-80 transition-opacity"
+          >
+            <span className="text-ink-muted">curated</span>
+            <span className="text-ink-strong tabular-nums">{curated || "—"}</span>
+          </Link>
+
+          {endpointsUp ? (
+            <Link
+              to="/health"
+              className="hidden lg:inline-flex items-baseline gap-1.5 shrink-0 hover:opacity-80 transition-opacity"
+            >
+              <span className="text-ink-muted">endpoints up</span>
+              <span className="text-ink-strong tabular-nums">{endpointsUp}</span>
+            </Link>
           ) : null}
-          <span className="inline-flex items-center gap-1">
-            <span className="text-ink-muted">api</span>
-            <span className="text-ink-strong">v1</span>
-            <CopyButton value={`${API_BASE}/api/v1`} label="API base" />
+        </div>
+
+        {/* Right cluster — market aggregates */}
+        <div className="hidden min-[1120px]:flex items-center gap-5 shrink-0">
+          <span className="inline-flex items-baseline gap-1.5">
+            <span className="text-ink-muted">mkt cap</span>
+            <span className="text-ink-strong tabular-nums">
+              {formatUsdCompact(market?.market_cap)}
+            </span>
+          </span>
+          <span className="inline-flex items-baseline gap-1.5">
+            <span className="text-ink-muted">24h vol</span>
+            <span className="text-ink-strong tabular-nums">
+              {formatUsdCompact(market?.volume_24h)}
+            </span>
           </span>
         </div>
       </div>
@@ -162,31 +133,15 @@ export function RegistryTicker() {
   );
 }
 
-function StatChip({ stat }: { stat: Stat }) {
-  const content = (
-    <span className="inline-flex items-baseline gap-1.5 text-[11px] font-mono">
-      <span className="text-ink-muted">{stat.label}</span>
-      <span className="text-ink-strong mg-num">{stat.value}</span>
-    </span>
-  );
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {stat.to ? (
-          <Link
-            to={stat.to}
-            search={(stat.search ?? undefined) as never}
-            className="hover:opacity-80 transition-opacity"
-          >
-            {content}
-          </Link>
-        ) : (
-          <span>{content}</span>
-        )}
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-[11px]">
-        {stat.tooltip}
-      </TooltipContent>
-    </Tooltip>
-  );
+function formatUsd(v: number | undefined): string {
+  return typeof v === "number" && Number.isFinite(v) ? `$${v.toFixed(2)}` : "—";
+}
+
+function formatUsdCompact(v: number | undefined): string {
+  if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+  const abs = Math.abs(v);
+  if (abs >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
 }

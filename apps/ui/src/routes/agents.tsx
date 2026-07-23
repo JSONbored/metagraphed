@@ -15,7 +15,6 @@ import {
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
-  PageHero,
   ActionBar,
   ShareButton,
   CopyButton,
@@ -23,6 +22,7 @@ import {
   McpToolsList,
   SectionHeading,
 } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { AskBox } from "@/components/metagraphed/ask-box";
 import { SearchBox } from "@/components/metagraphed/search-box";
 import { Skeleton } from "@/components/metagraphed/states";
@@ -95,7 +95,7 @@ const QUICKSTART: { label: string; cmd: string }[] = [
 function AgentsPage() {
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="For AI agents"
         live
         title="Use AI to explore Bittensor"
