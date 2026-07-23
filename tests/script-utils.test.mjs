@@ -462,7 +462,7 @@ describe("script utility contracts", () => {
 
   test("refresh pipeline persists candidate discovery timestamps", async () => {
     const source = await readFile(
-      path.join(repoRoot, "scripts/pipeline.mjs"),
+      path.join(repoRoot, "scripts/pipeline.ts"),
       "utf8",
     );
 

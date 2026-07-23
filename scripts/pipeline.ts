@@ -1,6 +1,17 @@
 import { spawnSync } from "node:child_process";
 import { stableStringify } from "./lib.mjs";
 
+interface Step {
+  script: string;
+  env: Record<string, string>;
+}
+
+interface StepResult {
+  script: string;
+  status: "passed" | "failed";
+  elapsed_ms: number;
+}
+
 const args = new Set(process.argv.slice(2));
 const refresh = args.has("--refresh");
 const check = args.has("--check") || !refresh;
@@ -8,7 +19,7 @@ const check = args.has("--check") || !refresh;
 const startedAt = new Date().toISOString();
 const refreshTimestamp = process.env.METAGRAPH_BUILD_TIMESTAMP || startedAt;
 const commands = check ? checkCommands() : refreshCommands(refreshTimestamp);
-const results = [];
+const results: StepResult[] = [];
 
 for (const command of commands) {
   const started = performance.now();
@@ -52,7 +63,7 @@ console.log(
   }),
 );
 
-function checkCommands() {
+function checkCommands(): Step[] {
   return [
     step("artifacts:prepare-local"),
     step("sync:subnets:dry-run"),
@@ -92,7 +103,7 @@ function checkCommands() {
   ];
 }
 
-function refreshCommands(refreshTimestamp) {
+function refreshCommands(refreshTimestamp: string): Step[] {
   const refreshEnv = {
     METAGRAPH_BUILD_TIMESTAMP: refreshTimestamp,
     METAGRAPH_DISCOVERY_OBSERVED_AT: refreshTimestamp,
@@ -153,6 +164,6 @@ function refreshCommands(refreshTimestamp) {
   ];
 }
 
-function step(script, env = {}) {
+function step(script: string, env: Record<string, string> = {}): Step {
   return { script, env };
 }

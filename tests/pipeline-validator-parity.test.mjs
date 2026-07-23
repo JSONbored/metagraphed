@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, test } from "vitest";
 import { repoRoot } from "../scripts/lib.mjs";
 
-// #1767: the local `npm run check` (scripts/pipeline.mjs checkCommands) had
+// #1767: the local `npm run check` (scripts/pipeline.ts checkCommands) had
 // silently drifted from CI (.github/workflows/validate.yml) — CI ran
 // validate:committed-seed / validate:mcp / validate:ai / validate:surface that
 // the local gate never invoked. This meta-test reads BOTH files and asserts the
@@ -12,10 +12,10 @@ import { repoRoot } from "../scripts/lib.mjs";
 // steps, so `npm run check` can never again pass while a CI validator is
 // missing locally.
 
-const PIPELINE_PATH = path.join(repoRoot, "scripts/pipeline.mjs");
+const PIPELINE_PATH = path.join(repoRoot, "scripts/pipeline.ts");
 const WORKFLOW_PATH = path.join(repoRoot, ".github/workflows/validate.yml");
 
-// Every `validate:*` script wired through `step("validate:...")` in pipeline.mjs
+// Every `validate:*` script wired through `step("validate:...")` in pipeline.ts
 // (covers both checkCommands and refreshCommands).
 function pipelineValidators() {
   const source = readFileSync(PIPELINE_PATH, "utf8");
@@ -40,7 +40,7 @@ describe("pipeline ↔ validate.yml validator parity (#1767)", () => {
   test("both sets are non-empty (the parsers actually matched something)", () => {
     assert.ok(
       pipelineValidators().size > 0,
-      "no validate:* steps found in pipeline.mjs",
+      "no validate:* steps found in pipeline.ts",
     );
     assert.ok(
       workflowValidators().size > 0,
@@ -58,7 +58,7 @@ describe("pipeline ↔ validate.yml validator parity (#1767)", () => {
       missing,
       [],
       `validate.yml runs validators the local \`npm run check\` does not: ${missing.join(", ")}. ` +
-        "Add them to scripts/pipeline.mjs checkCommands (and refreshCommands).",
+        "Add them to scripts/pipeline.ts checkCommands (and refreshCommands).",
     );
   });
 });
