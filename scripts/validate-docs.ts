@@ -9,13 +9,13 @@ import { repoRoot } from "./lib.ts";
 // floor — NOT the retired six-hour cron — and the operational prober is
 // 15-minute — NOT 2-minute.
 // Fail the build if that stale cadence language reappears in served-facing docs
-// or in scripts/*.mjs / README.md comments and string literals, so they can't
-// silently drift back to describing a system that no longer exists.
+// or in scripts/*.mjs|ts / README.md comments and string literals, so they
+// can't silently drift back to describing a system that no longer exists.
 // Excluded: docs/adr/** (immutable historical records that describe the
 // six-hour era as period context) and the legitimate "6-hour buckets" of RPC
 // usage analytics (a bucket size, not a publish cadence — the patterns below
 // require a cadence noun like cron/publish/schedule, never "buckets").
-export const STALE_CADENCE_PATTERNS = [
+export const STALE_CADENCE_PATTERNS: { re: RegExp; label: string }[] = [
   {
     re: /~?\s*6\s*-?\s*h(?:our)?s?\s+(?:cron|publish|schedule|cadence|refresh|build)/i,
     label:
@@ -34,8 +34,11 @@ export const STALE_CADENCE_PATTERNS = [
 ];
 
 /** Return stale-cadence hits for one file's text (line-oriented). Exported for tests. */
-export function findStaleCadenceHits(relativePath, text) {
-  const hits = [];
+export function findStaleCadenceHits(
+  relativePath: string,
+  text: string,
+): string[] {
+  const hits: string[] = [];
   const lines = text.split("\n");
   lines.forEach((line, index) => {
     for (const { re, label } of STALE_CADENCE_PATTERNS) {
@@ -49,8 +52,11 @@ export function findStaleCadenceHits(relativePath, text) {
 
 // Recursively collect *.md files under `dir`, skipping any directory in
 // `excludeDirs` (absolute paths).
-export async function collectMarkdown(dir, excludeDirs = []) {
-  const out = [];
+export async function collectMarkdown(
+  dir: string,
+  excludeDirs: string[] = [],
+): Promise<string[]> {
+  const out: string[] = [];
   for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
@@ -64,13 +70,18 @@ export async function collectMarkdown(dir, excludeDirs = []) {
   return out;
 }
 
-/** Absolute paths the cadence guard scans: docs (excl. adr), scripts/*.mjs, README.md. */
-export async function collectCadenceScanFiles(root = repoRoot) {
+/** Absolute paths the cadence guard scans: docs (excl. adr), scripts/*.mjs|ts, README.md. */
+export async function collectCadenceScanFiles(
+  root: string = repoRoot,
+): Promise<string[]> {
   const docsDir = path.join(root, "docs");
   const scriptsDir = path.join(root, "scripts");
   const files = await collectMarkdown(docsDir, [path.join(docsDir, "adr")]);
   for (const entry of await fs.readdir(scriptsDir, { withFileTypes: true })) {
-    if (entry.isFile() && entry.name.endsWith(".mjs")) {
+    if (
+      entry.isFile() &&
+      (entry.name.endsWith(".mjs") || entry.name.endsWith(".ts"))
+    ) {
       files.push(path.join(scriptsDir, entry.name));
     }
   }
@@ -78,21 +89,21 @@ export async function collectCadenceScanFiles(root = repoRoot) {
   return files;
 }
 
-async function main() {
+async function main(): Promise<void> {
   const readme = await fs.readFile(path.join(repoRoot, "README.md"), "utf8");
   const backendContracts = await fs.readFile(
     path.join(repoRoot, "docs/backend-artifact-contracts.md"),
     "utf8",
   );
-  const errors = [];
+  const errors: string[] = [];
 
-  function check(condition, message) {
+  function check(condition: unknown, message: string): void {
     if (!condition) {
       errors.push(message);
     }
   }
 
-  function README_HAS(value) {
+  function README_HAS(value: string): boolean {
     return readme.includes(value);
   }
 

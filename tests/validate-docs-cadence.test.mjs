@@ -1,5 +1,5 @@
-// Regression coverage for #5993: validate-docs.mjs's stale-cadence guard must
-// scan scripts/*.mjs (and README.md), not only docs/**/*.md — otherwise the
+// Regression coverage for #5993: validate-docs.ts's stale-cadence guard must
+// scan scripts/*.mjs|ts (and README.md), not only docs/**/*.md — otherwise the
 // exact drift class that survived in build-artifacts / refresh-candidates is
 // structurally invisible to the check meant to prevent it.
 import assert from "node:assert/strict";
@@ -10,9 +10,9 @@ import { afterEach, describe, test } from "vitest";
 import {
   collectCadenceScanFiles,
   findStaleCadenceHits,
-} from "../scripts/validate-docs.mjs";
+} from "../scripts/validate-docs.ts";
 
-describe("validate-docs.mjs stale cadence guard (#5993)", () => {
+describe("validate-docs.ts stale cadence guard (#5993)", () => {
   let tempDir;
 
   afterEach(() => {
@@ -39,13 +39,17 @@ describe("validate-docs.mjs stale cadence guard (#5993)", () => {
     assert.match(hits[0], /6h publish/);
   });
 
-  test("collectCadenceScanFiles includes scripts/*.mjs and README.md alongside docs", async () => {
+  test("collectCadenceScanFiles includes scripts/*.mjs|ts and README.md alongside docs", async () => {
     tempDir = mkdtempSync(`${tmpdir()}/metagraphed-validate-docs-cadence-`);
     mkdirSync(path.join(tempDir, "docs", "adr"), { recursive: true });
     mkdirSync(path.join(tempDir, "scripts"), { recursive: true });
     writeFileSync(path.join(tempDir, "docs", "ops.md"), "# ops\n");
     writeFileSync(path.join(tempDir, "docs", "adr", "0007.md"), "# adr\n");
     writeFileSync(path.join(tempDir, "scripts", "example.mjs"), "// ok\n");
+    // TypeScript-migration coverage (metagraphed#7510): as scripts/ converts
+    // file by file, the cadence guard must keep seeing the converted .ts
+    // files too, not just whatever hasn't been converted yet.
+    writeFileSync(path.join(tempDir, "scripts", "example.ts"), "// ok\n");
     writeFileSync(path.join(tempDir, "README.md"), "# readme\n");
 
     const files = await collectCadenceScanFiles(tempDir);
@@ -53,7 +57,12 @@ describe("validate-docs.mjs stale cadence guard (#5993)", () => {
       .map((file) => path.relative(tempDir, file).split(path.sep).join("/"))
       .sort();
 
-    assert.deepEqual(rels, ["README.md", "docs/ops.md", "scripts/example.mjs"]);
+    assert.deepEqual(rels, [
+      "README.md",
+      "docs/ops.md",
+      "scripts/example.mjs",
+      "scripts/example.ts",
+    ]);
     assert.ok(!rels.includes("docs/adr/0007.md"));
   });
 });

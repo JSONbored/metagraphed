@@ -66,7 +66,7 @@
     "validate:client-sdk-sync": "node scripts/validate-client-sdk-sync.mjs",
     "contract:summary": "node scripts/contract-change-summary.ts",
     "validate:artifact-budgets": "node scripts/validate-artifact-budgets.ts",
-    "validate:docs": "node scripts/validate-docs.mjs",
+    "validate:docs": "node scripts/validate-docs.ts",
     "validate:readme-catalog": "node scripts/generate-registry-readme-section.ts --check",
     "readme:catalog": "node scripts/generate-registry-readme-section.ts",
     "validate:adapters": "node scripts/validate-adapters.ts",
