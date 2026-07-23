@@ -4,9 +4,11 @@
 // machine-readable output.
 import { loadProviders } from "./lib.mjs";
 
-const providers = (await loadProviders())
+type Row = Record<string, unknown>;
+
+const providers: Row[] = (await loadProviders())
   .slice()
-  .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  .sort((a: Row, b: Row) => String(a.id).localeCompare(String(b.id)));
 
 if (process.argv.includes("--json")) {
   console.log(
