@@ -129,7 +129,7 @@ function OverviewPage() {
             type="button"
             onClick={() => setShowMore(true)}
             aria-expanded={false}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
           >
             Show more of the registry
             <ChevronDown className="size-4" />
@@ -322,7 +322,7 @@ function OverviewPage() {
               type="button"
               onClick={() => setShowMore(false)}
               aria-expanded
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-accent"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:border-accent/60 hover:text-accent"
             >
               Show less
               <ChevronDown className="size-4 rotate-180" />
@@ -343,7 +343,7 @@ function OverviewPage() {
           </div>
           <Link
             to="/subnets"
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-5 py-2.5 text-sm font-medium text-paper hover:opacity-90 transition-opacity self-start md:self-auto"
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-4 py-2.5 text-sm font-medium text-paper hover:opacity-90 transition-opacity self-start md:self-auto"
           >
             Open subnets
             <ArrowUpRight className="size-3.5" />
@@ -398,13 +398,13 @@ function HomeHero() {
       : 128;
 
   return (
-    <section className="mg-hero-slab relative overflow-hidden px-4 py-14 sm:px-6 md:py-20">
+    <section className="mg-hero-slab relative overflow-hidden px-4 py-12 sm:px-6 md:py-20">
       <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center text-center">
         <h1 className="mg-fade-in mt-2 font-display text-[30px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.08] text-ink-strong">
           <span className="block">Bittensor,</span>
           <span className="block text-accent">de-mystified.</span>
         </h1>
-        <p className="mg-fade-in mg-fade-in-delay-1 mt-5 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed">
+        <p className="mg-fade-in mg-fade-in-delay-1 mt-4 max-w-xl text-base md:text-lg text-ink-muted leading-relaxed">
           One search bar for every subnet, endpoint, and account — and yes, it&rsquo;s all a live
           API.
         </p>
@@ -440,7 +440,7 @@ function HomeHero() {
               type="button"
               onClick={openCommandPalette}
               aria-label="Open search"
-              className="flex size-12 shrink-0 items-center justify-center border-l border-border bg-primary-soft text-accent-text transition-colors hover:bg-accent hover:text-accent-foreground sm:h-auto sm:w-auto sm:px-5"
+              className="flex size-12 shrink-0 items-center justify-center border-l border-border bg-primary-soft text-accent-text transition-colors hover:bg-accent hover:text-accent-foreground sm:h-auto sm:w-auto sm:px-4"
             >
               <svg
                 aria-hidden="true"
@@ -461,14 +461,14 @@ function HomeHero() {
         <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 text-[13px]">
           <Link
             to="/subnets"
-            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full bg-accent px-5 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
+            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
           >
             Explore all {subnetCount} subnets
             <ArrowUpRight className="size-3.5" />
           </Link>
           <Link
             to="/schemas"
-            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-5 py-2 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
+            className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink-strong transition-colors hover:border-accent/60 hover:text-accent"
           >
             Read the API
           </Link>
@@ -663,7 +663,7 @@ function PerfCard({
   const hasSeries = phase === "ready" && !!series && series.length > 1;
   return (
     <Panel as="div" flush>
-      <div className="p-5">
+      <div className="p-4">
         <div className="flex items-baseline justify-between mb-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             {label}
@@ -771,7 +771,7 @@ function PilotCardFallback({
     <Link
       to="/subnets/$netuid"
       params={{ netuid }}
-      className="mg-hover-lift block rounded-xl border border-border bg-card p-5"
+      className="mg-hover-lift block rounded-xl border border-border bg-card p-4"
     >
       <div className="flex items-center justify-between">
         <div>
@@ -812,7 +812,7 @@ function PilotCard({
     <Link
       to="/subnets/$netuid"
       params={{ netuid }}
-      className="mg-hover-lift block rounded-xl border border-border bg-card p-5"
+      className="mg-hover-lift block rounded-xl border border-border bg-card p-4"
     >
       <div className="flex items-center justify-between mb-4">
         <div>
