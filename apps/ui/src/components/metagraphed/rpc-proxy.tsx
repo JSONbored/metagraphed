@@ -6,6 +6,7 @@ import { useNetwork } from "@/hooks/use-api-base";
 import { rpcUsageQuery } from "@/lib/metagraphed/queries";
 import { CopyButton, TimeAgo } from "@jsonbored/ui-kit";
 import { EmptyState, StaleBanner } from "./states";
+import { Panel } from "./primitives";
 import { classNames, formatNumber, isStaleFreshness } from "@/lib/metagraphed/format";
 import type { RpcUsage } from "@/lib/metagraphed/types";
 
@@ -83,11 +84,13 @@ export function ProxyHero() {
         single point of failure.
       </p>
 
-      <div className="mt-4 flex items-center gap-2 rounded border border-border bg-card px-3 py-2">
-        <span className="mg-label">POST</span>
-        <code className="flex-1 truncate font-mono text-[13px] text-ink-strong">{proxyUrl}</code>
-        <CopyButton value={proxyUrl} label="proxy URL" />
-      </div>
+      <Panel as="div" flush className="mt-4">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <span className="mg-label">POST</span>
+          <code className="flex-1 truncate font-mono text-[13px] text-ink-strong">{proxyUrl}</code>
+          <CopyButton value={proxyUrl} label="proxy URL" />
+        </div>
+      </Panel>
 
       <div className="mt-2 rounded border border-border bg-paper">
         <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
@@ -260,7 +263,7 @@ export function ProxyUsagePanel() {
           ) : null}
 
           {usage.endpoints.length > 0 ? (
-            <div className="rounded border border-border bg-card overflow-x-auto">
+            <Panel as="div" flush className="overflow-x-auto">
               <table className="w-full text-sm">
                 <caption className="px-3 pt-2 text-left mg-label">
                   Per-endpoint distribution
@@ -303,7 +306,7 @@ export function ProxyUsagePanel() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </Panel>
           ) : null}
         </>
       )}
