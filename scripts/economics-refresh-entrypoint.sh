@@ -98,7 +98,7 @@ case "$STEP" in
   snapshot)
     : "${SUBTENSOR_RPC_URL:?SUBTENSOR_RPC_URL env var required for the snapshot step}"
     echo "entrypoint: refreshing native chain snapshot"
-    exec node scripts/refresh-native-snapshot.mjs
+    exec node scripts/refresh-native-snapshot.ts
     ;;
   economics)
     echo "entrypoint: publishing live economics"

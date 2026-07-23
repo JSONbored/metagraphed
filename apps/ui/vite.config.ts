@@ -57,7 +57,7 @@ export default defineConfig({
       // A transient Sentry API hiccup or an expired token must never block
       // shipping real product code -- the same tolerant-by-design principle
       // already applied to every box-side observability integration in
-      // this rollout (e.g. scripts/refresh-native-snapshot.mjs's own
+      // this rollout (e.g. scripts/refresh-native-snapshot.ts's own
       // comment: "a transient chain RPC failure must not block the
       // publish").
       errorHandler: (err) => {

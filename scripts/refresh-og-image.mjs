@@ -16,7 +16,7 @@
 // rasterize the SVG satori returns into a PNG. Confirmed to render the same
 // card design as the old live path.
 //
-// Tolerant by design, matching refresh-native-snapshot.mjs/refresh-candidates.ts
+// Tolerant by design, matching refresh-native-snapshot.ts/refresh-candidates.ts
 // in this same productionSteps() phase: ANY failure (missing/cold
 // registry-summary.json, a Google Fonts fetch failure, a satori/resvg error)
 // logs a warning and exits 0 WITHOUT writing a new PNG, leaving whatever card

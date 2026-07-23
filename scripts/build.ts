@@ -161,7 +161,7 @@ function productionSteps(): Step[] {
     // step 2) so the registry stays current without the retired scheduled
     // sync-subnets PR. Tolerant: a chain RPC failure keeps the last snapshot and
     // the publish proceeds — it never blocks on the chain being reachable.
-    nodeStep("native-snapshot", "scripts/refresh-native-snapshot.mjs"),
+    nodeStep("native-snapshot", "scripts/refresh-native-snapshot.ts"),
     // Refresh candidate discovery + verification fresh each publish (issue #599)
     // so their >24h block-freshness gate doesn't hard-fail the scheduled publish
     // now that the sync PR is retired (#571). Runs AFTER native-snapshot
