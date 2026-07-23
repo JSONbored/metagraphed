@@ -8,6 +8,7 @@ import {
   resolveSubnetProbeHealth,
   worstActiveIncidentHealth,
 } from "@/lib/metagraphed/subnet-probe-health";
+import { useHydrated } from "@/hooks/use-hydrated";
 import type { EndpointIncident, HealthState } from "@/lib/metagraphed/types";
 
 /**
@@ -20,12 +21,15 @@ export function useSubnetProbeHealth(netuid: number): HealthState {
   const mapQ = useQuery(subnetHealthMapQuery());
   const detailQ = useQuery(subnetHealthQuery(netuid));
   const incidentsQ = useQuery({ ...endpointIncidentsQuery(), retry: 0 });
-  const mapHealth = mapQ.data?.data?.[netuid]?.health;
-  const summary = detailQ.data?.data;
-  const incidentHealth = worstActiveIncidentHealth(
-    incidentsQ.data?.data as EndpointIncident[] | undefined,
-    netuid,
-  );
+  // These are plain (non-suspense) queries, so their cache can already be
+  // resolved by hydration time even though SSR committed "unknown" — stay
+  // "unknown" until hydration completes so both passes agree.
+  const hydrated = useHydrated();
+  const mapHealth = hydrated ? mapQ.data?.data?.[netuid]?.health : undefined;
+  const summary = hydrated ? detailQ.data?.data : undefined;
+  const incidentHealth = hydrated
+    ? worstActiveIncidentHealth(incidentsQ.data?.data as EndpointIncident[] | undefined, netuid)
+    : undefined;
   return resolveSubnetProbeHealth({
     mapHealth,
     summary: summary

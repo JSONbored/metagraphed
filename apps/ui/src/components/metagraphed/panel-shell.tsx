@@ -5,6 +5,7 @@ import { SectionAnchor, TimeAgo, type SectionTone } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames, isStaleFreshness, isUsableTimestamp } from "@/lib/metagraphed/format";
 import { reportError } from "@/lib/error-reporting";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 interface MetaInfo {
   generatedAt?: string;
@@ -53,6 +54,18 @@ export function PanelShell({
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const stale = meta?.stale ?? isStaleFreshness(meta?.generatedAt);
+  // meta comes from a plain useQuery in most callers (not useSuspenseQuery), so
+  // its value can differ between the SSR pass and the client's first paint if
+  // the query resolves in the gap between them — gate the timestamp pill
+  // behind hydration so both passes agree, matching useHydrated's own doc.
+  const hydrated = useHydrated();
+  const showFreshnessPill = hydrated && isUsableTimestamp(meta?.generatedAt);
+  // isLoading is caller-supplied and usually derived from a plain (non-suspense)
+  // useQuery, so it can already be `false` by hydration time even though SSR
+  // committed the loading branch — stay loading until hydration completes so
+  // both passes agree, for every PanelShell caller, not just this file's own
+  // internal state.
+  const effectiveLoading = !hydrated || isLoading;
 
   const onRefresh = async () => {
     if (!refreshQueryKeys?.length) return;
@@ -71,7 +84,7 @@ export function PanelShell({
   const headerRight = (
     <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-2 min-w-0">
       <div className="flex items-center gap-2">
-        {isUsableTimestamp(meta?.generatedAt) ? (
+        {showFreshnessPill ? (
           <span
             className={
               "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] " +
@@ -115,7 +128,7 @@ export function PanelShell({
         onRefresh={onRefresh}
         context={typeof title === "string" ? title : id}
       >
-        {isLoading ? (
+        {effectiveLoading ? (
           <div
             className="rounded-xl border border-border bg-card p-4"
             aria-busy="true"
