@@ -16,7 +16,7 @@ import {
   StatTile,
   TableState,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -367,7 +367,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
 
       <SectionAnchor id="events" title="Emitted events" tone="accent">
         {events.length > 0 ? (
-          <div className="overflow-x-auto rounded border border-border bg-card">
+          <Panel as="div" flush className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-surface/40">
                 <tr>
@@ -416,7 +416,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Panel>
         ) : (
           <EmptyState
             title="No emitted events"
@@ -482,7 +482,7 @@ function renderCallArgs(
       return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
     }
     return (
-      <div className="overflow-x-auto rounded border border-border bg-card">
+      <Panel as="div" flush className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/40">
             <tr>
@@ -503,7 +503,7 @@ function renderCallArgs(
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
     );
   }
 
@@ -513,7 +513,7 @@ function renderCallArgs(
       return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
     }
     return (
-      <div className="overflow-x-auto rounded border border-border bg-card">
+      <Panel as="div" flush className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/40">
             <tr>
@@ -534,7 +534,7 @@ function renderCallArgs(
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
     );
   }
 
