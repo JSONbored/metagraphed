@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { classNames } from "@/lib/format";
 import { Skeleton } from "./skeleton";
@@ -12,7 +18,10 @@ import { Skeleton } from "./skeleton";
  *   fallback for tabular data.
  * - `table` renders on viewports >= md with horizontal scroll for overflow.
  *
- * All interactive elements should target min-h-11 for comfortable tap targets.
+ * The table's <thead> sticks against the *page* scroll (offset by the
+ * app header + this filter bar) rather than an internal bounded viewport,
+ * so there is no nested vertical scrollbar. The wrapper only scrolls
+ * horizontally when a wide table overflows on narrow viewports.
  */
 export function ListShell({
   filters,
@@ -22,18 +31,7 @@ export function ListShell({
   empty,
   isEmpty,
   isStale,
-  /** When true, the rendered table can stick its <thead> at `top-0` inside a
-   *  bounded-height, internally-scrolling viewport (both axes) -- the
-   *  standard sticky-header-data-table pattern. A page-scroll-relative
-   *  sticky header and native horizontal scroll cannot coexist on the same
-   *  wrapper: `overflow-x: auto` makes that wrapper the header's nearest
-   *  scroll-container ancestor per the CSS sticky-positioning spec, and
-   *  since the wrapper itself never scrolls internally (the page scrolls
-   *  past it instead), the header's "stuck" trigger never fires -- verified
-   *  directly (#5073). Bounding the wrapper's height and letting it scroll
-   *  internally makes it the header's OWN scroll reference, so both work.
-   */
-  stickyHeader = true,
+  stickyHeader: _stickyHeader = true,
 }: {
   filters: ReactNode;
   cards?: ReactNode;
@@ -43,27 +41,50 @@ export function ListShell({
   isEmpty?: boolean;
   /** Subtly dim loaded content while a background refetch is in flight. */
   isStale?: boolean;
+  /** Retained for API compatibility -- header stickiness is now always
+   *  page-scroll relative and needs no per-instance opt-in. */
   stickyHeader?: boolean;
 }) {
+  // Measure the filter bar and publish its height as --mg-list-filter-offset
+  // on the root wrapper so the table's <thead> can stick just below it.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const [filterH, setFilterH] = useState(0);
+  useLayoutEffect(() => {
+    const el = filterRef.current;
+    if (!el) return;
+    setFilterH(Math.round(el.getBoundingClientRect().height));
+  }, []);
+  useEffect(() => {
+    const el = filterRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const h = Math.round(
+        entries[0]?.contentRect.height ?? el.getBoundingClientRect().height,
+      );
+      setFilterH((prev) => (prev === h ? prev : h));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const tableCard = "rounded border border-border bg-card overflow-hidden";
-  // stickyHeader: bounded height + overflow-auto on both axes, so the
-  // <thead>'s `sticky top-0` sticks to this box's own scroll instead of the
-  // page's, while horizontal overflow still scrolls within the same box.
-  // !stickyHeader: unbounded height, horizontal-only scroll, table grows
-  // with the page (the previous, simpler behavior -- unchanged).
-  const tableScroll = stickyHeader
-    ? "mg-table-scroll overflow-auto"
-    : "overflow-x-auto";
   return (
-    <div>
+    <div
+      ref={rootRef}
+      style={{ ["--mg-list-filter-offset" as string]: `${filterH}px` }}
+    >
       <div
+        ref={filterRef}
         className={classNames(
-          // Sticky filter bar. Offset matches header height (h-nav).
-          "sticky top-nav z-20 -mx-4 md:mx-0 mb-3",
+          // Sticky filter bar. Offset reads --mg-sticky-offset (published by
+          // AppShell to match real header + ticker height) with a fallback.
+          "sticky z-20 -mx-4 md:mx-0 mb-3",
           "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5",
         )}
+        style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
       >
         <div className="flex flex-wrap items-center gap-2">{filters}</div>
       </div>
@@ -75,7 +96,7 @@ export function ListShell({
           {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
           <div className={cards ? "hidden md:block" : undefined}>
             <div className={tableCard}>
-              <div className={tableScroll}>{table}</div>
+              <div className="mg-table-scroll overflow-x-auto">{table}</div>
               {footer}
             </div>
           </div>

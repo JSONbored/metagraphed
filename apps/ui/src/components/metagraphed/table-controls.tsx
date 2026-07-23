@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { HTMLAttributes } from "react";
-import { ArrowUp, ArrowDown, X, Filter } from "lucide-react";
+import { ArrowUp, ArrowDown, X, Filter, Search as SearchIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { classNames } from "@/lib/metagraphed/format";
 
 /**
@@ -62,27 +63,61 @@ export function SearchInput({
   placeholder,
   inputMode,
   className,
+  shortcut,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   className?: string;
+  /** Show a `/` keyboard shortcut hint and bind `/` to focus the input. */
+  shortcut?: boolean;
 }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!shortcut || typeof window === "undefined") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/") return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      // Don't hijack when the user is already typing somewhere.
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      e.preventDefault();
+      ref.current?.focus();
+      ref.current?.select();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcut]);
   return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder ?? "Search…"}
-      inputMode={inputMode}
-      // Give the control an accessible name (a placeholder is not one for assistive tech); mirrors
-      // the aria-labelled sibling controls (SortButton, PageSizeSelect) in this file.
-      aria-label={placeholder ?? "Search"}
-      className={classNames(
-        "flex-1 min-w-[180px] rounded border border-border bg-paper px-2.5 py-1.5 text-sm placeholder:text-ink-muted focus:outline-none focus:border-ink/30",
-        className,
-      )}
-    />
+    <div className={classNames("relative flex-1 min-w-[200px]", className)}>
+      <SearchIcon
+        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-ink-muted"
+        aria-hidden
+      />
+      <input
+        ref={ref}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? "Search…"}
+        inputMode={inputMode}
+        // Give the control an accessible name (a placeholder is not one for assistive tech); mirrors
+        // the aria-labelled sibling controls (SortButton, PageSizeSelect) in this file.
+        aria-label={placeholder ?? "Search"}
+        className={classNames(
+          "w-full rounded border border-border bg-paper pl-8 pr-14 py-1.5 text-sm text-ink-strong",
+          "placeholder:text-ink-muted focus:outline-none focus:border-accent/50 focus:ring-2 focus:ring-ring transition-colors",
+        )}
+      />
+      {shortcut ? (
+        <kbd
+          aria-hidden
+          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
+        >
+          /
+        </kbd>
+      ) : null}
+    </div>
   );
 }
 
@@ -156,6 +191,7 @@ export function FilterChip({
   onChange,
   options,
   ariaLabel,
+  label,
   placeholder = "All",
   className,
 }: {
@@ -163,20 +199,45 @@ export function FilterChip({
   onChange: (v: string) => void;
   options: Array<{ value: string; label: string }>;
   ariaLabel: string;
+  /** Optional prefix label (e.g. "Health") shown inside the chip. */
+  label?: string;
   placeholder?: string;
   className?: string;
 }) {
+  const active = value !== "";
+  const activeOption = options.find((o) => o.value === value);
   return (
-    <label className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-ink-muted hover:border-ink/30 transition-colors">
-      <Filter className="size-3 shrink-0" aria-hidden />
+    <label
+      className={classNames(
+        "group relative inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition-colors cursor-pointer",
+        active
+          ? "border-accent/50 bg-accent/8 text-ink-strong hover:border-accent/70"
+          : "border-border bg-card text-ink-muted hover:border-ink/25 hover:text-ink-strong",
+      )}
+    >
+      <Filter
+        className={classNames("size-3 shrink-0", active ? "text-accent" : "text-ink-muted")}
+        aria-hidden
+      />
+      {label ? (
+        <span className="font-mono text-[10px] uppercase tracking-widest opacity-80 shrink-0">
+          {label}
+        </span>
+      ) : null}
+      <span
+        className={classNames(
+          "font-mono text-[11px] truncate max-w-[100px]",
+          active ? "text-ink-strong" : "text-ink-muted",
+        )}
+      >
+        {activeOption?.label ?? placeholder}
+      </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={ariaLabel}
-        className={classNames(
-          "min-w-0 max-w-[85px] truncate bg-transparent font-mono text-[11px] uppercase tracking-widest text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded",
-          className,
-        )}
+        className={classNames("absolute inset-0 opacity-0 cursor-pointer", className)}
+        style={{ position: "absolute" }}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (

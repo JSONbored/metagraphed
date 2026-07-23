@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useMemo } from "react";
+import { useMemo } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -8,7 +8,6 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
   ExternalLink,
   TableState,
-  PageHero,
   PageSection,
   SectionHeading,
   MethodologyCallout,
@@ -18,10 +17,9 @@ import {
   MiniStack,
   MiniRadial,
 } from "@jsonbored/ui-kit";
-import { Skeleton } from "@/components/metagraphed/states";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import { X, Search } from "lucide-react";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
 import {
   CoverageMatrix,
@@ -96,7 +94,7 @@ export const Route = createFileRoute("/gaps")({
 function GapsPage() {
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="Operations"
         live
         title="Registry gaps"
@@ -109,31 +107,23 @@ function GapsPage() {
       />
 
       <main className="space-y-20 md:space-y-24">
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-20 w-full" />}>
-            <GapsKpiStrip />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel height="sm">
+          <GapsKpiStrip />
+        </AsyncPanel>
 
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-            <MissingKindsAtAGlance />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel height="md">
+          <MissingKindsAtAGlance />
+        </AsyncPanel>
 
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-16 w-full" />}>
-            <GapsMethodology />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel height="sm">
+          <GapsMethodology />
+        </AsyncPanel>
 
         <section>
           <SectionHeading title="Integrability scoreboard" />
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-              <IntegrabilityBoard />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="lg">
+            <IntegrabilityBoard />
+          </AsyncPanel>
         </section>
 
         <PageSection
@@ -142,11 +132,9 @@ function GapsPage() {
           title="What's actually missing"
           description="Subnets × required public-interface kinds. Cells link straight to that subnet's surfaces tab."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-              <CoverageMatrix />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="lg">
+            <CoverageMatrix />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -155,18 +143,14 @@ function GapsPage() {
           title="Registry shape"
           description="Histogram of completeness across every scored profile. Median and quartile markers show where the registry sits today."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-44 w-full" />}>
-              <CompletenessHistogram />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <CompletenessHistogram />
+          </AsyncPanel>
         </PageSection>
 
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-72 w-full" />}>
-            <OpenGapsSection />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel height="lg">
+          <OpenGapsSection />
+        </AsyncPanel>
 
         <PageSection
           id="profile-completeness"
@@ -174,11 +158,9 @@ function GapsPage() {
           title="Profile completeness"
           description="Per-subnet completeness across required public-interface kinds."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <CompletenessList />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <CompletenessList />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -187,11 +169,9 @@ function GapsPage() {
           title="Adapter candidates"
           description="Subnets where a maintained adapter would unlock the highest registry value."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <AdapterCandidates />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <AdapterCandidates />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -200,11 +180,9 @@ function GapsPage() {
           title="Enrichment queue"
           description="Prioritized list of registry entries awaiting verification or enrichment."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <EnrichmentQueue />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <EnrichmentQueue />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -213,11 +191,9 @@ function GapsPage() {
           title="Enrichment targets"
           description="Per-target contributor task board — the specific surfaces to add per subnet, ranked by priority."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <EnrichmentTargets />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <EnrichmentTargets />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -226,11 +202,9 @@ function GapsPage() {
           title="Enrichment evidence"
           description="The detailed candidate evidence behind the enrichment queue — one level down from the summary above."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <EnrichmentEvidence />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <EnrichmentEvidence />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -239,11 +213,9 @@ function GapsPage() {
           title="Gap priorities"
           description="Priority-scored per-subnet gap board — ranked separately from the interface-facet gaps above."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <GapPriorityList />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="md">
+            <GapPriorityList />
+          </AsyncPanel>
         </PageSection>
       </main>
 
@@ -439,7 +411,7 @@ function MissingKindsAtAGlance() {
               >
                 <span
                   className={classNames(
-                    "font-mono text-[10px] uppercase tracking-widest",
+                    "mg-type-micro text-[10px]",
                     isActive ? "text-accent" : "text-ink-strong",
                   )}
                 >
@@ -462,7 +434,7 @@ function MissingKindsAtAGlance() {
         })}
       </ul>
       {activeMissing.size > 0 ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        <div className="mg-type-micro mt-2 flex flex-wrap items-center gap-2 text-[10px] text-ink-muted">
           <span>filtered by:</span>
           {Array.from(activeMissing).map((k) => (
             <span
@@ -628,7 +600,7 @@ function OpenGapsSection() {
                 setSearch({ missing: Array.from(next).join(",") });
               }}
               className={classNames(
-                "inline-flex h-6 items-center rounded-full border px-2.5 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                "mg-type-micro inline-flex h-6 items-center rounded-full border px-2.5 text-[10px] transition-colors",
                 active
                   ? "border-accent bg-primary-soft text-ink-strong"
                   : "border-border bg-paper text-ink-muted hover:border-accent/50 hover:text-ink",
@@ -773,7 +745,7 @@ function GapRow({
           {gap.category ? (
             <span
               className={classNames(
-                "inline-flex h-5 items-center rounded-full border px-2 font-mono text-[10px] uppercase tracking-widest",
+                "mg-type-micro inline-flex h-5 items-center rounded-full border px-2 text-[10px]",
                 matchedKind
                   ? "border-accent/50 bg-primary-soft text-accent"
                   : "border-transparent text-ink-muted",
@@ -815,7 +787,7 @@ function GapRow({
           <p className="mt-1.5 text-[12px] text-ink">↳ {gap.suggested_action}</p>
         ) : null}
         {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+          <div className="mg-type-micro mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
             <span>relevant sources:</span>
             {rawSources.map((s) => (
               <ExternalLink
@@ -872,7 +844,7 @@ function SeverityChip({ severity }: { severity?: string }) {
   return (
     <span
       className={classNames(
-        "inline-flex h-5 items-center rounded-full border bg-transparent px-2 font-mono text-[10px] uppercase tracking-widest",
+        "mg-type-micro inline-flex h-5 items-center rounded-full border bg-transparent px-2 text-[10px]",
         "before:content-[''] before:size-1.5 before:rounded-full before:mr-1.5",
         tone,
       )}
@@ -895,7 +867,7 @@ function FilterSelect({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 text-[11px] text-ink-muted">
-      <span className="font-mono uppercase tracking-widest text-[10px]">{label}</span>
+      <span className="mg-type-micro text-[10px]">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -1023,7 +995,7 @@ function EnrichmentQueue() {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-surface-2/60 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">ID</th>
               <th className="px-4 py-2.5 text-left">Netuid</th>
@@ -1079,7 +1051,7 @@ function EnrichmentTargets() {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-surface-2/60 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">Netuid</th>
               <th className="px-4 py-2.5 text-left">Subnet</th>
@@ -1144,7 +1116,7 @@ function EnrichmentEvidence() {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-surface-2/60 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
             <tr>
               <th className="px-4 py-2.5 text-left">Netuid</th>
               <th className="px-4 py-2.5 text-left">Lane</th>

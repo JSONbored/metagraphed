@@ -8,22 +8,24 @@ const source = readFileSync(
 );
 
 describe("ListShell sticky table wrappers", () => {
-  it("gives stickyHeader tables their own bounded, internally-scrolling viewport", () => {
-    // overflow-x-auto (or hidden/scroll) on the sticky <thead>'s ancestor
-    // makes that ancestor the header's nearest scroll-container, and since
-    // it never scrolls internally on its own (the page scrolls past it
-    // instead), the header's "stuck" trigger never fires (#5073). Bounding
-    // the height and scrolling both axes inside the wrapper makes it the
-    // header's own scroll reference, so sticky and horizontal scroll both
-    // work at once.
-    // Substring checks, not a full-line match: this ternary reflows under
-    // Prettier depending on line length, so an exact-line assertion breaks
-    // every time the surrounding code shifts it past the print width.
-    expect(source).toContain("const tableScroll = stickyHeader");
-    expect(source).toContain('"mg-table-scroll overflow-auto"');
-    expect(source).toContain(': "overflow-x-auto"');
+  it("sticks the <thead> to the page scroll instead of a bounded internal viewport", () => {
+    // The table's <thead> sticks against the *page* scroll (offset by the app
+    // header + the filter bar's measured height), not an internal
+    // overflow-bounded wrapper -- so there is no nested vertical scrollbar.
+    // The wrapper only ever scrolls horizontally, on any viewport.
+    expect(source).toContain('"mg-table-scroll overflow-x-auto"');
     expect(source).not.toContain("overflow-x-clip");
     expect(source).not.toContain("overflow-y-clip");
+  });
+
+  it("publishes the filter bar's measured height so the table header can offset below it", () => {
+    // ResizeObserver-measured filter height, published as a CSS var on the
+    // root wrapper -- the sticky offset math reads --mg-sticky-offset
+    // (from AppShell) plus this to land the <thead> just below the filter bar.
+    expect(source).toContain("--mg-list-filter-offset");
+    expect(source).toContain(
+      'style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}',
+    );
   });
 
   it("keeps the card wrapper's rounded-corner clipping the same for both modes", () => {

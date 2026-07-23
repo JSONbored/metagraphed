@@ -1338,15 +1338,13 @@ html[data-density="compact"] .bg-card > table td {
   border-radius: 6px;
 }
 
-/* Bounded height for ListShell's sticky-header table viewport (#5073) -- a
-   plain class, not a Tailwind arbitrary-value utility (max-h-[70vh]):
-   packages/ui-kit's own Tailwind build doesn't pick up bracket-arbitrary
-   values from source (confirmed against command.tsx's pre-existing,
-   equally-silently-broken max-h-[300px] -- neither ever reaches dist/index.css). */
+/* Horizontal-scroll fade mask for wide data tables — soft-clips left/right
+   edges instead of hard-cutting mid-column so users see there's more to
+   scroll. The table's <thead> sticks against the page scroll (under the
+   filter bar) via --mg-sticky-offset + --mg-list-filter-offset (published by
+   ListShell), so the wrapper itself never needs to scroll vertically -- no
+   nested scrollbar. */
 .mg-table-scroll {
-  max-height: 70vh;
-  /* Fade the leading/trailing edges so wide tables soft-clip instead of
-     hard-cutting mid-column — users see there's more to scroll. */
   mask-image: linear-gradient(
     to right,
     transparent 0,
@@ -1361,9 +1359,7 @@ html[data-density="compact"] .bg-card > table td {
     #000 calc(100% - 1rem),
     transparent 100%
   );
-  /* Thin, modern horizontal scrollbar. The table's <thead> sticks against the
-     page scroll (under the filter bar) via --mg-sticky-offset, so the
-     wrapper itself never needs to scroll vertically -- no nested scrollbar. */
+  /* Thin, modern horizontal scrollbar. */
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklab, var(--ink-strong) 20%, transparent)
     transparent;

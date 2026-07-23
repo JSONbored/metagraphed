@@ -19,6 +19,12 @@ import {
   Coins,
   UserMinus,
 } from "lucide-react";
+import {
+  AsyncPanel,
+  CopyLinkButton,
+  MobileCollapse,
+  ResponsiveTable,
+} from "@/components/metagraphed/primitives";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton, RECOVERY } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -36,6 +42,7 @@ import {
   HealthPill,
   CopyableCode,
   MethodologyCallout,
+  BackToTop,
   StatTile,
   RealtimeFreshness,
 } from "@jsonbored/ui-kit";
@@ -113,28 +120,33 @@ import { OperationalPanel } from "@/components/metagraphed/operational-panel";
 import { ResourceExplorer } from "@/components/metagraphed/resource-explorer";
 import { GittensorRegisteredRepos } from "@/components/metagraphed/gittensor-registered-repos";
 import { SubnetProfilePanel } from "@/components/metagraphed/subnet-profile-panel";
+import { SubnetPriorityHighlights } from "@/components/metagraphed/subnet-priority-highlights";
 import { SubnetPulseStrip } from "@/components/metagraphed/subnet-pulse-strip";
 import { SubnetValidatorsPreview } from "@/components/metagraphed/subnet-validators-preview";
 import { SubnetFilterProvider } from "@/components/metagraphed/subnet-filter-context";
 import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-drawer";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { WatchSubnetAlert } from "@/components/metagraphed/watch-subnet-alert";
+import { SubnetWindowProvider, SubnetWindowToggle } from "@/lib/metagraphed/subnet-window";
 
 type SearchParams = {
   tab?: string;
   sev?: string;
   uid?: number;
   ev_kind?: string;
+  window?: "7d" | "30d" | "90d";
 };
 
 export const Route = createFileRoute("/subnets/$netuid")({
   validateSearch: (s: Record<string, unknown>): SearchParams => {
     const uidNum = Number(s.uid);
+    const win = s.window;
     return {
       tab: typeof s.tab === "string" ? s.tab : undefined,
       sev: typeof s.sev === "string" ? s.sev : undefined,
       uid: Number.isInteger(uidNum) && uidNum >= 0 ? uidNum : undefined,
       ev_kind: typeof s.ev_kind === "string" && s.ev_kind ? s.ev_kind : undefined,
+      window: win === "7d" || win === "30d" || win === "90d" ? win : undefined,
     };
   },
   parseParams: ({ netuid }) => {
@@ -246,12 +258,13 @@ const SECTION_TO_TAB: Record<string, string> = {
 function SubnetDetailPage() {
   const { netuid } = Route.useParams();
   return (
-    <AppShell>
+    <AppShell flushTop>
       <QueryErrorBoundary>
         <Suspense fallback={<DetailSkeleton />}>
           <ProfileShell netuid={netuid} />
         </Suspense>
       </QueryErrorBoundary>
+      <BackToTop />
     </AppShell>
   );
 }
@@ -282,108 +295,115 @@ function ProfileShell({ netuid }: { netuid: number }) {
 
   return (
     <TimeRangeProvider>
-      <SubnetFilterProvider>
-        <SubnetMasthead
-          netuid={netuid}
-          profile={profile}
-          generatedAt={meta?.generated_at}
-          stale={stale}
-          evidenceCount={evidenceCount}
-          refreshQueryKeys={[
-            subnetProfileQuery(netuid).queryKey,
-            subnetSurfacesQuery(netuid).queryKey,
-            subnetEndpointsQuery(netuid).queryKey,
-            subnetHealthQuery(netuid).queryKey,
-            subnetCandidatesQuery(netuid).queryKey,
-          ]}
-          refreshLabel="Refresh health now"
-        />
+      <SubnetWindowProvider>
+        <SubnetFilterProvider>
+          <SubnetMasthead
+            netuid={netuid}
+            profile={profile}
+            generatedAt={meta?.generated_at}
+            stale={stale}
+            evidenceCount={evidenceCount}
+            refreshQueryKeys={[
+              subnetProfileQuery(netuid).queryKey,
+              subnetSurfacesQuery(netuid).queryKey,
+              subnetEndpointsQuery(netuid).queryKey,
+              subnetHealthQuery(netuid).queryKey,
+              subnetCandidatesQuery(netuid).queryKey,
+            ]}
+            refreshLabel="Refresh health now"
+          />
 
-        <SubnetValidatorsPreview netuid={netuid} />
+          <SubnetValidatorsPreview netuid={netuid} />
 
-        <SubnetPulseStrip netuid={netuid} />
+          <SubnetPulseStrip netuid={netuid} />
 
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-          <SubnetCompareDrawer netuid={netuid} />
-        </div>
+          <div className="mt-4">
+            <MethodologyCallout generatedAt={meta?.generated_at} windowLabel="7d" />
+          </div>
 
-        <div className="mt-4">
-          <MethodologyCallout generatedAt={meta?.generated_at} windowLabel="7d" />
-        </div>
+          <div className="mt-2">
+            <ProfileTabs
+              tabs={tabsWithCounts}
+              defaultTab="overview"
+              trailing={
+                <>
+                  <SubnetWindowToggle />
+                  <SubnetCompareDrawer netuid={netuid} />
+                </>
+              }
+            />
+          </div>
 
-        <div className="mt-2">
-          <ProfileTabs tabs={tabsWithCounts} defaultTab="overview" />
-        </div>
+          <div className="mt-6 min-w-0 space-y-8">
+            {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
+            {tab === "metagraph" ? <MetagraphPanel netuid={netuid} /> : null}
+            {tab === "validators" ? <ValidatorsPanel netuid={netuid} /> : null}
+            {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
+            {tab === "identity" ? <IdentityHistoryPanel netuid={netuid} /> : null}
+            {tab === "hyperparameters" ? (
+              <div className="space-y-8">
+                <HyperparametersPanel netuid={netuid} />
+                <HyperparamsHistoryPanel netuid={netuid} />
+              </div>
+            ) : null}
+            {tab === "services" ? <CallableServicesPanel netuid={netuid} /> : null}
+            {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
+            {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
+            {tab === "schemas" ? <SchemasPanel netuid={netuid} /> : null}
+            {tab === "candidates" ? <CandidatesPanel netuid={netuid} /> : null}
+            {tab === "gaps" ? <GapsPanel netuid={netuid} /> : null}
+            {tab === "evidence" ? (
+              <SectionAnchor
+                id="evidence"
+                title="Evidence & sources"
+                subtitle="Primary links and recorded evidence backing this profile."
+                info="GET /api/v1/evidence — source URLs and timestamps for verified registry entries."
+              >
+                <EvidencePanel netuid={netuid} />
+              </SectionAnchor>
+            ) : null}
+            {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
+          </div>
 
-        <div className="mt-6 min-w-0 space-y-8">
-          {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
-          {tab === "metagraph" ? <MetagraphPanel netuid={netuid} /> : null}
-          {tab === "validators" ? <ValidatorsPanel netuid={netuid} /> : null}
-          {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
-          {tab === "identity" ? <IdentityHistoryPanel netuid={netuid} /> : null}
-          {tab === "hyperparameters" ? (
-            <div className="space-y-8">
-              <HyperparametersPanel netuid={netuid} />
-              <HyperparamsHistoryPanel netuid={netuid} />
-            </div>
-          ) : null}
-          {tab === "services" ? <CallableServicesPanel netuid={netuid} /> : null}
-          {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
-          {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
-          {tab === "schemas" ? <SchemasPanel netuid={netuid} /> : null}
-          {tab === "candidates" ? <CandidatesPanel netuid={netuid} /> : null}
-          {tab === "gaps" ? <GapsPanel netuid={netuid} /> : null}
-          {tab === "evidence" ? (
+          {/* #6558: the backend accepts netuid-scoped alert triggers, but only the
+              validator page exposed a Watch UI. Extend the same pattern here.
+              Outside the tab switch, so it's reachable from any tab -- same as the
+              "Watch this validator" section on the validator page. */}
+          <div className="mt-8">
             <SectionAnchor
-              id="evidence"
-              title="Evidence & sources"
-              subtitle="Primary links and recorded evidence backing this profile."
-              info="GET /api/v1/evidence — source URLs and timestamps for verified registry entries."
+              id="watch"
+              title="Watch this subnet"
+              subtitle="Alert on on-chain activity for this subnet, via the existing chain alert-triggers API."
+              tone="accent"
             >
-              <EvidencePanel netuid={netuid} />
+              <WatchSubnetAlert netuid={netuid} />
             </SectionAnchor>
-          ) : null}
-          {tab === "api" ? <ApiPanel netuid={netuid} /> : null}
-        </div>
+          </div>
 
-        {/* #6558: the backend accepts netuid-scoped alert triggers, but only the
-            validator page exposed a Watch UI. Extend the same pattern here.
-            Outside the tab switch, so it's reachable from any tab -- same as the
-            "Watch this validator" section on the validator page. */}
-        <div className="mt-8">
-          <SectionAnchor
-            id="watch"
-            title="Watch this subnet"
-            subtitle="Alert on on-chain activity for this subnet, via the existing chain alert-triggers API."
-            tone="accent"
-          >
-            <WatchSubnetAlert netuid={netuid} />
-          </SectionAnchor>
-        </div>
+          {/* #6432: outside the tab switch, so the way back is there whichever
+              tab a reader ends on -- this profile is the longest page in the app
+              and the masthead breadcrumb is far behind by the time they finish.
+              Same placement/styling as blocks.$ref.tsx and extrinsics.$hash.tsx. */}
+          <div className="mt-6">
+            <Link
+              to="/subnets"
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
+            >
+              ← All subnets
+            </Link>
+          </div>
 
-        {/* #6432: outside the tab switch, so the way back is there whichever
-            tab a reader ends on -- this profile is the longest page in the app
-            and the masthead breadcrumb is far behind by the time they finish.
-            Same placement/styling as blocks.$ref.tsx and extrinsics.$hash.tsx. */}
-        <div className="mt-6">
-          <Link
-            to="/subnets"
-            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
-          >
-            ← All subnets
-          </Link>
-        </div>
-
-        <ApiSourceFooter
-          paths={[
-            `/api/v1/subnets/${netuid}/profile`,
-            `/api/v1/subnets/${netuid}/overview`,
-            `/api/v1/subnets/${netuid}/identity-history`,
-            `/api/v1/subnets/${netuid}/lease`,
-            `/api/v1/subnets/${netuid}/lease/history`,
-          ]}
-        />
-      </SubnetFilterProvider>
+          <ApiSourceFooter
+            paths={[
+              `/api/v1/subnets/${netuid}/profile`,
+              `/api/v1/subnets/${netuid}/overview`,
+              `/api/v1/subnets/${netuid}/identity-history`,
+              `/api/v1/subnets/${netuid}/lease`,
+              `/api/v1/subnets/${netuid}/lease/history`,
+            ]}
+          />
+        </SubnetFilterProvider>
+      </SubnetWindowProvider>
     </TimeRangeProvider>
   );
 }
@@ -400,65 +420,45 @@ function DetailSkeleton() {
 
 /* ----------------------------- overview ----------------------------- */
 
-// Single-column slab overview (Lovable redesign), with the UI's wired
-// KEEP-OURS panels re-homed into the new layout:
-//   1 — Readiness scorecard (#369, dropped by Lovable, restored here)
-//   2 — Operational status (timeline + ribbon + incidents)
-//   3 — Public resources (segmented endpoints/surfaces/schemas)
-//   4 — Subnet profile (lineage + economics + ownership + curation)
-//   5 — Economics (live chain economics — UI's wired EconomicsPanel)
-//   6 — Reliability (per-surface SLA + latency percentiles — kept)
-//   7 — Cross-network lineage (UI's section, reads lineage.links — kept)
-//   8 — Sources & evidence (UI's EvidencePanel, NOT evidence-clusters)
-//   9 — Open incidents (deep-linkable timeline)
+// Reordered so users see "is this alive and what's it worth?" before "how do
+// I build on it?". Above the fold on desktop: strip + priority highlights +
+// economics. Below-the-fold sections collapse on mobile via MobileCollapse.
+//   0  — Composed overview summary strip
+//   0b — Priority highlight strip (economics/operational/resources/profile)
+//   1  — Economics (live chain economics — UI's wired EconomicsPanel)
+//   2  — 24h Volume (paired with economics)
+//   3  — Price history (paired with economics)
+//   4  — Operational status (timeline + ribbon + incidents)
+//   5  — Public resources (segmented endpoints/surfaces/schemas)
+//   5b — Gittensor's registered repositories (netuid 74 only)
+//   6  — Readiness scorecard (#369, contributor-facing reference)
+//   7  — Subnet profile (lineage + curation + provider list)
+//   8  — Stake-quote calculator
+//   9  — Ownership contest
+//   10 — Ownership history
+//   10b — Subnet lease state + history (#6993, KEEP-OURS — not in Lovable)
+//   11 — Network history
+//   12 — Per-surface reliability
+//   13 — Cross-network lineage (renders only when paired)
+//   14 — Evidence & sources (UI's EvidencePanel, NOT evidence-clusters)
+//   15 — Open incidents (deep-linkable timeline)
 function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
   const { data: gapsResult } = useQuery(subnetGapsQuery(netuid));
   const subnetGaps = gapsResult?.data;
   return (
     <div className="space-y-6">
-      {/* 0 — Composed overview summary strip (#3346): counts + status +
-          curation from the single server-composed /overview route, at a
-          glance before the more detailed sub-panels below. Each of those
-          sub-panels owns its own deeper backend route and stays as-is. */}
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-          <OverviewSummaryStrip netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      {/* 0 — Composed overview summary strip (#3346) */}
+      <AsyncPanel height="sm">
+        <OverviewSummaryStrip netuid={netuid} />
+      </AsyncPanel>
 
-      {/* 1 — Readiness scorecard: the "can I build on this, where do I start?"
-          answer, up top before the operational/resource detail. */}
-      <ReadinessScorecard profile={profile} />
+      {/* 0b — Priority highlight strip: at-a-glance jump-off to the four
+          most-asked signals for this subnet. Mirrors SubnetsHighlights on
+          the index route. */}
+      <SubnetPriorityHighlights netuid={netuid} />
 
-      {/* 2 — Operational status (timeline + ribbon + incidents) */}
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-          <OperationalPanel netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
-
-      {/* 3 — Public resources (segmented endpoints/surfaces/schemas) */}
-      <QueryErrorBoundary>
-        <ResourceExplorer netuid={netuid} />
-      </QueryErrorBoundary>
-
-      {/* 3b — Gittensor's registered repositories (netuid 74 only): ecosystem
-          member projects with emission-share metadata, not infrastructure
-          surfaces, so kept out of ResourceExplorer above. */}
-      {netuid === 74 ? (
-        <QueryErrorBoundary>
-          <GittensorRegisteredRepos slug="gittensor" />
-        </QueryErrorBoundary>
-      ) : null}
-
-      {/* 4 — Subnet profile (lineage + economics + ownership + curation) */}
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-          <SubnetProfilePanel netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
-
-      {/* 5 — Live chain economics (#1112) — UI's wired EconomicsPanel. */}
+      {/* 1 — Economics (moved up from #5): the headline numbers most users
+          come here for. */}
       <SectionAnchor
         id="economics"
         title="Economics"
@@ -468,135 +468,195 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
         <EconomicsPanel netuid={netuid} />
       </SectionAnchor>
 
-      {/* 5a2 — Rolling 24h alpha volume (#4339/8.1): a distinct windowed
-          market-depth figure from economics' cumulative subnet_volume_tao
-          tile above — buy vs sell, unsigned, always a fixed 24h window. */}
-      <SectionAnchor
-        id="volume-24h"
-        title="24h Volume"
-        subtitle="Rolling 24h buy vs sell alpha volume — a windowed market-depth figure, distinct from the cumulative volume shown in Economics."
-        info="GET /api/v1/subnets/{netuid}/volume — unsigned buy + sell alpha volume summed from the account_events stream over a fixed 24h window (not netted, no ?window= param)."
-      >
-        <QueryErrorBoundary>
-          <AlphaVolumeScorecard netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
+      {/* 2 — 24h Volume (paired with economics) */}
+      <MobileCollapse label="24h Volume" hint="Rolling buy vs sell alpha volume" defaultOpen>
+        <SectionAnchor
+          id="volume-24h"
+          title="24h Volume"
+          subtitle="Rolling 24h buy vs sell alpha volume — a windowed market-depth figure, distinct from the cumulative volume shown in Economics."
+          info="GET /api/v1/subnets/{netuid}/volume — unsigned buy + sell alpha volume summed from the account_events stream over a fixed 24h window (not netted, no ?window= param)."
+        >
+          <QueryErrorBoundary>
+            <AlphaVolumeScorecard netuid={netuid} />
+          </QueryErrorBoundary>
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 5a2b — OHLC price/volume candlesticks (#5656, Phase 2 of the OHLC
-          epic #5304): open/high/low/close candles from the same trade stream
-          the 24h volume scorecard above reads, just bucketed by time instead
-          of summed into a rolling total. */}
-      <SectionAnchor
-        id="ohlc"
-        title="Price history"
-        subtitle="Open/high/low/close candles built from executed stake/unstake trades."
-        info="GET /api/v1/subnets/{netuid}/ohlc — OHLCV candles bucketed by ?interval=1h|1d from the same account_events StakeAdded/StakeRemoved stream as 24h Volume above. Each trade's price is amount_tao / alpha_amount; empty buckets are gaps, never synthesized flat candles."
-      >
-        <QueryErrorBoundary>
-          <SubnetOhlcChart netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
+      {/* 3 — Price history (paired with economics) */}
+      <MobileCollapse label="Price history" hint="OHLC candles from executed trades">
+        <SectionAnchor
+          id="ohlc"
+          title="Price history"
+          subtitle="Open/high/low/close candles built from executed stake/unstake trades."
+          info="GET /api/v1/subnets/{netuid}/ohlc — OHLCV candles bucketed by ?interval=1h|1d from the same account_events StakeAdded/StakeRemoved stream as 24h Volume above. Each trade's price is amount_tao / alpha_amount; empty buckets are gaps, never synthesized flat candles."
+        >
+          <QueryErrorBoundary>
+            <SubnetOhlcChart netuid={netuid} />
+          </QueryErrorBoundary>
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 5a3 — Stake-quote calculator (#5235): a read-only constant-product
+      {/* 4 — Operational status (moved down from #2 — still prominent, and
+          the trust signal for the economics numbers above). */}
+      <MobileCollapse label="Operational status" hint="Timeline · incident ribbon" defaultOpen>
+        <div id="operational">
+          <AsyncPanel height="xl">
+            <OperationalPanel netuid={netuid} />
+          </AsyncPanel>
+        </div>
+      </MobileCollapse>
+
+      {/* 5 — Public resources (endpoints / surfaces / schemas) */}
+      <MobileCollapse label="Public resources" hint="Endpoints · surfaces · schemas" defaultOpen>
+        <div id="resources">
+          <QueryErrorBoundary>
+            <ResourceExplorer netuid={netuid} />
+          </QueryErrorBoundary>
+        </div>
+      </MobileCollapse>
+
+      {/* 5b — Gittensor's registered repositories (netuid 74 only): ecosystem
+          member projects with emission-share metadata, not infrastructure
+          surfaces, so kept out of ResourceExplorer above. */}
+      {netuid === 74 ? (
+        <QueryErrorBoundary>
+          <GittensorRegisteredRepos slug="gittensor" />
+        </QueryErrorBoundary>
+      ) : null}
+
+      {/* 6 — Readiness scorecard (moved down from #1 — contributor-facing
+          reference, not the headline). */}
+      <MobileCollapse label="Readiness" hint="Integration-readiness scorecard">
+        <ReadinessScorecard profile={profile} />
+      </MobileCollapse>
+
+      {/* 7 — Subnet profile (lineage + curation + provider list) */}
+      <MobileCollapse label="Subnet profile" hint="Lineage · curation · providers">
+        <div id="profile">
+          <AsyncPanel height="lg">
+            <SubnetProfilePanel netuid={netuid} />
+          </AsyncPanel>
+        </div>
+      </MobileCollapse>
+
+      {/* 8 — Stake-quote calculator (#5235): a read-only constant-product
           slippage estimate against the subnet's live AMM reserves. Pure math,
           no chain write — the same swap math the chain itself uses. */}
-      <SectionAnchor
-        id="stake-quote"
-        title="Stake-quote calculator"
-        subtitle="Estimate the slippage and price impact of a stake or unstake before it happens."
-        info="GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake — a read-only constant-product AMM estimate against the subnet's live pool reserves. Pure math, no chain write, no custody."
-      >
-        <StakeQuoteCalculator netuid={netuid} />
-      </SectionAnchor>
+      <MobileCollapse label="Stake-quote calculator" hint="Estimate slippage before staking">
+        <SectionAnchor
+          id="stake-quote"
+          title="Stake-quote calculator"
+          subtitle="Estimate the slippage and price impact of a stake or unstake before it happens."
+          info="GET /api/v1/subnets/{netuid}/stake-quote?amount=&direction=stake|unstake — a read-only constant-product AMM estimate against the subnet's live pool reserves. Pure math, no chain write, no custody."
+        >
+          <StakeQuoteCalculator netuid={netuid} />
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 5a4 — Conviction leaderboard (#6638, frontend companion #6715, part
+      {/* 9 — Conviction leaderboard (#6638, frontend companion #6715, part
           of the ownership-contest tracker epic #4302): who currently holds
           the most rolled conviction on this subnet -- the dynamic extension
           of SubnetProfilePanel's static "Ownership" block above. */}
-      <SectionAnchor
-        id="conviction"
-        title="Ownership contest"
-        subtitle="Who currently holds the most rolled conviction -- how close this subnet is to an automatic ownership flip."
-        info="GET /api/v1/subnets/{netuid}/conviction — rolled forward from the periodically-captured lock snapshot to query time, using the live UnlockRate/MaturityRate governance values. Most subnets have no active challengers."
-      >
-        <QueryErrorBoundary>
-          <SubnetConvictionLeaderboard netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
+      <MobileCollapse label="Ownership contest" hint="Rolled conviction leaderboard">
+        <SectionAnchor
+          id="conviction"
+          title="Ownership contest"
+          subtitle="Who currently holds the most rolled conviction -- how close this subnet is to an automatic ownership flip."
+          info="GET /api/v1/subnets/{netuid}/conviction — rolled forward from the periodically-captured lock snapshot to query time, using the live UnlockRate/MaturityRate governance values. Most subnets have no active challengers."
+        >
+          <QueryErrorBoundary>
+            <SubnetConvictionLeaderboard netuid={netuid} />
+          </QueryErrorBoundary>
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 5a5 — Ownership-change history (#6637, frontend companion #6715,
+      {/* 10 — Ownership-change history (#6637, frontend companion #6715,
           part of the ownership-contest tracker epic #4302): every automatic
           ownership transfer this subnet has undergone, decoded from the
           chain_events SubnetOwnerChanged stream. */}
-      <SectionAnchor
-        id="ownership-history"
-        title="Ownership history"
-        subtitle="Every automatic ownership transfer this subnet has undergone."
-        info="GET /api/v1/subnets/{netuid}/ownership-history — decoded from the chain_events SubnetOwnerChanged stream. A subnet that has never changed hands returns an empty list, not an error."
-      >
-        <QueryErrorBoundary>
-          <SubnetOwnershipHistory netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
+      <MobileCollapse label="Ownership history" hint="Every automatic ownership transfer">
+        <SectionAnchor
+          id="ownership-history"
+          title="Ownership history"
+          subtitle="Every automatic ownership transfer this subnet has undergone."
+          info="GET /api/v1/subnets/{netuid}/ownership-history — decoded from the chain_events SubnetOwnerChanged stream. A subnet that has never changed hands returns an empty list, not an error."
+        >
+          <QueryErrorBoundary>
+            <SubnetOwnershipHistory netuid={netuid} />
+          </QueryErrorBoundary>
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 5a6 — Subnet lease state + history (#6993, backend #6719/#6813,
-          part of leasing epic #6717): live lease terms + created/terminated
-          event log. Sibling of the ownership-contest panels above. */}
-      <SectionAnchor
-        id="lease"
-        title="Subnet lease"
-        subtitle="Live lease status, terms, and created/terminated history."
-        info="GET /api/v1/subnets/{netuid}/lease and /lease/history — live RPC for current lease state (leased null = RPC failure, distinct from not leased) plus the SubnetLeaseCreated/Terminated event log."
-      >
-        <QueryErrorBoundary>
-          <SubnetLeasePanel netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
+      {/* 10b — Subnet lease state + history (#6993, backend #6719/#6813, part
+          of leasing epic #6717): live lease terms + created/terminated event
+          log. Sibling of the ownership-contest panels above. */}
+      <MobileCollapse label="Subnet lease" hint="Live lease status, terms, and history">
+        <SectionAnchor
+          id="lease"
+          title="Subnet lease"
+          subtitle="Live lease status, terms, and created/terminated history."
+          info="GET /api/v1/subnets/{netuid}/lease and /lease/history — live RPC for current lease state (leased null = RPC failure, distinct from not leased) plus the SubnetLeaseCreated/Terminated event log."
+        >
+          <QueryErrorBoundary>
+            <SubnetLeasePanel netuid={netuid} />
+          </QueryErrorBoundary>
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 5b — On-chain network history (#1302): daily neuron/validator counts,
+      {/* 11 — On-chain network history (#1302): daily neuron/validator counts,
           total stake + emission over a selectable window. Optional detail —
           renders an empty-state until chain history accumulates. */}
-      <SectionAnchor
-        id="history"
-        title="Network history"
-        subtitle="Daily on-chain neuron/validator counts, total stake, and emission over time."
-        info="GET /api/v1/subnets/{netuid}/history"
-      >
-        <QueryErrorBoundary>
-          <SubnetHistoryChart netuid={netuid} />
-        </QueryErrorBoundary>
-      </SectionAnchor>
+      <MobileCollapse label="Network history" hint="Daily neuron/validator counts, stake, emission">
+        <SectionAnchor
+          id="history"
+          title="Network history"
+          subtitle="Daily on-chain neuron/validator counts, total stake, and emission over time."
+          info="GET /api/v1/subnets/{netuid}/history"
+        >
+          <QueryErrorBoundary>
+            <SubnetHistoryChart netuid={netuid} />
+          </QueryErrorBoundary>
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 6 — Per-surface reliability (#1114): uptime SLA + latency percentiles. */}
-      <SectionAnchor
-        id="reliability"
-        title="Reliability"
-        subtitle="Per-surface uptime SLA and latency percentiles (p50/p95/p99) over 7d/30d."
-        info="Live from the 2-minute health prober's D1 history: uptime ratio, reconstructed downtime incidents, and latency distribution per operational surface."
-      >
-        <ReliabilityPanel netuid={netuid} />
-      </SectionAnchor>
+      {/* 12 — Per-surface reliability (#1114): uptime SLA + latency percentiles. */}
+      <MobileCollapse label="Reliability" hint="Uptime SLA + latency percentiles">
+        <SectionAnchor
+          id="reliability"
+          title="Reliability"
+          subtitle="Per-surface uptime SLA and latency percentiles (p50/p95/p99) over 7d/30d."
+          info="Live from the 2-minute health prober's D1 history: uptime ratio, reconstructed downtime incidents, and latency distribution per operational surface."
+        >
+          <ReliabilityPanel netuid={netuid} />
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 7 — Cross-network lineage (#1113): renders only when paired. */}
+      {/* 13 — Cross-network lineage (#1113): renders only when paired. */}
       <SubnetLineageSection netuid={netuid} />
 
-      {/* 8 — Evidence & sources — UI's wired EvidencePanel (NOT evidence-clusters).
+      {/* 14 — Evidence & sources — UI's wired EvidencePanel (NOT evidence-clusters).
           Preview embed of the dedicated Evidence tab: same copy, own
           `evidence-preview` id, muted rail marking it as lower-density context. */}
-      <SectionAnchor
-        id="evidence-preview"
-        title="Evidence & sources"
-        subtitle="Primary links and recorded evidence backing this profile."
-        info="GET /api/v1/evidence — source URLs and timestamps for verified registry entries."
-        tone="muted"
-      >
-        <EvidencePanel netuid={netuid} />
-      </SectionAnchor>
+      <MobileCollapse label="Evidence & sources" hint="Primary links and recorded evidence">
+        <SectionAnchor
+          id="evidence-preview"
+          title="Evidence & sources"
+          subtitle="Primary links and recorded evidence backing this profile."
+          info="GET /api/v1/evidence — source URLs and timestamps for verified registry entries."
+          tone="muted"
+        >
+          <EvidencePanel netuid={netuid} />
+        </SectionAnchor>
+      </MobileCollapse>
 
-      {/* 9 — Open incidents (deep-linkable, lower-density context) */}
-      <QueryErrorBoundary>
-        <IncidentTimeline netuid={netuid} />
-      </QueryErrorBoundary>
+      {/* 15 — Open incidents (deep-linkable, lower-density context) */}
+      <MobileCollapse label="Open incidents" hint="Recent probe-derived incident timeline">
+        <div id="incidents">
+          <QueryErrorBoundary>
+            <IncidentTimeline netuid={netuid} />
+          </QueryErrorBoundary>
+        </div>
+      </MobileCollapse>
 
       {(subnetGaps?.missing_kinds.length ?? 0) > 0 ||
       (subnetGaps?.gap_notes.length ?? 0) > 0 ||
@@ -629,7 +689,7 @@ function OverviewSummaryStrip({ netuid }: { netuid: number }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         {overview.status ? (
-          <span className="inline-flex items-center rounded border border-border bg-card px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+          <span className="mg-type-micro inline-flex items-center rounded border border-border bg-card px-2 py-0.5 text-[10px] text-ink-muted">
             {overview.status}
           </span>
         ) : null}
@@ -719,11 +779,9 @@ function IdentityHistoryPanel({ netuid }: { netuid: number }) {
       subtitle="On-chain name, symbol, and metadata changes for this subnet, newest first."
       info="GET /api/v1/subnets/{netuid}/identity-history — each row is an observed on-chain SubnetIdentitiesV3 snapshot, so the timeline shows how the subnet's registered identity changed over time."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-          <IdentityHistoryList netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="xl">
+        <IdentityHistoryList netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -796,11 +854,9 @@ function SurfacesPanel({ netuid }: { netuid: number }) {
       subtitle="Curated public interfaces with provenance."
       info="Only surfaces that have been verified appear here. Unverified leads live in the Candidates tab."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <SurfacesList netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="md">
+        <SurfacesList netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -889,10 +945,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
           {/* SearchInput sets its own aria-label from `placeholder` -- this is a
               visual label only, not `<label htmlFor>`, since SearchInput has no
               `id` prop to associate with. */}
-          <span
-            aria-hidden="true"
-            className="font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-          >
+          <span aria-hidden="true" className="mg-type-micro text-[10px] text-ink-muted">
             Amount ({inputUnit})
           </span>
           <SearchInput
@@ -904,9 +957,7 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            Direction
-          </span>
+          <span className="mg-type-micro text-[10px] text-ink-muted">Direction</span>
           <div
             role="tablist"
             aria-label="Stake or unstake"
@@ -1043,11 +1094,9 @@ function ActivityPanel({ netuid }: { netuid: number }) {
     >
       <ActivityEventRollup netuid={netuid} />
       <StakeFlowScorecard netuid={netuid} />
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <ActivityTableLoader netuid={netuid} kind={ev_kind} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="md">
+        <ActivityTableLoader netuid={netuid} kind={ev_kind} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -1232,8 +1281,8 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
         </span>
         <RealtimeFreshness at={data.meta?.generated_at} />
       </div>
-      <div className="overflow-x-auto rounded border border-border bg-card">
-        <table className="w-full min-w-[720px] text-left text-sm">
+      <ResponsiveTable className="rounded border border-border bg-card" minWidth={720}>
+        <table className="w-full text-left text-sm">
           <thead className="bg-surface/40">
             <tr>
               <th className="px-4 py-2.5 whitespace-nowrap">Block</th>
@@ -1285,7 +1334,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
             ))}
           </tbody>
         </table>
-      </div>
+      </ResponsiveTable>
     </div>
   );
 }
@@ -1303,11 +1352,9 @@ function CallableServicesPanel({ netuid }: { netuid: number }) {
       subtitle="Public-safe, agent-callable interfaces with live health and safely generated snippets."
       info="GET /api/v1/agent-catalog/{netuid}. Only public-safe callable surfaces (subnet-api, OpenAPI, SSE, data-artifact) appear here; health is probe-derived."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <CallableServicesList netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="md">
+        <CallableServicesList netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -1396,7 +1443,7 @@ function AgentReadinessCard({
         {tier ? (
           <span
             className={classNames(
-              "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest",
+              "mg-type-micro inline-flex items-center rounded border px-1.5 py-0.5 text-[10px]",
               tone,
             )}
           >
@@ -1431,7 +1478,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
   return (
     <li className="rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent-text">
+        <span className="mg-type-micro inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 text-[10px] text-accent-text">
           {service.kind ?? "service"}
         </span>
         <span className="font-medium text-ink-strong truncate">
@@ -1529,11 +1576,9 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
           info="GET /api/v1/subnets/{netuid}/neurons/{uid} and /neurons/{uid}/history"
           tone="accent"
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-              <NeuronDetailCard netuid={netuid} uid={uid} onClose={() => select(null)} />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel height="lg">
+            <NeuronDetailCard netuid={netuid} uid={uid} onClose={() => select(null)} />
+          </AsyncPanel>
           <div className="mt-4">
             <QueryErrorBoundary>
               <NeuronHistoryChart netuid={netuid} uid={uid} />
@@ -1548,11 +1593,9 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
         subtitle="Live neuron snapshot — stake, emission, rank, trust, consensus, and validator permits."
         info="GET /api/v1/subnets/{netuid}/metagraph — the full neuron set from the latest metagraph snapshot. Select a UID to drill into its snapshot + history."
       >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-            <MetagraphTableLoader netuid={netuid} onSelect={(u) => select(u)} selectedUid={uid} />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel height="xl">
+          <MetagraphTableLoader netuid={netuid} onSelect={(u) => select(u)} selectedUid={uid} />
+        </AsyncPanel>
       </SectionAnchor>
 
       <SectionAnchor
@@ -1573,11 +1616,9 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
         subtitle="Per-UID emission yield (emission ÷ stake return rate): distribution summary, validator/miner split, and the ranked neuron leaderboard with daily drift."
         info="GET /api/v1/subnets/{netuid}/yield and /yield/history — the return-rate twin of concentration, computed per-UID from the live neuron snapshot."
       >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-            <YieldLoader netuid={netuid} />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel height="lg">
+          <YieldLoader netuid={netuid} />
+        </AsyncPanel>
       </SectionAnchor>
 
       <SectionAnchor
@@ -1587,11 +1628,9 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
         info="GET /api/v1/subnets/{netuid}/turnover — diffs the window's start/end metagraph snapshots into a validator-set + registration-churn scorecard."
         tone="muted"
       >
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-            <TurnoverLoader netuid={netuid} />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel height="lg">
+          <TurnoverLoader netuid={netuid} />
+        </AsyncPanel>
       </SectionAnchor>
     </div>
   );
@@ -1622,9 +1661,7 @@ function WeightsSummaryLoader({ netuid }: { netuid: number }) {
     <div className="mb-4 grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
       {cells.map((c) => (
         <div key={c.label} className="px-4 py-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            {c.label}
-          </div>
+          <div className="mg-type-micro text-[10px] text-ink-muted">{c.label}</div>
           <div className="mt-0.5 font-mono text-lg tabular-nums text-ink-strong">{c.value}</div>
         </div>
       ))}
@@ -1662,24 +1699,16 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
             {formatNumber(d.setter_count)} validators · {windowLabel}
           </span>
         </div>
-        {/* overflow-x-auto keeps the 4-column table inside the card on narrow
-            viewports (#3942) — same inner scroll shell NeuronTable and ListShell use. */}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[280px] text-sm">
+        {/* ResponsiveTable: horizontal scroll + edge-fade shadows on narrow
+            viewports (#3942), same treatment as list-page tables. */}
+        <ResponsiveTable minWidth={280}>
+          <table className="w-full text-sm">
             <thead className="bg-surface/50 text-ink-muted">
               <tr>
-                <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
-                  #
-                </th>
-                <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
-                  Validator
-                </th>
-                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest">
-                  Weight sets
-                </th>
-                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest">
-                  Share
-                </th>
+                <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">#</th>
+                <th className="mg-type-micro px-3 py-2.5 text-left text-[10px]">Validator</th>
+                <th className="mg-type-micro px-3 py-2.5 text-right text-[10px]">Weight sets</th>
+                <th className="mg-type-micro px-3 py-2.5 text-right text-[10px]">Share</th>
               </tr>
             </thead>
             <tbody>
@@ -1701,7 +1730,7 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </div>
     </div>
   );
@@ -1719,31 +1748,25 @@ function ValidatorsPanel({ netuid }: { netuid: number }) {
       info="GET /api/v1/subnets/{netuid}/validators — the permitted, stake-ranked validator set from the latest snapshot. Select a UID to open it in the Metagraph tab."
     >
       <ValidatorGuide />
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-          <ValidatorsTableLoader
-            netuid={netuid}
-            selectedUid={uid}
-            onSelect={(u) =>
-              navigate({
-                to: ".",
-                search: (prev: SearchParams) => ({ ...prev, tab: "metagraph", uid: u }),
-                replace: true,
-              })
-            }
-          />
-        </Suspense>
-      </QueryErrorBoundary>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-          <WeightsSummaryLoader netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-          <WeightSettersLoader netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="xl">
+        <ValidatorsTableLoader
+          netuid={netuid}
+          selectedUid={uid}
+          onSelect={(u) =>
+            navigate({
+              to: ".",
+              search: (prev: SearchParams) => ({ ...prev, tab: "metagraph", uid: u }),
+              replace: true,
+            })
+          }
+        />
+      </AsyncPanel>
+      <AsyncPanel height="sm">
+        <WeightsSummaryLoader netuid={netuid} />
+      </AsyncPanel>
+      <AsyncPanel height="lg">
+        <WeightSettersLoader netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -1756,11 +1779,9 @@ function EndpointsPanel({ netuid }: { netuid: number }) {
       subtitle="Probe-derived health, latency, and freshness."
       info="Each endpoint is probed periodically. Health and latency reflect the most recent probe."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-          <EndpointsTableLoader netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="md">
+        <EndpointsTableLoader netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -1798,11 +1819,9 @@ function CandidatesPanel({ netuid }: { netuid: number }) {
           corrections via the public repo.
         </span>
       </div>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-          <CandidatesList netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="sm">
+        <CandidatesList netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -1819,11 +1838,9 @@ function GapsPanel({ netuid, compact }: { netuid: number; compact?: boolean }) {
       subtitle="Missing resources, profile incompleteness, and curation notes."
       info="GET /api/v1/subnets/{netuid}/gaps"
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-          <GapsList netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="sm">
+        <GapsList netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -1918,11 +1935,9 @@ function SchemasPanel({ netuid }: { netuid: number }) {
       subtitle="OpenAPI/JSON Schema snapshots joined from /api/v1/schemas, with hash diffs."
       info="Drift means the latest schema hash differs from the previous one — review for breaking changes."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-          <SchemaDriftSummary netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="sm">
+        <SchemaDriftSummary netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -2121,11 +2136,9 @@ function HyperparametersPanel({ netuid }: { netuid: number }) {
       subtitle="Consensus, economic, and governance settings for this subnet."
       info="GET /api/v1/subnets/{netuid}/hyperparameters — refreshed daily from the subnet_hyperparams D1 tier."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-          <HyperparametersTable netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="xl">
+        <HyperparametersTable netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }
@@ -2170,9 +2183,7 @@ function HyperparamGroupsTable({ h }: { h: SubnetHyperparameters }) {
           <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
             {group.fields.map((field) => (
               <div key={field.key} className="px-4 py-2.5">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  {field.label}
-                </div>
+                <div className="mg-type-micro text-[10px] text-ink-muted">{field.label}</div>
                 <div className="mt-1 font-mono text-[13px] text-ink-strong">{field.format(h)}</div>
               </div>
             ))}
@@ -2193,11 +2204,9 @@ function HyperparamsHistoryPanel({ netuid }: { netuid: number }) {
       subtitle="Every recorded change to this subnet's consensus, economic, and governance settings, newest first."
       info="GET /api/v1/subnets/{netuid}/hyperparameters/history — an append-only timeline of full hyperparameter snapshots, one entry per detected change. Forward-only: rows only exist from when this tier started tracking, so an established subnet may show fewer entries than its full history."
     >
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-          <HyperparamsHistoryList netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel height="xl">
+        <HyperparamsHistoryList netuid={netuid} />
+      </AsyncPanel>
     </SectionAnchor>
   );
 }

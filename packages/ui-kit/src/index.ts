@@ -52,6 +52,10 @@ export {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+export {
+  SegmentedToggle,
+  type SegmentedToggleOption,
+} from "@/components/ui/segmented-toggle";
 export { Toaster } from "@/components/ui/sonner";
 export {
   Tooltip,
