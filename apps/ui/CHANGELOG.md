@@ -9,6 +9,35 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.10.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.9.0...ui-v0.10.0) (2026-07-23)
+
+
+### Features
+
+* **ui:** account page delegation graph + entity labels ([#7661](https://github.com/JSONbored/metagraphed/issues/7661)) ([2ca0439](https://github.com/JSONbored/metagraphed/commit/2ca0439ba67678415011eab13c3bba8ab1d357cc))
+* **ui:** add blocks/chain-explorer enrichment components (unwired) ([#7772](https://github.com/JSONbored/metagraphed/issues/7772)) ([7731da7](https://github.com/JSONbored/metagraphed/commit/7731da77921cc69f0f417aad860062291dfcce92))
+* **ui:** add Bone & Ink ESLint design-system guardrails ([#7756](https://github.com/JSONbored/metagraphed/issues/7756)) ([d030e49](https://github.com/JSONbored/metagraphed/commit/d030e49ebbab1846bef5aa004395bffd9b2854e9))
+* **ui:** add PostHog error tracking and source-map upload ([#7785](https://github.com/JSONbored/metagraphed/issues/7785)) ([de4a1d0](https://github.com/JSONbored/metagraphed/commit/de4a1d04263b835502b1ff4c8cbece4da25bcef0))
+* **ui:** add PostHog session replay with masking and sampling ([#7787](https://github.com/JSONbored/metagraphed/issues/7787)) ([be35398](https://github.com/JSONbored/metagraphed/commit/be353986981418267896f65e95bdaa09f8ab4027))
+* **ui:** add PostHog web analytics, first-party proxied, alongside Umami ([#7781](https://github.com/JSONbored/metagraphed/issues/7781)) ([0d5c55f](https://github.com/JSONbored/metagraphed/commit/0d5c55f6a2edfa12f14841d15110f825554031a1))
+* **ui:** domains/capability-tag rollup overview page ([#7478](https://github.com/JSONbored/metagraphed/issues/7478)) ([a79de40](https://github.com/JSONbored/metagraphed/commit/a79de405f09741801b0a7370a58345daa1ec4982)), closes [#6996](https://github.com/JSONbored/metagraphed/issues/6996)
+* **ui:** merge Lovable's alpha-price fields into joinEconomics ([#7771](https://github.com/JSONbored/metagraphed/issues/7771)) ([1c1b0c0](https://github.com/JSONbored/metagraphed/commit/1c1b0c0d1e5fe2c48a0afa43413c7798d6c51804)), closes [#7745](https://github.com/JSONbored/metagraphed/issues/7745)
+* **ui:** port Bone & Ink shared primitives layer from Lovable sync ([#7755](https://github.com/JSONbored/metagraphed/issues/7755)) ([6522ad1](https://github.com/JSONbored/metagraphed/commit/6522ad1e4d9a720682cbb026681777427c1a6f4e))
+* **ui:** port homepage, nav underline, and blank-screen/SSR hardening ([#7770](https://github.com/JSONbored/metagraphed/issues/7770)) ([d021e8d](https://github.com/JSONbored/metagraphed/commit/d021e8d398ad9b801269ce2a763d12960d4ea52b))
+* **ui:** registry leaderboards on /leaderboards ([#7462](https://github.com/JSONbored/metagraphed/issues/7462)) ([27eab30](https://github.com/JSONbored/metagraphed/commit/27eab30e20c5674201f766e397192d0348fab1a3)), closes [#6995](https://github.com/JSONbored/metagraphed/issues/6995)
+* **ui:** subnet detail activity tab — event-summary + axon-removals rollup ([#7501](https://github.com/JSONbored/metagraphed/issues/7501)) ([ebe987b](https://github.com/JSONbored/metagraphed/commit/ebe987be31f2de34d67266206058beab93336dd9)), closes [#7000](https://github.com/JSONbored/metagraphed/issues/7000)
+* **ui:** wire blocks/ enrichment components into blocks routes ([#7775](https://github.com/JSONbored/metagraphed/issues/7775)) ([43f52cf](https://github.com/JSONbored/metagraphed/commit/43f52cfc8f493ebc320220da888e649aeb6a3640))
+
+
+### Bug Fixes
+
+* **ui:** resolve hydration mismatches on /subnets/:netuid ([#7782](https://github.com/JSONbored/metagraphed/issues/7782)) ([ec31026](https://github.com/JSONbored/metagraphed/commit/ec31026e831e0108fa7d97c81186c86a08068b42))
+
+
+### Documentation
+
+* **ui:** document PostHog/Sentry build variables in DEPLOY.md ([#7790](https://github.com/JSONbored/metagraphed/issues/7790)) ([452d9c5](https://github.com/JSONbored/metagraphed/commit/452d9c59811ba0fc96f4df0fe81a5a026f9da025))
+
 ## [0.9.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.8.0...ui-v0.9.0) (2026-07-21)
 
 
