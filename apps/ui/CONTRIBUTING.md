@@ -54,8 +54,22 @@ budget — keep new dependencies/imports lean.
 - **Data fetching** goes through the query helpers in `src/lib/metagraphed/queries.ts`
   and `useSuspenseQuery` / error boundaries — don't fetch ad hoc in components.
 - **Components** live in `src/components/metagraphed/`; route trees in `src/routes/`.
-- Reuse existing design tokens (`src/styles.css`) and shared components instead of
-  inventing new one-off styles.
+- Reuse existing design tokens (`src/styles.css`, `packages/ui-kit/src/styles.css`) and
+  shared components instead of inventing new one-off styles. The "Bone & Ink" rules,
+  mechanically flagged (as warnings — see `eslint.config.js`) by `no-restricted-syntax`:
+  - Semantic tokens only — `bg-paper`, `text-ink-strong`, `bg-health-ok`, `text-accent-text`,
+    `border-border`, etc. Never a raw Tailwind palette color (`bg-emerald-500`,
+    `text-gray-600`) and never a hex/rgb literal in code. Author new colors in OKLCH in
+    `packages/ui-kit/src/styles.css`.
+  - Type weights capped at 500/600 — `font-bold`, `font-extrabold`, `font-black` are banned.
+  - Sticky offsets use `var(--mg-sticky-offset)`, never a hardcoded `top-14` / `top-[3.5rem]`.
+  - Spacing/type scale: prefer the `--mg-space-*` / `--mg-type-*` tokens (see
+    `src/styles.css`) over arbitrary values like `text-[13px]` or `p-[7px]`.
+  - Card/panel shells: use `<Panel>` from `src/components/metagraphed/primitives` rather
+    than hand-rolling `rounded border bg-card`.
+  - External links: use `<ExternalLink>` from `@jsonbored/ui-kit`, not a raw
+    `<a target="_blank">` — it sets `rel=noreferrer` and filters unsafe/private URLs.
+  - See `docs/ssr-safety.md` for the hydration-safety rules (also partly ESLint-enforced).
 - Keep diffs focused. Don't reformat or refactor unrelated files in a feature PR.
 
 ## Lovable-managed surface
