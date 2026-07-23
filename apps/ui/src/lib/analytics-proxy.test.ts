@@ -39,10 +39,11 @@ describe("forwardToAnalyticsHost", () => {
       return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof fetch;
 
+    const body = JSON.stringify({ event: "$pageview" });
     const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/e/?ip=0`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ event: "$pageview" }),
+      headers: { "content-type": "application/json", "content-length": String(body.length) },
+      body,
     });
     await forwardToAnalyticsHost(request, "/e/?ip=0");
 
@@ -61,6 +62,7 @@ describe("forwardToAnalyticsHost", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "content-length": "2",
         "cf-connecting-ip": "203.0.113.7",
         cookie: "session=super-secret",
       },
@@ -79,6 +81,7 @@ describe("forwardToAnalyticsHost", () => {
 
     const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/e/`, {
       method: "POST",
+      headers: { "content-length": "2" },
       body: "{}",
     });
     const response = await forwardToAnalyticsHost(request, "/e/");
@@ -95,12 +98,75 @@ describe("forwardToAnalyticsHost", () => {
       return new Response(null, { status: 200 });
     }) as typeof fetch;
 
+    const body = '{"event":"$pageview"}';
     const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/e/`, {
       method: "POST",
-      body: '{"event":"$pageview"}',
+      headers: { "content-length": String(body.length) },
+      body,
     });
     await forwardToAnalyticsHost(request, "/e/");
     expect(bodyType).toBe("object");
+  });
+
+  it("rejects a POST with no content-length header (411), never buffering or forwarding it", async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/e/`, {
+      method: "POST",
+      body: "{}",
+    });
+    // jsdom/undici's Request doesn't auto-populate content-length for a
+    // string body the way a real browser's wire-level HTTP request would
+    // (verified against Node's native Request) -- this test exploits that
+    // exact gap to exercise the "missing/unparseable" branch.
+    const response = await forwardToAnalyticsHost(request, "/e/");
+
+    expect(response.status).toBe(411);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects a POST with a non-numeric content-length header (411)", async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/e/`, {
+      method: "POST",
+      headers: { "content-length": "not-a-number" },
+      body: "{}",
+    });
+    const response = await forwardToAnalyticsHost(request, "/e/");
+
+    expect(response.status).toBe(411);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects a POST whose content-length exceeds the ingest cap (413), never buffering or forwarding it", async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/e/`, {
+      method: "POST",
+      headers: { "content-length": String(64 * 1024 + 1) },
+      body: "{}",
+    });
+    const response = await forwardToAnalyticsHost(request, "/e/");
+
+    expect(response.status).toBe(413);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("accepts a POST whose content-length is exactly at the ingest cap", async () => {
+    globalThis.fetch = vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch;
+
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/e/`, {
+      method: "POST",
+      headers: { "content-length": String(64 * 1024) },
+      body: "{}",
+    });
+    const response = await forwardToAnalyticsHost(request, "/e/");
+
+    expect(response.status).toBe(200);
   });
 
   it("sends no body for GET/HEAD", async () => {
@@ -221,6 +287,7 @@ describe("handleAnalyticsProxy routing", () => {
 
     const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/e/`, {
       method: "POST",
+      headers: { "content-length": "2" },
       body: "{}",
     });
     await handleAnalyticsProxy(request, fakeCtx());

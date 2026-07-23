@@ -867,9 +867,17 @@ jobs:
       # Start's per-route preload manifest
       # (dist/server/_tanstack-start-manifest_v-*.mjs): each route's
       # `preloads` is its static module graph, so the cold first-load set is
-      # __root__ (the entry) ∪ the "/" route's preloads. Budget is ~28% above
-      # the current ~233 KB gzipped baseline; raise it deliberately (in the
-      # same PR) when a real feature legitimately grows the initial load.
+      # __root__ (the entry) ∪ the "/" route's preloads. Raised deliberately
+      # here (metagraphed#7760/#7759, 300 -> 320) for PostHog's client-side
+      # analytics + error-tracking init wiring in src/lib/analytics.ts --
+      # posthog-js itself stays OUT of this measurement (it's loaded via a
+      # dynamic import(), confirmed via a real local build: it lands in its
+      # own separate chunk, never in __root__/"/"'s static preloads), but the
+      # thin always-loaded wrapper (init/capture/captureException, wired into
+      # routes/__root.tsx) pushed the real baseline from ~303 KB to ~305 KB
+      # gzipped. Budget keeps a deliberate margin above that new baseline;
+      # raise it again the same way when a real feature legitimately grows
+      # the initial load further.
       #
       # dist/, not Nitro's library-default .output/ -- this project's
       # vite.config.ts (@lovable.dev/vite-tanstack-config) is customized to
@@ -880,7 +888,7 @@ jobs:
         if: env.RUN_UI_VALIDATION == 'true'
         working-directory: apps/ui
         env:
-          BUDGET_KB: 300
+          BUDGET_KB: 320
         run: |
           node --input-type=module <<'NODE'
           import { readdirSync, readFileSync } from "node:fs";
