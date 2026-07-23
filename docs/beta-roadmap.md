@@ -70,7 +70,7 @@ subnets and demonstrate the product to the broader ecosystem.
    adapters; it publishes whatever is committed, so a guard there (or a validator
    that rejects an all-`html-fallback` adapter) is the optional belt-and-suspenders.
    _Update:_ that validator now exists — `npm run validate:adapters`
-   (`scripts/validate-adapters.mjs`) flags broken-auth / all-`html-fallback`
+   (`scripts/validate-adapters.ts`) flags broken-auth / all-`html-fallback`
    adapters; it warns on ordinary PRs and fails closed under
    `METAGRAPH_PRODUCTION_BUILD` / `METAGRAPH_REQUIRE_ADAPTER_AUTH`, and is wired
    into the `publish-cloudflare.yml` refresh job and `sync-subnets.yml` so degraded

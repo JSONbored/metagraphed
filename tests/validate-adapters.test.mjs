@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { inspectAdapter } from "../scripts/validate-adapters.mjs";
+import { inspectAdapter } from "../scripts/validate-adapters.ts";
 
 describe("validate-adapters inspectAdapter", () => {
   test("reports no issues for a fully captured adapter", () => {

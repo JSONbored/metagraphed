@@ -15,19 +15,22 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+type Row = Record<string, unknown>;
+
 const ADAPTER_DIR = "registry/adapters/latest";
 
 // Returns a list of human-readable degradation issues for one adapter snapshot
 // (empty when the adapter is healthy). Exported for unit testing.
-export function inspectAdapter(adapter) {
-  const issues = [];
-  const dimensions =
+export function inspectAdapter(adapter: Row): string[] {
+  const issues: string[] = [];
+  const dimensions: Row =
     adapter && adapter.dimensions && typeof adapter.dimensions === "object"
-      ? adapter.dimensions
+      ? (adapter.dimensions as Row)
       : {};
 
-  for (const [name, dim] of Object.entries(dimensions)) {
-    if (!dim || typeof dim !== "object") continue;
+  for (const [name, dimValue] of Object.entries(dimensions)) {
+    if (!dimValue || typeof dimValue !== "object") continue;
+    const dim = dimValue as Row;
 
     // Broken GitHub auth surfaced on the dimension.
     if (
@@ -62,12 +65,12 @@ export function inspectAdapter(adapter) {
   return issues;
 }
 
-function main() {
+function main(): number {
   const strict =
     process.env.METAGRAPH_REQUIRE_ADAPTER_AUTH === "1" ||
     process.env.METAGRAPH_PRODUCTION_BUILD === "1";
 
-  let files;
+  let files: string[];
   try {
     files = readdirSync(ADAPTER_DIR).filter((f) => f.endsWith(".json"));
   } catch {
@@ -77,14 +80,17 @@ function main() {
     return 0;
   }
 
-  const degraded = [];
+  const degraded: { slug: string; issues: string[] }[] = [];
   for (const file of files) {
     const slug = file.replace(/\.json$/, "");
-    let adapter;
+    let adapter: Row;
     try {
       adapter = JSON.parse(readFileSync(join(ADAPTER_DIR, file), "utf8"));
     } catch (error) {
-      degraded.push({ slug, issues: [`unreadable: ${error.message}`] });
+      degraded.push({
+        slug,
+        issues: [`unreadable: ${(error as Error).message}`],
+      });
       continue;
     }
     const issues = inspectAdapter(adapter);

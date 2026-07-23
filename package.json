@@ -69,7 +69,7 @@
     "validate:docs": "node scripts/validate-docs.mjs",
     "validate:readme-catalog": "node scripts/generate-registry-readme-section.ts --check",
     "readme:catalog": "node scripts/generate-registry-readme-section.ts",
-    "validate:adapters": "node scripts/validate-adapters.mjs",
+    "validate:adapters": "node scripts/validate-adapters.ts",
     "assert:probe-health": "node scripts/assert-published-probe-health.ts",
     "validate:intake": "node scripts/validate-intake.mjs",
     "validate:private-boundary": "node scripts/validate-private-boundary.ts",
