@@ -8,7 +8,7 @@ import {
   contentPatterns,
   isAllowedContentMention,
   isBinaryOrGenerated,
-} from "./private-boundary-patterns.mjs";
+} from "./private-boundary-patterns.ts";
 
 const trackedFiles = execFileSync("git", ["ls-files"], {
   cwd: repoRoot,

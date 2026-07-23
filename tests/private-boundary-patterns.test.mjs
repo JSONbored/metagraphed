@@ -1,6 +1,6 @@
 // Unit tests for the leak-detection patterns behind the private-boundary CI
 // gate (#7236) — extracted from scripts/validate-private-boundary.mjs into
-// scripts/private-boundary-patterns.mjs so the regexes, the allowlist carve-out,
+// scripts/private-boundary-patterns.ts so the regexes, the allowlist carve-out,
 // and the binary/generated skip are verified directly rather than exercised for
 // the first time against whatever a future PR happens to contain. Each content
 // regex gets a matching case AND a clearly-adjacent non-matching case, since a
@@ -13,7 +13,7 @@ import {
   isAllowedContentMention,
   isBinaryOrGenerated,
   pathPatterns,
-} from "../scripts/private-boundary-patterns.mjs";
+} from "../scripts/private-boundary-patterns.ts";
 
 const byName = (patterns, name) => {
   const found = patterns.find((p) => p.name === name);

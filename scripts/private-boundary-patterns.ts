@@ -6,7 +6,7 @@
 // imports these — the walk logic stays there; only the patterns/decision live
 // here, so the gate's behavior is unchanged.
 
-export const pathPatterns = [
+export const pathPatterns: { name: string; regex: RegExp }[] = [
   {
     name: "private submission-gate implementation path",
     regex:
@@ -14,7 +14,7 @@ export const pathPatterns = [
   },
 ];
 
-export const contentPatterns = [
+export const contentPatterns: { name: string; regex: RegExp }[] = [
   {
     name: "real Discord webhook URL",
     regex:
@@ -37,7 +37,7 @@ export const allowedContentMentions = new Set([
   // self-match on the non-Discord patterns (a real Discord webhook URL is still
   // never exempted, per isAllowedContentMention).
   "scripts/validate-private-boundary.mjs",
-  "scripts/private-boundary-patterns.mjs",
+  "scripts/private-boundary-patterns.ts",
   "tests/private-boundary-patterns.test.mjs",
 ]);
 
@@ -46,14 +46,17 @@ export const allowedContentMentions = new Set([
 // allowlist (CONTRIBUTING.md, the validator itself — files that legitimately
 // describe the boundary). A real Discord webhook URL is NEVER exempted: that's a
 // live secret regardless of which file it appears in.
-export function isAllowedContentMention(file, patternName) {
+export function isAllowedContentMention(
+  file: string,
+  patternName: string,
+): boolean {
   return (
     patternName !== "real Discord webhook URL" &&
     allowedContentMentions.has(file)
   );
 }
 
-export function isBinaryOrGenerated(file) {
+export function isBinaryOrGenerated(file: string): boolean {
   return (
     file.endsWith(".png") ||
     file.endsWith(".jpg") ||
