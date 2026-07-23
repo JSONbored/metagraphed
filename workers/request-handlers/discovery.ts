@@ -1,4 +1,4 @@
-import { CACHE_SECONDS, PRIMARY_DOMAIN } from "../../src/contracts.mjs";
+import { CACHE_SECONDS, PRIMARY_DOMAIN } from "../../src/contracts.ts";
 import { errorResponse, ifNoneMatchSatisfied, weakEtag } from "../http.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import { contractVersion, publishedAt } from "../responses.ts";

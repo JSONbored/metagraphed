@@ -4,7 +4,7 @@
 
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
-import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
+import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 
 const PROFILES_SORT_FIELDS = API_QUERY_COLLECTIONS.profiles.sort_fields;
 const NULLABLE_STRING = { type: ["string", "null"] };

@@ -3,7 +3,7 @@
 // (issue #510, de-monolith) as a leaf module: it imports only contract/config
 // constants and nothing from api.mjs, so every request-handler module can share
 // these without an import cycle.
-import { CACHE_SECONDS, CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CACHE_SECONDS, CONTRACT_VERSION } from "../src/contracts.ts";
 import { JSON_CONTENT_TYPE } from "./config.ts";
 
 export type CacheProfile = "short" | "standard" | "static";

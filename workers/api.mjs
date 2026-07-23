@@ -5,7 +5,7 @@ import {
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
   compileRoutePattern,
-} from "../src/contracts.mjs";
+} from "../src/contracts.ts";
 import {
   isUsageTelemetryConfigured,
   recordExceptionEvent,

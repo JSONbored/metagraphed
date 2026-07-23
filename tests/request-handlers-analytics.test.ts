@@ -34,7 +34,7 @@ import { CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } from "../src/chain-weight-setters.
 import { CHAIN_SERVING_LIMIT_DEFAULT } from "../src/chain-serving.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,

@@ -4,7 +4,7 @@
 
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
-import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
+import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 import { resolveLiveEconomics } from "./health-serving.ts";
 
 const ECONOMICS_SORT_FIELDS = API_QUERY_COLLECTIONS.economics.sort_fields;

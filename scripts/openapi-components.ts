@@ -1,4 +1,4 @@
-import { buildOpenApiArtifact } from "../src/contracts.mjs";
+import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { buildApiComponentBundle } from "./bundle-schemas.ts";
 import { buildTimestamp } from "./lib.ts";
 

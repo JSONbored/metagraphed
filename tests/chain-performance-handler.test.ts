@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
-import { buildOpenApiArtifact } from "../src/contracts.mjs";
+import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import { handleChainPerformance } from "../workers/request-handlers/entities.mjs";
 import type { Row } from "./row-type.ts";

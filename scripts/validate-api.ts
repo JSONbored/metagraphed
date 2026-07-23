@@ -6,7 +6,7 @@ import {
   API_ROUTES,
   CONTRACT_VERSION,
   compileRoutePattern,
-} from "../src/contracts.mjs";
+} from "../src/contracts.ts";
 import { handleRequest } from "../workers/api.mjs";
 import {
   createLocalArtifactEnv,

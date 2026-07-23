@@ -24,7 +24,7 @@ import {
   stableStringify,
 } from "./lib.ts";
 import { loadAlphaPriceHistoryByNetuid } from "./lib/load-alpha-price-history.ts";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import { shouldPublishEconomics } from "./economics-floor.ts";
 import { initSentry, endSessionAndFlush } from "./observability.ts";

@@ -4,7 +4,7 @@ import {
   API_ROUTES,
   CONTRACT_VERSION,
   PRIMARY_DOMAIN,
-} from "../src/contracts.mjs";
+} from "../src/contracts.ts";
 import { readJson, repoRoot } from "./lib.ts";
 
 // The OpenAPI document + api-index are generated JSON, deep-traversed only to

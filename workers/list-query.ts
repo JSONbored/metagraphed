@@ -7,7 +7,7 @@
 import {
   API_QUERY_COLLECTIONS,
   SEARCH_TEXT_MAX_LENGTH,
-} from "../src/contracts.mjs";
+} from "../src/contracts.ts";
 import { linkHeader } from "./http.ts";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.ts";
 

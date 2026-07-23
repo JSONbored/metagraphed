@@ -72,7 +72,7 @@ import {
   listSubscribableMcpResourceClasses,
   parseSubnetStatusResourceUri,
 } from "./subnet-status-subscribe.ts";
-import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.mjs";
+import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.ts";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
   GET_ECONOMICS_MCP_TOOL,

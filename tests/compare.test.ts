@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import addFormatsPlugin from "ajv-formats";
 import { composeCompareData, handleRequest } from "../workers/api.mjs";
-import { buildOpenApiArtifact } from "../src/contracts.mjs";
+import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import { Ajv2020 } from "ajv/dist/2020.js";

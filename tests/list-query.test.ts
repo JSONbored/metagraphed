@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
+import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
 import {
   applyQueryFilters,
   canonicalListSearch,

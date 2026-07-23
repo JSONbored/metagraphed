@@ -1,5 +1,5 @@
 import path from "node:path";
-import { QUERY_ENUMS } from "../src/contracts.mjs";
+import { QUERY_ENUMS } from "../src/contracts.ts";
 import { readJson, repoRoot } from "./lib.ts";
 
 const schemaBundle = await readJson(

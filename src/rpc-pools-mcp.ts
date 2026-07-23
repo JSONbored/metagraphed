@@ -9,7 +9,7 @@
 
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
-import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
+import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
 import { overlayRpcPoolEligibility } from "./health-serving.ts";
 

@@ -15,7 +15,7 @@
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import {
   artifactOutputPath,
   backfilledIdentityUrl,

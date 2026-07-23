@@ -1,5 +1,5 @@
 import path from "node:path";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import {

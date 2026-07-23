@@ -4,7 +4,7 @@
 
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
-import { API_QUERY_COLLECTIONS } from "./contracts.mjs";
+import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 
 export const SOURCE_SNAPSHOTS_ARTIFACT = "/metagraph/source-snapshots.json";
 

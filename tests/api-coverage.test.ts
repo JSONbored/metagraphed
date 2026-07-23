@@ -11,7 +11,7 @@ import {
 } from "../workers/api.mjs";
 import workerDefault from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
-import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
+import { API_ROUTES, compileRoutePattern } from "../src/contracts.ts";
 import * as workerConfig from "../workers/config.ts";
 import { type AnyFn, type Row } from "./row-type.ts";
 import type { RpcEndpoint } from "../workers/request-handlers/rpc-proxy.ts";
@@ -1599,7 +1599,7 @@ describe("registry list CSV export", () => {
         (param: Row) => param.name === "format",
       );
       assert.ok(formatParam, `${id} should expose a format parameter`);
-      assert.deepEqual(formatParam.schema.enum, ["json", "csv"]);
+      assert.deepEqual((formatParam.schema as Row).enum, ["json", "csv"]);
     }
   });
 

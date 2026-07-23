@@ -15,7 +15,7 @@ import {
   buildContractsArtifact,
   buildOpenApiArtifact,
   compileRoutePattern,
-} from "../src/contracts.mjs";
+} from "../src/contracts.ts";
 import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.ts";
 import { evaluateArtifactBudgets } from "../scripts/artifact-budgets.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
@@ -73,8 +73,8 @@ describe("artifact lifecycle status (#6358)", () => {
       "health-summary",
     ]);
     for (const entry of retired) {
-      assert.equal(entry.retirement.http_status, 410);
-      assert.match(entry.retirement.message, /retired/i);
+      assert.equal(entry.retirement!.http_status, 410);
+      assert.match(entry.retirement!.message, /retired/i);
       // The description tells a human reader too, not just the machine field.
       assert.match(entry.description, /retired/i);
     }
@@ -206,7 +206,10 @@ describe("public contract registry", () => {
   test("builds contracts, API index, and OpenAPI from one route table", async () => {
     const generatedAt = "1970-01-01T00:00:00.000Z";
     const contracts = buildContractsArtifact(generatedAt) as Row;
-    const apiIndex = buildApiIndexArtifact(generatedAt, contracts) as Row;
+    const apiIndex = buildApiIndexArtifact(
+      generatedAt,
+      contracts as unknown as ReturnType<typeof buildContractsArtifact>,
+    ) as Row;
     const openapi = buildOpenApiArtifact(
       generatedAt,
       await loadOpenApiComponentSchemas(generatedAt),

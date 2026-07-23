@@ -2,7 +2,7 @@ import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { PUBLIC_ARTIFACTS } from "../src/contracts.mjs";
+import { PUBLIC_ARTIFACTS } from "../src/contracts.ts";
 import {
   listJsonFiles,
   listJsonFilesRecursive,

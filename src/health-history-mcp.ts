@@ -4,7 +4,7 @@
 
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
-import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
+import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 
 const HEALTH_SURFACE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["health-surfaces"].sort_fields;

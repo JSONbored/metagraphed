@@ -3,7 +3,7 @@
 // Extracted from workers/api.mjs (issue #510, de-monolith). Depends only on the
 // http + storage leaf modules and the contract version; it calls nothing back
 // into api.mjs, so there is no import cycle.
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.ts";
 import type { CacheProfile } from "./http.ts";
 import { latestPointer } from "./storage.ts";

@@ -20,7 +20,7 @@ import {
   parseUptimeWindow,
   profilesProjectionFromRows,
 } from "../src/analytics-live.ts";
-import { buildOpenApiArtifact } from "../src/contracts.mjs";
+import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import type { Row } from "./row-type.ts";
 

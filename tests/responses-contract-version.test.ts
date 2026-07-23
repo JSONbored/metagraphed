@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { contractStaleness, contractVersion } from "../workers/responses.ts";
 import { mockEnv } from "./row-type.ts";
 

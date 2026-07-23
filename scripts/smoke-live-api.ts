@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { API_ROUTES } from "../src/contracts.mjs";
+import { API_ROUTES } from "../src/contracts.ts";
 import { MCP_TOOLS } from "../src/mcp-server.mjs";
 
 // Live production response bodies (API envelopes, MCP JSON-RPC results) --

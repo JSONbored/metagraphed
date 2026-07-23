@@ -15,7 +15,7 @@ import {
   buildContractsArtifact,
   buildOpenApiArtifact,
   compileRoutePattern,
-} from "../src/contracts.mjs";
+} from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import type { Row } from "./row-type.ts";
 
@@ -45,7 +45,7 @@ describe("contracts — route ⇄ artifact mapping invariants", () => {
       assert.match(dataRef, /^#\/components\/schemas\/\w+$/);
       const componentName = dataRef.split("/").pop();
       assert.ok(
-        openapi.components.schemas[componentName],
+        (openapi.components.schemas as Row)[componentName],
         `route ${route.id} data schema ${componentName} is not a defined component`,
       );
     }

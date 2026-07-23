@@ -79,7 +79,7 @@ import {
   PRIMARY_DOMAIN,
   buildApiIndexArtifact,
   buildContractsArtifact,
-} from "../src/contracts.mjs";
+} from "../src/contracts.ts";
 import {
   MCP_SERVER_INFO,
   MCP_REGISTRY_META,

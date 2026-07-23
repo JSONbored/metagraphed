@@ -4,7 +4,7 @@
 
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
-import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.mjs";
+import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 
 export const PROVIDERS_ARTIFACT = "/metagraph/providers.json";
 

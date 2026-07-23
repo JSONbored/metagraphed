@@ -13,7 +13,7 @@ import {
   writeSubnetSnapshot,
 } from "../src/health-prober.ts";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 

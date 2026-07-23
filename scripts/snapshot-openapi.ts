@@ -1,5 +1,5 @@
 import { promises as fs } from "node:fs";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import {
   artifactFilePath,
   artifactOutputPath,

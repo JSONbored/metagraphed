@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { buildOpenApiArtifact } from "../src/contracts.mjs";
+import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
   canonicalSubnetPerformanceHistoryCachePath,

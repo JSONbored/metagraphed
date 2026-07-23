@@ -8,7 +8,7 @@
 import { Ajv2020, type Schema, type ValidateFunction } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
-import { API_ROUTES } from "../src/contracts.mjs";
+import { API_ROUTES } from "../src/contracts.ts";
 import { readJson, repoRoot } from "./lib.ts";
 
 // ajv-formats' default export resolves to the CJS module namespace rather than

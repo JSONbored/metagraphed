@@ -3,6 +3,30 @@ import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { sampleFromSchema } from "./openapi-sample.ts";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+interface QueryParameterSpec {
+  name: string;
+  description?: string;
+  schema: unknown;
+}
+
+interface QueryCollectionSpec {
+  collection?: string | null;
+  csvResponse?: boolean;
+  filterNames?: string[];
+  parameters: QueryParameterSpec[];
+}
+
+type QueryParametersInput = QueryParameterSpec[] | QueryCollectionSpec;
+
+interface RetirementInfo {
+  code: string;
+  http_status: number;
+  message: string;
+}
+
 export const CONTRACT_VERSION = "2026-07-03.2";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
@@ -4336,7 +4360,7 @@ export const API_ROUTES = [
   ),
 ];
 
-export function buildContractsArtifact(generatedAt) {
+export function buildContractsArtifact(generatedAt: string) {
   return {
     schema_version: SCHEMA_VERSION,
     contract_version: CONTRACT_VERSION,
@@ -4372,7 +4396,10 @@ export function buildContractsArtifact(generatedAt) {
   };
 }
 
-export function buildApiIndexArtifact(generatedAt, contractsArtifact) {
+export function buildApiIndexArtifact(
+  generatedAt: string,
+  contractsArtifact: ReturnType<typeof buildContractsArtifact>,
+) {
   return {
     schema_version: SCHEMA_VERSION,
     contract_version: CONTRACT_VERSION,
@@ -4415,14 +4442,17 @@ export function buildApiIndexArtifact(generatedAt, contractsArtifact) {
   };
 }
 
-export function buildOpenApiArtifact(generatedAt, componentSchemas) {
+export function buildOpenApiArtifact(
+  generatedAt: string,
+  componentSchemas: Row | null,
+) {
   if (!componentSchemas) {
     throw new Error(
       "buildOpenApiArtifact requires canonical component schemas from schemas/api-components.schema.json",
     );
   }
 
-  const paths = {};
+  const paths: Row = {};
   for (const entry of API_ROUTES) {
     const openApiPath = entry.path;
     const responseSchema = {
@@ -4599,8 +4629,12 @@ const FIXTURE_DETAIL_OPENAPI_EXAMPLE = {
   },
 };
 
-function openApiExampleForRoute(entry, responseSchema, componentSchemas) {
-  const example = sampleFromSchema(responseSchema, componentSchemas);
+function openApiExampleForRoute(
+  entry: (typeof API_ROUTES)[number],
+  responseSchema: Row,
+  componentSchemas: Row,
+) {
+  const example = sampleFromSchema(responseSchema, componentSchemas) as Row;
   if (entry.id !== "fixture-detail") {
     return example;
   }
@@ -4618,7 +4652,7 @@ function openApiExampleForRoute(entry, responseSchema, componentSchemas) {
   };
 }
 
-export function artifactPathFromTemplate(template, params = {}) {
+export function artifactPathFromTemplate(template: string, params: Row = {}) {
   return (
     template
       .replace("{netuid}", String(params.netuid ?? ""))
@@ -4638,7 +4672,7 @@ export function artifactPathFromTemplate(template, params = {}) {
   );
 }
 
-export function compileRoutePattern(pathTemplate) {
+export function compileRoutePattern(pathTemplate: string) {
   const tokenized = pathTemplate
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
     .replace(/\{uid\}/g, "__METAGRAPH_UID__")
@@ -4680,7 +4714,13 @@ export function compileRoutePattern(pathTemplate) {
   return new RegExp(`^${pattern}\\/?$`);
 }
 
-function artifact(id, pathValue, description, schemaRef, options = {}) {
+function artifact(
+  id: string,
+  pathValue: string,
+  description: string,
+  schemaRef: string | null,
+  options: { status?: string; retirement?: RetirementInfo | null } = {},
+) {
   const { status = ARTIFACT_STATUS_LIVE, retirement = null } = options;
   return {
     id,
@@ -4695,7 +4735,7 @@ function artifact(id, pathValue, description, schemaRef, options = {}) {
   };
 }
 
-function artifactContentType(pathValue) {
+function artifactContentType(pathValue: string) {
   if (pathValue.endsWith(".d.ts")) {
     return "text/plain; charset=utf-8";
   }
@@ -4703,15 +4743,15 @@ function artifactContentType(pathValue) {
 }
 
 function route(
-  id,
-  method,
-  pathValue,
-  artifactPath,
-  description,
-  cache,
-  tags,
-  queryParameters = [],
-  pathParameters = [],
+  id: string,
+  method: string,
+  pathValue: string,
+  artifactPath: string,
+  description: string,
+  cache: string,
+  tags: string[],
+  queryParameters: QueryParametersInput = [],
+  pathParameters: Row[] = [],
 ) {
   const querySpec = normalizeQueryParameters(queryParameters);
   return {
@@ -4730,7 +4770,7 @@ function route(
   };
 }
 
-function queryCollection(dataKey, options = {}) {
+function queryCollection(dataKey: string, options: Row = {}) {
   return {
     data_key: dataKey,
     filters: options.filters || {},
@@ -4750,12 +4790,12 @@ function queryCollection(dataKey, options = {}) {
   };
 }
 
-function enumSchema(values) {
+function enumSchema(values: readonly string[]) {
   return { type: "string", enum: values };
 }
 
-function listQuery(collection, options = {}) {
-  const config = API_QUERY_COLLECTIONS[collection];
+function listQuery(collection: string, options: { exclude?: string[] } = {}) {
+  const config = (API_QUERY_COLLECTIONS as Record<string, Row>)[collection];
   /* v8 ignore next 3 -- developer config invariant validated by OpenAPI/schema checks */
   if (!config) {
     throw new Error(`Unknown API query collection: ${collection}`);
@@ -4770,7 +4810,7 @@ function listQuery(collection, options = {}) {
       ? [{ name: "q", schema: searchTextSchema }]
       : [];
   // Each numeric range field F → a `min_F` + `max_F` inclusive-bound parameter.
-  const rangeParameters = config.range_filters.flatMap((field) => [
+  const rangeParameters = config.range_filters.flatMap((field: string) => [
     { name: `min_${field}`, schema: { type: "number" } },
     { name: `max_${field}`, schema: { type: "number" } },
   ]);
@@ -4813,12 +4853,18 @@ function listQuery(collection, options = {}) {
 // query parameters the collection itself doesn't own — e.g. the incidents route's
 // `window` scope (#6571). The extra parameters lead, then the standard list-query
 // params, so `window` still reads first in the OpenAPI parameter list.
-function listQueryWith(collection, extraParameters) {
+function listQueryWith(
+  collection: string,
+  extraParameters: QueryParameterSpec[],
+) {
   const spec = listQuery(collection);
   return { ...spec, parameters: [...extraParameters, ...spec.parameters] };
 }
 
-function csvListQuery(collection, options = {}) {
+function csvListQuery(
+  collection: string,
+  options: { exclude?: string[] } = {},
+) {
   const spec = listQuery(collection, options);
   return {
     ...spec,
@@ -4835,7 +4881,7 @@ function csvListQuery(collection, options = {}) {
   };
 }
 
-function csvRouteQuery(parameters = []) {
+function csvRouteQuery(parameters: QueryParameterSpec[] = []) {
   return {
     collection: null,
     filterNames: [],
@@ -4852,7 +4898,7 @@ function csvRouteQuery(parameters = []) {
   };
 }
 
-function csvExampleForRoute(entry) {
+function csvExampleForRoute(entry: (typeof API_ROUTES)[number]) {
   const supplemental = ROUTE_CSV_EXAMPLES[entry.id];
   if (supplemental) return supplemental;
   if (entry.id === "subnet-movers") {
@@ -4977,14 +5023,14 @@ function csvExampleForRoute(entry) {
   return "netuid,name\r\n7,Allways";
 }
 
-function csvResponseDescriptionForRoute(entry) {
+function csvResponseDescriptionForRoute(entry: (typeof API_ROUTES)[number]) {
   if (entry.query_collection) {
     return "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested.";
   }
   return "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.";
 }
 
-function normalizeQueryParameters(queryParameters) {
+function normalizeQueryParameters(queryParameters: QueryParametersInput) {
   if (Array.isArray(queryParameters)) {
     return { collection: null, filterNames: [], parameters: queryParameters };
   }
@@ -4996,7 +5042,7 @@ function normalizeQueryParameters(queryParameters) {
   };
 }
 
-function schemaRefForArtifactPath(artifactPath) {
+function schemaRefForArtifactPath(artifactPath: string) {
   const contract = PUBLIC_ARTIFACTS.find((entry) =>
     pathTemplatesMatch(entry.path, artifactPath),
   );
@@ -5013,7 +5059,7 @@ function schemaRefForArtifactPath(artifactPath) {
   return contract.schema_ref;
 }
 
-function pathTemplatesMatch(contractPath, artifactPath) {
+function pathTemplatesMatch(contractPath: string, artifactPath: string) {
   if (contractPath === artifactPath) {
     return true;
   }

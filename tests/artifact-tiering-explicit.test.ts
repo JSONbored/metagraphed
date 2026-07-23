@@ -9,7 +9,7 @@
 // time instead of in a production refresh.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { PUBLIC_ARTIFACTS } from "../src/contracts.mjs";
+import { PUBLIC_ARTIFACTS } from "../src/contracts.ts";
 import {
   DUAL_PATTERNS,
   R2_ONLY_PATTERNS,

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { pathToFileURL } from "node:url";
 import {
   buildTimestamp,

@@ -33,7 +33,7 @@ import {
   CONTRACT_VERSION,
   API_ROUTES,
   PRIMARY_DOMAIN,
-} from "../src/contracts.mjs";
+} from "../src/contracts.ts";
 import { handleRequest } from "../workers/api.mjs";
 import type { Row } from "./row-type.ts";
 

@@ -23,7 +23,7 @@ import {
   rollupSubnetStatus,
   type ProbeSurface,
 } from "../src/health-probe-core.ts";
-import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.ts";
 
 type Row = Record<string, unknown>;
 
