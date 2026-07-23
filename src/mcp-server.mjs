@@ -38,6 +38,8 @@
 import * as Sentry from "@sentry/cloudflare";
 import {
   isUsageTelemetryConfigured,
+  recordMcpInitializeEvent,
+  recordMcpToolCallEvent,
   recordUsageEvent,
 } from "./usage-telemetry.ts";
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
@@ -16235,25 +16237,44 @@ function negotiateProtocol(requested) {
 // invocation instead of instrumenting ~150 handlers individually. It also
 // already funnels every outcome into an isError result rather than throwing,
 // which is what makes success/failure readable here without touching any
-// handler. Nothing but the tool name, that flag, elapsed time, and (on
-// failure) a fixed error category is recorded — never arguments or response
-// content, and never a free-form error message.
+// handler. The legacy `usage_event` still carries only the tool name, ok flag,
+// elapsed time, and (on failure) a fixed error category — never raw arguments
+// or response content. Native PostHog MCP analytics (#7737) additionally emit
+// a `$mcp_tool_call` with redacted/size-capped `$mcp_parameters`/`$mcp_response`.
 async function callTool(params, ctx) {
   const startedAt = Date.now();
   const result = await dispatchTool(params, ctx);
+  const durationMs = Date.now() - startedAt;
+  const toolName = typeof params?.name === "string" ? params.name : undefined;
+  const errorCode = result.isError
+    ? result?.structuredContent?.error?.code
+    : undefined;
   scheduleToolUsageEvent(ctx, {
-    mcpTool: typeof params?.name === "string" ? params.name : undefined,
+    mcpTool: toolName,
     ok: result.isError !== true,
-    durationMs: Date.now() - startedAt,
+    durationMs,
     // metagraphed#7726: every isError result already carries a code from a
     // small, developer-defined literal set (toolError's own codes, or
     // "unknown_tool" below) in structuredContent.error.code -- thread it
     // through so analytics can break failures down by cause, not just count
     // them. Omitted entirely on success (no `errorCode` key at all), same as
     // `route`/`mcpTool` being omitted when absent.
-    ...(result.isError
-      ? { errorCode: result?.structuredContent?.error?.code }
-      : {}),
+    ...(errorCode !== undefined ? { errorCode } : {}),
+  });
+  // #7737: native `$mcp_tool_call` (redacted params/response) for PostHog MCP
+  // Analytics — distinct from the allowlisted usage_event above.
+  scheduleMcpToolCallAnalytics(ctx, {
+    toolName: toolName ?? "unknown",
+    toolDescription:
+      typeof toolName === "string"
+        ? TOOLS_BY_NAME.get(toolName)?.description
+        : undefined,
+    parameters: params?.arguments ?? {},
+    response: result,
+    durationMs,
+    isError: result.isError === true,
+    errorType: typeof errorCode === "string" ? errorCode : undefined,
+    sessionId: ctx?.sessionId,
   });
   return result;
 }
@@ -16273,6 +16294,42 @@ function scheduleToolUsageEvent(ctx, event) {
     ctx?.executionCtx?.waitUntil?.(pending);
   } catch {
     // Telemetry must never surface into the tool path.
+  }
+}
+
+/**
+ * Hand a native `$mcp_tool_call` analytics event to the recorder without ever
+ * blocking or failing the tool response (#7737).
+ *
+ * @param {object} ctx
+ * @param {object} event
+ */
+function scheduleMcpToolCallAnalytics(ctx, event) {
+  try {
+    if (!isUsageTelemetryConfigured(ctx?.env)) return;
+    const record = ctx?.recordMcpToolCallEvent ?? recordMcpToolCallEvent;
+    const pending = Promise.resolve(record(ctx.env, event)).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+/**
+ * Hand a native `$mcp_initialize` analytics event to the recorder without ever
+ * blocking or failing the handshake (#7737).
+ *
+ * @param {object} ctx
+ * @param {object} event
+ */
+function scheduleMcpInitializeAnalytics(ctx, event) {
+  try {
+    if (!isUsageTelemetryConfigured(ctx?.env)) return;
+    const record = ctx?.recordMcpInitializeEvent ?? recordMcpInitializeEvent;
+    const pending = Promise.resolve(record(ctx.env, event)).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the initialize path.
   }
 }
 
@@ -16381,6 +16438,14 @@ async function dispatchMessage(message, ctx) {
           // Registry backlink (sibling of serverInfo, never inside it).
           _meta: MCP_REGISTRY_META,
         };
+        // #7737: native `$mcp_initialize` for PostHog MCP Analytics.
+        scheduleMcpInitializeAnalytics(ctx, {
+          clientName: params?.clientInfo?.name,
+          clientVersion: params?.clientInfo?.version,
+          serverName: MCP_SERVER_INFO.name,
+          serverVersion: MCP_SERVER_INFO.version,
+          sessionId: ctx?.sessionId,
+        });
         return isNotification ? null : rpcResult(id, result);
       }
       case "ping":
@@ -16471,9 +16536,12 @@ function buildContext(request, env, deps) {
     readHealthKv: deps.readHealthKv,
     // The Worker's ExecutionContext, when the caller has one to give: only the
     // real fetch entry does, so it stays optional and every direct-call test
-    // keeps working. Used solely to drain usage telemetry (#6031).
+    // keeps working. Used to drain usage telemetry (#6031) and native MCP
+    // analytics (#7737).
     executionCtx: deps.executionCtx,
     recordUsageEvent: deps.recordUsageEvent,
+    recordMcpToolCallEvent: deps.recordMcpToolCallEvent,
+    recordMcpInitializeEvent: deps.recordMcpInitializeEvent,
   };
 }
 
