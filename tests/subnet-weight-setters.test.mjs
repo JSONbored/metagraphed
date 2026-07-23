@@ -9,7 +9,7 @@ import {
 } from "../src/subnet-weight-setters.ts";
 import { WEIGHTS_EVENT_KIND } from "../src/subnet-weights.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const NETUID = 7;
 

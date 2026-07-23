@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 
-vi.mock("../scripts/lib.mjs", async (importOriginal) => {
+vi.mock("../scripts/lib.ts", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,

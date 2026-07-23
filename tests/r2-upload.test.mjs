@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "vitest";
-import { r2StagingRoot } from "../scripts/lib.mjs";
+import { r2StagingRoot } from "../scripts/lib.ts";
 
 test("R2 latest upload uses real sha256 even when content hash matches", () => {
   const temporaryDirectory = mkdtempSync(

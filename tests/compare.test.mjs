@@ -4,7 +4,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { composeCompareData, handleRequest } from "../workers/api.mjs";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 
 // composeCompareData is the pure projection at the heart of /api/v1/compare;

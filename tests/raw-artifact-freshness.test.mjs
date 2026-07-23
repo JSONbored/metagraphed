@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const PUB = "2026-06-11T12:00:00.000Z";
 

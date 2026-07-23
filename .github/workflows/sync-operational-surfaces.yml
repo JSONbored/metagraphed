@@ -57,7 +57,7 @@ jobs:
 
       # The real local build -- same code path a contributor or CI runs, so
       # this can't drift from what "correct" means. scripts/build.ts's own
-      # deploy-owned-artifact auto-revert (see scripts/lib.mjs
+      # deploy-owned-artifact auto-revert (see scripts/lib.ts
       # DEPLOY_OWNED_ARTIFACTS) already resets r2-manifest.json and
       # schemas/index.json, so the only file left that can legitimately
       # differ afterward is operational-surfaces.json itself.

@@ -2,7 +2,7 @@
 // maintainer-reviewed from ANY lower pre-tier (not just machine-verified), and
 // validate.mjs must catch a recorded maintainer-reviewed decision that never
 // materialized on its overlay. Both behaviours live in the pure, side-effect-free
-// helpers in scripts/lib.mjs (promoteCurationLevel /
+// helpers in scripts/lib.ts (promoteCurationLevel /
 // findUnmaterializedMaintainerReviews) so they unit-test directly.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
@@ -10,7 +10,7 @@ import {
   CEILING_TRUST_LEVELS,
   promoteCurationLevel,
   findUnmaterializedMaintainerReviews,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 
 describe("promoteCurationLevel (#5992)", () => {
   const PRE_TIERS = [

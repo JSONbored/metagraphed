@@ -10,7 +10,7 @@ import {
   formatUptimePercent,
 } from "../src/badge.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const SUBNETS = {
   subnets: [

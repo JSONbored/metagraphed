@@ -30,7 +30,7 @@ import {
   stableStringify,
   subnetSurfaceKey,
   findUnmaterializedMaintainerReviews,
-} from "./lib.mjs";
+} from "./lib.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,

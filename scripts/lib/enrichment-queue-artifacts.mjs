@@ -3,7 +3,7 @@
 // side-effect free: every function takes plain objects and returns plain objects,
 // with no module state and no I/O, so the output is byte-identical to the in-
 // build-artifacts.mjs originals. Imported directly by scripts/build-artifacts.mjs.
-import { normalizePublicUrl, slugify } from "../lib.mjs";
+import { normalizePublicUrl, slugify } from "../lib.ts";
 
 function countBy(items, keyOrFn) {
   return Object.fromEntries(

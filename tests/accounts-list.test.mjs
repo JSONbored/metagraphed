@@ -9,7 +9,7 @@ import {
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "../src/accounts-list.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // An ACCOUNTS_LIST read-columns-shaped row (netuid, uid, hotkey, coldkey,
 // validator_permit, emission_tao, stake_tao, block_number, captured_at).

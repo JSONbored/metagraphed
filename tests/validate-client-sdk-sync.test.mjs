@@ -38,7 +38,7 @@ describe("client-SDK drift gate (diff logic)", () => {
       changedFiles: [
         "registry/subnets/example.json",
         "README.md",
-        "scripts/lib.mjs",
+        "scripts/lib.ts",
       ],
       versionChanged: false,
     });

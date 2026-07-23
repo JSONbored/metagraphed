@@ -47,7 +47,7 @@ import {
   repoRoot,
   stableStringify,
   subnetSurfaceKey,
-} from "./lib.mjs";
+} from "./lib.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { initSentry, endSessionAndFlush } from "./observability.ts";
 

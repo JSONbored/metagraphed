@@ -1,6 +1,6 @@
 // Worker-safe on-chain identity field sanitization shared by the live identity
 // history API (#1647) and the build-time profile projection. Mirrors the guards
-// in scripts/lib.mjs (normalizePublicUrl, nativeContactHandle,
+// in scripts/lib.ts (normalizePublicUrl, nativeContactHandle,
 // isPlaceholderIdentityUrl) so operator-controlled chain strings cannot violate
 // the published URI / maxLength contract.
 

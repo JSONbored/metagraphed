@@ -22,7 +22,7 @@ import {
   summarizeRows,
 } from "../src/health-serving.ts";
 import { computeReliability, scoreFromStats } from "../src/reliability.ts";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 // A recent prober run time for live KV fixtures that must pass resolveLiveHealth's

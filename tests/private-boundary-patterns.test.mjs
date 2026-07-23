@@ -137,7 +137,7 @@ describe("pathPatterns — private submission-gate implementation path", () => {
   test("does NOT match an ordinary repo path", () => {
     for (const p of [
       "src/graphql.mjs",
-      "scripts/lib.mjs",
+      "scripts/lib.ts",
       "docs/review-process.md", // "review" alone, not a private segment
     ]) {
       assert.equal(regex.test(p), false, p);

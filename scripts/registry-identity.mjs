@@ -4,7 +4,7 @@
 // the candidate→surface promotion in scripts/generated-overlays.ts and the
 // surface:add intake still depend on them — they are the only live survivors of
 // that module. Pure + dependency-light so they stay unit-covered.
-import { clusterDomainFromUrl, MULTI_TENANT_HOST_SUFFIXES } from "./lib.mjs";
+import { clusterDomainFromUrl, MULTI_TENANT_HOST_SUFFIXES } from "./lib.ts";
 
 const CODE_HOST_RE = /^(github\.com|gitlab\.com|bitbucket\.org)$/i;
 const normIdentToken = (value) =>

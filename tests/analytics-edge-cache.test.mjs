@@ -10,7 +10,7 @@ import {
   handleBlocksSummary,
   handleSubnetStakeFlow,
 } from "../workers/request-handlers/entities.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 
 // Edge-cache coverage for the D1-backed analytics routes (audit #6). These four

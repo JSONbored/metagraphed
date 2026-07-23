@@ -28,7 +28,7 @@ import {
   registrySurfaceKey,
   isSurfaceStale,
   loadSubnets,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 import {
   CONTRACT_VERSION,
   API_ROUTES,
@@ -968,7 +968,7 @@ test("public artifacts are internally consistent", () => {
     "x.com",
     "twitter.com",
   ]);
-  // Authoritative multi-tenant host set — shared with lib.mjs / build-artifacts
+  // Authoritative multi-tenant host set — shared with lib.ts / build-artifacts
   // so the assertion can't drift from the cluster derivation (issue #419).
   const GENERIC_CLUSTER_HOST_SUFFIXES = [...MULTI_TENANT_HOST_SUFFIXES];
   let providersWithNetuids = 0;

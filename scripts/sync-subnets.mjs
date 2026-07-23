@@ -6,7 +6,7 @@ import {
   repoRoot,
   stableStringify,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");

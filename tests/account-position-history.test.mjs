@@ -5,7 +5,7 @@ import {
   buildAccountPositionHistory,
 } from "../src/account-position-history.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const ctx = { waitUntil: (p) => p };
 const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";

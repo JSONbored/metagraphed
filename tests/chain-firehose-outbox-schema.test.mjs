@@ -20,7 +20,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { test } from "vitest";
-import { repoRoot } from "../scripts/lib.mjs";
+import { repoRoot } from "../scripts/lib.ts";
 
 test("chain_firehose_outbox's table_name CHECK constraint matches every enqueue_chain_firehose() TG_ARGV branch", async () => {
   const schema = await readFile(

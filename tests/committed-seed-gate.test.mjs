@@ -11,7 +11,7 @@ import {
   committedSeedRoutes,
   runCommittedSeedGate,
 } from "../scripts/validate-committed-seed.mjs";
-import { createLocalArtifactEnv, readJson, repoRoot } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv, readJson, repoRoot } from "../scripts/lib.ts";
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),

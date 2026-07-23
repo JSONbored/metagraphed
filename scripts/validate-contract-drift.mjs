@@ -3,7 +3,7 @@ import path from "node:path";
 import { buildApiComponentBundle } from "./bundle-schemas.ts";
 import { generateClientSource } from "./generate-client.ts";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.ts";
-import { readJson, repoRoot, stableStringify } from "./lib.mjs";
+import { readJson, repoRoot, stableStringify } from "./lib.ts";
 import { promises as fs } from "node:fs";
 
 const errors = [];

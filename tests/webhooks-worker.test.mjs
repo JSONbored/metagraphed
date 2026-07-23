@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.mjs";
 
 // Minimal in-memory KV mock matching the Workers KV surface the worker uses.

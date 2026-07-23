@@ -5,7 +5,7 @@ import {
   loadBlocksSummary,
 } from "../src/blocks-summary.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // Five blocks: 100-103 consecutive (12s apart), then a gap to 110. Two authors.
 const ROWS = [

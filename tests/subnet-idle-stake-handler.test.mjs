@@ -15,7 +15,7 @@ import {
   handleSubnetIdleStake,
 } from "../workers/request-handlers/entities.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const NETUID = 7;
 const ctx = { waitUntil: (promise) => promise };

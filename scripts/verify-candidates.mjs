@@ -13,7 +13,7 @@ import {
   repoRoot,
   stableStringify,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 import {
   classifyHttpProbe,
   isContentMismatch,

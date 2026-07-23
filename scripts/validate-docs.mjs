@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { API_ROUTES, PUBLIC_ARTIFACTS } from "../src/contracts.mjs";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 
 // --- Cadence prose guard (ADR 0007) -------------------------------------------
 // The data publish is event-driven (on human-input registry merges) + a daily

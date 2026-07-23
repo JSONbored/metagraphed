@@ -15,7 +15,7 @@
 // this runs AFTER the native-snapshot step in build.mjs productionSteps.
 // Production-only; local/PR builds use the committed candidates/verification.
 import { spawnSync } from "node:child_process";
-import { stableStringify } from "./lib.mjs";
+import { stableStringify } from "./lib.ts";
 
 const buildTimestamp = process.env.METAGRAPH_BUILD_TIMESTAMP || "";
 const env = {

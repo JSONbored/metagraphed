@@ -14,7 +14,7 @@ import {
   sanitizeOpenApiDocument,
   stableStringify,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
@@ -380,7 +380,7 @@ async function readBoundedResponseText(response, maxBytes) {
 // Depth/node guard for the untrusted OpenAPI document. The byte-bound caps
 // total size; this defends the recursive sanitizeOpenApiDocument() pass from a
 // pathological within-budget structure (deep nesting / huge fan-out). Kept
-// local to the snapshot step rather than folded into the shared lib.mjs
+// local to the snapshot step rather than folded into the shared lib.ts
 // sanitizer so the limit policy stays with the untrusted-fetch threat.
 function assertNormalizationBounds(value) {
   walkNormalizationBounds(value, { nodes: 0 }, 0);

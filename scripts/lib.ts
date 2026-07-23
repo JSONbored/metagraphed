@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, type BinaryLike } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import path from "node:path";
@@ -15,6 +15,8 @@ import {
 } from "../src/artifact-storage.ts";
 import { entityLabelsIndex } from "../src/entity-labels.ts";
 import { sanitizeChainText, slugify } from "./lib/formatting.mjs";
+
+type Row = Record<string, unknown>;
 
 // Resolve via fileURLToPath rather than `new URL("..").pathname` so the repo
 // root is a valid native path on every OS. On Windows the bare `.pathname` form
@@ -43,7 +45,7 @@ export const DEPLOY_OWNED_ARTIFACTS = [
 // when present. Single source of truth for build.mjs's local warning and
 // ci-verify-submitted-artifacts.ts's remediation message, so both always
 // recommend the same, correct remote.
-export function resolveBaseRemote(cwd = process.cwd()) {
+export function resolveBaseRemote(cwd: string = process.cwd()): string {
   const result = spawnSync("git", ["remote"], { cwd, encoding: "utf8" });
   const remotes = (result.stdout || "").split("\n").map((line) => line.trim());
   return remotes.includes("upstream") ? "upstream" : "origin";
@@ -55,7 +57,10 @@ export function resolveBaseRemote(cwd = process.cwd()) {
 // Porcelain v1 format is a fixed 2-char status + one space before the path,
 // so `line.slice(3)` reliably extracts it for this fixed, non-renaming set of
 // tracked paths (DEPLOY_OWNED_ARTIFACTS has no rename case to worry about).
-export function dirtyTrackedPaths(paths, cwd = process.cwd()) {
+export function dirtyTrackedPaths(
+  paths: string[],
+  cwd: string = process.cwd(),
+): string[] {
   const result = spawnSync("git", ["status", "--porcelain", "--", ...paths], {
     cwd,
     encoding: "utf8",
@@ -146,11 +151,15 @@ export function buildEvidenceSubjectNetuidIndex({
   candidates = [],
   subnets = [],
   surfaces = [],
-} = {}) {
-  const index = new Map();
-  const setSubjectNetuid = (subject, netuid) => {
+}: {
+  candidates?: Row[];
+  subnets?: Row[];
+  surfaces?: Row[];
+} = {}): Map<string, number> {
+  const index = new Map<string, number>();
+  const setSubjectNetuid = (subject: string, netuid: unknown) => {
     if (subject && Number.isInteger(netuid)) {
-      index.set(subject, netuid);
+      index.set(subject, netuid as number);
     }
   };
 
@@ -167,10 +176,13 @@ export function buildEvidenceSubjectNetuidIndex({
   return index;
 }
 
-export function netuidForEvidenceClaim(claim, subjectNetuids = new Map()) {
+export function netuidForEvidenceClaim(
+  claim: Row,
+  subjectNetuids: Map<string, number> = new Map(),
+): number | null {
   const subject = String(claim?.subject || "");
   if (subjectNetuids.has(subject)) {
-    return subjectNetuids.get(subject);
+    return subjectNetuids.get(subject) as number;
   }
   return netuidFromEvidenceSubject(subject);
 }
@@ -179,7 +191,7 @@ export function netuidForEvidenceClaim(claim, subjectNetuids = new Map()) {
 // subnet, surface, or candidate rows in this build. Generated claims should be
 // scoped through buildEvidenceSubjectNetuidIndex() instead of trusting
 // user-controlled subject slugs.
-export function netuidFromEvidenceSubject(subject) {
+export function netuidFromEvidenceSubject(subject: unknown): number | null {
   const value = String(subject || "");
   const subnetMatch = value.match(/^subnet:(\d+)\b/);
   if (subnetMatch) {
@@ -210,7 +222,11 @@ export function netuidFromEvidenceSubject(subject) {
  * this one's value, so `--prefix --write` falls back instead of silently
  * downloading a prefix literally named "--write".
  */
-export function flagValue(argv, flag, fallback = undefined) {
+export function flagValue(
+  argv: string[],
+  flag: string,
+  fallback?: string,
+): string | undefined {
   const equals = argv.find((arg) => arg.startsWith(`${flag}=`));
   if (equals !== undefined) return equals.slice(flag.length + 1);
   const index = argv.indexOf(flag);
@@ -220,12 +236,19 @@ export function flagValue(argv, flag, fallback = undefined) {
   return next;
 }
 
-export async function readJson(filePath) {
+// `any`, not `unknown`: every caller across the codebase re-types the parsed
+// JSON immediately (a `Row` annotation or an `as X` cast) rather than
+// narrowing it, exactly like a raw JSON.parse() result — an `unknown` return
+// here would force a cast onto every one of those call sites for no safety
+// gain, since the actual shape is never checked at this boundary either way.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function readJson(filePath: string): Promise<any> {
   const raw = await fs.readFile(filePath, "utf8");
   return JSON.parse(raw);
 }
 
-export async function readArtifactJson(relativePath) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function readArtifactJson(relativePath: string): Promise<any> {
   return readJson(artifactFilePath(relativePath));
 }
 
@@ -234,7 +257,12 @@ export function assertNoSubnetFilePathCollision({
   overlay,
   existingEntry,
   root = repoRoot,
-}) {
+}: {
+  filePath: string;
+  overlay: Row;
+  existingEntry?: { overlay: Row } | null;
+  root?: string;
+}): void {
   if (!existingEntry || existingEntry.overlay.netuid === overlay.netuid) {
     return;
   }
@@ -247,6 +275,12 @@ export function assertNoSubnetFilePathCollision({
   );
 }
 
+interface ManualOverlayEntry {
+  filePath: string;
+  overlay: Row;
+  materialized?: boolean;
+}
+
 // Merges the full generated overlay set with the manually-curated
 // registry/subnets/*.json files, keyed by netuid — the manual file wins where
 // one exists, otherwise the generated overlay materializes to the slug-derived
@@ -257,7 +291,11 @@ export function buildSubnetOverlaysByNetuid({
   allOverlays,
   manualOverlays,
   root = repoRoot,
-}) {
+}: {
+  allOverlays: Row[];
+  manualOverlays: ManualOverlayEntry[];
+  root?: string;
+}): Map<unknown, ManualOverlayEntry> {
   const manualOverlaysByNetuid = new Map(
     manualOverlays.map((entry) => [entry.overlay.netuid, entry]),
   );
@@ -295,7 +333,7 @@ export function buildSubnetOverlaysByNetuid({
           materialized: true,
           overlay,
         },
-      ];
+      ] as [unknown, ManualOverlayEntry];
     }),
   );
 }
@@ -308,7 +346,10 @@ export function buildSubnetOverlaysByNetuid({
 // makes the build safe to run while tests / the Worker read the committed
 // artifacts in parallel (fixes the vitest file-scheduling race where a reader
 // saw a half-written subnets.json and 404'd).
-async function atomicWriteFile(filePath, content) {
+async function atomicWriteFile(
+  filePath: string,
+  content: string,
+): Promise<void> {
   const dir = path.dirname(filePath);
   await fs.mkdir(dir, { recursive: true });
   const tempDir = await fs.mkdtemp(
@@ -326,7 +367,10 @@ async function atomicWriteFile(filePath, content) {
   }
 }
 
-export async function writeJson(filePath, value) {
+export async function writeJson(
+  filePath: string,
+  value: unknown,
+): Promise<void> {
   await atomicWriteFile(filePath, `${stableStringify(value)}\n`);
 }
 
@@ -336,7 +380,7 @@ export async function writeJson(filePath, value) {
 // cron `"*/2 * * * *"` (contains `*/`); a regex stripper would splice from the
 // former's `/*` to the latter's `*/` and delete the config in between. Also drops
 // trailing commas so JSON.parse accepts the result.
-export function stripJsonComments(value) {
+export function stripJsonComments(value: string): string {
   let out = "";
   let inString = false;
   let inLine = false;
@@ -425,16 +469,22 @@ export function stripJsonComments(value) {
   return result;
 }
 
-export async function formatRepositoryJson(value) {
+export async function formatRepositoryJson(value: unknown): Promise<string> {
   const prettier = await import("prettier");
   return prettier.format(`${stableStringify(value)}\n`, { parser: "json" });
 }
 
-export async function writeRepositoryJson(filePath, value) {
+export async function writeRepositoryJson(
+  filePath: string,
+  value: unknown,
+): Promise<void> {
   await atomicWriteFile(filePath, await formatRepositoryJson(value));
 }
 
-export function artifactFilePath(relativePath, options = {}) {
+export function artifactFilePath(
+  relativePath: string,
+  options: { allowPublicFallback?: boolean } = {},
+): string {
   const normalized = artifactRelativePath(relativePath);
   const tier = artifactStorageTierForRelativePath(normalized);
   if (tier !== ARTIFACT_STORAGE_TIERS.r2) {
@@ -450,7 +500,7 @@ export function artifactFilePath(relativePath, options = {}) {
   return publicPath;
 }
 
-export function artifactOutputPath(relativePath) {
+export function artifactOutputPath(relativePath: string): string {
   const normalized = artifactRelativePath(relativePath);
   const tier = artifactStorageTierForRelativePath(normalized);
   return path.join(
@@ -459,7 +509,7 @@ export function artifactOutputPath(relativePath) {
   );
 }
 
-export function artifactDirectoryPath(relativePath) {
+export function artifactDirectoryPath(relativePath: string): string {
   const normalized = artifactRelativePath(relativePath).replace(/\/+$/, "");
   const stagedPath = path.join(r2StagingRoot, normalized);
   if (existsSync(stagedPath)) {
@@ -468,13 +518,15 @@ export function artifactDirectoryPath(relativePath) {
   return path.join(publicMetagraphRoot, normalized);
 }
 
-export async function latestArtifactDate(relativePath) {
+export async function latestArtifactDate(
+  relativePath: string,
+): Promise<string | null> {
   const dirPath = artifactDirectoryPath(relativePath);
   let entries;
   try {
     entries = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return null;
     }
     throw error;
@@ -490,10 +542,10 @@ export async function latestArtifactDate(relativePath) {
   );
 }
 
-export function createLocalArtifactEnv(overrides = {}) {
+export function createLocalArtifactEnv(overrides: Row = {}): Row {
   return {
     ASSETS: {
-      async fetch(request) {
+      async fetch(request: Request) {
         const url = new URL(request.url);
         const filePath = path.join(
           repoRoot,
@@ -517,7 +569,7 @@ export function createLocalArtifactEnv(overrides = {}) {
     },
     METAGRAPH_R2_LATEST_PREFIX: "latest/",
     METAGRAPH_ARCHIVE: {
-      async get(key) {
+      async get(key: unknown) {
         const relativePath = String(key).replace(/^latest\//, "");
         const filePath = artifactFilePath(relativePath);
         try {
@@ -539,12 +591,12 @@ export function createLocalArtifactEnv(overrides = {}) {
   };
 }
 
-export async function listJsonFiles(dirPath) {
+export async function listJsonFiles(dirPath: string): Promise<string[]> {
   let entries;
   try {
     entries = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
     }
     throw error;
@@ -555,18 +607,20 @@ export async function listJsonFiles(dirPath) {
     .sort((a, b) => a.localeCompare(b));
 }
 
-export async function listJsonFilesRecursive(dirPath) {
+export async function listJsonFilesRecursive(
+  dirPath: string,
+): Promise<string[]> {
   let entries;
   try {
     entries = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
     }
     throw error;
   }
 
-  const files = [];
+  const files: string[] = [];
   for (const entry of entries) {
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
@@ -579,21 +633,23 @@ export async function listJsonFilesRecursive(dirPath) {
   return files.sort((a, b) => a.localeCompare(b));
 }
 
-export async function loadProviders() {
+export async function loadProviders(): Promise<Row[]> {
   // All providers are flat objects in registry/providers/*.json. Trust is the
   // per-file `authority` field (official / provider-claimed / community /
   // registry-observed), NOT the directory — the old registry/providers/community/
   // wrapper lane was flattened (#1678). The `.provider || document` unwrap is kept
   // defensively for any legacy { provider } shape; dedup by id (ids don't collide).
   const files = await listJsonFiles(path.join(repoRoot, "registry/providers"));
-  const providers = (await Promise.all(files.map(readJson))).map(
+  const providers: Row[] = (await Promise.all(files.map(readJson))).map(
     (document) => document.provider || document,
   );
-  const byId = new Map();
+  const byId = new Map<unknown, Row>();
   for (const provider of providers) {
     if (provider?.id) byId.set(provider.id, provider);
   }
-  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+  return [...byId.values()].sort((a, b) =>
+    (a.id as string).localeCompare(b.id as string),
+  );
 }
 
 // Community-contributable entity labels (#6737/#6738): flat objects in
@@ -601,17 +657,17 @@ export async function loadProviders() {
 // loadProviders() above. The directory doesn't exist until the first
 // contribution lands -- listJsonFiles already tolerates ENOENT, so this
 // naturally returns [] rather than throwing.
-export async function loadEntities() {
+export async function loadEntities(): Promise<Row[]> {
   const files = await listJsonFiles(path.join(repoRoot, "registry/entities"));
   const entities = await Promise.all(files.map(readJson));
   // Dedup-by-ss58 delegated to entityLabelsIndex (src/entity-labels.ts,
   // already unit-tested there) rather than re-implemented inline here.
-  return [...entityLabelsIndex(entities).values()].sort((a, b) =>
-    a.ss58.localeCompare(b.ss58),
+  return [...entityLabelsIndex(entities).values()].sort((a: Row, b: Row) =>
+    (a.ss58 as string).localeCompare(b.ss58 as string),
   );
 }
 
-export async function loadSubnets() {
+export async function loadSubnets(): Promise<Row[]> {
   const { generateBaselineOverlaySet, loadManualSubnetOverlays } =
     await import("./generated-overlays.ts");
   const manualOverlays = await loadManualSubnetOverlays();
@@ -623,34 +679,42 @@ export async function loadSubnets() {
     ...overlaySet.generatedOverlays,
   ];
   return subnets.sort(
-    (a, b) => a.netuid - b.netuid || a.slug.localeCompare(b.slug),
+    (a, b) =>
+      (a.netuid as number) - (b.netuid as number) ||
+      (a.slug as string).localeCompare(b.slug as string),
   );
 }
 
-export async function loadNativeSnapshot() {
+export async function loadNativeSnapshot(): Promise<Row> {
   return readJson(path.join(repoRoot, "registry/native/finney-subnets.json"));
 }
 
-export async function loadCandidates(options = {}) {
+export async function loadCandidates(
+  options: { excludeFiles?: string[] } = {},
+): Promise<Row[]> {
   const excludeFiles = new Set(
     (options.excludeFiles || []).map((file) => path.resolve(file)),
   );
   const files = (
     await listJsonFilesRecursive(path.join(repoRoot, "registry/candidates"))
   ).filter((file) => !excludeFiles.has(path.resolve(file)));
-  const documents = await Promise.all(files.map(readJson));
-  const candidates = documents.flatMap((document) => {
+  const documents: Row[] = await Promise.all(files.map(readJson));
+  const candidates: Row[] = documents.flatMap((document) => {
     if (Array.isArray(document.candidates)) {
-      return document.candidates;
+      return document.candidates as Row[];
     }
     return [document];
   });
   return candidates.sort(
-    (a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id),
+    (a, b) =>
+      (a.netuid as number) - (b.netuid as number) ||
+      (a.id as string).localeCompare(b.id as string),
   );
 }
 
-export async function loadVerification(options = {}) {
+export async function loadVerification(
+  options: { preferDetailed?: boolean } = {},
+): Promise<Row> {
   const preferDetailed = options.preferDetailed !== false;
   const candidates = preferDetailed
     ? [
@@ -668,7 +732,7 @@ export async function loadVerification(options = {}) {
     try {
       return await readJson(filePath);
     } catch (error) {
-      if (error.code !== "ENOENT") {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
         throw error;
       }
     }
@@ -681,13 +745,13 @@ export async function loadVerification(options = {}) {
   };
 }
 
-export async function loadDetailedVerification() {
+export async function loadDetailedVerification(): Promise<Row> {
   try {
     return await readJson(
       path.join(generatedSourceRoot, "verification/latest.json"),
     );
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return loadVerification();
     }
     throw error;
@@ -713,7 +777,12 @@ export function resolveSurfaceCurationLevel({
   lastVerifiedAt,
   stale,
   subnetCurationLevel,
-}) {
+}: {
+  authority: unknown;
+  lastVerifiedAt: unknown;
+  stale: boolean;
+  subnetCurationLevel: unknown;
+}): string {
   const official = authority === "official";
   const verifiedFresh = Boolean(lastVerifiedAt) && stale !== true;
   if (subnetCurationLevel === "adapter-backed" && official) {
@@ -735,11 +804,11 @@ export function resolveSurfaceCurationLevel({
   return "native";
 }
 
-export function flattenSurfaces(subnets) {
+export function flattenSurfaces(subnets: Row[]): Row[] {
   return subnets
     .flatMap((subnet) =>
-      subnet.surfaces.map((surface) => {
-        const flattened = {
+      (subnet.surfaces as Row[]).map((surface) => {
+        const flattened: Row = {
           ...surface,
           netuid: subnet.netuid,
           subnet_slug: subnet.slug,
@@ -753,9 +822,9 @@ export function flattenSurfaces(subnets) {
         // overlay). Community-submitted/provider-claimed surfaces stay
         // unverified until they carry their own probe verification.
         flattened.last_verified_at =
-          surface.verification?.verified_at ??
+          (surface.verification as Row | undefined)?.verified_at ??
           (surface.authority === "official"
-            ? (subnet.curation?.verified_at ?? null)
+            ? ((subnet.curation as Row | undefined)?.verified_at ?? null)
             : null);
         // #1757: the resolved trust tier for this surface. `stale` is stamped
         // later (withSurfaceFreshness, which carries the nowMs reference), so a
@@ -765,12 +834,17 @@ export function flattenSurfaces(subnets) {
           authority: surface.authority ?? null,
           lastVerifiedAt: flattened.last_verified_at,
           stale: false,
-          subnetCurationLevel: subnet.curation?.level ?? null,
+          subnetCurationLevel:
+            (subnet.curation as Row | undefined)?.level ?? null,
         });
         return flattened;
       }),
     )
-    .sort((a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id));
+    .sort(
+      (a, b) =>
+        (a.netuid as number) - (b.netuid as number) ||
+        (a.id as string).localeCompare(b.id as string),
+    );
 }
 
 // #1006: per-kind verification-freshness TTL (days). `last_verified_at` is the
@@ -780,7 +854,7 @@ export function flattenSurfaces(subnets) {
 // SURFACE_FRESHNESS_DEFAULT_TTL_DAYS. Fixed (not env-gated) so the build and the
 // validate reproduction compute byte-identical `stale` values.
 export const SURFACE_FRESHNESS_DEFAULT_TTL_DAYS = 90;
-export const SURFACE_FRESHNESS_TTL_DAYS = {
+export const SURFACE_FRESHNESS_TTL_DAYS: Record<string, number> = {
   "subnet-api": 30,
   openapi: 30,
   sse: 30,
@@ -797,7 +871,7 @@ export const SURFACE_FRESHNESS_TTL_DAYS = {
   "repo-registry": 120,
 };
 
-export function surfaceFreshnessTtlDays(kind) {
+export function surfaceFreshnessTtlDays(kind: string): number {
   return SURFACE_FRESHNESS_TTL_DAYS[kind] ?? SURFACE_FRESHNESS_DEFAULT_TTL_DAYS;
 }
 
@@ -806,9 +880,13 @@ export function surfaceFreshnessTtlDays(kind) {
 // deterministic reference — never wall-clock — so the flag is reproducible). A
 // surface with no last_verified_at is NOT stale: that's "unverified", a distinct
 // state the null timestamp already signals.
-export function isSurfaceStale(lastVerifiedAt, kind, nowMs) {
+export function isSurfaceStale(
+  lastVerifiedAt: unknown,
+  kind: string,
+  nowMs: number,
+): boolean {
   if (!lastVerifiedAt) return false;
-  const verifiedMs = Date.parse(lastVerifiedAt);
+  const verifiedMs = Date.parse(lastVerifiedAt as string);
   if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return false;
   return nowMs - verifiedMs > surfaceFreshnessTtlDays(kind) * 86_400_000;
 }
@@ -817,9 +895,13 @@ export function isSurfaceStale(lastVerifiedAt, kind, nowMs) {
 // to flattenSurfaces' static `last_verified_at`). Kept separate because `stale`
 // needs the `nowMs` reference flattenSurfaces does not carry; build + validate
 // both call this with the same captured_at so per-subnet artifacts reproduce.
-export function withSurfaceFreshness(surfaces, nowMs) {
+export function withSurfaceFreshness(surfaces: Row[], nowMs: number): Row[] {
   return surfaces.map((surface) => {
-    const stale = isSurfaceStale(surface.last_verified_at, surface.kind, nowMs);
+    const stale = isSurfaceStale(
+      surface.last_verified_at,
+      surface.kind as string,
+      nowMs,
+    );
     return {
       ...surface,
       stale,
@@ -852,15 +934,15 @@ export function withSurfaceFreshness(surfaces, nowMs) {
 // author-controlled and changes on rename, which orphans D1 history + breaks the
 // derived endpoint link). PR1 surfaces this `key`; later PRs re-key D1 history +
 // endpoint links onto it. A URL change is intentionally a new identity.
-export function surfaceStableKey(entry) {
+export function surfaceStableKey(entry: Row): string {
   return `srf-${sha256Hex(registrySurfaceKey(entry)).slice(0, 16)}`;
 }
 
-export function stableStringify(value) {
+export function stableStringify(value: unknown): string {
   return JSON.stringify(sortValue(value), null, 2);
 }
 
-export function sortValue(value) {
+export function sortValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(sortValue);
   }
@@ -892,7 +974,7 @@ export const REGISTRY_SYNC_MAX_ROWS_PER_KIND = 2_000;
 // isn't set, so callers can no-op gracefully before the secret is
 // provisioned; throws on any transport/auth/validation failure so a real
 // misconfiguration fails the run loudly instead of silently doing nothing.
-export async function postRegistrySync(payload) {
+export async function postRegistrySync(payload: unknown): Promise<Row | null> {
   const secret = process.env.REGISTRY_SYNC_SECRET;
   if (!secret) {
     return null;
@@ -912,7 +994,7 @@ export async function postRegistrySync(payload) {
     },
     body,
   });
-  const json = await response.json().catch(() => ({}));
+  const json = (await response.json().catch(() => ({}))) as Row;
   if (!response.ok) {
     throw new Error(
       `registry-sync request to ${endpoint} failed (${response.status}): ${json.error || response.statusText}`,
@@ -925,8 +1007,11 @@ export async function postRegistrySync(payload) {
 // individual postRegistrySync() call under the server's rows-per-kind cap
 // when a caller (namely the full backfill) has more rows than fit in one
 // request. Always returns at least one (possibly empty) chunk.
-export function chunkRows(rows, maxRows = REGISTRY_SYNC_MAX_ROWS_PER_KIND) {
-  const chunks = [];
+export function chunkRows<T>(
+  rows: T[],
+  maxRows: number = REGISTRY_SYNC_MAX_ROWS_PER_KIND,
+): T[][] {
+  const chunks: T[][] = [];
   for (let i = 0; i < rows.length; i += maxRows) {
     chunks.push(rows.slice(i, i + maxRows));
   }
@@ -954,33 +1039,33 @@ const schemaAbsoluteUrlPattern = /\b(?:https?|wss?):\/\/[^\s<>"'`)}\]]+/gi;
 const localAbsolutePathPattern =
   /\/Users\/[^\s"'`<>]+|\/home\/[^\s"'`<>]+|C:\\Users\\[^\s"'`<>]+/g;
 
-function redactLocalAbsolutePaths(value) {
+function redactLocalAbsolutePaths(value: string): string {
   return value.replace(localAbsolutePathPattern, "[redacted-local-path]");
 }
 
-function isSchemaExtensionKey(key) {
+function isSchemaExtensionKey(key: unknown): boolean {
   return String(key || "")
     .toLowerCase()
     .startsWith("x-");
 }
 
-function isAbsoluteHttpLikeUrl(value) {
+function isAbsoluteHttpLikeUrl(value: unknown): boolean {
   try {
-    const url = new URL(value);
+    const url = new URL(value as string);
     return ["http:", "https:", "ws:", "wss:"].includes(url.protocol);
   } catch {
     return false;
   }
 }
 
-function sanitizeSchemaUrlString(value) {
+function sanitizeSchemaUrlString(value: string): string | null {
   if (isUnsafeUrl(value)) {
     return null;
   }
   return redactCredentialedUrl(value);
 }
 
-function sanitizeSchemaText(value) {
+function sanitizeSchemaText(value: string): string {
   return redactLocalAbsolutePaths(value).replace(
     schemaAbsoluteUrlPattern,
     (match) => {
@@ -990,20 +1075,21 @@ function sanitizeSchemaText(value) {
   );
 }
 
-function sanitizeSchemaKey(key) {
+function sanitizeSchemaKey(key: string): string | null {
   if (!isAbsoluteHttpLikeUrl(key)) {
     return key;
   }
   return sanitizeSchemaUrlString(key);
 }
 
-function sanitizeSchemaServer(value) {
+function sanitizeSchemaServer(value: unknown): unknown {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return sanitizeOpenApiDocument(value);
   }
 
-  if (typeof value.url === "string" && isAbsoluteHttpLikeUrl(value.url)) {
-    const url = sanitizeSchemaUrlString(value.url);
+  const row = value as Row;
+  if (typeof row.url === "string" && isAbsoluteHttpLikeUrl(row.url)) {
+    const url = sanitizeSchemaUrlString(row.url);
     if (!url) {
       return undefined;
     }
@@ -1012,7 +1098,7 @@ function sanitizeSchemaServer(value) {
   return sanitizeOpenApiDocument(value);
 }
 
-export function sanitizeOpenApiDocument(value) {
+export function sanitizeOpenApiDocument(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value
       .map((nested) => sanitizeOpenApiDocument(nested))
@@ -1049,7 +1135,7 @@ export function sanitizeOpenApiDocument(value) {
 
           return [[sanitizedKey, sanitizedNested]];
         })
-        .sort(([a], [b]) => a.localeCompare(b)),
+        .sort(([a], [b]) => (a as string).localeCompare(b as string)),
     );
   }
 
@@ -1060,18 +1146,18 @@ export function sanitizeOpenApiDocument(value) {
   return value;
 }
 
-export function isValidUrl(value) {
+export function isValidUrl(value: unknown): boolean {
   try {
-    const parsed = new URL(value);
+    const parsed = new URL(value as string);
     return ["https:", "http:", "wss:", "ws:"].includes(parsed.protocol);
   } catch {
     return false;
   }
 }
 
-export function isUnsafeUrl(value) {
+export function isUnsafeUrl(value: unknown): boolean {
   try {
-    const url = new URL(value);
+    const url = new URL(value as string);
     if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
       return true;
     }
@@ -1086,9 +1172,17 @@ export function isUnsafeUrl(value) {
   }
 }
 
-export async function resolvePublicUrlAddresses(value, resolver = lookup) {
+interface ResolvedAddress {
+  address: string;
+  family: number;
+}
+
+export async function resolvePublicUrlAddresses(
+  value: unknown,
+  resolver: typeof lookup = lookup,
+): Promise<ResolvedAddress[]> {
   try {
-    const url = new URL(value);
+    const url = new URL(value as string);
     if (isUnsafeUrl(url.toString())) {
       return [];
     }
@@ -1114,7 +1208,10 @@ export async function resolvePublicUrlAddresses(value, resolver = lookup) {
   }
 }
 
-export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+export async function isUnsafeResolvedUrl(
+  value: unknown,
+  resolver: typeof lookup = lookup,
+): Promise<boolean> {
   return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
 }
 
@@ -1126,8 +1223,20 @@ const SAFE_FETCH_REDIRECT_CODES = new Set([301, 302, 303, 307, 308]);
 // host — closing the TOCTOU DNS-rebinding window between the safety check and the
 // actual socket. Returns a Node `dns.lookup`-shaped callback (single-answer and
 // `{ all: true }` array forms). Exported so its branches are unit-covered.
-export function createPinnedLookup(hostname, address, family) {
-  return (requestedHostname, options, callback) => {
+export function createPinnedLookup(
+  hostname: string,
+  address: string,
+  family: number,
+) {
+  return (
+    requestedHostname: string,
+    options: { all?: boolean } | undefined,
+    callback: (
+      err: Error | null,
+      address?: string | { address: string; family: number }[],
+      family?: number,
+    ) => void,
+  ): void => {
     if (normalizeHostname(requestedHostname) !== hostname) {
       callback(new Error("safeFetch attempted to resolve an unpinned host"));
       return;
@@ -1140,10 +1249,33 @@ export function createPinnedLookup(hostname, address, family) {
   };
 }
 
-function createPinnedAddressDispatcher(hostname, address, family) {
+function createPinnedAddressDispatcher(
+  hostname: string,
+  address: string,
+  family: number,
+): Agent {
   return new Agent({
-    connect: { lookup: createPinnedLookup(hostname, address, family) },
+    connect: { lookup: createPinnedLookup(hostname, address, family) as never },
   });
+}
+
+interface SafeFetchOptions {
+  accept?: string;
+  headers?: HeadersInit | null;
+  maxRedirects?: number;
+  method?: string;
+  timeoutMs?: number;
+  resolver?: typeof lookup;
+  signal?: AbortSignal | null;
+}
+
+interface SafeFetchResult {
+  ok: boolean;
+  response?: Response;
+  status?: number;
+  url?: string;
+  unsafe?: boolean;
+  error?: string;
 }
 
 // SSRF-safe outbound GET: re-validates EVERY hop — the initial URL AND each
@@ -1159,7 +1291,7 @@ function createPinnedAddressDispatcher(hostname, address, family) {
 //   { ok: false, error }                  network error / timeout / too many redirects
 // The caller owns response.body (read or cancel it).
 export async function safeFetch(
-  url,
+  url: string,
   {
     accept = "*/*",
     headers = null,
@@ -1168,8 +1300,8 @@ export async function safeFetch(
     timeoutMs = 12000,
     resolver = lookup,
     signal = null,
-  } = {},
-) {
+  }: SafeFetchOptions = {},
+): Promise<SafeFetchResult> {
   let target = url;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
     const addresses = await resolvePublicUrlAddresses(target, resolver);
@@ -1187,19 +1319,22 @@ export async function safeFetch(
     const timer = controller
       ? setTimeout(() => controller.abort(), timeoutMs)
       : null;
-    let response;
+    let response: Response;
     try {
       response = await fetch(target, {
         method,
         redirect: "manual",
-        signal: signal || controller.signal,
+        signal: signal || controller?.signal,
         dispatcher,
         headers: headers || { "user-agent": "metagraphed/0.0", accept },
-      });
+      } as RequestInit);
     } catch (error) {
       return {
         ok: false,
-        error: error.name === "AbortError" ? "timeout" : error.message,
+        error:
+          (error as Error).name === "AbortError"
+            ? "timeout"
+            : (error as Error).message,
       };
     } finally {
       if (timer) {
@@ -1221,7 +1356,7 @@ export async function safeFetch(
   return { ok: false, error: "too many redirects" };
 }
 
-function isUnsafeHostname(host) {
+function isUnsafeHostname(host: string): boolean {
   if (
     !host ||
     host === "localhost" ||
@@ -1246,10 +1381,10 @@ const SELF_DOMAIN = "metagraph.sh";
 // trust and call it. The real metagraph.sh and its subdomains are exempt; this
 // targets squats of our exact domain, not the generic "metagraph" Bittensor term
 // (a subnet legitimately named "…metagraph…" is unaffected).
-export function isBrandImpersonationUrl(value) {
-  let url;
+export function isBrandImpersonationUrl(value: unknown): boolean {
+  let url: URL;
   try {
-    url = new URL(value);
+    url = new URL(value as string);
   } catch {
     return false;
   }
@@ -1273,7 +1408,7 @@ export function isBrandImpersonationUrl(value) {
   );
 }
 
-function isUnsafeIpAddress(address) {
+function isUnsafeIpAddress(address: string): boolean {
   const normalized = normalizeHostname(address);
   const family = isIP(normalized);
   return (
@@ -1282,7 +1417,7 @@ function isUnsafeIpAddress(address) {
   );
 }
 
-function normalizeHostname(hostname) {
+function normalizeHostname(hostname: unknown): string {
   return String(hostname || "")
     .trim()
     .toLowerCase()
@@ -1290,9 +1425,9 @@ function normalizeHostname(hostname) {
     .replace(/\.$/, "");
 }
 
-export function isCredentialedUrl(value) {
+export function isCredentialedUrl(value: unknown): boolean {
   try {
-    const url = new URL(value);
+    const url = new URL(value as string);
     if (url.username || url.password) {
       return true;
     }
@@ -1307,7 +1442,7 @@ export function isCredentialedUrl(value) {
   }
 }
 
-export function redactCredentialedUrl(value) {
+export function redactCredentialedUrl(value: string): string {
   if (!isCredentialedUrl(value)) {
     return value;
   }
@@ -1320,7 +1455,7 @@ export function redactCredentialedUrl(value) {
   return url.toString();
 }
 
-export function redactCredentialedUrls(value) {
+export function redactCredentialedUrls(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(redactCredentialedUrls);
   }
@@ -1350,10 +1485,20 @@ const FIXTURE_SENSITIVE_KEY =
 // length / key count so a hostile or huge response can never bloat the artifact
 // or smuggle secrets. Deterministic + pure. Returns the bounded, redacted value.
 export function sanitizeFixtureBody(
-  value,
-  { maxDepth = 6, maxArray = 20, maxString = 500, maxKeys = 60 } = {},
-) {
-  const walk = (node, depth) => {
+  value: unknown,
+  {
+    maxDepth = 6,
+    maxArray = 20,
+    maxString = 500,
+    maxKeys = 60,
+  }: {
+    maxDepth?: number;
+    maxArray?: number;
+    maxString?: number;
+    maxKeys?: number;
+  } = {},
+): unknown {
+  const walk = (node: unknown, depth: number): unknown => {
     if (depth > maxDepth) return "[truncated: max depth]";
     if (typeof node === "string") {
       // Redact credentials AND private/loopback URLs. A captured spec can carry a
@@ -1371,7 +1516,7 @@ export function sanitizeFixtureBody(
       return out;
     }
     if (node && typeof node === "object") {
-      const out = {};
+      const out: Row = {};
       const entries = Object.entries(node);
       for (const [key, nested] of entries.slice(0, maxKeys)) {
         out[key] = FIXTURE_SENSITIVE_KEY.test(key)
@@ -1396,8 +1541,8 @@ export function sanitizeFixtureBody(
 // body itself is NOT inlined — captured bodies can be ~1 MB — so service detail
 // stays lean and the one already-sanitized copy is served from a single place.
 // Returns null when there is no fixture, so callers omit the field entirely.
-export function fixtureCaptureFailureReason(error) {
-  const name = error?.name || null;
+export function fixtureCaptureFailureReason(error: unknown): string {
+  const name = (error as Row | null)?.name || null;
   if (name === "SyntaxError") {
     return "invalid json response";
   }
@@ -1413,14 +1558,18 @@ export function fixtureCaptureFailureReason(error) {
   return "capture failed";
 }
 
-export function surfaceFixtureReference(surfaceId, fixture) {
+export function surfaceFixtureReference(
+  surfaceId: unknown,
+  fixture: unknown,
+): Row | null {
   if (!surfaceId || !fixture || typeof fixture !== "object") {
     return null;
   }
-  const request = fixture.request || {};
-  const response = fixture.response || {};
+  const fixtureRow = fixture as Row;
+  const request = (fixtureRow.request as Row | undefined) || {};
+  const response = (fixtureRow.response as Row | undefined) || {};
   return {
-    captured_at: fixture.captured_at || null,
+    captured_at: fixtureRow.captured_at || null,
     request: {
       method: typeof request.method === "string" ? request.method : "GET",
       url: typeof request.url === "string" ? request.url : null,
@@ -1436,7 +1585,7 @@ export function surfaceFixtureReference(surfaceId, fixture) {
   };
 }
 
-export function normalizePublicUrl(value) {
+export function normalizePublicUrl(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
   }
@@ -1484,7 +1633,7 @@ export function normalizePublicUrl(value) {
   }
 }
 
-export function normalizePublicHttpUrl(value) {
+export function normalizePublicHttpUrl(value: unknown): string | null {
   const normalized = normalizePublicUrl(value);
   if (!normalized) {
     return null;
@@ -1504,7 +1653,7 @@ export function normalizePublicHttpUrl(value) {
 const PLACEHOLDER_IDENTITY_URL =
   /deprecated|username\/repo|example\.com|\byour-?org\b|\byourwebsite\b|\byourusername\b/i;
 
-export function isPlaceholderIdentityUrl(value) {
+export function isPlaceholderIdentityUrl(value: unknown): boolean {
   return typeof value === "string" && PLACEHOLDER_IDENTITY_URL.test(value);
 }
 
@@ -1514,9 +1663,12 @@ export function isPlaceholderIdentityUrl(value) {
 // build-artifacts (mergeSubnet) and validate (buildExpectedGeneratedSubnet) so
 // the chain backfill can't drift between the generator and the reproducibility
 // validator.
-export function backfilledIdentityUrl(overlayValue, chainValue) {
+export function backfilledIdentityUrl(
+  overlayValue: unknown,
+  chainValue: unknown,
+): string | null {
   if (overlayValue !== undefined) {
-    return overlayValue || null;
+    return (overlayValue as string) || null;
   }
   const normalized = normalizePublicUrl(chainValue);
   if (!normalized || isPlaceholderIdentityUrl(normalized)) {
@@ -1527,7 +1679,7 @@ export function backfilledIdentityUrl(overlayValue, chainValue) {
 
 // Social platforms recognized in the free-text on-chain `additional` field, by
 // canonical host (#745).
-const SOCIAL_HOSTS = {
+const SOCIAL_HOSTS: Record<string, string[]> = {
   x: ["x.com", "twitter.com"],
   telegram: ["t.me", "telegram.me", "telegram.org"],
   reddit: ["reddit.com"],
@@ -1535,7 +1687,7 @@ const SOCIAL_HOSTS = {
 };
 const SOCIAL_KEYS = Object.keys(SOCIAL_HOSTS);
 
-function socialHostKey(host) {
+function socialHostKey(host: string): string | null {
   const h = host.replace(/^www\./, "").toLowerCase();
   for (const key of SOCIAL_KEYS) {
     if (SOCIAL_HOSTS[key].some((d) => h === d || h.endsWith(`.${d}`))) {
@@ -1545,7 +1697,7 @@ function socialHostKey(host) {
   return null;
 }
 
-function socialHostMatchesKey(url, key) {
+function socialHostMatchesKey(url: string, key: string): boolean {
   try {
     return socialHostKey(new URL(url).hostname) === key;
   } catch {
@@ -1561,8 +1713,11 @@ function socialHostMatchesKey(url, key) {
 // (buildExpectedGeneratedSubnet) so the chain extraction can't drift.
 // Display-only: a chain-claimed handle is NOT verification, and this NEVER feeds
 // completeness_score/missing_* (the flywheel's gaps stay the product).
-export function socialAccounts(additionalText, overlaySocial = null) {
-  const out = {};
+export function socialAccounts(
+  additionalText: unknown,
+  overlaySocial: unknown = null,
+): Row | null {
+  const out: Row = {};
   const text = typeof additionalText === "string" ? additionalText : "";
   const re =
     /\b(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com|t\.me|telegram\.(?:me|org)|reddit\.com|youtube\.com|youtu\.be)\/[^\s"'<>)\]]+/gi;
@@ -1587,8 +1742,9 @@ export function socialAccounts(additionalText, overlaySocial = null) {
     typeof overlaySocial === "object" &&
     !Array.isArray(overlaySocial)
   ) {
+    const overlaySocialRow = overlaySocial as Row;
     for (const key of SOCIAL_KEYS) {
-      const curated = normalizePublicHttpUrl(overlaySocial[key]);
+      const curated = normalizePublicHttpUrl(overlaySocialRow[key]);
       if (curated && socialHostMatchesKey(curated, key)) {
         out[key] = curated;
       }
@@ -1619,7 +1775,7 @@ const EMAIL_RE = new RegExp(
     "(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\\.)+[A-Z]{2,63}$",
   "i",
 );
-export function subnetContact(overlayContact) {
+export function subnetContact(overlayContact: unknown): string | null {
   if (typeof overlayContact !== "string") return null;
   const value = overlayContact.trim();
   if (!value || CONTACT_JUNK_VALUES.has(value.toLowerCase())) return null;
@@ -1633,7 +1789,7 @@ export function subnetContact(overlayContact) {
   return url && !isPlaceholderIdentityUrl(url) ? url : null;
 }
 
-export function registrySurfaceKey(entry) {
+export function registrySurfaceKey(entry: Row): string {
   const normalizedUrl = normalizePublicUrl(entry?.url);
   return [
     entry?.netuid ?? "unknown",
@@ -1647,25 +1803,25 @@ export function registrySurfaceKey(entry) {
 // Locator key for a surface stored under a subnet. Stored surfaces have no
 // netuid (it lives on the parent), so inject it before keying — otherwise
 // registrySurfaceKey degrades to "unknown|kind|url" and never matches.
-export function subnetSurfaceKey(surface, netuid) {
+export function subnetSurfaceKey(surface: Row, netuid: unknown): string {
   return registrySurfaceKey({ ...surface, netuid });
 }
 
-export function sha256Hex(value) {
+export function sha256Hex(value: BinaryLike): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-export function hashJson(value) {
+export function hashJson(value: unknown): string {
   return sha256Hex(stableStringify(value));
 }
 
-export function isJsonContentType(value) {
+export function isJsonContentType(value: unknown): boolean {
   return String(value || "")
     .toLowerCase()
     .includes("json");
 }
 
-export function isHtmlContentType(value) {
+export function isHtmlContentType(value: unknown): boolean {
   return String(value || "")
     .toLowerCase()
     .includes("html");
@@ -1691,23 +1847,24 @@ export const OPENAPI_PROBE_PATHS = Object.freeze([
 // marker plus the `info` and `paths` objects every spec carries, so a stray
 // config or error body never registers as a callable API. Pure + side-effect
 // free, so it is exhaustively unit-testable.
-export function isOpenApiDocument(body) {
+export function isOpenApiDocument(body: unknown): boolean {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return false;
   }
+  const bodyRow = body as Row;
   const version =
-    typeof body.openapi === "string"
-      ? body.openapi
-      : typeof body.swagger === "string"
-        ? body.swagger
+    typeof bodyRow.openapi === "string"
+      ? bodyRow.openapi
+      : typeof bodyRow.swagger === "string"
+        ? bodyRow.swagger
         : null;
   // OpenAPI reports "3.x.y"; Swagger reports "2.0". Reject anything else.
   if (!version || !/^[23]\.\d/.test(version)) {
     return false;
   }
-  const isPlainObject = (value) =>
+  const isPlainObject = (value: unknown): boolean =>
     Boolean(value) && typeof value === "object" && !Array.isArray(value);
-  return isPlainObject(body.info) && isPlainObject(body.paths);
+  return isPlainObject(bodyRow.info) && isPlainObject(bodyRow.paths);
 }
 
 // Probe an ordered list of candidate spec paths on `origin`, returning the first
@@ -1717,8 +1874,12 @@ export function isOpenApiDocument(body) {
 // null; keeping it injectable leaves this orchestration pure and mock-driven in
 // tests. A fetcher that throws is treated as a miss for that path, so one bad
 // path never aborts the sweep.
-export async function probeOpenApiSpec(origin, paths, fetcher) {
-  let base;
+export async function probeOpenApiSpec(
+  origin: string,
+  paths: readonly string[],
+  fetcher: (url: string) => Promise<unknown>,
+): Promise<{ url: string; document: unknown } | null> {
+  let base: URL;
   try {
     base = new URL(origin);
   } catch {
@@ -1726,7 +1887,7 @@ export async function probeOpenApiSpec(origin, paths, fetcher) {
   }
   for (const specPath of paths) {
     const url = new URL(specPath, base).toString();
-    let body;
+    let body: unknown;
     try {
       body = await fetcher(url);
     } catch {
@@ -1739,7 +1900,7 @@ export async function probeOpenApiSpec(origin, paths, fetcher) {
   return null;
 }
 
-export function buildTimestamp() {
+export function buildTimestamp(): string {
   return process.env.METAGRAPH_BUILD_TIMESTAMP || "1970-01-01T00:00:00.000Z";
 }
 
@@ -1750,12 +1911,14 @@ export function buildTimestamp() {
  * (METAGRAPH_BUILD_TIMESTAMP or METAGRAPH_RUN_ID set) or when no manifest
  * exists yet — callers fall back to generatedAt in those cases.
  */
-export async function readCommittedManifestGeneratedAt(manifestPath) {
+export async function readCommittedManifestGeneratedAt(
+  manifestPath: string,
+): Promise<string | null> {
   if (process.env.METAGRAPH_BUILD_TIMESTAMP || process.env.METAGRAPH_RUN_ID) {
     return null;
   }
-  const manifest = await readJson(manifestPath).catch(() => null);
-  return manifest?.generated_at ?? null;
+  const manifest: Row | null = await readJson(manifestPath).catch(() => null);
+  return (manifest?.generated_at as string | undefined) ?? null;
 }
 
 // Conservative shape for a Discord-style handle: optional leading @, then a
@@ -1774,9 +1937,11 @@ const CONTACT_HANDLE_JUNK = /^(?:deprecated|none|null|n\/a|tbd|todo)$/i;
 // is either an explicit URL that passes the full public-URL guard, a string
 // that looks like a plain handle, or it is dropped. Deterministic +
 // idempotent so the build and the reproducibility validator never drift.
-export function nativeContactHandle(value) {
+export function nativeContactHandle(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const cleaned = sanitizeChainText(value).text.replace(/\s+/g, " ").trim();
+  const cleaned = (sanitizeChainText(value).text ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!cleaned || cleaned.length > 200) return null;
   // Scheme'd values (https://…, but also javascript:/data:/mailto:) must pass
   // the same guard as every public identity URL — scheme allowlist, SSRF and
@@ -1802,8 +1967,10 @@ export function nativeContactHandle(value) {
 // chain values — normalizePublicUrl alone would puff a dotted handle
 // ("dev.alveuslabs") into a fake domain. Shared by the mainnet and testnet
 // index builders so the two projections cannot drift.
-export function nativeContactUrl(contact) {
-  return contact && /^(?:https?|wss?):\/\//i.test(contact) ? contact : null;
+export function nativeContactUrl(contact: unknown): string | null {
+  return contact && /^(?:https?|wss?):\/\//i.test(contact as string)
+    ? (contact as string)
+    : null;
 }
 
 // Domain/capability tag derivation (issue #345) lives in the worker-safe
@@ -1823,27 +1990,27 @@ const LINEAGE_MATCH_TYPES = new Set(["github_repo", "chain_name"]);
 // [{ source_netuid, target_netuid, matched_by }]. Deterministic + pure so the
 // build and the validator never drift.
 export function buildSubnetLineageLinks(
-  sourceSubnets,
-  targetSubnets,
-  approvedLinks = [],
-  brokenLinks = [],
-) {
+  sourceSubnets: Row[],
+  targetSubnets: Row[],
+  approvedLinks: Row[] = [],
+  brokenLinks: Row[] = [],
+): Row[] {
   const sourcesByNetuid = new Map(
     (sourceSubnets || []).map((source) => [source.netuid, source]),
   );
   const targetsByNetuid = new Map(
     (targetSubnets || []).map((target) => [target.netuid, target]),
   );
-  const links = [];
-  const seen = new Set();
-  const seenTargets = new Map();
+  const links: Row[] = [];
+  const seen = new Set<string>();
+  const seenTargets = new Map<unknown, unknown>();
   for (const approval of approvedLinks || []) {
     const sourceNetuid = approval?.source_netuid ?? approval?.mainnet_netuid;
     const targetNetuid = approval?.target_netuid ?? approval?.testnet_netuid;
     if (
       !Number.isInteger(sourceNetuid) ||
       !Number.isInteger(targetNetuid) ||
-      !LINEAGE_MATCH_TYPES.has(approval?.matched_by)
+      !LINEAGE_MATCH_TYPES.has(approval?.matched_by as string)
     ) {
       // #1012: don't silently drop — record the malformed approval so it's fixable.
       brokenLinks.push({
@@ -1893,7 +2060,8 @@ export function buildSubnetLineageLinks(
   }
   return links.sort(
     (a, b) =>
-      a.source_netuid - b.source_netuid || a.target_netuid - b.target_netuid,
+      (a.source_netuid as number) - (b.source_netuid as number) ||
+      (a.target_netuid as number) - (b.target_netuid as number),
   );
 }
 
@@ -1996,7 +2164,7 @@ const CLUSTER_COUNTRY_CODE_SECOND_LEVEL_SUFFIX_LABELS = new Set([
   "org",
 ]);
 
-function clusterSuffixDomain(host) {
+function clusterSuffixDomain(host: string): string | null {
   const labels = host.split(".").filter(Boolean);
   if (labels.length < 2) return host || null;
   if (labels.at(-1) === "com" && labels.at(-2) === "appspot") {
@@ -2031,7 +2199,7 @@ function clusterSuffixDomain(host) {
 // Registrable domain (eTLD+1) of a URL, for the provider shared-team cluster
 // heuristic (issue #347). Returns null on unparseable input or bare shared
 // suffixes that cannot identify a provider team.
-export function clusterDomainFromUrl(value) {
+export function clusterDomainFromUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
   try {
     const host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
@@ -2044,7 +2212,7 @@ export function clusterDomainFromUrl(value) {
 // Hostname-only registrable unit for dedupe / same-site checks (#1636, #1910).
 // Mirrors clusterDomainFromUrl but accepts bare hostnames and always returns a
 // string (falls back to the last-two-label heuristic for bare suffix hosts).
-export function registrableHostDomain(hostname) {
+export function registrableHostDomain(hostname: unknown): string {
   const host = String(hostname || "")
     .toLowerCase()
     .replace(/^www\./, "");
@@ -2058,7 +2226,10 @@ export function registrableHostDomain(hostname) {
 
 // Same-site check for candidate discovery (#1910): exact hostname match or the
 // same registrable host (honors multi-label public suffixes via registrableHostDomain).
-export function isLikelyProjectDomain(baseUrl, candidateUrl) {
+export function isLikelyProjectDomain(
+  baseUrl: string,
+  candidateUrl: string,
+): boolean {
   try {
     const base = new URL(baseUrl);
     const candidate = new URL(candidateUrl);
@@ -2081,10 +2252,10 @@ export function isLikelyProjectDomain(baseUrl, candidateUrl) {
 // not the project), or hosts with no resolvable registrable domain. Pure +
 // deterministic, so it is exhaustively unit-tested. Callers still apply their own
 // generic-host / safe-fetch policy to the returned origins.
-export function apiDocsSubdomainOrigins(origin) {
-  let host;
+export function apiDocsSubdomainOrigins(origin: unknown): string[] {
+  let host: string;
   try {
-    host = new URL(origin).hostname.toLowerCase();
+    host = new URL(origin as string).hostname.toLowerCase();
   } catch {
     return [];
   }
@@ -2130,14 +2301,27 @@ const AUTO_ELEVATE_OPENAPI_SOURCES = new Set([
   "openapi-probe",
   "community-pr-intake",
 ]);
+
+interface ProvenanceElevation {
+  netuid: unknown;
+  slug: unknown;
+  domain: string;
+  source_urls: string[];
+  kinds: string[];
+}
+
 export function computeProvenanceElevations({
   candidates = [],
   nativeSubnets = [],
   verificationResults = [],
-}) {
-  const authByNetuid = new Map();
+}: {
+  candidates?: Row[];
+  nativeSubnets?: Row[];
+  verificationResults?: Row[];
+}): ProvenanceElevation[] {
+  const authByNetuid = new Map<unknown, string>();
   for (const subnet of nativeSubnets) {
-    const url = subnet?.chain_identity?.subnet_url;
+    const url = (subnet?.chain_identity as Row | undefined)?.subnet_url;
     const domain = url ? clusterDomainFromUrl(url) : null;
     if (domain) authByNetuid.set(subnet.netuid, domain);
   }
@@ -2146,7 +2330,16 @@ export function computeProvenanceElevations({
       .filter((result) => result?.candidate_id)
       .map((result) => [result.candidate_id, result]),
   );
-  const byNetuid = new Map();
+  const byNetuid = new Map<
+    unknown,
+    {
+      netuid: unknown;
+      slug: unknown;
+      domain: string;
+      source_urls: Set<string>;
+      kinds: Set<string>;
+    }
+  >();
   for (const candidate of candidates) {
     if (candidate.kind !== "openapi" && candidate.kind !== "subnet-api") {
       continue;
@@ -2157,17 +2350,18 @@ export function computeProvenanceElevations({
     }
     if (
       candidate.kind === "openapi"
-        ? !AUTO_ELEVATE_OPENAPI_SOURCES.has(candidate.source_type)
+        ? !AUTO_ELEVATE_OPENAPI_SOURCES.has(candidate.source_type as string)
         : candidate.source_type === "project-website-common-path"
     ) {
       continue;
     }
-    const verification = verByCandidate.get(candidate.id);
+    const verification = verByCandidate.get(candidate.id) as Row | undefined;
     if (
       !verification ||
       (verification.classification !== "live" &&
         verification.classification !== "redirected") ||
-      verification.quality_signals?.content_type_matches_kind !== true
+      (verification.quality_signals as Row | undefined)
+        ?.content_type_matches_kind !== true
     ) {
       continue;
     }
@@ -2180,9 +2374,9 @@ export function computeProvenanceElevations({
         kinds: new Set(),
       });
     }
-    const entry = byNetuid.get(candidate.netuid);
-    entry.source_urls.add(candidate.url);
-    entry.kinds.add(candidate.kind);
+    const entry = byNetuid.get(candidate.netuid)!;
+    entry.source_urls.add(candidate.url as string);
+    entry.kinds.add(candidate.kind as string);
     if (!entry.slug && candidate.slug) entry.slug = candidate.slug;
   }
   return [...byNetuid.values()]
@@ -2193,7 +2387,7 @@ export function computeProvenanceElevations({
       kinds: [...entry.kinds].sort(),
       source_urls: [...entry.source_urls].sort(),
     }))
-    .sort((a, b) => a.netuid - b.netuid);
+    .sort((a, b) => (a.netuid as number) - (b.netuid as number));
 }
 
 // Build the provenance review queue document from the elevation set: the subnets
@@ -2208,9 +2402,18 @@ export function buildProvenanceReviewQueue({
   verificationResults = [],
   subnets = [],
   generatedAt = buildTimestamp(),
-}) {
+}: {
+  candidates?: Row[];
+  nativeSubnets?: Row[];
+  verificationResults?: Row[];
+  subnets?: Row[];
+  generatedAt?: string;
+}): Row {
   const levelByNetuid = new Map(
-    subnets.map((subnet) => [subnet.netuid, subnet.curation?.level ?? null]),
+    subnets.map((subnet) => [
+      subnet.netuid,
+      (subnet.curation as Row | undefined)?.level ?? null,
+    ]),
   );
   const slugByNetuid = new Map(
     subnets.map((subnet) => [subnet.netuid, subnet.slug]),
@@ -2221,7 +2424,10 @@ export function buildProvenanceReviewQueue({
     verificationResults,
   });
   const queue = elevations
-    .filter((entry) => !TOP_TRUST_LEVELS.has(levelByNetuid.get(entry.netuid)))
+    .filter(
+      (entry) =>
+        !TOP_TRUST_LEVELS.has(levelByNetuid.get(entry.netuid) as string),
+    )
     .map((entry) => ({
       netuid: entry.netuid,
       slug:
@@ -2255,22 +2461,26 @@ export function buildProvenanceReviewQueue({
 // verification-score bonus (scoreCandidate). Pure + deterministic (sorted,
 // deduped); clusterDomainFromUrl folds api./docs. subdomains into one source so
 // two URLs on the same site never read as independent corroboration.
-export function corroboratingSources(candidate) {
+export function corroboratingSources(candidate: Row): string[] {
   const urls = Array.isArray(candidate?.source_urls)
-    ? candidate.source_urls
+    ? (candidate.source_urls as string[])
     : [];
-  return [...new Set(urls.map(clusterDomainFromUrl).filter(Boolean))].sort();
+  return [
+    ...new Set(urls.map(clusterDomainFromUrl).filter(Boolean)),
+  ].sort() as string[];
 }
 
 // Pull a usable OAuth2/OIDC token (or authorize) endpoint out of a security
 // scheme, tolerating OpenAPI 3 `flows.*` and Swagger 2 top-level shapes.
-function oauthTokenUrl(scheme) {
+function oauthTokenUrl(scheme: Row): string | null {
   if (typeof scheme.openIdConnectUrl === "string") {
     return scheme.openIdConnectUrl;
   }
   const flows =
-    scheme.flows && typeof scheme.flows === "object" ? scheme.flows : {};
-  for (const flow of Object.values(flows)) {
+    scheme.flows && typeof scheme.flows === "object"
+      ? (scheme.flows as Row)
+      : {};
+  for (const flow of Object.values(flows) as Row[]) {
     if (flow && typeof flow.tokenUrl === "string") {
       return flow.tokenUrl;
     }
@@ -2291,10 +2501,10 @@ function oauthTokenUrl(scheme) {
 // auth hint a caller can act on (#746): the scheme + concrete header/param name
 // and a value PLACEHOLDER (never a real secret). Prefers a concrete api-key/http
 // scheme over oauth2 when several are declared. token_url is junk/SSRF-guarded.
-export function deriveAuthDetail(schemes) {
+export function deriveAuthDetail(schemes: Row | undefined): Row | null {
   const entries = Object.values(schemes || {}).filter(
     (scheme) => scheme && typeof scheme === "object",
-  );
+  ) as Row[];
   if (!entries.length) {
     return null;
   }
@@ -2304,7 +2514,7 @@ export function deriveAuthDetail(schemes) {
     entries[0];
   const type = String(pick.type || "").toLowerCase();
   if (type === "apikey" && typeof pick.name === "string" && pick.name) {
-    const location = ["header", "query", "cookie"].includes(pick.in)
+    const location = ["header", "query", "cookie"].includes(pick.in as string)
       ? pick.in
       : "header";
     return {
@@ -2331,7 +2541,7 @@ export function deriveAuthDetail(schemes) {
     };
   }
   if (type === "oauth2" || type === "openidconnect") {
-    const detail = {
+    const detail: Row = {
       scheme: "oauth2",
       location: "header",
       name: "Authorization",
@@ -2350,15 +2560,16 @@ export function deriveAuthDetail(schemes) {
 // components.securitySchemes or Swagger 2 securityDefinitions. A spec that
 // declares any security scheme is treated as requiring auth — the fix for
 // services (e.g. Chutes) that declare apiKey yet were flagged auth_required:false.
-export function extractAuth(spec) {
+export function extractAuth(spec: Row): Row {
   const schemes =
-    (spec?.components && spec.components.securitySchemes) ||
+    ((spec?.components as Row | undefined) &&
+      (spec.components as Row).securitySchemes) ||
     spec?.securityDefinitions ||
     {};
   const authSchemes = [
     ...new Set(
-      Object.values(schemes)
-        .map((scheme) => scheme?.type)
+      Object.values(schemes as Row)
+        .map((scheme) => (scheme as Row | undefined)?.type)
         .filter((type) => typeof type === "string"),
     ),
   ].sort();
@@ -2367,7 +2578,7 @@ export function extractAuth(spec) {
     auth_schemes: authSchemes,
     // Structured, caller-actionable detail (#746): exact header/param + value
     // placeholder. null when no scheme is declared.
-    auth_detail: deriveAuthDetail(schemes),
+    auth_detail: deriveAuthDetail(schemes as Row),
   };
 }
 
@@ -2378,8 +2589,11 @@ export function extractAuth(spec) {
 // attacker-influenced metadata and can contain words such as "not deprecated"
 // or "patent pending" for otherwise live subnets. Shared by the build + the
 // reproducibility validator.
-export function subnetLifecycle(nativeSubnet) {
-  const name = (nativeSubnet?.chain_identity?.subnet_name || "")
+export function subnetLifecycle(nativeSubnet: Row): string {
+  const name = (
+    ((nativeSubnet?.chain_identity as Row | undefined)?.subnet_name as
+      string | undefined) || ""
+  )
     .trim()
     .toLowerCase();
   if (name === "deprecated") return "deprecated";
@@ -2395,7 +2609,7 @@ export function subnetLifecycle(nativeSubnet) {
 // builds (honest: "not published") and set by the publish workflow via
 // METAGRAPH_PUBLISHED_AT. It must only be written to artifacts that are
 // excluded from the deterministic digest set (e.g. build-summary.json).
-export function publishedAt() {
+export function publishedAt(): string | null {
   const value = (process.env.METAGRAPH_PUBLISHED_AT || "").trim();
   return value || null;
 }
@@ -2419,25 +2633,33 @@ export function staleOperationalKinds({
   healthByKind,
   probeFinishedAt,
   staleAfterDays = 7,
-}) {
-  const stale = new Set();
-  const referenceMs = probeFinishedAt ? Date.parse(probeFinishedAt) : NaN;
+}: {
+  operationalKinds: string[];
+  healthByKind: Map<string, Row[]> | Row | undefined;
+  probeFinishedAt: unknown;
+  staleAfterDays?: number;
+}): Set<string> {
+  const stale = new Set<string>();
+  const referenceMs = probeFinishedAt
+    ? Date.parse(probeFinishedAt as string)
+    : NaN;
   if (!Number.isFinite(referenceMs)) {
     return stale;
   }
   const staleAfterMs = staleAfterDays * 24 * 60 * 60 * 1000;
-  const lookup = (kind) =>
-    healthByKind && typeof healthByKind.get === "function"
-      ? healthByKind.get(kind)
-      : healthByKind?.[kind];
+  const lookupKind = (kind: string): Row[] | undefined =>
+    healthByKind &&
+    typeof (healthByKind as Map<string, Row[]>).get === "function"
+      ? (healthByKind as Map<string, Row[]>).get(kind)
+      : ((healthByKind as Row | undefined)?.[kind] as Row[] | undefined);
   for (const kind of operationalKinds || []) {
-    const rows = lookup(kind);
+    const rows = lookupKind(kind);
     if (!rows || !rows.length) {
       continue;
     }
     const verifiedFresh = rows.some((row) => {
       if (!row || row.status !== "ok") return false;
-      const okMs = row.last_ok ? Date.parse(row.last_ok) : NaN;
+      const okMs = row.last_ok ? Date.parse(row.last_ok as string) : NaN;
       return Number.isFinite(okMs) && referenceMs - okMs <= staleAfterMs;
     });
     if (!verifiedFresh) {
@@ -2449,7 +2671,7 @@ export function staleOperationalKinds({
 
 // Chain-text formatting and sanitization helpers were extracted to
 // scripts/lib/formatting.mjs (#510 maintainability decomposition). Re-exported
-// here verbatim so every existing importer of scripts/lib.mjs keeps its import
+// here verbatim so every existing importer of scripts/lib.ts keeps its import
 // path unchanged — pure code-motion with byte-identical artifact output.
 export {
   slugify,
@@ -2465,7 +2687,7 @@ export {
 
 // README link selection + classification was extracted to scripts/lib/readme-links.mjs
 // (#510 maintainability decomposition). Re-exported here verbatim so every existing
-// importer of scripts/lib.mjs keeps its import path unchanged — pure code-motion
+// importer of scripts/lib.ts keeps its import path unchanged — pure code-motion
 // with byte-identical artifact output.
 export {
   README_LINK_LIMIT,
@@ -2477,7 +2699,7 @@ export {
 
 // Economics + endpoint artifact derivation were extracted to dedicated modules
 // under scripts/lib/ (#510 maintainability decomposition). They are re-exported
-// here verbatim so every existing importer of scripts/lib.mjs keeps its import
+// here verbatim so every existing importer of scripts/lib.ts keeps its import
 // path unchanged — this is pure code-motion with byte-identical artifact output.
 export {
   computeMinerReadiness,
@@ -2508,9 +2730,12 @@ export const CEILING_TRUST_LEVELS = new Set([
 // maintainer-reviewed) unchanged. A non-maintainer-reviewed decision never moves
 // the level. (#5992 — the bug was that only a machine-verified starting level was
 // promoted, so decisions against other pre-tiers silently never materialized.)
-export function promoteCurationLevel(currentLevel, decisionKind) {
+export function promoteCurationLevel(
+  currentLevel: unknown,
+  decisionKind: unknown,
+): unknown {
   if (decisionKind !== "maintainer-reviewed") return currentLevel;
-  if (CEILING_TRUST_LEVELS.has(currentLevel)) return currentLevel;
+  if (CEILING_TRUST_LEVELS.has(currentLevel as string)) return currentLevel;
   return "maintainer-reviewed";
 }
 
@@ -2521,16 +2746,16 @@ export function promoteCurationLevel(currentLevel, decisionKind) {
 // class that left SN59/SN107 with a recorded decision but an unpromoted level).
 // A decision for a netuid with no overlay is skipped (a separate concern).
 export function findUnmaterializedMaintainerReviews(
-  decisions,
-  subnetsByNetuid,
-) {
-  const violations = [];
+  decisions: Row[],
+  subnetsByNetuid: Map<unknown, Row>,
+): Row[] {
+  const violations: Row[] = [];
   for (const decision of decisions || []) {
     if (decision.decision !== "maintainer-reviewed") continue;
     const subnet = subnetsByNetuid.get(decision.netuid);
     if (!subnet) continue;
-    const level = subnet.curation?.level;
-    if (!CEILING_TRUST_LEVELS.has(level)) {
+    const level = (subnet.curation as Row | undefined)?.level;
+    if (!CEILING_TRUST_LEVELS.has(level as string)) {
       violations.push({ netuid: decision.netuid, slug: subnet.slug, level });
     }
   }

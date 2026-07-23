@@ -8,7 +8,7 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
 } from "../src/top-holders.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const ctx = { waitUntil: (p) => p };
 

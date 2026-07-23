@@ -19,7 +19,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 import {
   injectedReadme,
   loadOverlays,

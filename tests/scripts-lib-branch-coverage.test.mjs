@@ -23,7 +23,7 @@ import {
   deriveAuthDetail,
   publishedAt,
   staleOperationalKinds,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 
 describe("buildEvidenceSubjectNetuidIndex", () => {
   test("indexes subnet/surface/candidate subjects and skips non-integer netuids", () => {

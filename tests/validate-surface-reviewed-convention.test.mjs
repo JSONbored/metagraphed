@@ -11,7 +11,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, test } from "vitest";
-import { repoRoot } from "../scripts/lib.mjs";
+import { repoRoot } from "../scripts/lib.ts";
 
 // spawnSync (not execFileSync) so stderr is captured even on a passing run —
 // the non-blocking convention advisory is written to stderr via console.warn.

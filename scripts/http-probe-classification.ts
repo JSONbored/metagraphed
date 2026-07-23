@@ -1,4 +1,4 @@
-import { isJsonContentType } from "./lib.mjs";
+import { isJsonContentType } from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "vitest";
-import { r2StagingRoot, repoRoot } from "../scripts/lib.mjs";
+import { r2StagingRoot, repoRoot } from "../scripts/lib.ts";
 
 // build-summary.json lives at the R2 staging root (#1003). It is the artifact the
 // refresh script rewrites, so — like the canonical writer in build-artifacts.mjs

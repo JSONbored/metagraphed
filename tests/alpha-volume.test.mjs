@@ -16,7 +16,7 @@ function volumeRow(kind, overrides = {}) {
   };
 }
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

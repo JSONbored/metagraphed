@@ -1,13 +1,13 @@
 // README link selection + classification helpers, extracted verbatim from
-// scripts/lib.mjs (#510 maintainability decomposition). Pure functions over
+// scripts/lib.ts (#510 maintainability decomposition). Pure functions over
 // plain strings/objects with no module state and no I/O. Re-exported from
-// scripts/lib.mjs so existing importers (scripts/discover-candidates.ts, tests)
+// scripts/lib.ts so existing importers (scripts/discover-candidates.ts, tests)
 // keep their import paths unchanged.
 //
-// `registrableDomain` delegates to `registrableHostDomain` in lib.mjs for
+// `registrableDomain` delegates to `registrableHostDomain` in lib.ts for
 // multi-label public suffix handling (#1636) so README dedupe keys cannot drift.
 
-import { registrableHostDomain } from "../lib.mjs";
+import { registrableHostDomain } from "../lib.ts";
 
 export const README_LINK_LIMIT = 5;
 

@@ -1,6 +1,6 @@
 // Unit tests for the OpenAPI auto-discovery core (#1004): the pure spec
 // validator and the path-sweep orchestrator that the discover-candidates script
-// drives with a real safe-fetch. Both live in scripts/lib.mjs so the probing
+// drives with a real safe-fetch. Both live in scripts/lib.ts so the probing
 // logic is exercised here with mocked fetchers (no network).
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
@@ -9,7 +9,7 @@ import {
   apiDocsSubdomainOrigins,
   isOpenApiDocument,
   probeOpenApiSpec,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 
 describe("isOpenApiDocument", () => {
   test("accepts a minimal OpenAPI 3.x document", () => {

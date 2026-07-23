@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // #5746: ?format=csv on the block-scoped extrinsics/events feeds, reusing the
 // unscoped/account-scoped siblings' CSV-columns constants (same row shapes).

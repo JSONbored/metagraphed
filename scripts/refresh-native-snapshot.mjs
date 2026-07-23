@@ -13,7 +13,7 @@
 // Runs in build.mjs productionSteps before build-artifacts; local/PR builds keep
 // using the committed snapshot (this step is production-only).
 import { spawnSync } from "node:child_process";
-import { stableStringify } from "./lib.mjs";
+import { stableStringify } from "./lib.ts";
 import { initSentry, endSessionAndFlush } from "./observability.ts";
 
 initSentry("refresh-native-snapshot");

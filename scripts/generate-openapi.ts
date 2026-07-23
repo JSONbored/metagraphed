@@ -1,6 +1,6 @@
 import path from "node:path";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.ts";
-import { repoRoot, stableStringify, writeJson } from "./lib.mjs";
+import { repoRoot, stableStringify, writeJson } from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

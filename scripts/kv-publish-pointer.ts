@@ -6,7 +6,7 @@ import {
   readJson,
   repoRoot,
   stableStringify,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

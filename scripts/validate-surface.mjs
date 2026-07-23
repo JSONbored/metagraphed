@@ -16,7 +16,7 @@ import {
   normalizePublicUrl,
   readJson,
   repoRoot,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);

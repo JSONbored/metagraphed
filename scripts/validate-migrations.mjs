@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 
 // Guard the D1 migration sequence: each file must be `NNNN_snake_case.sql` with a
 // unique, gap-free 4-digit prefix. Two migrations once shared `0007`

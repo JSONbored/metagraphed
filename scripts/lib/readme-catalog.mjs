@@ -3,11 +3,11 @@
 // Pure functions over plain overlay objects/strings (loadOverlays is the only
 // I/O boundary), so the catalog logic is unit-testable without invoking the CLI.
 // scripts/generate-registry-readme-section.ts is now a thin wrapper that imports
-// from here — mirrors the scripts/lib/readme-links.mjs / scripts/lib.mjs split.
+// from here — mirrors the scripts/lib/readme-links.mjs / scripts/lib.ts split.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "../lib.mjs";
+import { repoRoot } from "../lib.ts";
 
 export const BEGIN = "<!-- BEGIN:REGISTRY-CATALOG -->";
 export const END = "<!-- END:REGISTRY-CATALOG -->";

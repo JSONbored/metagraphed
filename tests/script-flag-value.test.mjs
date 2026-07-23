@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { flagValue } from "../scripts/lib.mjs";
+import { flagValue } from "../scripts/lib.ts";
 
 // #6365: scripts/ grew two flag conventions independently. r2-download.ts read
 // `--prefix=` only, while endpoint-ops-brief.ts -- which has its own

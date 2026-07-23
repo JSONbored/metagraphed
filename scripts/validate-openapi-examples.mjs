@@ -9,7 +9,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import path from "node:path";
 import { API_ROUTES } from "../src/contracts.mjs";
-import { readJson, repoRoot } from "./lib.mjs";
+import { readJson, repoRoot } from "./lib.ts";
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),

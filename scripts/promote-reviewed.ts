@@ -8,7 +8,7 @@ import {
   promoteCurationLevel,
   stableStringify,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 type Row = Record<string, unknown>;
 
@@ -30,7 +30,7 @@ const manualOverlays = await Promise.all(
   })),
 );
 const allOverlays: Row[] = await loadSubnets();
-const overlaysByNetuid: Map<unknown, Row> = buildSubnetOverlaysByNetuid({
+const overlaysByNetuid = buildSubnetOverlaysByNetuid({
   allOverlays,
   manualOverlays,
 });

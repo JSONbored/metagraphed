@@ -30,7 +30,7 @@ import {
   artifactFilePath,
   createLocalArtifactEnv,
   latestArtifactDate,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 const env = createLocalArtifactEnv();
 const MCP_URL = "https://api.metagraph.sh/mcp";

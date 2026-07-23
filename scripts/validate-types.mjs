@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 
 const outputPaths = [
   path.join(repoRoot, "packages/contract/index.d.ts"),

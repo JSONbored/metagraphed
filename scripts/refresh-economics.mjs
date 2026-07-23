@@ -22,7 +22,7 @@ import {
   loadSubnets,
   repoRoot,
   stableStringify,
-} from "./lib.mjs";
+} from "./lib.ts";
 import { loadAlphaPriceHistoryByNetuid } from "./lib/load-alpha-price-history.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";

@@ -8,7 +8,7 @@ import {
   createLocalArtifactEnv,
   readJson,
   repoRoot,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 
 // search.json is R2-tier (built to dist/), with a public/ fallback.
 function loadArtifact(relative) {

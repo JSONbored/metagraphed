@@ -21,7 +21,7 @@ import {
   type CoverageSnapshot,
   type SubnetEntry,
 } from "./changelog.ts";
-import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.mjs";
+import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.ts";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 
 type Row = Record<string, unknown>;

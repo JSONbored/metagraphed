@@ -8,7 +8,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, test } from "vitest";
-import { listJsonFiles, repoRoot } from "../scripts/lib.mjs";
+import { listJsonFiles, repoRoot } from "../scripts/lib.ts";
 
 function runNode(args) {
   try {

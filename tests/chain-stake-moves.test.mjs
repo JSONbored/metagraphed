@@ -5,7 +5,7 @@ import {
   CHAIN_STAKE_MOVES_LIMIT_MAX,
 } from "../src/chain-stake-moves.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const OBS = 1_700_000_000_000;
 

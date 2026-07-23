@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { repoRoot, stripJsonComments } from "./lib.mjs";
+import { repoRoot, stripJsonComments } from "./lib.ts";
 
 const configPath = path.join(repoRoot, "wrangler.jsonc");
 const workerPath = path.join(repoRoot, "workers/api.mjs");

@@ -28,7 +28,7 @@ import {
   stableStringify,
   subnetSurfaceKey,
   writeRepositoryJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 import { normalizeGitHubLogin } from "./registry-identity.mjs";
 
 const args = process.argv.slice(2);

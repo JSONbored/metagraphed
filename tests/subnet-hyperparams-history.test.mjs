@@ -7,7 +7,7 @@ import {
   hyperparamsHash,
 } from "../src/subnet-hyperparams-history.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 function stagedRow(overrides = {}) {
   return {

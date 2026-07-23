@@ -16,7 +16,7 @@
 //   npm run curation:identity-divergence -- --json
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { listJsonFiles, loadProviders, readJson, repoRoot } from "./lib.mjs";
+import { listJsonFiles, loadProviders, readJson, repoRoot } from "./lib.ts";
 import { isFirstPartySurface } from "./stale-gap-notes.mjs";
 
 type Row = Record<string, unknown>;

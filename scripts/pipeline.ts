@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { stableStringify } from "./lib.mjs";
+import { stableStringify } from "./lib.ts";
 
 interface Step {
   script: string;

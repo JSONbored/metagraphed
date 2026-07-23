@@ -1,4 +1,4 @@
-// Unit tests for scripts/lib.mjs's registry-sync HTTP client helpers
+// Unit tests for scripts/lib.ts's registry-sync HTTP client helpers
 // (postRegistrySync, chunkRows) -- the shared POST client
 // scripts/sync-registry-to-postgres.mjs and scripts/backfill-registry-postgres.ts
 // both call instead of touching Postgres directly.
@@ -9,7 +9,7 @@ import {
   REGISTRY_SYNC_MAX_BODY_BYTES,
   chunkRows,
   postRegistrySync,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 
 const originalFetch = globalThis.fetch;
 const originalSecret = process.env.REGISTRY_SYNC_SECRET;

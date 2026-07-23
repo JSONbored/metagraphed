@@ -2,7 +2,7 @@
 // `npm run surface:add`. Slugs (the left column) print to stdout; the summary
 // goes to stderr so the list can be piped/grepped cleanly. Pass `--json` for
 // machine-readable output.
-import { loadProviders } from "./lib.mjs";
+import { loadProviders } from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

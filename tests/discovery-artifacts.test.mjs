@@ -9,7 +9,7 @@ import path from "node:path";
 import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { repoRoot, loadSubnets } from "../scripts/lib.mjs";
+import { repoRoot, loadSubnets } from "../scripts/lib.ts";
 import { PRIMARY_DOMAIN } from "../src/contracts.mjs";
 import { MCP_REGISTRY_NAME, MCP_SERVER_INFO } from "../src/mcp-server.mjs";
 import { mcpServerCardResponse } from "../workers/request-handlers/discovery.ts";

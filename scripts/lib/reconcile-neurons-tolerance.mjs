@@ -1,6 +1,6 @@
 // Pure drift-tolerance helpers for scripts/reconcile-neurons.ts.
 // Kept dependency-free so unit tests can import without loading Postgres /
-// lib.mjs / observability.
+// lib.ts / observability.
 
 // Below this absolute TAO delta, a mismatch is never flagged regardless of
 // relative size -- avoids false positives on near-zero stakes where a tiny

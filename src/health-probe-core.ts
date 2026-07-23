@@ -56,7 +56,7 @@ export const OPERATIONAL_SURFACE_KINDS = [
 
 // --- URL safety: isomorphic literal SSRF guard --------------------------------
 // Best-effort default used by the Worker (which cannot resolve DNS). The Node
-// build injects the stronger DNS-aware `isUnsafeResolvedUrl` from scripts/lib.mjs.
+// build injects the stronger DNS-aware `isUnsafeResolvedUrl` from scripts/lib.ts.
 // Operational surfaces are already curated `public_safe`, so this is defense in
 // depth, not the primary control.
 // IPv4 + registrable-domain literal patterns. IPv6-literal ranges are handled

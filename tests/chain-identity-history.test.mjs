@@ -6,7 +6,7 @@ import {
   buildChainIdentityHistory,
 } from "../src/chain-identity-history.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // A network feed: identity changes from two subnets, newest first (the loader
 // reads block_number DESC, netuid ASC).

@@ -30,7 +30,7 @@ import {
   ARTIFACT_STORAGE_TIERS,
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
-import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.mjs";
+import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.ts";
 
 export const SEED_FAILURE_HINT =
   "Fix: run `npm run build`, then commit the regenerated public/ artifacts " +

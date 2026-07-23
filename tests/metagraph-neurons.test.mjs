@@ -15,7 +15,7 @@ import {
   loadValidatorDetail,
 } from "../src/metagraph-neurons.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats).
 const ROW = {

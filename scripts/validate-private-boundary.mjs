@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 import {
   pathPatterns,
   contentPatterns,

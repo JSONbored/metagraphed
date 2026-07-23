@@ -4,7 +4,7 @@ import {
   dirtyTrackedPaths,
   resolveBaseRemote,
   stableStringify,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 interface Step {
   name: string;
@@ -131,7 +131,7 @@ function revertDeployOwnedArtifactsIfChanged(): void {
     [
       "",
       "note: build produced non-deterministic deploy-owned artifact(s), auto-reverted to",
-      `${baseRemote}/main (see DEPLOY_OWNED_ARTIFACTS in scripts/lib.mjs):`,
+      `${baseRemote}/main (see DEPLOY_OWNED_ARTIFACTS in scripts/lib.ts):`,
       ...dirty.map((file) => `  - ${file}`),
       "",
     ].join("\n"),

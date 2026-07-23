@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "./lib.mjs";
+import { createLocalArtifactEnv } from "./lib.ts";
 
 const env = createLocalArtifactEnv();
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // Coverage for the serving-optimizations PR (#1764): the canonical cache-search
 // now folds a collection's range/csv/array filter params into the static edge

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
-import { latestArtifactDate } from "../scripts/lib.mjs";
+import { latestArtifactDate } from "../scripts/lib.ts";
 import * as healthHistoryMcp from "../src/health-history-mcp.ts";
 import * as listQuery from "../workers/list-query.ts";
 import {

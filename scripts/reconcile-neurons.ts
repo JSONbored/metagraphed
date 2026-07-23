@@ -30,7 +30,7 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
-import { stableStringify } from "./lib.mjs";
+import { stableStringify } from "./lib.ts";
 import { initSentry, endSessionAndFlush } from "./observability.ts";
 import {
   ABSOLUTE_FLOOR_TAO,

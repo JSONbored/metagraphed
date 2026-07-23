@@ -1,7 +1,7 @@
 ﻿// Chain-text formatting and sanitization helpers, extracted verbatim from
-// scripts/lib.mjs (#510 maintainability decomposition). All functions are pure
-// with no I/O and no dependency on any other lib.mjs symbol — so the output is
-// byte-identical to the in-lib.mjs originals. Re-exported from scripts/lib.mjs
+// scripts/lib.ts (#510 maintainability decomposition). All functions are pure
+// with no I/O and no dependency on any other lib.ts symbol — so the output is
+// byte-identical to the in-lib.ts originals. Re-exported from scripts/lib.ts
 // so existing importers keep their import paths unchanged.
 
 export function slugify(value) {
@@ -147,7 +147,7 @@ export function nativeDisplayName(subnet, fallbackName = null) {
   // Defang prompt-injection in the chain/overlay display name before it becomes
   // subnet.name. That value flows verbatim into the search index title/tokens,
   // the embeddings, the /ask RAG context, and llms.txt — the same sinks the
-  // description/additional fields are scrubbed for (lib.mjs threat model). The
+  // description/additional fields are scrubbed for (lib.ts threat model). The
   // injection rules are no-ops for legitimate names, so a real name is unchanged.
   const cleaned =
     typeof candidate === "string"

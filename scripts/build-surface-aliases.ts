@@ -9,7 +9,7 @@
 
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.mjs";
+import { artifactFilePath, readJson, repoRoot, writeJson } from "./lib.ts";
 import {
   buildSurfaceAliasArtifact,
   SURFACE_ALIASES_RELATIVE_PATH,

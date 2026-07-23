@@ -67,7 +67,7 @@ import {
   subnetSurfaceKey,
   writeJson,
   writeRepositoryJson,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 import {
   ARTIFACT_STORAGE_TIERS,
   artifactRelativePath,

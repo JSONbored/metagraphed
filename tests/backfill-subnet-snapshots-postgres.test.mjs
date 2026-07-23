@@ -18,7 +18,7 @@ import {
   rowTuple,
   sqlLiteral,
 } from "../scripts/backfill-subnet-snapshots-postgres.ts";
-import { chunkRows as sharedChunkRows } from "../scripts/lib.mjs";
+import { chunkRows as sharedChunkRows } from "../scripts/lib.ts";
 
 const SAMPLE_ROW = {
   rowid: 1,
@@ -179,9 +179,9 @@ test("chunkRows splits into fixed-size chunks with a final remainder", () => {
   assert.deepEqual(chunkRows(rows, 3), [[0, 1, 2], [3, 4, 5], [6]]);
 });
 
-test("chunkRows now delegates to the shared lib.mjs implementation", () => {
+test("chunkRows now delegates to the shared lib.ts implementation", () => {
   // The local reimplementation was removed in favor of the single canonical
-  // helper; confirm the export the script exposes IS lib.mjs's chunkRows.
+  // helper; confirm the export the script exposes IS lib.ts's chunkRows.
   assert.equal(chunkRows, sharedChunkRows);
 });
 

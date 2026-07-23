@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { repoRoot, stableStringify } from "./lib.mjs";
+import { repoRoot, stableStringify } from "./lib.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
   schemaDetailArtifactRelativePath,

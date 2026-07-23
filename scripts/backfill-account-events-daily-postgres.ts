@@ -65,7 +65,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

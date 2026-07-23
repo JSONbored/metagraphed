@@ -6,7 +6,7 @@ import {
   loadChainPerformance,
 } from "../src/chain-performance.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // A network snapshot: neurons from two subnets, two validators + two miners, a
 // skewed incentive/dividend distribution.

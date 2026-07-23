@@ -1,5 +1,5 @@
 // Domain/capability tag vocabulary (issue #345). Worker-safe (pure string/regex,
-// no node deps) so both the build (scripts/lib.mjs re-exports this) and the
+// no node deps) so both the build (scripts/lib.ts re-exports this) and the
 // Worker (src/contracts.mjs ?domain= enum) share one source of truth.
 //
 // Each tag has a ReDoS-safe keyword pattern (literal alternations + bounded \w*,

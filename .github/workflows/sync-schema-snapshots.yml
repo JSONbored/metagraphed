@@ -10,7 +10,7 @@ name: Sync schema snapshots
 # live network fetches. That exclusion is correct, but it also means nothing
 # was actually keeping the committed copy fresh: `scripts/build.ts`
 # unconditionally auto-reverts this file (see DEPLOY_OWNED_ARTIFACTS in
-# scripts/lib.mjs) after every local/CI build, and no other workflow ever
+# scripts/lib.ts) after every local/CI build, and no other workflow ever
 # calls scripts/snapshot-openapi.mjs directly or commits the result back to
 # git. The committed copy was found 22 days stale during an audit, with
 # every entry carrying drift_status "new" (only emitted when there's no

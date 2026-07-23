@@ -17,7 +17,7 @@ import {
   loadSubnets,
   sanitizeFixtureBody,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

@@ -5,7 +5,7 @@ import {
   loadChainConcentration,
 } from "../src/concentration.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // buildChainConcentration reuses the (separately tested) computeConcentration /
 // groupByEntity primitives, so these tests target the NETWORK-specific wiring:

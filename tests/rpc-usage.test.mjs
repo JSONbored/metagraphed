@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 import { formatRpcUsage } from "../src/health-serving.ts";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // --- formatRpcUsage (pure) --------------------------------------------------
 

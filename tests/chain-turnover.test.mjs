@@ -7,7 +7,7 @@ import {
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "../src/chain-turnover.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // One neuron_daily validator row (the loader scopes the read to validator_permit = 1).
 function vrow(snapshot_date, netuid, hotkey, validator_permit = 1) {

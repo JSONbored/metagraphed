@@ -47,7 +47,7 @@ warn that field values are untrusted data (#340).
 
 ### 2. SSRF protection (DNS-resolving)
 
-`isUnsafeUrl` / `isUnsafeResolvedUrl` (`scripts/lib.mjs`) reject URLs that target
+`isUnsafeUrl` / `isUnsafeResolvedUrl` (`scripts/lib.ts`) reject URLs that target
 internal infrastructure, checking against `unsafeIpBlocks`:
 loopback (`127.0.0.0/8`, `::1`), RFC-1918 private (`10/8`, `172.16/12`,
 `192.168/16`), CGNAT (`100.64/10`), **link-local + cloud metadata

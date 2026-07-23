@@ -5,7 +5,7 @@ import {
   CONTRACT_VERSION,
   PRIMARY_DOMAIN,
 } from "../src/contracts.mjs";
-import { readJson, repoRoot } from "./lib.mjs";
+import { readJson, repoRoot } from "./lib.ts";
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),

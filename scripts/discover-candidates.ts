@@ -23,7 +23,7 @@ import {
   slugify,
   stableStringify,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 type Row = Record<string, unknown>;
 
@@ -753,7 +753,7 @@ async function discoverFromProjectWebsites(): Promise<void> {
     }
 
     const links = extractHtmlLinks(html.text, root)
-      .filter((link) => isLikelyProjectDomain(root, link.url))
+      .filter((link) => isLikelyProjectDomain(root, link.url as string))
       .map((link): Row => ({
         ...link,
         classification: classifyDiscoveredLink(
@@ -1228,7 +1228,7 @@ function extractUrls(value: unknown): string[] {
   ];
 }
 
-// Canonical URL normalization lives in scripts/lib.mjs (normalizePublicUrl) and
+// Canonical URL normalization lives in scripts/lib.ts (normalizePublicUrl) and
 // is shared with the contributor-facing path (validate-surface.mjs /
 // surface-add.mjs) so protocol/credential/SSRF/impersonation handling can never
 // diverge by call site (#5991). Discovery layers on one extra rejection: the

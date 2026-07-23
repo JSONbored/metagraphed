@@ -12,7 +12,7 @@
 //   npm run curation:stale-notes -- --json
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { listJsonFiles, loadProviders, readJson, repoRoot } from "./lib.mjs";
+import { listJsonFiles, loadProviders, readJson, repoRoot } from "./lib.ts";
 
 // Keyword → surface kind, checked in this order against a gap_notes entry that
 // already matches the "No verified ... yet" shape. Order only matters where a

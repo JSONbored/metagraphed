@@ -11,7 +11,7 @@ import {
   publishedAt,
   readArtifactJson,
   selectReviewableReadmeLinks,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 import { schemaDetailArtifactRelativePath } from "../src/artifact-storage.ts";
 
 describe("artifact-storage schema detail guards", () => {

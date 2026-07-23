@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { stripJsonComments } from "../scripts/lib.mjs";
+import { stripJsonComments } from "../scripts/lib.ts";
 
 describe("stripJsonComments", () => {
   test("strips line + block comments and trailing commas", () => {

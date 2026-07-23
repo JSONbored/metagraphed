@@ -22,7 +22,7 @@ import {
   readJson,
   repoRoot,
   buildTimestamp,
-} from "./lib.mjs";
+} from "./lib.ts";
 import {
   initSentry,
   endSessionAndFlush,

@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readJson, repoRoot, stableStringify, writeJson } from "./lib.mjs";
+import { readJson, repoRoot, stableStringify, writeJson } from "./lib.ts";
 
 const writeMode = process.argv.includes("--write");
 const componentRoot = path.join(repoRoot, "schemas/components");

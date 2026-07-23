@@ -5,7 +5,7 @@ import {
   repoRoot,
   stableStringify,
   stripJsonComments,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

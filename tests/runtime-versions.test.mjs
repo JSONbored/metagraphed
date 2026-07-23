@@ -7,7 +7,7 @@ import {
   loadRuntimeVersionHistory,
 } from "../src/runtime-versions.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 function transitionRow(overrides = {}) {
   return {

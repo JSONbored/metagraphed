@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // #5745: ?format=csv on GET /api/v1/validators/{hotkey}/nominators, mirroring
 // the accounts-list / global-validators CSV-export convention.

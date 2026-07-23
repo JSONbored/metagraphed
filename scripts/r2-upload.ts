@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { readJson, repoRoot, sha256Hex, stableStringify } from "./lib.mjs";
+import { readJson, repoRoot, sha256Hex, stableStringify } from "./lib.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,

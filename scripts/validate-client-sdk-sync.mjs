@@ -28,7 +28,7 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 
 // The contract surface the published client re-exports. A change to any of these
 // versus the merge base means the npm package's shipped types/openapi would

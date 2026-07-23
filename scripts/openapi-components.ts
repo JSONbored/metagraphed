@@ -1,6 +1,6 @@
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { buildApiComponentBundle } from "./bundle-schemas.ts";
-import { buildTimestamp } from "./lib.mjs";
+import { buildTimestamp } from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

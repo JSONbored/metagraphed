@@ -9,7 +9,7 @@ import {
   STAKE_REMOVED_KIND,
 } from "../src/subnet-ohlc.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const HOUR_MS = OHLC_INTERVALS["1h"];
 const DAY_MS = OHLC_INTERVALS["1d"];

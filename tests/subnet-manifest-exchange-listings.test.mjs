@@ -4,7 +4,7 @@ import path from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { describe, test } from "vitest";
-import { repoRoot } from "../scripts/lib.mjs";
+import { repoRoot } from "../scripts/lib.ts";
 
 // #6274: exchange_listings is additive registry metadata on the subnet manifest,
 // following the links[]/social pattern (an array of structured objects, no

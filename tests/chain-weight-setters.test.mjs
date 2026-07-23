@@ -7,7 +7,7 @@ import {
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
 } from "../src/chain-weight-setters.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // Two per-setter leaderboard rows + the network-wide totals, matching the
 // shape buildChainWeightSetters expects.

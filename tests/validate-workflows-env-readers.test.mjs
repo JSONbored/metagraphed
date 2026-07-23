@@ -47,7 +47,11 @@ function walkScripts(dir, out) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       walkScripts(full, out);
-    } else if (entry.name.endsWith(".mjs") || entry.name.endsWith(".js")) {
+    } else if (
+      entry.name.endsWith(".mjs") ||
+      entry.name.endsWith(".js") ||
+      entry.name.endsWith(".ts")
+    ) {
       out.push(full);
     }
   }

@@ -62,7 +62,7 @@ import {
   subnetLifecycle,
   surfaceFixtureReference,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 import {
   buildAgentReadiness,
   buildCoverageDepthArtifact,

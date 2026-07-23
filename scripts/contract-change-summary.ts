@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { readJson, repoRoot, stableStringify } from "./lib.mjs";
+import { readJson, repoRoot, stableStringify } from "./lib.ts";
 import path from "node:path";
 
 type Row = Record<string, unknown>;

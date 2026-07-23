@@ -10,7 +10,7 @@ import {
   repoRoot,
   stableStringify,
   writeRepositoryJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 // Provenance review queue (Move A as promotion-by-exception). Regenerates
 // registry/reviews/review-queue.json: a short, high-signal list of subnets whose

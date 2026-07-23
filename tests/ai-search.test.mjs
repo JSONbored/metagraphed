@@ -18,7 +18,7 @@ import {
   SEMANTIC_MAX_QUERY_LENGTH,
 } from "../src/ai-search.ts";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { overlayCatalogIndex } from "../src/health-serving.ts";
 
 const SEMANTIC_URL = "https://api.metagraph.sh/api/v1/search/semantic";

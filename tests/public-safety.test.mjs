@@ -8,7 +8,7 @@ import {
   isUnsafeUrl,
   normalizePublicHttpUrl,
   repoRoot,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 
 // This exact path is load-bearing: scan-public-safety.mjs's own
 // mirroredFixturePatterns exempts dist/metagraph-r2/metagraph/fixtures/*.json
@@ -278,7 +278,7 @@ describe("captured-fixture body scan", () => {
 
   test("flags a link-local cloud-metadata URL as a private/loopback leak", async () => {
     // 169.254.169.254 is the AWS/GCP metadata endpoint — the canonical SSRF /
-    // credential-theft target and unsafe per lib.mjs isUnsafeUrl, so a leaked URL
+    // credential-theft target and unsafe per lib.ts isUnsafeUrl, so a leaked URL
     // to the 169.254.0.0/16 link-local range must be flagged like the RFC1918
     // ranges. (A bare `169.254.169.254` in prose, with no URL scheme, is not.)
     const lines = [

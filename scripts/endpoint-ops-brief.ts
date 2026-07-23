@@ -1,7 +1,7 @@
 import { constants as fsConstants } from "node:fs";
 import { access } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
-import { artifactFilePath, readJson, stableStringify } from "./lib.mjs";
+import { artifactFilePath, readJson, stableStringify } from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

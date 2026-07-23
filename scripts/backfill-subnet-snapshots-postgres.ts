@@ -53,7 +53,7 @@ import {
 } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { chunkRows, repoRoot } from "./lib.mjs";
+import { chunkRows, repoRoot } from "./lib.ts";
 
 type Row = Record<string, unknown>;
 type SpawnRunner = (
@@ -227,9 +227,9 @@ export function rowTuple(row: Row): string {
   return `(${COLUMNS.map((column) => sqlLiteral(column, row[column])).join(", ")})`;
 }
 
-// Re-export the shared chunkRows from lib.mjs so existing importers keep a
+// Re-export the shared chunkRows from lib.ts so existing importers keep a
 // single, canonical implementation. This module used to carry its own copy
-// that returned a bare [] for empty input, versus lib.mjs's "always at least
+// that returned a bare [] for empty input, versus lib.ts's "always at least
 // one chunk" ([[]]); the two never diverge here because main() throws on zero
 // rows before buildBackfillSql ever calls chunkRows.
 export { chunkRows };

@@ -15,7 +15,7 @@ import {
   repoRoot,
   safeFetch,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 import {
   mapLimit,
   nodeWebSocketConnector,
@@ -67,7 +67,7 @@ interface SafeFetchResult {
 
 // safeFetch's untyped .mjs default params (headers = null, signal = null) lock
 // TS's cross-file inference to null | undefined; cast until Phase 4 Batch 7
-// converts scripts/lib.mjs.
+// converts scripts/lib.ts.
 const typedSafeFetch = safeFetch as (
   url: string | URL | Request,
   options?: {

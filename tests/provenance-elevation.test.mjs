@@ -7,7 +7,7 @@ import { describe, test } from "vitest";
 import {
   computeProvenanceElevations,
   buildProvenanceReviewQueue,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 
 const nativeSubnets = [
   { netuid: 1, chain_identity: { subnet_url: "https://acme.ai" } },

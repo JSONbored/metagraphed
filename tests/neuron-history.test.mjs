@@ -10,7 +10,7 @@ import {
 } from "../src/neuron-history.ts";
 import { buildConcentrationHistory } from "../src/concentration.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // A neuron_daily read row (NEURON_DAILY_READ_COLUMNS shape: snapshot_date + the
 // live neuron columns) — formatNeuron consumes the same fields.

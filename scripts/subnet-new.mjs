@@ -13,7 +13,7 @@ import {
   slugify,
   stableStringify,
   writeRepositoryJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 const args = process.argv.slice(2);
 const write = args.includes("--write");

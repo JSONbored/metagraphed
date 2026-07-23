@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { artifactFilePath } from "./lib.mjs";
+import { artifactFilePath } from "./lib.ts";
 
 const files = {
   subnets: "public/metagraph/subnets.json",

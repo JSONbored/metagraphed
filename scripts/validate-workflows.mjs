@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 
 const workflowRoot = path.join(repoRoot, ".github/workflows");
 const workflows = (await fs.readdir(workflowRoot))

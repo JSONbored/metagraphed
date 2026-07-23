@@ -22,7 +22,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, test } from "vitest";
-import { listJsonFiles, readJson, repoRoot } from "../scripts/lib.mjs";
+import { listJsonFiles, readJson, repoRoot } from "../scripts/lib.ts";
 
 function runNode(args) {
   try {

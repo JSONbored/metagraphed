@@ -1,16 +1,16 @@
-// Endpoint artifact derivation, extracted verbatim from scripts/lib.mjs (#510
+// Endpoint artifact derivation, extracted verbatim from scripts/lib.ts (#510
 // maintainability decomposition). These build the RPC-endpoint, endpoint-resource,
 // endpoint-pool, and endpoint-incident artifacts from curated surfaces + probe
 // health. Pure + side-effect free: every function takes plain objects and returns
 // plain objects, with no module state and no I/O, so the output is byte-identical
-// to the in-lib.mjs originals. Re-exported from scripts/lib.mjs so existing
+// to the in-lib.ts originals. Re-exported from scripts/lib.ts so existing
 // importers keep their import paths unchanged.
 //
 // The only cross-module dependency is `surfaceStableKey` (a hoisted function
-// export of scripts/lib.mjs). lib.mjs re-exports this module, so the two form an
+// export of scripts/lib.ts). lib.ts re-exports this module, so the two form an
 // ES-module cycle — safe here because the import is consumed only at call time
 // (inside buildEndpointResourceArtifact), never during module evaluation.
-import { surfaceStableKey } from "../lib.mjs";
+import { surfaceStableKey } from "../lib.ts";
 
 export function buildRpcEndpointArtifact({
   surfaces,

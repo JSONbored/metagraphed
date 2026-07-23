@@ -5,7 +5,7 @@ import {
   CHAIN_AXON_REMOVALS_LIMIT_MAX,
 } from "../src/chain-axon-removals.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const OBS = 1_700_000_000_000;
 

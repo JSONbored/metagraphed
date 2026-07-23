@@ -10,7 +10,7 @@ import {
   artifactFilePath,
   DEPLOY_OWNED_ARTIFACTS,
   resolveBaseRemote,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

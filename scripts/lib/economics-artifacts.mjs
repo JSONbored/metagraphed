@@ -1,8 +1,8 @@
-// Economics artifact derivation, extracted verbatim from scripts/lib.mjs (#510
+// Economics artifact derivation, extracted verbatim from scripts/lib.ts (#510
 // maintainability decomposition). Pure + side-effect free: every function takes
 // plain objects and returns plain objects, with no module state and no I/O, so
-// the output is byte-identical to the in-lib.mjs originals. Re-exported from
-// scripts/lib.mjs so existing importers keep their import paths unchanged.
+// the output is byte-identical to the in-lib.ts originals. Re-exported from
+// scripts/lib.ts so existing importers keep their import paths unchanged.
 
 import { withAlphaPriceChanges } from "../../src/alpha-price-change.ts";
 

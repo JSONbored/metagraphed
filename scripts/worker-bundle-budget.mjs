@@ -12,7 +12,7 @@ import { promises as fs } from "node:fs";
 import { gzipSync } from "node:zlib";
 import os from "node:os";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 
 const KIB = 1024;
 

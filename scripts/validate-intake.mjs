@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { listJsonFilesRecursive, readJson, repoRoot } from "./lib.mjs";
+import { listJsonFilesRecursive, readJson, repoRoot } from "./lib.ts";
 
 const templateRoot = path.join(repoRoot, ".github/ISSUE_TEMPLATE");
 const surfaceTemplate = await fs.readFile(

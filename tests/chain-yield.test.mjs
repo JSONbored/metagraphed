@@ -6,7 +6,7 @@ import {
   loadChainYield,
 } from "../src/chain-yield.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // A network snapshot: two validators + two miners across two subnets, one miner
 // with zero stake (excluded from the return-rate distribution).

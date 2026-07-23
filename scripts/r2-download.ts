@@ -7,7 +7,7 @@ import {
   repoRoot,
   sha256Hex,
   stableStringify,
-} from "./lib.mjs";
+} from "./lib.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,
@@ -37,7 +37,7 @@ const prefix = prefixArg
   : (manifest.latest_prefix as string);
 // flagValue's untyped .mjs default param (fallback = undefined) locks TS's
 // cross-file inference to exactly undefined; cast until Phase 4 Batch 7
-// converts scripts/lib.mjs.
+// converts scripts/lib.ts.
 const outputDir: string = (
   flagValue as (argv: string[], flag: string, fallback?: string) => string
 )(process.argv, "--out", "tmp/r2-download");

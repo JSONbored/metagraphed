@@ -13,7 +13,7 @@ import {
 } from "../src/search-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",

@@ -8,7 +8,7 @@ import {
   __test,
 } from "../src/feeds.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 let originalCaches;
 beforeEach(() => {

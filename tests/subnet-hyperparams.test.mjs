@@ -5,7 +5,7 @@ import {
   buildSubnetHyperparams,
 } from "../src/subnet-hyperparams.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 function rawRow(overrides = {}) {
   return {

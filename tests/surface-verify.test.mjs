@@ -9,7 +9,7 @@ import {
 } from "../src/surface-verify.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 describe("surface-verify core (#358)", () => {
   const surfaces = [

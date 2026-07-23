@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, test } from "vitest";
-import { repoRoot } from "../scripts/lib.mjs";
+import { repoRoot } from "../scripts/lib.ts";
 
 // #1767: the local `npm run check` (scripts/pipeline.ts checkCommands) had
 // silently drifted from CI (.github/workflows/validate.yml) — CI ran

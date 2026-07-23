@@ -14,7 +14,7 @@ import {
 } from "../src/health-prober.ts";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // --- Pure format helpers ----------------------------------------------------
 

@@ -10,7 +10,7 @@ import path from "node:path";
 import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { readJson, repoRoot } from "../scripts/lib.mjs";
+import { readJson, repoRoot } from "../scripts/lib.ts";
 
 const SURFACE_PATTERN = "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://";
 const IDENTITY_PATTERN = "^[Hh][Tt][Tt][Pp][Ss]?://";

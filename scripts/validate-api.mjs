@@ -13,7 +13,7 @@ import {
   latestArtifactDate,
   readJson,
   repoRoot,
-} from "./lib.mjs";
+} from "./lib.ts";
 import { buildBlockFeed } from "../src/blocks.ts";
 import { buildExtrinsicFeed } from "../src/extrinsics.ts";
 import { buildAccountEvents } from "../src/account-events.ts";

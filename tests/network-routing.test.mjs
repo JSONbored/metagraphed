@@ -2,7 +2,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 import { beforeAll, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv, repoRoot } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv, repoRoot } from "../scripts/lib.ts";
 import { buildNetworkRegistry } from "../scripts/build-network-registry.ts";
 
 const ORIGIN = "https://api.metagraph.sh";

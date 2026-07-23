@@ -44,7 +44,7 @@ import {
   withSurfaceFreshness,
   resolveBaseRemote,
   dirtyTrackedPaths,
-} from "../scripts/lib.mjs";
+} from "../scripts/lib.ts";
 import { execFileSync } from "node:child_process";
 
 describe("buildEconomicsArtifact", () => {

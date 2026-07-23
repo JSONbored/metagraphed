@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.ts";
 
 const targetRoots = [
   "README.md",
@@ -118,7 +118,7 @@ const patterns = [
     name: "private or loopback URL",
     // Includes link-local 169.254.0.0/16 — the cloud-metadata endpoint
     // (169.254.169.254) is the canonical SSRF/credential-theft target and is
-    // classified unsafe by lib.mjs isUnsafeUrl, so a leaked URL to it must be
+    // classified unsafe by lib.ts isUnsafeUrl, so a leaked URL to it must be
     // flagged alongside the RFC1918 ranges. Also includes 100.64.0.0/10 (RFC
     // 6598 CGNAT) — the range Tailscale assigns tailnet device IPs from; a
     // leaked ws://100.x.x.x:9944-style URL is exactly the shape our own
@@ -175,7 +175,7 @@ const patterns = [
     // loopback-URL rule above): a `= process.env.NAME` RHS is a reference to
     // an env var's NAME, never a literal secret VALUE, and legitimately trips
     // this pattern's 16+-char alnum/dot charset whenever the var name itself
-    // is long (scripts/lib.mjs's `const secret = process.env.REGISTRY_SYNC_SECRET`).
+    // is long (scripts/lib.ts's `const secret = process.env.REGISTRY_SYNC_SECRET`).
     // The second is the exact literal fixture string apps/indexer-rs/src/main.rs's
     // own redact_rpc_url test uses to verify credential-bearing URLs get
     // scrubbed (PR #5091) -- an obviously-synthetic placeholder value, not a
@@ -192,7 +192,7 @@ const patterns = [
   // Tolerates hyphen/underscore/no-separator compound forms (seed-phrase,
   // seedphrase, private_key, privateKey — the last via the case-insensitive
   // flag), not just the two-word phrase with a literal space: matches
-  // scripts/lib.mjs's FIXTURE_SENSITIVE_KEY's own separator-tolerant design
+  // scripts/lib.ts's FIXTURE_SENSITIVE_KEY's own separator-tolerant design
   // for the identical reason (a different, unrelated matcher there —
   // redacting suspicious JSON *keys* before a fixture is committed, vs. this
   // rule scanning free text for suspicious *prose* — but the same class of
@@ -329,7 +329,7 @@ const mirroredFixturePatterns = [
 ];
 
 // This file's own source, and two siblings that define their own sensitive-
-// key-name detectors (scripts/lib.mjs's fixture-body key scanner, scripts/
+// key-name detectors (scripts/lib.ts's fixture-body key scanner, scripts/
 // snapshot-adapters.mjs's field-name redaction check), are all, by
 // definition, where every soft terminology phrase and example identifier
 // these rules look for is written out literally (in the regex source itself,
@@ -340,7 +340,7 @@ const mirroredFixturePatterns = [
 // in case a real credential is ever pasted into a comment in any of them.
 const SELF_REFERENTIAL_PATHS = new Set([
   "scripts/scan-public-safety.mjs",
-  "scripts/lib.mjs",
+  "scripts/lib.ts",
   "scripts/snapshot-adapters.mjs",
 ]);
 function isSelfReferential(relativePath) {

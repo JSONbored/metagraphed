@@ -12,7 +12,7 @@ import {
   loadSubnets,
   readJson,
   repoRoot,
-} from "./lib.mjs";
+} from "./lib.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test, vi } from "vitest";
-import { createPinnedLookup, safeFetch } from "../scripts/lib.mjs";
+import { createPinnedLookup, safeFetch } from "../scripts/lib.ts";
 
 // IP-literal URLs so isUnsafeResolvedUrl never needs DNS: 1.1.1.1 / 8.8.8.8 are
 // public (safe); 169.254.169.254 (link-local, the classic cloud-metadata SSRF

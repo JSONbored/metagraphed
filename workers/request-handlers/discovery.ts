@@ -345,7 +345,7 @@ export async function apiCatalogResponse(request: Request): Promise<Response> {
 }
 
 // Stable deterministic JSON serializer (recursive key sort) — matches
-// lib.mjs stableStringify so content_hash is identical to what the build
+// lib.ts stableStringify so content_hash is identical to what the build
 // script would produce for the same tool set.
 function stableStringifyCard(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);

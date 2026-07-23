@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // #5741: ?format=csv on GET /api/v1/accounts/{ss58}/history, mirroring the
 // CSV-export convention of the sibling account-events/extrinsics/transfers feeds.

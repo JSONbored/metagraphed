@@ -19,7 +19,7 @@ import {
   readJson,
   repoRoot,
   stableStringify,
-} from "./lib.mjs";
+} from "./lib.ts";
 import { selectDispatchKeys } from "./lib/webhook-dispatch-selection.mjs";
 import {
   buildChangeEvent,

@@ -30,7 +30,7 @@ import {
   slugify,
   subnetLifecycle,
   writeJson,
-} from "./lib.mjs";
+} from "./lib.ts";
 
 type Row = Record<string, unknown>;
 

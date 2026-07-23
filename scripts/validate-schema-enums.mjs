@@ -1,6 +1,6 @@
 import path from "node:path";
 import { QUERY_ENUMS } from "../src/contracts.mjs";
-import { readJson, repoRoot } from "./lib.mjs";
+import { readJson, repoRoot } from "./lib.ts";
 
 const schemaBundle = await readJson(
   path.join(repoRoot, "schemas/api-components.schema.json"),

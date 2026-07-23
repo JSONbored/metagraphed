@@ -8,7 +8,7 @@ import {
   NOMINATOR_LIMIT_MAX,
 } from "../src/validator-nominators.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // One GROUP BY coldkey, event_kind row.
 function row(coldkey, kind, tao, count, lastObserved) {

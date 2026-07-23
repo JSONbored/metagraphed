@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { evaluateArtifactBudgets } from "./artifact-budgets.ts";
-import { repoRoot, sha256Hex } from "./lib.mjs";
+import { repoRoot, sha256Hex } from "./lib.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,

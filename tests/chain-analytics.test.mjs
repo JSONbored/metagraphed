@@ -7,7 +7,7 @@ import {
   buildChainSigners,
 } from "../src/chain-analytics.ts";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 function installMapCache() {
   const store = new Map();

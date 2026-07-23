@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { describe, test, beforeEach } from "vitest";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import {
   configureRpcProxy,
   graphqlRateLimited,
