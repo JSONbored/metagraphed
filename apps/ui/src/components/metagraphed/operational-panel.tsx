@@ -177,15 +177,13 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
 
           {!filter.isAll ? (
             <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-paper/40">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                Filtering resources
-              </span>
+              <span className="mg-type-micro text-ink-muted">Filtering resources</span>
               {(["ok", "warn", "down", "unknown"] as Severity[])
                 .filter((s) => filter.isActive(s))
                 .map((s) => (
                   <span
                     key={s}
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-strong"
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 mg-type-micro text-ink-strong"
                   >
                     {s}
                   </span>
@@ -193,7 +191,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
               <button
                 type="button"
                 onClick={filter.reset}
-                className="ml-auto inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+                className="ml-auto inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong"
               >
                 <X className="size-3" /> clear
               </button>
@@ -205,7 +203,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
           {endpoints.length > 0 ? (
             <div className="border-b border-border px-4 py-3">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                <span className="inline-flex items-center gap-1.5 mg-type-micro text-ink-muted">
                   Endpoint mosaic · {endpoints.length}
                   <InfoTooltip label="One cell per tracked endpoint, colored by the last probe result: ok (2xx within latency budget), warn (slow / intermittent 5xx), down (consecutive failures), or unknown (no probe in window). Source: /api/v1/subnets/{netuid}/endpoints joined with /health. Stale snapshots still render — check the panel's `updated` stamp." />
                 </span>
@@ -250,9 +248,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
             <div className="min-w-0 border-b lg:border-b-0 lg:border-r border-border">
               <div className="flex items-center justify-between gap-2 border-b border-border bg-paper/40 px-4 py-2">
                 <div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-strong">
-                    Health trend
-                  </div>
+                  <div className="mg-type-micro text-ink-strong">Health trend</div>
                   <div className="font-mono text-[9.5px] text-ink-muted/80">
                     uptime &amp; latency over the selected window, with incident markers
                     {healthRes?.meta?.generated_at
@@ -266,9 +262,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
             </div>
             <div className="min-w-0 p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  Recent incidents
-                </span>
+                <span className="mg-type-micro text-ink-muted">Recent incidents</span>
                 <a
                   href="#incidents"
                   onClick={(e) => {
@@ -277,7 +271,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                       .getElementById("incidents")
                       ?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-accent"
+                  className="inline-flex items-center gap-1 mg-type-micro text-ink-muted hover:text-accent"
                 >
                   all <ArrowRight className="size-3" />
                 </a>
@@ -290,9 +284,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                 />
               ) : incidents.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border bg-paper/40 px-3 py-6 text-center">
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                    Clean history
-                  </div>
+                  <div className="mg-type-micro text-ink-muted">Clean history</div>
                   <div className="mt-1 text-[11px] text-ink-muted">
                     No incidents recorded for this subnet.
                   </div>
@@ -325,7 +317,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                         </div>
                         <span
                           className={classNames(
-                            "shrink-0 rounded-full border px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider",
+                            "shrink-0 rounded-full border px-1.5 py-0.5 mg-type-micro",
                             open
                               ? "border-health-down/40 bg-health-down/10 text-health-down"
                               : "border-border bg-paper text-ink-muted",
@@ -432,9 +424,7 @@ function Stat({
           tabIndex={0}
           className="px-3 py-2.5 min-w-0 focus:outline-none focus-visible:bg-surface/40"
         >
-          <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted truncate">
-            {label}
-          </div>
+          <div className="mg-type-micro text-ink-muted truncate">{label}</div>
           <div
             className={classNames(
               "mt-1 font-display text-base font-semibold tabular-nums leading-tight truncate",

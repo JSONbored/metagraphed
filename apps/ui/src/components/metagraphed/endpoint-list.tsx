@@ -70,7 +70,7 @@ export function EndpointList({
       <Panel as="div" flush className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <thead className="bg-surface/50 mg-type-micro text-ink-muted">
               <tr>
                 {showNetuid ? <th className="px-4 py-2.5 text-left w-16">SN</th> : null}
                 <th className="px-4 py-2.5 text-left">Resource</th>
@@ -113,7 +113,7 @@ export function EndpointList({
       <div className="md:hidden space-y-4">
         {groups.map((g) => (
           <div key={g.category}>
-            <div className="px-1 mb-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted flex items-center justify-between">
+            <div className="px-1 mb-1.5 mg-type-micro text-ink-muted flex items-center justify-between">
               <span>{CATEGORY_LABEL[g.category]}</span>
               <span className="tabular-nums">{g.items.length}</span>
             </div>
@@ -154,10 +154,7 @@ function GroupBlock({
   return (
     <>
       <tr className={classNames("bg-surface/30", !isFirst && "border-t border-border")}>
-        <td
-          colSpan={colSpan}
-          className="px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-        >
+        <td colSpan={colSpan} className="px-4 py-1.5 mg-type-micro text-ink-muted">
           <span className="text-ink-strong">{CATEGORY_LABEL[category]}</span>
           <span className="ml-2 tabular-nums">· {items.length}</span>
         </td>
@@ -320,9 +317,7 @@ function MobileCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              {e.kind ?? "endpoint"}
-            </span>
+            <span className="mg-type-micro text-ink-muted">{e.kind ?? "endpoint"}</span>
             {showNetuid && e.netuid != null ? (
               <Link
                 to="/subnets/$netuid"
@@ -341,9 +336,7 @@ function MobileCard({
       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border pt-2 text-[11px]">
         {showProvider ? (
           <>
-            <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              Provider
-            </dt>
+            <dt className="mg-type-micro text-ink-muted">Provider</dt>
             <dd className="text-right">
               {e.provider ? (
                 <Link
@@ -366,11 +359,11 @@ function MobileCard({
             </dd>
           </>
         ) : null}
-        <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">Latency</dt>
+        <dt className="mg-type-micro text-ink-muted">Latency</dt>
         <dd className="text-right font-mono text-ink tabular-nums">
           {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
         </dd>
-        <dt className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">Probed</dt>
+        <dt className="mg-type-micro text-ink-muted">Probed</dt>
         <dd className="text-right font-mono text-ink-muted">
           <TimeAgo at={e.last_probed_at} />
         </dd>
@@ -380,7 +373,7 @@ function MobileCard({
           <button
             type="button"
             onClick={() => copy(e.url!)}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-paper px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-accent/40"
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong hover:border-accent/40"
           >
             <CopyIconToggle copied={copied} /> copy
           </button>
@@ -389,7 +382,7 @@ function MobileCard({
               href={safeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-paper px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-accent/40"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong hover:border-accent/40"
             >
               open <ExternalLinkIcon className="size-3" />
             </a>
