@@ -41,12 +41,11 @@ export function LiveBlockRail() {
       role="status"
       aria-live="polite"
     >
-      {/* LATEST BLOCK */}
-      <Link
-        to="/blocks/$ref"
-        params={{ ref: String(latest.block_number) }}
-        className="mg-focus-ring flex items-center gap-3 rounded border border-transparent px-2 py-1.5 hover:border-border/70 hover:bg-surface/50"
-      >
+      {/* LATEST BLOCK. Not a single wrapping <Link>: AccountAddress below
+          renders its own <a>/<button> (account link + copy button), and an
+          anchor/button can't contain another without invalid HTML nesting
+          (breaks hydration). The block number is its own link instead. */}
+      <div className="flex items-center gap-3 rounded border border-transparent px-2 py-1.5">
         <span aria-hidden className="relative inline-flex size-2 items-center justify-center">
           <span className="absolute inline-flex size-2 animate-ping rounded-full bg-health-ok/60" />
           <span className="relative inline-flex size-1.5 rounded-full bg-health-ok" />
@@ -54,9 +53,13 @@ export function LiveBlockRail() {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
             <span className="mg-type-micro text-ink-muted">Latest</span>
-            <span className="font-mono text-[14px] font-semibold tabular-nums text-ink-strong">
+            <Link
+              to="/blocks/$ref"
+              params={{ ref: String(latest.block_number) }}
+              className="mg-focus-ring rounded font-mono text-[14px] font-semibold tabular-nums text-ink-strong hover:text-accent"
+            >
               #{formatNumber(latest.block_number)}
-            </span>
+            </Link>
             <span className="font-mono text-[10px] text-ink-muted">
               <TimeAgo at={latest.observed_at} />
             </span>
@@ -75,7 +78,7 @@ export function LiveBlockRail() {
             {formatNumber(latest.event_count ?? 0)} evt
           </div>
         </div>
-      </Link>
+      </div>
 
       {/* MINI CADENCE STRIP */}
       <div className="flex flex-col justify-center gap-1.5 px-1">
