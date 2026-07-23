@@ -7,7 +7,7 @@ import {
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
-const ctx = { waitUntil: (p) => p };
+const ctx = { waitUntil: (p: Promise<unknown>) => p };
 const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
 // An ACCOUNT_POSITION_DAILY_READ_COLUMNS-shaped row.
@@ -51,32 +51,35 @@ describe("formatAccountPosition", () => {
   test("returns null for a non-object row", () => {
     assert.equal(formatAccountPosition(null), null);
     assert.equal(formatAccountPosition(undefined), null);
-    assert.equal(formatAccountPosition("x"), null);
+    assert.equal(
+      formatAccountPosition("x" as unknown as Record<string, unknown>),
+      null,
+    );
   });
 
   test("role is miner when validator_permit does not coerce to 1", () => {
     for (const validator_permit of [0, null, undefined, 2]) {
-      const out = formatAccountPosition(positionRow({ validator_permit }));
+      const out = formatAccountPosition(positionRow({ validator_permit }))!;
       assert.equal(out.role, "miner", JSON.stringify(validator_permit));
     }
   });
 
   test('a numeric-string "1" cell still counts as validator (D1 string coercion)', () => {
-    const out = formatAccountPosition(positionRow({ validator_permit: "1" }));
+    const out = formatAccountPosition(positionRow({ validator_permit: "1" }))!;
     assert.equal(out.role, "validator");
   });
 
   test("active coerces D1's 0/1 flag to a boolean", () => {
     assert.equal(
-      formatAccountPosition(positionRow({ active: 1 })).active,
+      formatAccountPosition(positionRow({ active: 1 }))!.active,
       true,
     );
     assert.equal(
-      formatAccountPosition(positionRow({ active: 0 })).active,
+      formatAccountPosition(positionRow({ active: 0 }))!.active,
       false,
     );
     assert.equal(
-      formatAccountPosition(positionRow({ active: null })).active,
+      formatAccountPosition(positionRow({ active: null }))!.active,
       false,
     );
   });
@@ -84,45 +87,45 @@ describe("formatAccountPosition", () => {
   test("yield is null when stake is zero (undefined return, not divide-by-zero)", () => {
     const out = formatAccountPosition(
       positionRow({ stake_tao: 0, emission_tao: 5 }),
-    );
+    )!;
     assert.equal(out.yield, null);
   });
 
   test("score fields are null on an absent/blank cell, not coerced to 0", () => {
     const out = formatAccountPosition(
       positionRow({ rank: null, trust: "", incentive: undefined }),
-    );
+    )!;
     assert.equal(out.rank, null);
     assert.equal(out.trust, null);
     assert.equal(out.incentive, null);
   });
 
   test("score fields are null on a non-numeric, non-blank cell", () => {
-    const out = formatAccountPosition(positionRow({ dividends: "garbage" }));
+    const out = formatAccountPosition(positionRow({ dividends: "garbage" }))!;
     assert.equal(out.dividends, null);
   });
 
   test("coldkey is null when absent", () => {
     assert.equal(
-      formatAccountPosition(positionRow({ coldkey: null })).coldkey,
+      formatAccountPosition(positionRow({ coldkey: null }))!.coldkey,
       null,
     );
   });
 
   test("uid is null when missing or negative, not coerced", () => {
-    assert.equal(formatAccountPosition(positionRow({ uid: null })).uid, null);
-    assert.equal(formatAccountPosition(positionRow({ uid: -1 })).uid, null);
+    assert.equal(formatAccountPosition(positionRow({ uid: null }))!.uid, null);
+    assert.equal(formatAccountPosition(positionRow({ uid: -1 }))!.uid, null);
   });
 
   test("uid tolerates a D1 numeric-string cell", () => {
-    assert.equal(formatAccountPosition(positionRow({ uid: "3" })).uid, 3);
-    assert.equal(formatAccountPosition(positionRow({ uid: "-1" })).uid, null);
+    assert.equal(formatAccountPosition(positionRow({ uid: "3" }))!.uid, 3);
+    assert.equal(formatAccountPosition(positionRow({ uid: "-1" }))!.uid, null);
   });
 
   test("malformed stake/emission cells degrade to 0, not NaN", () => {
     const out = formatAccountPosition(
       positionRow({ stake_tao: "garbage", emission_tao: undefined }),
-    );
+    )!;
     assert.equal(out.stake_tao, 0);
     assert.equal(out.emission_tao, 0);
     assert.equal(out.yield, null);
@@ -163,7 +166,10 @@ describe("buildAccountPositionHistory", () => {
 
   test("drops malformed rows instead of throwing", () => {
     const data = buildAccountPositionHistory(
-      [positionRow(), null, "garbage", undefined],
+      [positionRow(), null, "garbage", undefined] as unknown as Record<
+        string,
+        unknown
+      >[],
       SS58,
       7,
       {},
@@ -233,7 +239,7 @@ function positionHistoryEnv(overrides = {}) {
 
 // A Postgres-tier env: METAGRAPH_NEURONS_SOURCE=postgres + a DATA_API stub
 // returning the given account-position-history payload.
-function postgresPositionHistoryEnv(payload) {
+function postgresPositionHistoryEnv(payload: unknown) {
   return positionHistoryEnv({
     METAGRAPH_NEURONS_SOURCE: "postgres",
     DATA_API: { fetch: async () => Response.json(payload) },

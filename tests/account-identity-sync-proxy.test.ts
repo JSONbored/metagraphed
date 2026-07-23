@@ -52,7 +52,7 @@ test("forwards the request to DATA_API and relays its response body + status", a
     ),
     {
       DATA_API: {
-        fetch(req) {
+        fetch(req: Request) {
           receivedToken = req.headers.get("x-account-identity-sync-token");
           receivedPath = new URL(req.url).pathname;
           return new Response(

@@ -8,7 +8,12 @@ import {
 } from "../src/account-axon-removals.ts";
 
 // One GROUP BY netuid row (removal count + first/last observed epoch ms).
-function row(netuid, removals, first, last) {
+function row(
+  netuid: number | string | null,
+  removals: number,
+  first: number | null,
+  last: number | null,
+): Record<string, unknown> {
   return {
     netuid,
     removals,
@@ -52,7 +57,7 @@ describe("buildAccountAxonRemovals", () => {
     // subnet 1 has the most removals (3), so it leads + is dominant.
     assert.equal(d.subnets[0].netuid, 1);
     assert.equal(d.dominant_netuid, 1);
-    const s1 = d.subnets.find((s) => s.netuid === 1);
+    const s1 = d.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.removals, 3);
     assert.equal(
       s1.first_removed_at,
@@ -136,10 +141,10 @@ describe("buildAccountAxonRemovals", () => {
       ADDR,
       { window: "7d" },
     );
-    const s1 = d.subnets.find((s) => s.netuid === 1);
+    const s1 = d.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.first_removed_at, null);
     assert.equal(s1.last_removed_at, null);
-    const s2 = d.subnets.find((s) => s.netuid === 2);
+    const s2 = d.subnets.find((s) => s.netuid === 2)!;
     assert.equal(s2.first_removed_at, null);
     assert.equal(s2.last_removed_at, null);
   });
@@ -147,8 +152,8 @@ describe("buildAccountAxonRemovals", () => {
 
 describe("loadAccountAxonRemovals", () => {
   test("seeks the hotkey index for AxonInfoRemoved over the window and shapes it", async () => {
-    let captured;
-    const d1 = async (sql, params) => {
+    let captured: { sql: string; params: unknown[] } | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       // Multiple rows so generatedAt walks past the first (later row wins) and a
       // null-observed row is skipped rather than counted.
@@ -162,27 +167,30 @@ describe("loadAccountAxonRemovals", () => {
       windowLabel: "7d",
     });
     assert.match(
-      captured.sql,
+      captured!.sql,
       /FROM account_events INDEXED BY idx_account_events_hotkey/,
     );
-    assert.match(captured.sql, /WHERE hotkey = \? AND event_kind = \?/);
-    assert.match(captured.sql, /GROUP BY netuid/);
-    assert.equal(captured.params[0], ADDR);
-    assert.equal(captured.params[1], AXON_REMOVAL_EVENT_KIND);
-    assert.equal(typeof captured.params[2], "number"); // epoch-ms cutoff
+    assert.match(captured!.sql, /WHERE hotkey = \? AND event_kind = \?/);
+    assert.match(captured!.sql, /GROUP BY netuid/);
+    assert.equal(captured!.params[0], ADDR);
+    assert.equal(captured!.params[1], AXON_REMOVAL_EVENT_KIND);
+    assert.equal(typeof captured!.params[2], "number"); // epoch-ms cutoff
     assert.equal(data.total_removals, 5);
     assert.equal(generatedAt, new Date(1_700_500_000_000).toISOString());
   });
 
   test("an unknown window label falls back to the default window days", async () => {
-    let captured;
-    const d1 = async (sql, params) => {
+    let captured: { sql: string; params: unknown[] } | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [];
     };
     await loadAccountAxonRemovals(d1, ADDR, { windowLabel: "bogus" });
     const expected = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    assert.ok(Math.abs(captured.params[2] - expected) < 24 * 60 * 60 * 1000);
+    assert.ok(
+      Math.abs((captured!.params[2] as number) - expected) <
+        24 * 60 * 60 * 1000,
+    );
   });
 
   test("a cold store (no rows) yields a zeroed card + null generatedAt", async () => {
@@ -198,7 +206,7 @@ describe("loadAccountAxonRemovals", () => {
 
   test("a non-array D1 result degrades to a zeroed card (never throws)", async () => {
     const { data, generatedAt } = await loadAccountAxonRemovals(
-      async () => null,
+      async () => null as unknown as Record<string, unknown>[],
       ADDR,
       { windowLabel: "7d" },
     );

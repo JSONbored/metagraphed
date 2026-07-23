@@ -6,6 +6,7 @@ import {
 } from "../src/account-portfolio.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -60,7 +61,7 @@ describe("buildAccountPortfolio", () => {
     assert.equal(out.miner_count, 2);
     assert.equal(out.total_stake_tao, 1200);
     assert.equal(out.total_emission_tao, 80);
-    assert.ok(Math.abs(out.overall_yield - 80 / 1200) < 1e-6);
+    assert.ok(Math.abs(out.overall_yield! - 80 / 1200) < 1e-6);
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
@@ -78,8 +79,8 @@ describe("buildAccountPortfolio", () => {
 
   test("stake_concentration is over the positive-stake positions", () => {
     const out = buildAccountPortfolio(ROWS, SS58);
-    assert.equal(out.stake_concentration.holders, 2); // zero-stake dropped
-    assert.equal(out.stake_concentration.total, 1200);
+    assert.equal((out.stake_concentration as Row).holders, 2); // zero-stake dropped
+    assert.equal((out.stake_concentration as Row).total, 1200);
   });
 
   test("drops positions with a non-numeric netuid; coerces numeric strings", () => {
@@ -203,31 +204,34 @@ describe("buildAccountPortfolio", () => {
   });
 
   test("null-safe on junk rows", () => {
-    const out = buildAccountPortfolio("nope", SS58);
+    const out = buildAccountPortfolio(
+      "nope" as unknown as Record<string, unknown>[],
+      SS58,
+    );
     assert.equal(out.position_count, 0);
     assert.equal(out.stake_concentration, null);
   });
 
   test("loadAccountPortfolio filters by hotkey and shapes the rows", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
+    let seen: { sql: string; params: unknown[] } | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
       return ROWS;
     };
     const out = await loadAccountPortfolio(d1, SS58);
-    assert.match(seen.sql, /FROM neurons WHERE hotkey = \? ORDER BY netuid/);
-    assert.deepEqual(seen.params, [SS58]);
+    assert.match(seen!.sql, /FROM neurons WHERE hotkey = \? ORDER BY netuid/);
+    assert.deepEqual(seen!.params, [SS58]);
     assert.equal(out.position_count, 3);
     assert.equal(out.subnet_count, 2);
   });
 });
 
 describe("GET /api/v1/accounts/{ss58}/portfolio", () => {
-  function neuronsEnv(rows) {
+  function neuronsEnv(rows: Row[]) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>

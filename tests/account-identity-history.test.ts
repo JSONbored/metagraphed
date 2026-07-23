@@ -15,7 +15,7 @@ describe("identityHash", () => {
     const a = await identityHash(snapshot);
     const b = await identityHash(snapshot);
     assert.equal(a, b);
-    assert.match(a, /^[a-f0-9]{64}$/);
+    assert.match(a!, /^[a-f0-9]{64}$/);
   });
 
   test("is order-independent (stable stringify)", async () => {
@@ -78,14 +78,19 @@ describe("formatAccountIdentityHistoryEntry", () => {
   test("returns null for invalid rows", () => {
     assert.equal(formatAccountIdentityHistoryEntry(null), null);
     assert.equal(formatAccountIdentityHistoryEntry(undefined), null);
-    assert.equal(formatAccountIdentityHistoryEntry("nope"), null);
+    assert.equal(
+      formatAccountIdentityHistoryEntry(
+        "nope" as unknown as Record<string, unknown>,
+      ),
+      null,
+    );
   });
 
   test("defaults identity_hash to null when absent", () => {
     const out = formatAccountIdentityHistoryEntry({
       observed_at: 1_700_000_000_000,
       name: "Example Team",
-    });
+    })!;
     assert.equal(out.identity_hash, null);
   });
 
@@ -101,7 +106,7 @@ describe("formatAccountIdentityHistoryEntry", () => {
       const out = formatAccountIdentityHistoryEntry({
         observed_at,
         identity_hash: "abc",
-      });
+      })!;
       assert.equal(out.observed_at, null, `observed_at=${observed_at}`);
     }
   });
@@ -110,7 +115,7 @@ describe("formatAccountIdentityHistoryEntry", () => {
     const out = formatAccountIdentityHistoryEntry({
       observed_at: "1700000000000",
       identity_hash: "abc",
-    });
+    })!;
     assert.equal(out.observed_at, new Date(1_700_000_000_000).toISOString());
   });
 
@@ -121,7 +126,7 @@ describe("formatAccountIdentityHistoryEntry", () => {
         url: "javascript:alert(1)",
         discord: "x".repeat(201),
       }),
-    );
+    )!;
     assert.equal(out.name, "System   [scrubbed] .");
     assert.equal(out.url, null);
     assert.equal(out.discord, null);
@@ -145,7 +150,10 @@ describe("buildAccountIdentityHistory", () => {
   });
 
   test("filters out unformattable rows and defaults missing pagination fields to null", () => {
-    const out = buildAccountIdentityHistory([null, historyRow()], "5Acc0");
+    const out = buildAccountIdentityHistory(
+      [null, historyRow()] as unknown as Record<string, unknown>[],
+      "5Acc0",
+    );
     assert.equal(out.entry_count, 1);
     assert.equal(out.limit, null);
     assert.equal(out.offset, null);
@@ -161,8 +169,8 @@ describe("buildAccountIdentityHistory", () => {
 
 describe("loadAccountIdentityHistory", () => {
   test("paginates with offset when no cursor is provided", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
+    const calls: Array<{ sql: string; params: unknown[] }> = [];
+    const d1 = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [historyRow()];
     };
@@ -177,8 +185,8 @@ describe("loadAccountIdentityHistory", () => {
   });
 
   test("uses cursor seek and emits next_cursor for a full page", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
+    const calls: Array<{ sql: string; params: unknown[] }> = [];
+    const d1 = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [
         historyRow({ id: 9, observed_at: 1_600_000_000_000 }),

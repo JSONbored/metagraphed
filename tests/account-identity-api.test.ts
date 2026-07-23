@@ -3,14 +3,15 @@ import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 import { buildAccountIdentity } from "../src/account-identity.ts";
 import { buildAccountIdentityHistory } from "../src/account-identity-history.ts";
+import type { Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-function req(path) {
+function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-function identityRow(overrides = {}) {
+function identityRow(overrides: Row = {}) {
   return {
     account: SS58,
     name: "Example Team",
@@ -25,7 +26,7 @@ function identityRow(overrides = {}) {
   };
 }
 
-function historyRow(overrides = {}) {
+function historyRow(overrides: Row = {}) {
   return {
     id: 1,
     observed_at: 1_700_000_000_000,
@@ -47,11 +48,14 @@ function historyRow(overrides = {}) {
 // hit, DATA_API's JSON body is used directly as `data` (no reshaping), so the
 // mock returns the already-built builder output, mirroring what
 // workers/data-api.mjs actually serves for these two routes.
-function postgresIdentityEnv({ identity, identityHistory } = {}) {
+function postgresIdentityEnv({
+  identity,
+  identityHistory,
+}: { identity?: Row | null; identityHistory?: Row[] } = {}) {
   return {
     METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
     DATA_API: {
-      async fetch(request) {
+      async fetch(request: Request) {
         const url = new URL(request.url);
         if (/\/identity-history$/.test(url.pathname)) {
           return Response.json(

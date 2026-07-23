@@ -1,15 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import type { AnyFn, Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-function req(path) {
+function req(path: string): Request {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
 // Stub globalThis.fetch for one test, restore after.
-function withFetchStub(stub, fn) {
+function withFetchStub(stub: AnyFn, fn: AnyFn) {
   const orig = globalThis.fetch;
   globalThis.fetch = stub;
   return Promise.resolve(fn()).finally(() => {
@@ -19,8 +20,8 @@ function withFetchStub(stub, fn) {
 
 // A SCALE-encoded AccountInfo blob (#6506): nonce/consumers/providers/sufficients
 // (u32 LE each), then AccountData's free + reserved (u128 LE each).
-function accountInfoHex(freeRao, reservedRao = 0n) {
-  const u128 = (value) => {
+function accountInfoHex(freeRao: bigint, reservedRao: bigint = 0n): string {
+  const u128 = (value: bigint): string => {
     let hex = "";
     let rest = BigInt(value);
     for (let index = 0; index < 16; index += 1) {
@@ -36,7 +37,7 @@ function accountInfoHex(freeRao, reservedRao = 0n) {
 
 test("GET /accounts/{ss58}/balance returns balance_tao for a valid address", async () => {
   await withFetchStub(
-    async (_url, _init) => ({
+    async (_url: unknown, _init: unknown) => ({
       ok: true,
       json: async () => ({
         jsonrpc: "2.0",
@@ -147,7 +148,7 @@ test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC fail
 
 test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC timeout (#2075)", async () => {
   await withFetchStub(
-    async (_url, init) => {
+    async (_url: unknown, init: RequestInit | undefined) => {
       assert.ok(init?.signal, "finney fetch must pass AbortSignal.timeout");
       const err = new Error("The operation timed out.");
       err.name = "TimeoutError";
@@ -179,7 +180,7 @@ test("GET /accounts/{ss58}/balance serves from KV cache when available", async (
   };
   const env = {
     METAGRAPH_CONTROL: {
-      get: async (_key, _opts) => cached,
+      get: async (_key: string, _opts: unknown) => cached,
     },
   };
   const res = await handleRequest(
@@ -316,11 +317,12 @@ test("GET /accounts/{ss58}/balance returns null when RPC data.free is absent", a
 });
 
 test("GET /accounts/{ss58}/balance writes to KV on successful RPC fetch", async () => {
-  let putKey, putValue;
+  let putKey: string | undefined;
+  let putValue: Row | undefined;
   const env = {
     METAGRAPH_CONTROL: {
       get: async () => null, // cache miss → fall through to RPC
-      put: async (key, value) => {
+      put: async (key: string, value: string) => {
         putKey = key;
         putValue = JSON.parse(value);
       },
@@ -343,7 +345,7 @@ test("GET /accounts/{ss58}/balance writes to KV on successful RPC fetch", async 
       );
       assert.equal(res.status, 200);
       assert.equal(putKey, `balance:${SS58}`);
-      assert.ok(typeof putValue.balance_tao === "number");
+      assert.ok(typeof putValue!.balance_tao === "number");
     },
   );
 });
@@ -403,11 +405,11 @@ test("GET /accounts/{ss58}/balance rejects non-base58 captures before RPC", asyn
 });
 
 test("GET /accounts/{ss58}/balance applies per-client RPC rate limiting", async () => {
-  let limiterKey;
+  let limiterKey: string | undefined;
   let fetchCalls = 0;
   const env = {
     RPC_RATE_LIMITER: {
-      limit: async ({ key }) => {
+      limit: async ({ key }: { key: string }) => {
         limiterKey = key;
         return { success: false };
       },
@@ -438,11 +440,13 @@ test("GET /accounts/{ss58}/balance applies per-client RPC rate limiting", async 
 });
 
 test("GET /accounts/{ss58}/balance briefly negative-caches RPC failures", async () => {
-  let putKey, putValue, putOptions;
+  let putKey: string | undefined;
+  let putValue: Row | undefined;
+  let putOptions: Row | undefined;
   const env = {
     METAGRAPH_CONTROL: {
       get: async () => null,
-      put: async (key, value, options) => {
+      put: async (key: string, value: string, options: Row) => {
         putKey = key;
         putValue = JSON.parse(value);
         putOptions = options;
@@ -459,8 +463,8 @@ test("GET /accounts/{ss58}/balance briefly negative-caches RPC failures", async 
       );
       assert.equal(res.status, 200);
       assert.equal(putKey, `balance:${SS58}`);
-      assert.equal(putValue.balance_tao, null);
-      assert.equal(putOptions.expirationTtl, 10);
+      assert.equal(putValue!.balance_tao, null);
+      assert.equal(putOptions!.expirationTtl, 10);
     },
   );
 });

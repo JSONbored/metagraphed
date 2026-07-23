@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import type { Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-function req(path, init) {
+function req(path: string, init?: RequestInit) {
   return new Request(`https://api.metagraph.sh${path}`, init);
 }
 
@@ -18,10 +19,18 @@ function dbWith({
   extrinsics,
   activity,
   modules,
+}: {
+  agg?: Row | null;
+  kinds?: Row[];
+  registrations?: Row[];
+  events?: Row[];
+  extrinsics?: Row[];
+  activity?: Row | null;
+  modules?: Row[];
 } = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {

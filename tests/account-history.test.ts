@@ -2,18 +2,19 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 import { buildAccountHistory } from "../src/account-events.ts";
+import type { Row } from "./row-type.ts";
 
 // SQL-capturing D1 mock variant: records each bound (sql, params) so a test can
 // assert the query shape (keyset seek vs offset).
-function dbCapture(days = []) {
-  const captured = [];
+function dbCapture(days: Row[] = []) {
+  const captured: Array<{ sql: string; params: unknown[] }> = [];
   return {
     captured,
     env: {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               captured.push({ sql, params });
               return {
                 async all() {
@@ -32,7 +33,7 @@ function dbCapture(days = []) {
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-function req(path) {
+function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
@@ -51,7 +52,7 @@ const DAY = {
 // body is used directly as `data` (no reshaping), so the mock returns the
 // already-built buildAccountHistory output, mirroring what
 // workers/data-api.mjs actually serves for this route.
-function postgresEnv({ days } = {}) {
+function postgresEnv({ days }: { days?: Row[] } = {}) {
   return {
     METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
     DATA_API: {

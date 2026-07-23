@@ -17,16 +17,19 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import type { Row } from "./row-type.ts";
 
 const SURFACE_ID = "sn-17-404-gen-health";
 
-const registry = JSON.parse(
+const registry: Row = JSON.parse(
   readFileSync(
     fileURLToPath(new URL("../registry/subnets/404-gen.json", import.meta.url)),
     "utf8",
   ),
 );
-const SURFACE = registry.surfaces.find((surface) => surface.id === SURFACE_ID);
+const SURFACE = registry.surfaces.find(
+  (surface: Row) => surface.id === SURFACE_ID,
+);
 
 // A faithful subset of the live https://gen.404.xyz/api/health response body.
 const BODY = { status: "ok" };
@@ -53,13 +56,13 @@ describe("SN17 404-GEN call_subnet_surface verification (#7033)", () => {
   });
 
   test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
-    let requestedUrl;
-    let requestedMethod;
+    let requestedUrl: string | undefined;
+    let requestedMethod: string | undefined;
     const result = await callSubnetSurface(SURFACE, {
       isUnsafeUrl: async () => false,
       fetchImpl: async (url, init) => {
         requestedUrl = String(url);
-        requestedMethod = init.method;
+        requestedMethod = init?.method;
         return upstreamResponse();
       },
     });
@@ -69,7 +72,7 @@ describe("SN17 404-GEN call_subnet_surface verification (#7033)", () => {
     assert.equal(result.status_code, 200);
     assert.equal(result.content_type, "application/json");
     assert.equal(result.truncated, false);
-    assert.equal(result.body.status, "ok");
+    assert.equal((result.body as Row).status, "ok");
   });
 
   test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
@@ -77,7 +80,7 @@ describe("SN17 404-GEN call_subnet_surface verification (#7033)", () => {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 17 }],
     };
     const deps = {
-      readArtifact: async (_env, path) =>
+      readArtifact: async (_env: Row, path: string) =>
         path === "/metagraph/operational-surfaces.json"
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
@@ -110,7 +113,7 @@ describe("SN17 404-GEN call_subnet_surface verification (#7033)", () => {
         {},
         deps,
       );
-      const result = (await response.json()).result;
+      const result = ((await response.json()) as Row).result;
       assert.equal(result.isError, false);
       assert.equal(result.structuredContent.surface_id, SURFACE_ID);
       assert.equal(result.structuredContent.status_code, 200);

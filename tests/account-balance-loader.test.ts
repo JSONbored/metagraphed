@@ -8,13 +8,14 @@ import {
   loadAccountBalance,
   systemAccountStorageKey,
 } from "../src/account-balance.ts";
+import { mockEnv, type Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
 // A SCALE-encoded AccountInfo blob: nonce/consumers/providers/sufficients
 // (u32 LE each) then AccountData's free + reserved (u128 LE each).
-function accountInfoHex(freeRao, reservedRao) {
-  const u128 = (value) => {
+function accountInfoHex(freeRao: bigint, reservedRao: bigint): string {
+  const u128 = (value: bigint): string => {
     let hex = "";
     let rest = BigInt(value);
     for (let index = 0; index < 16; index += 1) {
@@ -101,9 +102,9 @@ describe("accountInfoTotalRao", () => {
 describe("loadAccountBalance", () => {
   test("reads System::Account storage and sums free + reserved into TAO", async () => {
     const orig = globalThis.fetch;
-    let sentBody;
-    globalThis.fetch = async (_url, init) => {
-      sentBody = JSON.parse(init.body);
+    let sentBody: Row | undefined;
+    globalThis.fetch = (async (_url: unknown, init: RequestInit) => {
+      sentBody = JSON.parse(init.body as string);
       return {
         ok: true,
         json: async () => ({
@@ -112,15 +113,15 @@ describe("loadAccountBalance", () => {
           result: accountInfoHex(2_000_000_000n, 500_000_000n),
         }),
       };
-    };
+    }) as unknown as typeof fetch;
     try {
-      const data = await loadAccountBalance({}, SS58);
+      const data = await loadAccountBalance(mockEnv(), SS58);
       assert.equal(data.ss58, SS58);
       assert.equal(data.balance_tao, 2.5);
       // #6506: system_account is not a real RPC method — the loader must do a
       // raw System::Account storage read instead.
-      assert.equal(sentBody.method, "state_getStorage");
-      assert.match(sentBody.params[0], /^0x26aa394eea5630e07c48ae0c9558cef7/);
+      assert.equal(sentBody!.method, "state_getStorage");
+      assert.match(sentBody!.params[0], /^0x26aa394eea5630e07c48ae0c9558cef7/);
     } finally {
       globalThis.fetch = orig;
     }
@@ -131,12 +132,12 @@ describe("loadAccountBalance", () => {
     // must stay schema-stable rather than throw if handed a bad address.
     const orig = globalThis.fetch;
     let fetched = false;
-    globalThis.fetch = async () => {
+    globalThis.fetch = (async () => {
       fetched = true;
       return { ok: true, json: async () => ({ result: null }) };
-    };
+    }) as unknown as typeof fetch;
     try {
-      const data = await loadAccountBalance({}, "notavalidss58address");
+      const data = await loadAccountBalance(mockEnv(), "notavalidss58address");
       assert.equal(data.balance_tao, null);
       assert.equal(
         fetched,
@@ -150,12 +151,12 @@ describe("loadAccountBalance", () => {
 
   test("resolves a never-seen account (no storage entry) to 0, not null", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
-    });
+    })) as unknown as typeof fetch;
     try {
-      const data = await loadAccountBalance({}, SS58);
+      const data = await loadAccountBalance(mockEnv(), SS58);
       assert.equal(data.balance_tao, 0);
     } finally {
       globalThis.fetch = orig;
@@ -164,16 +165,16 @@ describe("loadAccountBalance", () => {
 
   test("returns balance_tao:null when the node reports an RPC error", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({
         jsonrpc: "2.0",
         id: 1,
         error: { code: -32601, message: "Method not found" },
       }),
-    });
+    })) as unknown as typeof fetch;
     try {
-      const data = await loadAccountBalance({}, SS58);
+      const data = await loadAccountBalance(mockEnv(), SS58);
       assert.equal(data.balance_tao, null);
     } finally {
       globalThis.fetch = orig;
@@ -196,12 +197,12 @@ describe("loadAccountBalance", () => {
     };
     let fetchCalled = false;
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => {
+    globalThis.fetch = (async () => {
       fetchCalled = true;
       return { ok: false };
-    };
+    }) as unknown as typeof fetch;
     try {
-      const data = await loadAccountBalance(env, SS58);
+      const data = await loadAccountBalance(mockEnv(env), SS58);
       assert.deepEqual(data, cached);
       assert.equal(fetchCalled, false);
     } finally {
@@ -210,15 +211,15 @@ describe("loadAccountBalance", () => {
   });
 
   test("negative-caches RPC failures with the short TTL", async () => {
-    let putKey;
-    let putValue;
-    let putOptions;
+    let putKey: string | undefined;
+    let putValue: Row | undefined;
+    let putOptions: Row | undefined;
     const env = {
       METAGRAPH_CONTROL: {
         async get() {
           return null;
         },
-        async put(key, value, options) {
+        async put(key: string, value: string, options: Row) {
           putKey = key;
           putValue = JSON.parse(value);
           putOptions = options;
@@ -226,13 +227,15 @@ describe("loadAccountBalance", () => {
       },
     };
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: false });
+    globalThis.fetch = (async () => ({
+      ok: false,
+    })) as unknown as typeof fetch;
     try {
-      const data = await loadAccountBalance(env, SS58);
+      const data = await loadAccountBalance(mockEnv(env), SS58);
       assert.equal(data.balance_tao, null);
       assert.equal(putKey, `balance:${SS58}`);
-      assert.equal(putValue.balance_tao, null);
-      assert.equal(putOptions.expirationTtl, BALANCE_NEGATIVE_KV_TTL);
+      assert.equal(putValue!.balance_tao, null);
+      assert.equal(putOptions!.expirationTtl, BALANCE_NEGATIVE_KV_TTL);
     } finally {
       globalThis.fetch = orig;
     }
@@ -240,14 +243,17 @@ describe("loadAccountBalance", () => {
 
   test("returns balance_tao:null when finney RPC times out (#2075)", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
+    globalThis.fetch = (async (
+      _url: unknown,
+      init: RequestInit | undefined,
+    ) => {
       assert.ok(init?.signal, "finney fetch must pass AbortSignal.timeout");
       const err = new Error("The operation timed out.");
       err.name = "TimeoutError";
       throw err;
-    };
+    }) as unknown as typeof fetch;
     try {
-      const data = await loadAccountBalance({}, SS58);
+      const data = await loadAccountBalance(mockEnv(), SS58);
       assert.equal(data.ss58, SS58);
       assert.equal(data.balance_tao, null);
       assert.ok(data.queried_at);
@@ -257,9 +263,12 @@ describe("loadAccountBalance", () => {
   });
 
   test("passes AbortSignal.timeout to the finney fetch", async () => {
-    let seenSignal;
+    let seenSignal: AbortSignal | null | undefined;
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
+    globalThis.fetch = (async (
+      _url: unknown,
+      init: RequestInit | undefined,
+    ) => {
       seenSignal = init?.signal;
       return {
         ok: true,
@@ -269,11 +278,11 @@ describe("loadAccountBalance", () => {
           result: { data: { free: 1_000_000_000, reserved: 0 } },
         }),
       };
-    };
+    }) as unknown as typeof fetch;
     try {
-      await loadAccountBalance({}, SS58);
+      await loadAccountBalance(mockEnv(), SS58);
       assert.ok(seenSignal);
-      assert.equal(typeof seenSignal.aborted, "boolean");
+      assert.equal(typeof seenSignal!.aborted, "boolean");
       assert.equal(BALANCE_RPC_TIMEOUT_MS, 5000);
     } finally {
       globalThis.fetch = orig;

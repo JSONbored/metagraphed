@@ -8,7 +8,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const CSV_HEADER = "day,netuid,event_count,event_kinds,first_block,last_block";
 
-function req(path, init) {
+function req(path: string, init?: RequestInit) {
   return new Request(`https://api.metagraph.sh${path}`, init);
 }
 

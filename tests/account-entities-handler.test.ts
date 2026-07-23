@@ -5,8 +5,8 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import {
@@ -14,21 +14,27 @@ import {
   handleAccountEntities,
 } from "../workers/request-handlers/entities.mjs";
 import { handleRequest } from "../workers/api.mjs";
+import type { Row } from "./row-type.ts";
+
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-function req(path) {
+function req(path: string): Request {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-async function json(res) {
+async function json(res: Response): Promise<Row> {
   assert.equal(res.status, 200, `expected 200, got ${res.status}`);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.ok, true);
   return body;
 }
 
-async function assertValidComponent(componentName, data) {
+async function assertValidComponent(
+  componentName: string,
+  data: unknown,
+): Promise<void> {
   const generatedAt = "2026-06-24T12:00:00.000Z";
   const openapi = buildOpenApiArtifact(
     generatedAt,
@@ -44,10 +50,10 @@ async function assertValidComponent(componentName, data) {
   assert.equal(validate(data), true, ajv.errorsText(validate.errors));
 }
 
-function entitiesArchiveEnv(entities) {
+function entitiesArchiveEnv(entities: Row[]): Row {
   return {
     METAGRAPH_ARCHIVE: {
-      async get(key) {
+      async get(key: string) {
         if (!key.endsWith("entities.json")) return null;
         return {
           async json() {
@@ -146,7 +152,7 @@ describe("handleAccount labels join", () => {
 });
 
 describe("workers/api.mjs dispatch", () => {
-  const ctx = { waitUntil: (promise) => promise };
+  const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
 
   test("GET /api/v1/accounts/{ss58}/entities reaches handleAccountEntities via ACCOUNT_ENTITIES_PATH_PATTERN", async () => {
     const res = await handleRequest(

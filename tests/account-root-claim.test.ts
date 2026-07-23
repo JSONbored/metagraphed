@@ -12,10 +12,11 @@ import {
   ROOT_CLAIM_NEGATIVE_KV_TTL,
 } from "../src/account-root-claim.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
+import { mockEnv, type Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-function compactU32(n) {
+function compactU32(n: number) {
   if (n < 64) return Uint8Array.of(n << 2);
   if (n < 1 << 14) {
     const v = (n << 2) | 0b01;
@@ -30,11 +31,11 @@ function compactU32(n) {
   );
 }
 
-function u16Le(n) {
+function u16Le(n: number) {
   return Uint8Array.of(n & 0xff, (n >>> 8) & 0xff);
 }
 
-function i128LeFromFloat(n) {
+function i128LeFromFloat(n: number) {
   // Encode as I96F32: bits = round(n * 2^32)
   const bits = BigInt(Math.round(n * 2 ** 32));
   const out = new Uint8Array(16);
@@ -46,7 +47,7 @@ function i128LeFromFloat(n) {
   return out;
 }
 
-function u128Le(n) {
+function u128Le(n: number) {
   const out = new Uint8Array(16);
   let rest = BigInt(n);
   for (let i = 0; i < 16; i += 1) {
@@ -56,11 +57,11 @@ function u128Le(n) {
   return out;
 }
 
-function toHex(bytes) {
+function toHex(bytes: Uint8Array) {
   return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
 
-function concatBytes(...parts) {
+function concatBytes(...parts: Uint8Array[]) {
   const total = parts.reduce((n, p) => n + p.length, 0);
   const out = new Uint8Array(total);
   let offset = 0;
@@ -116,7 +117,7 @@ describe("decodeClaimableMap", () => {
 
   test("decodes netuid + I96F32 rate pairs", () => {
     const hex = toHex(concatBytes(compactU32(1), u16Le(3), i128LeFromFloat(2)));
-    const entries = decodeClaimableMap(hex);
+    const entries = decodeClaimableMap(hex)!;
     assert.equal(entries.length, 1);
     assert.equal(entries[0].netuid, 3);
     assert.equal(entries[0].claimable_rate, 2);
@@ -135,7 +136,7 @@ describe("decodeAccountIdVec / decodeU128 / decodeI96F32", () => {
   test("decodes an account vec", () => {
     const accountId = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
     const hex = toHex(concatBytes(compactU32(1), accountId));
-    const accounts = decodeAccountIdVec(hex);
+    const accounts = decodeAccountIdVec(hex)!;
     assert.equal(accounts.length, 1);
     assert.equal(accounts[0], encodeAccountId32(accountId));
   });
@@ -153,7 +154,7 @@ describe("decodeAccountIdVec / decodeU128 / decodeI96F32", () => {
 describe("loadAccountRootClaim", () => {
   test("rejects a non-finney ss58", async () => {
     await assert.rejects(
-      () => loadAccountRootClaim({}, "not-an-address"),
+      () => loadAccountRootClaim(mockEnv(), "not-an-address"),
       /finney SS58/,
     );
   });
@@ -165,7 +166,7 @@ describe("loadAccountRootClaim", () => {
         throw new Error("boom");
       }),
     );
-    const payload = await loadAccountRootClaim({}, SS58);
+    const payload = await loadAccountRootClaim(mockEnv(), SS58);
     assert.equal(payload.ss58, SS58);
     assert.equal(payload.claim_type, null);
     assert.equal(payload.hotkeys, null);
@@ -204,14 +205,15 @@ describe("loadAccountRootClaim", () => {
       }),
     );
 
-    const payload = await loadAccountRootClaim({}, SS58);
+    const payload = await loadAccountRootClaim(mockEnv(), SS58);
+    const hotkeys = payload.hotkeys!;
     assert.deepEqual(payload.claim_type, { kind: "Keep" });
-    assert.equal(payload.hotkeys.length, 1);
-    assert.equal(payload.hotkeys[0].hotkey, hotSs58);
-    assert.equal(payload.hotkeys[0].entries[0].netuid, 5);
-    assert.equal(payload.hotkeys[0].entries[0].claimable_rate, 0.25);
-    assert.equal(payload.hotkeys[0].entries[0].claimed, "1000");
-    assert.equal(payload.hotkeys[0].entries[0].threshold, 0.5);
+    assert.equal(hotkeys.length, 1);
+    assert.equal(hotkeys[0].hotkey, hotSs58);
+    assert.equal(hotkeys[0].entries[0].netuid, 5);
+    assert.equal(hotkeys[0].entries[0].claimable_rate, 0.25);
+    assert.equal(hotkeys[0].entries[0].claimed, "1000");
+    assert.equal(hotkeys[0].entries[0].threshold, 0.5);
   });
 
   test("falls back to OwnedHotkeys when StakingHotkeys is empty", async () => {
@@ -237,10 +239,11 @@ describe("loadAccountRootClaim", () => {
         });
       }),
     );
-    const payload = await loadAccountRootClaim({}, SS58);
+    const payload = await loadAccountRootClaim(mockEnv(), SS58);
+    const hotkeys = payload.hotkeys!;
     assert.deepEqual(payload.claim_type, { kind: "Swap" });
-    assert.equal(payload.hotkeys[0].hotkey, hotSs58);
-    assert.deepEqual(payload.hotkeys[0].entries, []);
+    assert.equal(hotkeys[0].hotkey, hotSs58);
+    assert.deepEqual(hotkeys[0].entries, []);
   });
 
   test("returns KV cache hit without RPC", async () => {
@@ -254,13 +257,13 @@ describe("loadAccountRootClaim", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     const payload = await loadAccountRootClaim(
-      {
+      mockEnv({
         METAGRAPH_CONTROL: {
           async get() {
             return cached;
           },
         },
-      },
+      }),
       SS58,
     );
     assert.equal(payload, cached);
@@ -268,7 +271,7 @@ describe("loadAccountRootClaim", () => {
   });
 
   test("positive-caches a successful payload", async () => {
-    let stored = null;
+    let stored: { value: Row; opts: Row } | null = null;
     let call = 0;
     vi.stubGlobal(
       "fetch",
@@ -286,25 +289,25 @@ describe("loadAccountRootClaim", () => {
       }),
     );
     await loadAccountRootClaim(
-      {
+      mockEnv({
         METAGRAPH_CONTROL: {
           async get() {
             return null;
           },
-          async put(_key, value, opts) {
+          async put(_key: string, value: string, opts: Row) {
             stored = { value: JSON.parse(value), opts };
           },
         },
-      },
+      }),
       SS58,
     );
-    assert.equal(stored.opts.expirationTtl, ROOT_CLAIM_KV_TTL);
-    assert.deepEqual(stored.value.claim_type, { kind: "Swap" });
-    assert.deepEqual(stored.value.hotkeys, []);
+    assert.equal(stored!.opts.expirationTtl, ROOT_CLAIM_KV_TTL);
+    assert.deepEqual(stored!.value.claim_type, { kind: "Swap" });
+    assert.deepEqual(stored!.value.hotkeys, []);
   });
 
   test("negative-caches RPC failure", async () => {
-    let stored = null;
+    let stored: { value: Row; opts: Row } | null = null;
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -312,20 +315,20 @@ describe("loadAccountRootClaim", () => {
       }),
     );
     await loadAccountRootClaim(
-      {
+      mockEnv({
         METAGRAPH_CONTROL: {
           async get() {
             return null;
           },
-          async put(_key, value, opts) {
+          async put(_key: string, value: string, opts: Row) {
             stored = { value: JSON.parse(value), opts };
           },
         },
-      },
+      }),
       SS58,
     );
-    assert.equal(stored.opts.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
-    assert.equal(stored.value.hotkeys, null);
+    assert.equal(stored!.opts.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
+    assert.equal(stored!.value.hotkeys, null);
   });
 
   test("treats non-ok RPC and JSON-RPC errors as failures", async () => {
@@ -333,7 +336,7 @@ describe("loadAccountRootClaim", () => {
       "fetch",
       vi.fn(async () => new Response("nope", { status: 502 })),
     );
-    assert.equal((await loadAccountRootClaim({}, SS58)).hotkeys, null);
+    assert.equal((await loadAccountRootClaim(mockEnv(), SS58)).hotkeys, null);
 
     vi.stubGlobal(
       "fetch",
@@ -349,12 +352,15 @@ describe("loadAccountRootClaim", () => {
           ),
       ),
     );
-    assert.equal((await loadAccountRootClaim({}, SS58)).claim_type, null);
+    assert.equal(
+      (await loadAccountRootClaim(mockEnv(), SS58)).claim_type,
+      null,
+    );
   });
 
   test("nulls out when claim_type or hotkey vec decode fails", async () => {
     let call = 0;
-    let stored = null;
+    let stored: Row | null = null;
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -368,24 +374,24 @@ describe("loadAccountRootClaim", () => {
       }),
     );
     // No KV → if (kv?.put) false arm
-    assert.equal((await loadAccountRootClaim({}, SS58)).hotkeys, null);
+    assert.equal((await loadAccountRootClaim(mockEnv(), SS58)).hotkeys, null);
 
     call = 0;
     const payload = await loadAccountRootClaim(
-      {
+      mockEnv({
         METAGRAPH_CONTROL: {
           async get() {
             return null;
           },
-          async put(_k, value, opts) {
+          async put(_k: string, value: string, opts: Row) {
             stored = opts;
           },
         },
-      },
+      }),
       SS58,
     );
     assert.equal(payload.hotkeys, null);
-    assert.equal(stored.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
+    assert.equal(stored!.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
   });
 
   test("nulls out when a per-hotkey claimable fetch fails", async () => {
@@ -411,7 +417,7 @@ describe("loadAccountRootClaim", () => {
         return new Response("err", { status: 500 });
       }),
     );
-    assert.equal((await loadAccountRootClaim({}, SS58)).hotkeys, null);
+    assert.equal((await loadAccountRootClaim(mockEnv(), SS58)).hotkeys, null);
   });
 
   test("nulls out when claimed/threshold decode fails mid-entry", async () => {
@@ -438,7 +444,7 @@ describe("loadAccountRootClaim", () => {
         });
       }),
     );
-    assert.equal((await loadAccountRootClaim({}, SS58)).hotkeys, null);
+    assert.equal((await loadAccountRootClaim(mockEnv(), SS58)).hotkeys, null);
   });
 
   test("tolerates KV get/put failures", async () => {
@@ -459,7 +465,7 @@ describe("loadAccountRootClaim", () => {
       }),
     );
     const payload = await loadAccountRootClaim(
-      {
+      mockEnv({
         METAGRAPH_CONTROL: {
           async get() {
             throw new Error("kv get");
@@ -468,7 +474,7 @@ describe("loadAccountRootClaim", () => {
             throw new Error("kv put");
           },
         },
-      },
+      }),
       SS58,
     );
     assert.deepEqual(payload.claim_type, { kind: "Swap" });
@@ -486,7 +492,7 @@ describe("loadAccountRootClaim", () => {
     const hex = toHex(
       concatBytes(compactU32(1), u16Le(2), i128LeFromFloat(-0.5)),
     );
-    assert.equal(decodeClaimableMap(hex)[0].claimable_rate, -0.5);
+    assert.equal(decodeClaimableMap(hex)![0].claimable_rate, -0.5);
     void accountId;
   });
 
@@ -525,8 +531,8 @@ describe("loadAccountRootClaim", () => {
     const mode2One = toHex(
       concatBytes(Uint8Array.of(0x06, 0, 0, 0), u16Le(11), i128LeFromFloat(3)),
     );
-    assert.equal(decodeClaimableMap(mode2One)[0].netuid, 11);
-    assert.equal(decodeClaimableMap(mode2One)[0].claimable_rate, 3);
+    assert.equal(decodeClaimableMap(mode2One)![0].netuid, 11);
+    assert.equal(decodeClaimableMap(mode2One)![0].claimable_rate, 3);
     assert.equal(decodeClaimableMap("0xzz"), null);
     assert.deepEqual(decodeAccountIdVec(null), []);
     assert.equal(decodeAccountIdVec("0xzz"), null);
@@ -549,13 +555,13 @@ describe("loadAccountRootClaim", () => {
         ...Array.from({ length: 64 }, (_, i) => u16Le(i)),
       ),
     );
-    assert.equal(decodeRootClaimType(keepMany).kind, "KeepSubnets");
-    assert.equal(decodeRootClaimType(keepMany).subnets.length, 64);
+    assert.equal(decodeRootClaimType(keepMany)!.kind, "KeepSubnets");
+    assert.equal((decodeRootClaimType(keepMany) as Row).subnets.length, 64);
   });
 
   test("nulls + negative-caches when claimable map is malformed", async () => {
     const hotAccountId = Uint8Array.from({ length: 32 }, (_, i) => i + 5);
-    let stored = null;
+    let stored: { opts: Row; value: Row } | null = null;
     let call = 0;
     vi.stubGlobal(
       "fetch",
@@ -575,20 +581,20 @@ describe("loadAccountRootClaim", () => {
       }),
     );
     const payload = await loadAccountRootClaim(
-      {
+      mockEnv({
         METAGRAPH_CONTROL: {
           async get() {
             return null;
           },
-          async put(_k, value, opts) {
+          async put(_k: string, value: string, opts: Row) {
             stored = { opts, value: JSON.parse(value) };
           },
         },
-      },
+      }),
       SS58,
     );
     assert.equal(payload.hotkeys, null);
-    assert.equal(stored.opts.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
+    assert.equal(stored!.opts.expirationTtl, ROOT_CLAIM_NEGATIVE_KV_TTL);
   });
 
   test("nulls when claimed/threshold RPC is non-ok", async () => {
@@ -616,7 +622,7 @@ describe("loadAccountRootClaim", () => {
         return new Response("nope", { status: 503 });
       }),
     );
-    assert.equal((await loadAccountRootClaim({}, SS58)).hotkeys, null);
+    assert.equal((await loadAccountRootClaim(mockEnv(), SS58)).hotkeys, null);
   });
 
   test("works with a null env (no KV)", async () => {
@@ -646,7 +652,7 @@ describe("loadAccountRootClaim", () => {
       }),
     );
     // Missing result on StakingHotkeys/OwnedHotkeys → empty vecs → empty hotkeys
-    const payload = await loadAccountRootClaim(null, SS58);
+    const payload = await loadAccountRootClaim(null as unknown as Env, SS58);
     assert.deepEqual(payload.claim_type, { kind: "Swap" });
     assert.deepEqual(payload.hotkeys, []);
   });
@@ -669,19 +675,19 @@ describe("loadAccountRootClaim", () => {
       }),
     );
     const a = await loadAccountRootClaim(
-      { METAGRAPH_CONTROL: { async put() {} } },
+      mockEnv({ METAGRAPH_CONTROL: { async put() {} } }),
       SS58,
     );
     assert.deepEqual(a.hotkeys, []);
     call = 0;
     const b = await loadAccountRootClaim(
-      {
+      mockEnv({
         METAGRAPH_CONTROL: {
           async get() {
             return null;
           },
         },
-      },
+      }),
       SS58,
     );
     assert.deepEqual(b.hotkeys, []);

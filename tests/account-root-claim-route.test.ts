@@ -4,7 +4,7 @@ import { handleRequest } from "../workers/api.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-function req(path) {
+function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
@@ -64,7 +64,7 @@ test("GET /accounts/{ss58}/root-claim applies per-client RPC rate limiting", asy
 });
 
 test("GET /accounts/{ss58}/root-claim proceeds when the RPC rate limiter allows", async () => {
-  let limiterKey;
+  let limiterKey: string | undefined;
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => {
@@ -77,7 +77,7 @@ test("GET /accounts/{ss58}/root-claim proceeds when the RPC rate limiter allows"
     }),
     {
       RPC_RATE_LIMITER: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           limiterKey = key;
           return { success: true };
         },
@@ -86,7 +86,7 @@ test("GET /accounts/{ss58}/root-claim proceeds when the RPC rate limiter allows"
     {},
   );
   assert.equal(res.status, 200);
-  assert.match(limiterKey, /^root-claim:/);
+  assert.match(limiterKey!, /^root-claim:/);
   assert.equal((await res.json()).data.hotkeys, null);
 });
 

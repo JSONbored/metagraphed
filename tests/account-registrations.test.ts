@@ -8,7 +8,12 @@ import {
 } from "../src/account-registrations.ts";
 
 // One GROUP BY netuid row (registrations count + first/last observed epoch ms).
-function row(netuid, registrations, first, last) {
+function row(
+  netuid: number | string | null,
+  registrations: number,
+  first: number | null,
+  last: number | null,
+): Record<string, unknown> {
   return {
     netuid,
     registrations,
@@ -52,7 +57,7 @@ describe("buildAccountRegistrations", () => {
     // subnet 1 has the most registrations (3), so it leads + is dominant.
     assert.equal(d.subnets[0].netuid, 1);
     assert.equal(d.dominant_netuid, 1);
-    const s1 = d.subnets.find((s) => s.netuid === 1);
+    const s1 = d.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.registrations, 3);
     assert.equal(
       s1.first_registered_at,
@@ -140,10 +145,10 @@ describe("buildAccountRegistrations", () => {
       ADDR,
       { window: "7d" },
     );
-    const s1 = d.subnets.find((s) => s.netuid === 1);
+    const s1 = d.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.first_registered_at, null);
     assert.equal(s1.last_registered_at, null);
-    const s2 = d.subnets.find((s) => s.netuid === 2);
+    const s2 = d.subnets.find((s) => s.netuid === 2)!;
     assert.equal(s2.first_registered_at, null);
     assert.equal(s2.last_registered_at, null);
   });
@@ -151,8 +156,8 @@ describe("buildAccountRegistrations", () => {
 
 describe("loadAccountRegistrations", () => {
   test("seeks the hotkey index for NeuronRegistered over the window and shapes it", async () => {
-    let captured;
-    const d1 = async (sql, params) => {
+    let captured: { sql: string; params: unknown[] } | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       // Multiple rows so generatedAt walks past the first (later row wins) and a
       // null-observed row is skipped rather than counted.
@@ -166,28 +171,31 @@ describe("loadAccountRegistrations", () => {
       windowLabel: "7d",
     });
     assert.match(
-      captured.sql,
+      captured!.sql,
       /FROM account_events INDEXED BY idx_account_events_hotkey/,
     );
-    assert.match(captured.sql, /WHERE hotkey = \? AND event_kind = \?/);
-    assert.match(captured.sql, /GROUP BY netuid/);
-    assert.equal(captured.params[0], ADDR);
-    assert.equal(captured.params[1], REGISTRATION_EVENT_KIND);
-    assert.equal(typeof captured.params[2], "number"); // epoch-ms cutoff
+    assert.match(captured!.sql, /WHERE hotkey = \? AND event_kind = \?/);
+    assert.match(captured!.sql, /GROUP BY netuid/);
+    assert.equal(captured!.params[0], ADDR);
+    assert.equal(captured!.params[1], REGISTRATION_EVENT_KIND);
+    assert.equal(typeof captured!.params[2], "number"); // epoch-ms cutoff
     assert.equal(data.total_registrations, 5);
     assert.equal(generatedAt, new Date(1_700_500_000_000).toISOString());
   });
 
   test("an unknown window label falls back to the default window days", async () => {
-    let captured;
-    const d1 = async (sql, params) => {
+    let captured: { sql: string; params: unknown[] } | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [];
     };
     await loadAccountRegistrations(d1, ADDR, { windowLabel: "bogus" });
     // 30d default cutoff = now - 30d; assert it's within a day of that.
     const expected = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    assert.ok(Math.abs(captured.params[2] - expected) < 24 * 60 * 60 * 1000);
+    assert.ok(
+      Math.abs((captured!.params[2] as number) - expected) <
+        24 * 60 * 60 * 1000,
+    );
   });
 
   test("a cold store (no rows) yields a zeroed card + null generatedAt", async () => {
@@ -203,7 +211,7 @@ describe("loadAccountRegistrations", () => {
 
   test("a non-array D1 result degrades to a zeroed card (never throws)", async () => {
     const { data, generatedAt } = await loadAccountRegistrations(
-      async () => null,
+      async () => null as unknown as Record<string, unknown>[],
       ADDR,
       { windowLabel: "7d" },
     );

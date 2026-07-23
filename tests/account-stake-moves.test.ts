@@ -7,7 +7,12 @@ import {
   DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
 } from "../src/account-stake-moves.ts";
 
-function row(netuid, movements, first, last) {
+function row(
+  netuid: unknown,
+  movements: unknown,
+  first: number | null,
+  last: number | null,
+) {
   return {
     netuid,
     movements,
@@ -50,7 +55,7 @@ describe("buildAccountStakeMoves", () => {
     assert.equal(d.subnet_count, 2);
     assert.equal(d.subnets[0].netuid, 1);
     assert.equal(d.dominant_netuid, 1);
-    const s1 = d.subnets.find((s) => s.netuid === 1);
+    const s1 = d.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.movements, 3);
     assert.equal(s1.first_moved_at, new Date(1_700_000_000_000).toISOString());
     assert.equal(s1.last_moved_at, new Date(1_700_500_000_000).toISOString());
@@ -131,10 +136,10 @@ describe("buildAccountStakeMoves", () => {
       ADDR,
       { window: "7d" },
     );
-    const s1 = d.subnets.find((s) => s.netuid === 1);
+    const s1 = d.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.first_moved_at, null);
     assert.equal(s1.last_moved_at, null);
-    const s2 = d.subnets.find((s) => s.netuid === 2);
+    const s2 = d.subnets.find((s) => s.netuid === 2)!;
     assert.equal(s2.first_moved_at, null);
     assert.equal(s2.last_moved_at, null);
   });
@@ -187,8 +192,8 @@ describe("buildAccountStakeMoves", () => {
         ADDR,
         { window: "7d", priceByNetuidDate },
       );
-      const s1 = d.subnets.find((s) => s.netuid === 1);
-      const s2 = d.subnets.find((s) => s.netuid === 2);
+      const s1 = d.subnets.find((s) => s.netuid === 1)!;
+      const s2 = d.subnets.find((s) => s.netuid === 2)!;
       assert.equal(s1.price_tao_at_last_move, 4.5);
       assert.equal(s2.price_tao_at_last_move, 9.1);
     });
@@ -199,17 +204,22 @@ describe("buildAccountStakeMoves", () => {
 // returns `stakeMoveRows`, the follow-up alpha-price lookup returns
 // `priceRows` — mirrors this session's sql.includes()-branching mock pattern
 // for a runner now issuing two distinct queries.
-function stakeMovesD1(stakeMoveRows, priceRows = [], calls = []) {
-  return async (sql, params) => {
+function stakeMovesD1(
+  stakeMoveRows: unknown,
+  priceRows: unknown = [],
+  calls: Array<{ sql: string; params: unknown[] }> = [],
+) {
+  return async (sql: string, params: unknown[]) => {
     calls.push({ sql, params });
-    if (sql.includes("FROM subnet_snapshots")) return priceRows;
-    return stakeMoveRows;
+    if (sql.includes("FROM subnet_snapshots"))
+      return priceRows as Record<string, unknown>[];
+    return stakeMoveRows as Record<string, unknown>[];
   };
 }
 
 describe("loadAccountStakeMoves", () => {
   test("seeks the coldkey index for StakeMoved over the window and shapes it", async () => {
-    const calls = [];
+    const calls: Array<{ sql: string; params: unknown[] }> = [];
     const d1 = stakeMovesD1(
       [
         row(1, 3, 1_700_000_000_000, 1_700_000_000_000),
@@ -224,7 +234,7 @@ describe("loadAccountStakeMoves", () => {
     });
     const stakeMovesCall = calls.find((c) =>
       c.sql.includes("FROM account_events"),
-    );
+    )!;
     assert.match(
       stakeMovesCall.sql,
       /FROM account_events INDEXED BY idx_account_events_coldkey/,
@@ -239,15 +249,16 @@ describe("loadAccountStakeMoves", () => {
   });
 
   test("an unknown window label falls back to the default window days", async () => {
-    const calls = [];
+    const calls: Array<{ sql: string; params: unknown[] }> = [];
     const d1 = stakeMovesD1([], [], calls);
     await loadAccountStakeMoves(d1, ADDR, { windowLabel: "bogus" });
     const stakeMovesCall = calls.find((c) =>
       c.sql.includes("FROM account_events"),
-    );
+    )!;
     const expected = Date.now() - 30 * 24 * 60 * 60 * 1000;
     assert.ok(
-      Math.abs(stakeMovesCall.params[2] - expected) < 24 * 60 * 60 * 1000,
+      Math.abs((stakeMovesCall.params[2] as number) - expected) <
+        24 * 60 * 60 * 1000,
     );
   });
 
@@ -264,7 +275,7 @@ describe("loadAccountStakeMoves", () => {
 
   test("a non-array D1 result degrades to a zeroed card", async () => {
     const { data, generatedAt } = await loadAccountStakeMoves(
-      async () => null,
+      async () => null as unknown as Record<string, unknown>[],
       ADDR,
       { windowLabel: "7d" },
     );
@@ -276,7 +287,7 @@ describe("loadAccountStakeMoves", () => {
   describe("price-at-tx enrichment (#4332/6.3)", () => {
     test("issues a follow-up subnet_snapshots query keyed by netuid + last-move date and threads the price through", async () => {
       const lastMs = Date.UTC(2026, 5, 20, 12, 0, 0); // 2026-06-20
-      const calls = [];
+      const calls: Array<{ sql: string; params: unknown[] }> = [];
       const d1 = stakeMovesD1(
         [row(1, 3, lastMs, lastMs)],
         [{ netuid: 1, snapshot_date: "2026-06-20", alpha_price_tao: 4.5 }],
@@ -287,7 +298,7 @@ describe("loadAccountStakeMoves", () => {
       });
       const priceCall = calls.find((c) =>
         c.sql.includes("FROM subnet_snapshots"),
-      );
+      )!;
       assert.match(priceCall.sql, /netuid IN \(\?\)/);
       assert.match(priceCall.sql, /snapshot_date IN \(\?\)/);
       assert.deepEqual(priceCall.params, [1, "2026-06-20"]);
@@ -297,7 +308,7 @@ describe("loadAccountStakeMoves", () => {
     test("batches multiple subnets into one follow-up query, not one per subnet", async () => {
       const dayOne = Date.UTC(2026, 5, 20, 0, 0, 0);
       const dayTwo = Date.UTC(2026, 5, 21, 0, 0, 0);
-      const calls = [];
+      const calls: Array<{ sql: string; params: unknown[] }> = [];
       const d1 = stakeMovesD1(
         [row(1, 1, dayOne, dayOne), row(2, 1, dayTwo, dayTwo)],
         [
@@ -314,7 +325,7 @@ describe("loadAccountStakeMoves", () => {
     });
 
     test("skips the follow-up query entirely when there are no stake-move rows (cold store)", async () => {
-      const calls = [];
+      const calls: Array<{ sql: string; params: unknown[] }> = [];
       const d1 = stakeMovesD1([], [], calls);
       await loadAccountStakeMoves(d1, ADDR, { windowLabel: "7d" });
       assert.equal(

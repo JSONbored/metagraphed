@@ -281,14 +281,14 @@ describe("buildAccountPositions", () => {
 
   test("is cold-safe for a non-array positionRows or a non-Map hotkeyNetuidStake", () => {
     const dataNonArray = buildAccountPositions(
-      "not-an-array",
+      "not-an-array" as unknown as Record<string, unknown>[],
       new Map(),
       "5Cold",
     );
     assert.deepEqual(dataNonArray.positions, []);
     const dataNonMap = buildAccountPositions(
       [{ coldkey: "5Cold", hotkey: "5Hk1", netuid: 3, share_fraction: 0.5 }],
-      { not: "a map" },
+      { not: "a map" } as unknown as Map<string, number>,
       "5Cold",
     );
     assert.deepEqual(dataNonMap.positions, []);

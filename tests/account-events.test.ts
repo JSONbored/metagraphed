@@ -183,7 +183,7 @@ test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
     alpha_amount: 9.25,
     observed_at: 1750000000000,
     extrinsic_index: 2,
-  });
+  })!;
   assert.equal(out.event_kind, "StakeAdded");
   assert.equal(out.amount_tao, 12.5);
   assert.equal(out.alpha_amount, 9.25);
@@ -193,8 +193,8 @@ test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
 
 test("formatAccountEvent is null-safe on junk + sparse rows", () => {
   assert.equal(formatAccountEvent(null), null);
-  assert.equal(formatAccountEvent("x"), null);
-  const out = formatAccountEvent({ block_number: 1 });
+  assert.equal(formatAccountEvent("x" as unknown as null), null);
+  const out = formatAccountEvent({ block_number: 1 })!;
   assert.equal(out.hotkey, null);
   assert.equal(out.observed_at, null);
 });
@@ -204,7 +204,7 @@ test("formatAccountEvent coerces string-typed observed_at cells to ISO timestamp
     block_number: 1,
     event_kind: "Transfer",
     observed_at: "1750000000000",
-  });
+  })!;
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
@@ -213,7 +213,7 @@ test("formatAccountEvent preserves null observed_at as null (not epoch 1970)", (
     block_number: 1,
     event_kind: "Transfer",
     observed_at: null,
-  });
+  })!;
   assert.equal(out.observed_at, null);
 });
 
@@ -222,7 +222,7 @@ test("formatAccountEvent drops invalid observed_at strings to null", () => {
     block_number: 1,
     event_kind: "Transfer",
     observed_at: "not-a-timestamp",
-  });
+  })!;
   assert.equal(out.observed_at, null);
 });
 
@@ -232,7 +232,7 @@ test("formatAccountEvent drops zero/blank observed_at to null (not epoch 1970)",
       block_number: 1,
       event_kind: "Transfer",
       observed_at,
-    });
+    })!;
     assert.equal(
       out.observed_at,
       null,
@@ -247,7 +247,7 @@ test("formatAccountEvent drops out-of-range observed_at to null", () => {
       block_number: 1,
       event_kind: "Transfer",
       observed_at,
-    });
+    })!;
     assert.equal(
       out.observed_at,
       null,
@@ -293,7 +293,7 @@ test("formatAccountEvent coerces string-typed netuid and uid cells to Numbers", 
   // payload. Mirrors the coercion in blocks.mjs (#2435) and extrinsics.ts
   // (#2439) — and the block_number / event_index / extrinsic_index coercion
   // already applied in this same function.
-  const out = formatAccountEvent({ netuid: "7", uid: "42", block_number: 1 });
+  const out = formatAccountEvent({ netuid: "7", uid: "42", block_number: 1 })!;
   assert.equal(out.netuid, 7);
   assert.equal(typeof out.netuid, "number");
   assert.equal(out.uid, 42);
@@ -303,9 +303,9 @@ test("formatAccountEvent coerces string-typed netuid and uid cells to Numbers", 
 test("formatAccountEvent rejects non-integer or negative netuid/uid cells to null", () => {
   // Guard the toBlockNumber helper for these fields: netuids are never negative
   // on-chain, and a uid above Number.MAX_SAFE_INTEGER would lose precision.
-  assert.equal(formatAccountEvent({ netuid: -1 }).netuid, null);
-  assert.equal(formatAccountEvent({ uid: 1.5 }).uid, null);
-  assert.equal(formatAccountEvent({ netuid: "abc" }).netuid, null);
+  assert.equal(formatAccountEvent({ netuid: -1 })!.netuid, null);
+  assert.equal(formatAccountEvent({ uid: 1.5 })!.uid, null);
+  assert.equal(formatAccountEvent({ netuid: "abc" })!.netuid, null);
 });
 
 test("formatAccountEvent rejects blank integer cells that coerce to 0 (not block 0 / subnet 0 / uid 0)", () => {
@@ -318,7 +318,7 @@ test("formatAccountEvent rejects blank integer cells that coerce to 0 (not block
       netuid: blank,
       uid: blank,
       extrinsic_index: blank,
-    });
+    })!;
     assert.equal(
       out.block_number,
       null,
@@ -349,7 +349,7 @@ test("formatAccountEvent coerces string-typed amount_tao and alpha_amount cells 
     block_number: 1,
     amount_tao: "1.5",
     alpha_amount: "2.25",
-  });
+  })!;
   assert.equal(out.amount_tao, 1.5);
   assert.equal(typeof out.amount_tao, "number");
   assert.equal(out.alpha_amount, 2.25);
@@ -359,7 +359,7 @@ test("formatAccountEvent coerces string-typed amount_tao and alpha_amount cells 
 test("formatAccountEvent coerces null amount_tao and alpha_amount to null (not 0)", () => {
   // amount_tao / alpha_amount are nullable REAL columns. Null must surface
   // as null, never coerced to 0 by the bare `?? null` fallback this replaced.
-  const out = formatAccountEvent({ block_number: 1 });
+  const out = formatAccountEvent({ block_number: 1 })!;
   assert.equal(out.amount_tao, null);
   assert.equal(out.alpha_amount, null);
 });
@@ -371,7 +371,7 @@ test("formatAccountEvent rejects blank amount_tao/alpha_amount cells that coerce
       block_number: 1,
       amount_tao: blank,
       alpha_amount: blank,
-    });
+    })!;
     assert.equal(
       out.amount_tao,
       null,
@@ -388,7 +388,7 @@ test("formatAccountEvent rejects blank amount_tao/alpha_amount cells that coerce
     block_number: 1,
     amount_tao: 0,
     alpha_amount: "0",
-  });
+  })!;
   assert.equal(zero.amount_tao, 0);
   assert.equal(zero.alpha_amount, 0);
 });
@@ -401,7 +401,7 @@ test("formatAccountEvent rounds amount_tao and alpha_amount to rao precision", (
     block_number: 1,
     amount_tao: 1.1234567899,
     alpha_amount: 2.9876543211,
-  });
+  })!;
   assert.equal(out.amount_tao, 1.12345679);
   assert.equal(out.alpha_amount, 2.987654321);
 });
@@ -413,7 +413,7 @@ test("formatRegistration coerces flags + is null-safe (#1347)", () => {
     stake_tao: 100,
     validator_permit: 1,
     active: 0,
-  });
+  })!;
   assert.equal(r.netuid, 7);
   assert.equal(r.validator_permit, true);
   assert.equal(r.active, false);
@@ -427,7 +427,7 @@ test("formatRegistration coerces D1 numeric-string cells to schema types", () =>
     stake_tao: "100.5",
     validator_permit: 1,
     active: 1,
-  });
+  })!;
   assert.equal(typeof out.netuid, "number");
   assert.equal(typeof out.uid, "number");
   assert.equal(typeof out.stake_tao, "number");
@@ -443,7 +443,7 @@ test("formatRegistration coerces D1 string flag cells to booleans", () => {
     stake_tao: null,
     validator_permit: "0",
     active: "1",
-  });
+  })!;
   assert.equal(out.validator_permit, false);
   assert.equal(out.active, true);
 });
@@ -455,7 +455,7 @@ test("formatRegistration drops invalid netuid and uid cells instead of leaking s
     stake_tao: "not-a-number",
     validator_permit: 0,
     active: 0,
-  });
+  })!;
   assert.equal(out.netuid, null);
   assert.equal(out.uid, null);
   assert.equal(out.stake_tao, null);
@@ -574,7 +574,7 @@ test("account builders null invalid block heights and indices", () => {
     extrinsic_index: -3,
     event_kind: "StakeAdded",
     observed_at: 1,
-  });
+  })!;
   assert.equal(event.block_number, null);
   assert.equal(event.event_index, null);
   assert.equal(event.extrinsic_index, null);
@@ -591,7 +591,7 @@ test("account builders null invalid block heights and indices", () => {
     day: "2026-01-01",
     first_block: -1,
     last_block: 100,
-  });
+  })!;
   assert.equal(day.first_block, null);
   assert.equal(day.last_block, 100);
 
@@ -768,7 +768,7 @@ test("formatRegistration defaults every sparse field to null/false (null-safe)",
   // A registration row with NONE of the optional fields must still produce a
   // fully-shaped object (nulls + coerced false), never undefined — the
   // cold/partial-neurons-row contract the account routes depend on.
-  const out = formatRegistration({});
+  const out = formatRegistration({})!;
   assert.equal(out.netuid, null);
   assert.equal(out.uid, null);
   assert.equal(out.stake_tao, null);

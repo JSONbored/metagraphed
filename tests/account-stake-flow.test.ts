@@ -7,7 +7,7 @@ import {
 } from "../src/account-stake-flow.ts";
 
 // One GROUP BY netuid, event_kind row.
-function row(netuid, kind, tao, count) {
+function row(netuid: unknown, kind: string, tao: number, count: number) {
   return {
     netuid,
     event_kind: kind,
@@ -15,9 +15,9 @@ function row(netuid, kind, tao, count) {
     event_count: count,
   };
 }
-const added = (netuid, tao, count = 1) =>
+const added = (netuid: unknown, tao: number, count = 1) =>
   row(netuid, STAKE_ADDED_KIND, tao, count);
-const removed = (netuid, tao, count = 1) =>
+const removed = (netuid: unknown, tao: number, count = 1) =>
   row(netuid, STAKE_REMOVED_KIND, tao, count);
 
 const ADDR = "5GReferenceAccountAddressForStakeFlowTestssssssss";
@@ -51,7 +51,7 @@ describe("buildAccountStakeFlow", () => {
       ADDR,
       { window: "30d" },
     );
-    const s1 = d.subnets.find((s) => s.netuid === 1);
+    const s1 = d.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.staked_tao, 100);
     assert.equal(s1.unstaked_tao, 40);
     assert.equal(s1.net_flow_tao, 60);

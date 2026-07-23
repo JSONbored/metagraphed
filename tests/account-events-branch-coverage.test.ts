@@ -14,7 +14,7 @@ describe("formatAccountEvent block_number fallback", () => {
   test("formatAccountEvent falls back block_number to null when nullish", () => {
     // A row object lacking block_number must surface null (the right arm of
     // `row.block_number ?? null`), not undefined.
-    const out = formatAccountEvent({ event_kind: "StakeAdded" });
+    const out = formatAccountEvent({ event_kind: "StakeAdded" })!;
     assert.equal(out.block_number, null);
     assert.equal(out.event_kind, "StakeAdded");
   });
@@ -58,7 +58,11 @@ describe("buildSubnetEvents", () => {
 describe("buildBlockEvents", () => {
   test("buildBlockEvents is schema-stable for a cold/unknown ref", () => {
     // null rows + undefined ref/blockNumber → schema-stable zero (null markers).
-    const out = buildBlockEvents(null, undefined, undefined);
+    const out = buildBlockEvents(
+      null,
+      undefined,
+      undefined as unknown as number | null,
+    );
     assert.equal(out.ref, null);
     assert.equal(out.block_number, null);
     assert.equal(out.event_count, 0);
@@ -73,7 +77,7 @@ describe("formatAccountDay", () => {
     // Non-string event_kinds → the `typeof === string && length>0` guard is false
     // → [] (the false arm). An object lacking `day` exercises the null fallback
     // of `day ?? null`, and other absent fields fall back to null too.
-    const out = formatAccountDay({ event_kinds: "" });
+    const out = formatAccountDay({ event_kinds: "" })!;
     assert.deepEqual(out.event_kinds, []);
     assert.equal(out.day, null);
     assert.equal(out.netuid, null);
@@ -84,7 +88,7 @@ describe("formatAccountDay", () => {
 
   test("formatAccountDay is null-safe on junk rows", () => {
     assert.equal(formatAccountDay(null), null);
-    assert.equal(formatAccountDay("x"), null);
+    assert.equal(formatAccountDay("x" as unknown as null), null);
   });
 
   test("formatAccountDay coerces string-typed netuid and event_count cells to Numbers", () => {
@@ -92,7 +96,7 @@ describe("formatAccountDay", () => {
     // `?? null` pass-through this replaced would have leaked strings into the API
     // payload. Mirrors the coercion in formatAccountEvent (#2481), blocks.mjs
     // (#2435), and extrinsics.ts (#2439).
-    const out = formatAccountDay({ netuid: "7", event_count: "42" });
+    const out = formatAccountDay({ netuid: "7", event_count: "42" })!;
     assert.equal(out.netuid, 7);
     assert.equal(typeof out.netuid, "number");
     assert.equal(out.event_count, 42);
@@ -102,9 +106,9 @@ describe("formatAccountDay", () => {
   test("formatAccountDay rejects non-integer or negative netuid/event_count cells to null", () => {
     // Guard the toBlockNumber helper for these fields: netuids are never negative
     // on-chain, and counts are non-negative integers.
-    assert.equal(formatAccountDay({ netuid: -1 }).netuid, null);
-    assert.equal(formatAccountDay({ event_count: 1.5 }).event_count, null);
-    assert.equal(formatAccountDay({ netuid: "abc" }).netuid, null);
+    assert.equal(formatAccountDay({ netuid: -1 })!.netuid, null);
+    assert.equal(formatAccountDay({ event_count: 1.5 })!.event_count, null);
+    assert.equal(formatAccountDay({ netuid: "abc" })!.netuid, null);
   });
 });
 
@@ -149,7 +153,10 @@ describe("buildAccountTransfers", () => {
 
   test("buildAccountTransfers drops non-object rows and is cold-safe", () => {
     // The `r && typeof r === object` filter drops junk; null rows → empty feed.
-    const out = buildAccountTransfers([null, "x", 7], "5Hk");
+    const out = buildAccountTransfers(
+      [null, "x", 7] as unknown as Record<string, unknown>[],
+      "5Hk",
+    );
     assert.equal(out.transfer_count, 0);
     assert.deepEqual(out.transfers, []);
     const cold = buildAccountTransfers(null, "5Hk");
