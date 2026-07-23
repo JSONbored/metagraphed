@@ -19,6 +19,8 @@ import {
   triggerMatchesEvent,
   validateAlertTriggerInput,
 } from "../src/alert-triggers.ts";
+import type { EvaluatorAlertTrigger } from "../src/alert-triggers.ts";
+import type { Row } from "./row-type.ts";
 
 test("header/limit constants are the documented values", () => {
   assert.equal(
@@ -444,7 +446,7 @@ test("validateAlertTriggerInput: table_filter alone (no other condition) is stil
 
 // --- triggerMatchesEvent -----------------------------------------------------
 
-function baseTrigger(overrides = {}) {
+function baseTrigger(overrides: Row = {}): EvaluatorAlertTrigger {
   return {
     tableFilter: null,
     netuid: null,
@@ -452,7 +454,7 @@ function baseTrigger(overrides = {}) {
     account: null,
     minAmountTao: null,
     ...overrides,
-  };
+  } as EvaluatorAlertTrigger;
 }
 
 test("triggerMatchesEvent: a trigger with no conditions matches any payload", () => {
@@ -820,7 +822,7 @@ test("ownerAlertTriggerView: strips owner_token and normalizes nullable fields",
     updated_at: 2,
     last_matched_at: null,
     match_count: 3,
-  });
+  })!;
   assert.equal(view.id, "42");
   assert.equal("owner_token" in view, false);
   assert.equal(view.min_amount_tao, 100.5);
@@ -832,7 +834,7 @@ test("ownerAlertTriggerView: a minimal record (every optional field absent) fall
     id: 1,
     channel: "email",
     destination: "a@b.com",
-  });
+  })!;
   assert.equal(view.name, null);
   assert.equal(view.table_filter, null);
   assert.equal(view.netuid, null);
@@ -858,7 +860,7 @@ test("ownerAlertTriggerView: echoes a present condition verbatim", () => {
     channel: "email",
     destination: "a@b.com",
     condition,
-  });
+  })!;
   assert.deepEqual(view.condition, condition);
 });
 
@@ -868,7 +870,7 @@ test("ownerAlertTriggerView: active:false is preserved, not defaulted away", () 
     channel: "email",
     destination: "a@b.com",
     active: false,
-  });
+  })!;
   assert.equal(view.active, false);
 });
 
@@ -889,7 +891,7 @@ test("evaluatorAlertTriggerView: reshapes snake_case columns into triggerMatches
     min_amount_tao: "10",
     channel: "discord",
     destination: "https://discord.com/api/webhooks/1/t",
-  });
+  })!;
   assert.equal(view.id, "7");
   assert.equal("owner_token" in view, false);
   assert.equal(view.name, "whale watcher");
@@ -921,7 +923,7 @@ test("evaluatorAlertTriggerView: reshapes a present condition into triggerMatche
     channel: "discord",
     destination: "https://discord.com/api/webhooks/1/t",
     condition,
-  });
+  })!;
   assert.deepEqual(view.condition, condition);
   const snap = {
     subnetAlphaPriceRank: new Map(),
@@ -942,7 +944,7 @@ test("evaluatorAlertTriggerView: a minimal record (every optional field absent) 
     id: 1,
     channel: "email",
     destination: "a@b.com",
-  });
+  })!;
   assert.equal(view.name, null);
   assert.equal(view.tableFilter, null);
   assert.equal(view.netuid, null);

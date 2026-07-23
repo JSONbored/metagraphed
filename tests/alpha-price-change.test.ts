@@ -17,9 +17,9 @@ describe("pctChange", () => {
 
   test("null when start/end non-finite or start is zero", () => {
     assert.equal(pctChange(0, 1), null);
-    assert.equal(pctChange(null, 1), null);
-    assert.equal(pctChange(undefined, 1), null);
-    assert.equal(pctChange(1, null), null);
+    assert.equal(pctChange(null as unknown as number, 1), null);
+    assert.equal(pctChange(undefined as unknown as number, 1), null);
+    assert.equal(pctChange(1, null as unknown as number), null);
     assert.equal(pctChange(1, Number.NaN), null);
     assert.equal(pctChange(Number.POSITIVE_INFINITY, 1), null);
     assert.equal(pctChange(1, Number.POSITIVE_INFINITY), null);
@@ -43,7 +43,11 @@ describe("computeAlphaPriceChanges", () => {
       computeAlphaPriceChanges(undefined).alpha_price_change_1d,
       null,
     );
-    assert.equal(computeAlphaPriceChanges("nope").alpha_price_change_1d, null);
+    assert.equal(
+      computeAlphaPriceChanges("nope" as unknown as Record<string, unknown>[])
+        .alpha_price_change_1d,
+      null,
+    );
   });
 
   test("computes 1d/7d/1m from daily snapshots; insufficient history → null", () => {
@@ -131,7 +135,7 @@ describe("normalizeAlphaPricePoints / index / withAlphaPriceChanges", () => {
         { snapshot_date: "", alpha_price_tao: 9 },
         { snapshot_date: null, alpha_price_tao: 9 },
         { alpha_price_tao: 9 },
-      ]),
+      ] as unknown as Record<string, unknown>[]),
       [
         { date: "2026-06-01", alpha_price_tao: 1 },
         { date: "2026-06-02", alpha_price_tao: 1.5 },
@@ -154,11 +158,16 @@ describe("normalizeAlphaPricePoints / index / withAlphaPriceChanges", () => {
       { netuid: 3, alpha_price_tao: 9 },
     ]);
     assert.equal(map.size, 2);
-    assert.equal(map.get(1).length, 2);
-    assert.equal(map.get(2)[0].alpha_price_tao, 2);
+    assert.equal(map.get(1)!.length, 2);
+    assert.equal(map.get(2)![0].alpha_price_tao, 2);
     assert.equal(indexAlphaPriceHistoryByNetuid(null).size, 0);
     assert.equal(indexAlphaPriceHistoryByNetuid(undefined).size, 0);
-    assert.equal(indexAlphaPriceHistoryByNetuid("nope").size, 0);
+    assert.equal(
+      indexAlphaPriceHistoryByNetuid(
+        "nope" as unknown as Record<string, unknown>[],
+      ).size,
+      0,
+    );
   });
 
   test("withAlphaPriceChanges always attaches the four keys", () => {

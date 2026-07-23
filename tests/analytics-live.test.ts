@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import {
   composeCompareData,
   growthRowsFromSamples,
@@ -22,6 +22,9 @@ import {
 } from "../src/analytics-live.ts";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
+import type { Row } from "./row-type.ts";
+
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 const NETUID = 7;
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
@@ -56,7 +59,7 @@ describe("analytics-live compare helpers", () => {
       observedAt: OBSERVED_AT,
     });
     assert.equal(data.subnets[1].found, false);
-    assert.equal(data.subnets[0].structure.completeness_score, 80);
+    assert.equal((data.subnets[0].structure as Row).completeness_score, 80);
   });
 
   test("composeCompareData validates against CompareArtifact", async () => {
@@ -109,7 +112,7 @@ describe("analytics-live projections", () => {
         operational_interface_count: 2,
       },
     ]);
-    assert.equal(subnetMeta.get(1).slug, "apex");
+    assert.equal(subnetMeta.get(1)!.slug, "apex");
     assert.equal(mostComplete[0].operational_interface_count, 2);
   });
 
@@ -191,19 +194,19 @@ describe("analytics-live loaders", () => {
   // shape now — there are no more D1 rows to aggregate/shape.
 
   test("loadSubnetUptime returns schema-stable empty surfaces (D1 retired)", async () => {
-    const data = await loadSubnetUptime(NETUID, {
+    const data = (await loadSubnetUptime(NETUID, {
       window: "90d",
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.equal(data.netuid, NETUID);
     assert.equal(data.window, "90d");
     assert.deepEqual(data.surfaces, []);
   });
 
   test("loadSubnetHealthTrends returns schema-stable empty surfaces (D1 retired)", async () => {
-    const data = await loadSubnetHealthTrends(NETUID, {
+    const data = (await loadSubnetHealthTrends(NETUID, {
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.equal(data.netuid, NETUID);
     assert.equal(data.observed_at, OBSERVED_AT);
     assert.deepEqual(data.windows["7d"].surfaces, []);
@@ -211,10 +214,10 @@ describe("analytics-live loaders", () => {
   });
 
   test("loadSubnetPercentiles returns schema-stable empty surfaces; unknown window falls back to 7d", async () => {
-    const data = await loadSubnetPercentiles(NETUID, {
+    const data = (await loadSubnetPercentiles(NETUID, {
       window: "bogus",
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.equal(data.netuid, NETUID);
     assert.equal(data.window, "7d"); // an unknown window defaults to 7d
     assert.equal(data.observed_at, OBSERVED_AT);
@@ -222,10 +225,10 @@ describe("analytics-live loaders", () => {
   });
 
   test("loadSubnetIncidents returns schema-stable empty surfaces; unknown window falls back to 7d", async () => {
-    const data = await loadSubnetIncidents(NETUID, {
+    const data = (await loadSubnetIncidents(NETUID, {
       window: "bogus",
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.equal(data.netuid, NETUID);
     assert.equal(data.window, "7d"); // an unknown window defaults to 7d
     assert.equal(data.observed_at, OBSERVED_AT);
@@ -233,7 +236,7 @@ describe("analytics-live loaders", () => {
   });
 
   test("loadRegistryLeaderboards keeps D1 boards empty; registry/economics boards still populate", async () => {
-    const data = await loadRegistryLeaderboards({
+    const data = (await loadRegistryLeaderboards({
       profiles: [
         {
           netuid: 1,
@@ -246,7 +249,7 @@ describe("analytics-live loaders", () => {
       ],
       economicsRows: [{ netuid: 1, open_slots: 2, emission_share: 0.1 }],
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.ok(typeof data.boards === "object");
     // surface_status/surface_uptime_daily-backed boards are always empty now.
     assert.deepEqual(data.boards.healthiest, []);
@@ -259,7 +262,7 @@ describe("analytics-live loaders", () => {
   });
 
   test("loadRegistryLeaderboards can return a single requested board", async () => {
-    const data = await loadRegistryLeaderboards({
+    const data = (await loadRegistryLeaderboards({
       profiles: [
         {
           netuid: 1,
@@ -274,19 +277,19 @@ describe("analytics-live loaders", () => {
       board: "healthiest",
       limit: 1,
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.deepEqual(data.boards.healthiest, []);
     assert.equal("fastest-rpc" in data.boards, false);
   });
 
   test("loadCompareSubnets health dimension is always empty (D1 retired)", async () => {
-    const data = await loadCompareSubnets({
+    const data = (await loadCompareSubnets({
       profiles: [{ netuid: 1, slug: "apex", name: "Apex" }],
       economicsRows: [],
       netuids: [1],
-      dimensions: parseCompareDimensionList(["health"]),
+      dimensions: parseCompareDimensionList(["health"]) ?? undefined,
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.deepEqual(data.requested_netuids, [1]);
     assert.deepEqual(data.dimensions, ["health"]);
     assert.equal(data.subnets[0].health, null);
@@ -294,7 +297,7 @@ describe("analytics-live loaders", () => {
   });
 
   test("loadCompareSubnets includes structure and economics when requested", async () => {
-    const data = await loadCompareSubnets({
+    const data = (await loadCompareSubnets({
       profiles: [
         {
           netuid: 1,
@@ -309,7 +312,7 @@ describe("analytics-live loaders", () => {
       netuids: [1],
       dimensions: ["structure", "economics"],
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.deepEqual(data.dimensions, ["structure", "economics"]);
     assert.equal(data.subnets[0].structure.completeness_score, 80);
     assert.equal(data.subnets[0].economics.open_slots, 2);
@@ -317,21 +320,21 @@ describe("analytics-live loaders", () => {
   });
 
   test("loadCompareSubnets returns empty payload for missing netuids", async () => {
-    const data = await loadCompareSubnets({
+    const data = (await loadCompareSubnets({
       profiles: [],
       economicsRows: [],
       netuids: [],
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.deepEqual(data.requested_netuids, []);
     assert.deepEqual(data.subnets, []);
   });
 
   test("loadGlobalIncidents returns empty summary (D1 retired)", async () => {
-    const data = await loadGlobalIncidents({
+    const data = (await loadGlobalIncidents({
       windowLabel: "7d",
       observedAt: OBSERVED_AT,
-    });
+    })) as Row;
     assert.equal(data.window, "7d");
     assert.equal(data.summary.incident_count, 0);
     assert.deepEqual(data.surfaces, []);

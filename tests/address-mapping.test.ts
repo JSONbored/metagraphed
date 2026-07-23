@@ -8,13 +8,14 @@ import {
   loadAddressMapping,
 } from "../src/address-mapping.ts";
 import { handleRequest } from "../workers/api.mjs";
+import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
 
-function req(path) {
+function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
 // Mirrors withFetchStub in tests/sudo-key.test.mjs / tests/account-balance.test.mjs.
-function withFetchStub(stub, fn) {
+function withFetchStub(stub: AnyFn, fn: AnyFn) {
   const orig = globalThis.fetch;
   globalThis.fetch = stub;
   return Promise.resolve(fn()).finally(() => {
@@ -50,8 +51,8 @@ describe("H160_PATTERN", () => {
 describe("loadAddressMapping", () => {
   test("SS58-encodes the eth_call result (golden value)", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async (url, init) => {
-      const body = JSON.parse(init.body);
+    globalThis.fetch = (async (url: unknown, init: RequestInit | undefined) => {
+      const body = JSON.parse(init!.body as string);
       assert.equal(body.method, "eth_call");
       assert.equal(
         body.params[0].to,
@@ -67,9 +68,9 @@ describe("loadAddressMapping", () => {
           result: GOLDEN_ETH_CALL_RESULT,
         }),
       };
-    };
+    }) as unknown as typeof fetch;
     try {
-      const data = await loadAddressMapping({}, H160);
+      const data = await loadAddressMapping(mockEnv(), H160);
       assert.equal(data.schema_version, 1);
       assert.equal(data.h160, H160);
       assert.equal(data.ss58, GOLDEN_SS58);
@@ -81,13 +82,13 @@ describe("loadAddressMapping", () => {
 
   test("lowercases h160 in the response", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
-    });
+    })) as unknown as typeof fetch;
     try {
       const data = await loadAddressMapping(
-        {},
+        mockEnv(),
         "0x0000000000000000000000000000000000000ABC",
       );
       assert.equal(data.h160, "0x0000000000000000000000000000000000000abc");
@@ -98,9 +99,9 @@ describe("loadAddressMapping", () => {
 
   test("ss58 is null when the RPC response is not ok", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: false });
+    globalThis.fetch = (async () => ({ ok: false })) as unknown as typeof fetch;
     try {
-      const data = await loadAddressMapping({}, H160);
+      const data = await loadAddressMapping(mockEnv(), H160);
       assert.equal(data.ss58, null);
     } finally {
       globalThis.fetch = orig;
@@ -109,12 +110,12 @@ describe("loadAddressMapping", () => {
 
   test("ss58 is null on a malformed (non-64-hex) eth_call result", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ result: "0xnotvalid" }),
-    });
+    })) as unknown as typeof fetch;
     try {
-      const data = await loadAddressMapping({}, H160);
+      const data = await loadAddressMapping(mockEnv(), H160);
       assert.equal(data.ss58, null);
     } finally {
       globalThis.fetch = orig;
@@ -130,7 +131,7 @@ describe("loadAddressMapping", () => {
       throw err;
     };
     try {
-      const data = await loadAddressMapping({}, H160);
+      const data = await loadAddressMapping(mockEnv(), H160);
       assert.equal(data.ss58, null);
       assert.ok(data.queried_at);
     } finally {
@@ -154,12 +155,12 @@ describe("loadAddressMapping", () => {
     };
     let fetchCalled = false;
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => {
+    globalThis.fetch = (async () => {
       fetchCalled = true;
       return { ok: false };
-    };
+    }) as unknown as typeof fetch;
     try {
-      const data = await loadAddressMapping(env, H160);
+      const data = await loadAddressMapping(mockEnv(env), H160);
       assert.deepEqual(data, cached);
       assert.equal(fetchCalled, false);
     } finally {
@@ -168,15 +169,15 @@ describe("loadAddressMapping", () => {
   });
 
   test("positive-caches a successful RPC result with the long (1h) TTL", async () => {
-    let putKey;
-    let putValue;
-    let putOptions;
+    let putKey: string | undefined;
+    let putValue: Row | undefined;
+    let putOptions: Row | undefined;
     const env = {
       METAGRAPH_CONTROL: {
         async get() {
           return null;
         },
-        async put(key, value, options) {
+        async put(key: string, value: string, options: Row) {
           putKey = key;
           putValue = JSON.parse(value);
           putOptions = options;
@@ -184,15 +185,15 @@ describe("loadAddressMapping", () => {
       },
     };
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
-    });
+    })) as unknown as typeof fetch;
     try {
-      await loadAddressMapping(env, H160);
+      await loadAddressMapping(mockEnv(env), H160);
       assert.equal(putKey, `evm-address-mapping:${H160}`);
-      assert.equal(putValue.ss58, GOLDEN_SS58);
-      assert.equal(putOptions.expirationTtl, ADDRESS_MAPPING_KV_TTL);
+      assert.equal(putValue!.ss58, GOLDEN_SS58);
+      assert.equal(putOptions!.expirationTtl, ADDRESS_MAPPING_KV_TTL);
       assert.equal(ADDRESS_MAPPING_KV_TTL, 3600);
     } finally {
       globalThis.fetch = orig;
@@ -200,41 +201,46 @@ describe("loadAddressMapping", () => {
   });
 
   test("negative-caches RPC failures with the short TTL", async () => {
-    let putOptions;
+    let putOptions: Row | undefined;
     const env = {
       METAGRAPH_CONTROL: {
         async get() {
           return null;
         },
-        async put(_key, _value, options) {
+        async put(_key: string, _value: string, options: Row) {
           putOptions = options;
         },
       },
     };
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: false });
+    globalThis.fetch = (async () => ({
+      ok: false,
+    })) as unknown as typeof fetch;
     try {
-      await loadAddressMapping(env, H160);
-      assert.equal(putOptions.expirationTtl, ADDRESS_MAPPING_NEGATIVE_KV_TTL);
+      await loadAddressMapping(mockEnv(env), H160);
+      assert.equal(putOptions!.expirationTtl, ADDRESS_MAPPING_NEGATIVE_KV_TTL);
     } finally {
       globalThis.fetch = orig;
     }
   });
 
   test("passes AbortSignal.timeout to the finney fetch", async () => {
-    let seenSignal;
+    let seenSignal: AbortSignal | null | undefined;
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
+    globalThis.fetch = (async (
+      _url: unknown,
+      init: RequestInit | undefined,
+    ) => {
       seenSignal = init?.signal;
       return {
         ok: true,
         json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
       };
-    };
+    }) as unknown as typeof fetch;
     try {
-      await loadAddressMapping({}, H160);
+      await loadAddressMapping(mockEnv(), H160);
       assert.ok(seenSignal);
-      assert.equal(typeof seenSignal.aborted, "boolean");
+      assert.equal(typeof seenSignal!.aborted, "boolean");
       assert.equal(ADDRESS_MAPPING_RPC_TIMEOUT_MS, 5000);
     } finally {
       globalThis.fetch = orig;
@@ -247,7 +253,7 @@ describe("loadAddressMapping", () => {
       throw new Error("network down");
     };
     try {
-      const data = await loadAddressMapping({}, H160);
+      const data = await loadAddressMapping(mockEnv(), H160);
       assert.equal(data.ss58, null);
       assert.equal(data.schema_version, 1);
     } finally {
@@ -264,12 +270,12 @@ describe("loadAddressMapping", () => {
       },
     };
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
-    });
+    })) as unknown as typeof fetch;
     try {
-      const data = await loadAddressMapping(env, H160);
+      const data = await loadAddressMapping(mockEnv(env), H160);
       assert.equal(data.ss58, GOLDEN_SS58);
     } finally {
       globalThis.fetch = orig;
@@ -288,12 +294,12 @@ describe("loadAddressMapping", () => {
       },
     };
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
-    });
+    })) as unknown as typeof fetch;
     try {
-      const data = await loadAddressMapping(env, H160);
+      const data = await loadAddressMapping(mockEnv(env), H160);
       assert.equal(data.ss58, GOLDEN_SS58);
     } finally {
       globalThis.fetch = orig;
@@ -303,11 +309,11 @@ describe("loadAddressMapping", () => {
 
 describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
   test("applies per-client RPC rate limiting", async () => {
-    let limiterKey;
+    let limiterKey: string | undefined;
     let fetchCalls = 0;
     const env = {
       RPC_RATE_LIMITER: {
-        limit: async ({ key }) => {
+        limit: async ({ key }: { key: string }) => {
           limiterKey = key;
           return { success: false };
         },

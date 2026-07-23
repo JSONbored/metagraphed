@@ -106,7 +106,7 @@ test("buildWebhookDeliveryRequest: posts a metagraph.alert envelope to the trigg
     trigger({ id: "42", name: "my alert" }),
     payload,
     1_700_000_000_000,
-  );
+  )!;
   assert.equal(request.url, "https://example.com/hook");
   assert.equal(request.init.method, "POST");
   const body = JSON.parse(request.init.body);
@@ -118,7 +118,7 @@ test("buildWebhookDeliveryRequest: posts a metagraph.alert envelope to the trigg
 });
 
 test("buildWebhookDeliveryRequest: trigger_name is null when the trigger has no name", () => {
-  const request = buildWebhookDeliveryRequest(trigger({ name: null }), {}, 0);
+  const request = buildWebhookDeliveryRequest(trigger({ name: null }), {}, 0)!;
   assert.equal(JSON.parse(request.init.body).trigger_name, null);
 });
 
@@ -137,7 +137,7 @@ test("buildDiscordDeliveryRequest: posts {content} to the trigger's own webhook 
   const request = buildDiscordDeliveryRequest(
     trigger({ destination: "https://discord.com/api/webhooks/1/token" }),
     { table: "blocks" },
-  );
+  )!;
   assert.equal(request.url, "https://discord.com/api/webhooks/1/token");
   const body = JSON.parse(request.init.body);
   assert.match(body.content, /table=blocks/);
@@ -150,7 +150,7 @@ test("buildDiscordDeliveryRequest: truncates content to Discord's 2000-char cap"
       destination: "https://discord.com/api/webhooks/1/token",
     }),
     {},
-  );
+  )!;
   const body = JSON.parse(request.init.body);
   assert.ok(body.content.length <= 2000);
 });

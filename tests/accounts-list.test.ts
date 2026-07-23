@@ -10,6 +10,7 @@ import {
 } from "../src/accounts-list.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 // An ACCOUNTS_LIST read-columns-shaped row (netuid, uid, hotkey, coldkey,
 // validator_permit, emission_tao, stake_tao, block_number, captured_at).
@@ -25,7 +26,7 @@ const ROW = {
   captured_at: 1750000000000,
 };
 
-const ctx = { waitUntil: (p) => p };
+const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
 describe("buildAccountsList", () => {
   test("groups accounts across subnets, including non-validator (miner) rows", () => {
@@ -160,8 +161,8 @@ describe("buildAccountsList", () => {
       { ...ROW, hotkey: "hk-a", netuid: 1, uid: 0, stake_tao: 300 },
       { ...ROW, hotkey: "hk-b", netuid: 1, uid: 1, stake_tao: 100 },
     ]);
-    const a = data.accounts.find((e) => e.hotkey === "hk-a");
-    const b = data.accounts.find((e) => e.hotkey === "hk-b");
+    const a = data.accounts.find((e) => e.hotkey === "hk-a")!;
+    const b = data.accounts.find((e) => e.hotkey === "hk-b")!;
     assert.equal(a.stake_dominance, 0.75);
     assert.equal(b.stake_dominance, 0.25);
   });
@@ -386,8 +387,8 @@ describe("buildAccountsList", () => {
 
 describe("loadAccountsList", () => {
   test("reads every hotkey (no validator_permit filter) and shapes it", async () => {
-    let captured;
-    const d1 = async (sql, params) => {
+    let captured: { sql: string; params: unknown[] } | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       captured = { sql, params };
       return [
         { ...ROW, hotkey: "hk-a", validator_permit: 0 },
@@ -395,10 +396,10 @@ describe("loadAccountsList", () => {
       ];
     };
     const data = await loadAccountsList(d1, { sort: "total_stake" });
-    assert.match(captured.sql, /FROM neurons/);
-    assert.doesNotMatch(captured.sql, /validator_permit = 1/);
-    assert.match(captured.sql, /WHERE hotkey IS NOT NULL/);
-    assert.deepEqual(captured.params, []);
+    assert.match(captured!.sql, /FROM neurons/);
+    assert.doesNotMatch(captured!.sql, /validator_permit = 1/);
+    assert.match(captured!.sql, /WHERE hotkey IS NOT NULL/);
+    assert.deepEqual(captured!.params, []);
     assert.equal(data.account_count, 2);
   });
 
@@ -409,20 +410,22 @@ describe("loadAccountsList", () => {
   });
 
   test("a non-array D1 result degrades to an empty leaderboard", async () => {
-    const data = await loadAccountsList(async () => null);
+    const data = await loadAccountsList(
+      async () => null as unknown as Record<string, unknown>[],
+    );
     assert.equal(data.account_count, 0);
   });
 });
 
 // Stub METAGRAPH_HEALTH_DB whose .all() returns the given rows and records the SQL.
-function accountsListEnv(rows, captured = {}) {
+function accountsListEnv(rows: Row[], captured: Row = {}) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         captured.sql = sql;
         return {
-          bind(...params) {
+          bind(...params: unknown[]) {
             captured.params = params;
             return { all: () => Promise.resolve({ results: rows }) };
           },

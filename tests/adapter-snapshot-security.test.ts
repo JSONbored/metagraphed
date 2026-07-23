@@ -10,7 +10,8 @@ afterEach(() => {
 
 describe("adapter snapshot fetch redirect safety", () => {
   test("blocks redirects from public OpenAPI URLs to private addresses", async () => {
-    const fetchCalls = [];
+    const fetchCalls: Array<{ init: RequestInit | undefined; url: string }> =
+      [];
     globalThis.fetch = async (url, init) => {
       fetchCalls.push({ init, url: String(url) });
       return new Response(null, {
@@ -26,11 +27,12 @@ describe("adapter snapshot fetch redirect safety", () => {
     assert.equal(result.private_redirect_blocked, true);
     assert.equal(result.error, "redirect target is unsafe");
     assert.equal(fetchCalls.length, 1);
-    assert.equal(fetchCalls[0].init.redirect, "manual");
+    assert.equal(fetchCalls[0]!.init!.redirect, "manual");
   });
 
   test("follows safe redirects while keeping redirects manual", async () => {
-    const fetchCalls = [];
+    const fetchCalls: Array<{ init: RequestInit | undefined; url: string }> =
+      [];
     globalThis.fetch = async (url, init) => {
       fetchCalls.push({ init, url: String(url) });
       if (fetchCalls.length === 1) {
@@ -52,7 +54,7 @@ describe("adapter snapshot fetch redirect safety", () => {
       ["http://1.1.1.1/openapi.json", "http://1.0.0.1/openapi.json"],
     );
     assert.equal(
-      fetchCalls.every((call) => call.init.redirect === "manual"),
+      fetchCalls.every((call) => call.init!.redirect === "manual"),
       true,
     );
   });
@@ -70,9 +72,9 @@ describe("adapter snapshot fetch body limits", () => {
         },
       });
 
-    const response = await globalThis.fetch();
-    const originalCancel = response.body.cancel.bind(response.body);
-    response.body.cancel = async () => {
+    const response = await globalThis.fetch("http://1.1.1.1/openapi.json");
+    const originalCancel = response.body!.cancel.bind(response.body);
+    response.body!.cancel = async () => {
       bodyCanceled = true;
       return originalCancel();
     };

@@ -22,16 +22,17 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import type { Row } from "./row-type.ts";
 
-const registry = JSON.parse(
+const registry: Row = JSON.parse(
   readFileSync(
     fileURLToPath(new URL("../registry/subnets/adtao.json", import.meta.url)),
     "utf8",
   ),
 );
 
-function surfaceById(id) {
-  return registry.surfaces.find((surface) => surface.id === id);
+function surfaceById(id: string) {
+  return registry.surfaces.find((surface: Row) => surface.id === id);
 }
 
 const OPENAPI_URL = "https://validator.adtao.io/openapi.json";
@@ -79,13 +80,13 @@ for (const { id, url, kind, body } of CASES) {
     });
 
     test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
-      let requestedUrl;
-      let requestedMethod;
+      let requestedUrl: string | undefined;
+      let requestedMethod: string | undefined;
       const result = await callSubnetSurface(SURFACE, {
         isUnsafeUrl: async () => false,
         fetchImpl: async (reqUrl, init) => {
           requestedUrl = String(reqUrl);
-          requestedMethod = init.method;
+          requestedMethod = init?.method;
           return new Response(JSON.stringify(body), {
             status: 200,
             headers: { "content-type": "application/json" },
@@ -106,7 +107,7 @@ for (const { id, url, kind, body } of CASES) {
         surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 21 }],
       };
       const deps = {
-        readArtifact: async (_env, path) =>
+        readArtifact: async (_env: Row, path: string) =>
           path === "/metagraph/operational-surfaces.json"
             ? { ok: true, data: catalog }
             : { ok: false, status: 404 },
@@ -142,7 +143,7 @@ for (const { id, url, kind, body } of CASES) {
           {},
           deps,
         );
-        const result = (await response.json()).result;
+        const result = ((await response.json()) as Row).result;
         assert.equal(result.isError, false);
         assert.equal(result.structuredContent.surface_id, id);
         assert.equal(result.structuredContent.status_code, 200);

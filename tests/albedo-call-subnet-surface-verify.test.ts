@@ -22,18 +22,19 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import type { Row } from "./row-type.ts";
 
 const NETUID = 97;
-const registry = JSON.parse(
+const registry: Row = JSON.parse(
   readFileSync(
     fileURLToPath(new URL("../registry/subnets/albedo.json", import.meta.url)),
     "utf8",
   ),
 );
-const surfaceById = (id) =>
-  registry.surfaces.find((surface) => surface.id === id);
+const surfaceById = (id: string) =>
+  registry.surfaces.find((surface: Row) => surface.id === id);
 
-function jsonResponse(body) {
+function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: { "content-type": "application/json" },
@@ -44,7 +45,17 @@ function jsonResponse(body) {
 // for one Albedo surface: pin the registry config, exercise callSubnetSurface
 // directly, then resolve it end-to-end through the call_subnet_surface MCP tool
 // by surface id.
-function verifySurface({ surfaceId, url, body, assertBody }) {
+function verifySurface({
+  surfaceId,
+  url,
+  body,
+  assertBody,
+}: {
+  surfaceId: string;
+  url: string;
+  body: unknown;
+  assertBody: (body: Row) => void;
+}) {
   const SURFACE = surfaceById(surfaceId);
 
   describe(`SN97 Albedo ${surfaceId} call_subnet_surface verification (#7058)`, () => {
@@ -62,13 +73,13 @@ function verifySurface({ surfaceId, url, body, assertBody }) {
     });
 
     test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
-      let requestedUrl;
-      let requestedMethod;
+      let requestedUrl: string | undefined;
+      let requestedMethod: string | undefined;
       const result = await callSubnetSurface(SURFACE, {
         isUnsafeUrl: async () => false,
         fetchImpl: async (fetchUrl, init) => {
           requestedUrl = String(fetchUrl);
-          requestedMethod = init.method;
+          requestedMethod = init?.method;
           return jsonResponse(body);
         },
       });
@@ -78,7 +89,7 @@ function verifySurface({ surfaceId, url, body, assertBody }) {
       assert.equal(result.status_code, 200);
       assert.equal(result.content_type, "application/json");
       assert.equal(result.truncated, false);
-      assertBody(result.body);
+      assertBody(result.body as Row);
     });
 
     test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
@@ -86,7 +97,7 @@ function verifySurface({ surfaceId, url, body, assertBody }) {
         surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: NETUID }],
       };
       const deps = {
-        readArtifact: async (_env, path) =>
+        readArtifact: async (_env: Row, path: string) =>
           path === "/metagraph/operational-surfaces.json"
             ? { ok: true, data: catalog }
             : { ok: false, status: 404 },
@@ -119,7 +130,7 @@ function verifySurface({ surfaceId, url, body, assertBody }) {
           {},
           deps,
         );
-        const result = (await response.json()).result;
+        const result = ((await response.json()) as Row).result;
         assert.equal(result.isError, false);
         assert.equal(result.structuredContent.surface_id, surfaceId);
         assert.equal(result.structuredContent.status_code, 200);

@@ -12,14 +12,17 @@
 // needs to verify was actually sent.
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
+import type { Row } from "./row-type.ts";
 
-const mockQueue = vi.hoisted(() => ({ current: [] }));
-const sqlCalls = vi.hoisted(() => []);
-const failNextQuery = vi.hoisted(() => ({ error: null }));
+const mockQueue = vi.hoisted(() => ({ current: [] as Row[][] }));
+const sqlCalls = vi.hoisted(
+  () => [] as Array<{ text: string; values: unknown[] }>,
+);
+const failNextQuery = vi.hoisted(() => ({ error: null as Error | null }));
 
 vi.mock("postgres", () => ({
   default: () => {
-    function sql(strings, ...values) {
+    function sql(strings: TemplateStringsArray, ...values: unknown[]) {
       let text = strings[0];
       for (let i = 0; i < values.length; i += 1) text += "?" + strings[i + 1];
       sqlCalls.push({ text, values });
@@ -32,13 +35,13 @@ vi.mock("postgres", () => ({
         mockQueue.current.length ? mockQueue.current.shift() : [],
       );
     }
-    sql.begin = (cb) => cb(sql);
+    sql.begin = (cb: (sql: unknown) => unknown) => cb(sql);
     sql.end = () => Promise.resolve();
     // #6746: condition (JSONB) is bound via sql.json(value) in the real
     // INSERT/UPDATE -- this mock's tagged-template sql() doesn't need to
     // know about JSON wrapping (it just records whatever value it's handed
     // as a template placeholder), so a passthrough is a faithful stand-in.
-    sql.json = (value) => value;
+    sql.json = (value: unknown) => value;
     // sql.unsafe(text, params) -- the #5022 match write-back's batched
     // UPDATE builds its own placeholder text (plain scalar positional
     // binds) rather than a bound JS array, matching workers/data-api.mjs's
@@ -47,7 +50,7 @@ vi.mock("postgres", () => ({
     // fetch_types:false setting breaks postgres.js's automatic
     // ARRAY-literal serialization). Recorded into the SAME sqlCalls list
     // so existing assertions work unchanged regardless of call form.
-    sql.unsafe = (text, params = []) => {
+    sql.unsafe = (text: string, params: unknown[] = []) => {
       sqlCalls.push({ text, values: params });
       if (failNextQuery.error) {
         const err = failNextQuery.error;
@@ -66,11 +69,11 @@ const { default: worker } = await import("../workers/data-api.mjs");
 
 const CREATE_TOKEN = "test-alert-trigger-create-token";
 const INTERNAL_TOKEN = "test-alert-triggers-internal-token";
-const env = {
+const env: Env = {
   HYPERDRIVE: { connectionString: "postgres://mock" },
   ALERT_TRIGGER_CREATE_TOKEN: CREATE_TOKEN,
   ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-};
+} as unknown as Env;
 
 beforeEach(() => {
   mockQueue.current = [];
@@ -78,7 +81,14 @@ beforeEach(() => {
   failNextQuery.error = null;
 });
 
-function req(path, { method = "GET", headers = {}, body } = {}) {
+function req(
+  path: string,
+  {
+    method = "GET",
+    headers = {},
+    body,
+  }: { method?: string; headers?: Record<string, string>; body?: unknown } = {},
+) {
   return new Request(`https://d${path}`, {
     method,
     headers: { "content-type": "application/json", ...headers },
@@ -86,11 +96,11 @@ function req(path, { method = "GET", headers = {}, body } = {}) {
   });
 }
 
-async function fetch(request, envOverride = env) {
+async function fetch(request: Request, envOverride: Env = env) {
   return worker.fetch(request, envOverride, {});
 }
 
-function row(overrides = {}) {
+function row(overrides: Row = {}) {
   return {
     id: "1",
     owner_token: "stored-owner-token",
@@ -116,7 +126,7 @@ function row(overrides = {}) {
 test("create: 503 when ALERT_TRIGGER_CREATE_TOKEN is not configured", async () => {
   const res = await fetch(
     req("/api/v1/alerts/triggers", { method: "POST", body: {} }),
-    { ...env, ALERT_TRIGGER_CREATE_TOKEN: undefined },
+    { ...env, ALERT_TRIGGER_CREATE_TOKEN: undefined } as unknown as Env,
   );
   assert.equal(res.status, 503);
 });
@@ -213,7 +223,7 @@ test("create: 503 when HYPERDRIVE is unbound", async () => {
       headers: { "x-alert-trigger-create-token": CREATE_TOKEN },
       body: { channel: "email", destination: "a@b.com", netuid: 7 },
     }),
-    { ...env, HYPERDRIVE: undefined },
+    { ...env, HYPERDRIVE: undefined } as unknown as Env,
   );
   assert.equal(res.status, 503);
 });
@@ -278,7 +288,9 @@ test("create: 201 with a condition, inserts it as the JSONB value verbatim", asy
   assert.ok(
     sqlCalls[0].values.some(
       (v) =>
-        v && typeof v === "object" && v.metric === "subnet_alpha_price_rank",
+        v &&
+        typeof v === "object" &&
+        (v as Row).metric === "subnet_alpha_price_rank",
     ),
   );
 });
@@ -581,7 +593,7 @@ test("update: omitting condition on PATCH keeps the existing row's condition", a
       (v) =>
         v &&
         typeof v === "object" &&
-        v.metric === "neuron_immunity_countdown_blocks",
+        (v as Row).metric === "neuron_immunity_countdown_blocks",
     ),
   );
 });

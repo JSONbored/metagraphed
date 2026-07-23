@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   AGENT_RESOURCES_ARTIFACT,
   GET_AGENT_RESOURCES_INSTRUCTIONS,
@@ -10,6 +10,10 @@ import {
   loadAgentResources,
 } from "../src/agent-resources-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_RESOURCES = {
   summary: { subnet_count: 129, callable_service_count: 42 },
@@ -37,94 +41,103 @@ describe("agent-resources-mcp", () => {
 
   test("loadAgentResources returns the baked artifact payload", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async (_env, path) => ({
+      env: mockEnv(),
+      readArtifact: (async (_env: Row, path: string) => ({
         ok: true,
         data: path === AGENT_RESOURCES_ARTIFACT ? SAMPLE_RESOURCES : null,
-      }),
+      })) as unknown as ReadArtifact,
     };
-    const out = await loadAgentResources(ctx);
+    const out = (await loadAgentResources(ctx)) as Row;
     assert.equal(out.summary.subnet_count, 129);
     assert.equal(out.mcp.transport, "streamable-http");
     assert.equal(out.resources.length, 1);
   });
 
   test("loadAgentResources uses an injected readArtifact dep", async () => {
-    const out = await loadAgentResources(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+    const out = (await loadAgentResources(
       {
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
+      {
+        readArtifact: (async () => ({
           ok: true,
           data: { resources: [], mcp: {} },
-        }),
+        })) as unknown as ReadArtifact,
       },
-    );
+    )) as Row;
     assert.deepEqual(out.resources, []);
   });
 
   test("loadAgentResources maps artifact_not_found to not_found", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_not_found",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAgentResources(ctx),
-      (err) =>
+      ((err: Row) =>
         err.code === "not_found" &&
         err.toolError === true &&
-        /unavailable in this environment/.test(err.message),
+        /unavailable in this environment/.test(err.message)) as AnyFn,
     );
   });
 
   test("loadAgentResources surfaces other artifact failures with the path", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_timeout",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAgentResources(ctx),
-      (err) =>
+      ((err: Row) =>
         err.code === "artifact_timeout" &&
-        /agent-resources\.json/.test(err.message),
+        /agent-resources\.json/.test(err.message)) as AnyFn,
     );
   });
 
   test("loadAgentResources defaults code when the read result is bare", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({ ok: false }),
+      env: mockEnv(),
+      readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAgentResources(ctx),
-      (err) => err.code === "artifact_unavailable",
+      ((err: Row) => err.code === "artifact_unavailable") as AnyFn,
     );
   });
 
   test("loadAgentResources rejects a null payload as not_found", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({ ok: true, data: null }),
+      env: mockEnv(),
+      readArtifact: (async () => ({
+        ok: true,
+        data: null,
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAgentResources(ctx),
-      (err) => err.code === "not_found",
+      ((err: Row) => err.code === "not_found") as AnyFn,
     );
   });
 
   test("loadAgentResources rejects a non-object payload as not_found", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({ ok: true, data: "not-json" }),
+      env: mockEnv(),
+      readArtifact: (async () => ({
+        ok: true,
+        data: "not-json",
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAgentResources(ctx),
-      (err) => err.code === "not_found",
+      ((err: Row) => err.code === "not_found") as AnyFn,
     );
   });
 

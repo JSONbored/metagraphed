@@ -12,6 +12,7 @@ import {
 } from "../workers/request-handlers/entities.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
+import { mockEnv, type Row } from "./row-type.ts";
 
 // Edge-cache coverage for the D1-backed analytics routes (audit #6). These four
 // handlers (per-subnet health trends / percentiles / incidents + the bulk-trends
@@ -25,7 +26,7 @@ const LAST_RUN_AT = "2026-06-18T00:00:00.000Z";
 
 // One row backs every shape the analytics SQL returns (the shared ok-latency CTE
 // carries both uptime and latency stats; incidents reuse the same row).
-function rowsForSql(sql) {
+function rowsForSql(sql: string) {
   if (sql.includes("WITH ranked") || sql.includes("FROM ranked")) {
     return [
       {
@@ -89,15 +90,18 @@ function rowsForSql(sql) {
 // snapshot stamp. `queries` records every {sql, params} so a test can assert
 // whether D1 was touched at all (the whole point of the cache).
 function analyticsEnv(
-  queries,
-  { lastRunAt = LAST_RUN_AT, d1Error = null } = {},
+  queries: Row[],
+  {
+    lastRunAt = LAST_RUN_AT,
+    d1Error = null,
+  }: { lastRunAt?: string | null; d1Error?: Error | null } = {},
 ) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
-          bind(...params) {
+          bind(...params: unknown[]) {
             queries.push({ sql, params });
             return {
               all: () =>
@@ -110,7 +114,7 @@ function analyticsEnv(
       },
     },
     METAGRAPH_CONTROL: {
-      async get(key) {
+      async get(key: string) {
         if (key === "health:meta") {
           return lastRunAt ? { last_run_at: lastRunAt } : null;
         }
@@ -124,8 +128,8 @@ function analyticsEnv(
 // Request URL, recording every put key and every match call (mirrors the
 // existing edge-cache test stub in worker-runtime.test.mjs).
 function mockCaches() {
-  const store = new Map();
-  const putKeys = [];
+  const store = new Map<string, Response>();
+  const putKeys: string[] = [];
   let matchCalls = 0;
   return {
     store,
@@ -134,19 +138,19 @@ function mockCaches() {
       return matchCalls;
     },
     install() {
-      globalThis.caches = {
+      globalWithCaches.caches = {
         default: {
-          async match(request) {
+          async match(request: Request) {
             matchCalls += 1;
             const cached = store.get(request.url);
             return cached ? cached.clone() : undefined;
           },
-          async put(request, response) {
+          async put(request: Request, response: Response) {
             putKeys.push(request.url);
             store.set(request.url, response.clone());
           },
         },
-      };
+      } as unknown as Row;
     },
   };
 }
@@ -159,11 +163,11 @@ function mockCaches() {
 // MISS/HIT edge-cache invariants that used to run against a fake D1 can still
 // be exercised against the surviving cacheable path.
 function postgresTierEnv(
-  calls,
+  calls: unknown[],
   {
     flag = "METAGRAPH_HEALTH_SOURCE",
-    body = { schema_version: 1 },
-    lastRunAt = LAST_RUN_AT,
+    body = { schema_version: 1 } as Row,
+    lastRunAt = LAST_RUN_AT as string | null,
   } = {},
 ) {
   return {
@@ -176,7 +180,7 @@ function postgresTierEnv(
       },
     },
     METAGRAPH_CONTROL: {
-      async get(key) {
+      async get(key: string) {
         if (key === "health:meta") {
           return lastRunAt ? { last_run_at: lastRunAt } : null;
         }
@@ -188,17 +192,23 @@ function postgresTierEnv(
 
 // Rebuild the exact cache key the worker computes, so the invariant assertions
 // don't hard-code a brittle literal and survive a contract-version bump.
-function expectedKey(keyParts, pathname, search = "") {
+function expectedKey(keyParts: string, pathname: string, search = "") {
   return `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
     CONTRACT_VERSION,
   )}/${encodeURIComponent(LAST_RUN_AT)}/${keyParts}${pathname}${search}`;
 }
 
-const ctx = { waitUntil: (promise) => promise };
+const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
 
-let originalCaches;
+// The real Workers `caches` global is declared as `declare const caches:
+// CacheStorage` (ambient, not a `globalThis` property), so tests that
+// install/restore a stub must go through a cast -- mirrors the same pattern
+// in workers/request-handlers/analytics.ts's own handler code.
+const globalWithCaches = globalThis as unknown as { caches: Row | undefined };
+
+let originalCaches: Row | undefined;
 afterEach(() => {
-  globalThis.caches = originalCaches;
+  globalWithCaches.caches = originalCaches;
 });
 
 describe("analytics edge cache", () => {
@@ -206,10 +216,10 @@ describe("analytics edge cache", () => {
     // D1 fully eliminated (2026-07-17): percentiles always marks a Postgres-tier
     // MISS a D1 fallback (never cached), so only a Postgres-tier HIT exercises
     // this key-shape invariant now.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const calls = [];
+    const calls: unknown[] = [];
     const env = postgresTierEnv(calls);
 
     // Per-subnet percentiles (netuid + window both vary the key).
@@ -217,7 +227,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -243,10 +253,10 @@ describe("analytics edge cache", () => {
   // builder to withEdgeCache, so `cache` resolved to null and every HEAD
   // bypassed the cache and re-ran the tier call.
   test("REGRESSION #5554: a HEAD request hits the warm edge cache without re-querying the Postgres tier", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const calls = [];
+    const calls: unknown[] = [];
     const env = postgresTierEnv(calls);
     const target =
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d";
@@ -262,7 +272,7 @@ describe("analytics edge cache", () => {
     // DATA_API call, no re-put, a bodyless 200.
     const headRes = await handleRequest(
       new Request(target, { method: "HEAD" }),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(headRes.status, 200);
@@ -280,10 +290,10 @@ describe("analytics edge cache", () => {
     // cached response's own weak ETag (mirrors envelopeResponse's conditional
     // handling) so a polling agent still gets a 304 from a warm cache, not a
     // fresh 200 body every poll.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const calls = [];
+    const calls: unknown[] = [];
     const env = postgresTierEnv(calls);
     const target =
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d";
@@ -296,7 +306,7 @@ describe("analytics edge cache", () => {
 
     const conditional = await handleRequest(
       new Request(target, { headers: { "if-none-match": etag } }),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(conditional.status, 304);
@@ -310,17 +320,17 @@ describe("analytics edge cache", () => {
     // A non-matching validator still gets the full cached 200 body.
     const mismatch = await handleRequest(
       new Request(target, { headers: { "if-none-match": '"stale"' } }),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(mismatch.status, 200);
   });
 
   test("INVARIANT: a different window and a different netuid key separately", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const calls = [];
+    const calls: unknown[] = [];
     const env = postgresTierEnv(calls);
 
     for (const url of [
@@ -338,10 +348,10 @@ describe("analytics edge cache", () => {
   });
 
   test("concentration history canonicalizes equivalent window query strings before caching", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
     const variants = [
       "https://api.metagraph.sh/api/v1/subnets/7/concentration/history?window=90d",
@@ -371,10 +381,10 @@ describe("analytics edge cache", () => {
   });
 
   test("performance history canonicalizes equivalent window query strings before caching", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
     const variants = [
       "https://api.metagraph.sh/api/v1/subnets/7/performance/history?window=90d",
@@ -404,10 +414,10 @@ describe("analytics edge cache", () => {
   });
 
   test("yield history canonicalizes equivalent window query strings before caching", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
     const variants = [
       "https://api.metagraph.sh/api/v1/subnets/7/yield/history?window=90d",
@@ -437,16 +447,16 @@ describe("analytics edge cache", () => {
   });
 
   test("turnover canonicalizes omitted and explicit default window to the same cache key", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
 
     // No ?window — should resolve to the 30d default and cache at ?window=30d.
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/turnover"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -458,7 +468,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/turnover?window=30d",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -481,15 +491,15 @@ describe("analytics edge cache", () => {
   test("stake-flow canonicalizes omitted and explicit default window to the same cache key", async () => {
     // Postgres-unavailable stake-flow stubs are intentionally not edge-cached
     // (#6012); exercise the canonical key on a successful account_events tier.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const dataApiCalls = [];
+    const dataApiCalls: string[] = [];
     const env = {
       ...analyticsEnv([]),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        async fetch(request) {
+        async fetch(request: Request) {
           dataApiCalls.push(request.url);
           return Response.json({
             data: {
@@ -511,7 +521,7 @@ describe("analytics edge cache", () => {
     // No ?window — should resolve to the 30d default and cache at ?window=30d.
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/stake-flow"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -524,7 +534,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -545,7 +555,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet weights routes through the worker and caches at the default window", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -554,7 +564,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/weights"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -570,7 +580,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet serving routes through the worker and caches at the default window", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -579,7 +589,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/serving"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -595,7 +605,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet prometheus routes through the worker and caches at the default window", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -604,7 +614,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/prometheus"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -624,7 +634,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet stake-moves routes through the worker and caches at the default window", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -633,7 +643,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/stake-moves"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -653,7 +663,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet stake-transfers routes through the worker and caches at the default window", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -662,7 +672,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/stake-transfers"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -682,7 +692,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet registrations routes through the worker and caches at the default window", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -691,7 +701,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/registrations"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -711,7 +721,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet axon-removals routes through the worker and caches at the default window", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -720,7 +730,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/axon-removals"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -740,7 +750,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet deregistrations routes through the worker and caches at the default window", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -749,7 +759,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/deregistrations"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -769,16 +779,16 @@ describe("analytics edge cache", () => {
   });
 
   test("chain-activity canonicalizes omitted and explicit default window to the same cache key", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
 
     // No ?window — resolves to the 7d default and caches at ?window=7d.
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/activity"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -788,7 +798,7 @@ describe("analytics edge cache", () => {
     // Explicit ?window=7d is the canonical form — must be a cache HIT (no new D1).
     const hit = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/activity?window=7d"),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -804,10 +814,10 @@ describe("analytics edge cache", () => {
   });
 
   test("chain-activity keys distinct windows separately (7d vs 30d)", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
 
     for (const url of [
@@ -826,10 +836,10 @@ describe("analytics edge cache", () => {
   });
 
   test("turnover: explicit ?window=30d populates cache; omitted window is a HIT", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
 
     // Explicit ?window=30d is the canonical form — cache MISS, populates.
@@ -837,7 +847,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/turnover?window=30d",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -847,7 +857,7 @@ describe("analytics edge cache", () => {
     // Omitted window resolves to the same 30d key — must be a HIT (no D1).
     const hit = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/turnover"),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -863,10 +873,10 @@ describe("analytics edge cache", () => {
     // D1 fully eliminated (2026-07-17): incidents always marks a Postgres-tier
     // MISS a D1 fallback (never cached), so only a Postgres-tier HIT can prove
     // the cached body is served without a second upstream call.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const calls = [];
+    const calls: unknown[] = [];
     const env = postgresTierEnv(calls);
     const url =
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents?window=7d";
@@ -895,10 +905,10 @@ describe("analytics edge cache", () => {
   });
 
   test("HIT: a warm cache honours conditional requests with a 304", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
     const url = "https://api.metagraph.sh/api/v1/health/trends";
 
@@ -910,7 +920,7 @@ describe("analytics edge cache", () => {
 
     const conditional = await handleRequest(
       new Request(url, { headers: { "if-none-match": etag } }),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(conditional.status, 304);
@@ -926,24 +936,24 @@ describe("analytics edge cache", () => {
     // D1 fully eliminated (2026-07-17): bulk-trends always marks a
     // Postgres-tier MISS a D1 fallback (never cached), so only a Postgres-tier
     // HIT still schedules a cache write.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const calls = [];
+    const calls: unknown[] = [];
     const env = postgresTierEnv(calls, {
       body: { schema_version: 1, windows: { "7d": {}, "30d": {} } },
     });
 
-    let putAt = null;
+    let putAt: Promise<unknown> | null = null;
     const putCtx = {
-      waitUntil: (promise) => {
+      waitUntil: (promise: Promise<unknown>) => {
         putAt = promise;
         return promise;
       },
     };
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/health/trends"),
-      env,
+      mockEnv(env),
       putCtx,
     );
     assert.equal(res.status, 200);
@@ -954,22 +964,22 @@ describe("analytics edge cache", () => {
     ]);
     // The cached response is the success 200 (never a placeholder/error).
     const cached = cache.store.get(cache.putKeys[0]);
-    assert.equal(cached.status, 200);
+    assert.equal(cached!.status, 200);
     assert.equal(calls.length, 1, "the MISS must call the Postgres tier once");
   });
 
   test("NO-CACHE-ON-ERROR: a 400 (bad window) is never cached", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
 
     const res = await handleRequest(
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=bogus",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -983,17 +993,17 @@ describe("analytics edge cache", () => {
     // When KV is cold (no last_run_at) the handler still returns a schema-stable
     // 200, but the cache must be skipped entirely so a cold/empty payload can
     // never seed a stale entry (mirrors the overlay cache's lastRunAt guard).
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries, { lastRunAt: null });
 
     const res = await handleRequest(
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/incidents?window=7d",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1014,23 +1024,29 @@ describe("analytics edge cache", () => {
     // This isolates the WeakSet response marker from the independent D1 fallback
     // generation guard: a handler must mark the awaited Response object, not the
     // Promise that produces it, or withEdgeCache cannot recognize the fallback.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
     const request = new Request("https://api.metagraph.sh/api/v1/test");
 
-    const res = await withEdgeCache(request, ctx, env, "unit", async () => {
-      const response = await envelopeResponse(
-        request,
-        {
-          data: { degraded: true },
-          meta: { generated_at: LAST_RUN_AT },
-        },
-        "short",
-      );
-      return markD1FallbackResponse(response);
-    });
+    const res = await withEdgeCache(
+      request,
+      ctx,
+      mockEnv(env),
+      "unit",
+      async () => {
+        const response = await envelopeResponse(
+          request,
+          {
+            data: { degraded: true },
+            meta: { generated_at: LAST_RUN_AT },
+          },
+          "short",
+        );
+        return markD1FallbackResponse(response);
+      },
+    );
     await Promise.resolve();
 
     assert.equal(res.status, 200);
@@ -1046,7 +1062,7 @@ describe("analytics edge cache", () => {
   // *Promise* from envelopeResponse into markD1FallbackResponse. withEdgeCache
   // then saw the awaited Response (a different object) and cached the stub.
   test("NO-CACHE-ON-ERROR: handleSubnetStakeFlow stub is marked and not edge-cached (#6012)", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -1058,7 +1074,7 @@ describe("analytics edge cache", () => {
     const res = await withEdgeCache(
       request,
       ctx,
-      env,
+      mockEnv(env),
       "subnet-stake-flow",
       () => handleSubnetStakeFlow(request, env, 7, routeUrl),
     );
@@ -1074,7 +1090,7 @@ describe("analytics edge cache", () => {
   });
 
   test("NO-CACHE-ON-ERROR: handleBlocksSummary stub is marked and not edge-cached (#6012)", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -1083,8 +1099,12 @@ describe("analytics edge cache", () => {
     );
     const routeUrl = new URL(request.url);
 
-    const res = await withEdgeCache(request, ctx, env, "blocks-summary", () =>
-      handleBlocksSummary(request, env, routeUrl),
+    const res = await withEdgeCache(
+      request,
+      ctx,
+      mockEnv(env),
+      "blocks-summary",
+      () => handleBlocksSummary(request, env, routeUrl),
     );
     await Promise.resolve();
 
@@ -1098,7 +1118,7 @@ describe("analytics edge cache", () => {
   });
 
   test("HEAD requests use the GET edge-cache key while returning HEAD semantics", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
@@ -1111,7 +1131,7 @@ describe("analytics edge cache", () => {
     const first = await withEdgeCache(
       request,
       ctx,
-      env,
+      mockEnv(env),
       "unit",
       async (req) => {
         buildCalls += 1;
@@ -1137,7 +1157,7 @@ describe("analytics edge cache", () => {
     const second = await withEdgeCache(
       request,
       ctx,
-      env,
+      mockEnv(env),
       "unit",
       async (_req) => {
         buildCalls += 1;
@@ -1152,15 +1172,15 @@ describe("analytics edge cache", () => {
   });
 
   test("HEAD /api/v1/validators reuses the GET edge cache before the Postgres tier", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const dataApiMethods = [];
+    const dataApiMethods: string[] = [];
     const env = {
       ...analyticsEnv([]),
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        async fetch(request) {
+        async fetch(request: Request) {
           dataApiMethods.push(request.method);
           return Response.json({
             schema_version: 1,
@@ -1191,17 +1211,17 @@ describe("analytics edge cache", () => {
   });
 
   test("NO-CACHE-ON-ERROR: a D1 failure with a snapshot stamp is served but not cached", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries, { d1Error: new Error("D1 unavailable") });
 
     const res = await handleRequest(
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1237,11 +1257,11 @@ describe("analytics edge cache", () => {
         search: "?netuids=7",
       },
     ];
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     for (const r of routes) {
       const cache = mockCaches();
       cache.install();
-      const queries = [];
+      const queries: Row[] = [];
       const env = analyticsEnv(queries, {
         d1Error: new Error("D1 unavailable"),
       });
@@ -1260,14 +1280,14 @@ describe("analytics edge cache", () => {
   });
 
   test("NO-CACHE-ON-ERROR: an unbound D1 binding with a warm snapshot stamp is not cached", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {},
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === "health:meta" ? { last_run_at: LAST_RUN_AT } : null;
         },
       },
@@ -1275,7 +1295,7 @@ describe("analytics edge cache", () => {
 
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/registry/leaderboards"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1291,12 +1311,12 @@ describe("analytics edge cache", () => {
   test("transparency: the cached body equals the uncached body for the same handler", async () => {
     // Same request, once with the cache stubbed and once without — the served
     // body must be byte-identical (the cache adds nothing to the payload).
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const url =
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d";
 
-    // Uncached: no globalThis.caches → withEdgeCache falls through to D1.
-    globalThis.caches = undefined;
+    // Uncached: no globalWithCaches.caches → withEdgeCache falls through to D1.
+    globalWithCaches.caches = undefined;
     const uncached = await handleRequest(
       new Request(url),
       analyticsEnv([]),
@@ -1318,7 +1338,7 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet-history ?window variants share a single cache entry (canonical key)", async () => {
-    const queries = [];
+    const queries: Row[] = [];
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv(queries);
@@ -1327,7 +1347,7 @@ describe("analytics edge cache", () => {
     // First request with explicit default window — caches under ?window=30d.
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=30d`),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1336,7 +1356,7 @@ describe("analytics edge cache", () => {
     // Trailing-amp variant must be a cache HIT (same canonical key).
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=30d&`),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(
@@ -1348,7 +1368,7 @@ describe("analytics edge cache", () => {
     // Omitting window entirely defaults to 30d — also a cache HIT.
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(
@@ -1359,7 +1379,7 @@ describe("analytics edge cache", () => {
   });
 
   test("economics-trends ?window variants share a single cache entry (canonical key)", async () => {
-    const queries = [];
+    const queries: Row[] = [];
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv(queries);
@@ -1367,7 +1387,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=30d`),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1375,7 +1395,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(
@@ -1389,16 +1409,16 @@ describe("analytics edge cache", () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
     // D1 fallback (never cached), so this canonical-key invariant only survives
     // on a Postgres-tier HIT.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const calls = [];
+    const calls: unknown[] = [];
     const env = postgresTierEnv(calls);
     const base = "/api/v1/subnets/7/health/percentiles";
 
     const miss = await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1407,7 +1427,7 @@ describe("analytics edge cache", () => {
 
     const hit = await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -1422,16 +1442,16 @@ describe("analytics edge cache", () => {
   });
 
   test("health percentiles: explicit ?window=7d populates cache; bare path is a HIT", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
     const base = "/api/v1/subnets/7/health/percentiles";
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1439,7 +1459,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(
@@ -1453,16 +1473,16 @@ describe("analytics edge cache", () => {
     // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
     // D1 fallback (never cached), so this canonical-key invariant only survives
     // on a Postgres-tier HIT.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const calls = [];
+    const calls: unknown[] = [];
     const env = postgresTierEnv(calls);
     const base = "/api/v1/subnets/7/health/incidents";
 
     const miss = await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1471,7 +1491,7 @@ describe("analytics edge cache", () => {
 
     const hit = await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -1486,16 +1506,16 @@ describe("analytics edge cache", () => {
   });
 
   test("health incidents: explicit ?window=7d populates cache; bare path is a HIT", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
     const base = "/api/v1/subnets/7/health/incidents";
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1503,7 +1523,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(
@@ -1547,11 +1567,11 @@ describe("analytics edge cache", () => {
         flag: "METAGRAPH_HEALTH_SOURCE",
       },
     ];
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     for (const r of routes) {
       const cache = mockCaches();
       cache.install();
-      const calls = [];
+      const calls: unknown[] = [];
       const env = postgresTierEnv(calls, { flag: r.flag });
       const url = `https://api.metagraph.sh${r.path}${r.search}`;
 
@@ -1577,10 +1597,10 @@ describe("analytics edge cache", () => {
   });
 
   test("subnet movers CSV requests use a distinct cache key", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
 
     const res = await handleRequest(
@@ -1588,7 +1608,7 @@ describe("analytics edge cache", () => {
         "https://api.metagraph.sh/api/v1/subnets/movers?sort=emission",
         { headers: { accept: "text/csv" } },
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1637,10 +1657,10 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     // The key regression test: before #5358 this exact scenario (a fresh
     // neuron captured_at, unchanged last_run_at) would have busted the cache
     // via readSubnetNeuronsCacheStamp. It must NOT anymore.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     let neuronCapturedAt = 1_700_000_000_000;
     // A D1 stub that WOULD answer a captured_at-keyed stamp query if anything
     // still asked one. `queries` staying empty across both passes below is
@@ -1649,9 +1669,9 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               queries.push({ sql, params });
               return {
                 all: () =>
@@ -1664,7 +1684,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
         },
       },
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === "health:meta" ? { last_run_at: LAST_RUN_AT } : null;
         },
       },
@@ -1716,7 +1736,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
 
   test("a NEW health-cron last_run_at DOES bust the cache for all 5 formerly-neurons-tier per-subnet routes", async () => {
     for (const { keyParts, path } of FORMERLY_NEURONS_TIER_SUBNET_ROUTES) {
-      originalCaches = globalThis.caches;
+      originalCaches = globalWithCaches.caches;
       const cache = mockCaches();
       cache.install();
       const url = `https://api.metagraph.sh${path}`;
@@ -1752,20 +1772,20 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
         `${keyParts}: the new entry must key on the new last_run_at`,
       );
 
-      globalThis.caches = originalCaches;
+      globalWithCaches.caches = originalCaches;
     }
   });
 
   test("global validators canonicalizes equivalent query variants before caching, with ZERO D1 queries on the HIT", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
 
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/validators?limit=1"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1776,7 +1796,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
       new Request(
         "https://api.metagraph.sh/api/v1/validators?limit=01&sort=subnet_count",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -1799,15 +1819,15 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
   });
 
   test("global validators rejects invalid queries before touching D1 or the cache", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const queries = [];
+    const queries: Row[] = [];
     const env = analyticsEnv(queries);
 
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/validators?bogus=1"),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();
@@ -1822,7 +1842,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     // D1 fully eliminated (2026-07-17): a Postgres-tier MISS is always marked a
     // D1 fallback (never cached), so only a Postgres-tier HIT still seeds a
     // cache entry keyed on the shared health-cron last_run_at stamp.
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const env = postgresTierEnv([]);
@@ -1831,7 +1851,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
       ),
-      env,
+      mockEnv(env),
       ctx,
     );
     await Promise.resolve();

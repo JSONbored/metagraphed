@@ -9,7 +9,14 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 
-function req(path, { method = "GET", headers = {}, body } = {}) {
+function req(
+  path: string,
+  {
+    method = "GET",
+    headers = {},
+    body,
+  }: { method?: string; headers?: Record<string, string>; body?: unknown } = {},
+) {
   return new Request(`https://api.metagraph.sh${path}`, {
     method,
     headers: { "content-type": "application/json", ...headers },
@@ -38,7 +45,7 @@ test("forwards POST to DATA_API and envelope-wraps a successful response", async
     }),
     {
       DATA_API: {
-        fetch(request) {
+        fetch(request: Request) {
           receivedPath = new URL(request.url).pathname;
           receivedMethod = request.method;
           return new Response(
@@ -67,7 +74,7 @@ test("forwards GET /{id} to DATA_API, including the owner-token header", async (
     }),
     {
       DATA_API: {
-        fetch(request) {
+        fetch(request: Request) {
           receivedToken = request.headers.get("x-alert-trigger-owner-token");
           return new Response(JSON.stringify({ id: "1", netuid: 7 }), {
             status: 200,
@@ -92,7 +99,7 @@ test("forwards PATCH to DATA_API", async () => {
     }),
     {
       DATA_API: {
-        fetch(request) {
+        fetch(request: Request) {
           receivedMethod = request.method;
           return new Response(JSON.stringify({ id: "1", netuid: 8 }), {
             status: 200,
@@ -115,7 +122,7 @@ test("forwards DELETE to DATA_API", async () => {
     }),
     {
       DATA_API: {
-        fetch(request) {
+        fetch(request: Request) {
           receivedMethod = request.method;
           return new Response(JSON.stringify({ id: "1", deleted: true }), {
             status: 200,
@@ -228,7 +235,7 @@ test("maps a 429 upstream to alert_trigger_rate_limited and forwards the rate-li
 });
 
 test("maps each upstream status to a distinct, condition-specific error code", async () => {
-  const codeFor = async (status) => {
+  const codeFor = async (status: number) => {
     const res = await handleRequest(
       req("/api/v1/alerts/triggers/1", {
         method: "DELETE",

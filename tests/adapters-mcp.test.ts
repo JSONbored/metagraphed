@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   GET_ADAPTER_INSTRUCTIONS,
   GET_ADAPTER_MCP_TOOL,
@@ -11,6 +11,10 @@ import {
   parseAdapterSlug,
 } from "../src/adapters-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_ADAPTER = {
   schema_version: 1,
@@ -46,111 +50,119 @@ describe("adapters-mcp", () => {
   test("parseAdapterSlug rejects empty slug", () => {
     assert.throws(
       () => parseAdapterSlug({ slug: "   " }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("parseAdapterSlug rejects uppercase slug", () => {
     assert.throws(
       () => parseAdapterSlug({ slug: "Gittensor" }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("parseAdapterSlug rejects slug with underscores", () => {
     assert.throws(
       () => parseAdapterSlug({ slug: "has_underscore" }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("parseAdapterSlug rejects missing slug", () => {
     assert.throws(
       () => parseAdapterSlug({}),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("loadAdapter returns the baked artifact payload", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async (_env, path) => ({
+      env: mockEnv(),
+      readArtifact: (async (_env: Row, path: string) => ({
         ok: true,
         data:
           path === "/metagraph/adapters/gittensor.json" ? SAMPLE_ADAPTER : null,
-      }),
+      })) as unknown as ReadArtifact,
     };
-    const out = await loadAdapter(ctx, { slug: "gittensor" });
+    const out = (await loadAdapter(ctx, { slug: "gittensor" })) as Row;
     assert.equal(out.slug, "gittensor");
     assert.equal(out.netuid, 74);
     assert.equal(out.snapshot.status, "captured");
   });
 
   test("loadAdapter uses an injected readArtifact dep", async () => {
-    const out = await loadAdapter(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+    const out = (await loadAdapter(
+      {
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
       { slug: "solo" },
       {
-        readArtifact: async () => ({
+        readArtifact: (async () => ({
           ok: true,
           data: { schema_version: 1, slug: "solo", snapshot: {} },
-        }),
+        })) as unknown as ReadArtifact,
       },
-    );
+    )) as Row;
     assert.equal(out.slug, "solo");
   });
 
   test("loadAdapter maps artifact_not_found to not_found", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_not_found",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAdapter(ctx, { slug: "missing" }),
-      (err) =>
+      ((err: Row) =>
         err.code === "not_found" &&
-        /No adapter snapshot exists for slug 'missing'/.test(err.message),
+        /No adapter snapshot exists for slug 'missing'/.test(
+          err.message,
+        )) as AnyFn,
     );
   });
 
   test("loadAdapter surfaces other artifact failures with the path", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_timeout",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAdapter(ctx, { slug: "gittensor" }),
-      (err) =>
+      ((err: Row) =>
         err.code === "artifact_timeout" &&
-        /adapters\/gittensor\.json/.test(err.message),
+        /adapters\/gittensor\.json/.test(err.message)) as AnyFn,
     );
   });
 
   test("loadAdapter defaults code when the read result is bare", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({ ok: false }),
+      env: mockEnv(),
+      readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAdapter(ctx, { slug: "gittensor" }),
-      (err) => err.code === "artifact_unavailable",
+      ((err: Row) => err.code === "artifact_unavailable") as AnyFn,
     );
   });
 
   test("loadAdapter rejects a malformed artifact payload", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({ ok: true, data: null }),
+      env: mockEnv(),
+      readArtifact: (async () => ({
+        ok: true,
+        data: null,
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadAdapter(ctx, { slug: "gittensor" }),
-      (err) => err.code === "not_found",
+      ((err: Row) => err.code === "not_found") as AnyFn,
     );
   });
 

@@ -6,7 +6,7 @@ import {
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
 } from "../src/alpha-volume.ts";
-function volumeRow(kind, overrides = {}) {
+function volumeRow(kind: string, overrides: Row = {}) {
   return {
     event_kind: kind,
     alpha_volume: 0,
@@ -17,6 +17,7 @@ function volumeRow(kind, overrides = {}) {
 }
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -317,7 +318,7 @@ describe("vol/mcap turnover ratio (#4339/8.3)", () => {
       const data = buildAlphaVolume(
         [volumeRow(STAKE_ADDED_KIND, { tao_volume: 20 })],
         1,
-        { marketCapTao },
+        { marketCapTao: marketCapTao as number | null },
       );
       assert.equal(
         data.vol_mcap_ratio,
@@ -347,8 +348,8 @@ describe("loadSubnetAlphaVolume", () => {
   test("queries account_events for both stake kinds over a fixed 24h cutoff and shapes the result", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    const calls = [];
-    const d1 = async (sql, params) => {
+    const calls: Array<{ sql: string; params: unknown[] }> = [];
+    const d1 = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return [
         {
@@ -409,7 +410,7 @@ describe("loadSubnetAlphaVolume", () => {
   });
 
   test("a non-array D1 result degrades to zeroed totals and null generated_at", async () => {
-    const d1 = async () => null;
+    const d1 = async () => null as unknown as Record<string, unknown>[];
     const { data, generatedAt } = await loadSubnetAlphaVolume(d1, 7);
     assert.equal(data.total_volume_alpha, 0);
     assert.equal(generatedAt, null);
@@ -477,7 +478,7 @@ describe("loadSubnetAlphaVolume", () => {
   });
 });
 
-const ctx = { waitUntil: (p) => p };
+const ctx = { waitUntil: (p: Promise<unknown>) => p };
 
 // Stub METAGRAPH_HEALTH_DB whose .all() returns the given rows and records the
 // SQL — mirrors runtimeEnv in tests/runtime-versions.test.mjs. METAGRAPH_ARCHIVE
@@ -485,15 +486,15 @@ const ctx = { waitUntil: (p) => p };
 // resolveSubnetMarketCapTao's R2 fallback is genuinely cold, regardless of
 // whether a local `npm run build` happens to have staged a real
 // dist/metagraph-r2/metagraph/economics.json on this machine.
-function volumeEnv(rows, captured = {}) {
+function volumeEnv(rows: Row[], captured: Row = {}): Row {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_ARCHIVE: undefined,
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         captured.sql = sql;
         return {
-          bind(...params) {
+          bind(...params: unknown[]) {
             captured.params = params;
             return { all: () => Promise.resolve({ results: rows }) };
           },

@@ -9,14 +9,16 @@ import {
   AlerterHub,
   deliverAlertMatch,
 } from "../workers/alerter-hub.ts";
+import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
 
 const INTERNAL_TOKEN = "test-internal-token";
+const STATE = {} as unknown as DurableObjectState;
 
-function fakeDataApi(handler) {
+function fakeDataApi(handler: AnyFn) {
   return { fetch: handler };
 }
 
-function triggerRow(overrides = {}) {
+function triggerRow(overrides: Row = {}) {
   return {
     id: "1",
     tableFilter: null,
@@ -37,21 +39,24 @@ test("ALERTER_HUB_TRIGGER_CACHE_TTL_MS is the documented value (5 minutes)", () 
 // --- deliverAlertMatch (#4984 Part 3) -----------------------------------------
 
 test("deliverAlertMatch: webhook channel POSTs the built request and resolves true on a confirmed 2xx", async () => {
-  let received;
-  const fetchFn = vi.fn(async (url, init) => {
+  let received: { url: unknown; init?: RequestInit } | undefined;
+  const fetchFn = vi.fn(async (url: unknown, init?: RequestInit) => {
     received = { url, init };
     return new Response(null, { status: 200 });
   });
   const result = await deliverAlertMatch(
     triggerRow({ channel: "webhook", destination: "https://example.com/hook" }),
     { table: "account_events" },
-    {},
+    mockEnv(),
     fetchFn,
     { resolveHostnames: async () => ["93.184.216.34"] },
   );
   assert.equal(fetchFn.mock.calls.length, 1);
-  assert.equal(received.url, "https://example.com/hook");
-  assert.equal(JSON.parse(received.init.body).type, "metagraph.alert");
+  assert.equal(received!.url, "https://example.com/hook");
+  assert.equal(
+    JSON.parse(received!.init!.body as string).type,
+    "metagraph.alert",
+  );
   assert.equal(result, true);
 });
 
@@ -72,7 +77,7 @@ test("deliverAlertMatch: falls back to the real DoH resolver when no resolveHost
   const result = await deliverAlertMatch(
     triggerRow({ channel: "webhook", destination: "https://example.com/hook" }),
     { table: "account_events" },
-    {},
+    mockEnv(),
     fetchFn,
   );
   assert.equal(result, true);
@@ -83,9 +88,9 @@ test("deliverAlertMatch: falls back to the real DoH resolver when no resolveHost
 });
 
 test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slow target can't stall the shared broadcast() call indefinitely", async () => {
-  let receivedSignal;
-  const fetchFn = vi.fn(async (_url, init) => {
-    receivedSignal = init.signal;
+  let receivedSignal: AbortSignal | null | undefined;
+  const fetchFn = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    receivedSignal = init?.signal;
     return new Response(null, { status: 200 });
   });
   await deliverAlertMatch(
@@ -94,17 +99,17 @@ test("deliverAlertMatch: every delivery carries a bounded AbortSignal so one slo
       destination: "https://example.com/hook",
     }),
     {},
-    {},
+    mockEnv(),
     fetchFn,
     { resolveHostnames: async () => ["93.184.216.34"] },
   );
   assert.ok(receivedSignal instanceof AbortSignal);
-  assert.equal(receivedSignal.aborted, false);
+  assert.equal(receivedSignal!.aborted, false);
 });
 
 test("deliverAlertMatch: webhook delivery uses manual redirects", async () => {
-  let receivedInit;
-  const fetchFn = vi.fn(async (_url, init) => {
+  let receivedInit: RequestInit | undefined;
+  const fetchFn = vi.fn(async (_url: unknown, init?: RequestInit) => {
     receivedInit = init;
     return new Response(null, { status: 200 });
   });
@@ -114,11 +119,11 @@ test("deliverAlertMatch: webhook delivery uses manual redirects", async () => {
       destination: "https://example.com/hook",
     }),
     {},
-    {},
+    mockEnv(),
     fetchFn,
     { resolveHostnames: async () => ["93.184.216.34"] },
   );
-  assert.equal(receivedInit.redirect, "manual");
+  assert.equal(receivedInit!.redirect, "manual");
 });
 
 test("deliverAlertMatch: webhook channel sends nothing and resolves false when DNS resolves private", async () => {
@@ -129,7 +134,7 @@ test("deliverAlertMatch: webhook channel sends nothing and resolves false when D
       destination: "https://example.com/hook",
     }),
     {},
-    {},
+    mockEnv(),
     fetchFn,
     { resolveHostnames: async () => ["10.0.0.1"] },
   );
@@ -145,7 +150,7 @@ test("deliverAlertMatch: webhook channel sends nothing and resolves false when t
       destination: "http://not-https.example.com",
     }),
     {},
-    {},
+    mockEnv(),
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
@@ -153,14 +158,16 @@ test("deliverAlertMatch: webhook channel sends nothing and resolves false when t
 });
 
 test("deliverAlertMatch: discord channel POSTs to the trigger's own webhook URL and resolves true on a confirmed 2xx", async () => {
-  const fetchFn = vi.fn(async () => new Response(null, { status: 204 }));
+  const fetchFn = vi.fn(
+    async (_url?: unknown) => new Response(null, { status: 204 }),
+  );
   const result = await deliverAlertMatch(
     triggerRow({
       channel: "discord",
       destination: "https://discord.com/api/webhooks/1/token",
     }),
     { table: "account_events" },
-    {},
+    mockEnv(),
     fetchFn,
   );
   assert.equal(
@@ -175,7 +182,7 @@ test("deliverAlertMatch: telegram channel is a silent no-op (resolves false) whe
   const result = await deliverAlertMatch(
     triggerRow({ channel: "telegram", destination: "123456789" }),
     {},
-    {},
+    mockEnv(),
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
@@ -183,11 +190,13 @@ test("deliverAlertMatch: telegram channel is a silent no-op (resolves false) whe
 });
 
 test("deliverAlertMatch: telegram channel POSTs to the bot API and resolves true when the token is configured", async () => {
-  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  const fetchFn = vi.fn(
+    async (_url?: unknown) => new Response(null, { status: 200 }),
+  );
   const result = await deliverAlertMatch(
     triggerRow({ channel: "telegram", destination: "123456789" }),
     {},
-    { TELEGRAM_BOT_TOKEN: "bot-token" },
+    mockEnv({ TELEGRAM_BOT_TOKEN: "bot-token" }),
     fetchFn,
   );
   assert.equal(
@@ -202,7 +211,7 @@ test("deliverAlertMatch: email channel is a silent no-op (resolves false) when R
   const first = await deliverAlertMatch(
     triggerRow({ channel: "email" }),
     {},
-    {},
+    mockEnv(),
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
@@ -210,7 +219,7 @@ test("deliverAlertMatch: email channel is a silent no-op (resolves false) when R
   const second = await deliverAlertMatch(
     triggerRow({ channel: "email" }),
     {},
-    { RESEND_API_KEY: "k" }, // no from-address
+    mockEnv({ RESEND_API_KEY: "k" }), // no from-address
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
@@ -218,11 +227,16 @@ test("deliverAlertMatch: email channel is a silent no-op (resolves false) when R
 });
 
 test("deliverAlertMatch: email channel POSTs to Resend and resolves true when both secrets are configured", async () => {
-  const fetchFn = vi.fn(async () => new Response(null, { status: 200 }));
+  const fetchFn = vi.fn(
+    async (_url?: unknown) => new Response(null, { status: 200 }),
+  );
   const result = await deliverAlertMatch(
     triggerRow({ channel: "email", destination: "a@b.com" }),
     {},
-    { RESEND_API_KEY: "k", RESEND_FROM_ADDRESS: "alerts@metagraph.sh" },
+    mockEnv({
+      RESEND_API_KEY: "k",
+      RESEND_FROM_ADDRESS: "alerts@metagraph.sh",
+    }),
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls[0][0], "https://api.resend.com/emails");
@@ -234,7 +248,7 @@ test("deliverAlertMatch: an unrecognized channel is a silent no-op (resolves fal
   const result = await deliverAlertMatch(
     triggerRow({ channel: "carrier-pigeon" }),
     {},
-    {},
+    mockEnv(),
     fetchFn,
   );
   assert.equal(fetchFn.mock.calls.length, 0);
@@ -252,7 +266,7 @@ test("deliverAlertMatch: a non-ok HTTP response is logged, not thrown, and resol
         destination: "https://discord.com/api/webhooks/1/t",
       }),
       {},
-      {},
+      mockEnv(),
       fetchFn,
     );
   });
@@ -274,7 +288,7 @@ test("deliverAlertMatch: a rejected fetch (network error) propagates as a reject
           destination: "https://discord.com/api/webhooks/1/t",
         }),
         {},
-        {},
+        mockEnv(),
         fetchFn,
       ),
     /network down/,
@@ -295,7 +309,7 @@ test("deliverAlertMatch: defaults fetchFn to the global fetch when not injected"
         destination: "https://discord.com/api/webhooks/1/t",
       }),
       {},
-      {},
+      mockEnv(),
     );
   } finally {
     globalThis.fetch = originalFetch;
@@ -307,14 +321,14 @@ test("deliverAlertMatch: defaults fetchFn to the global fetch when not injected"
 
 test("isTriggerCacheStale: true before any load, false immediately after a successful refresh", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(
         async () =>
           new Response(JSON.stringify({ triggers: [] }), { status: 200 }),
       ),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   assert.equal(hub.isTriggerCacheStale(), true);
   await hub.refreshTriggers();
@@ -323,8 +337,8 @@ test("isTriggerCacheStale: true before any load, false immediately after a succe
 
 test("refreshTriggers: a no-op when DATA_API is unbound", async () => {
   const hub = new AlerterHub(
-    {},
-    { ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN },
+    STATE,
+    mockEnv({ ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN }),
   );
   await hub.refreshTriggers();
   assert.deepEqual(hub.triggers, []);
@@ -334,13 +348,13 @@ test("refreshTriggers: a no-op when DATA_API is unbound", async () => {
 test("refreshTriggers: a no-op when ALERT_TRIGGERS_INTERNAL_TOKEN is unset", async () => {
   let called = false;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         called = true;
         return new Response(JSON.stringify({ triggers: [] }), { status: 200 });
       }),
-    },
+    }),
   );
   await hub.refreshTriggers();
   assert.equal(called, false);
@@ -348,11 +362,11 @@ test("refreshTriggers: a no-op when ALERT_TRIGGERS_INTERNAL_TOKEN is unset", asy
 });
 
 test("refreshTriggers: fetches the internal active-list route with the correct URL and header", async () => {
-  let receivedUrl;
-  let receivedToken;
+  let receivedUrl: string | undefined;
+  let receivedToken: string | undefined;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (url, init) => {
         receivedUrl = String(url);
         receivedToken = init.headers["x-alert-triggers-internal-token"];
@@ -361,7 +375,7 @@ test("refreshTriggers: fetches the internal active-list route with the correct U
         });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.refreshTriggers();
   assert.equal(
@@ -376,10 +390,10 @@ test("refreshTriggers: fetches the internal active-list route with the correct U
 // --- refreshTriggers: metric-snapshot refresh (#6746/#6747) -----------------
 
 test("refreshTriggers: never fetches the metric snapshot when no active trigger has a condition", async () => {
-  const calledUrls = [];
+  const calledUrls: string[] = [];
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (url) => {
         calledUrls.push(String(url));
         return new Response(
@@ -388,7 +402,7 @@ test("refreshTriggers: never fetches the metric snapshot when no active trigger 
         );
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.refreshTriggers();
   assert.equal(calledUrls.length, 1);
@@ -396,10 +410,10 @@ test("refreshTriggers: never fetches the metric snapshot when no active trigger 
 });
 
 test("refreshTriggers: fetches the dereg-risk snapshot route when an active trigger has a condition, and populates the snapshot", async () => {
-  const calledUrls = [];
+  const calledUrls: string[] = [];
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (url) => {
         const s = String(url);
         calledUrls.push(s);
@@ -431,7 +445,7 @@ test("refreshTriggers: fetches the dereg-risk snapshot route when an active trig
         );
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.refreshTriggers();
   assert.equal(calledUrls.length, 2);
@@ -446,11 +460,11 @@ test("refreshTriggers: fetches the dereg-risk snapshot route when an active trig
 });
 
 test("refreshTriggers: the metric-snapshot fetch carries the internal token header and a bounded AbortSignal", async () => {
-  let receivedToken;
-  let receivedSignal;
+  let receivedToken: string | undefined;
+  let receivedSignal: AbortSignal | undefined;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (url, init) => {
         const s = String(url);
         if (s.includes("alert-triggers-active")) {
@@ -477,7 +491,7 @@ test("refreshTriggers: the metric-snapshot fetch carries the internal token head
         );
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.refreshTriggers();
   assert.equal(receivedToken, INTERNAL_TOKEN);
@@ -486,8 +500,8 @@ test("refreshTriggers: the metric-snapshot fetch carries the internal token head
 
 test("refreshTriggers: a failed metric-snapshot fetch keeps the stale/empty snapshot, never throws", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (url) => {
         const s = String(url);
         if (s.includes("alert-triggers-active")) {
@@ -509,7 +523,7 @@ test("refreshTriggers: a failed metric-snapshot fetch keeps the stale/empty snap
         throw new Error("network down");
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await assert.doesNotReject(() => hub.refreshTriggers());
   assert.equal(hub.metricSnapshot.subnetAlphaPriceRank.size, 0);
@@ -518,8 +532,8 @@ test("refreshTriggers: a failed metric-snapshot fetch keeps the stale/empty snap
 
 test("refreshTriggers: a non-ok metric-snapshot response keeps the stale/empty snapshot", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (url) => {
         const s = String(url);
         if (s.includes("alert-triggers-active")) {
@@ -541,45 +555,45 @@ test("refreshTriggers: a non-ok metric-snapshot response keeps the stale/empty s
         return new Response("", { status: 500 });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.refreshTriggers();
   assert.equal(hub.metricSnapshot.subnetAlphaPriceRank.size, 0);
 });
 
 test("refreshMetricSnapshot: a no-op when DATA_API/token is unbound, called directly (own defensive guard, independent of refreshTriggers' own check)", async () => {
-  const hub = new AlerterHub({}, {});
+  const hub = new AlerterHub(STATE, mockEnv());
   await assert.doesNotReject(() => hub.refreshMetricSnapshot());
   assert.equal(hub.metricSnapshot.subnetAlphaPriceRank.size, 0);
 });
 
 test("refreshTriggers: the DATA_API fetch carries a bounded AbortSignal so a slow Postgres query can't stall ChainFirehoseHub's own broadcast()-wide wait", async () => {
-  let receivedSignal;
+  let receivedSignal: AbortSignal | undefined;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (_url, init) => {
         receivedSignal = init.signal;
         return new Response(JSON.stringify({ triggers: [] }), { status: 200 });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.refreshTriggers();
   assert.ok(receivedSignal instanceof AbortSignal);
-  assert.equal(receivedSignal.aborted, false);
+  assert.equal(receivedSignal!.aborted, false);
 });
 
 test("refreshTriggers: keeps the stale cache when the upstream response is not ok", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(
         async () =>
           new Response(JSON.stringify({ error: "nope" }), { status: 500 }),
       ),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   hub.triggers = [triggerRow({ id: "existing" })];
   await hub.refreshTriggers();
@@ -589,8 +603,8 @@ test("refreshTriggers: keeps the stale cache when the upstream response is not o
 
 test("refreshTriggers: keeps the stale cache when the body's triggers field isn't an array", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(
         async () =>
           new Response(JSON.stringify({ triggers: "not-an-array" }), {
@@ -598,7 +612,7 @@ test("refreshTriggers: keeps the stale cache when the body's triggers field isn'
           }),
       ),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   hub.triggers = [triggerRow({ id: "existing" })];
   await hub.refreshTriggers();
@@ -607,13 +621,13 @@ test("refreshTriggers: keeps the stale cache when the body's triggers field isn'
 
 test("refreshTriggers: keeps the stale cache and never throws when the fetch itself rejects", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         throw new Error("network down");
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   hub.triggers = [triggerRow({ id: "existing" })];
   await assert.doesNotReject(() => hub.refreshTriggers());
@@ -622,13 +636,13 @@ test("refreshTriggers: keeps the stale cache and never throws when the fetch its
 
 test("refreshTriggers: keeps the stale cache and never throws when upstream.json() itself throws", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(
         async () => new Response("not json", { status: 200 }),
       ),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   hub.triggers = [triggerRow({ id: "existing" })];
   await assert.doesNotReject(() => hub.refreshTriggers());
@@ -639,8 +653,8 @@ test("refreshTriggers: keeps the stale cache and never throws when upstream.json
 
 test("refreshTriggers: prunes lastDeliveredAt entries for trigger ids no longer present in the fresh triggers list", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(
         async () =>
           new Response(
@@ -649,7 +663,7 @@ test("refreshTriggers: prunes lastDeliveredAt entries for trigger ids no longer 
           ),
       ),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   // "1" is still active after the refresh; "2" and "3" are stale (deleted
   // or deactivated triggers whose rate-limit bookkeeping should not live
@@ -663,14 +677,14 @@ test("refreshTriggers: prunes lastDeliveredAt entries for trigger ids no longer 
 
 test("refreshTriggers: never prunes lastDeliveredAt when the refresh fails (stale cache kept, not the trigger of a fetch that didn't happen)", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(
         async () =>
           new Response(JSON.stringify({ error: "nope" }), { status: 500 }),
       ),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   hub.lastDeliveredAt.set("stale-but-untouched", Date.now());
   await hub.refreshTriggers();
@@ -678,7 +692,7 @@ test("refreshTriggers: never prunes lastDeliveredAt when the refresh fails (stal
 });
 
 test("refreshTriggers: never prunes lastDeliveredAt when DATA_API/token is unbound (refresh skipped entirely)", async () => {
-  const hub = new AlerterHub({}, {});
+  const hub = new AlerterHub(STATE, mockEnv());
   hub.lastDeliveredAt.set("untouched", Date.now());
   await hub.refreshTriggers();
   assert.equal(hub.lastDeliveredAt.has("untouched"), true);
@@ -689,14 +703,14 @@ test("refreshTriggers: never prunes lastDeliveredAt when DATA_API/token is unbou
 test("ensureTriggersLoaded: refreshes when the cache is stale", async () => {
   let calls = 0;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         calls += 1;
         return new Response(JSON.stringify({ triggers: [] }), { status: 200 });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.ensureTriggersLoaded();
   assert.equal(calls, 1);
@@ -705,14 +719,14 @@ test("ensureTriggersLoaded: refreshes when the cache is stale", async () => {
 test("ensureTriggersLoaded: skips the refresh entirely once the cache is fresh", async () => {
   let calls = 0;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         calls += 1;
         return new Response(JSON.stringify({ triggers: [] }), { status: 200 });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.ensureTriggersLoaded();
   await hub.ensureTriggersLoaded();
@@ -721,10 +735,10 @@ test("ensureTriggersLoaded: skips the refresh entirely once the cache is fresh",
 
 test("ensureTriggersLoaded: coalesces concurrent stale-cache calls into ONE refresh", async () => {
   let calls = 0;
-  let resolveFetch;
+  let resolveFetch: (() => void) | undefined;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(
         () =>
           new Promise((resolve) => {
@@ -738,11 +752,11 @@ test("ensureTriggersLoaded: coalesces concurrent stale-cache calls into ONE refr
           }),
       ),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   const first = hub.ensureTriggersLoaded();
   const second = hub.ensureTriggersLoaded();
-  resolveFetch();
+  resolveFetch!();
   await Promise.all([first, second]);
   assert.equal(calls, 1);
 });
@@ -750,7 +764,7 @@ test("ensureTriggersLoaded: coalesces concurrent stale-cache calls into ONE refr
 // --- matchingTriggers / evaluate -----------------------------------------------
 
 test("matchingTriggers: filters the cache via triggerMatchesEvent", () => {
-  const hub = new AlerterHub({}, {});
+  const hub = new AlerterHub(STATE, mockEnv());
   hub.triggers = [
     triggerRow({ id: "1", netuid: 7 }),
     triggerRow({ id: "2", netuid: 8 }),
@@ -763,7 +777,7 @@ test("matchingTriggers: filters the cache via triggerMatchesEvent", () => {
 });
 
 test("matchingTriggers: a condition trigger matches against the hub's own cached metricSnapshot", () => {
-  const hub = new AlerterHub({}, {});
+  const hub = new AlerterHub(STATE, mockEnv());
   hub.triggers = [
     triggerRow({
       id: "1",
@@ -789,8 +803,8 @@ test("matchingTriggers: a condition trigger matches against the hub's own cached
 test("evaluate: an end-to-end condition trigger delivers when refreshTriggers populates a matching metricSnapshot", async () => {
   const deliver = vi.fn().mockResolvedValue(true);
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (url) => {
         const s = String(url);
         if (s.includes("alert-triggers-active")) {
@@ -821,7 +835,7 @@ test("evaluate: an end-to-end condition trigger delivers when refreshTriggers po
         );
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
     { deliver },
   );
   const result = await hub.evaluate({ table: "account_events", netuid: 7 });
@@ -832,7 +846,7 @@ test("evaluate: an end-to-end condition trigger delivers when refreshTriggers po
 
 test("evaluate: returns {matched:0} and never calls deliver when nothing matches", async () => {
   const deliver = vi.fn();
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [triggerRow({ netuid: 7 })];
   hub.triggersLoadedAt = Date.now(); // fresh -- skip the refresh path
   const result = await hub.evaluate({ table: "account_events", netuid: 99 });
@@ -842,7 +856,7 @@ test("evaluate: returns {matched:0} and never calls deliver when nothing matches
 
 test("evaluate: reports every matching trigger and calls deliver once per match", async () => {
   const deliver = vi.fn().mockResolvedValue(true);
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [
     triggerRow({ id: "1", netuid: 7 }),
     triggerRow({ id: "2", netuid: 7 }),
@@ -852,7 +866,7 @@ test("evaluate: reports every matching trigger and calls deliver once per match"
   const payload = { table: "account_events", netuid: 7 };
   const result = await hub.evaluate(payload);
   assert.equal(result.matched, 2);
-  assert.deepEqual(result.trigger_ids.sort(), ["1", "2"]);
+  assert.deepEqual(result.trigger_ids!.sort(), ["1", "2"]);
   assert.equal(result.delivered, 2);
   assert.equal(result.rate_limited, 0);
   assert.equal(deliver.mock.calls.length, 2);
@@ -861,7 +875,7 @@ test("evaluate: reports every matching trigger and calls deliver once per match"
 
 test("evaluate: a burst of matches for the SAME trigger within the rate-limit window delivers once and skips the rest", async () => {
   const deliver = vi.fn().mockResolvedValue(true);
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [triggerRow({ netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const payload = { table: "account_events", netuid: 7 };
@@ -880,7 +894,7 @@ test("evaluate: a burst of matches for the SAME trigger within the rate-limit wi
 
 test("evaluate: a DIFFERENT trigger's match is never rate-limited by another trigger's recent delivery", async () => {
   const deliver = vi.fn().mockResolvedValue(true);
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [
     triggerRow({ id: "1", netuid: 7 }),
     triggerRow({ id: "2", netuid: 7 }),
@@ -897,7 +911,7 @@ test("evaluate: a DIFFERENT trigger's match is never rate-limited by another tri
 
 test("evaluate: once the rate-limit window elapses, the same trigger can deliver again", async () => {
   const deliver = vi.fn().mockResolvedValue(true);
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const payload = { table: "account_events", netuid: 7 };
@@ -913,7 +927,7 @@ test("evaluate: once the rate-limit window elapses, the same trigger can deliver
 
 test("evaluate: a rejecting deliver call never fails the overall evaluation, and rolls back the rate-limit exactly like an explicit false return (#5023)", async () => {
   const deliver = vi.fn().mockRejectedValue(new Error("delivery exploded"));
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const result = await hub.evaluate({ table: "account_events", netuid: 7 });
@@ -929,7 +943,7 @@ test("evaluate: a rejecting deliver call never fails the overall evaluation, and
 
 test("evaluate: an explicit `false` return from deliver rolls back the optimistic rate-limit set (no prior entry -> deleted outright)", async () => {
   const deliver = vi.fn().mockResolvedValue(false);
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const result = await hub.evaluate({ table: "account_events", netuid: 7 });
@@ -939,7 +953,7 @@ test("evaluate: an explicit `false` return from deliver rolls back the optimisti
 
 test("evaluate: a failed delivery lets the VERY NEXT matching event retry immediately instead of waiting out the rate-limit window", async () => {
   const deliver = vi.fn().mockResolvedValue(false);
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const payload = { table: "account_events", netuid: 7 };
@@ -958,7 +972,7 @@ test("evaluate: a failed delivery lets the VERY NEXT matching event retry immedi
 
 test("evaluate: a failed delivery rolls back to the PRIOR timestamp (not a full delete) when an earlier successful delivery already set one", async () => {
   const deliver = vi.fn();
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const oldTimestamp = Date.now() - 10 * 60 * 1000; // well outside the window
@@ -976,31 +990,31 @@ test("evaluate: a failed delivery rolls back to the PRIOR timestamp (not a full 
 
 test("evaluate: a SUCCESSFUL delivery keeps the optimistic set in place (no rollback)", async () => {
   const deliver = vi.fn().mockResolvedValue(true);
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const before = Date.now();
   await hub.evaluate({ table: "account_events", netuid: 7 });
-  assert.ok(hub.lastDeliveredAt.get("1") >= before);
+  assert.ok(hub.lastDeliveredAt.get("1")! >= before);
 });
 
 test("evaluate: caps the delivery fan-out at ALERT_DELIVERY_CONCURRENCY (8) in-flight deliveries -- a broad-condition trigger set matching MANY distinct triggers on one event must not open one outbound fetch per match", async () => {
   const TRIGGER_COUNT = 20;
   let inFlight = 0;
   let maxInFlight = 0;
-  const resolvers = [];
+  const resolvers: Array<() => void> = [];
   const deliver = vi.fn(
     () =>
-      new Promise((resolve) => {
+      new Promise<boolean>((resolve) => {
         inFlight += 1;
         maxInFlight = Math.max(maxInFlight, inFlight);
         resolvers.push(() => {
           inFlight -= 1;
-          resolve();
+          resolve(true);
         });
       }),
   );
-  const hub = new AlerterHub({}, {}, { deliver });
+  const hub = new AlerterHub(STATE, mockEnv(), { deliver });
   hub.triggers = Array.from({ length: TRIGGER_COUNT }, (_, i) =>
     triggerRow({ id: String(i), netuid: 7 }),
   );
@@ -1030,8 +1044,8 @@ test("evaluate: caps the delivery fan-out at ALERT_DELIVERY_CONCURRENCY (8) in-f
 test("evaluate: triggers a refresh first when the cache is stale", async () => {
   let refreshed = false;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         refreshed = true;
         return new Response(
@@ -1040,7 +1054,7 @@ test("evaluate: triggers a refresh first when the cache is stale", async () => {
         );
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   const result = await hub.evaluate({ table: "account_events", netuid: 7 });
   assert.equal(refreshed, true);
@@ -1051,8 +1065,8 @@ test("evaluate: triggers a refresh first when the cache is stale", async () => {
 
 test("writeBackMatchCounts: no-op when DATA_API is unbound", async () => {
   const hub = new AlerterHub(
-    {},
-    { ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN },
+    STATE,
+    mockEnv({ ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN }),
   );
   await assert.doesNotReject(() => hub.writeBackMatchCounts(["1"]));
 });
@@ -1060,13 +1074,13 @@ test("writeBackMatchCounts: no-op when DATA_API is unbound", async () => {
 test("writeBackMatchCounts: no-op when ALERT_TRIGGERS_INTERNAL_TOKEN is unset", async () => {
   let called = false;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         called = true;
         return new Response(null, { status: 200 });
       }),
-    },
+    }),
   );
   await hub.writeBackMatchCounts(["1"]);
   assert.equal(called, false);
@@ -1075,55 +1089,55 @@ test("writeBackMatchCounts: no-op when ALERT_TRIGGERS_INTERNAL_TOKEN is unset", 
 test("writeBackMatchCounts: no-op when triggerIds is empty", async () => {
   let called = false;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         called = true;
         return new Response(null, { status: 200 });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.writeBackMatchCounts([]);
   assert.equal(called, false);
 });
 
 test("writeBackMatchCounts: POSTs the matched trigger ids with the correct URL/header/body/timeout", async () => {
-  let received;
+  let received: Row | undefined;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (url, init) => {
         received = { url: String(url), init };
         return new Response(null, { status: 200 });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await hub.writeBackMatchCounts(["1", "2"]);
   assert.equal(
-    received.url,
+    received!.url,
     "https://data-api.internal/api/v1/internal/alert-triggers/matched",
   );
-  assert.equal(received.init.method, "POST");
+  assert.equal(received!.init.method, "POST");
   assert.equal(
-    received.init.headers["x-alert-triggers-internal-token"],
+    received!.init.headers["x-alert-triggers-internal-token"],
     INTERNAL_TOKEN,
   );
-  assert.deepEqual(JSON.parse(received.init.body), {
+  assert.deepEqual(JSON.parse(received!.init.body), {
     trigger_ids: ["1", "2"],
   });
-  assert.ok(received.init.signal instanceof AbortSignal);
+  assert.ok(received!.init.signal instanceof AbortSignal);
 });
 
 test("writeBackMatchCounts: logs but never throws on a non-ok response", async () => {
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => new Response(null, { status: 500 })),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await assert.doesNotReject(() => hub.writeBackMatchCounts(["1"]));
   assert.equal(errorSpy.mock.calls.length, 1);
@@ -1133,13 +1147,13 @@ test("writeBackMatchCounts: logs but never throws on a non-ok response", async (
 
 test("writeBackMatchCounts: never throws when the fetch itself rejects (network error / AbortSignal timeout)", async () => {
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         throw new Error("timeout");
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
   );
   await assert.doesNotReject(() => hub.writeBackMatchCounts(["1"]));
 });
@@ -1147,17 +1161,17 @@ test("writeBackMatchCounts: never throws when the fetch itself rejects (network 
 // --- evaluate: write-back integration (#5022) ----------------------------------
 
 test("evaluate: writes back the FULL matched trigger id list, including a match that was rate-limited (not just the ones that clear it)", async () => {
-  let receivedBody;
+  let receivedBody: Row | undefined;
   const deliver = vi.fn().mockResolvedValue(true);
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async (_url, init) => {
         receivedBody = JSON.parse(init.body);
         return new Response(null, { status: 200 });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
     { deliver },
   );
   hub.triggers = [
@@ -1169,27 +1183,27 @@ test("evaluate: writes back the FULL matched trigger id list, including a match 
   const result = await hub.evaluate({ table: "account_events", netuid: 7 });
   assert.equal(result.rate_limited, 1);
   assert.equal(result.delivered, 1);
-  assert.deepEqual(receivedBody.trigger_ids.sort(), ["1", "2"]);
+  assert.deepEqual(receivedBody!.trigger_ids.sort(), ["1", "2"]);
 });
 
 test("evaluate: the delivery fan-out and the match-count write-back run CONCURRENTLY, not sequentially", async () => {
-  let resolveDelivery;
+  let resolveDelivery: (() => void) | undefined;
   const deliver = vi.fn(
     () =>
-      new Promise((resolve) => {
+      new Promise<boolean>((resolve) => {
         resolveDelivery = () => resolve(true);
       }),
   );
   let writebackObserved = false;
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         writebackObserved = true;
         return new Response(null, { status: 200 });
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
     { deliver },
   );
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
@@ -1201,20 +1215,20 @@ test("evaluate: the delivery fan-out and the match-count write-back run CONCURRE
   // deliberately held open below.
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(writebackObserved, true);
-  resolveDelivery();
+  resolveDelivery!();
   await evaluatePromise;
 });
 
 test("evaluate: a write-back failure never affects the evaluate() response shape", async () => {
   const deliver = vi.fn().mockResolvedValue(true);
   const hub = new AlerterHub(
-    {},
-    {
+    STATE,
+    mockEnv({
       DATA_API: fakeDataApi(async () => {
         throw new Error("data-api unreachable");
       }),
       ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
-    },
+    }),
     { deliver },
   );
   hub.triggers = [triggerRow({ id: "1", netuid: 7 })];
@@ -1231,7 +1245,7 @@ test("evaluate: a write-back failure never affects the evaluate() response shape
 // --- fetch (the /evaluate route) -----------------------------------------------
 
 test("fetch: POST /evaluate with a valid JSON body returns the evaluate() result", async () => {
-  const hub = new AlerterHub({}, {});
+  const hub = new AlerterHub(STATE, mockEnv());
   hub.triggers = [triggerRow({ netuid: 7 })];
   hub.triggersLoadedAt = Date.now();
   const res = await hub.fetch(
@@ -1250,7 +1264,7 @@ test("fetch: POST /evaluate with a valid JSON body returns the evaluate() result
 });
 
 test("fetch: POST /evaluate with malformed JSON returns 400", async () => {
-  const hub = new AlerterHub({}, {});
+  const hub = new AlerterHub(STATE, mockEnv());
   const res = await hub.fetch(
     new Request("https://alerter-hub.internal/evaluate", {
       method: "POST",
@@ -1261,13 +1275,13 @@ test("fetch: POST /evaluate with malformed JSON returns 400", async () => {
 });
 
 test("fetch: an unrecognized path 404s", async () => {
-  const hub = new AlerterHub({}, {});
+  const hub = new AlerterHub(STATE, mockEnv());
   const res = await hub.fetch(new Request("https://alerter-hub.internal/nope"));
   assert.equal(res.status, 404);
 });
 
 test("fetch: GET /evaluate (wrong method) 404s", async () => {
-  const hub = new AlerterHub({}, {});
+  const hub = new AlerterHub(STATE, mockEnv());
   const res = await hub.fetch(
     new Request("https://alerter-hub.internal/evaluate"),
   );

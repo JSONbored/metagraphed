@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import * as listQuery from "../workers/list-query.ts";
 import {
   ADAPTER_CANDIDATES_ARTIFACT,
@@ -12,6 +12,10 @@ import {
   loadAdapterCandidatesList,
 } from "../src/adapter-candidates-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -36,12 +40,12 @@ const SAMPLE_BLOB = {
   ],
 };
 
-function readArtifact(_env, path) {
+const readArtifact = ((_env: Row, path: string) => {
   if (path === ADAPTER_CANDIDATES_ARTIFACT) {
     return Promise.resolve({ ok: true, data: SAMPLE_BLOB });
   }
   return Promise.resolve({ ok: false, code: "artifact_not_found" });
-}
+}) as unknown as ReadArtifact;
 
 describe("adapter-candidates-mcp", () => {
   test("adapterCandidatesMcpError is shaped for MCP toolError handling", () => {
@@ -78,46 +82,46 @@ describe("adapter-candidates-mcp", () => {
   test("adapterCandidatesQueryUrl rejects invalid operational_kinds", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ operational_kinds: "bogus" }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("adapterCandidatesQueryUrl rejects invalid recommended_adapter_kind", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ recommended_adapter_kind: "bogus" }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("adapterCandidatesQueryUrl rejects invalid netuid", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ netuid: -1 }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("adapterCandidatesQueryUrl rejects invalid sort", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ sort: "not_a_column" }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("adapterCandidatesQueryUrl rejects non-string fields and invalid order", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ fields: 42 }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
     assert.throws(
       () => adapterCandidatesQueryUrl({ order: "sideways" }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("adapterCandidatesQueryUrl rejects empty fields projection", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ fields: "   " }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
@@ -141,21 +145,21 @@ describe("adapter-candidates-mcp", () => {
   test("adapterCandidatesQueryUrl rejects a fractional netuid", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ netuid: 1.5 }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("adapterCandidatesQueryUrl rejects a fractional cursor", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ cursor: 1.5 }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("adapterCandidatesQueryUrl rejects negative cursor", () => {
     assert.throws(
       () => adapterCandidatesQueryUrl({ cursor: -1 }),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
@@ -166,7 +170,7 @@ describe("adapter-candidates-mcp", () => {
 
   test("loadAdapterCandidatesList returns filtered rows with pagination meta", async () => {
     const out = await loadAdapterCandidatesList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact },
       { operational_kinds: "openapi" },
     );
     assert.equal(out.returned, 1);
@@ -176,7 +180,7 @@ describe("adapter-candidates-mcp", () => {
 
   test("loadAdapterCandidatesList sorts and pages the collection", async () => {
     const out = await loadAdapterCandidatesList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact },
       { sort: "priority_score", order: "desc", limit: 1 },
     );
     assert.equal(out.returned, 1);
@@ -187,17 +191,22 @@ describe("adapter-candidates-mcp", () => {
 
   test("loadAdapterCandidatesList uses an injected readArtifact dep", async () => {
     const out = await loadAdapterCandidatesList(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+      {
+        env: mockEnv(),
+        readArtifact: (async () => ({
+          ok: false,
+        })) as unknown as ReadArtifact,
+      },
       {},
       {
-        readArtifact: async () => ({
+        readArtifact: (async () => ({
           ok: true,
           data: {
             candidates: [
               { netuid: 0, recommended_adapter_kind: "custom-adapter" },
             ],
           },
-        }),
+        })) as unknown as ReadArtifact,
       },
     );
     assert.equal(out.candidates[0].netuid, 0);
@@ -208,15 +217,15 @@ describe("adapter-candidates-mcp", () => {
       () =>
         loadAdapterCandidatesList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_not_found",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      ((err: Row) => err.code === "not_found") as AnyFn,
     );
   });
 
@@ -225,17 +234,17 @@ describe("adapter-candidates-mcp", () => {
       () =>
         loadAdapterCandidatesList(
           {
-            env: {},
-            readArtifact: async () => ({
+            env: mockEnv(),
+            readArtifact: (async () => ({
               ok: false,
               code: "artifact_timeout",
-            }),
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) =>
+      ((err: Row) =>
         err.code === "artifact_timeout" &&
-        /adapter-candidates\.json/.test(err.message),
+        /adapter-candidates\.json/.test(err.message)) as AnyFn,
     );
   });
 
@@ -243,16 +252,16 @@ describe("adapter-candidates-mcp", () => {
     await assert.rejects(
       () =>
         loadAdapterCandidatesList(
-          { env: {}, readArtifact },
+          { env: mockEnv(), readArtifact },
           { fields: "not_a_column" },
         ),
-      (err) => err.code === "invalid_params",
+      ((err: Row) => err.code === "invalid_params") as AnyFn,
     );
   });
 
   test("loadAdapterCandidatesList projects row fields when requested", async () => {
     const out = await loadAdapterCandidatesList(
-      { env: {}, readArtifact },
+      { env: mockEnv(), readArtifact },
       { fields: "netuid,priority_score", limit: 1 },
     );
     assert.deepEqual(out.candidates[0], { netuid: 7, priority_score: 88 });
@@ -261,11 +270,11 @@ describe("adapter-candidates-mcp", () => {
   test("loadAdapterCandidatesList omits nullable artifact metadata when absent", async () => {
     const out = await loadAdapterCandidatesList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { candidates: [{ netuid: 0, priority_score: 1 }] },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -276,11 +285,11 @@ describe("adapter-candidates-mcp", () => {
   test("loadAdapterCandidatesList treats a non-array candidates key as empty", async () => {
     const out = await loadAdapterCandidatesList(
       {
-        env: {},
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({
           ok: true,
           data: { candidates: null },
-        }),
+        })) as unknown as ReadArtifact,
       },
       {},
     );
@@ -295,7 +304,7 @@ describe("adapter-candidates-mcp", () => {
     });
     try {
       const out = await loadAdapterCandidatesList(
-        { env: {}, readArtifact },
+        { env: mockEnv(), readArtifact },
         {},
       );
       assert.equal(out.total, 2);
@@ -315,12 +324,15 @@ describe("adapter-candidates-mcp", () => {
       () =>
         loadAdapterCandidatesList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: true, data: null }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: true,
+              data: null,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "not_found",
+      ((err: Row) => err.code === "not_found") as AnyFn,
     );
   });
 
@@ -329,12 +341,14 @@ describe("adapter-candidates-mcp", () => {
       () =>
         loadAdapterCandidatesList(
           {
-            env: {},
-            readArtifact: async () => ({ ok: false }),
+            env: mockEnv(),
+            readArtifact: (async () => ({
+              ok: false,
+            })) as unknown as ReadArtifact,
           },
           {},
         ),
-      (err) => err.code === "artifact_unavailable",
+      ((err: Row) => err.code === "artifact_unavailable") as AnyFn,
     );
   });
 

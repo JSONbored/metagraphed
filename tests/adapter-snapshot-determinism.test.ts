@@ -4,11 +4,12 @@ import {
   stripObservationTimestamps,
   committedSnapshotIsCurrent,
 } from "../scripts/snapshot-adapters.ts";
+import type { Row } from "./row-type.ts";
 
 // A snapshot shaped like the committed registry/adapters/latest/*.json files:
 // a top-level generated_at plus per-dimension and per-schema captured_at, with
 // a carried-forward metadata_as_of.
-function sampleSnapshot(stamp, { repoCount = 2 } = {}) {
+function sampleSnapshot(stamp: string, { repoCount = 2 } = {}) {
   return {
     slug: "sn-22",
     netuid: 22,
@@ -34,7 +35,7 @@ describe("snapshot-adapters — observation-timestamp determinism", () => {
   test("stripObservationTimestamps nulls every timestamp at any depth", () => {
     const stripped = stripObservationTimestamps(
       sampleSnapshot("2026-06-14T00:00:00.000Z"),
-    );
+    ) as Row;
     assert.equal(stripped.generated_at, null);
     assert.equal(stripped.dimensions.openapi_schemas.captured_at, null);
     assert.equal(
