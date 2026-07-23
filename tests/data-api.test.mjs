@@ -12,6 +12,7 @@ import {
   identityHash as subnetIdentityHash,
   identitySnapshotFromProfile,
 } from "../src/subnet-identity-history.ts";
+import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 
 const sqlCalls = vi.hoisted(() => []);
 const sqlBeginOptions = vi.hoisted(() => []);
@@ -54,6 +55,11 @@ const rollupFailure = vi.hoisted(() => ({ error: null }));
 const subnetHyperparamsSyncFailure = vi.hoisted(() => ({ error: null }));
 const subnetHyperparamsPruneRows = vi.hoisted(() => ({ current: [] }));
 const subnetHyperparamsLatestHashes = vi.hoisted(() => ({ current: [] }));
+// State for the subnet-locks-sync write route's tests only (metagraphed#7758
+// -- this route had zero existing coverage; added the minimal failure-path
+// test needed to cover captureDataApiError's new PostHog wiring at this
+// site, mirroring the fixture shape every sibling sync route above uses).
+const subnetLocksSyncFailure = vi.hoisted(() => ({ error: null }));
 // State for the account-identity-sync write route's tests only (#4832
 // gap-closure). No prune-rows hook -- unlike subnet_hyperparams, this table
 // has no purge step (see handleAccountIdentitySync's own header comment).
@@ -212,6 +218,12 @@ vi.mock("postgres", () => ({
         /INSERT INTO subnet_hyperparams\b/.test(text)
       ) {
         return Promise.reject(subnetHyperparamsSyncFailure.error);
+      }
+      if (
+        subnetLocksSyncFailure.error &&
+        /INSERT INTO subnet_locks\b/.test(text)
+      ) {
+        return Promise.reject(subnetLocksSyncFailure.error);
       }
       if (
         accountIdentitySyncFailure.error &&
@@ -408,6 +420,7 @@ const NEURONS_SYNC_SECRET = "test-neurons-sync-secret";
 const NEURON_DAILY_BACKFILL_SECRET = "test-neuron-daily-backfill-secret";
 const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
 const SUBNET_HYPERPARAMS_SYNC_SECRET = "test-subnet-hyperparams-sync-secret";
+const SUBNET_LOCKS_SYNC_SECRET = "test-subnet-locks-sync-secret";
 const ACCOUNT_IDENTITY_SYNC_SECRET = "test-account-identity-sync-secret";
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET =
   "test-validator-nominator-counts-sync-secret";
@@ -423,6 +436,7 @@ const env = {
   NEURON_DAILY_BACKFILL_SECRET,
   ROLLUP_SYNC_SECRET,
   SUBNET_HYPERPARAMS_SYNC_SECRET,
+  SUBNET_LOCKS_SYNC_SECRET,
   ACCOUNT_IDENTITY_SYNC_SECRET,
   VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
   SUBNET_IDENTITY_SYNC_SECRET,
@@ -448,6 +462,7 @@ beforeEach(() => {
   subnetHyperparamsSyncFailure.error = null;
   subnetHyperparamsPruneRows.current = [];
   subnetHyperparamsLatestHashes.current = [];
+  subnetLocksSyncFailure.error = null;
   accountIdentitySyncFailure.error = null;
   accountIdentityLatestHashes.current = [];
   validatorNominatorCountsSyncFailure.error = null;
@@ -3381,6 +3396,47 @@ test("neurons-sync maps a DB failure to a clean 502 instead of throwing", async 
   expect((await res.json()).error).toBe("write failed");
 });
 
+// metagraphed#7758: captureDataApiError now also posts a PostHog $exception
+// alongside the existing Sentry.captureException, for every one of this
+// file's 26 sync/query error sites -- this is the one representative case
+// proving the (mechanically identical) wiring pattern actually works
+// end-to-end, since all 26 share this exact catch-block shape. Uses a
+// one-off env/ctx (not the shared module-level `env`/`req`) so the other
+// ~500 tests in this file stay on the unconfigured, PostHog-silent path.
+test("neurons-sync's DB failure also reaches PostHog as $exception, tagged with the route", async () => {
+  neuronsSyncFailure.error = new Error("connection reset");
+  const posted = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    posted.push({ url, body: JSON.parse(init.body) });
+    return { ok: true };
+  };
+  try {
+    const res = await worker.fetch(
+      new Request("https://d/api/v1/internal/neurons-sync", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-neurons-sync-token": NEURONS_SYNC_SECRET,
+        },
+        body: JSON.stringify([neuronSyncRow()]),
+      }),
+      { ...env, [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+      ctx,
+    );
+    expect(res.status).toBe(502);
+    expect(posted.length).toBe(1);
+    expect(posted[0].body.event).toBe("$exception");
+    expect(posted[0].body.properties.route).toBe("neurons-sync");
+    expect(posted[0].body.properties.error_code).toBe("internal_error");
+    expect(posted[0].body.properties.$exception_list[0].value).toBe(
+      "connection reset",
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 // POST /api/v1/internal/backfill-neuron-daily -- deep-history ingest for
 // scripts/backfill-neuron-history.py and scripts/backfill-stake-monthly.py
 // (workers/data-api.mjs's handleNeuronDailyBackfill). Same row shape as
@@ -5044,6 +5100,35 @@ test("subnet-hyperparams-sync maps a DB failure to a clean 502 instead of throwi
   subnetHyperparamsSyncFailure.error = new Error("connection reset");
   const res = await postSubnetHyperparams([hyperparamsSyncRow()], {
     secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(502);
+  expect((await res.json()).error).toBe("write failed");
+});
+
+// metagraphed#7758: subnet-locks-sync had no coverage at all before this --
+// added the minimal failure-path test needed to cover captureDataApiError's
+// new (await ..., env) call at this site, mirroring every sibling
+// "maps a DB failure to a clean 502" test above.
+test("subnet-locks-sync maps a DB failure to a clean 502 instead of throwing", async () => {
+  subnetLocksSyncFailure.error = new Error("connection reset");
+  const res = await req("/api/v1/internal/subnet-locks-sync", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-subnet-locks-sync-token": SUBNET_LOCKS_SYNC_SECRET,
+    },
+    body: JSON.stringify([
+      {
+        netuid: 1,
+        hotkey: "5FakeHotkeyAddress",
+        is_owner: true,
+        is_perpetual: false,
+        locked_mass: 1000,
+        conviction_bits: "12345",
+        last_update: 100,
+        captured_at: 1_780_000_000_000,
+      },
+    ]),
   });
   expect(res.status).toBe(502);
   expect((await res.json()).error).toBe("write failed");

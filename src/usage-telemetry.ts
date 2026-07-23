@@ -364,3 +364,172 @@ export async function recordMcpInitializeEvent(
     return false;
   }
 }
+
+// Error tracking via PostHog's manual/raw $exception capture (#7758). No SDK
+// needed for this either -- PostHog documents a raw capture-API shape for
+// exactly the "no SDK for your platform" case (a real, first-class path, not
+// a hack). The public docs page (posthog.com/docs/api/capture) only
+// summarizes the shape; the exact property names/types below are confirmed
+// against PostHog's own repo (docs/onboarding/error-tracking/api.tsx, the
+// source their public docs render from), including a real example payload.
+// Parallel-run alongside the existing Sentry.captureException call at every
+// site this wires into -- additive, not a replacement (metagraphed#7757 is
+// the consolidation epic; #7766 is the gated Sentry removal, which happens
+// in its own PR once parity is proven, not here).
+
+/** One PostHog `$exception_list` stack frame. `platform`/`lang` are always
+ * "custom"/"javascript" -- PostHog's required marker for a manually built
+ * (non-SDK) frame, not something derived from the actual error. */
+interface ExceptionStackFrame {
+  platform: "custom";
+  lang: "javascript";
+  function: string;
+  filename?: string;
+  lineno?: number;
+  colno?: number;
+  in_app?: boolean;
+}
+
+// Caps how many stack frames get sent -- a runaway recursive error could
+// otherwise produce hundreds of near-identical frames for little value.
+const MAX_EXCEPTION_FRAMES = 30;
+
+// Matches V8's `Error.prototype.stack` frame format (Workers run the same V8
+// engine Node does): "    at functionName (file:line:col)" or
+// "    at file:line:col" for an anonymous/top-level frame. Never throws on
+// an unrecognized line -- it still becomes a frame (the raw text as
+// `function`, no file/line/col) rather than being silently dropped.
+const STACK_FRAME_PATTERN =
+  /^\s*at\s+(?:(.+?)\s+\()?([^()]+):(\d+):(\d+)\)?\s*$/;
+
+function parseStackFrames(stack: string): ExceptionStackFrame[] {
+  // The first line is "ErrorName: message", not a frame.
+  const lines = stack.split("\n").slice(1, MAX_EXCEPTION_FRAMES + 1);
+  const frames: ExceptionStackFrame[] = [];
+  for (const line of lines) {
+    const match = STACK_FRAME_PATTERN.exec(line);
+    if (match) {
+      const [, fn, filename, lineno, colno] = match;
+      frames.push({
+        platform: "custom",
+        lang: "javascript",
+        function: fn?.trim() || "<anonymous>",
+        filename: filename.trim(),
+        lineno: Number(lineno),
+        colno: Number(colno),
+        in_app: !filename.includes("node_modules"),
+      });
+    } else if (line.trim()) {
+      frames.push({
+        platform: "custom",
+        lang: "javascript",
+        function: line.trim(),
+      });
+    }
+  }
+  // PostHog/Sentry's event protocol (this shape is explicitly modeled on
+  // Sentry's) orders frames oldest-call-first -- the LAST entry is where the
+  // exception was thrown. That's the reverse of how V8 prints a stack
+  // (most-recent-call-first), so the parsed order is reversed here to match.
+  return frames.reverse();
+}
+
+/** Inputs for a captured exception. `error` is the raw caught value -- this
+ * module extracts type/message/stack itself, callers never format it.
+ * `route`/`mcpTool` mirror UsageEvent's own fields (same vocabulary, so
+ * insights can filter consistently across usage_event/$mcp_tool_call/
+ * $exception) and double as the fingerprint's grouping key. */
+export interface ExceptionEvent {
+  error: unknown;
+  route?: string;
+  mcpTool?: string;
+  errorCode?: string;
+}
+
+function exceptionListEntry(error: unknown): {
+  type: string;
+  entry: Record<string, unknown>;
+} {
+  const isError = error instanceof Error;
+  const type =
+    sanitizeLabel(isError && error.name ? error.name : "Error") ?? "Error";
+  const rawMessage = isError ? error.message : String(error);
+  const value = sanitizeLabel(rawMessage) ?? "(no message)";
+  const frames =
+    isError && typeof error.stack === "string"
+      ? parseStackFrames(error.stack)
+      : [];
+  return {
+    type,
+    entry: {
+      type,
+      value,
+      // Every capture site wraps a genuinely caught (try/catch), non-fatal
+      // fault -- never an uncaught/fatal one (those reach Sentry only, via
+      // the existing withSentry() wrap this module has no visibility into).
+      mechanism: { handled: true, synthetic: false },
+      stacktrace: { type: "raw", frames },
+    },
+  };
+}
+
+/**
+ * Capture one exception as a PostHog `$exception` event. Same no-throw,
+ * no-op-when-unconfigured contract as recordUsageEvent/recordMcpToolCallEvent.
+ *
+ * Message/stack text is NOT run through the key-based redaction
+ * (redactMcpSensitiveFields) that $mcp_parameters/$mcp_response get --
+ * that helper redacts by object KEY name, and an exception message is free
+ * text with no keys to match. Every capture site this wires into is an
+ * unexpected internal fault (not a caller-input-echoing path), and the one
+ * call site that could plausibly embed a credential in an error string
+ * (call_subnet_surface's own fetches) already scrubs it at the source
+ * (redactCredentialValue in src/call-subnet-surface.ts) before it ever
+ * becomes a thrown/logged error -- so there is no known raw-secret vector
+ * into this function, only the general caution free text always deserves.
+ */
+export async function recordExceptionEvent(
+  env: Env | null | undefined,
+  event: ExceptionEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+    if (!event || typeof event !== "object") return false;
+
+    const { type, entry } = exceptionListEntry(event.error);
+    const route = sanitizeLabel(event.route);
+    const mcpTool = sanitizeLabel(event.mcpTool);
+    const properties: Record<string, unknown> = {
+      $exception_list: [entry],
+      // A stable string groups every occurrence of "this site threw this
+      // error type" into one PostHog issue -- matching the route/mcp_tool
+      // tag Sentry already gets at these sites, so the two dashboards read
+      // consistently. Falls back to "unknown" only if neither is supplied.
+      $exception_fingerprint: `${route ?? mcpTool ?? "unknown"}:${type}`,
+    };
+    if (route !== undefined) properties.route = route;
+    if (mcpTool !== undefined) properties.mcp_tool = mcpTool;
+    const errorCode = sanitizeLabel(event.errorCode);
+    if (errorCode !== undefined) properties.error_code = errorCode;
+
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: "$exception",
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
+}

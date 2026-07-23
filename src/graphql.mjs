@@ -8,6 +8,7 @@ import {
 } from "graphql";
 import * as Sentry from "@sentry/cloudflare";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
+import { recordExceptionEvent } from "./usage-telemetry.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
 // and MCP already use) -- not a reimplementation.
@@ -10373,6 +10374,17 @@ export async function handleGraphQLRequest(request, env) {
   for (const fault of genuineFaults) {
     Sentry.captureException(fault.originalError, {
       tags: { route: "graphql" },
+    });
+    // metagraphed#7758: PostHog $exception capture, parallel-run alongside
+    // Sentry above. handleGraphQLRequest has no ExecutionContext (see this
+    // function's own comment in workers/api.mjs), so this is awaited inline
+    // rather than fire-and-forget via waitUntil -- the only real cost is a
+    // little latency on this already-failing response, not silent event
+    // loss from an isolate torn down mid-fetch.
+    await recordExceptionEvent(env, {
+      error: fault.originalError,
+      route: "graphql",
+      errorCode: "graphql_execution_error",
     });
   }
   const errorCode =

@@ -8,6 +8,7 @@ import {
 } from "../src/contracts.mjs";
 import {
   isUsageTelemetryConfigured,
+  recordExceptionEvent,
   recordUsageEvent,
 } from "../src/usage-telemetry.ts";
 import {
@@ -4797,8 +4798,14 @@ async function handleEventsRequest(request, env) {
 // the top-level wrap. Sentry.captureException is a safe no-op with no
 // active client (confirmed live, same as captureDataApiError's own note),
 // which is every test importing this raw handler directly.
-function captureAiRouteError(error, route) {
+// metagraphed#7758: awaited (not waitUntil) -- both call sites are already
+// deep in the catch of an async route handler about to return an error
+// response; there's no separate ExecutionContext threaded down to this
+// helper the way mcp-server.mjs's schedulers have. The cost is a little
+// latency on an already-failing request, not silent event loss.
+async function captureAiRouteError(error, route, env) {
   Sentry.captureException(error, { tags: { route } });
+  await recordExceptionEvent(env, { error, route, errorCode: "ai_error" });
 }
 
 function aiUnavailableResponse() {
@@ -4902,7 +4909,7 @@ async function handleSemanticSearchRequest(request, env, url) {
     logEvent(env, "error", "semantic_search_failed", {
       message: error?.message,
     });
-    captureAiRouteError(error, "semantic_search");
+    await captureAiRouteError(error, "semantic_search", env);
     return errorResponse(
       "ai_error",
       "Semantic search failed. Please retry shortly.",
@@ -4968,7 +4975,7 @@ async function handleAskRequest(request, env) {
       return errorResponse("invalid_request", error.message, 400);
     }
     logEvent(env, "error", "ask_failed", { message: error?.message });
-    captureAiRouteError(error, "ask");
+    await captureAiRouteError(error, "ask", env);
     return errorResponse(
       "ai_error",
       "The answer service failed. Please retry shortly.",

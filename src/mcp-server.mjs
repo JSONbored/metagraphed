@@ -38,6 +38,7 @@
 import * as Sentry from "@sentry/cloudflare";
 import {
   isUsageTelemetryConfigured,
+  recordExceptionEvent,
   recordMcpInitializeEvent,
   recordMcpToolCallEvent,
   recordUsageEvent,
@@ -16315,6 +16316,19 @@ function scheduleMcpInitializeEvent(ctx, event) {
   }
 }
 
+// metagraphed#7758: PostHog $exception capture, parallel-run alongside the
+// existing Sentry.captureException at the same site below. Same
+// waitUntil/no-throw discipline as the schedulers above.
+function scheduleExceptionEvent(ctx, event) {
+  try {
+    const record = ctx?.recordExceptionEvent ?? recordExceptionEvent;
+    const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
 async function dispatchTool(params, ctx) {
   const name = params?.name;
   const tool = typeof name === "string" ? TOOLS_BY_NAME.get(name) : undefined;
@@ -16371,6 +16385,11 @@ async function dispatchTool(params, ctx) {
     // AI degraded to fallback, etc.) and deliberately NOT captured here --
     // only genuinely unexpected faults should page/alert.
     Sentry.captureException(error, { tags: { mcp_tool: name } });
+    scheduleExceptionEvent(ctx, {
+      error,
+      mcpTool: name,
+      errorCode: "internal_error",
+    });
     console.error("MCP tool handler failed:", error);
     return {
       content: [

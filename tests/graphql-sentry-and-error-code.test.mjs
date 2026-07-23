@@ -12,6 +12,7 @@
 // and tests/api-ai-routes-sentry.test.mjs's own identical rationale.
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
+import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 
 const captureException = vi.hoisted(() => vi.fn());
 const resolveLiveEconomics = vi.hoisted(() => vi.fn());
@@ -69,6 +70,55 @@ test("a resolver's genuine exception reaches Sentry and is tagged graphql_execut
   const [capturedError, context] = captureException.mock.calls[0];
   assert.equal(capturedError.message, "hyperdrive unavailable");
   assert.deepEqual(context, { tags: { route: "graphql" } });
+});
+
+// metagraphed#7758: PostHog $exception capture, parallel-run alongside the
+// Sentry.captureException above -- same route tag, same genuine-fault-only
+// discriminator.
+test("a resolver's genuine exception also reaches PostHog as $exception, tagged the same way", async () => {
+  resolveLiveEconomics.mockRejectedValue(new Error("hyperdrive unavailable"));
+  const original = globalThis.fetch;
+  const posted = [];
+  globalThis.fetch = async (url, init) => {
+    posted.push({ url, body: JSON.parse(init.body) });
+    return { ok: true };
+  };
+  try {
+    const { res } = await gql("{ economics { total } }", {
+      [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+    });
+    assert.equal(res.status, 200);
+    assert.equal(posted.length, 1);
+    assert.equal(posted[0].body.event, "$exception");
+    assert.equal(posted[0].body.properties.route, "graphql");
+    assert.equal(
+      posted[0].body.properties.error_code,
+      "graphql_execution_error",
+    );
+    assert.equal(
+      posted[0].body.properties.$exception_list[0].value,
+      "hyperdrive unavailable",
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("a deliberate GraphQLError (bad user input) never reaches PostHog either", async () => {
+  const original = globalThis.fetch;
+  const posted = [];
+  globalThis.fetch = async (url, init) => {
+    posted.push({ url, body: JSON.parse(init.body) });
+    return { ok: true };
+  };
+  try {
+    await gql("{ subnet_identity_history(netuid: -1) { __typename } }", {
+      [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+    });
+    assert.equal(posted.length, 0);
+  } finally {
+    globalThis.fetch = original;
+  }
 });
 
 test("a deliberate GraphQLError (bad user input) never reaches Sentry, tagged graphql_field_error", async () => {

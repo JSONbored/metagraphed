@@ -21,6 +21,7 @@
 // read routes' `cache-control: public, max-age=10`).
 import postgres from "postgres";
 import * as Sentry from "@sentry/cloudflare";
+import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.ts";
 import { decodeCursor, encodeCursor } from "../src/cursor.ts";
 import { buildBlock, buildBlockFeed } from "../src/blocks.ts";
@@ -376,8 +377,21 @@ import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 // Sentry.captureException is a safe no-op with no active client (confirmed
 // live: returns an event id, doesn't throw), which is every test in this
 // file -- they import this raw, unwrapped handler directly.
-function captureDataApiError(err, route) {
+//
+// metagraphed#7758: PostHog $exception capture added alongside, parallel-run.
+// Awaited (not waitUntil) -- callers are already deep in an async handler's
+// catch block about to return an error response, with no ExecutionContext
+// threaded down to this helper. The cost is a little latency on an
+// already-failing request, not silent event loss. recordExceptionEvent is
+// itself a safe no-op with no configured token, same guarantee as Sentry
+// above -- this can't newly break any of this file's existing tests.
+async function captureDataApiError(err, route, env) {
   Sentry.captureException(err, { tags: { route } });
+  await recordExceptionEvent(env, {
+    error: err,
+    route,
+    errorCode: "internal_error",
+  });
 }
 
 const DATA_API_READ_TRANSACTION = "isolation level repeatable read read only";
@@ -908,7 +922,7 @@ async function handleNeuronsSync(request, env) {
     });
   } catch (err) {
     console.error("data-api neurons-sync write failed:", err);
-    captureDataApiError(err, "neurons-sync");
+    await captureDataApiError(err, "neurons-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
   // No sql.end() here: Hyperdrive automatically cleans up the connection when
@@ -1104,7 +1118,7 @@ async function handleNeuronDailyBackfill(request, env) {
     });
   } catch (err) {
     console.error("data-api neuron-daily-backfill write failed:", err);
-    captureDataApiError(err, "neuron-daily-backfill");
+    await captureDataApiError(err, "neuron-daily-backfill", env);
     return writeJson({ error: "write failed" }, 502);
   }
   // No sql.end() here: Hyperdrive automatically cleans up the connection when
@@ -1227,7 +1241,7 @@ async function handleRollupAccountEventsDaily(request, env) {
     });
   } catch (err) {
     console.error("data-api account-events-daily rollup failed:", err);
-    captureDataApiError(err, "account-events-daily-rollup");
+    await captureDataApiError(err, "account-events-daily-rollup", env);
     return writeJson({ error: "rollup failed" }, 502);
   }
 }
@@ -1488,7 +1502,7 @@ async function handleSubnetHyperparamsSync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-hyperparams-sync write failed:", err);
-    captureDataApiError(err, "subnet-hyperparams-sync");
+    await captureDataApiError(err, "subnet-hyperparams-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -1662,7 +1676,7 @@ async function handleSubnetLocksSync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-locks-sync write failed:", err);
-    captureDataApiError(err, "subnet-locks-sync");
+    await captureDataApiError(err, "subnet-locks-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -1871,7 +1885,7 @@ async function handleAccountIdentitySync(request, env) {
     });
   } catch (err) {
     console.error("data-api account-identity-sync write failed:", err);
-    captureDataApiError(err, "account-identity-sync");
+    await captureDataApiError(err, "account-identity-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2039,7 +2053,7 @@ async function handleValidatorNominatorCountsSync(request, env) {
       "data-api validator-nominator-counts-sync write failed:",
       err,
     );
-    captureDataApiError(err, "validator-nominator-counts-sync");
+    await captureDataApiError(err, "validator-nominator-counts-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2169,7 +2183,7 @@ async function handleNominatorPositionsSync(request, env) {
     });
   } catch (err) {
     console.error("data-api nominator-positions-sync write failed:", err);
-    captureDataApiError(err, "nominator-positions-sync");
+    await captureDataApiError(err, "nominator-positions-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2300,7 +2314,7 @@ async function handleAccountBalancesSync(request, env) {
     return writeJson({ ok: true, account_balances_written: incoming.length });
   } catch (err) {
     console.error("data-api account-balances-sync write failed:", err);
-    captureDataApiError(err, "account-balances-sync");
+    await captureDataApiError(err, "account-balances-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2464,7 +2478,7 @@ async function handleSubnetIdentitySync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-identity-sync write failed:", err);
-    captureDataApiError(err, "subnet-identity-sync");
+    await captureDataApiError(err, "subnet-identity-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2645,7 +2659,7 @@ async function handleHealthChecksSync(request, env) {
     });
   } catch (err) {
     console.error("data-api health-checks-sync write failed:", err);
-    captureDataApiError(err, "health-checks-sync");
+    await captureDataApiError(err, "health-checks-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2786,7 +2800,7 @@ async function handleHealthUptimeRollupSync(request, env) {
     });
   } catch (err) {
     console.error("data-api health-uptime-rollup-sync write failed:", err);
-    captureDataApiError(err, "health-uptime-rollup-sync");
+    await captureDataApiError(err, "health-uptime-rollup-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -2961,7 +2975,7 @@ async function handleSubnetSnapshotSync(request, env) {
     });
   } catch (err) {
     console.error("data-api subnet-snapshot-sync write failed:", err);
-    captureDataApiError(err, "subnet-snapshot-sync");
+    await captureDataApiError(err, "subnet-snapshot-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -3046,7 +3060,7 @@ async function handleRpcUsageEventSync(request, env) {
     return writeJson({ ok: true });
   } catch (err) {
     console.error("data-api rpc-usage-sync write failed:", err);
-    captureDataApiError(err, "rpc-usage-sync");
+    await captureDataApiError(err, "rpc-usage-sync", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -3100,7 +3114,7 @@ async function handleRpcUsageEventPrune(request, env) {
     return writeJson({ ok: true, rows_deleted: result.count });
   } catch (err) {
     console.error("data-api rpc-usage-prune write failed:", err);
-    captureDataApiError(err, "rpc-usage-prune");
+    await captureDataApiError(err, "rpc-usage-prune", env);
     return writeJson({ error: "write failed" }, 502);
   }
 }
@@ -3139,7 +3153,7 @@ function json(data, status = 200) {
 // response. `sql.savepoint()` runs the read in its own nested scope so a
 // failure there rolls back to a savepoint instead of the whole transaction,
 // leaving the enclosing transaction (and its other queries) unaffected.
-async function loadFeaturedHotkeys(sql) {
+async function loadFeaturedHotkeys(sql, env) {
   try {
     const rows = await sql.savepoint(
       (sql) => sql`SELECT hotkey FROM featured_validators`,
@@ -3147,7 +3161,7 @@ async function loadFeaturedHotkeys(sql) {
     return new Set(rows.map((row) => row.hotkey));
   } catch (err) {
     console.error("featured_validators query failed:", err);
-    captureDataApiError(err, "featured-validators-query");
+    await captureDataApiError(err, "featured-validators-query", env);
     return new Set();
   }
 }
@@ -3161,7 +3175,7 @@ async function loadFeaturedHotkeys(sql) {
 // Hyperdrive fetch_types:false setting breaks postgres.js's automatic
 // ARRAY-literal serialization for a bound JS array (ANY($1)), so every IN
 // clause here builds its own scalar placeholder list instead.
-async function loadAccountIdentitiesByColdkey(sql, coldkeys) {
+async function loadAccountIdentitiesByColdkey(sql, coldkeys, env) {
   if (coldkeys.length === 0) return new Map();
   try {
     const placeholders = coldkeys.map((_, i) => `$${i + 1}::text`).join(", ");
@@ -3175,7 +3189,7 @@ async function loadAccountIdentitiesByColdkey(sql, coldkeys) {
     return new Map(rows.map((row) => [row.account, row]));
   } catch (err) {
     console.error("account_identity join query failed:", err);
-    captureDataApiError(err, "account-identity-join-query");
+    await captureDataApiError(err, "account-identity-join-query", env);
     return new Map();
   }
 }
@@ -3195,7 +3209,7 @@ function distinctColdkeys(rows) {
 // /api/v1/validators response to nominator_count: null everywhere rather
 // than failing the request or rolling back the enclosing transaction's other
 // queries.
-async function loadValidatorNominatorCounts(sql) {
+async function loadValidatorNominatorCounts(sql, env) {
   try {
     const rows = await sql.savepoint(
       (sql) =>
@@ -3204,7 +3218,7 @@ async function loadValidatorNominatorCounts(sql) {
     return nominatorCountsByHotkey(rows);
   } catch (err) {
     console.error("validator_nominator_counts query failed:", err);
-    captureDataApiError(err, "validator-nominator-counts-query");
+    await captureDataApiError(err, "validator-nominator-counts-query", env);
     return new Map();
   }
 }
@@ -3214,7 +3228,7 @@ async function loadValidatorNominatorCounts(sql) {
 // null everywhere (accumulateApyRow's tempoByNetuid.get(...) == null branch)
 // rather than failing /api/v1/validators or /api/v1/validators/:hotkey, or
 // rolling back the enclosing transaction's other queries.
-async function loadSubnetTempos(sql) {
+async function loadSubnetTempos(sql, env) {
   try {
     const rows = await sql.savepoint(
       (sql) => sql`SELECT netuid, tempo FROM subnet_hyperparams`,
@@ -3222,7 +3236,7 @@ async function loadSubnetTempos(sql) {
     return buildTempoByNetuid(rows);
   } catch (err) {
     console.error("subnet_hyperparams tempo query failed:", err);
-    captureDataApiError(err, "subnet-hyperparams-tempo-query");
+    await captureDataApiError(err, "subnet-hyperparams-tempo-query", env);
     return new Map();
   }
 }
@@ -3245,7 +3259,7 @@ const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
 // realized_return_* to null rather than failing /api/v1/validators or
 // /api/v1/validators/:hotkey, or rolling back the enclosing transaction's
 // other queries. `hotkey` scopes the scan to the single-validator detail route.
-async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}) {
+async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}, env) {
   const windows = Object.entries(REALIZED_RETURN_WINDOWS);
   try {
     const perWindow = await sql.savepoint((sql) =>
@@ -3293,7 +3307,7 @@ async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}) {
     return byHotkey;
   } catch (err) {
     console.error("neuron_daily realized-return baseline query failed:", err);
-    captureDataApiError(err, "realized-return-baseline-query");
+    await captureDataApiError(err, "realized-return-baseline-query", env);
     return new Map();
   }
 }
@@ -3307,7 +3321,7 @@ async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}) {
 // subnet-hyperparams.ts's own nonNegativeInt -- Number(null) is 0, not
 // NaN -- written inline rather than imported since each domain file owns its
 // small D1/Postgres cell-coercion copies (see that file's own header).
-async function loadSubnetImmunityPeriod(sql, netuid) {
+async function loadSubnetImmunityPeriod(sql, netuid, env) {
   try {
     const rows = await sql.savepoint(
       (sql) =>
@@ -3319,7 +3333,11 @@ async function loadSubnetImmunityPeriod(sql, netuid) {
     return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
   } catch (err) {
     console.error("subnet_hyperparams immunity_period query failed:", err);
-    captureDataApiError(err, "subnet-hyperparams-immunity-period-query");
+    await captureDataApiError(
+      err,
+      "subnet-hyperparams-immunity-period-query",
+      env,
+    );
     return null;
   }
 }
@@ -3327,7 +3345,7 @@ async function loadSubnetImmunityPeriod(sql, netuid) {
 // Raw nominator_positions rows for one coldkey (#5233) -- savepoint-isolated
 // like the loaders above, so a cold/absent table degrades this specific
 // route to an empty positions card rather than failing the request.
-async function loadNominatorPositions(sql, ss58) {
+async function loadNominatorPositions(sql, ss58, env) {
   try {
     return await sql.savepoint(
       (sql) => sql`
@@ -3336,7 +3354,7 @@ async function loadNominatorPositions(sql, ss58) {
     );
   } catch (err) {
     console.error("nominator_positions query failed:", err);
-    captureDataApiError(err, "nominator-positions-query");
+    await captureDataApiError(err, "nominator-positions-query", env);
     return [];
   }
 }
@@ -3347,7 +3365,7 @@ async function loadNominatorPositions(sql, ss58) {
 // scalar-placeholder IN-list shape as loadAccountIdentitiesByColdkey above
 // (this Worker's Hyperdrive fetch_types:false setting breaks automatic
 // ARRAY-literal binding for a JS array).
-async function loadNeuronStakeByHotkeys(sql, hotkeys) {
+async function loadNeuronStakeByHotkeys(sql, hotkeys, env) {
   if (hotkeys.length === 0) return new Map();
   try {
     const placeholders = hotkeys.map((_, i) => `$${i + 1}::text`).join(", ");
@@ -3360,7 +3378,7 @@ async function loadNeuronStakeByHotkeys(sql, hotkeys) {
     return stakeByHotkeyNetuid(rows);
   } catch (err) {
     console.error("neurons stake-by-hotkey join query failed:", err);
-    captureDataApiError(err, "neurons-stake-by-hotkey-query");
+    await captureDataApiError(err, "neurons-stake-by-hotkey-query", env);
     return new Map();
   }
 }
@@ -3502,7 +3520,7 @@ async function withAlertTriggersSql(env, fn) {
     return await fn(sql);
   } catch (err) {
     console.error("data-api alert-triggers write failed:", err);
-    captureDataApiError(err, "alert-triggers");
+    await captureDataApiError(err, "alert-triggers", env);
     return writeJson({ error: "write failed" }, 502);
   }
   // No sql.end() -- Hyperdrive cleans up the connection when the request/
@@ -3991,7 +4009,7 @@ async function withAccountsSql(env, fn) {
     return await fn(sql);
   } catch (err) {
     console.error("data-api wallet-auth/keys write failed:", err);
-    captureDataApiError(err, "wallet-auth-keys");
+    await captureDataApiError(err, "wallet-auth-keys", env);
     return writeJson({ error: "write failed" }, 502);
   }
   // No sql.end() -- same Hyperdrive-cleans-up-on-invocation-end convention
@@ -7942,7 +7960,7 @@ export default {
               : sql`
               SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
               FROM neurons WHERE netuid = ${netuid} ORDER BY uid`,
-            loadSubnetImmunityPeriod(sql, netuid),
+            loadSubnetImmunityPeriod(sql, netuid, env),
           ]);
           return json(buildSubnetMetagraph(rows, netuid, { immunityPeriod }));
         }
@@ -7960,7 +7978,7 @@ export default {
             sql`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
           FROM neurons WHERE netuid = ${netuid} AND uid = ${uid} LIMIT 1`,
-            loadSubnetImmunityPeriod(sql, netuid),
+            loadSubnetImmunityPeriod(sql, netuid, env),
           ]);
           return json(
             buildNeuronDetail(rows[0] ?? null, netuid, { immunityPeriod }),
@@ -7979,7 +7997,7 @@ export default {
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
           FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE
           ORDER BY stake_tao DESC, uid ASC`,
-            loadFeaturedHotkeys(sql),
+            loadFeaturedHotkeys(sql, env),
           ]);
           return json(buildSubnetValidators(rows, netuid, { featuredHotkeys }));
         }
@@ -8011,16 +8029,17 @@ export default {
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-            loadFeaturedHotkeys(sql),
-            loadValidatorNominatorCounts(sql),
-            loadSubnetTempos(sql),
-            loadRealizedStakeBaselines(sql),
+            loadFeaturedHotkeys(sql, env),
+            loadValidatorNominatorCounts(sql, env),
+            loadSubnetTempos(sql, env),
+            loadRealizedStakeBaselines(sql, {}, env),
           ]);
           // Identity join (#5234): needs `rows` resolved first to know which
           // coldkeys to look up, so it can't join the Promise.all above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
             sql,
             distinctColdkeys(rows),
+            env,
           );
           return json(
             buildGlobalValidators(rows, {
@@ -8048,14 +8067,15 @@ export default {
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`,
-              loadValidatorNominatorCounts(sql),
-              loadSubnetTempos(sql),
-              loadRealizedStakeBaselines(sql, { hotkey }),
+              loadValidatorNominatorCounts(sql, env),
+              loadSubnetTempos(sql, env),
+              loadRealizedStakeBaselines(sql, { hotkey }, env),
             ]);
           // Identity join (#5234): see the /api/v1/validators comment above.
           const identityByColdkey = await loadAccountIdentitiesByColdkey(
             sql,
             distinctColdkeys(rows),
+            env,
           );
           return json(
             buildValidatorDetail(rows, hotkey, {
@@ -8307,10 +8327,11 @@ export default {
         );
         if (acctPositions) {
           const ss58 = decodeURIComponent(acctPositions[1]);
-          const positionRows = await loadNominatorPositions(sql, ss58);
+          const positionRows = await loadNominatorPositions(sql, ss58, env);
           const hotkeyNetuidStake = await loadNeuronStakeByHotkeys(
             sql,
             distinctHotkeys(positionRows),
+            env,
           );
           return json(
             buildAccountPositions(positionRows, hotkeyNetuidStake, ss58),
@@ -8860,7 +8881,7 @@ export default {
       // url.pathname (not a static tag) -- this catch is the generic
       // fallback for the WHOLE route dispatcher above, so the actual
       // failing route is the only thing that makes the Sentry event useful.
-      captureDataApiError(err, url.pathname);
+      await captureDataApiError(err, url.pathname, env);
       return json({ error: "data query failed" }, 502);
     }
     // No sql.end() here: Hyperdrive automatically cleans up the connection

@@ -7,6 +7,7 @@ import {
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
   isUsageTelemetryConfigured,
+  recordExceptionEvent,
   recordMcpInitializeEvent,
   recordMcpToolCallEvent,
   recordUsageEvent,
@@ -687,5 +688,345 @@ describe("recordMcpInitializeEvent", () => {
       { fetch: fakeFetch({ throws: true }) },
     );
     assert.equal(recorded, false);
+  });
+});
+
+// #7758: schema verified directly against PostHog's own ingestion Rust types
+// (rust/cymbal/src/core/types/{exception,stacktrace}.rs,
+// rust/cymbal/src/core/types/langs/custom.rs) and a real production
+// $exception fixture, not just the docs page -- see the module's own header
+// comment for the sources. These tests pin that shape so a future refactor
+// can't silently drift from it.
+describe("recordExceptionEvent", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  function thrownError(ErrorClass, message) {
+    // A real thrown-and-caught error, not a hand-built object -- so
+    // error.stack is a genuine V8 stack string, same as every real call site.
+    try {
+      throw new ErrorClass(message);
+    } catch (e) {
+      return e;
+    }
+  }
+
+  test("posts a well-formed $exception event for a real thrown Error", async () => {
+    const calls = [];
+    const recorded = await recordExceptionEvent(
+      CONFIGURED,
+      {
+        error: thrownError(RangeError, "boom"),
+        route: "test-route",
+        errorCode: "internal_error",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    const { body } = calls[0];
+    assert.equal(body.event, "$exception");
+    assert.equal(body.api_key, "phc_token");
+    assert.equal(body.distinct_id, USAGE_EVENT_DISTINCT_ID);
+
+    const list = body.properties.$exception_list;
+    assert.equal(list.length, 1);
+    assert.equal(list[0].type, "RangeError");
+    assert.equal(list[0].value, "boom");
+    assert.deepEqual(list[0].mechanism, { handled: true, synthetic: false });
+    assert.equal(list[0].stacktrace.type, "raw");
+    assert.ok(list[0].stacktrace.frames.length > 0);
+    for (const frame of list[0].stacktrace.frames) {
+      // PostHog's required markers for a manually-built (non-SDK) frame.
+      assert.equal(frame.platform, "custom");
+      assert.equal(frame.lang, "javascript");
+      assert.equal(typeof frame.function, "string");
+    }
+
+    assert.equal(
+      body.properties.$exception_fingerprint,
+      "test-route:RangeError",
+    );
+    assert.equal(body.properties.route, "test-route");
+    assert.equal(body.properties.error_code, "internal_error");
+  });
+
+  test("orders frames oldest-call-first (thrown frame last), matching the Sentry-derived protocol", async () => {
+    function inner() {
+      throw new Error("deep");
+    }
+    function outer() {
+      inner();
+    }
+    let error;
+    try {
+      outer();
+    } catch (e) {
+      error = e;
+    }
+
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error, route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const frames =
+      calls[0].body.properties.$exception_list[0].stacktrace.frames;
+    // The innermost/throwing frame ("inner") must be LAST, not first.
+    assert.equal(frames.at(-1).function, "inner");
+    assert.equal(frames.at(-2).function, "outer");
+  });
+
+  test("marks node_modules frames as not in_app, everything else as in_app", async () => {
+    const fakeStack =
+      "Error: boom\n" +
+      "    at ourFunction (/repo/src/usage-telemetry.ts:10:5)\n" +
+      "    at vendorFunction (/repo/node_modules/some-pkg/index.js:20:3)\n";
+    const error = new Error("boom");
+    error.stack = fakeStack;
+
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error, route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const frames =
+      calls[0].body.properties.$exception_list[0].stacktrace.frames;
+    const ours = frames.find((f) => f.function === "ourFunction");
+    const vendor = frames.find((f) => f.function === "vendorFunction");
+    assert.equal(ours.in_app, true);
+    assert.equal(vendor.in_app, false);
+  });
+
+  test("parses filename/lineno/colno out of a standard V8 frame line", async () => {
+    const fakeStack =
+      "Error: boom\n" + "    at doThing (/repo/src/foo.ts:42:13)\n";
+    const error = new Error("boom");
+    error.stack = fakeStack;
+
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error, route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const [frame] =
+      calls[0].body.properties.$exception_list[0].stacktrace.frames;
+    assert.equal(frame.function, "doThing");
+    assert.equal(frame.filename, "/repo/src/foo.ts");
+    assert.equal(frame.lineno, 42);
+    assert.equal(frame.colno, 13);
+  });
+
+  test("never drops an unparseable stack line -- it becomes a frame with just raw text", async () => {
+    const fakeStack =
+      "Error: boom\n" + "    something unusual, not a normal V8 frame\n";
+    const error = new Error("boom");
+    error.stack = fakeStack;
+
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error, route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const frames =
+      calls[0].body.properties.$exception_list[0].stacktrace.frames;
+    assert.equal(frames.length, 1);
+    assert.equal(frames[0].platform, "custom");
+    assert.equal(frames[0].lang, "javascript");
+    assert.equal(
+      frames[0].function,
+      "something unusual, not a normal V8 frame",
+    );
+    assert.equal("filename" in frames[0], false);
+  });
+
+  test("caps the number of stack frames sent", async () => {
+    const many = Array.from(
+      { length: 200 },
+      (_, i) => `    at fn${i} (/repo/src/foo.ts:${i}:1)`,
+    ).join("\n");
+    const error = new Error("boom");
+    error.stack = `Error: boom\n${many}`;
+
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error, route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const frames =
+      calls[0].body.properties.$exception_list[0].stacktrace.frames;
+    assert.ok(frames.length <= 30);
+  });
+
+  test("handles a thrown non-Error value without crashing", async () => {
+    const calls = [];
+    const recorded = await recordExceptionEvent(
+      CONFIGURED,
+      { error: "just a string", route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    const entry = calls[0].body.properties.$exception_list[0];
+    assert.equal(entry.type, "Error");
+    assert.equal(entry.value, "just a string");
+    assert.deepEqual(entry.stacktrace.frames, []);
+  });
+
+  test("falls back to a generic type/message when an Error has a blank name/message", async () => {
+    const error = new Error("");
+    error.name = "";
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error, route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const entry = calls[0].body.properties.$exception_list[0];
+    assert.equal(entry.type, "Error");
+    assert.equal(entry.value, "(no message)");
+  });
+
+  test("falls back to a generic type when an Error's name is truthy but whitespace-only", async () => {
+    // Distinct from the blank-name case above: "" is falsy (the ternary
+    // itself picks the "Error" literal), but "   " is a truthy non-empty
+    // string (the ternary picks it), and only THEN does sanitizeLabel find
+    // it blank and fall back -- a different branch in the same expression.
+    const error = new Error("boom");
+    error.name = "   ";
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error, route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.properties.$exception_list[0].type, "Error");
+  });
+
+  test("caps an overlong message the same way sanitizeLabel caps every other free-form field", async () => {
+    const error = new Error("x".repeat(1000));
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error, route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const entry = calls[0].body.properties.$exception_list[0];
+    assert.equal(entry.value.length, 256);
+  });
+
+  test("falls back to mcpTool for the fingerprint and properties when route is absent", async () => {
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      {
+        error: thrownError(TypeError, "bad arg"),
+        mcpTool: "call_subnet_surface",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const { properties } = calls[0].body;
+    assert.equal(properties.mcp_tool, "call_subnet_surface");
+    assert.equal("route" in properties, false);
+    assert.equal(
+      properties.$exception_fingerprint,
+      "call_subnet_surface:TypeError",
+    );
+  });
+
+  test("falls back to 'unknown' in the fingerprint when neither route nor mcpTool is given", async () => {
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error: thrownError(Error, "boom") },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(
+      calls[0].body.properties.$exception_fingerprint,
+      "unknown:Error",
+    );
+  });
+
+  test("omits error_code when not supplied", async () => {
+    const calls = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error: thrownError(Error, "boom"), route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal("error_code" in calls[0].body.properties, false);
+  });
+
+  test("never posts when the deployment is unconfigured", async () => {
+    let calls = 0;
+    const recorded = await recordExceptionEvent(
+      {},
+      { error: thrownError(Error, "boom"), route: "x" },
+      {
+        fetch: fakeFetch({
+          onCall: () => {
+            calls += 1;
+          },
+        }),
+      },
+    );
+    assert.equal(recorded, false);
+    assert.equal(calls, 0);
+  });
+
+  test("returns false for a malformed event without capturing", async () => {
+    let calls = 0;
+    const onCall = () => {
+      calls += 1;
+    };
+    assert.equal(
+      await recordExceptionEvent(CONFIGURED, null, {
+        fetch: fakeFetch({ onCall }),
+      }),
+      false,
+    );
+    assert.equal(
+      await recordExceptionEvent(CONFIGURED, undefined, {
+        fetch: fakeFetch({ onCall }),
+      }),
+      false,
+    );
+    assert.equal(calls, 0);
+  });
+
+  test("reports a rejected capture as not recorded", async () => {
+    const recorded = await recordExceptionEvent(
+      CONFIGURED,
+      { error: thrownError(Error, "boom"), route: "x" },
+      { fetch: fakeFetch({ ok: false }) },
+    );
+    assert.equal(recorded, false);
+  });
+
+  test("swallows a transport failure", async () => {
+    const recorded = await recordExceptionEvent(
+      CONFIGURED,
+      { error: thrownError(Error, "boom"), route: "x" },
+      { fetch: fakeFetch({ throws: true }) },
+    );
+    assert.equal(recorded, false);
+  });
+
+  test("defaults to the platform fetch when none is injected", async () => {
+    const original = globalThis.fetch;
+    const calls = [];
+    globalThis.fetch = fakeFetch({ onCall: (call) => calls.push(call) });
+    try {
+      const recorded = await recordExceptionEvent(CONFIGURED, {
+        error: thrownError(Error, "boom"),
+        route: "x",
+      });
+      assert.equal(recorded, true);
+      assert.equal(calls.length, 1);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });

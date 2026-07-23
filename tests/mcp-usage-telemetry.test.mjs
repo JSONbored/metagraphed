@@ -420,3 +420,97 @@ describe("MCP tool-dispatch usage telemetry", () => {
     }
   });
 });
+
+// metagraphed#7758: dispatchTool's PostHog $exception capture, parallel-run
+// alongside the existing Sentry.captureException at the same site. Uses the
+// same real internal-error trigger as
+// tests/mcp-server-branch-coverage.test.mjs's "semantic_search wraps a
+// Vectorize rejection as an internal error" -- a genuine unexpected fault,
+// not a toolError, so it's the one path that reaches dispatchTool's catch.
+describe("MCP dispatchTool exception capture ($exception)", () => {
+  function aiEnv(overrides = {}) {
+    return {
+      ...CONFIGURED_ENV,
+      METAGRAPH_ENABLE_AI: "true",
+      AI: {
+        run(_model, input) {
+          if (input?.text) {
+            const n = Array.isArray(input.text) ? input.text.length : 1;
+            return Promise.resolve({
+              data: Array.from({ length: n }, () => new Array(1024).fill(0.02)),
+            });
+          }
+          return Promise.resolve({ response: "answer." });
+        },
+      },
+      VECTORIZE: {
+        query: () => Promise.reject(new Error("vectorize exploded")),
+      },
+      ...overrides,
+    };
+  }
+
+  test("an unexpected internal fault posts a $exception event tagged with the tool name", async () => {
+    const original = globalThis.fetch;
+    const posted = [];
+    globalThis.fetch = async (url, init) => {
+      posted.push({ url, body: JSON.parse(init.body) });
+      return { ok: true };
+    };
+    try {
+      const executionCtx = fakeExecutionCtx();
+      const payload = await callMcp(
+        toolCall("semantic_search", { query: "images" }),
+        aiEnv(),
+        { executionCtx },
+      );
+      await Promise.all(executionCtx.scheduled);
+
+      assert.equal(payload.result.isError, true);
+      assert.equal(
+        payload.result.structuredContent.error.code,
+        "internal_error",
+      );
+      // The PUBLIC tool response stays sanitized (no internal message) --
+      // already covered by tests/mcp-server-branch-coverage.test.mjs. The
+      // PRIVATE $exception payload sent to PostHog is a different channel:
+      // it's SUPPOSED to carry the real error, that's the point of error
+      // tracking.
+      const exceptionPost = posted.find((p) => p.body.event === "$exception");
+      assert.ok(exceptionPost, "$exception should be posted");
+      assert.equal(exceptionPost.body.properties.mcp_tool, "semantic_search");
+      assert.equal(exceptionPost.body.properties.error_code, "internal_error");
+      assert.equal(
+        exceptionPost.body.properties.$exception_list[0].value,
+        "vectorize exploded",
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("an expected toolError (invalid_params) never posts a $exception event", async () => {
+    const original = globalThis.fetch;
+    const posted = [];
+    globalThis.fetch = async (url, init) => {
+      posted.push({ url, body: JSON.parse(init.body) });
+      return { ok: true };
+    };
+    try {
+      const executionCtx = fakeExecutionCtx();
+      await callMcp(
+        toolCall("get_subnet", { netuid: "not-a-netuid" }),
+        CONFIGURED_ENV,
+        { executionCtx },
+      );
+      await Promise.all(executionCtx.scheduled);
+
+      assert.equal(
+        posted.some((p) => p.body.event === "$exception"),
+        false,
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
