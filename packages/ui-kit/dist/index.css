@@ -1009,7 +1009,6 @@ html[data-density=compact] .bg-card > table td {
   border-radius: 6px;
 }
 .mg-table-scroll {
-  max-height: 70vh;
   mask-image:
     linear-gradient(
       to right,
