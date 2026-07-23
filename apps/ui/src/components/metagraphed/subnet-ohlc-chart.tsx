@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { subnetOhlcQuery } from "@/lib/metagraphed/queries";
 import { CandlestickMini, type CandlestickDatum } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { classNames, formatTao } from "@/lib/metagraphed/format";
 
 const INTERVALS = ["1h", "1d"] as const;
@@ -95,7 +96,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
           description="OHLC candles are built from executed stake/unstake trades -- once this subnet has trading activity in the selected interval, candles will appear here."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <Panel as="div" dense>
           <CandlestickMini
             data={candles}
             width={640}
@@ -110,7 +111,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
               {formatTao(data!.candles[data!.candles.length - 1]!.volume_tao)}
             </span>
           </div>
-        </div>
+        </Panel>
       )}
     </div>
   );

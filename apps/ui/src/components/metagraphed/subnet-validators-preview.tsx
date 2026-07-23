@@ -6,6 +6,7 @@ import { CopyButton } from "@jsonbored/ui-kit";
 import { subnetValidatorsQuery } from "@/lib/metagraphed/queries";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { Skeleton } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { SponsoredValidatorCallout } from "@/components/metagraphed/sponsored-validator-callout";
@@ -53,7 +54,7 @@ function SubnetValidatorsPreviewLoader({ netuid }: { netuid: number }) {
   return (
     <div className="mt-6 space-y-3">
       {sponsored ? <SponsoredValidatorCallout netuid={netuid} validator={sponsored} /> : null}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <Panel as="div" dense>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             Top validators · by stake
@@ -78,7 +79,7 @@ function SubnetValidatorsPreviewLoader({ netuid }: { netuid: number }) {
             <ValidatorPreviewRow key={v.uid} netuid={netuid} validator={v} />
           ))}
         </ul>
-      </div>
+      </Panel>
     </div>
   );
 }

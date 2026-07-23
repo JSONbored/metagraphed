@@ -2,6 +2,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { GitMerge, ArrowRight } from "lucide-react";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { Panel } from "@/components/metagraphed/primitives";
 import {
   economicsQuery,
   lineageQuery,
@@ -194,7 +195,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
       info="Joined from /api/v1/lineage · /api/v1/economics · /api/v1/subnets/{netuid}/profile"
       tone="ink"
     >
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <Panel as="div" flush className="overflow-hidden">
         {/* Chain identity row */}
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border border-b border-border">
           <Meta
@@ -451,7 +452,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
             </div>
           </div>
         </div>
-      </div>
+      </Panel>
     </SectionAnchor>
   );
 }

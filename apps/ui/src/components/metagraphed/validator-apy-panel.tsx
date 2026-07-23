@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { MethodologyCallout } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { validatorHistoryQuery } from "@/lib/metagraphed/queries";
 import {
   apyFromRewardsPer1000,
@@ -55,17 +56,19 @@ export function ValidatorApyPanel({
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">
         {rows.map((row) => (
-          <div key={row.window} className="rounded-xl border border-border bg-card px-4 py-3">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              Est. APY · {row.window}
+          <Panel as="div" flush key={row.window}>
+            <div className="px-4 py-3">
+              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                Est. APY · {row.window}
+              </div>
+              <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-ink-strong">
+                {anyLoading && row.apy == null ? "…" : formatApyPct(row.apy)}
+              </div>
+              <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                Net of take · daily neuron_daily rollup
+              </p>
             </div>
-            <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-ink-strong">
-              {anyLoading && row.apy == null ? "…" : formatApyPct(row.apy)}
-            </div>
-            <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-              Net of take · daily neuron_daily rollup
-            </p>
-          </div>
+          </Panel>
         ))}
       </div>
       {!anyLoading && !anyValue ? (
