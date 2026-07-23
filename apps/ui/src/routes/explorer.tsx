@@ -1,13 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQueries } from "@tanstack/react-query";
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { Activity, Boxes, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   ShareButton,
   ActionBar,
@@ -19,7 +18,7 @@ import {
   Donut,
   CopyButton,
 } from "@jsonbored/ui-kit";
-import { PageMasthead, Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { EXPLORER_LEADERBOARD_IDS } from "@/components/metagraphed/explorer-leaderboard-layout";
 import { ExplorerLeaderboardTableShell } from "@/components/metagraphed/explorer-leaderboard-table-shell";
 import { ChainEventsFeed } from "@/components/metagraphed/chain-events-feed";
@@ -135,11 +134,9 @@ function ExplorerPage() {
           </>
         }
       />
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-[40rem] w-full" />}>
-          <ExplorerDashboard />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel context="explorer dashboard" fallback={<Skeleton className="h-[40rem] w-full" />}>
+        <ExplorerDashboard />
+      </AsyncPanel>
       <ChainEventsFeedSection />
       <ApiSourceFooter
         paths={[

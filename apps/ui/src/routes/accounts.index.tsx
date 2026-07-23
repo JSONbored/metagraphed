@@ -1,15 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { Search } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { TopActiveAccounts } from "@/components/metagraphed/top-active-accounts";
 import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-active-accounts-ranking";
 import { ActionBar, ShareButton } from "@jsonbored/ui-kit";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
+import { chainSignersQuery } from "@/lib/metagraphed/queries";
 
 export const Route = createFileRoute("/accounts/")({
   head: () => ({
@@ -105,11 +105,13 @@ function AccountsPage() {
           Ranked by extrinsics signed on-chain in the last {TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS} days —
           jump straight to an account below.
         </p>
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-            <TopActiveAccounts />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          context="active accounts"
+          fallback={<Skeleton className="h-40 w-full" />}
+          retryQueryKeys={[chainSignersQuery().queryKey]}
+        >
+          <TopActiveAccounts />
+        </AsyncPanel>
       </section>
       <ApiSourceFooter paths={["/api/v1/accounts/{ss58}", "/api/v1/chain/signers"]} />
     </AppShell>

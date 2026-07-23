@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
 import {
   Bot,
   Terminal,
@@ -22,11 +21,10 @@ import {
   McpToolsList,
   SectionHeading,
 } from "@jsonbored/ui-kit";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { AskBox } from "@/components/metagraphed/ask-box";
 import { SearchBox } from "@/components/metagraphed/search-box";
 import { Skeleton } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { agentResourcesQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import type { AgentResources } from "@/lib/metagraphed/types";
@@ -106,11 +104,13 @@ function AgentsPage() {
           </ActionBar>
         }
       />
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-[40rem] w-full" />}>
-          <AgentsBody />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="agent resources"
+        fallback={<Skeleton className="h-[40rem] w-full" />}
+        retryQueryKeys={[agentResourcesQuery().queryKey]}
+      >
+        <AgentsBody />
+      </AsyncPanel>
       <ApiSourceFooter paths={["/api/v1/agent-resources"]} />
     </AppShell>
   );

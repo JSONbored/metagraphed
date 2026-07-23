@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Suspense } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -8,8 +7,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { ShareButton, DownloadCsvButton, ActionBar, StatTile } from "@jsonbored/ui-kit";
-import { PageMasthead, TableSkeleton } from "@/components/metagraphed/primitives";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { AsyncPanel, PageMasthead, TableSkeleton } from "@/components/metagraphed/primitives";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { governanceConfigChangesQuery, networkParametersQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
@@ -82,27 +80,25 @@ function AdminChangesPage() {
       {/* #6997: the change-log below is a history of governance config-change
           events -- it never showed the *current* live values of the three
           key protocol/governance parameters those changes actually move.
-          Own QueryErrorBoundary/Suspense so a slow/failed RPC read never
-          blocks the (unrelated, artifact-backed) change-log table below. */}
-      <QueryErrorBoundary>
-        <Suspense
-          fallback={
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-              <Skeleton className="h-20" />
-            </div>
-          }
-        >
-          <NetworkParametersCard />
-        </Suspense>
-      </QueryErrorBoundary>
+          Own AsyncPanel so a slow/failed RPC read never blocks the
+          (unrelated, artifact-backed) change-log table below. */}
+      <AsyncPanel
+        context="network parameters"
+        fallback={
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+        }
+        retryQueryKeys={[networkParametersQuery().queryKey]}
+      >
+        <NetworkParametersCard />
+      </AsyncPanel>
       <div className="min-w-0">
-        <QueryErrorBoundary>
-          <Suspense fallback={<TableSkeleton rows={10} columns={6} />}>
-            <AdminChangesTable />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel context="admin changes" fallback={<TableSkeleton rows={10} columns={6} />}>
+          <AdminChangesTable />
+        </AsyncPanel>
       </div>
       <ApiSourceFooter
         paths={["/api/v1/governance/config-changes", "/api/v1/network/parameters"]}

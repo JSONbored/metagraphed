@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Boxes, Clock, FileText, Link2, UserCog } from "lucide-react";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -16,8 +16,7 @@ import {
   StatTile,
   TableState,
 } from "@jsonbored/ui-kit";
-import { PageMasthead } from "@/components/metagraphed/primitives";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { extrinsicQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao, isStaleFreshness } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -90,11 +89,13 @@ function ExtrinsicDetailPage() {
   const { hash } = Route.useParams();
   return (
     <AppShell>
-      <QueryErrorBoundary>
-        <Suspense fallback={<DetailSkeleton />}>
-          <ExtrinsicDetail hash={hash} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="extrinsic detail"
+        fallback={<DetailSkeleton />}
+        retryQueryKeys={[extrinsicQuery(hash).queryKey]}
+      >
+        <ExtrinsicDetail hash={hash} />
+      </AsyncPanel>
     </AppShell>
   );
 }

@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { ChevronLeft, FileCode, Copy, Check } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { Panel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel, PageMasthead } from "@/components/metagraphed/primitives";
 import {
   TimeAgo,
   CopyableCode,
@@ -17,13 +17,17 @@ import {
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { DownloadOpenApiButton } from "@/components/metagraphed/download-openapi-button";
 import { Skeleton, StaleBanner, EmptyState } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { SchemaDriftMatrix } from "@/components/metagraphed/analytics/schema-drift-matrix";
 import { DriftActivity } from "@/components/metagraphed/analytics/drift-activity";
 import { SchemaDriftDetail } from "@/components/metagraphed/schema-drift-detail";
 import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-summary";
 import { useCopy } from "@/hooks/use-copy";
-import { schemasQuery, contractsQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
+import {
+  schemasQuery,
+  contractsQuery,
+  evidenceQuery,
+  metagraphedQueryKey,
+} from "@/lib/metagraphed/queries";
 import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
@@ -73,29 +77,35 @@ export const Route = createFileRoute("/schemas")({
 function SchemasPage() {
   return (
     <AppShell>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-          <SchemasHero />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="schemas overview"
+        fallback={<Skeleton className="h-64 w-full" />}
+        retryQueryKeys={[schemasQuery().queryKey, contractsQuery().queryKey]}
+      >
+        <SchemasHero />
+      </AsyncPanel>
 
       <main className="space-y-section">
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-10 w-full" />}>
-            <SchemasMethodology />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          context="schemas methodology"
+          fallback={<Skeleton className="h-10 w-full" />}
+          retryQueryKeys={[schemasQuery().queryKey]}
+        >
+          <SchemasMethodology />
+        </AsyncPanel>
 
         <PageSection
           eyebrow="Activity"
           title="Drift activity"
           description="Per-schema change weight. Stable schemas are dim; drifting schemas surface on top — click a drifting row for change details, or a stable row to open it in the explorer below."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <DriftActivityRibbon />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="drift activity"
+            fallback={<Skeleton className="h-32 w-full" />}
+            retryQueryKeys={[schemasQuery().queryKey]}
+          >
+            <DriftActivityRibbon />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -103,11 +113,13 @@ function SchemasPage() {
           title="Schema drift matrix"
           description="Every tracked schema classified by change type, with one-click access to source evidence."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-              <SchemaDriftMatrix />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="schema drift matrix"
+            fallback={<Skeleton className="h-48 w-full" />}
+            retryQueryKeys={[schemasQuery().queryKey, evidenceQuery({ limit: 500 }).queryKey]}
+          >
+            <SchemaDriftMatrix />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -115,11 +127,13 @@ function SchemasPage() {
           title="Published contracts"
           description="Versioned envelope contracts that govern API responses."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-              <ContractsList />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="published contracts"
+            fallback={<Skeleton className="h-24 w-full" />}
+            retryQueryKeys={[contractsQuery().queryKey]}
+          >
+            <ContractsList />
+          </AsyncPanel>
         </PageSection>
 
         <PageSection
@@ -127,11 +141,13 @@ function SchemasPage() {
           title="Schema index"
           description="Browse every tracked JSON Schema. Select one to inspect the latest snapshot and recent drift."
         >
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-[480px] w-full" />}>
-              <SchemaExplorer />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="schema index"
+            fallback={<Skeleton className="h-[480px] w-full" />}
+            retryQueryKeys={[schemasQuery().queryKey]}
+          >
+            <SchemaExplorer />
+          </AsyncPanel>
         </PageSection>
       </main>
 
@@ -140,11 +156,9 @@ function SchemasPage() {
         artifacts={["/metagraph/openapi.json"]}
       />
 
-      <QueryErrorBoundary>
-        <Suspense fallback={null}>
-          <SchemaDriftDetailHost />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel context="schema drift detail" fallback={null}>
+        <SchemaDriftDetailHost />
+      </AsyncPanel>
     </AppShell>
   );
 }

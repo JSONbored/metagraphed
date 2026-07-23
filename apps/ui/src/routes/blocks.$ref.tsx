@@ -1,7 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import {
-  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -19,7 +18,7 @@ import { PalletMethodBreakdown } from "@/components/metagraphed/blocks/pallet-me
 import { ShortcutsDialog } from "@/components/metagraphed/blocks/shortcuts-dialog";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
@@ -37,7 +36,6 @@ import {
   InfoTooltip,
   BackToTop,
 } from "@jsonbored/ui-kit";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   blockChainEventsQuery,
   blockEventsQuery,
@@ -110,11 +108,13 @@ function BlockDetailPage() {
   return (
     <AppShell>
       <ValueUnitProvider>
-        <QueryErrorBoundary>
-          <Suspense fallback={<DetailSkeleton />}>
-            <BlockDetail refValue={ref} />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          context="block detail"
+          fallback={<DetailSkeleton />}
+          retryQueryKeys={[blockQuery(ref).queryKey]}
+        >
+          <BlockDetail refValue={ref} />
+        </AsyncPanel>
       </ValueUnitProvider>
       <BackToTop />
     </AppShell>

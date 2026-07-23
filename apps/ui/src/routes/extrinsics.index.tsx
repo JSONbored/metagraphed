@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { SlidersHorizontal } from "lucide-react";
@@ -15,7 +15,6 @@ import {
   SearchInput,
   SelectFilter,
 } from "@/components/metagraphed/table-controls";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import {
   TimeAgo,
@@ -27,7 +26,7 @@ import {
   DownloadCsvButton,
   Sparkline,
 } from "@jsonbored/ui-kit";
-import { PageMasthead, PagerFooter } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, PagerFooter } from "@/components/metagraphed/primitives";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
@@ -102,16 +101,16 @@ function ExtrinsicsPage() {
           </>
         }
       />
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="mb-6 h-24 w-full" />}>
-          <FeesTrendCard />
-        </Suspense>
-      </QueryErrorBoundary>
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <ExtrinsicsTable />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="fees trend"
+        fallback={<Skeleton className="mb-6 h-24 w-full" />}
+        retryQueryKeys={[chainFeesQuery("7d").queryKey]}
+      >
+        <FeesTrendCard />
+      </AsyncPanel>
+      <AsyncPanel context="extrinsics" fallback={<Skeleton className="h-96 w-full" />}>
+        <ExtrinsicsTable />
+      </AsyncPanel>
       <ApiSourceFooter
         paths={["/api/v1/extrinsics", "/api/v1/chain/fees"]}
         artifacts={["/metagraph/extrinsics.json"]}

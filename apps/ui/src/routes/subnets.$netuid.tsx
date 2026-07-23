@@ -259,11 +259,13 @@ function SubnetDetailPage() {
   const { netuid } = Route.useParams();
   return (
     <AppShell flushTop>
-      <QueryErrorBoundary>
-        <Suspense fallback={<DetailSkeleton />}>
-          <ProfileShell netuid={netuid} />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="subnet profile"
+        fallback={<DetailSkeleton />}
+        retryQueryKeys={[subnetProfileQuery(netuid).queryKey]}
+      >
+        <ProfileShell netuid={netuid} />
+      </AsyncPanel>
       <BackToTop />
     </AppShell>
   );

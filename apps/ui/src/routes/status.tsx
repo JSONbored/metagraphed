@@ -4,13 +4,12 @@ import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRegistryEvents } from "@/hooks/use-registry-events";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowUpRight, CheckCircle2, XCircle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { Panel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import {
   CopyableCode,
   ExternalLink,
@@ -20,7 +19,15 @@ import {
   Donut,
   DonutLegend,
 } from "@jsonbored/ui-kit";
-import { healthQuery, globalIncidentsQuery, incidentsFeedQuery } from "@/lib/metagraphed/queries";
+import {
+  healthQuery,
+  globalIncidentsQuery,
+  incidentsFeedQuery,
+  chainConcentrationQuery,
+  chainPerformanceQuery,
+  chainYieldQuery,
+  sourceHealthProvidersQuery,
+} from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";
 import { healthStatusSegments } from "@/lib/metagraphed/health-segments";
@@ -116,18 +123,18 @@ function StatusPage() {
         }
       />
       <div className="space-y-section">
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-28 w-full" />}>
-            <Verdict />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          context="status verdict"
+          fallback={<Skeleton className="h-28 w-full" />}
+          retryQueryKeys={[healthQuery().queryKey]}
+        >
+          <Verdict />
+        </AsyncPanel>
         <section>
           <SectionHeading title="Recent incidents" />
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <RecentIncidents />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel context="recent incidents" fallback={<Skeleton className="h-32 w-full" />}>
+            <RecentIncidents />
+          </AsyncPanel>
         </section>
 
         <section>
@@ -135,11 +142,13 @@ function StatusPage() {
             title="Subscribe"
             intro="Copy or open the incidents feed in RSS, Atom, or JSON Feed format — the same probe-detected downtime stream shown above."
           />
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-              <IncidentsFeedSubscribe />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="incidents feed"
+            fallback={<Skeleton className="h-32 w-full" />}
+            retryQueryKeys={[incidentsFeedQuery().queryKey]}
+          >
+            <IncidentsFeedSubscribe />
+          </AsyncPanel>
         </section>
 
         {/* #3471: network-scope decentralization scorecard — stake &
@@ -151,11 +160,13 @@ function StatusPage() {
             title="Network decentralization"
             intro="Chain-wide stake & emission concentration (Gini, HHI, Nakamoto coefficient, entropy, top-1% share) and the trust/consensus score spread, computed across every subnet from the metagraph snapshot."
           />
-          <QueryErrorBoundary>
-            <Suspense fallback={<NetworkDecentralizationSkeleton />}>
-              <NetworkDecentralizationPanel />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="network decentralization"
+            fallback={<NetworkDecentralizationSkeleton />}
+            retryQueryKeys={[chainConcentrationQuery().queryKey, chainPerformanceQuery().queryKey]}
+          >
+            <NetworkDecentralizationPanel />
+          </AsyncPanel>
         </section>
 
         {/* #3472: network emission-yield summary — the return-rate companion to
@@ -166,11 +177,13 @@ function StatusPage() {
             title="Network emission yield"
             intro="Chain-wide emission yield — total emission over total stake, split by validator/miner role — plus the per-neuron return distribution, computed across every neuron from the metagraph snapshot."
           />
-          <QueryErrorBoundary>
-            <Suspense fallback={<EmissionYieldSkeleton />}>
-              <EmissionYieldPanel />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="network emission yield"
+            fallback={<EmissionYieldSkeleton />}
+            retryQueryKeys={[chainYieldQuery().queryKey]}
+          >
+            <EmissionYieldPanel />
+          </AsyncPanel>
         </section>
 
         {/* #8: operational diagnostics — a per-day probe drill-down and a
@@ -180,11 +193,13 @@ function StatusPage() {
             title="Probe history"
             intro="Per-surface probe results for any captured day. Pick a date to inspect."
           />
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-              <HealthHistoryDrilldown />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="probe history"
+            fallback={<Skeleton className="h-48 w-full" />}
+            retryQueryKeys={[healthQuery().queryKey]}
+          >
+            <HealthHistoryDrilldown />
+          </AsyncPanel>
         </section>
 
         <section>
@@ -192,11 +207,13 @@ function StatusPage() {
             title="Source health"
             intro="Per-provider verification status, endpoint counts, and classification mix."
           />
-          <QueryErrorBoundary>
-            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-              <SourceHealthTable />
-            </Suspense>
-          </QueryErrorBoundary>
+          <AsyncPanel
+            context="source health"
+            fallback={<Skeleton className="h-48 w-full" />}
+            retryQueryKeys={[sourceHealthProvidersQuery().queryKey]}
+          >
+            <SourceHealthTable />
+          </AsyncPanel>
         </section>
       </div>
       <ApiSourceFooter

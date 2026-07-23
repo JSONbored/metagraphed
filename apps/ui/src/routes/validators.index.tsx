@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
@@ -11,11 +10,10 @@ import {
   DensityToggle,
   type Density,
 } from "@jsonbored/ui-kit";
-import { PageMasthead, TableSkeleton } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, TableSkeleton } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
@@ -132,30 +130,31 @@ function ValidatorsPage() {
         }
       />
       <ValidatorGuide />
-      <QueryErrorBoundary>
-        <Suspense fallback={<TableSkeleton rows={10} columns={6} />}>
-          <ValidatorsTable
-            sort={sort}
-            order={order}
-            density={density}
-            onSort={onSort}
-            onDensityChange={onDensityChange}
-          />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="validators"
+        fallback={<TableSkeleton rows={10} columns={6} />}
+        retryQueryKeys={[validatorsQuery({ sort }).queryKey]}
+      >
+        <ValidatorsTable
+          sort={sort}
+          order={order}
+          density={density}
+          onSort={onSort}
+          onDensityChange={onDensityChange}
+        />
+      </AsyncPanel>
       <div className="mt-6" id="validator-dominance">
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-            <ValidatorDominanceChart />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel context="validator dominance" fallback={<Skeleton className="h-48 w-full" />}>
+          <ValidatorDominanceChart />
+        </AsyncPanel>
       </div>
       <div className="mt-6" id="validator-subnet-heatmap">
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-            <ValidatorSubnetHeatmap />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel
+          context="validator subnet heatmap"
+          fallback={<Skeleton className="h-64 w-full" />}
+        >
+          <ValidatorSubnetHeatmap />
+        </AsyncPanel>
       </div>
       <ApiSourceFooter paths={["/api/v1/validators"]} />
       <ValidatorsCompareDrawer />

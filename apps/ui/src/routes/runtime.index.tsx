@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { ShareButton, DownloadCsvButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
-import { PageMasthead } from "@/components/metagraphed/primitives";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import {
   RuntimeUpgradeCardList,
   orderRuntimeUpgradesNewestFirst,
@@ -55,11 +54,13 @@ function RuntimePage() {
           </ActionBar>
         }
       />
-      <QueryErrorBoundary>
-        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <RuntimeContent />
-        </Suspense>
-      </QueryErrorBoundary>
+      <AsyncPanel
+        context="runtime upgrades"
+        fallback={<Skeleton className="h-96 w-full" />}
+        retryQueryKeys={[runtimeVersionHistoryQuery().queryKey]}
+      >
+        <RuntimeContent />
+      </AsyncPanel>
       <ApiSourceFooter paths={["/api/v1/runtime"]} artifacts={["/metagraph/runtime.json"]} />
     </AppShell>
   );

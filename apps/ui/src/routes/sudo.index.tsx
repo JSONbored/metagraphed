@@ -1,14 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
 import { z } from "zod";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { ShareButton, DownloadCsvButton, ActionBar, CopyButton, TimeAgo } from "@jsonbored/ui-kit";
-import { PageMasthead } from "@/components/metagraphed/primitives";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
 import { sudoCallsQuery, sudoKeyQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
@@ -104,11 +102,9 @@ function SudoPage() {
         ]}
       />
       <div className="min-w-0">
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-            <SudoTable />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel context="sudo calls" fallback={<Skeleton className="h-96 w-full" />}>
+          <SudoTable />
+        </AsyncPanel>
       </div>
       <ApiSourceFooter
         paths={["/api/v1/sudo", "/api/v1/sudo/key"]}

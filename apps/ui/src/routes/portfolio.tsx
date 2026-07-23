@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Suspense } from "react";
 import { Wallet } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
-import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
 import { useWallet } from "@/hooks/use-wallet";
 import { WalletConnectButton } from "@/components/metagraphed/wallet-connect";
 import { YourPositionsPanel } from "@/components/metagraphed/your-positions-panel";
@@ -47,11 +45,9 @@ function PortfolioPage() {
       />
 
       {wallet ? (
-        <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-            <YourPositionsPanel address={wallet.address} />
-          </Suspense>
-        </QueryErrorBoundary>
+        <AsyncPanel context="your positions" fallback={<Skeleton className="h-96 w-full" />}>
+          <YourPositionsPanel address={wallet.address} />
+        </AsyncPanel>
       ) : (
         <div className="rounded border border-dashed border-ink-subtle bg-surface/30 p-8 text-center">
           <Wallet className="mx-auto mb-3 size-6 text-ink-muted" aria-hidden />
