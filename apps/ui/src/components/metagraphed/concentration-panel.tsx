@@ -11,6 +11,7 @@ import { StatTile, BarMini, Sparkline } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames } from "@/lib/metagraphed/format";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
+import { Panel } from "@/components/metagraphed/primitives";
 import type {
   ConcentrationMetrics,
   ConcentrationHistoryPoint,
@@ -96,7 +97,7 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Holders / entity context strip. */}
-      <div className="rounded-xl border border-border bg-card p-4 grid grid-cols-2 gap-3 min-[400px]:grid-cols-4">
+      <Panel as="div" dense bodyClassName="grid grid-cols-2 gap-3 min-[400px]:grid-cols-4">
         <Fact label="Stake holders" value={stake?.holders ?? "—"} />
         <Fact label="Emission holders" value={emission?.holders ?? "—"} />
         <Fact label="Entities" value={c.entity_count ?? "—"} />
@@ -104,7 +105,7 @@ export function ConcentrationLoader({ netuid }: { netuid: number }) {
           label="UIDs / entity"
           value={c.uids_per_entity != null ? c.uids_per_entity.toFixed(2) : "—"}
         />
-      </div>
+      </Panel>
 
       {/* Gini drift over a window. */}
       <DriftCard netuid={netuid} />
@@ -129,7 +130,7 @@ function SharePanel({
   ];
   const allEmpty = bars.every((b) => b.value === 0);
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Panel as="div" dense>
       <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
         {title}
       </div>
@@ -138,7 +139,7 @@ function SharePanel({
       ) : (
         <BarMini data={bars} max={100} />
       )}
-    </div>
+    </Panel>
   );
 }
 
@@ -240,7 +241,7 @@ function DriftCard({ netuid }: { netuid: number }) {
           description="Daily concentration snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <Panel as="div" dense bodyClassName="space-y-3">
           {series.stakeGini.length > 0 ? (
             <DriftRow
               label="Stake Gini"
@@ -273,7 +274,7 @@ function DriftCard({ netuid }: { netuid: number }) {
               format={(v) => `${(v * 100).toFixed(1)}%`}
             />
           ) : null}
-        </div>
+        </Panel>
       )}
     </div>
   );
@@ -377,12 +378,12 @@ function PerformanceLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Score spread — 0-1 trust / consensus / validator-trust medians. */}
-      <div className="rounded-xl border border-border bg-card p-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <Panel as="div" dense bodyClassName="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Fact label="Trust median" value={numStr(p.trust?.p50)} />
         <Fact label="Consensus median" value={numStr(p.consensus?.p50)} />
         <Fact label="Val-trust median" value={numStr(p.validator_trust?.p50)} />
         <Fact label="Active neurons" value={p.active_count ?? p.neuron_count ?? "—"} />
-      </div>
+      </Panel>
 
       {/* Reward-Gini drift over a window. */}
       <RewardDriftCard netuid={netuid} />
@@ -469,7 +470,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
           description="Daily reward-distribution snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <Panel as="div" dense bodyClassName="space-y-3">
           {series.incentiveGini.length > 0 ? (
             <DriftRow
               label="Incentive Gini"
@@ -502,7 +503,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
               format={(v) => `${(v * 100).toFixed(1)}%`}
             />
           ) : null}
-        </div>
+        </Panel>
       )}
     </div>
   );
