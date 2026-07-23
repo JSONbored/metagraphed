@@ -9,7 +9,9 @@ import {
   NO_UPSTREAM_REPORT_INTERVAL_MS,
   computeNoUpstreamWindowUpdate,
   initSentry,
-} from "../src/observability.mjs";
+  type NoUpstreamWindow,
+  type NoUpstreamWindowUpdate,
+} from "../src/observability.ts";
 
 test("computeNoUpstreamWindowUpdate: does not report before the count threshold or interval is reached", () => {
   const update = computeNoUpstreamWindowUpdate(null, "finney", 1_000_000);
@@ -20,15 +22,15 @@ test("computeNoUpstreamWindowUpdate: does not report before the count threshold 
 });
 
 test("computeNoUpstreamWindowUpdate: reports once the count threshold is crossed", () => {
-  let window = null;
-  let update;
+  let window: NoUpstreamWindow | null = null;
+  let update: NoUpstreamWindowUpdate | undefined;
   for (let i = 0; i < NO_UPSTREAM_REPORT_THRESHOLD; i += 1) {
     update = computeNoUpstreamWindowUpdate(window, "finney", 1_000_000);
     window = update.nextWindow;
   }
-  assert.equal(update.report, true);
-  assert.equal(update.count, NO_UPSTREAM_REPORT_THRESHOLD);
-  assert.equal(update.nextWindow, null); // resets after reporting
+  assert.equal(update!.report, true);
+  assert.equal(update!.count, NO_UPSTREAM_REPORT_THRESHOLD);
+  assert.equal(update!.nextWindow, null); // resets after reporting
 });
 
 test("computeNoUpstreamWindowUpdate: reports once the interval elapses, even below the count threshold", () => {
@@ -62,9 +64,13 @@ test("computeNoUpstreamWindowUpdate: two independent windows never leak state in
     "finney",
     1_000_000,
   ).nextWindow;
-  const windowB = computeNoUpstreamWindowUpdate(null, "test", 5_000_000);
-  assert.equal(windowB.count, 1, "windowB must not include windowA's count");
-  assert.notEqual(windowA.startedAt, windowB.startedAt);
+  const windowB = computeNoUpstreamWindowUpdate(
+    null,
+    "test",
+    5_000_000,
+  ).nextWindow;
+  assert.equal(windowB!.count, 1, "windowB must not include windowA's count");
+  assert.notEqual(windowA!.startedAt, windowB!.startedAt);
 });
 
 test("initSentry: no-op (does not throw) when SENTRY_DSN is unset", () => {

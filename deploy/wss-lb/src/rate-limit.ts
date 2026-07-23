@@ -16,7 +16,7 @@
 // RPC_RATE_LIMITER (a Workers Rate Limiting binding). Same spirit
 // (per-client-IP budget, reject with retry-after), different mechanism —
 // that binding doesn't exist outside Cloudflare. Pure + clock-injectable
-// for tests; server.mjs wires in the real Date.now/setInterval.
+// for tests; server.ts wires in the real Date.now/setInterval.
 
 // Cloudflare terminates TLS in front of this service (README.md: "point
 // Cloudflare DNS at it for TLS + DDoS", i.e. proxied/orange-cloud, not
@@ -26,7 +26,18 @@
 // x-forwarded-for (Railway's own edge hop) is a fallback for local/direct
 // access that bypasses Cloudflare (dev, health probes); the raw socket
 // address is the last resort so a lookup never throws.
-export function resolveClientIp(req) {
+// A minimal shape covering both the real http.IncomingMessage the 'upgrade'
+// handler passes and the plain-object fixtures the unit tests pass directly.
+interface ClientRequestLike {
+  headers?: {
+    "cf-connecting-ip"?: string;
+    "x-forwarded-for"?: string;
+    [key: string]: unknown;
+  };
+  socket?: { remoteAddress?: string };
+}
+
+export function resolveClientIp(req: ClientRequestLike): string {
   const cf = req.headers?.["cf-connecting-ip"];
   if (typeof cf === "string" && cf) return cf;
   const xff = req.headers?.["x-forwarded-for"];
@@ -34,22 +45,38 @@ export function resolveClientIp(req) {
   return req.socket?.remoteAddress || "unknown";
 }
 
+interface ConnectionLimiterOptions {
+  maxConcurrent?: number;
+  maxAttemptsPerWindow?: number;
+  windowMs?: number;
+  now?: () => number;
+}
+
+type ConnectionCheckResult =
+  | { ok: true }
+  | { ok: false; reason: string; retryAfterSeconds: number };
+
+interface AttemptWindow {
+  count: number;
+  windowStart: number;
+}
+
 // maxConcurrent/maxAttemptsPerWindow are per-IP budgets; windowMs is the
 // attempt-rate window. now() is injectable so tests don't need real timers.
-export function createConnectionLimiter(opts = {}) {
+export function createConnectionLimiter(opts: ConnectionLimiterOptions = {}) {
   const maxConcurrent = opts.maxConcurrent ?? 20;
   const maxAttemptsPerWindow = opts.maxAttemptsPerWindow ?? 30;
   const windowMs = opts.windowMs ?? 60000;
   const now = opts.now ?? (() => Date.now());
 
-  const concurrent = new Map(); // ip -> open-connection count
-  const attempts = new Map(); // ip -> { count, windowStart }
+  const concurrent = new Map<string, number>(); // ip -> open-connection count
+  const attempts = new Map<string, AttemptWindow>(); // ip -> { count, windowStart }
 
   // Checks BOTH budgets and, only if both pass, atomically reserves one slot
   // in each (a rejected attempt must not consume the attempt-rate budget it
   // just failed, or a sustained attacker would self-throttle their own next
   // legitimate retry window for no reason).
-  function checkAndTrack(ip) {
+  function checkAndTrack(ip: string): ConnectionCheckResult {
     const concurrentCount = concurrent.get(ip) || 0;
     if (concurrentCount >= maxConcurrent) {
       return {
@@ -81,7 +108,7 @@ export function createConnectionLimiter(opts = {}) {
   // client's connection actually closes (client 'close'/'error') — an
   // un-released slot permanently leaks one unit of that IP's concurrent
   // budget.
-  function release(ip) {
+  function release(ip: string) {
     const c = concurrent.get(ip);
     if (!c) return;
     if (c <= 1) concurrent.delete(ip);

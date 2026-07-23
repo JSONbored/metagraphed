@@ -1,27 +1,27 @@
 // Client→upstream wss piping with connect-time failover (extracted for testing).
-import { WebSocket } from "ws";
+import { WebSocket, type RawData } from "ws";
 
 import {
   MAX_RPC_BODY_BYTES,
   SAFE_RPC_METHODS,
   SAFE_RPC_SUBSCRIPTIONS,
   DENIED_RPC_PREFIXES,
-} from "./rpc-policy.mjs";
+} from "./rpc-policy.ts";
 
-function isSafeRpcMethod(method) {
+function isSafeRpcMethod(method: string): boolean {
   return (
     (SAFE_RPC_METHODS.has(method) || SAFE_RPC_SUBSCRIPTIONS.has(method)) &&
     !DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))
   );
 }
 
-function normalizeRpcId(id) {
+function normalizeRpcId(id: unknown): string | number | null {
   return typeof id === "string" || typeof id === "number" || id === null
     ? id
     : null;
 }
 
-function rpcError(id, code, message) {
+function rpcError(id: unknown, code: number, message: string): string {
   return JSON.stringify({
     jsonrpc: "2.0",
     id: normalizeRpcId(id),
@@ -29,7 +29,9 @@ function rpcError(id, code, message) {
   });
 }
 
-function validateClientFrame(data, isBinary) {
+type FrameValidation = { ok: true } | { ok: false; reply: string };
+
+function validateClientFrame(data: RawData, isBinary: boolean): FrameValidation {
   if (isBinary)
     return {
       ok: false,
@@ -101,14 +103,23 @@ function validateClientFrame(data, isBinary) {
 // CONNECTING socket when a prior dial's 'open' flushes `pending`, throwing an
 // uncaught "WebSocket is not open" that crashes the whole process (killing every
 // other proxied client). The flush is also try/catch'd as defense in depth.
-export function proxy(client, upstreams, opts = {}) {
+export interface ProxyOptions {
+  handshakeTimeout?: number;
+  onNoUpstream?: () => void;
+}
+
+export function proxy(
+  client: WebSocket,
+  upstreams: string[],
+  opts: ProxyOptions = {},
+) {
   const handshakeTimeout = opts.handshakeTimeout ?? 10000;
-  let up = null;
+  let up: WebSocket | null = null;
   let opened = false;
   let clientClosed = false;
-  const pending = [];
+  const pending: [RawData, boolean][] = [];
 
-  client.on("message", (data, isBinary) => {
+  client.on("message", (data: RawData, isBinary: boolean) => {
     const validation = validateClientFrame(data, isBinary);
     if (!validation.ok) {
       if (client.readyState === WebSocket.OPEN) client.send(validation.reply);
@@ -135,7 +146,7 @@ export function proxy(client, upstreams, opts = {}) {
     }
   });
 
-  const tryUpstream = (attempt) => {
+  const tryUpstream = (attempt: number) => {
     if (clientClosed) return;
     if (attempt >= upstreams.length) {
       try {

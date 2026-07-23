@@ -9,12 +9,19 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { test } from "node:test";
+import type { AddressInfo } from "node:net";
 
 import { WebSocket, WebSocketServer } from "ws";
 
-import { proxy } from "../src/proxy.mjs";
+import { proxy, type ProxyOptions } from "../src/proxy.ts";
 
-function echoServer() {
+interface EchoServer {
+  url: string;
+  readonly connections: number;
+  close: () => Promise<void>;
+}
+
+function echoServer(): Promise<EchoServer> {
   return new Promise((resolve) => {
     const http = createServer();
     const wss = new WebSocketServer({ server: http });
@@ -24,19 +31,27 @@ function echoServer() {
       ws.on("message", (d, isBinary) => ws.send(d, { binary: isBinary }));
     });
     http.listen(0, "127.0.0.1", () => {
-      const { port } = http.address();
+      const { port } = http.address() as AddressInfo;
       resolve({
         url: `ws://127.0.0.1:${port}`,
         get connections() {
           return connections;
         },
-        close: () => new Promise((r) => http.close(r)),
+        close: () => new Promise((r) => http.close(() => r())),
       });
     });
   });
 }
 
-function lbServer(upstreams, proxyOpts = {}) {
+interface LbServer {
+  url: string;
+  close: () => Promise<void>;
+}
+
+function lbServer(
+  upstreams: string[],
+  proxyOpts: ProxyOptions = {},
+): Promise<LbServer> {
   return new Promise((resolve) => {
     const http = createServer();
     const wss = new WebSocketServer({ server: http });
@@ -44,27 +59,36 @@ function lbServer(upstreams, proxyOpts = {}) {
       proxy(client, upstreams, { handshakeTimeout: 2000, ...proxyOpts }),
     );
     http.listen(0, "127.0.0.1", () => {
-      const { port } = http.address();
+      const { port } = http.address() as AddressInfo;
       resolve({
         url: `ws://127.0.0.1:${port}`,
-        close: () => new Promise((r) => http.close(r)),
+        close: () => new Promise((r) => http.close(() => r())),
       });
     });
   });
 }
 
 // A guaranteed-dead upstream: bind an ephemeral port, then free it.
-async function deadUrl() {
+async function deadUrl(): Promise<string> {
   const s = await echoServer();
   const u = s.url;
   await s.close();
   return u;
 }
 
+interface JsonRpcReply {
+  jsonrpc?: string;
+  id?: unknown;
+  result?: unknown;
+  error?: { code?: number; message?: string };
+  method?: string;
+  params?: unknown;
+}
+
 test("failover: dead upstream then good → one dial, echo works, no crash", async () => {
   const good = await echoServer();
   const lb = await lbServer([await deadUrl(), good.url]);
-  const echoed = await new Promise((resolve, reject) => {
+  const echoed = await new Promise<string>((resolve, reject) => {
     const c = new WebSocket(lb.url);
     c.on("open", () =>
       c.send(
@@ -90,7 +114,7 @@ test("failover: dead upstream then good → one dial, echo works, no crash", asy
 
 test("all upstreams dead → client closed with 1013", async () => {
   const lb = await lbServer([await deadUrl(), await deadUrl()]);
-  const code = await new Promise((resolve) => {
+  const code = await new Promise<number>((resolve) => {
     const c = new WebSocket(lb.url);
     c.on("close", (closeCode) => resolve(closeCode));
     setTimeout(() => resolve(-1), 8000);
@@ -106,7 +130,7 @@ test("all upstreams dead → onNoUpstream fires exactly once (for Sentry aggrega
       calls += 1;
     },
   });
-  await new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     const c = new WebSocket(lb.url);
     c.on("close", () => resolve());
     setTimeout(resolve, 8000);
@@ -123,10 +147,10 @@ test("onNoUpstream is never called on a successful failover (only on total exhau
       calls += 1;
     },
   });
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const c = new WebSocket(lb.url);
     c.on("open", () => c.close());
-    c.on("close", resolve);
+    c.on("close", () => resolve());
     c.on("error", reject);
     setTimeout(() => reject(new Error("timeout")), 8000);
   });
@@ -136,7 +160,7 @@ test("onNoUpstream is never called on a successful failover (only on total exhau
 });
 
 test("security: unsafe and oversized client RPC frames do not reach upstream", async () => {
-  const upstreamMessages = [];
+  const upstreamMessages: string[] = [];
   const http = createServer();
   const wss = new WebSocketServer({ server: http });
   wss.on("connection", (ws) => {
@@ -145,15 +169,15 @@ test("security: unsafe and oversized client RPC frames do not reach upstream", a
       ws.send(JSON.stringify({ jsonrpc: "2.0", id: 99, result: "accepted" }));
     });
   });
-  const upstream = await new Promise((resolve) =>
+  const upstream = await new Promise<string>((resolve) =>
     http.listen(0, "127.0.0.1", () =>
-      resolve(`ws://127.0.0.1:${http.address().port}`),
+      resolve(`ws://127.0.0.1:${(http.address() as AddressInfo).port}`),
     ),
   );
   const lb = await lbServer([upstream]);
 
-  const replies = await new Promise((resolve, reject) => {
-    const seen = [];
+  const replies = await new Promise<JsonRpcReply[]>((resolve, reject) => {
+    const seen: JsonRpcReply[] = [];
     const c = new WebSocket(lb.url);
     c.on("open", () => {
       c.send(
@@ -214,7 +238,7 @@ test("security: unsafe and oversized client RPC frames do not reach upstream", a
   );
 
   await lb.close();
-  await new Promise((resolve) => http.close(resolve));
+  await new Promise<void>((resolve) => http.close(() => resolve()));
 });
 
 test("security: nested non-scalar RPC ids are not reflected in errors", async () => {
@@ -223,7 +247,7 @@ test("security: nested non-scalar RPC ids are not reflected in errors", async ()
   const nestedId = "[".repeat(5000) + "null" + "]".repeat(5000);
   const payload = `{"jsonrpc":"2.0","id":${nestedId},"method":"author_submitExtrinsic"}`;
 
-  const reply = await new Promise((resolve, reject) => {
+  const reply = await new Promise<JsonRpcReply>((resolve, reject) => {
     const c = new WebSocket(lb.url);
     c.on("open", () => {
       c.send(payload);
@@ -245,7 +269,7 @@ test("security: nested non-scalar RPC ids are not reflected in errors", async ()
 });
 
 test("security: storage subscriptions are rejected before reaching upstream", async () => {
-  const upstreamMessages = [];
+  const upstreamMessages: string[] = [];
   const http = createServer();
   const wss = new WebSocketServer({ server: http });
   wss.on("connection", (ws) => {
@@ -254,14 +278,17 @@ test("security: storage subscriptions are rejected before reaching upstream", as
       ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "accepted" }));
     });
   });
-  const upstream = await new Promise((resolve) =>
+  const upstream = await new Promise<string>((resolve) =>
     http.listen(0, "127.0.0.1", () =>
-      resolve(`ws://127.0.0.1:${http.address().port}`),
+      resolve(`ws://127.0.0.1:${(http.address() as AddressInfo).port}`),
     ),
   );
   const lb = await lbServer([upstream]);
 
-  async function rejectedStorageReply(method, params) {
+  async function rejectedStorageReply(
+    method: string,
+    params: unknown,
+  ): Promise<JsonRpcReply> {
     return await new Promise((resolve, reject) => {
       const c = new WebSocket(lb.url);
       c.on("open", () =>
@@ -304,11 +331,11 @@ test("security: storage subscriptions are rejected before reaching upstream", as
   assert.deepEqual(upstreamMessages, []);
 
   await lb.close();
-  await new Promise((resolve) => http.close(resolve));
+  await new Promise<void>((resolve) => http.close(() => resolve()));
 });
 
 test("subscriptions: read-only subscribe frames are relayed to upstream", async () => {
-  const upstreamMethods = [];
+  const upstreamMethods: string[] = [];
   const http = createServer();
   const wss = new WebSocketServer({ server: http });
   wss.on("connection", (ws) => {
@@ -325,14 +352,14 @@ test("subscriptions: read-only subscribe frames are relayed to upstream", async 
       );
     });
   });
-  const upstream = await new Promise((resolve) =>
+  const upstream = await new Promise<string>((resolve) =>
     http.listen(0, "127.0.0.1", () =>
-      resolve(`ws://127.0.0.1:${http.address().port}`),
+      resolve(`ws://127.0.0.1:${(http.address() as AddressInfo).port}`),
     ),
   );
   const lb = await lbServer([upstream]);
 
-  const seen = await new Promise((resolve, reject) => {
+  const seen = await new Promise<JsonRpcReply[]>((resolve, reject) => {
     const c = new WebSocket(lb.url);
     c.on("open", () =>
       c.send(
@@ -343,7 +370,7 @@ test("subscriptions: read-only subscribe frames are relayed to upstream", async 
         }),
       ),
     );
-    const messages = [];
+    const messages: JsonRpcReply[] = [];
     c.on("message", (d) => {
       messages.push(JSON.parse(d.toString()));
       if (messages.length === 2) {

@@ -70,7 +70,7 @@ Env: `METAGRAPHED_API` (default `https://api.metagraph.sh`), `PORT` (8080),
 ## Abuse control (#6444)
 
 Per-IP connection cap + rolling connect-rate limit, checked at CONNECT time
-before any upstream dial (`src/rate-limit.mjs`). Client IP is
+before any upstream dial (`src/rate-limit.ts`). Client IP is
 `cf-connecting-ip` (Cloudflare terminates in front of this service), falling
 back to `x-forwarded-for` then the raw socket address. A rejected upgrade
 gets `429 Too Many Requests` with `Retry-After`. In-memory, single-instance —

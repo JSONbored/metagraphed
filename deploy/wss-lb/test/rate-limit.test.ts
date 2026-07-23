@@ -6,7 +6,7 @@ import { test } from "node:test";
 import {
   createConnectionLimiter,
   resolveClientIp,
-} from "../src/rate-limit.mjs";
+} from "../src/rate-limit.ts";
 
 test("resolveClientIp prefers cf-connecting-ip over x-forwarded-for over the socket", () => {
   assert.equal(

@@ -7,10 +7,13 @@ import {
   isWssUpstream,
   selectWssUpstreams,
   wssPoolFor,
-} from "../src/select.mjs";
+  type Pool,
+  type PoolEndpoint,
+  type PoolsArtifact,
+} from "../src/select.ts";
 
 // A pool endpoint (the /api/v1/rpc/pools endpoints[] shape).
-const ep = (over = {}) => ({
+const ep = (over: Partial<PoolEndpoint> = {}): PoolEndpoint => ({
   id: "endpoint-x",
   url: "wss://node.example:443",
   kind: "subtensor-wss",
@@ -22,7 +25,10 @@ const ep = (over = {}) => ({
 });
 
 // The pools artifact: a finney-wss pool plus noise pools the selector must skip.
-const artifact = (wssEndpoints, extra = []) => ({
+const artifact = (
+  wssEndpoints: PoolEndpoint[],
+  extra: Pool[] = [],
+): PoolsArtifact => ({
   pools: [
     { id: "finney-rpc", kind: "subtensor-rpc", endpoints: [ep()] },
     { id: "finney-wss", kind: "subtensor-wss", endpoints: wssEndpoints },

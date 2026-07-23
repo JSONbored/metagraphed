@@ -11,34 +11,44 @@
 //
 // INTEGRATION-PENDING: the live ws-piping is verified on deploy; the pure
 // upstream selection is unit-tested (test/select.test.mjs). Public behind
-// Cloudflare DNS for TLS/DDoS, with per-IP abuse control (rate-limit.mjs).
+// Cloudflare DNS for TLS/DDoS, with per-IP abuse control (rate-limit.ts).
 // Env: METAGRAPHED_API, PORT, REFRESH_MS, MAX_BLOCK_LAG, NETWORKS,
 // HANDSHAKE_TIMEOUT_MS, MAX_CONNECTIONS_PER_IP, CONNECT_RATE_LIMIT,
 // CONNECT_RATE_WINDOW_MS. Optionally SENTRY_DSN/SENTRY_ENVIRONMENT/
 // SENTRY_RELEASE (silently no-ops if SENTRY_DSN is unset -- see
-// src/observability.mjs).
+// src/observability.ts).
 import http from "node:http";
 
-import { WebSocketServer } from "ws";
+import { WebSocketServer, type WebSocket } from "ws";
 
-import { MAX_RPC_BODY_BYTES } from "./rpc-policy.mjs";
-import { proxy } from "./proxy.mjs";
-import { createConnectionLimiter, resolveClientIp } from "./rate-limit.mjs";
-import { selectWssUpstreams } from "./select.mjs";
+import { MAX_RPC_BODY_BYTES } from "./rpc-policy.ts";
+import { proxy } from "./proxy.ts";
+import { createConnectionLimiter, resolveClientIp } from "./rate-limit.ts";
+import { selectWssUpstreams, type PoolsArtifact } from "./select.ts";
 import {
   initSentry,
   endSessionAndFlush,
   computeNoUpstreamWindowUpdate,
   reportNoUpstreamWindow,
   reportPoolStale,
-} from "./observability.mjs";
+  type NoUpstreamWindow,
+} from "./observability.ts";
+
+// `ws`'s WebSocket doesn't declare this -- server.ts stamps a liveness flag on
+// each client for the heartbeat sweep below (module augmentation instead of a
+// cast at every read/write site).
+declare module "ws" {
+  interface WebSocket {
+    isAlive?: boolean;
+  }
+}
 
 initSentry();
 
 // Numeric env with a NaN/positivity guard: Number(process.env.X || d) returns NaN
 // for a non-numeric string (the `|| d` only catches empty/unset), which would
 // poison the refresh timer, the /healthz staleness gate, and the block-lag filter.
-const envInt = (key, fallback) => {
+const envInt = (key: string, fallback: number): number => {
   const n = Number(process.env[key]);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
@@ -52,20 +62,20 @@ const NETWORKS = (process.env.NETWORKS || "finney,test")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-// #6444: per-IP abuse control, see rate-limit.mjs for the reasoning behind
+// #6444: per-IP abuse control, see rate-limit.ts for the reasoning behind
 // both budgets and their defaults.
 const MAX_CONNECTIONS_PER_IP = envInt("MAX_CONNECTIONS_PER_IP", 20);
 const CONNECT_RATE_LIMIT = envInt("CONNECT_RATE_LIMIT", 30);
 const CONNECT_RATE_WINDOW_MS = envInt("CONNECT_RATE_WINDOW_MS", 60000);
 
-const log = (...a) => console.log(new Date().toISOString(), ...a);
+const log = (...a: unknown[]) => console.log(new Date().toISOString(), ...a);
 
-let poolsArtifact = null;
+let poolsArtifact: PoolsArtifact | null = null;
 let lastRefresh = 0;
 let wasStale = false; // edge-detection state -- see reportPoolStale's own comment
-let noUpstreamWindow = null; // owned here, not module-level in observability.mjs -- see computeNoUpstreamWindowUpdate's own comment
+let noUpstreamWindow: NoUpstreamWindow | null = null; // owned here, not module-level in observability.ts -- see computeNoUpstreamWindowUpdate's own comment
 
-function noteNoUpstream(network) {
+function noteNoUpstream(network: string) {
   const update = computeNoUpstreamWindowUpdate(noUpstreamWindow, network);
   noUpstreamWindow = update.nextWindow;
   if (update.report) reportNoUpstreamWindow(update);
@@ -78,18 +88,24 @@ async function refresh() {
       headers: { "user-agent": "metagraphed-wss-lb/1.0" },
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
-    const body = await res.json();
-    const artifact = Array.isArray(body?.pools)
-      ? body
+    const body = (await res.json()) as {
+      pools?: unknown;
+      data?: { pools?: unknown };
+    };
+    const artifact: PoolsArtifact | null = Array.isArray(body?.pools)
+      ? (body as PoolsArtifact)
       : Array.isArray(body?.data?.pools)
-        ? body.data
+        ? (body.data as PoolsArtifact)
         : null;
     if (artifact) {
       poolsArtifact = artifact;
       lastRefresh = Date.now();
     }
   } catch (e) {
-    log("refresh failed:", String(e?.message || e).slice(0, 160));
+    log(
+      "refresh failed:",
+      String((e as Error)?.message || e).slice(0, 160),
+    );
   }
   const stale = !lastRefresh || Date.now() - lastRefresh > REFRESH_MS * 3;
   if (stale && !wasStale) {
@@ -98,7 +114,7 @@ async function refresh() {
   wasStale = stale;
 }
 
-function poolFor(network) {
+function poolFor(network: string) {
   return selectWssUpstreams(poolsArtifact, network, {
     maxBlockLag: MAX_BLOCK_LAG,
   });
@@ -129,7 +145,7 @@ const server = http.createServer((req, res) => {
 });
 
 // maxPayload caps inbound client frames at the protocol layer; the app-level
-// MAX_RPC_BODY_BYTES check in proxy.mjs only fires AFTER ws buffers the full frame.
+// MAX_RPC_BODY_BYTES check in proxy.ts only fires AFTER ws buffers the full frame.
 const wss = new WebSocketServer({
   noServer: true,
   maxPayload: MAX_RPC_BODY_BYTES,
@@ -137,7 +153,7 @@ const wss = new WebSocketServer({
 
 // Heartbeat: WS over the public internet (behind Cloudflare) accumulates half-open
 // sockets that never emit 'close' (NAT/idle timeouts, silent peer death). Each sweep
-// terminates any client that hasn't ponged since the last one; proxy.mjs's client
+// terminates any client that hasn't ponged since the last one; proxy.ts's client
 // 'close' handler then tears down that client's upstream socket too.
 const HEARTBEAT_MS = envInt("HEARTBEAT_MS", 30000);
 const heartbeat = setInterval(() => {

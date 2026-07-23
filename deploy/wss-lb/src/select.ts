@@ -5,7 +5,27 @@
 // Network is the POOL id (`<network>-wss`), NOT a per-endpoint field, and the
 // pool already kind-filters + score-sorts. No I/O — unit-tested.
 
-function scoreOf(e) {
+export interface PoolEndpoint {
+  id?: string;
+  url?: unknown;
+  kind?: string;
+  pool_eligible?: unknown;
+  score?: unknown;
+  status?: string;
+  latest_block?: unknown;
+}
+
+export interface Pool {
+  id?: string;
+  kind?: string;
+  endpoints?: PoolEndpoint[];
+}
+
+export interface PoolsArtifact {
+  pools?: Pool[];
+}
+
+function scoreOf(e: PoolEndpoint): number {
   const n = Number(e.score);
   return Number.isFinite(n) ? n : 0;
 }
@@ -14,7 +34,7 @@ function scoreOf(e) {
 // NOT Number(e.latest_block), because Number(null) === 0 (finite), which would
 // mis-read a block-less endpoint (e.g. the unmonitored testnet pool) as height 0
 // and wrongly drop it as stale.
-function blockOf(e) {
+function blockOf(e: PoolEndpoint): number | null {
   if (e.latest_block == null) return null;
   const n = Number(e.latest_block);
   return Number.isFinite(n) ? n : null;
@@ -25,17 +45,23 @@ function blockOf(e) {
 // testnet member, liveness via the breaker/failover" for test. We must NOT also
 // require status === "ok": static testnet wss is pool_eligible with
 // status "unknown", and a status gate would drop the whole testnet pool.
-export function isWssUpstream(e) {
+export function isWssUpstream(
+  e: unknown,
+): e is PoolEndpoint & { url: string } {
+  const candidate = e as PoolEndpoint | null | undefined;
   return (
-    Boolean(e) &&
-    e.pool_eligible === true &&
-    typeof e.url === "string" &&
-    e.url.startsWith("wss://")
+    Boolean(candidate) &&
+    candidate?.pool_eligible === true &&
+    typeof candidate?.url === "string" &&
+    candidate.url.startsWith("wss://")
   );
 }
 
 // The subtensor-wss pool for `network` (pool id `<network>-wss`, e.g. finney-wss).
-export function wssPoolFor(poolsArtifact, network) {
+export function wssPoolFor(
+  poolsArtifact: PoolsArtifact | null | undefined,
+  network: string,
+): Pool | null {
   const pools = Array.isArray(poolsArtifact?.pools) ? poolsArtifact.pools : [];
   return (
     pools.find(
@@ -48,7 +74,11 @@ export function wssPoolFor(poolsArtifact, network) {
 // endpoints within `maxBlockLag` of the freshest tip among them (an endpoint with
 // no reported block is kept — benefit of the doubt), score desc. Empty when the
 // pool is absent or has no eligible members (the caller 503s).
-export function selectWssUpstreams(poolsArtifact, network, opts = {}) {
+export function selectWssUpstreams(
+  poolsArtifact: PoolsArtifact | null | undefined,
+  network: string,
+  opts: { maxBlockLag?: number } = {},
+): string[] {
   const maxBlockLag = opts.maxBlockLag ?? 50;
   const pool = wssPoolFor(poolsArtifact, network);
   const healthy = (pool?.endpoints || []).filter(isWssUpstream);

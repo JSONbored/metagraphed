@@ -2,12 +2,12 @@
 // `metagraphed` Sentry project. Silently no-ops if SENTRY_DSN is unset,
 // matching this service's own best-effort design elsewhere.
 //
-// A separate module from server.mjs (not inlined) so the pure aggregate-
+// A separate module from server.ts (not inlined) so the pure aggregate-
 // reporting logic below can be unit-tested with `node --test` the same way
-// select.mjs/proxy.mjs already are, without importing server.mjs itself --
+// select.ts/proxy.ts already are, without importing server.ts itself --
 // that file runs its HTTP server + refresh loop as an unconditional
 // top-level side effect on import, so it can't be required by a test file
-// directly (see server.mjs's own header).
+// directly (see server.ts's own header).
 import { closeSession } from "@sentry/core";
 import * as Sentry from "@sentry/node";
 
@@ -15,7 +15,7 @@ import * as Sentry from "@sentry/node";
 // lifetime model: this is an always-on server, not a one-shot batch script
 // (contrast the canonical metagraphed repo's scripts/observability.ts,
 // which sessions per script run) -- one session per process boot, closed
-// healthy on graceful SIGTERM/SIGINT shutdown (see server.mjs's own
+// healthy on graceful SIGTERM/SIGINT shutdown (see server.ts's own
 // shutdown handler) or marked crashed here on a genuinely uncaught
 // exception. @sentry/node's default OnUncaughtException/OnUnhandledRejection
 // integrations don't mark the active session crashed before exiting
@@ -31,7 +31,7 @@ import * as Sentry from "@sentry/node";
 // race between two competing exit paths.
 let sentryInitialized = false;
 
-async function handleFatal(error, exitCode) {
+async function handleFatal(error: unknown, exitCode: number) {
   console.error("[wss-lb] fatal:", error);
   if (sentryInitialized) {
     Sentry.captureException(error);
@@ -93,7 +93,7 @@ export function initSentry() {
 }
 
 // Closes the process-lifetime session as a healthy exit. Called from
-// server.mjs's own graceful SIGTERM/SIGINT handler.
+// server.ts's own graceful SIGTERM/SIGINT handler.
 export async function endSessionAndFlush() {
   if (!sentryInitialized) return;
   Sentry.endSession();
@@ -103,19 +103,32 @@ export async function endSessionAndFlush() {
 export const NO_UPSTREAM_REPORT_THRESHOLD = 50;
 export const NO_UPSTREAM_REPORT_INTERVAL_MS = 5 * 60 * 1000;
 
+export interface NoUpstreamWindow {
+  startedAt: number;
+  count: number;
+}
+
+export interface NoUpstreamWindowUpdate {
+  report: boolean;
+  count: number;
+  elapsedMs: number;
+  lastNetwork: string;
+  nextWindow: NoUpstreamWindow | null;
+}
+
 // Pure state-transition function -- same design as chain-firehose-relay.ts's
 // computeDropWindowUpdate, for the same reason: a client-connect storm during
 // a real upstream-pool outage could reject many clients per second (every
 // concurrent reconnect attempt), and naive per-rejection capture would blow
 // through the free-tier Sentry event quota and then be silently sampled away
 // by Sentry itself -- the opposite of the point. Holds no module-level
-// mutable state itself; the caller (server.mjs) owns the actual window
+// mutable state itself; the caller (server.ts) owns the actual window
 // variable, the same split chain-firehose-relay.ts's own comment explains.
 export function computeNoUpstreamWindowUpdate(
-  window,
-  network,
-  now = Date.now(),
-) {
+  window: NoUpstreamWindow | null | undefined,
+  network: string,
+  now: number = Date.now(),
+): NoUpstreamWindowUpdate {
   const startedAt = window?.startedAt ?? now;
   const totalCount = (window?.count ?? 0) + 1;
   const elapsedMs = now - startedAt;
@@ -131,7 +144,7 @@ export function computeNoUpstreamWindowUpdate(
   };
 }
 
-export function reportNoUpstreamWindow(update) {
+export function reportNoUpstreamWindow(update: NoUpstreamWindowUpdate) {
   Sentry.captureMessage(
     `wss-lb: ${update.count} client(s) rejected for no available upstream (last network: ${update.lastNetwork}) in the last ${Math.round(update.elapsedMs / 1000)}s`,
     {
@@ -146,10 +159,10 @@ export function reportNoUpstreamWindow(update) {
 }
 
 // Pool freshness is a LEVEL, not a per-check event -- report only on the
-// fresh→stale EDGE (server.mjs tracks the previous state and calls this once
+// fresh→stale EDGE (server.ts tracks the previous state and calls this once
 // per transition), not on every refresh tick while already stale, which
 // would spam once per REFRESH_MS for the entire duration of an outage.
-export function reportPoolStale(reason) {
+export function reportPoolStale(reason: string) {
   Sentry.captureMessage(`wss-lb: RPC pool refresh is stale -- ${reason}`, {
     level: "warning",
   });

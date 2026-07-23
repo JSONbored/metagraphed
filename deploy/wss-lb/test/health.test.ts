@@ -1,31 +1,32 @@
 // Run with: cd deploy/wss-lb && npm test
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import http from "node:http";
 import { once } from "node:events";
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { AddressInfo } from "node:net";
 
-async function listen(server) {
+async function listen(server: http.Server): Promise<number> {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
-  return server.address().port;
+  return (server.address() as AddressInfo).port;
 }
 
-async function freePort() {
+async function freePort(): Promise<number> {
   const server = http.createServer();
   const port = await listen(server);
   await new Promise((resolve) => server.close(resolve));
   return port;
 }
 
-async function waitForListening(child) {
+async function waitForListening(child: ChildProcess) {
   let output = "";
-  child.stdout.setEncoding("utf8");
-  child.stderr.setEncoding("utf8");
-  child.stdout.on("data", (chunk) => {
+  child.stdout!.setEncoding("utf8");
+  child.stderr!.setEncoding("utf8");
+  child.stdout!.on("data", (chunk: string) => {
     output += chunk;
   });
-  child.stderr.on("data", (chunk) => {
+  child.stderr!.on("data", (chunk: string) => {
     output += chunk;
   });
 
@@ -54,7 +55,7 @@ test("/healthz reports stale upstream pools with HTTP 503", async (t) => {
   t.after(() => api.close());
 
   const port = await freePort();
-  const server = spawn(process.execPath, ["src/server.mjs"], {
+  const server = spawn(process.execPath, ["src/server.ts"], {
     cwd: new URL("..", import.meta.url),
     env: {
       ...process.env,

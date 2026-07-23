@@ -5,12 +5,18 @@
   "type": "module",
   "description": "Health-aware WebSocket load balancer for Bittensor RPC (ADR 0013)",
   "scripts": {
-    "start": "node src/server.mjs",
-    "test": "node --test --test-force-exit test/*.test.mjs"
+    "start": "node src/server.ts",
+    "test": "node --test --test-force-exit test/*.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@sentry/node": "^10.66.0",
     "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20.20.2"
