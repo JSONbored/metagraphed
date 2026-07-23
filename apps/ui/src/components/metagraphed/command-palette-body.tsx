@@ -627,7 +627,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
               type="button"
               onClick={() => onScopeChange(s.key)}
               className={classNames(
-                "shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                "shrink-0 rounded-full border px-2.5 py-1 mg-type-micro transition-colors",
                 active
                   ? "border-accent/60 bg-accent/10 text-accent"
                   : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-ink/30",
@@ -773,9 +773,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     onCopy={() => copyLink(n.target, n.label)}
                     onNewTab={() => openInNewTab(n.target, n.kind)}
                   />
-                  <CommandShortcut className="font-mono text-[10px] uppercase tracking-widest">
-                    {n.kind}
-                  </CommandShortcut>
+                  <CommandShortcut className="mg-type-micro">{n.kind}</CommandShortcut>
                 </CommandItem>
               );
             })}
@@ -846,9 +844,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                       onCopy={() => copyLink(target, String(title))}
                       onNewTab={() => openInNewTab(target, kind)}
                     />
-                    <CommandShortcut className="font-mono text-[10px] uppercase tracking-widest">
-                      {meta.label}
-                    </CommandShortcut>
+                    <CommandShortcut className="mg-type-micro">{meta.label}</CommandShortcut>
                   </CommandItem>
                 );
               })}
@@ -900,7 +896,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     onCopy={() => copyLink(target, String(title))}
                     onNewTab={() => openInNewTab(target, kind || "semantic")}
                   />
-                  <CommandShortcut className="font-mono text-[10px] uppercase tracking-widest text-accent">
+                  <CommandShortcut className="mg-type-micro text-accent">
                     AI {Math.round(r.score * 100)}%
                   </CommandShortcut>
                 </CommandItem>

@@ -108,7 +108,7 @@ export function IncidentStrip() {
             so the banner always reads as that subnet's status — never the current
             page's — and the old standalone label + trailing subnet link collapse
             into it. A net simplification (fewer elements), not another chip. */}
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest">
+        <span className="shrink-0 mg-type-micro">
           {top.netuid != null ? (
             <Link
               to="/subnets/$netuid"
@@ -127,7 +127,7 @@ export function IncidentStrip() {
         </span>
         <Link
           to="/health"
-          className="shrink-0 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest hover:text-accent"
+          className="shrink-0 inline-flex items-center gap-1 mg-type-micro hover:text-accent"
         >
           {active.length > 1 ? `All ${active.length}` : "View"}
           <ArrowRight className="size-3" />

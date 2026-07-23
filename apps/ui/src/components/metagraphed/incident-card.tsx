@@ -18,11 +18,7 @@ export function IncidentCard({ incident }: { incident: EndpointIncident }) {
             {i.endpoint_id ?? "—"}
           </span>
         </div>
-        <span
-          className={`font-mono text-[10px] uppercase tracking-widest ${
-            ongoing ? "text-health-down" : "text-ink-muted"
-          }`}
-        >
+        <span className={`mg-type-micro ${ongoing ? "text-health-down" : "text-ink-muted"}`}>
           {ongoing ? "ongoing" : "resolved"} · {durationLabel(i.started_at, i.ended_at)}
         </span>
       </div>

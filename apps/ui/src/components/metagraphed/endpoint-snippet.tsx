@@ -62,7 +62,7 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
             aria-selected={lang === l.id}
             onClick={() => setLang(l.id)}
             className={classNames(
-              "rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors",
+              "rounded px-2.5 py-1 mg-type-label uppercase transition-colors",
               lang === l.id ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
             )}
           >

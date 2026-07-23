@@ -68,9 +68,7 @@ export function SubnetPulseGrid({ columns = 16 }: { columns?: number }) {
               />
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">
-              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                netuid {s.netuid}
-              </div>
+              <div className="mg-type-micro text-ink-muted">netuid {s.netuid}</div>
               <div className="font-display text-sm font-semibold text-ink-strong">
                 {s.name ?? `Subnet ${s.netuid}`}
               </div>
