@@ -27,7 +27,15 @@ const BASE_DESIGN_RULES = [
       "Bone & Ink caps font-weight at 600. Use font-medium or font-semibold — never bold/extrabold/black.",
   },
   {
-    selector: "Literal[value=/#[0-9a-fA-F]{3,8}\\b/][value!=/^#$/]",
+    // Anchored to the whole literal (a bare hex value, e.g. a theme-color meta
+    // string) or Tailwind's `[#...]` arbitrary-value bracket syntax -- NOT a
+    // bare `\b#[0-9a-f]{3,8}\b` scan, which false-positives on GitHub issue
+    // references embedded in prose strings (test descriptions, tooltip copy,
+    // JSDoc-in-string), e.g. "...(#6424)..." reads as a 4-digit hex color to
+    // an unanchored regex. A 2026-07-23 audit found 26 of 27 "hits" were this
+    // exact false positive; only the real one (an unavoidable meta theme-color
+    // literal, __root.tsx) survives this tightened match.
+    selector: "Literal[value=/^#[0-9a-fA-F]{3,8}$|\\[#[0-9a-fA-F]{3,8}\\]/]",
     message:
       "No raw hex colors in className / string literals. Author new colors in OKLCH in packages/ui-kit/src/styles.css.",
   },

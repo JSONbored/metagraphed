@@ -286,7 +286,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         // pages unfurl to themselves, not the homepage.
         { name: "twitter:card", content: "summary_large_image" },
         // Brand ink (mint-M favicon set). og:image stays the per-route /og card
-        // injected in src/server.ts.
+        // injected in src/server.ts. theme-color is read directly by browser
+        // chrome outside the CSS cascade, so it can't reference a custom
+        // property -- a literal hex is unavoidable here, same as
+        // health-tokens.ts/og-image.ts.
+        // eslint-disable-next-line no-restricted-syntax -- see comment above
         { name: "theme-color", content: "#0B1F1A" },
       ],
       links: [
