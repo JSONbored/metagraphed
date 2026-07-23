@@ -19,13 +19,23 @@ import { pathToFileURL } from "node:url";
 import { listJsonFiles, loadProviders, readJson, repoRoot } from "./lib.mjs";
 import { isFirstPartySurface } from "./stale-gap-notes.mjs";
 
+type Row = Record<string, unknown>;
+
 // Top-level identity fields and the surface kind each falls back to, mirroring
 // the `primaryLinks` resolution in build-artifacts.mjs
 // (`subnet.<field> || firstSurfaceUrl(surfaces, kind)`).
-const IDENTITY_FIELDS = [
+const IDENTITY_FIELDS: { field: string; kind: string }[] = [
   { field: "website_url", kind: "website" },
   { field: "dashboard_url", kind: "dashboard" },
 ];
+
+interface DivergentField {
+  field: string;
+  kind: string;
+  top_level_url: unknown;
+  surface_id: unknown;
+  surface_url: unknown;
+}
 
 // Returns the divergent identity fields for a single subnet document, or [] if
 // none. A field diverges when it is set (a falsy/absent field already defers to
@@ -37,9 +47,12 @@ const IDENTITY_FIELDS = [
 // per-subnet dashboard) is not, and is sometimes deliberately retained as a
 // directory entry (see tensorclaw.json), so comparing against it would
 // false-positive. Same reasoning as stale-gap-notes' isFirstPartySurface.
-export function findDivergentIdentityFields(document, providersById) {
-  const surfaces = document.surfaces || [];
-  const findings = [];
+export function findDivergentIdentityFields(
+  document: Row,
+  providersById: Map<unknown, Row>,
+): DivergentField[] {
+  const surfaces = (document.surfaces as Row[] | undefined) || [];
+  const findings: DivergentField[] = [];
   for (const { field, kind } of IDENTITY_FIELDS) {
     const topLevel = document[field];
     if (!topLevel) continue;
@@ -62,14 +75,30 @@ export function findDivergentIdentityFields(document, providersById) {
   return findings;
 }
 
-export async function collectDivergentIdentityFields() {
+interface SubnetDivergence {
+  slug: unknown;
+  netuid: unknown;
+  name: unknown;
+  file: string;
+  findings: DivergentField[];
+}
+
+interface DivergenceReport {
+  subnet_count: number;
+  finding_count: number;
+  subnets: SubnetDivergence[];
+}
+
+export async function collectDivergentIdentityFields(): Promise<DivergenceReport> {
   const providersById = new Map(
-    (await loadProviders()).map((provider) => [provider.id, provider]),
+    (await loadProviders()).map((provider: Row) => [provider.id, provider]),
   );
-  const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
-  const subnets = [];
+  const files: string[] = await listJsonFiles(
+    path.join(repoRoot, "registry/subnets"),
+  );
+  const subnets: SubnetDivergence[] = [];
   for (const file of files) {
-    const document = await readJson(file);
+    const document: Row = await readJson(file);
     const findings = findDivergentIdentityFields(document, providersById);
     if (findings.length > 0) {
       subnets.push({
@@ -92,7 +121,7 @@ export async function collectDivergentIdentityFields() {
   };
 }
 
-function renderReport(report) {
+function renderReport(report: DivergenceReport): string {
   if (report.subnets.length === 0) {
     return "No divergent identity fields found.\n";
   }
@@ -121,7 +150,7 @@ if (isCliEntrypoint()) {
   }
 }
 
-function isCliEntrypoint() {
+function isCliEntrypoint(): boolean {
   return process.argv[1]
     ? import.meta.url === pathToFileURL(process.argv[1]).href
     : false;

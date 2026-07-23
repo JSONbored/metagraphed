@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   collectDivergentIdentityFields,
   findDivergentIdentityFields,
-} from "../scripts/identity-field-divergence.mjs";
+} from "../scripts/identity-field-divergence.ts";
 
 const providersById = new Map([
   ["compelle", { id: "compelle", kind: "subnet-team" }],
