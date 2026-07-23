@@ -105,6 +105,42 @@ describe("usageEventProperties", () => {
       86_400_000,
     );
   });
+
+  // #7726: categorized failure code, same cap as the other labels, omitted
+  // entirely when absent so the successful-call event shape is unchanged.
+  test("adds error_code only when present, capped like the other labels", () => {
+    assert.deepEqual(
+      usageEventProperties({
+        mcpTool: "get_subnet",
+        ok: false,
+        durationMs: 5,
+        errorCode: " invalid_params ",
+      }),
+      {
+        mcp_tool: "get_subnet",
+        ok: false,
+        duration_ms: 5,
+        error_code: "invalid_params",
+      },
+    );
+    assert.equal(
+      "error_code" in usageEventProperties({ ok: true, durationMs: 5 }),
+      false,
+    );
+    assert.equal(
+      "error_code" in
+        usageEventProperties({ ok: false, durationMs: 5, errorCode: "   " }),
+      false,
+    );
+    assert.equal(
+      usageEventProperties({
+        ok: false,
+        durationMs: 5,
+        errorCode: "e".repeat(300),
+      }).error_code,
+      "e".repeat(256),
+    );
+  });
 });
 
 describe("resolvePostHogHost", () => {

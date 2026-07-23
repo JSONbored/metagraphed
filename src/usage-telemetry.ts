@@ -35,12 +35,16 @@ export const USAGE_EVENT_NAME = "usage_event";
 const MAX_LABEL_CHARS = 256;
 
 /** REST/GraphQL route path (no query string / bodies) or MCP tool name (no
- * arguments / response content); ok/durationMs describe the outcome. */
+ * arguments / response content); ok/durationMs describe the outcome.
+ * errorCode is the failure's categorized toolError code (one of the fixed
+ * literal codes like invalid_params / rate_limited — never caller-derived
+ * content), present only for failed calls (#7726). */
 export interface UsageEvent {
   route?: string;
   mcpTool?: string;
   ok: boolean;
   durationMs: number;
+  errorCode?: string;
 }
 
 /** Public capture endpoint, appended to the resolved PostHog host. */
@@ -89,6 +93,12 @@ export function usageEventProperties(
 
   const mcpTool = sanitizeLabel(event.mcpTool);
   if (mcpTool !== undefined) properties.mcp_tool = mcpTool;
+
+  // #7726: categorized failure code (PostHog object_adjective naming), same
+  // privacy-preserving cap as the other labels; omitted entirely when absent
+  // so the successful-call event shape is unchanged.
+  const errorCode = sanitizeLabel(event.errorCode);
+  if (errorCode !== undefined) properties.error_code = errorCode;
 
   return properties;
 }

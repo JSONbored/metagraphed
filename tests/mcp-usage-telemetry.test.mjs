@@ -103,6 +103,10 @@ describe("MCP tool-dispatch usage telemetry", () => {
     assert.equal(spy.events.length, 1);
     assert.equal(spy.events[0].event.mcpTool, "no_such_tool_at_all");
     assert.equal(spy.events[0].event.ok, false);
+    // #7726: the unknown-tool branch carries its own stable code, in both the
+    // structuredContent contract and the usage event.
+    assert.equal(payload.result.structuredContent.error.code, "unknown_tool");
+    assert.equal(spy.events[0].event.errorCode, "unknown_tool");
   });
 
   test("records a failing tool as a failure", async () => {
@@ -120,6 +124,25 @@ describe("MCP tool-dispatch usage telemetry", () => {
     assert.equal(payload.result.isError, true);
     assert.equal(spy.events.length, 1);
     assert.equal(spy.events[0].event.ok, false);
+    // #7726: the toolError's categorized code is threaded into the event,
+    // matching the machine-readable structuredContent contract exactly.
+    assert.equal(
+      spy.events[0].event.errorCode,
+      payload.result.structuredContent.error.code,
+    );
+    assert.equal(spy.events[0].event.errorCode, "invalid_params");
+  });
+
+  test("a successful call carries no errorCode at all (#7726)", async () => {
+    const spy = recorder();
+    const payload = await callMcp(toolCall(TOOL), CONFIGURED_ENV, {
+      executionCtx: fakeExecutionCtx(),
+      recordUsageEvent: spy.recordUsageEvent,
+    });
+
+    assert.equal(payload.result.isError, false);
+    assert.equal(spy.events.length, 1);
+    assert.equal("errorCode" in spy.events[0].event, false);
   });
 
   test("does no telemetry work when the deployment is unconfigured", async () => {

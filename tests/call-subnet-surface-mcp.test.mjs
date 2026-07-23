@@ -1436,5 +1436,58 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       ]);
       assert.equal(recorded[0].mcpTool, "call_subnet_surface");
     });
+
+    // #7726: the same holds for a FAILING credentialed call — error_code is
+    // always one of the fixed literal toolError codes (mirrored verbatim from
+    // structuredContent.error.code), never caller-derived content, so it can
+    // never become a vector for leaking credential data.
+    test("a failing credentialed call records a fixed literal errorCode, never credential data", async () => {
+      const recorded = [];
+      const response = await handleMcpRequest(
+        new Request("https://metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name: "call_subnet_surface",
+              arguments: {
+                surface_id: "no-such-surface-id",
+                credential: "Bearer super-secret-abc123",
+              },
+            },
+          }),
+        }),
+        { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+        {
+          ...deps,
+          executionCtx: { waitUntil: (p) => p },
+          recordUsageEvent: async (_env, event) => {
+            recorded.push(event);
+            return true;
+          },
+        },
+      );
+      const payload = await response.json();
+      assert.equal(payload.result.isError, true);
+      assert.equal(recorded.length, 1);
+      const serialized = JSON.stringify(recorded[0]);
+      assert.ok(!serialized.includes("super-secret-abc123"));
+      assert.deepEqual(Object.keys(recorded[0]).sort(), [
+        "durationMs",
+        "errorCode",
+        "mcpTool",
+        "ok",
+      ]);
+      assert.equal(recorded[0].ok, false);
+      assert.equal(
+        recorded[0].errorCode,
+        payload.result.structuredContent.error.code,
+      );
+      // A fixed literal category, not free-form text.
+      assert.match(recorded[0].errorCode, /^[a-z_]+$/);
+    });
   });
 });

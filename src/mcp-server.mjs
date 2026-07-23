@@ -16240,10 +16240,20 @@ function negotiateProtocol(requested) {
 async function callTool(params, ctx) {
   const startedAt = Date.now();
   const result = await dispatchTool(params, ctx);
+  // #7726: thread the failure's categorized code (already present on every
+  // toolError-produced result, plus the unknown_tool branch below) into the
+  // usage event -- always one of the fixed literal codes, never caller
+  // content -- so PostHog can show WHY a call failed, not just that it did.
+  const errorCode =
+    result.isError === true &&
+    typeof result.structuredContent?.error?.code === "string"
+      ? result.structuredContent.error.code
+      : undefined;
   scheduleToolUsageEvent(ctx, {
     mcpTool: typeof params?.name === "string" ? params.name : undefined,
     ok: result.isError !== true,
     durationMs: Date.now() - startedAt,
+    ...(errorCode !== undefined ? { errorCode } : {}),
   });
   return result;
 }
@@ -16272,6 +16282,15 @@ async function dispatchTool(params, ctx) {
   if (!tool) {
     return {
       content: [{ type: "text", text: `Unknown tool: ${String(name)}` }],
+      // #7726: the one failure branch that doesn't go through toolError still
+      // carries a stable machine-readable code, so every failure category is
+      // represented in structuredContent.error and usage telemetry alike.
+      structuredContent: {
+        error: {
+          code: "unknown_tool",
+          message: `Unknown tool: ${String(name)}`,
+        },
+      },
       isError: true,
     };
   }
