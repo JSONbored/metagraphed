@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { reviewProfileCompletenessQuery, subnetsQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { InfoTooltip } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 const KINDS = [
@@ -90,7 +91,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
   }, [rows]);
 
   return (
-    <section className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel flush className="overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper/30">
         <div className="min-w-0">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
@@ -220,7 +221,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
         </div>
         <div>showing top {rows.length} subnets</div>
       </footer>
-    </section>
+    </Panel>
   );
 }
 
@@ -301,7 +302,7 @@ export function CompletenessHistogram() {
   const colW = innerW / buckets.length;
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4">
+    <Panel dense>
       <header className="flex items-center justify-between mb-2">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
@@ -388,7 +389,7 @@ export function CompletenessHistogram() {
         {rows.length} subnets bucketed in 10% bins. Median (p50) marks the middle of the registry;
         long tail to the right is the goal.
       </p>
-    </section>
+    </Panel>
   );
 }
 

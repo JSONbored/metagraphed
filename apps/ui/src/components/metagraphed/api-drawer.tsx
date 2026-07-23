@@ -18,6 +18,7 @@ import {
   safeExternalUrl,
 } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 
 /** Header trigger button. Hidden when no page has registered an API source. */
 export function ApiDrawerTrigger() {
@@ -162,21 +163,23 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
         <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
           Request
         </div>
-        <div className="rounded border border-border bg-card p-3 font-mono text-[12px] text-ink-strong break-all flex items-start gap-2">
-          <span className="shrink-0 rounded bg-curation-verified/15 text-curation-verified px-1.5 py-0.5 text-[10px] uppercase tracking-widest">
-            GET
-          </span>
-          <span className="min-w-0 flex-1">{fullUrl}</span>
-          <a
-            href={safeExternalUrl(fullUrl)}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Open raw"
-            className="text-ink-muted hover:text-ink-strong"
-          >
-            <ExternalLinkIcon className="size-3.5" />
-          </a>
-        </div>
+        <Panel as="div" flush>
+          <div className="p-3 font-mono text-[12px] text-ink-strong break-all flex items-start gap-2">
+            <span className="shrink-0 rounded bg-curation-verified/15 text-curation-verified px-1.5 py-0.5 text-[10px] uppercase tracking-widest">
+              GET
+            </span>
+            <span className="min-w-0 flex-1">{fullUrl}</span>
+            <a
+              href={safeExternalUrl(fullUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open raw"
+              className="text-ink-muted hover:text-ink-strong"
+            >
+              <ExternalLinkIcon className="size-3.5" />
+            </a>
+          </div>
+        </Panel>
         <div className="flex flex-wrap gap-1.5">
           <CopyableCode value={fullUrl} label="url" />
           <CopyableCode value={curl} label="curl" />
@@ -200,9 +203,13 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
           </button>
         </div>
         {isLoading ? (
-          <div className="rounded border border-border bg-card p-4 text-[12px] text-ink-muted inline-flex items-center gap-2">
+          <Panel
+            as="div"
+            dense
+            bodyClassName="text-[12px] text-ink-muted inline-flex items-center gap-2"
+          >
             <Loader2 className="size-3.5 animate-spin" /> Loading…
-          </div>
+          </Panel>
         ) : error ? (
           <div className="rounded border border-health-down/40 bg-health-down/5 p-3 text-[12px] text-health-down">
             <div className="font-medium">Request failed</div>

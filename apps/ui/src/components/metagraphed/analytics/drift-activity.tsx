@@ -5,6 +5,7 @@ import type { SchemaInfo } from "@/lib/metagraphed/types";
 import { classNames } from "@/lib/metagraphed/format";
 import { TimeAgo } from "@jsonbored/ui-kit";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
+import { Panel } from "@/components/metagraphed/primitives";
 
 interface Props {
   schemas: SchemaInfo[];
@@ -74,7 +75,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
     });
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel as="div" flush className="overflow-hidden">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-paper/40 px-4 py-2.5">
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
@@ -161,7 +162,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
       <div className="border-t border-border px-4 py-2 font-mono text-[10px] text-ink-muted">
         click a drifting row for change details · stable rows open in the explorer below
       </div>
-    </div>
+    </Panel>
   );
 }
 
