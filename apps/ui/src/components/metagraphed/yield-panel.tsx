@@ -14,6 +14,7 @@ import {
 } from "@jsonbored/ui-kit";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { PROFILE_KPI_GRID_CLASS } from "@/components/metagraphed/profile-kpi-grid";
@@ -111,7 +112,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Validator vs miner split. */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <Panel as="div" dense>
           <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             Validator / miner split
           </div>
@@ -120,7 +121,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
           ) : (
             <p className="font-mono text-[11px] text-ink-muted">Not enough data yet.</p>
           )}
-        </div>
+        </Panel>
 
         {/* Yield percentile spread — container-query layout (#3934). */}
         <YieldPercentileStrip
@@ -132,7 +133,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
       </div>
 
       {/* Per-UID yield leaderboard (top yielders). */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <Panel as="div" flush className="overflow-hidden">
         {/* < md: a 7-column table squeezes Yield/vs-median off an undiscoverable
             horizontal scroll, so narrow viewports get a stacked card per UID
             instead — mirrors the cards/table split the explorer stake-transfer
@@ -249,7 +250,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
         <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
           top {ranked.length} of {neurons.length} by yield · subnet {netuid}
         </div>
-      </div>
+      </Panel>
 
       {/* Daily yield-distribution drift. */}
       <YieldDriftCard netuid={netuid} />
@@ -327,7 +328,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
           description="Daily yield-distribution snapshots will appear here once enough chain history has accumulated."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <Panel as="div" dense bodyClassName="space-y-3">
           {series.subnet.length > 0 ? (
             <DriftRow label="Subnet yield" series={series.subnet} color="var(--accent)" />
           ) : null}
@@ -337,7 +338,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
           {series.p90.length > 0 ? (
             <DriftRow label="p90 yield" series={series.p90} color="var(--health-warn)" />
           ) : null}
-        </div>
+        </Panel>
       )}
     </div>
   );
