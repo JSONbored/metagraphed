@@ -75,7 +75,7 @@ function RetryNotice({
       <button
         type="button"
         onClick={onRetry}
-        className="mt-3 rounded border border-border bg-card px-2.5 py-1 font-mono text-[11px] uppercase tracking-widest text-ink hover:border-ink/30"
+        className="mt-3 rounded border border-border bg-card px-2.5 py-1 mg-type-label uppercase text-ink hover:border-ink/30"
       >
         Retry
       </button>
@@ -129,7 +129,7 @@ function LeaseStatusCard({
     <Panel as="div" dense bodyClassName="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent-text">
+          <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 mg-type-micro text-accent-text">
             Leased
           </span>
           <span className="font-mono text-[11px] text-ink-muted">lease #{lease.lease_id}</span>
@@ -234,8 +234,8 @@ function LeaseHistorySection({
                   <span
                     className={
                       ev.event_kind === "SubnetLeaseTerminated"
-                        ? "rounded-full border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-                        : "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent-text"
+                        ? "rounded-full border border-border px-2 py-0.5 mg-type-micro text-ink-muted"
+                        : "rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 mg-type-micro text-accent-text"
                     }
                   >
                     {ev.event_kind === "SubnetLeaseTerminated"

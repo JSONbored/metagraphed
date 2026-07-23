@@ -119,15 +119,9 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
           <table className="w-full text-left text-sm">
             <thead className="bg-surface/40">
               <tr>
-                <th className="px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  Hotkey
-                </th>
-                <th className="px-4 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  Locked mass
-                </th>
-                <th className="px-4 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  Conviction
-                </th>
+                <th className="px-4 py-2.5 mg-type-micro text-ink-muted">Hotkey</th>
+                <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Locked mass</th>
+                <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Conviction</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -158,7 +152,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
                           {entry.is_owner ? (
                             <span
                               className={classNames(
-                                "shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-muted",
+                                "shrink-0 rounded border border-border px-1.5 py-0.5 mg-type-micro text-ink-muted",
                               )}
                             >
                               owner

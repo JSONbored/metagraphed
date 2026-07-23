@@ -447,7 +447,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                     {p.authority ? (
                       <span
                         className={classNames(
-                          "shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                          "shrink-0 rounded border px-1.5 py-0.5 mg-type-micro",
                           authorityTone(p.authority),
                         )}
                       >
@@ -531,7 +531,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                         {p.authority ? (
                           <span
                             className={classNames(
-                              "font-mono text-[10px] uppercase tracking-wider rounded border px-1.5 py-0.5",
+                              "mg-type-micro rounded border px-1.5 py-0.5",
                               authorityTone(p.authority),
                             )}
                           >
@@ -625,7 +625,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                     {p.authority ? (
                       <span
                         className={classNames(
-                          "font-mono text-[10px] uppercase tracking-wider rounded border px-1.5 py-0.5 shrink-0",
+                          "mg-type-micro rounded border px-1.5 py-0.5 shrink-0",
                           authorityTone(p.authority),
                         )}
                       >
@@ -696,7 +696,7 @@ function ProviderCountsRow({
 function ProviderCardStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
-      <span className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">{label}</span>
+      <span className="mg-type-micro text-ink-muted">{label}</span>
       <span className="font-mono text-[13px] tabular-nums text-ink-strong">{value}</span>
     </div>
   );
@@ -705,7 +705,7 @@ function ProviderCardStat({ label, value }: { label: string; value: string }) {
 function CountTile({ icon, label, value }: { icon?: ReactNode; label: string; value: number }) {
   return (
     <div className="flex flex-col">
-      <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+      <span className="inline-flex items-center gap-1 mg-type-micro text-ink-muted">
         {icon}
         {label}
       </span>

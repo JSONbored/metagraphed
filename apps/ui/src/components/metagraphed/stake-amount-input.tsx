@@ -132,7 +132,7 @@ export function StakeAmountInput({
               aria-selected={active}
               onClick={() => onActionChange(a)}
               className={classNames(
-                "min-h-8 rounded px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest transition-colors",
+                "min-h-8 rounded px-4 py-1.5 mg-type-label uppercase transition-colors",
                 active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -144,10 +144,7 @@ export function StakeAmountInput({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <span
-            aria-hidden="true"
-            className="font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-          >
+          <span aria-hidden="true" className="mg-type-micro text-ink-muted">
             Amount ({unitSymbol(unit)})
           </span>
           <SearchInput
@@ -161,9 +158,7 @@ export function StakeAmountInput({
 
         {showUnitToggle ? (
           <div className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              Unit
-            </span>
+            <span className="mg-type-micro text-ink-muted">Unit</span>
             <div
               role="tablist"
               aria-label="TAO or alpha"
@@ -179,7 +174,7 @@ export function StakeAmountInput({
                     aria-selected={active}
                     onClick={() => onUnitChange(u)}
                     className={classNames(
-                      "min-h-8 rounded px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest transition-colors",
+                      "min-h-8 rounded px-3 py-1.5 mg-type-label uppercase transition-colors",
                       active
                         ? "bg-surface text-ink-strong"
                         : "text-ink-muted hover:text-ink-strong",
@@ -198,7 +193,7 @@ export function StakeAmountInput({
             type="button"
             onClick={onApplyMaxStake}
             disabled={maxStakeRao == null}
-            className="min-h-8 rounded border border-border bg-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
+            className="min-h-8 rounded border border-border bg-card px-3 py-1.5 mg-type-label uppercase text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
           >
             Max{maxStakeRao != null ? ` (${raoToTao(maxStakeRao)} τ)` : ""}
           </button>
@@ -207,7 +202,7 @@ export function StakeAmountInput({
             type="button"
             onClick={onApplyMaxUnstake}
             disabled={unstakeMax.disabled}
-            className="min-h-8 rounded border border-border bg-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
+            className="min-h-8 rounded border border-border bg-card px-3 py-1.5 mg-type-label uppercase text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
           >
             Max
           </button>

@@ -1405,8 +1405,8 @@ function ExplorerDashboard() {
             onClick={() => navigate({ search: { window: w } })}
             className={
               w === win
-                ? "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent-text"
-                : "rounded-full border border-border bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30"
+                ? "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 mg-type-label uppercase text-accent-text"
+                : "rounded-full border border-border bg-card px-3 py-1 mg-type-label uppercase text-ink-muted hover:border-ink/30"
             }
           >
             {w}
@@ -1468,8 +1468,8 @@ function ExplorerDashboard() {
             onKeyDown={explorerTabKeyDown(i)}
             className={
               tab === t.id
-                ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent-text"
-                : "rounded-full border border-border bg-card px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+                ? "rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 mg-type-label uppercase text-accent-text"
+                : "rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-label uppercase text-ink-muted hover:border-ink/30 hover:text-ink-strong"
             }
           >
             {t.label}
@@ -1914,8 +1914,8 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
               onClick={() => setSort(s)}
               className={
                 s === sort
-                  ? "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent-text"
-                  : "rounded-full border border-border bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30"
+                  ? "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 mg-type-label uppercase text-accent-text"
+                  : "rounded-full border border-border bg-card px-3 py-1 mg-type-label uppercase text-ink-muted hover:border-ink/30"
               }
             >
               {s}

@@ -101,7 +101,7 @@ export function RegistryEmpty({
             <h3 className="font-display text-base font-semibold text-ink-strong">{title}</h3>
             <span
               className={classNames(
-                "inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-widest",
+                "inline-flex items-center rounded-full border px-2 py-0.5 mg-type-micro",
                 tone.badge,
               )}
             >
@@ -121,18 +121,14 @@ export function RegistryEmpty({
 
           {freshnessHint ? (
             <p className="text-[11px] leading-relaxed text-ink-muted/80">
-              <span className="font-mono text-[9.5px] uppercase tracking-widest opacity-70">
-                how freshness works ·{" "}
-              </span>
+              <span className="mg-type-micro opacity-70">how freshness works · </span>
               {freshnessHint}
             </p>
           ) : null}
 
           {evidenceHref ? (
             <p className="text-[11px] text-ink-muted">
-              <span className="font-mono text-[9.5px] uppercase tracking-widest opacity-70">
-                where to verify ·{" "}
-              </span>
+              <span className="mg-type-micro opacity-70">where to verify · </span>
               <a
                 href={evidenceHref}
                 target="_blank"
@@ -159,7 +155,7 @@ export function RegistryEmpty({
 
 function ActionButton({ action, variant }: { action: ActionLink; variant: RegistryEmptyVariant }) {
   const base =
-    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-widest transition-colors";
+    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 mg-type-label uppercase transition-colors";
   const primary = action.primary
     ? "border-accent/40 bg-primary-soft text-accent hover:bg-primary-soft/80"
     : "border-border bg-paper text-ink-muted hover:text-ink-strong hover:border-ink/30";

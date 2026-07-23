@@ -75,9 +75,7 @@ export function MoveStakeDestinationInput({
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          Destination hotkey
-        </span>
+        <span className="mg-type-micro text-ink-muted">Destination hotkey</span>
         <SearchInput
           value={destinationHotkeyInput}
           onChange={onDestinationHotkeyChange}
@@ -87,9 +85,7 @@ export function MoveStakeDestinationInput({
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          Destination subnet
-        </span>
+        <span className="mg-type-micro text-ink-muted">Destination subnet</span>
         <select
           value={destinationNetuidInput}
           onChange={(e) => onDestinationNetuidChange(e.target.value)}
@@ -106,9 +102,7 @@ export function MoveStakeDestinationInput({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            Amount (α)
-          </span>
+          <span className="mg-type-micro text-ink-muted">Amount (α)</span>
           <SearchInput
             value={amountInput}
             onChange={onAmountInputChange}
@@ -121,7 +115,7 @@ export function MoveStakeDestinationInput({
           type="button"
           onClick={onApplyMax}
           disabled={maxAmountInput == null}
-          className="min-h-8 rounded border border-border bg-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
+          className="min-h-8 rounded border border-border bg-card px-3 py-1.5 mg-type-label uppercase text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50"
         >
           Max
         </button>
