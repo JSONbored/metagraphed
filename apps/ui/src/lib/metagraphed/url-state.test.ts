@@ -158,4 +158,20 @@ describe("joinEconomics", () => {
     // No entry for netuid 2 → passes through unchanged, "—" in the cell.
     expect(out[1]).toBe(rows[1]);
   });
+
+  it("attaches optional subnet financial analytics from the same entry", () => {
+    const rows = [{ netuid: 1 }];
+    const out = joinEconomics(rows, {
+      1: {
+        alpha_price_tao: 0.0412,
+        total_stake_tao: 12_345,
+        alpha_market_cap_tao: 507,
+      },
+    });
+    expect(out[0]).toMatchObject({
+      alpha_price_tao: 0.0412,
+      total_stake_tao: 12_345,
+      alpha_market_cap_tao: 507,
+    });
+  });
 });

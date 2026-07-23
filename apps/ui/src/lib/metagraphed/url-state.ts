@@ -91,12 +91,12 @@ export function joinHealth<
 
 /**
  * #3364/#3363: join a list of rows with a per-netuid economics map, overlaying
- * the `registration_cost_tao` + `registration_allowed` + `emission_share`
- * fields so the /subnets table's Registration and Emission columns (and their
- * sort) can read them straight off the row. Mirrors `joinHealth`/the catalog
- * join: a row with no economics entry passes through unchanged (same
- * reference), so its cells render "—". Pure + allocation-light so callers can
- * memoize it.
+ * registration, emission, price, stake, and market-cap fields so the /subnets
+ * table's Registration and Emission columns (and their sort), plus the
+ * homepage's alpha-price ticker, can read them straight off the row. Mirrors
+ * `joinHealth`/the catalog join: a row with no economics entry passes through
+ * unchanged (same reference), so its cells render "—". Pure + allocation-light
+ * so callers can memoize it.
  */
 export function joinEconomics<
   T extends { netuid: number },
@@ -104,6 +104,9 @@ export function joinEconomics<
     registration_cost_tao?: number;
     registration_allowed?: boolean;
     emission_share?: number;
+    alpha_price_tao?: number;
+    total_stake_tao?: number;
+    alpha_market_cap_tao?: number;
   },
 >(
   rows: T[],
@@ -114,6 +117,9 @@ export function joinEconomics<
       registration_cost_tao?: number;
       registration_allowed?: boolean;
       emission_share?: number;
+      alpha_price_tao?: number;
+      total_stake_tao?: number;
+      alpha_market_cap_tao?: number;
     })
 > {
   return rows.map((s) => {
@@ -124,6 +130,9 @@ export function joinEconomics<
           registration_cost_tao: e.registration_cost_tao,
           registration_allowed: e.registration_allowed,
           emission_share: e.emission_share,
+          alpha_price_tao: e.alpha_price_tao,
+          total_stake_tao: e.total_stake_tao,
+          alpha_market_cap_tao: e.alpha_market_cap_tao,
         }
       : s;
   });
