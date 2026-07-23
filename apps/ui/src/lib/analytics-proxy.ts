@@ -63,7 +63,24 @@ export async function retrieveAnalyticsAsset(
   const cached = hasEdgeCache ? await caches.default.match(request) : undefined;
   if (cached) return cached;
   const upstream = await fetch(`https://${POSTHOG_ASSET_HOST}${pathWithParams}`);
-  if (hasEdgeCache) ctx.waitUntil(caches.default.put(request, upstream.clone()));
+  // A rejected promise passed to ctx.waitUntil() becomes an unhandled
+  // rejection at the Worker's global scope -- Nitro/h3's own safety net
+  // (src/lib/error-capture.ts's "error"/"unhandledrejection" listeners)
+  // then turns that into a generic 500 for the CURRENT request, even though
+  // the response below was already computed correctly (confirmed live:
+  // every /ingest/static/* and /ingest/array/* request 500'd this way in
+  // production, while /ingest/e/ -- forwardToAnalyticsHost, which never
+  // touches ctx.waitUntil -- kept working). The edge cache is a best-effort
+  // optimization; a write failure (a malformed Vary header from upstream, a
+  // transient Cache API error, anything) must never take down the response
+  // that's already correct and already on its way to the browser.
+  if (hasEdgeCache) {
+    ctx.waitUntil(
+      caches.default.put(request, upstream.clone()).catch((err) => {
+        console.error("[analytics-proxy] edge-cache put failed:", err);
+      }),
+    );
+  }
   return upstream;
 }
 

@@ -240,6 +240,41 @@ describe("retrieveAnalyticsAsset", () => {
     await Promise.all(ctx.calls);
     expect(put).toHaveBeenCalledTimes(1);
   });
+
+  it("swallows a rejected cache.put() instead of leaking an unhandled rejection through ctx.waitUntil", async () => {
+    // Regression test: a promise passed to ctx.waitUntil() that rejects
+    // becomes an unhandled rejection at the Worker's global scope, which
+    // Nitro/h3's own safety net (src/lib/error-capture.ts) turns into a
+    // generic 500 for the CURRENT request -- even though the response this
+    // function already returned was correct. Confirmed live in production
+    // (every /ingest/static/* and /ingest/array/* request 500'd this way
+    // before the .catch() below was added).
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const match = vi.fn(async () => undefined);
+    const putError = new Error("cache.put: response contains an unsupported Vary header");
+    const put = vi.fn(async () => {
+      throw putError;
+    });
+    // @ts-expect-error -- test-only stub of the ambient Cloudflare `caches` global.
+    globalThis.caches = { default: { match, put } };
+    globalThis.fetch = vi.fn(async () => new Response("/* js */", { status: 200 })) as typeof fetch;
+
+    const ctx = fakeCtx();
+    const request = new Request(`https://metagraph.sh${ANALYTICS_PREFIX}/static/array.js`);
+    const response = await retrieveAnalyticsAsset(request, "/static/array.js", ctx);
+
+    // The response itself must be unaffected by the background failure.
+    expect(response.status).toBe(200);
+    // The promise handed to ctx.waitUntil must resolve, never reject --
+    // this is the actual regression: a REJECTED promise there is what
+    // corrupts the response via the global unhandled-rejection handler.
+    await expect(Promise.all(ctx.calls)).resolves.toBeDefined();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[analytics-proxy] edge-cache put failed:",
+      putError,
+    );
+    consoleErrorSpy.mockRestore();
+  });
 });
 
 describe("handleAnalyticsProxy routing", () => {
