@@ -41,6 +41,12 @@ export interface UsageEvent {
   mcpTool?: string;
   ok: boolean;
   durationMs: number;
+  // metagraphed#7726: one of the fixed literal codes a `toolError`-style
+  // helper produces (e.g. "invalid_params", "auth_required",
+  // "credential_not_supported", "upstream_unavailable", "internal_error") --
+  // NEVER a caller-derived value or free-form error message. Only meaningful
+  // when `ok` is false; omitted (not just falsy) for a successful call.
+  errorCode?: string;
 }
 
 /** Public capture endpoint, appended to the resolved PostHog host. */
@@ -89,6 +95,15 @@ export function usageEventProperties(
 
   const mcpTool = sanitizeLabel(event.mcpTool);
   if (mcpTool !== undefined) properties.mcp_tool = mcpTool;
+
+  // metagraphed#7726: categorizes WHY a failed call failed, so analytics can
+  // break failures down by cause instead of only a success/fail ratio. Only
+  // ever one of a small set of literal codes this codebase itself defines
+  // (see UsageEvent.errorCode) -- sanitizeLabel is reused here purely for
+  // defense-in-depth (the same cap every other free-ish-form field gets),
+  // not because this field is expected to need it.
+  const errorCode = sanitizeLabel(event.errorCode);
+  if (errorCode !== undefined) properties.error_code = errorCode;
 
   return properties;
 }

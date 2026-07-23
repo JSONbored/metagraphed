@@ -63,7 +63,7 @@ describe("usageEventProperties", () => {
     assert.equal(usageEventProperties({ ok: "yes", durationMs: 10 }), null);
   });
 
-  test("allowlists only route / mcp_tool / ok / duration_ms", () => {
+  test("allowlists only route / mcp_tool / ok / duration_ms / error_code", () => {
     assert.deepEqual(
       usageEventProperties({
         route: " /api/v1/subnets ",
@@ -79,6 +79,39 @@ describe("usageEventProperties", () => {
         ok: true,
         duration_ms: 13,
       },
+    );
+  });
+
+  // metagraphed#7726: error_code categorizes why a failed call failed --
+  // always one of a small set of literal codes the codebase itself defines,
+  // never a caller-derived value or free-form message.
+  test("includes error_code only when present and non-blank", () => {
+    assert.deepEqual(
+      usageEventProperties({
+        ok: false,
+        durationMs: 5,
+        errorCode: "credential_not_supported",
+      }),
+      { ok: false, duration_ms: 5, error_code: "credential_not_supported" },
+    );
+    assert.deepEqual(usageEventProperties({ ok: false, durationMs: 5 }), {
+      ok: false,
+      duration_ms: 5,
+    });
+    assert.deepEqual(
+      usageEventProperties({ ok: false, durationMs: 5, errorCode: "   " }),
+      { ok: false, duration_ms: 5 },
+    );
+    // Present but irrelevant on a successful call -- still recorded verbatim
+    // if supplied (this module trusts the caller not to set it on success;
+    // mcp-server.mjs's callTool enforces that contract at the call site).
+    assert.deepEqual(
+      usageEventProperties({
+        ok: true,
+        durationMs: 5,
+        errorCode: "invalid_params",
+      }),
+      { ok: true, duration_ms: 5, error_code: "invalid_params" },
     );
   });
 

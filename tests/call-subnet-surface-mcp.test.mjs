@@ -1436,5 +1436,54 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
       ]);
       assert.equal(recorded[0].mcpTool, "call_subnet_surface");
     });
+
+    // metagraphed#7726: a failing credentialed call now also records an
+    // errorCode -- proves that categorization is still just a fixed literal
+    // string (never the credential value or a free-form message built from
+    // caller input) even on the failure path this describe block didn't
+    // originally cover.
+    test("a failing credentialed call_subnet_surface still never leaks the credential, and records the toolError code", async () => {
+      const recorded = [];
+      const response = await handleMcpRequest(
+        new Request("https://metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name: "call_subnet_surface",
+              arguments: {
+                surface_id: "x:api:6",
+                credential: { unexpected: "shape-super-secret-xyz" },
+              },
+            },
+          }),
+        }),
+        { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+        {
+          ...deps,
+          executionCtx: { waitUntil: (p) => p },
+          recordUsageEvent: async (_env, event) => {
+            recorded.push(event);
+            return true;
+          },
+        },
+      );
+      const payload = await response.json();
+      assert.equal(payload.result.isError, true);
+      assert.equal(recorded.length, 1);
+      const serialized = JSON.stringify(recorded[0]);
+      assert.ok(!serialized.includes("shape-super-secret-xyz"));
+      assert.deepEqual(Object.keys(recorded[0]).sort(), [
+        "durationMs",
+        "errorCode",
+        "mcpTool",
+        "ok",
+      ]);
+      assert.equal(recorded[0].ok, false);
+      assert.equal(recorded[0].errorCode, "invalid_params");
+    });
   });
 });

@@ -16235,8 +16235,9 @@ function negotiateProtocol(requested) {
 // invocation instead of instrumenting ~150 handlers individually. It also
 // already funnels every outcome into an isError result rather than throwing,
 // which is what makes success/failure readable here without touching any
-// handler. Nothing but the tool name, that flag, and elapsed time is recorded —
-// never arguments or response content.
+// handler. Nothing but the tool name, that flag, elapsed time, and (on
+// failure) a fixed error category is recorded — never arguments or response
+// content, and never a free-form error message.
 async function callTool(params, ctx) {
   const startedAt = Date.now();
   const result = await dispatchTool(params, ctx);
@@ -16244,6 +16245,15 @@ async function callTool(params, ctx) {
     mcpTool: typeof params?.name === "string" ? params.name : undefined,
     ok: result.isError !== true,
     durationMs: Date.now() - startedAt,
+    // metagraphed#7726: every isError result already carries a code from a
+    // small, developer-defined literal set (toolError's own codes, or
+    // "unknown_tool" below) in structuredContent.error.code -- thread it
+    // through so analytics can break failures down by cause, not just count
+    // them. Omitted entirely on success (no `errorCode` key at all), same as
+    // `route`/`mcpTool` being omitted when absent.
+    ...(result.isError
+      ? { errorCode: result?.structuredContent?.error?.code }
+      : {}),
   });
   return result;
 }
@@ -16272,6 +16282,11 @@ async function dispatchTool(params, ctx) {
   if (!tool) {
     return {
       content: [{ type: "text", text: `Unknown tool: ${String(name)}` }],
+      // metagraphed#7726: the one isError path that doesn't go through
+      // toolError (there's no tool to have thrown one) -- gets its own
+      // literal code here so callTool's usage-telemetry wiring can still
+      // categorize it, same as every other failure.
+      structuredContent: { error: { code: "unknown_tool" } },
       isError: true,
     };
   }

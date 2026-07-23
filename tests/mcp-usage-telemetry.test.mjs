@@ -103,9 +103,12 @@ describe("MCP tool-dispatch usage telemetry", () => {
     assert.equal(spy.events.length, 1);
     assert.equal(spy.events[0].event.mcpTool, "no_such_tool_at_all");
     assert.equal(spy.events[0].event.ok, false);
+    // metagraphed#7726: the one isError path with no toolError behind it
+    // still gets its own literal code.
+    assert.equal(spy.events[0].event.errorCode, "unknown_tool");
   });
 
-  test("records a failing tool as a failure", async () => {
+  test("records a failing tool as a failure, categorized by its toolError code (#7726)", async () => {
     const spy = recorder();
     // Invalid arguments — the tool returns an isError result rather than throwing.
     const payload = await callMcp(
@@ -120,6 +123,18 @@ describe("MCP tool-dispatch usage telemetry", () => {
     assert.equal(payload.result.isError, true);
     assert.equal(spy.events.length, 1);
     assert.equal(spy.events[0].event.ok, false);
+    assert.equal(spy.events[0].event.errorCode, "invalid_params");
+  });
+
+  test("omits errorCode entirely on a successful call (no key, not just falsy)", async () => {
+    const spy = recorder();
+    await callMcp(toolCall(TOOL), CONFIGURED_ENV, {
+      executionCtx: fakeExecutionCtx(),
+      recordUsageEvent: spy.recordUsageEvent,
+    });
+
+    assert.equal(spy.events.length, 1);
+    assert.equal("errorCode" in spy.events[0].event, false);
   });
 
   test("does no telemetry work when the deployment is unconfigured", async () => {
@@ -172,6 +187,32 @@ describe("MCP tool-dispatch usage telemetry", () => {
       assert.equal(posted[0].body.event, "usage_event");
       assert.equal(posted[0].body.properties.mcp_tool, TOOL);
       assert.equal(posted[0].body.properties.ok, true);
+      assert.equal("error_code" in posted[0].body.properties, false);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("posts a snake_case error_code on the real wire format for a failing call (#7726)", async () => {
+    const original = globalThis.fetch;
+    const posted = [];
+    globalThis.fetch = async (url, init) => {
+      posted.push({ url, body: JSON.parse(init.body) });
+      return { ok: true };
+    };
+    try {
+      const executionCtx = fakeExecutionCtx();
+      const payload = await callMcp(
+        toolCall("get_subnet", { netuid: "not-a-netuid" }),
+        CONFIGURED_ENV,
+        { executionCtx },
+      );
+      await Promise.all(executionCtx.scheduled);
+
+      assert.equal(payload.result.isError, true);
+      assert.equal(posted.length, 1);
+      assert.equal(posted[0].body.properties.ok, false);
+      assert.equal(posted[0].body.properties.error_code, "invalid_params");
     } finally {
       globalThis.fetch = original;
     }
