@@ -235,8 +235,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request per the subnet's documented App-management auth model; not a static API key or bearer token."
+        "scheme": "signature",
+        "scopes_note": "Requires an EIP-712 wallet-signed request: the X-App-Auth-Signer, X-App-Auth-Signature, and X-App-Auth-Deadline headers, documented in the subnet's own official app-management API reference (docs/api/app-management.md) -- reads (this route among them) are deadline-bound only, unlike writes which additionally need a single-use X-App-Auth-Nonce. The signature must be an EIP-712 signature from an allowed signer (the app's own deployer or an operator admin address) over a paramsHash binding this request's specific parameters -- computing it is the caller's own responsibility. Live-verified 2026-07-22: an unauthenticated request returns HTTP 403. No admin key or bearer token is accepted for this route.",
+        "location": "header",
+        "names": [
+          "X-App-Auth-Signer",
+          "X-App-Auth-Signature",
+          "X-App-Auth-Deadline"
+        ]
       },
       "auth_required": true,
       "authority": "community",
@@ -263,8 +269,14 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "Requires a signed request per the subnet's documented App-management auth model; not a static API key or bearer token."
+        "scheme": "signature",
+        "scopes_note": "Requires an EIP-712 wallet-signed request: the X-App-Auth-Signer, X-App-Auth-Signature, and X-App-Auth-Deadline headers, documented in the subnet's own official app-management API reference (docs/api/app-management.md) -- reads (this route among them) are deadline-bound only, unlike writes which additionally need a single-use X-App-Auth-Nonce. The signature must be an EIP-712 signature from an allowed signer (the app's own deployer or an operator admin address) over a paramsHash binding this request's specific parameters -- computing it is the caller's own responsibility. Live-verified 2026-07-22: an unauthenticated request returns HTTP 403. No admin key or bearer token is accepted for this route.",
+        "location": "header",
+        "names": [
+          "X-App-Auth-Signer",
+          "X-App-Auth-Signature",
+          "X-App-Auth-Deadline"
+        ]
       },
       "auth_required": true,
       "authority": "community",
