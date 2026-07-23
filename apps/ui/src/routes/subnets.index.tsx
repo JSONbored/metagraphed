@@ -784,7 +784,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     { value: "90d", label: "90d" },
                   ]}
                   value={trendWindow}
-                  onChange={(v) => setTrendWindow(v)}
+                  onChange={(v: "7d" | "30d" | "90d") => setTrendWindow(v)}
                   ariaLabel="Trend window for row sparklines"
                   className="border-0 bg-transparent"
                 />
