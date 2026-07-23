@@ -17,7 +17,7 @@ import {
   MiniStack,
   MiniRadial,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { ResetFiltersButton } from "@/components/metagraphed/table-controls";
 import { X, Search } from "lucide-react";
 import { IntegrabilityBoard } from "@/components/metagraphed/integrability-board";
@@ -260,7 +260,11 @@ function GapsKpiStrip() {
   const above75 = completeness.filter((r) => (r.completeness ?? 0) >= 0.75).length;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-border rounded-xl border border-border bg-card overflow-hidden">
+    <Panel
+      as="div"
+      flush
+      className="grid grid-cols-2 md:grid-cols-5 divide-x divide-border overflow-hidden"
+    >
       <StatWithSpark
         label="Open gaps"
         value={gaps.length}
@@ -321,7 +325,7 @@ function GapsKpiStrip() {
         full="Items the enrichment pipeline has flagged for human review or re-probe."
         updatedAt={queueRes.meta?.generated_at}
       />
-    </div>
+    </Panel>
   );
 }
 
@@ -992,7 +996,7 @@ function EnrichmentQueue() {
       />
     );
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
@@ -1027,7 +1031,7 @@ function EnrichmentQueue() {
           </tbody>
         </table>
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -1048,7 +1052,7 @@ function EnrichmentTargets() {
       />
     );
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
@@ -1091,7 +1095,7 @@ function EnrichmentTargets() {
           </tbody>
         </table>
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -1113,7 +1117,7 @@ function EnrichmentEvidence() {
       />
     );
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="mg-type-micro bg-surface-2/60 text-[10px] text-ink-muted">
@@ -1160,7 +1164,7 @@ function EnrichmentEvidence() {
           </tbody>
         </table>
       </div>
-    </div>
+    </Panel>
   );
 }
 
