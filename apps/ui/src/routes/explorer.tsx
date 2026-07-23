@@ -1742,7 +1742,7 @@ function ExplorerDashboard() {
                 cards/table split ListShell uses for paginated lists). */}
                 <div className="md:hidden space-y-2">
                   {stakeTransfers.subnets.map((s) => (
-                    <div key={s.netuid} className="rounded border border-border bg-card p-3">
+                    <Panel as="div" dense key={s.netuid}>
                       <div className="flex items-center justify-between gap-2">
                         <Link
                           to="/subnets/$netuid"
@@ -1761,7 +1761,7 @@ function ExplorerDashboard() {
                         <span>{formatNumber(s.transfers)} transfers</span>
                         <span>{formatNumber(s.distinct_senders)} senders</span>
                       </div>
-                    </div>
+                    </Panel>
                   ))}
                 </div>
                 <ExplorerLeaderboardTableShell

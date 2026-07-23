@@ -6,6 +6,7 @@ import {
   AsyncPanel,
   FilterChipRow,
   FilterSheet,
+  Panel,
   QueryBar,
   QueryProgress,
   PageMasthead,
@@ -467,7 +468,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
   };
 
   const cardFor = (s: Surface) => (
-    <div key={s.id} className="rounded border border-border bg-card p-3 min-h-11">
+    <Panel as="div" dense key={s.id} className="min-h-11">
       <div className="flex items-center justify-between gap-2">
         <span className="mg-label">{s.kind ?? "surface"}</span>
         <div className="flex items-center gap-1.5">
@@ -513,7 +514,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           <TimeAgo at={s.last_verified_at} fallback="never verified" />
         </SparkLegend>
       </div>
-    </div>
+    </Panel>
   );
 
   // The user-selectable grid view renders the cards at every breakpoint, so it

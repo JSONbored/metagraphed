@@ -459,7 +459,7 @@ function SchemaExplorer() {
         </aside>
 
         {/* Right viewer */}
-        <section className="rounded-xl border border-border bg-card overflow-hidden min-h-[480px]">
+        <Panel as="section" flush className="overflow-hidden min-h-[480px]">
           {selected ? (
             <SchemaViewer schema={selected} />
           ) : (
@@ -470,7 +470,7 @@ function SchemaExplorer() {
               />
             </div>
           )}
-        </section>
+        </Panel>
       </div>
     </div>
   );

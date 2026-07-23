@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@jsonbored/ui-kit";
-import { PageMasthead } from "@/components/metagraphed/primitives";
+import { PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { decodeSs58, DEFAULT_SS58_FORMAT } from "@/lib/metagraphed/ss58";
 import { classNames } from "@/lib/metagraphed/format";
 
@@ -136,24 +136,27 @@ function Ss58ToolPage() {
           </ResultCard>
         ) : null}
 
-        <section className="rounded-lg border border-border bg-card p-5 text-[13px] leading-relaxed text-ink-muted">
-          <h2 className="mb-2 font-display text-sm font-semibold text-ink-strong">
-            How this works
-          </h2>
-          <p>
-            An SS58 address is{" "}
-            <code className="font-mono text-ink-strong">
-              base58(prefix || public_key || checksum)
-            </code>{" "}
-            — a network-prefix byte, the 32-byte sr25519/ed25519 public key, and a 2-byte checksum
-            (the first 2 bytes of a blake2b-512 hash over{" "}
-            <code className="font-mono text-ink-strong">"SS58PRE" || prefix || public_key</code>),
-            all base58-encoded. The same public key produces a different address string per network
-            — Bittensor's hotkeys and coldkeys use prefix 42 (&quot;generic Substrate&quot;), the
-            same prefix several other chains without a dedicated allocation also use. Decoding and
-            checksum verification happen entirely client-side; this page makes no network requests.
-          </p>
-        </section>
+        <Panel as="section" flush bodyClassName="text-[13px] leading-relaxed text-ink-muted">
+          <div className="p-5">
+            <h2 className="mb-2 font-display text-sm font-semibold text-ink-strong">
+              How this works
+            </h2>
+            <p>
+              An SS58 address is{" "}
+              <code className="font-mono text-ink-strong">
+                base58(prefix || public_key || checksum)
+              </code>{" "}
+              — a network-prefix byte, the 32-byte sr25519/ed25519 public key, and a 2-byte checksum
+              (the first 2 bytes of a blake2b-512 hash over{" "}
+              <code className="font-mono text-ink-strong">"SS58PRE" || prefix || public_key</code>),
+              all base58-encoded. The same public key produces a different address string per
+              network — Bittensor's hotkeys and coldkeys use prefix 42 (&quot;generic
+              Substrate&quot;), the same prefix several other chains without a dedicated allocation
+              also use. Decoding and checksum verification happen entirely client-side; this page
+              makes no network requests.
+            </p>
+          </div>
+        </Panel>
       </div>
     </AppShell>
   );

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { validatorHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import type { ValidatorHistoryPoint } from "@/lib/metagraphed/types";
@@ -91,7 +92,7 @@ export function ValidatorHistoryChart({ hotkey }: { hotkey: string }) {
           description="Daily snapshots will appear here once enough chain history has accumulated for this validator."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <Panel as="div" dense bodyClassName="space-y-3">
           {series.stake.length > 0 ? (
             <HistoryRow
               label="Staked"
@@ -108,7 +109,7 @@ export function ValidatorHistoryChart({ hotkey }: { hotkey: string }) {
               format={rewardsStr}
             />
           ) : null}
-        </div>
+        </Panel>
       )}
     </div>
   );

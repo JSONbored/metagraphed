@@ -16,6 +16,7 @@ import {
   ProvenanceChip,
   QueryBar,
   QueryProgress,
+  Panel,
   ReadinessGauge,
   StatusBadge,
   StickyToolbar,
@@ -1507,7 +1508,7 @@ const HEALTH_TEXT: Record<string, string> = {
 
 function SubnetMatrix({ rows }: { rows: Subnet[] }) {
   return (
-    <div className="rounded border border-border bg-card p-4">
+    <Panel as="div" dense>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="mg-type-micro text-[10px] text-ink-muted">
           Health matrix · {rows.length} subnets
@@ -1541,7 +1542,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
           </EntityHoverCard>
         ))}
       </div>
-    </div>
+    </Panel>
   );
 }
 

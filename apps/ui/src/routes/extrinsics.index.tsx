@@ -26,7 +26,7 @@ import {
   DownloadCsvButton,
   Sparkline,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead, PagerFooter } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, PagerFooter, Panel } from "@/components/metagraphed/primitives";
 import { chainFeesQuery, extrinsicsQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { activeFilterCount, filterToggleLabel } from "@/lib/metagraphed/filter-disclosure";
@@ -130,28 +130,30 @@ function FeesTrendCard() {
   const latest = values.length > 0 ? values[values.length - 1]! : null;
 
   return (
-    <section className="mb-6 rounded-lg border border-border bg-card p-4 sm:p-5">
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <div className="flex items-baseline gap-2">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Fees, last 7d
-          </h2>
-          <span className="font-mono text-[11px] text-ink-muted">{fees.day_count} days</span>
+    <Panel as="section" flush className="mb-6">
+      <div className="p-4 sm:p-5">
+        <div className="mb-2 flex items-baseline justify-between gap-2">
+          <div className="flex items-baseline gap-2">
+            <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              Fees, last 7d
+            </h2>
+            <span className="font-mono text-[11px] text-ink-muted">{fees.day_count} days</span>
+          </div>
+          <span className="font-mono text-[11px] tabular-nums text-ink-strong">
+            {latest == null ? "—" : formatTao(latest)}
+          </span>
         </div>
-        <span className="font-mono text-[11px] tabular-nums text-ink-strong">
-          {latest == null ? "—" : formatTao(latest)}
-        </span>
+        <Sparkline
+          values={values}
+          points={feeChrono.map((d) => ({ t: d.day, v: d.total_fee_tao }))}
+          width={640}
+          height={48}
+          color="var(--accent)"
+          ariaLabel="Daily total fees"
+          formatValue={formatTao}
+        />
       </div>
-      <Sparkline
-        values={values}
-        points={feeChrono.map((d) => ({ t: d.day, v: d.total_fee_tao }))}
-        width={640}
-        height={48}
-        color="var(--accent)"
-        ariaLabel="Daily total fees"
-        formatValue={formatTao}
-      />
-    </section>
+    </Panel>
   );
 }
 
