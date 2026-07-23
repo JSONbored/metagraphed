@@ -389,7 +389,7 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   instead of reaching for app infrastructure — that's the exact regression this package's extraction
   exists to prevent.
 - **`packages/contract` is a types-only npm workspace (#3067) holding the OpenAPI-derived contract
-  types** — `openapi-typescript`'s output (`scripts/generate-types.ts`/`validate-types.mjs`/
+  types** — `openapi-typescript`'s output (`scripts/generate-types.ts`/`validate-types.ts`/
   `validate-contract-drift.mjs` all write/check `packages/contract/index.d.ts` now, no longer
   `generated/metagraphed-api.d.ts`, which no longer exists). `packages/client` depends on it as a
   real `devDependency` (`"metagraphed-contract": "*"`) and imports `type { components, paths } from

@@ -6,11 +6,11 @@ import { repoRoot } from "./lib.ts";
 const outputPath = path.join(repoRoot, "generated/metagraphed-client.ts");
 const expected = generateClientSource();
 
-let current;
+let current: string;
 try {
   current = await fs.readFile(outputPath, "utf8");
 } catch (error) {
-  if (error.code === "ENOENT") {
+  if ((error as NodeJS.ErrnoException).code === "ENOENT") {
     console.error("Generated API client helper is missing. Run npm run build.");
     process.exit(1);
   }

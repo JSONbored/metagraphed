@@ -13,10 +13,10 @@ const migrationsRoot = path.join(repoRoot, "migrations");
 const files = (await fs.readdir(migrationsRoot))
   .filter((name) => name.endsWith(".sql"))
   .sort();
-const errors = [];
+const errors: string[] = [];
 
-const seen = new Map(); // prefix number -> filename
-const numbers = [];
+const seen = new Map<number, string>(); // prefix number -> filename
+const numbers: number[] = [];
 for (const file of files) {
   const match = /^(\d{4})_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/.exec(file);
   if (!match) {

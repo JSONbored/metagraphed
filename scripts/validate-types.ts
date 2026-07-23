@@ -30,11 +30,11 @@ if (result.status !== 0) {
 }
 
 for (const outputPath of outputPaths) {
-  let current;
+  let current: string;
   try {
     current = await fs.readFile(outputPath, "utf8");
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       console.error(
         "Generated API types are missing. Run npm run types:generate.",
       );
