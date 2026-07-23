@@ -21,7 +21,7 @@ import { useHydrated } from "@/hooks/use-hydrated";
  */
 export function HeroFeatureRow() {
   return (
-    <section className="mt-10 md:mt-14 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <section className="mt-10 md:mt-12 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <ChainThroughputCard />
       <LiveSubnetsCard />
     </section>
@@ -54,7 +54,7 @@ function ChainThroughputCard() {
 
   return (
     <div className="mg-card-glow relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-start justify-between gap-3 px-5 pt-5">
+      <div className="flex items-start justify-between gap-3 px-4 pt-4">
         <div className="min-w-0">
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
             Chain throughput · 7d
@@ -91,7 +91,7 @@ function ChainThroughputCard() {
         )}
       </div>
 
-      <div className="mt-1 flex items-center justify-between border-t border-border px-5 py-3">
+      <div className="mt-1 flex items-center justify-between border-t border-border px-4 py-3">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           /api/v1/chain/activity
         </span>
@@ -118,7 +118,7 @@ function LiveSubnetsCard() {
 
   return (
     <div className="mg-card-glow flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
           Live subnets · 7d
         </div>
@@ -133,7 +133,7 @@ function LiveSubnetsCard() {
       <ul className="divide-y divide-border">
         {featured.length === 0 &&
           Array.from({ length: 6 }).map((_, i) => (
-            <li key={i} className="flex items-center gap-3 px-5 py-3">
+            <li key={i} className="flex items-center gap-3 px-4 py-3">
               <div className="size-7 shrink-0 animate-pulse rounded-md bg-surface-2" />
               <div className="h-3 w-24 animate-pulse rounded bg-surface-2" />
               <div className="ml-auto h-4 w-20 animate-pulse rounded bg-surface-2" />
@@ -173,7 +173,7 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
       <Link
         to="/subnets/$netuid"
         params={{ netuid: sn.netuid }}
-        className="mg-hover-lift flex items-center gap-3 px-5 py-3 text-sm"
+        className="mg-hover-lift flex items-center gap-3 px-4 py-3 text-sm"
       >
         <BrandIcon
           name={sn.name}

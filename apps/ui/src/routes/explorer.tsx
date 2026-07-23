@@ -249,7 +249,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
       </div>
       {modules.length > 0 ? (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <Donut
               segments={moduleSegments}
               centerLabel={formatNumber(calls.total_extrinsics)}
@@ -420,7 +420,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
       </div>
 
       {net ? (
-        <div className="mb-5 space-y-3">
+        <div className="mb-4 space-y-3">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StakeFlowMetric
               label="Net flow"
@@ -522,7 +522,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
       </div>
 
       {net ? (
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StakeFlowMetric label="Distinct movers" value={formatNumber(net.distinct_movers)} />
           <StakeFlowMetric label="Movements" value={formatNumber(net.movements)} />
           <StakeFlowMetric label="Moves / mover" value={net.movements_per_mover.toFixed(2)} />
@@ -615,7 +615,7 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
         </span>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StakeFlowMetric label="Announcements" value={formatNumber(net.announcements)} />
         <StakeFlowMetric label="Distinct servers" value={formatNumber(net.distinct_servers)} />
         <StakeFlowMetric
@@ -686,7 +686,7 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
         </span>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StakeFlowMetric label="Announcements" value={formatNumber(net.announcements)} />
         <StakeFlowMetric label="Distinct exporters" value={formatNumber(net.distinct_exporters)} />
         <StakeFlowMetric
@@ -834,7 +834,7 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
         </span>
       </div>
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <StatTile
           icon={Coins}
           eyebrow="Total idle stake"
@@ -918,7 +918,7 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
         </span>
       </div>
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-4 grid gap-4 sm:grid-cols-3">
         <StatTile
           icon={UserPlus}
           eyebrow="Registrations"
@@ -1016,7 +1016,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
       </div>
 
       {net ? (
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StakeFlowMetric
             label="Retention"
             value={
@@ -1183,7 +1183,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
         </span>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StakeFlowMetric label="Total volume" value={formatTao(transfers.total_volume_tao)} />
         <StakeFlowMetric label="Transfers" value={formatNumber(transfers.transfer_count)} />
         <StakeFlowMetric label="Unique senders" value={formatNumber(transfers.unique_senders)} />
