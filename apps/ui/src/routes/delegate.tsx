@@ -23,7 +23,7 @@ function DelegatePage() {
       {/* Hero */}
       <section className="mg-hero-slab relative pt-12 pb-8 md:pt-16 md:pb-10">
         <div className="max-w-3xl">
-          <div className="mg-fade-in font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted inline-flex items-center gap-2">
+          <div className="mg-fade-in mg-type-micro text-ink-muted inline-flex items-center gap-2">
             <span className="mg-live-dot" />
             Partner validators · {PARTNER_ORG.name}
           </div>
@@ -60,7 +60,7 @@ function DelegatePage() {
       <section className="mt-10">
         <div className="mb-4 flex items-baseline justify-between">
           <h2 className="font-display text-xl font-semibold text-ink-strong">Supported subnets</h2>
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          <span className="mg-type-micro text-ink-muted">
             {PARTNER_VALIDATORS.length} live · more rolling out
           </span>
         </div>
@@ -75,7 +75,7 @@ function DelegatePage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    <div className="mg-type-micro text-ink-muted">
                       SN{p.netuid} · {p.subnetName}
                     </div>
                     <div className="mt-1 font-display text-lg font-semibold text-ink-strong">
@@ -83,7 +83,7 @@ function DelegatePage() {
                     </div>
                   </div>
                   <span
-                    className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest ${
+                    className={`shrink-0 rounded-full border px-2 py-0.5 mg-type-micro ${
                       p.live ? "border-health-ok/40 text-health-ok" : "border-border text-ink-muted"
                     }`}
                   >
@@ -117,7 +117,7 @@ function TrustCell({ icon, title, body }: { icon: React.ReactNode; title: string
         <span className="text-accent" aria-hidden>
           {icon}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em]">{title}</span>
+        <span className="mg-type-micro">{title}</span>
       </div>
       <p className="mt-1.5 text-[12px] text-ink-muted leading-relaxed">{body}</p>
     </div>

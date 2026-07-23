@@ -380,14 +380,14 @@ export function SubnetMasthead({
               <span className="font-mono text-sm text-ink-muted">{profile.symbol}</span>
             ) : null}
             {profile?.subnet_type ? (
-              <span className="rounded border border-border bg-surface/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+              <span className="rounded border border-border bg-surface/40 px-1.5 py-0.5 mg-type-micro text-ink-muted">
                 {profile.subnet_type}
               </span>
             ) : null}
             {categories.map((c) => (
               <span
                 key={c}
-                className="rounded border border-border/60 bg-paper px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-muted"
+                className="rounded border border-border/60 bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted"
               >
                 {c}
               </span>

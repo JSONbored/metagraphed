@@ -107,9 +107,7 @@ export function NeuronDetailCard({
         <KeyRow label="Coldkey" value={n.coldkey} />
         {n.registered_at_block != null ? (
           <div className="flex items-center justify-between gap-3">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              Registered
-            </span>
+            <span className="mg-type-micro text-ink-muted">Registered</span>
             <Link
               to="/blocks/$ref"
               params={{ ref: String(n.registered_at_block) }}
@@ -127,9 +125,7 @@ export function NeuronDetailCard({
 function Fact({ label, value }: { label: string; value: string | number }) {
   return (
     <Panel as="div" dense>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </div>
+      <div className="mg-type-micro text-ink-muted">{label}</div>
       <div className="mt-1 font-display text-base font-semibold tabular-nums text-ink-strong leading-none">
         {value}
       </div>
@@ -140,9 +136,7 @@ function Fact({ label, value }: { label: string; value: string | number }) {
 function KeyRow({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </span>
+      <span className="mg-type-micro text-ink-muted">{label}</span>
       {value ? (
         <span className="font-mono text-[12px] text-ink">
           <AccountAddress

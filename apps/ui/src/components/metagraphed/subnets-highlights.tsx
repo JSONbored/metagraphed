@@ -73,9 +73,7 @@ function Card({
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
-          {eyebrow}
-        </div>
+        <div className="mg-type-micro text-ink-muted">{eyebrow}</div>
         <div className="font-display text-[15px] font-medium text-ink-strong">{value}</div>
         {hint ? <div className="text-[11px] leading-snug text-ink-muted">{hint}</div> : null}
         <div className="mt-2 -mb-0.5">

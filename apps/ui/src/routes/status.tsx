@@ -501,7 +501,7 @@ function SurfaceRow({ surface, ongoing }: { surface: GlobalIncidentSurface; ongo
     <li className="flex items-center gap-3 rounded border border-border bg-card px-3 py-2.5">
       <span
         className={classNames(
-          "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest shrink-0",
+          "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro shrink-0",
           ongoing
             ? "border-health-down/40 bg-health-down/5 text-health-down"
             : "border-border bg-paper text-ink-muted",

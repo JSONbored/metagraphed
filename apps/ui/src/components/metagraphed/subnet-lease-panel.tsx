@@ -175,7 +175,7 @@ function LeaseStatusCard({
 function KeySs58({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">{label}</dt>
+      <dt className="mg-type-micro text-ink-muted">{label}</dt>
       <dd className="mt-1">
         <CopyableCode value={value} className="max-w-full" />
       </dd>
@@ -210,9 +210,7 @@ function LeaseHistorySection({
 }) {
   return (
     <div>
-      <h3 className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-        Lease history
-      </h3>
+      <h3 className="mb-3 mg-type-label uppercase text-ink-muted">Lease history</h3>
       {isError ? (
         <ErrorState error={error} onRetry={onRetry} context="subnet lease history" />
       ) : isLoading ? (

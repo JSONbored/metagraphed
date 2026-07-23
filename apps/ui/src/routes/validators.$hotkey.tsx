@@ -194,7 +194,7 @@ function SubnetPerformanceTable({
               </td>
               <td className="px-3 py-2 text-center">
                 {s.validator_permit ? (
-                  <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+                  <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
                     Yes
                   </span>
                 ) : (

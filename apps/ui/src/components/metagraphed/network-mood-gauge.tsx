@@ -48,9 +48,7 @@ export function NetworkMoodGauge() {
     >
       <Icon aria-hidden className="size-4 shrink-0" style={{ color: meta.color }} />
       <div className="min-w-0">
-        <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted">
-          Network mood
-        </div>
+        <div className="mg-type-micro text-ink-muted">Network mood</div>
         <div className="font-display text-sm font-semibold" style={{ color: meta.color }}>
           {meta.label}
         </div>

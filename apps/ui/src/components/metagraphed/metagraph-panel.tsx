@@ -94,7 +94,7 @@ export function MetagraphTableLoader({
       {stakeBars.length > 0 ? (
         <Panel as="div" dense>
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            <span className="mg-type-micro text-ink-muted">
               Stake distribution · top {stakeBars.length} UIDs
             </span>
             <span className="ml-auto flex items-center gap-2">
@@ -112,7 +112,7 @@ export function MetagraphTableLoader({
 
       {/* Permit filter + sortable neuron table. */}
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        <span className="mg-type-micro text-ink-muted">
           {filtered.length} of {neurons.length} neurons
         </span>
         <button

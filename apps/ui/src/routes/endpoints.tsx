@@ -1058,7 +1058,7 @@ function EndpointsTable() {
                   : "Showing all endpoint records"
               }
               className={classNames(
-                "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 font-mono text-[10px] uppercase tracking-widest",
+                "mg-focus-ring inline-flex h-8 items-center gap-1.5 rounded px-2 mg-type-micro",
                 search.callable ? "text-accent-text" : "text-ink-muted hover:text-ink-strong",
               )}
             >

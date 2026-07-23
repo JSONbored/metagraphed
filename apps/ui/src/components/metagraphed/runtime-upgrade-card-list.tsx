@@ -41,17 +41,13 @@ export function RuntimeUpgradeCardList({ rows, className }: RuntimeUpgradeCardLi
           bodyClassName="space-y-2"
         >
           <div className="flex items-baseline justify-between gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              Spec Version
-            </span>
+            <span className="mg-type-micro text-ink-muted">Spec Version</span>
             <span className="font-mono text-[13px] tabular-nums text-ink-strong">
               {formatNumber(row.spec_version)}
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              Block
-            </span>
+            <span className="mg-type-micro text-ink-muted">Block</span>
             <span className="font-mono text-[12px] tabular-nums">
               {row.block_number != null ? (
                 <Link
@@ -67,9 +63,7 @@ export function RuntimeUpgradeCardList({ rows, className }: RuntimeUpgradeCardLi
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              Observed
-            </span>
+            <span className="mg-type-micro text-ink-muted">Observed</span>
             <span className="font-mono text-[12px] text-ink-muted">
               {row.observed_at ? <TimeAgo at={row.observed_at} /> : "—"}
             </span>

@@ -35,7 +35,7 @@ function GraphqlExplorerPage() {
       <Link
         to="/docs/$"
         params={{ _splat: "graphql" }}
-        className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted transition-colors hover:text-ink-strong"
+        className="inline-flex items-center gap-1.5 mg-type-label uppercase text-ink-muted transition-colors hover:text-ink-strong"
       >
         <ArrowLeft aria-hidden className="size-3.5" />
         GraphQL docs

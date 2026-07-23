@@ -56,9 +56,7 @@ function SubnetValidatorsPreviewLoader({ netuid }: { netuid: number }) {
       {sponsored ? <SponsoredValidatorCallout netuid={netuid} validator={sponsored} /> : null}
       <Panel as="div" dense>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Top validators · by stake
-          </span>
+          <span className="mg-type-micro text-ink-muted">Top validators · by stake</span>
           <button
             type="button"
             onClick={() =>
@@ -68,7 +66,7 @@ function SubnetValidatorsPreviewLoader({ netuid }: { netuid: number }) {
                 replace: true,
               })
             }
-            className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-ink-muted transition-colors hover:text-accent"
+            className="inline-flex items-center gap-1 mg-type-micro text-ink-muted transition-colors hover:text-accent"
           >
             View all validators
             <ArrowRight className="size-3" aria-hidden />

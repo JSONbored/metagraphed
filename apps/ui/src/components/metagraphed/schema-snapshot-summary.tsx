@@ -60,7 +60,7 @@ function readSnapshot(schema: SchemaInfo): SnapshotFields {
 function MetaCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border bg-paper px-3 py-2">
-      <div className="font-mono text-[9px] uppercase tracking-widest text-ink-muted">{label}</div>
+      <div className="mg-type-micro text-ink-muted">{label}</div>
       <div className="mt-0.5 font-mono text-[12px] text-ink-strong tabular-nums truncate">
         {value}
       </div>
@@ -91,7 +91,7 @@ export function SchemaSnapshotSummary({ schema }: { schema: SchemaInfo }) {
       <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
         <span
           className={classNames(
-            "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-widest",
+            "inline-flex items-center rounded-full border px-2 py-0.5 mg-type-micro",
             driftTone(driftStatus),
           )}
         >
@@ -110,16 +110,12 @@ export function SchemaSnapshotSummary({ schema }: { schema: SchemaInfo }) {
             <span className="text-ink-muted">{schema.previous_hash!.slice(0, 12)}</span>
             <span className="text-ink-muted">→</span>
             <span className="text-ink-strong">{schema.hash!.slice(0, 12)}</span>
-            <span className="ml-auto text-health-warn uppercase tracking-widest text-[10px]">
-              hash changed
-            </span>
+            <span className="ml-auto text-health-warn mg-type-micro">hash changed</span>
           </div>
         ) : schema.hash ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-ink-strong">{schema.hash.slice(0, 12)}</span>
-            <span className="ml-auto text-ink-muted uppercase tracking-widest text-[10px]">
-              hash stable
-            </span>
+            <span className="ml-auto text-ink-muted mg-type-micro">hash stable</span>
           </div>
         ) : (
           <span className="text-ink-muted">No hash recorded for this snapshot.</span>

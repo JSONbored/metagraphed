@@ -146,7 +146,7 @@ function PrimitivesPreview() {
             </FilterField>
           </FilterToolbar>
         </div>
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        <p className="mt-2 mg-type-micro text-ink-muted">
           density={density} · visible=
           {cols.visible.join(",")}
         </p>
@@ -239,7 +239,7 @@ function PrimitivesPreview() {
         </div>
       </Section>
 
-      <p className="mt-10 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+      <p className="mt-10 mg-type-micro text-ink-muted">
         Applied on: /subnets grid cards · /endpoints card list
       </p>
     </div>

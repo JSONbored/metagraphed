@@ -167,15 +167,13 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
     <div className="space-y-4">
       {availableNetuids.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            scope
-          </span>
+          <span className="mg-type-micro text-ink-muted">scope</span>
           <div className="inline-flex flex-wrap rounded-full border border-border/80 bg-card/80 p-1 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.45)]">
             <button
               type="button"
               onClick={() => setScope("all")}
               className={classNames(
-                "rounded-full px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors",
+                "rounded-full px-3 py-1.5 mg-type-label uppercase transition-colors",
                 scope === "all"
                   ? "bg-ink-strong text-paper shadow-[0_12px_30px_-24px_rgba(15,23,42,0.85)]"
                   : "text-ink-muted hover:text-ink-strong",
@@ -189,7 +187,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
                 type="button"
                 onClick={() => setScope(netuid)}
                 className={classNames(
-                  "rounded-full px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors",
+                  "rounded-full px-3 py-1.5 mg-type-label uppercase transition-colors",
                   scope === netuid
                     ? "bg-ink-strong text-paper shadow-[0_12px_30px_-24px_rgba(15,23,42,0.85)]"
                     : "text-ink-muted hover:text-ink-strong",
@@ -250,15 +248,11 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
 function MetricBlock({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="min-w-0">
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </div>
+      <div className="mg-type-micro text-ink-muted">{label}</div>
       <div className="mt-2 font-display text-xl font-semibold tracking-[-0.02em] text-ink-strong">
         {value}
       </div>
-      <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
-        {hint}
-      </div>
+      <div className="mt-1 mg-type-micro text-ink-muted">{hint}</div>
     </div>
   );
 }

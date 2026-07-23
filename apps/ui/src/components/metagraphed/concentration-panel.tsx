@@ -131,9 +131,7 @@ function SharePanel({
   const allEmpty = bars.every((b) => b.value === 0);
   return (
     <Panel as="div" dense>
-      <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        {title}
-      </div>
+      <div className="mb-3 mg-type-micro text-ink-muted">{title}</div>
       {allEmpty ? (
         <p className="font-mono text-[11px] text-ink-muted">Not enough data yet.</p>
       ) : (
@@ -152,9 +150,7 @@ function pctToBar(v?: number | null): number {
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted truncate">
-        {label}
-      </div>
+      <div className="mg-type-micro text-ink-muted truncate">{label}</div>
       <div className="mt-1 min-w-0 truncate font-display text-base font-semibold tabular-nums text-ink-strong leading-none min-[400px]:text-lg">
         {value}
       </div>
@@ -226,9 +222,7 @@ function DriftCard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Concentration drift
-        </span>
+        <span className="mg-type-micro text-ink-muted">Concentration drift</span>
         {toggle}
       </div>
       {isLoading ? (
@@ -455,9 +449,7 @@ function RewardDriftCard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Reward drift
-        </span>
+        <span className="mg-type-micro text-ink-muted">Reward drift</span>
         {toggle}
       </div>
       {isLoading ? (

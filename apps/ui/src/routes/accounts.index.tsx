@@ -58,10 +58,7 @@ function AccountsPage() {
         }
       />
       <form onSubmit={submit} className="mx-auto w-full max-w-2xl">
-        <label
-          htmlFor="ss58"
-          className="mb-2 block font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-        >
+        <label htmlFor="ss58" className="mb-2 block mg-type-micro text-ink-muted">
           Account address (ss58)
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -98,9 +95,7 @@ function AccountsPage() {
         className="mx-auto mt-10 w-full max-w-2xl rounded-lg border border-border bg-card p-4"
         data-testid="top-active-accounts-section"
       >
-        <h2 className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Most active accounts
-        </h2>
+        <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Most active accounts</h2>
         <p className="mb-4 font-mono text-[11px] text-ink-muted">
           Ranked by extrinsics signed on-chain in the last {TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS} days —
           jump straight to an account below.

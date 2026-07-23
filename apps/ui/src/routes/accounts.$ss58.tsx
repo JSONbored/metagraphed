@@ -253,13 +253,13 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
             </ActionBar>
             <a
               href="#history"
-              className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent-text transition-colors hover:bg-accent/15"
+              className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 mg-type-label uppercase text-accent-text transition-colors hover:bg-accent/15"
             >
               View activity
             </a>
             <a
               href="#call"
-              className="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted transition-colors hover:border-ink/20 hover:text-ink-strong"
+              className="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 mg-type-label uppercase text-ink-muted transition-colors hover:border-ink/20 hover:text-ink-strong"
             >
               API endpoints
             </a>
@@ -371,9 +371,7 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                 key={entry.kind}
                 className="rounded-2xl border border-border/80 bg-card/95 px-4 py-3 mg-card-glow"
               >
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-                  event kind
-                </div>
+                <div className="mg-type-micro text-ink-muted">event kind</div>
                 <div className="mt-2 flex items-end justify-between gap-3">
                   <span className="min-w-0 truncate font-mono text-[12px] text-ink-strong">
                     {entry.kind}
@@ -498,7 +496,7 @@ function SectionBadge({
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em]",
+        "inline-flex items-center rounded-full border px-3 py-1 mg-type-micro",
         tone === "accent"
           ? "border-accent/30 bg-accent/10 text-accent"
           : "border-border bg-card text-ink-muted",
@@ -509,7 +507,7 @@ function SectionBadge({
   );
 }
 
-const TH = "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+const TH = "px-4 py-3 mg-type-micro text-ink-muted";
 
 function AccountFeedSectionSkeleton({
   id,
@@ -1234,9 +1232,7 @@ function DelegationSide({
 }) {
   return (
     <div>
-      <h3 className="mb-2 whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </h3>
+      <h3 className="mb-2 whitespace-nowrap mg-type-label uppercase text-ink-muted">{label}</h3>
       {unavailable ? (
         <TableState
           variant="error"
@@ -1349,7 +1345,7 @@ function EntityLabelCard({ label }: { label: AccountEntityLabel }) {
         <Tag className="h-3.5 w-3.5 shrink-0 text-accent" />
         <span className="min-w-0 truncate font-semibold text-ink">{label.name ?? "Unnamed"}</span>
         {label.category ? (
-          <span className="shrink-0 whitespace-nowrap rounded border border-border/70 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+          <span className="shrink-0 whitespace-nowrap rounded border border-border/70 px-1.5 py-0.5 mg-type-micro text-ink-muted">
             {label.category}
           </span>
         ) : null}
@@ -1416,7 +1412,7 @@ function AccountEntitiesSection({ ss58 }: { ss58: string }) {
 
       {ties.length > 0 ? (
         <>
-          <h3 className="mb-2 whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          <h3 className="mb-2 whitespace-nowrap mg-type-label uppercase text-ink-muted">
             Ownership
           </h3>
           <DataPanel>
@@ -1625,9 +1621,7 @@ function AccountStakeFlowSection({ ss58 }: { ss58: string }) {
 
       {bars.length > 0 ? (
         <div className="mb-4 rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-card-glow">
-          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            gross flow by subnet (τ)
-          </div>
+          <div className="mb-3 mg-type-micro text-ink-muted">gross flow by subnet (τ)</div>
           <BarMini data={bars} showValue={false} />
         </div>
       ) : null}
@@ -2447,9 +2441,7 @@ function AccountFootprintSection({
     >
       {staked.length > 0 ? (
         <div className="mb-4 rounded-2xl border border-border/80 bg-card/95 px-4 py-4 mg-card-glow">
-          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            stake by subnet (τ)
-          </div>
+          <div className="mb-3 mg-type-micro text-ink-muted">stake by subnet (τ)</div>
           <BarMini data={staked} showValue={false} />
         </div>
       ) : null}
@@ -2821,9 +2813,7 @@ function AccountHeroAside({
     <div className="w-[20rem] rounded-2xl border border-border/80 bg-card/95 p-4 mg-card-glow">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
-            account signal
-          </div>
+          <div className="mg-type-micro text-ink-muted">account signal</div>
           <div className="mt-2 font-display text-xl font-semibold text-ink-strong">
             Indexed footprint
           </div>
@@ -2874,9 +2864,7 @@ function HeroAsideRow({
         <Icon className="size-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          {label}
-        </div>
+        <div className="mg-type-micro text-ink-muted">{label}</div>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="truncate font-display text-lg font-semibold tabular-nums text-ink-strong">
             {value}

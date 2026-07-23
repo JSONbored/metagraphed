@@ -53,7 +53,7 @@ export function RecentIdentityChanges() {
           <Link
             to="/subnets/$netuid"
             params={{ netuid: c.netuid }}
-            className="shrink-0 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:text-accent"
+            className="shrink-0 mg-type-label uppercase text-ink-muted hover:text-accent"
           >
             SN{c.netuid}
           </Link>

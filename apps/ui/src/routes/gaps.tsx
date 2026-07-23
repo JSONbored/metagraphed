@@ -619,9 +619,7 @@ function OpenGapsSection() {
 
       {missingSet.size > 0 ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-accent/30 bg-primary-soft/40 px-3 py-2 font-mono text-[11px] text-ink-strong">
-          <span className="uppercase tracking-widest text-[10px] text-ink-muted">
-            filtered by missing kind:
-          </span>
+          <span className="mg-type-micro text-ink-muted">filtered by missing kind:</span>
           {Array.from(missingSet).map((k) => (
             <span
               key={k}
@@ -636,7 +634,7 @@ function OpenGapsSection() {
           <button
             type="button"
             onClick={() => setSearch({ missing: "" })}
-            className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+            className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-paper px-2 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong"
           >
             <X className="size-3" /> clear
           </button>
@@ -820,7 +818,7 @@ function GapRow({
           <Link
             to="/subnets/$netuid"
             params={{ netuid: gap.netuid }}
-            className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted hover:text-accent hover:border-accent/40"
+            className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-accent hover:border-accent/40"
           >
             open
           </Link>
@@ -829,7 +827,7 @@ function GapRow({
           href={`${GITHUB_REPO}/issues/new?title=${encodeURIComponent(`gap: ${gap.title ?? gap.id}`)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted hover:text-accent hover:border-accent/40"
+          className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-accent hover:border-accent/40"
         >
           file
         </a>

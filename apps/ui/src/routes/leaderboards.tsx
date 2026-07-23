@@ -60,9 +60,9 @@ export const Route = createFileRoute("/leaderboards")({
 
 const TH = "px-4 py-2.5 mg-type-micro text-[10px] text-ink-muted";
 const WINDOW_BTN_ACTIVE =
-  "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-accent-text";
+  "rounded-full border border-accent/40 bg-accent/10 px-3 py-1 mg-type-label uppercase text-accent-text";
 const WINDOW_BTN =
-  "rounded-full border border-border bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:border-ink/30";
+  "rounded-full border border-border bg-card px-3 py-1 mg-type-label uppercase text-ink-muted hover:border-ink/30";
 
 // Shaped to each board's own layout -- title, one description line, the
 // 3-tile StatTile row, and a table-shaped placeholder -- so the loading
@@ -129,9 +129,7 @@ function LeaderboardsPage() {
         }
       />
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Window
-        </span>
+        <span className="mg-type-label uppercase text-ink-muted">Window</span>
         {(["7d", "30d"] as const).map((w) => (
           <button
             key={w}
@@ -268,9 +266,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Weight-setting activity
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Weight-setting activity</h2>
         <p className="mt-1 text-sm text-ink-muted">
           Validator consensus effort ranked by subnet — raw WeightsSet events over the selected
           window.
@@ -316,9 +312,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
       ) : (
         <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-              Per-subnet rankings
-            </span>
+            <span className="mg-type-label uppercase text-ink-muted">Per-subnet rankings</span>
             <span className="font-mono text-[11px] text-ink-muted">
               {formatNumber(board.subnet_count)} subnets
               {board.observed_at ? (
@@ -452,9 +446,7 @@ function EmissionsLeaderboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Top emitters
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Top emitters</h2>
         <p className="mt-1 text-sm text-ink-muted">
           Subnets ranked by their share of network emissions — from the live economics snapshot.
         </p>
@@ -494,9 +486,7 @@ function EmissionsLeaderboard() {
       ) : (
         <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-              Per-subnet rankings
-            </span>
+            <span className="mg-type-label uppercase text-ink-muted">Per-subnet rankings</span>
             <span className="font-mono text-[11px] text-ink-muted">
               top {top.length} of {formatNumber(ranked.length)} subnets
             </span>
@@ -591,9 +581,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Deregistrations
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Deregistrations</h2>
         <p className="mt-1 text-sm text-ink-muted">
           Neuron evictions ranked by subnet — raw NeuronDeregistered events over the selected
           window.
@@ -635,9 +623,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
       ) : (
         <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-              Per-subnet rankings
-            </span>
+            <span className="mg-type-label uppercase text-ink-muted">Per-subnet rankings</span>
             <span className="font-mono text-[11px] text-ink-muted">
               {formatNumber(board.subnet_count)} subnets
               {board.observed_at ? (

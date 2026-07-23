@@ -43,7 +43,7 @@ export function DomainsRollup() {
 
   return (
     <section id="domains-rollup" className="scroll-mt-24">
-      <div className="hidden grid-cols-[1.4fr_0.7fr_1fr_0.9fr_1fr] gap-2 border-b border-border px-4 pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted md:grid">
+      <div className="hidden grid-cols-[1.4fr_0.7fr_1fr_0.9fr_1fr] gap-2 border-b border-border px-4 pb-2 mg-type-micro text-ink-muted md:grid">
         <span>Domain</span>
         <span className="text-right">Subnets</span>
         <span className="text-right">Total stake</span>
@@ -123,7 +123,7 @@ function DomainRow({
             <Metric label="Entropy (normalized)" value={ratio(c?.entropy_normalized)} />
           </dl>
           <div>
-            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            <div className="mb-2 mg-type-micro text-ink-muted">
               {domain.subnet_count} member subnet{domain.subnet_count === 1 ? "" : "s"}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -159,9 +159,7 @@ function DomainRow({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
-        {label}
-      </div>
+      <div className="mg-type-micro text-ink-muted">{label}</div>
       <div className="mt-0.5 font-mono text-sm tabular-nums text-ink-strong">{value}</div>
     </div>
   );

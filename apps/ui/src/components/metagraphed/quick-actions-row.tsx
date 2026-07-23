@@ -83,9 +83,7 @@ export function QuickActionsRow() {
                 <ArrowUpRight aria-hidden className="mg-quick-arrow size-3.5 text-ink-subtle" />
               </div>
               <div className="space-y-1">
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-                  {a.eyebrow}
-                </div>
+                <div className="mg-type-micro text-ink-muted">{a.eyebrow}</div>
                 <div className="font-display text-sm font-semibold text-ink-strong">{a.title}</div>
                 <p className="text-[12px] leading-relaxed text-ink-muted">{a.description}</p>
               </div>

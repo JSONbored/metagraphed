@@ -79,9 +79,7 @@ export function NeuronHistoryChart({ netuid, uid }: { netuid: number; uid: numbe
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          UID {uid} history
-        </span>
+        <span className="mg-type-micro text-ink-muted">UID {uid} history</span>
         {windowSelector}
       </div>
       {isLoading ? (

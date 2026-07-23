@@ -44,9 +44,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
       <div className="p-4">
         <header className="mb-2 flex items-center justify-between">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              Completeness
-            </div>
+            <div className="mg-type-micro text-ink-muted">Completeness</div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               Score distribution
             </h3>
@@ -171,9 +169,7 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
       <div className="p-4">
         <header className="mb-4 flex items-center justify-between">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              Coverage
-            </div>
+            <div className="mg-type-micro text-ink-muted">Coverage</div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               Surface dimensions
             </h3>

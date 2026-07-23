@@ -148,9 +148,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
     <Panel as="div" flush className={classNames("overflow-hidden", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Incidents · {RANGE_LABEL[range]}
-          </div>
+          <div className="mg-type-micro text-ink-muted">Incidents · {RANGE_LABEL[range]}</div>
           <InfoTooltip label="Bars are positioned by incident start within the selected range and sized by duration. Color reflects severity. Click a row to open the host subnet or pool." />
         </div>
         <div className="flex flex-wrap items-center gap-1">
@@ -162,7 +160,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
                 type="button"
                 onClick={() => setFilter(k)}
                 className={classNames(
-                  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors",
+                  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 mg-type-micro transition-colors",
                   active
                     ? "border-accent/60 bg-accent/10 text-accent"
                     : "border-border text-ink-muted hover:text-ink-strong hover:border-ink-muted/50",
@@ -186,7 +184,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
       ) : (
         <ul className="divide-y divide-border">
           {/* Header axis */}
-          <li className="grid grid-cols-[minmax(180px,260px)_1fr_min-content] items-center gap-3 px-4 py-1.5 bg-paper/40 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+          <li className="grid grid-cols-[minmax(180px,260px)_1fr_min-content] items-center gap-3 px-4 py-1.5 bg-paper/40 mg-type-micro text-ink-muted">
             <span>Host</span>
             <span className="flex items-center justify-between">
               <span>-{RANGE_LABEL[range]}</span>
@@ -225,7 +223,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: r.netuid }}
-                      className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted hover:text-accent hover:border-accent/40"
+                      className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-accent hover:border-accent/40"
                     >
                       SN{r.netuid}
                       <ChevronRight className="size-3" aria-hidden />
@@ -237,7 +235,7 @@ export function IncidentsTimeline({ className }: { className?: string }) {
                       search={(prev: Record<string, unknown>) =>
                         ({ ...prev, q: pool.name ?? pool.id }) as never
                       }
-                      className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted hover:text-accent hover:border-accent/40"
+                      className="inline-flex items-center gap-1 rounded border border-border bg-paper px-2 py-1 mg-type-micro text-ink-muted hover:text-accent hover:border-accent/40"
                     >
                       pool · {pool.name ?? pool.id}
                       <ExtIcon className="size-3" aria-hidden />

@@ -142,7 +142,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
   return (
     <Panel as="div" flush className={classNames("overflow-hidden", className)}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 border-b border-border bg-paper/40">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        <div className="mg-type-micro text-ink-muted">
           Uptime by surface · {RANGE_LABEL[range]}
           {usingFallbackWindow ? <span className="text-ink-muted/60"> (7d window)</span> : null}
         </div>

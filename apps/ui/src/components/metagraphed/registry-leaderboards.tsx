@@ -109,7 +109,7 @@ export function RegistryLeaderboards() {
   return (
     <section id="registry-leaderboards" className="scroll-mt-24 space-y-8">
       <div className="max-w-2xl">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted inline-flex items-center gap-2">
+        <div className="mg-type-micro text-ink-muted inline-flex items-center gap-2">
           <span className="mg-live-dot" />
           Registry
         </div>
@@ -140,9 +140,7 @@ function BoardGroup({
 }) {
   return (
     <div className="space-y-4">
-      <h3 className="mg-section-rule font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-        {title}
-      </h3>
+      <h3 className="mg-section-rule mg-type-label uppercase text-ink-muted">{title}</h3>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {boards.map((board) => (
           <BoardCard
@@ -171,9 +169,7 @@ function BoardCard({
 }) {
   return (
     <Panel as="div" dense>
-      <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </div>
+      <div className="mb-1 mg-type-micro text-ink-muted">{label}</div>
       <p className="mb-3 text-xs text-ink-subtle leading-relaxed">{blurb}</p>
       {rows.length === 0 ? (
         <p className="rounded-md border border-dashed border-border px-2 py-3 text-center text-xs text-ink-subtle">

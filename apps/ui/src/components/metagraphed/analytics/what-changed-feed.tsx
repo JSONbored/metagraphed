@@ -73,9 +73,7 @@ export function WhatChangedFeed({ className, limit = 10 }: { className?: string;
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              What changed · {RANGE_LABEL[range]}
-            </div>
+            <div className="mg-type-micro text-ink-muted">What changed · {RANGE_LABEL[range]}</div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               Recent registry signal
             </h3>
@@ -114,9 +112,7 @@ export function WhatChangedFeed({ className, limit = 10 }: { className?: string;
                     </div>
                     <div className="flex items-baseline gap-2 mt-0.5">
                       {it.detail ? (
-                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted truncate">
-                          {it.detail}
-                        </span>
+                        <span className="mg-type-micro text-ink-muted truncate">{it.detail}</span>
                       ) : null}
                       {it.at ? (
                         <span className="font-mono text-[10px] text-ink-muted">

@@ -176,7 +176,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
       {/* Desktop table */}
       <Panel as="div" flush className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
-          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="bg-surface/50 mg-type-micro text-ink-muted">
             <tr>
               <th className="px-3 py-2.5 text-left">Subnet</th>
               <th className="px-3 py-2.5 text-left">Source</th>
@@ -275,7 +275,7 @@ function SourceBadge({ source }: { source: "owned" | "delegated" }) {
   return (
     <span
       className={classNames(
-        "inline-flex items-center rounded border px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider",
+        "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro",
         source === "owned"
           ? "border-accent/40 bg-accent-surface text-accent-text"
           : "border-border bg-surface/40 text-ink-muted",

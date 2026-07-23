@@ -495,9 +495,7 @@ function BoardCard({ title, children }: { title: string; children: React.ReactNo
   return (
     <Panel as="div" flush>
       <div className="p-4">
-        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted mb-3">
-          {title}
-        </div>
+        <div className="mg-type-micro text-ink-muted mb-3">{title}</div>
         {children}
       </div>
     </Panel>
@@ -693,9 +691,7 @@ function Incidents({ interval }: { interval: number | false }) {
     <div className="space-y-4">
       <Panel as="div" dense bodyClassName="flex items-center gap-4">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted">
-            Incidents · 14d
-          </div>
+          <div className="mg-type-micro text-ink-muted">Incidents · 14d</div>
           <div className="font-display text-2xl font-semibold text-ink-strong tabular-nums leading-none mt-1">
             {rows.length}
           </div>

@@ -120,9 +120,7 @@ export function SubnetPriceTicker({ limit = 12 }: { limit?: number }) {
                   netuid={it.netuid}
                 />
                 <span className="font-medium text-ink-strong truncate max-w-[16ch]">{it.name}</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
-                  SN{it.netuid}
-                </span>
+                <span className="mg-type-micro text-ink-muted">SN{it.netuid}</span>
                 <span className="font-display font-semibold tabular-nums text-ink-strong">
                   {priceStr(it.price)}
                 </span>
@@ -158,7 +156,7 @@ export function SubnetPriceTicker({ limit = 12 }: { limit?: number }) {
           neither scroll with the content nor be dimmed by the scroller's edge mask. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted bg-paper px-1.5"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 mg-type-micro text-ink-muted bg-paper px-1.5"
       >
         <Coins className="size-2.5" />
         alpha

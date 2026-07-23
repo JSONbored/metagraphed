@@ -65,9 +65,7 @@ export function HealthHistoryDrilldown() {
           <div className="font-display text-sm font-semibold text-ink-strong">{date}</div>
         </div>
         <label className="ml-auto inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            date
-          </span>
+          <span className="mg-type-micro text-ink-muted">date</span>
           <input
             type="date"
             value={date}
@@ -208,7 +206,7 @@ function HealthHistoryBody({ date }: { date: string }) {
 
       <Panel flush className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="bg-surface/50 mg-type-micro text-ink-muted">
             <tr>
               <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "netuid", order)}>
                 <SortHeader
@@ -400,7 +398,7 @@ export function SourceHealthTable() {
 
       <Panel flush className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="bg-surface/50 mg-type-micro text-ink-muted">
             <tr>
               <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "name", order)}>
                 <SortHeader

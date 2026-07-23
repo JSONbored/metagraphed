@@ -139,9 +139,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
     <TooltipProvider delayDuration={150}>
       <Panel as="div" flush className="overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Latency heatmap · provider × kind
-          </div>
+          <div className="mg-type-micro text-ink-muted">Latency heatmap · provider × kind</div>
           <div
             className="flex flex-wrap items-center gap-2.5 text-[10px] font-mono text-ink-muted"
             role="list"
@@ -310,7 +308,7 @@ function Cell({ cell }: { cell: Cell }) {
       >
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="m-0 min-w-0 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted truncate">
+            <h3 className="m-0 min-w-0 mg-type-micro text-ink-muted truncate">
               {cell.provider} · {cell.kind}
             </h3>
             <span className="font-mono text-[10px] text-ink-strong tabular-nums shrink-0">

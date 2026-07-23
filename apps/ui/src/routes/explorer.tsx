@@ -164,7 +164,7 @@ function ExplorerPage() {
   );
 }
 
-const TH = "px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+const TH = "px-4 py-2.5 mg-type-micro text-ink-muted";
 
 /**
  * One labeled mini-sparkline cell for a daily series. Aligns `days` labels to
@@ -188,9 +188,7 @@ function MiniSeries({
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          {label}
-        </span>
+        <span className="mg-type-micro text-ink-muted">{label}</span>
         <span className="font-mono text-[11px] tabular-nums text-ink-strong">
           {latest == null ? "—" : formatValue(latest)}
         </span>
@@ -240,9 +238,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Call mix
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Call mix</h2>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(calls.total_extrinsics)} calls
         </span>
@@ -295,7 +291,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
 
           {functions.length > 0 ? (
             <div className="border-t border-border pt-3">
-              <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              <div className="mb-2 mg-type-micro text-ink-muted">
                 {selected ? `${selected} functions` : "Function breakdown"}
               </div>
               <BarMini
@@ -332,9 +328,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Pallet event mix
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Pallet event mix</h2>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(stats.groups)} groups · {formatNumber(stats.window_blocks)} blocks
         </span>
@@ -383,9 +377,7 @@ function StakeFlowMetric({
     tone === "ok" ? "text-health-ok" : tone === "down" ? "text-health-down" : "text-ink-strong";
   return (
     <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-        {label}
-      </div>
+      <div className="mg-type-micro text-ink-muted">{label}</div>
       <div className={`mt-0.5 font-mono text-sm tabular-nums ${valueClass}`}>{value}</div>
     </div>
   );
@@ -411,9 +403,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Stake flow
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Stake flow</h2>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(flow.subnet_count)} subnets
         </span>
@@ -444,9 +434,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
 
       {inflows.length > 0 ? (
         <div>
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Top net inflows
-          </div>
+          <div className="mb-2 mg-type-micro text-ink-muted">Top net inflows</div>
           <ul className="space-y-1.5">
             {inflows.map((s) => {
               const pct = Math.max(2, Math.round((Math.max(0, s.net_flow_tao) / cap) * 100));
@@ -513,9 +501,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Stake moves
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Stake moves</h2>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(moves.subnet_count)} subnets
         </span>
@@ -531,9 +517,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
 
       {busiest.length > 0 ? (
         <div>
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Busiest subnets
-          </div>
+          <div className="mb-2 mg-type-micro text-ink-muted">Busiest subnets</div>
           <ul className="space-y-1.5">
             {busiest.map((s) => {
               const pct = Math.max(2, Math.round((s.movements / cap) * 100));
@@ -590,9 +574,7 @@ function NetworkOperationsSection({
 }) {
   return (
     <section>
-      <h2 className="mb-6 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-        Network operations
-      </h2>
+      <h2 className="mb-6 mg-type-label uppercase text-ink-muted">Network operations</h2>
       <div className="grid gap-6 lg:grid-cols-2">
         <ChainServingLeaderboard board={serving} />
         <ChainPrometheusLeaderboard board={prometheus} />
@@ -607,9 +589,7 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Axon serving
-        </h3>
+        <h3 className="mg-type-label uppercase text-ink-muted">Axon serving</h3>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(board.subnet_count)} subnets
         </span>
@@ -678,9 +658,7 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Prometheus telemetry
-        </h3>
+        <h3 className="mg-type-label uppercase text-ink-muted">Prometheus telemetry</h3>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(board.subnet_count)} subnets
         </span>
@@ -754,9 +732,7 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <div>
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            Axon churn leaderboard
-          </h2>
+          <h2 className="mg-type-label uppercase text-ink-muted">Axon churn leaderboard</h2>
           <p className="mt-1 font-mono text-[11px] text-ink-muted">
             {formatNumber(churn.network.removals)} axon teardowns across{" "}
             {formatNumber(churn.network.distinct_removers)} removers network-wide
@@ -822,9 +798,7 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <div>
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            Idle stake
-          </h2>
+          <h2 className="mg-type-label uppercase text-ink-muted">Idle stake</h2>
           <p className="mt-1 font-mono text-[11px] text-ink-muted">
             Stake delegated to hotkeys currently earning zero dividends
           </p>
@@ -910,9 +884,7 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Network registrations
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Network registrations</h2>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(registrations.subnet_count)} subnets
         </span>
@@ -1007,9 +979,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Validator turnover
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Validator turnover</h2>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(turnover.subnet_count)} subnets
         </span>
@@ -1037,9 +1007,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
 
       {volatile.length > 0 ? (
         <div>
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Most volatile subnets
-          </div>
+          <div className="mb-2 mg-type-micro text-ink-muted">Most volatile subnets</div>
           <ul className="space-y-1.5">
             {volatile.map((s) => {
               const pct = Math.max(
@@ -1098,9 +1066,7 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Network economics trend
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Network economics trend</h2>
         <span className="font-mono text-[11px] text-ink-muted">{trends.day_count} days</span>
       </div>
       {chrono.length > 0 ? (
@@ -1175,9 +1141,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
   return (
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Transfers leaderboard
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Transfers leaderboard</h2>
         <span className="font-mono text-[11px] text-ink-muted">
           {formatNumber(transfers.transfer_count)} transfers
         </span>
@@ -1195,9 +1159,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Top senders
-          </div>
+          <div className="mb-2 mg-type-micro text-ink-muted">Top senders</div>
           {transfers.top_senders.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -1241,9 +1203,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
         </div>
 
         <div>
-          <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Top receivers
-          </div>
+          <div className="mb-2 mg-type-micro text-ink-muted">Top receivers</div>
           {transfers.top_receivers.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -1482,9 +1442,7 @@ function ExplorerDashboard() {
           {/* daily activity series */}
           <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                Daily activity
-              </h2>
+              <h2 className="mg-type-label uppercase text-ink-muted">Daily activity</h2>
               <span className="font-mono text-[11px] text-ink-muted">
                 {activity.day_count} days
               </span>
@@ -1537,9 +1495,7 @@ function ExplorerDashboard() {
 
             {/* top signers */}
             <Panel className="min-w-0">
-              <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                Most active accounts
-              </h2>
+              <h2 className="mb-4 mg-type-label uppercase text-ink-muted">Most active accounts</h2>
               {signers.signers.length > 0 ? (
                 <ExplorerLeaderboardTableShell
                   leaderboardId={EXPLORER_LEADERBOARD_IDS.activeAccounts}
@@ -1610,9 +1566,7 @@ function ExplorerDashboard() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                Daily fees &amp; tips
-              </h2>
+              <h2 className="mg-type-label uppercase text-ink-muted">Daily fees &amp; tips</h2>
               <span className="font-mono text-[11px] text-ink-muted">{fees.day_count} days</span>
             </div>
             {feeChrono.length > 0 ? (
@@ -1652,9 +1606,7 @@ function ExplorerDashboard() {
           </Panel>
           <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                Top fee payers
-              </h2>
+              <h2 className="mg-type-label uppercase text-ink-muted">Top fee payers</h2>
               <span className="font-mono text-[11px] text-ink-muted">
                 {fees.top_fee_payers.length} accounts
               </span>
@@ -1722,7 +1674,7 @@ function ExplorerDashboard() {
           <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <div>
-                <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                <h2 className="mg-type-label uppercase text-ink-muted">
                   Stake-transfer leaderboard
                 </h2>
                 <p className="mt-1 font-mono text-[11px] text-ink-muted">
@@ -1813,9 +1765,7 @@ function ExplorerDashboard() {
         <>
           <Panel className="min-w-0 lg:col-span-2">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                Network weight-setters
-              </h2>
+              <h2 className="mg-type-label uppercase text-ink-muted">Network weight-setters</h2>
               <span className="font-mono text-[11px] text-ink-muted">
                 {formatNumber(weightSetters.distinct_setters)} validators
               </span>
@@ -1895,9 +1845,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div>
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            Transfer pairs
-          </h2>
+          <h2 className="mg-type-label uppercase text-ink-muted">Transfer pairs</h2>
           {pairs ? (
             <p className="mt-1 font-mono text-[11px] text-ink-muted">
               {formatNumber(pairs.unique_pairs)} sender→receiver corridors ·{" "}
@@ -2022,9 +1970,7 @@ function ChainEventsFeedSection() {
   return (
     <Panel className="mt-10">
       <div className="mb-4">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          Chain events
-        </h2>
+        <h2 className="mg-type-label uppercase text-ink-muted">Chain events</h2>
         <p className="mt-1 font-mono text-[11px] text-ink-muted">
           Browse individual pallet events newest-first — distinct from aggregate activity stats.
         </p>

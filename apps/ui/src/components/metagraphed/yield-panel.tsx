@@ -113,9 +113,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Validator vs miner split. */}
         <Panel as="div" dense>
-          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Validator / miner split
-          </div>
+          <div className="mb-3 mg-type-micro text-ink-muted">Validator / miner split</div>
           {splitBars.length ? (
             <BarMini data={splitBars} />
           ) : (
@@ -309,9 +307,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Yield drift
-        </span>
+        <span className="mg-type-micro text-ink-muted">Yield drift</span>
         {toggle}
       </div>
       {isLoading ? (

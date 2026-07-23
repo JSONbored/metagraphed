@@ -1279,7 +1279,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        <span className="mg-type-micro text-ink-muted">
           {events.length} event{events.length === 1 ? "" : "s"}
         </span>
         <RealtimeFreshness at={data.meta?.generated_at} />
@@ -1693,10 +1693,8 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
     <div className="mt-6 min-w-0" data-weight-setters-leaderboard>
       <Panel flush className="overflow-hidden">
         <div className="flex flex-nowrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted sm:hidden">
-            Weight-setters
-          </span>
-          <span className="hidden shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted sm:inline">
+          <span className="shrink-0 mg-type-micro text-ink-muted sm:hidden">Weight-setters</span>
+          <span className="hidden shrink-0 mg-type-micro text-ink-muted sm:inline">
             Weight-setters · per-validator breakdown
           </span>
           <span className="shrink-0 font-mono text-[10px] text-ink-muted whitespace-nowrap">

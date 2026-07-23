@@ -62,7 +62,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
           aria-selected={i === interval}
           onClick={() => setIntervalState(i)}
           className={classNames(
-            "px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors",
+            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
             i === interval ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >

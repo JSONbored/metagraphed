@@ -43,7 +43,7 @@ export function TimeRangeScrub({
             aria-checked={on}
             onClick={() => set(o.value)}
             className={classNames(
-              "px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] rounded-sm transition-colors",
+              "px-2 py-0.5 mg-type-micro rounded-sm transition-colors",
               on ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
             )}
           >

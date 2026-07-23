@@ -94,9 +94,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
     <Panel flush className="overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper/30">
         <div className="min-w-0">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Coverage matrix
-          </div>
+          <div className="mg-type-micro text-ink-muted">Coverage matrix</div>
           <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
             What each subnet is missing
           </h3>
@@ -114,7 +112,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
               type="button"
               onClick={() => setSort(o.v)}
               className={classNames(
-                "inline-flex items-center rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors",
+                "inline-flex items-center rounded border px-2 py-0.5 mg-type-micro transition-colors",
                 sort === o.v
                   ? "border-accent/60 bg-accent/10 text-accent"
                   : "border-border text-ink-muted hover:text-ink-strong",
@@ -139,18 +137,18 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
           <table className="w-full border-collapse text-[11px] font-mono">
             <thead>
               <tr className="bg-paper/30">
-                <th className="sticky left-0 z-10 bg-paper/30 text-left px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
+                <th className="sticky left-0 z-10 bg-paper/30 text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
                   Subnet
                 </th>
                 {KINDS.map((k) => (
                   <th
                     key={k}
-                    className="px-2 py-2 text-center text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border"
+                    className="px-2 py-2 text-center mg-type-micro text-ink-muted border-b border-border"
                   >
                     {k}
                   </th>
                 ))}
-                <th className="px-2 py-2 text-right text-[10px] uppercase tracking-[0.12em] text-ink-muted border-b border-border">
+                <th className="px-2 py-2 text-right mg-type-micro text-ink-muted border-b border-border">
                   Comp
                 </th>
               </tr>
@@ -207,7 +205,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
           aria-hidden
           className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card to-transparent md:hidden"
         />
-        <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-ink-strong/70 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-paper md:hidden">
+        <div className="pointer-events-none absolute bottom-1 right-2 rounded bg-ink-strong/70 px-1.5 py-0.5 mg-type-micro text-paper md:hidden">
           scroll →
         </div>
       </div>
@@ -305,9 +303,7 @@ export function CompletenessHistogram() {
     <Panel dense>
       <header className="flex items-center justify-between mb-2">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Distribution
-          </div>
+          <div className="mg-type-micro text-ink-muted">Distribution</div>
           <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
             Completeness across the registry
           </h3>

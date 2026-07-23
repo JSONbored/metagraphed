@@ -180,9 +180,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Term({ name, desc }: { name: string; desc: string }) {
   return (
     <div className="grid grid-cols-[auto_1fr] gap-3 items-baseline">
-      <dt className="font-mono text-[11px] uppercase tracking-widest text-ink-strong whitespace-nowrap">
-        {name}
-      </dt>
+      <dt className="mg-type-label uppercase text-ink-strong whitespace-nowrap">{name}</dt>
       <dd className="text-sm text-ink-muted">{desc}</dd>
     </div>
   );

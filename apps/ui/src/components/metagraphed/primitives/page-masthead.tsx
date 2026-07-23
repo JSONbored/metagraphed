@@ -128,9 +128,7 @@ export function PageMasthead({
         <div className="mg-masthead-kpi mt-3">
           {kpis.map((k) => (
             <div key={k.label} className="min-w-0">
-              <div className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-ink-muted truncate">
-                {k.label}
-              </div>
+              <div className="mg-type-micro text-ink-muted truncate">{k.label}</div>
               <div className="mt-0.5 flex items-baseline gap-1.5 min-w-0">
                 <span className="font-display text-sm md:text-base font-semibold tabular-nums text-ink-strong leading-none truncate">
                   {k.value}

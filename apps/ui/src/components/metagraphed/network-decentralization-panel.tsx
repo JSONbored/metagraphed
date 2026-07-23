@@ -125,9 +125,7 @@ export function NetworkDecentralizationPanel() {
 
       {/* 0-1 trust / consensus / validator-trust score spread. */}
       <div>
-        <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Trust &amp; consensus score spread
-        </div>
+        <div className="mb-3 mg-type-micro text-ink-muted">Trust &amp; consensus score spread</div>
         <div className="grid gap-3 sm:grid-cols-3">
           {model.scoreTiles.map((tile) => (
             <Tile key={tile.key} tile={tile} />

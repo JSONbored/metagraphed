@@ -11,7 +11,7 @@ import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import type { ChainEvent } from "@/lib/metagraphed/types";
 import { chainStreamEventMatchesFilters, useChainStream } from "@/hooks/use-chain-stream";
 
-const TH = "px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+const TH = "px-4 py-2.5 mg-type-micro text-ink-muted";
 
 /** Page size for the raw all-events feed, shared by /events and /explorer. */
 export const CHAIN_EVENTS_PAGE_SIZE = 50;
@@ -125,7 +125,7 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
       {streamLabel ? (
         <span
           className={classNames(
-            "inline-flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em]",
+            "inline-flex items-center gap-1.5 rounded border px-2 py-1 mg-type-micro",
             streamStatus === "open"
               ? "border-accent/40 bg-accent/10 text-accent-text"
               : "border-border bg-surface text-ink-muted",

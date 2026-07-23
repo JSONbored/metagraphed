@@ -76,9 +76,7 @@ export function ValidatorGuide() {
         >
           <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
           <span className="min-w-0 flex-1">
-            <span className="block font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              {HEADING}
-            </span>
+            <span className="block mg-type-micro text-ink-muted">{HEADING}</span>
             <span className="mt-0.5 block font-mono text-[10px] text-ink-muted/80">
               {SUBHEADING}
             </span>
@@ -112,9 +110,7 @@ export function ValidatorGuide() {
         <div className="flex items-start gap-2 px-3 py-2">
           <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
           <span className="min-w-0 flex-1">
-            <span className="block font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              {HEADING}
-            </span>
+            <span className="block mg-type-micro text-ink-muted">{HEADING}</span>
             <span className="mt-0.5 block font-mono text-[10px] text-ink-muted/80">
               {SUBHEADING}
             </span>

@@ -215,7 +215,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
                 aria-selected={active}
                 onClick={() => flow.setDirection(d)}
                 className={classNames(
-                  "min-h-8 rounded px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest transition-colors",
+                  "min-h-8 rounded px-4 py-1.5 mg-type-label uppercase transition-colors",
                   active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
                 )}
               >
@@ -226,10 +226,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <span
-            aria-hidden="true"
-            className="font-mono text-[10px] uppercase tracking-widest text-ink-muted"
-          >
+          <span aria-hidden="true" className="mg-type-micro text-ink-muted">
             New take (%)
           </span>
           <SearchInput

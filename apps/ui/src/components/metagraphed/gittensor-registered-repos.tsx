@@ -49,9 +49,7 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
   return (
     <div id="registered-repos" className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Registered repositories
-        </span>
+        <span className="mg-type-micro text-ink-muted">Registered repositories</span>
         {total ? (
           <span className="shrink-0 font-mono text-[10px] text-ink-muted tabular-nums">
             {total} total

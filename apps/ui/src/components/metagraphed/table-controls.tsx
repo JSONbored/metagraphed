@@ -40,7 +40,7 @@ export function SortHeader({
       onClick={() => onSort(field)}
       aria-label={`Sort by ${label}${sortHint}`}
       className={classNames(
-        "inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest hover:text-ink-strong transition-colors",
+        "inline-flex items-center gap-1 mg-type-micro hover:text-ink-strong transition-colors",
         active ? "text-ink-strong" : "text-ink-muted",
         align === "right" && "justify-end w-full",
       )}
@@ -153,9 +153,7 @@ export function SelectFilter({
         className,
       )}
     >
-      <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-        {label}
-      </span>
+      <span className="shrink-0 mg-type-micro text-ink-muted">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -219,11 +217,7 @@ export function FilterChip({
         className={classNames("size-3 shrink-0", active ? "text-accent" : "text-ink-muted")}
         aria-hidden
       />
-      {label ? (
-        <span className="font-mono text-[10px] uppercase tracking-widest opacity-80 shrink-0">
-          {label}
-        </span>
-      ) : null}
+      {label ? <span className="mg-type-micro opacity-80 shrink-0">{label}</span> : null}
       <span
         className={classNames(
           "font-mono text-[11px] truncate max-w-[100px]",
@@ -265,9 +259,7 @@ export function PageSizeSelect({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-xs">
-      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-        per page
-      </span>
+      <span className="mg-type-micro text-ink-muted">per page</span>
       <select
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}

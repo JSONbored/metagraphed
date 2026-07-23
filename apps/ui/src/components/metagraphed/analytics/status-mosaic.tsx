@@ -51,9 +51,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
       <div className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              Status mosaic · {RANGE_LABEL[range]}
-            </div>
+            <div className="mg-type-micro text-ink-muted">Status mosaic · {RANGE_LABEL[range]}</div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               {rows.length} endpoint{rows.length === 1 ? "" : "s"}
             </h3>
@@ -68,7 +66,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
                   type="button"
                   onClick={() => setFilter(k)}
                   className={classNames(
-                    "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors",
+                    "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 mg-type-micro transition-colors",
                     active
                       ? "border-accent/60 bg-accent/10 text-accent"
                       : "border-border text-ink-muted hover:text-ink-strong hover:border-ink-muted/50",

@@ -72,9 +72,7 @@ export function CoverageFunnel({ className }: { className?: string }) {
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              Curation funnel
-            </div>
+            <div className="mg-type-micro text-ink-muted">Curation funnel</div>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
               Registry depth
             </h3>
@@ -90,7 +88,7 @@ export function CoverageFunnel({ className }: { className?: string }) {
               <li key={s.key} className="space-y-1">
                 <div className="flex items-baseline justify-between text-xs">
                   <div className="flex items-baseline gap-2 min-w-0">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted shrink-0">
+                    <span className="mg-type-micro text-ink-muted shrink-0">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <span className="font-display font-medium text-ink-strong truncate">

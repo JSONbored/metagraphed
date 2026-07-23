@@ -147,9 +147,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
     <Panel flush className="overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-paper/30">
         <div className="min-w-0">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Drift matrix
-          </div>
+          <div className="mg-type-micro text-ink-muted">Drift matrix</div>
           <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
             Every tracked schema, classified by change type
           </h3>
@@ -173,7 +171,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
                 type="button"
                 onClick={() => setFilter(k)}
                 className={classNames(
-                  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors",
+                  "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 mg-type-micro transition-colors",
                   active
                     ? `${tone} bg-paper`
                     : "border-border text-ink-muted hover:text-ink-strong",
@@ -309,7 +307,7 @@ function DriftTile({
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           className={classNames(
-            "inline-flex items-center gap-1 rounded-r border-y border-r px-1.5 -ml-px font-mono text-[9px] uppercase tracking-[0.12em] text-ink-muted hover:text-accent transition-colors",
+            "inline-flex items-center gap-1 rounded-r border-y border-r px-1.5 -ml-px mg-type-micro text-ink-muted hover:text-accent transition-colors",
             tone.fill,
           )}
           title={`Source evidence${evidence?.source ? ` · ${evidence.source}` : ""}${evidence?.recorded_at ? ` · recorded ${new Date(evidence.recorded_at).toISOString().slice(0, 10)}` : ""}`}

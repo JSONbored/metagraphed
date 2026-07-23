@@ -134,9 +134,7 @@ function FeesTrendCard() {
       <div className="p-4 sm:p-6">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-              Fees, last 7d
-            </h2>
+            <h2 className="mg-type-micro text-ink-muted">Fees, last 7d</h2>
             <span className="font-mono text-[11px] text-ink-muted">{fees.day_count} days</span>
           </div>
           <span className="font-mono text-[11px] tabular-nums text-ink-strong">

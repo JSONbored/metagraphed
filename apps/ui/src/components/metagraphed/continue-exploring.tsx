@@ -62,7 +62,7 @@ export function ContinueExploring() {
     <section className="mt-12" aria-labelledby="continue-exploring-title">
       <div className="flex items-end justify-between mb-4 gap-3">
         <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted inline-flex items-center gap-1.5">
+          <div className="mg-type-micro text-ink-muted inline-flex items-center gap-1.5">
             <Compass className="size-3" /> Continue exploring
           </div>
           <h2
