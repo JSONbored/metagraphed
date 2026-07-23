@@ -1,11 +1,12 @@
 /**
- * Centralized PostHog web-analytics + error-tracking + session-replay seam
- * (metagraphed#7760, #7759, #7761).
+ * Centralized PostHog web-analytics + error-tracking + session-replay +
+ * feature-flags seam (metagraphed#7760, #7759, #7761, #7762).
  *
  * Single chokepoint for client-side product analytics, exception reporting,
- * AND session replay: the app calls `initAnalytics()`/`capturePageview()`/
- * `captureEvent()`/`captureException()` and never touches `posthog-js`
- * directly elsewhere. Session replay has no separate exported function --
+ * session replay, AND feature flags: the app calls `initAnalytics()`/
+ * `capturePageview()`/`captureEvent()`/`captureException()`/
+ * `isFeatureEnabled()` and never touches `posthog-js` directly elsewhere.
+ * Session replay has no separate exported function --
  * it's configured once in `loadPostHog`'s `session_recording` block below
  * and otherwise runs itself (posthog-js's own recorder), except for the
  * exception-linked force-record call inside `captureException`.
@@ -235,5 +236,51 @@ export function captureException(error: unknown, properties?: Record<string, unk
     // recording from this instant. A no-op if replay is already recording.
     posthog?.startSessionRecording(true);
     posthog?.captureException(error, properties);
+  });
+}
+
+/** Resolves whether a feature flag is on for the current visitor
+ * (metagraphed#7762). Always `false` when unconfigured.
+ *
+ * A Promise, not a synchronous read: posthog-js resolves flags
+ * asynchronously after init (a network round-trip against the /ingest
+ * proxy), so a naive synchronous `posthog.isFeatureEnabled()` call made
+ * before that finishes returns `undefined` -- a caller checking it
+ * immediately on mount would render the OFF state first and only correct
+ * itself once flags arrive, a visible flash of the wrong UI. Waiting on
+ * `onFeatureFlags` (fires once flags are loaded, and immediately if
+ * they're already loaded by the time this is called) means callers only
+ * ever see the real, settled value. */
+export function isFeatureEnabled(key: string): Promise<boolean> {
+  if (!POSTHOG_TOKEN) return Promise.resolve(false);
+  return loadPostHog().then((posthog) => {
+    if (!posthog) return false;
+    return new Promise<boolean>((resolve) => {
+      // onFeatureFlags calls back SYNCHRONOUSLY when flags are already
+      // loaded (the common case for a second call in the same page life,
+      // and possibly even the first if init() itself resolved flags before
+      // this runs) -- so `unsubscribe` can still be mid-assignment (not yet
+      // in scope) the first time this fires. `resolved`/the post-call check
+      // below cover that: an early synchronous fire is caught right after
+      // onFeatureFlags() returns, a later async one calls the by-then-
+      // assigned `unsubscribe` directly. Either way this settles exactly
+      // once and never leaks a live subscription past that.
+      let resolved = false;
+      // handleFlagsReady's closure must see this binding change from
+      // `undefined` to the real unsubscribe function once it's assigned a
+      // few lines down (after the closure is defined but before it can
+      // possibly run) -- that requires `let`, a `const` would only be
+      // legal if the callback never referenced this variable at all.
+      // eslint-disable-next-line prefer-const -- false positive, see above.
+      let unsubscribe: (() => void) | undefined;
+      const handleFlagsReady = () => {
+        if (resolved) return;
+        resolved = true;
+        unsubscribe?.();
+        resolve(posthog.isFeatureEnabled(key) === true);
+      };
+      unsubscribe = posthog.onFeatureFlags(handleFlagsReady);
+      if (resolved) unsubscribe();
+    });
   });
 }

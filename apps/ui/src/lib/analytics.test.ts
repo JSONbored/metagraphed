@@ -8,9 +8,18 @@ const init = vi.hoisted(() => vi.fn());
 const capture = vi.hoisted(() => vi.fn());
 const captureExceptionSpy = vi.hoisted(() => vi.fn());
 const startSessionRecording = vi.hoisted(() => vi.fn());
+const onFeatureFlags = vi.hoisted(() => vi.fn());
+const isFeatureEnabledSpy = vi.hoisted(() => vi.fn());
 
 vi.mock("posthog-js", () => ({
-  default: { init, capture, captureException: captureExceptionSpy, startSessionRecording },
+  default: {
+    init,
+    capture,
+    captureException: captureExceptionSpy,
+    startSessionRecording,
+    onFeatureFlags,
+    isFeatureEnabled: isFeatureEnabledSpy,
+  },
 }));
 
 describe("analytics (PostHog web analytics)", () => {
@@ -20,6 +29,8 @@ describe("analytics (PostHog web analytics)", () => {
     capture.mockClear();
     captureExceptionSpy.mockClear();
     startSessionRecording.mockClear();
+    onFeatureFlags.mockClear();
+    isFeatureEnabledSpy.mockClear();
   });
 
   afterEach(() => {
@@ -61,6 +72,14 @@ describe("analytics (PostHog web analytics)", () => {
       expect(init).not.toHaveBeenCalled();
       expect(captureExceptionSpy).not.toHaveBeenCalled();
       expect(startSessionRecording).not.toHaveBeenCalled();
+    });
+
+    it("isFeatureEnabled resolves false without loading posthog-js", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "");
+      const { isFeatureEnabled } = await import("./analytics");
+      await expect(isFeatureEnabled("kill-switch")).resolves.toBe(false);
+      expect(init).not.toHaveBeenCalled();
+      expect(onFeatureFlags).not.toHaveBeenCalled();
     });
   });
 
@@ -199,6 +218,41 @@ describe("analytics (PostHog web analytics)", () => {
       captureException(new Error("boom"));
       await vi.waitFor(() => expect(captureExceptionSpy).toHaveBeenCalled());
       expect(init).toHaveBeenCalledTimes(1);
+    });
+
+    it("isFeatureEnabled waits for onFeatureFlags before resolving (no flash of the wrong state)", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      let fireFlagsReady: (() => void) | undefined;
+      onFeatureFlags.mockImplementation((cb: () => void) => {
+        fireFlagsReady = cb;
+        return vi.fn(); // the unsubscribe function
+      });
+      isFeatureEnabledSpy.mockReturnValue(true);
+
+      const { isFeatureEnabled } = await import("./analytics");
+      const resultPromise = isFeatureEnabled("kill-switch");
+
+      // Not yet resolved -- onFeatureFlags hasn't fired.
+      await vi.waitFor(() => expect(onFeatureFlags).toHaveBeenCalled());
+      expect(isFeatureEnabledSpy).not.toHaveBeenCalled();
+
+      fireFlagsReady?.();
+      await expect(resultPromise).resolves.toBe(true);
+      expect(isFeatureEnabledSpy).toHaveBeenCalledWith("kill-switch");
+    });
+
+    it("isFeatureEnabled unsubscribes from onFeatureFlags after the first resolution", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const unsubscribe = vi.fn();
+      onFeatureFlags.mockImplementation((cb: () => void) => {
+        cb();
+        return unsubscribe;
+      });
+      isFeatureEnabledSpy.mockReturnValue(false);
+
+      const { isFeatureEnabled } = await import("./analytics");
+      await expect(isFeatureEnabled("kill-switch")).resolves.toBe(false);
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
     });
 
     it("a posthog-js init failure never throws, and later captures are silently dropped", async () => {
