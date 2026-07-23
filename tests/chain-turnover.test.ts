@@ -8,9 +8,15 @@ import {
 } from "../src/chain-turnover.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 // One neuron_daily validator row (the loader scopes the read to validator_permit = 1).
-function vrow(snapshot_date, netuid, hotkey, validator_permit = 1) {
+function vrow(
+  snapshot_date: string,
+  netuid: unknown,
+  hotkey: string,
+  validator_permit = 1,
+) {
   return { snapshot_date, netuid, hotkey, validator_permit };
 }
 
@@ -42,14 +48,14 @@ describe("buildChainTurnover", () => {
       data.subnets.map((s) => s.netuid),
       [1, 2],
     );
-    const s1 = data.subnets.find((s) => s.netuid === 1);
+    const s1 = data.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.validators_start, 2);
     assert.equal(s1.validators_end, 2);
     assert.equal(s1.validators_entered, 1); // D
     assert.equal(s1.validators_exited, 1); // A
     assert.equal(s1.validator_retention, 0.3333); // |{B}| / |{A,B,D}| = 1/3
     assert.equal(s1.stability_score, 33);
-    const s2 = data.subnets.find((s) => s.netuid === 2);
+    const s2 = data.subnets.find((s) => s.netuid === 2)!;
     assert.equal(s2.validators_entered, 0);
     assert.equal(s2.validators_exited, 0);
     assert.equal(s2.validator_retention, 1);
@@ -77,16 +83,16 @@ describe("buildChainTurnover", () => {
       startDate: START,
       endDate: END,
     });
-    assert.equal(dist.count, 2);
-    assert.equal(dist.mean, 66.5);
-    assert.equal(dist.min, 33);
-    assert.equal(dist.p25, 33); // nearest-rank: ceil(.25*2)=1 -> asc[0]
+    assert.equal(dist!.count, 2);
+    assert.equal(dist!.mean, 66.5);
+    assert.equal(dist!.min, 33);
+    assert.equal(dist!.p25, 33); // nearest-rank: ceil(.25*2)=1 -> asc[0]
     // conventional median of an even set = mean of the two middles (33 + 100) / 2,
     // NOT the lower-middle 33 a nearest-rank p50 returns.
-    assert.equal(dist.median, 66.5);
-    assert.equal(dist.p75, 100); // ceil(.75*2)=2 -> asc[1]
-    assert.equal(dist.p90, 100);
-    assert.equal(dist.max, 100);
+    assert.equal(dist!.median, 66.5);
+    assert.equal(dist!.p75, 100); // ceil(.75*2)=2 -> asc[1]
+    assert.equal(dist!.p90, 100);
+    assert.equal(dist!.max, 100);
   });
 
   test("distribution counts every subnet even when the leaderboard is truncated", () => {
@@ -95,7 +101,7 @@ describe("buildChainTurnover", () => {
       endDate: END,
       limit: 1,
     });
-    assert.equal(dist.count, 2); // both subnets, though only 1 is returned
+    assert.equal(dist!.count, 2); // both subnets, though only 1 is returned
   });
 
   test("a hotkey validating on several subnets counts once network-wide", () => {
@@ -140,12 +146,12 @@ describe("buildChainTurnover", () => {
       vrow(END, 3, "C"),
     ];
     const data = buildChainTurnover(rows, { startDate: START, endDate: END });
-    const s2 = data.subnets.find((s) => s.netuid === 2);
+    const s2 = data.subnets.find((s) => s.netuid === 2)!;
     assert.equal(s2.validators_start, 1);
     assert.equal(s2.validators_end, 0); // start.perNetuid has it, end falls back to empty
     assert.equal(s2.validators_exited, 1);
     assert.equal(s2.validator_retention, 0);
-    const s3 = data.subnets.find((s) => s.netuid === 3);
+    const s3 = data.subnets.find((s) => s.netuid === 3)!;
     assert.equal(s3.validators_start, 0); // end.perNetuid has it, start falls back to empty
     assert.equal(s3.validators_end, 1);
     assert.equal(s3.validators_entered, 1);
@@ -179,7 +185,7 @@ describe("buildChainTurnover", () => {
   });
 
   test("clamps a non-integer / negative / over-max limit", () => {
-    const n = (limit) =>
+    const n = (limit: number) =>
       buildChainTurnover(ROWS, { startDate: START, endDate: END, limit })
         .subnets.length;
     assert.equal(n(1.9), 1); // floored
@@ -292,8 +298,8 @@ describe("buildChainTurnover", () => {
 
 describe("loadChainTurnover", () => {
   test("resolves boundary dates then reads the validator rows and shapes them", async () => {
-    const calls = [];
-    const d1 = async (sql, params) => {
+    const calls: Row[] = [];
+    const d1 = async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       if (/MIN\(snapshot_date\)/.test(sql)) {
         return [{ start_date: START, end_date: END }];
@@ -314,8 +320,8 @@ describe("loadChainTurnover", () => {
   });
 
   test("defaults the window and returns empty on a cold store", async () => {
-    let cutoff;
-    const d1 = async (sql, params) => {
+    let cutoff: unknown;
+    const d1 = async (sql: string, params: unknown[]) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         cutoff = params[0];
         return [{ start_date: null, end_date: null }];
@@ -330,8 +336,8 @@ describe("loadChainTurnover", () => {
   });
 
   test("an unknown windowLabel falls back to the default for BOTH days and emitted window", async () => {
-    let cutoff;
-    const d1 = async (sql, params) => {
+    let cutoff: unknown;
+    const d1 = async (sql: string, params: unknown[]) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
         cutoff = params[0];
         return [{ start_date: null, end_date: null }];
@@ -344,8 +350,8 @@ describe("loadChainTurnover", () => {
   });
 
   test("a single available snapshot (start === end) skips the read and is not comparable", async () => {
-    const calls = [];
-    const d1 = async (sql) => {
+    const calls: string[] = [];
+    const d1 = async (sql: string) => {
       calls.push(sql);
       if (/MIN\(snapshot_date\)/.test(sql)) {
         return [{ start_date: END, end_date: END }];
@@ -360,11 +366,11 @@ describe("loadChainTurnover", () => {
 });
 
 describe("GET /api/v1/chain/turnover", () => {
-  function neuronDailyEnv({ bounds, rows }) {
+  function neuronDailyEnv({ bounds, rows }: { bounds: Row[]; rows: Row[] }) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>

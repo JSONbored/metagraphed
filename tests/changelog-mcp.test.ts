@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   CHANGELOG_ARTIFACT,
   GET_CHANGELOG_INSTRUCTIONS,
@@ -10,6 +10,10 @@ import {
   loadChangelog,
 } from "../src/changelog-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_CHANGELOG = {
   source: "generated-artifact-diff",
@@ -33,23 +37,26 @@ describe("changelog-mcp", () => {
 
   test("loadChangelog returns the baked artifact payload", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async (_env, path) => ({
+      env: mockEnv(),
+      readArtifact: (async (_env: Env, path: string) => ({
         ok: true,
         data: path === CHANGELOG_ARTIFACT ? SAMPLE_CHANGELOG : null,
-      }),
+      })) as ReadArtifact,
     };
-    const out = await loadChangelog(ctx);
+    const out = (await loadChangelog(ctx)) as Row;
     assert.equal(out.source, "generated-artifact-diff");
     assert.equal(out.summary.artifact_added_count, 1);
     assert.deepEqual(out.notes, ["publish-time diff"]);
   });
 
   test("loadChangelog uses an injected readArtifact dep", async () => {
-    const out = await loadChangelog(
-      { env: {}, readArtifact: async () => ({ ok: false }) },
+    const out = (await loadChangelog(
       {
-        readArtifact: async () => ({
+        env: mockEnv(),
+        readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
+      },
+      {
+        readArtifact: (async () => ({
           ok: true,
           data: {
             source: "test",
@@ -57,23 +64,23 @@ describe("changelog-mcp", () => {
             artifacts: {},
             subnets: {},
           },
-        }),
+        })) as unknown as ReadArtifact,
       },
-    );
+    )) as Row;
     assert.equal(out.source, "test");
   });
 
   test("loadChangelog maps artifact_not_found to not_found", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_not_found",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadChangelog(ctx),
-      (err) =>
+      (err: Row) =>
         err.code === "not_found" &&
         err.toolError === true &&
         /unavailable in this environment/.test(err.message),
@@ -82,27 +89,27 @@ describe("changelog-mcp", () => {
 
   test("loadChangelog surfaces other artifact failures with the path", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({
+      env: mockEnv(),
+      readArtifact: (async () => ({
         ok: false,
         code: "artifact_timeout",
-      }),
+      })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadChangelog(ctx),
-      (err) =>
+      (err: Row) =>
         err.code === "artifact_timeout" && /changelog\.json/.test(err.message),
     );
   });
 
   test("loadChangelog defaults code when the read result is bare", async () => {
     const ctx = {
-      env: {},
-      readArtifact: async () => ({ ok: false }),
+      env: mockEnv(),
+      readArtifact: (async () => ({ ok: false })) as unknown as ReadArtifact,
     };
     await assert.rejects(
       () => loadChangelog(ctx),
-      (err) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "artifact_unavailable",
     );
   });
 

@@ -4,14 +4,17 @@
 // using a synthetic env so the real public/ files are never touched.
 
 import path from "node:path";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { describe, expect, it } from "vitest";
 import {
   committedSeedRoutes,
   runCommittedSeedGate,
 } from "../scripts/validate-committed-seed.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
+
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
@@ -94,13 +97,14 @@ describe("committed cold-start seed gate", () => {
     );
     const stale = structuredClone(fresh);
     if (stale.routes?.[0]) delete stale.routes[0].id;
-    const isApiIndex = (value) => String(value).endsWith("api-index.json");
+    const isApiIndex = (value: unknown) =>
+      String(value).endsWith("api-index.json");
 
-    const base = createLocalArtifactEnv();
+    const base = createLocalArtifactEnv() as Row;
     const env = {
       ...base,
       ASSETS: {
-        async fetch(request) {
+        async fetch(request: Request) {
           if (isApiIndex(new URL(request.url).pathname)) {
             return new Response(JSON.stringify(stale), {
               status: 200,

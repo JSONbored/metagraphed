@@ -1,33 +1,34 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
-  buildChainStakeMoves,
-  CHAIN_STAKE_MOVES_LIMIT_MAX,
-} from "../src/chain-stake-moves.ts";
+  buildChainStakeTransfers,
+  CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+} from "../src/chain-stake-transfers.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 const OBS = 1_700_000_000_000;
 
-// One per-subnet account_events StakeMoved aggregate row (the loader GROUPs BY netuid).
-function mrow(netuid, distinct_movers, movements) {
-  return { netuid, distinct_movers, movements };
+// One per-subnet account_events StakeTransferred aggregate row (the loader GROUPs BY netuid).
+function trow(netuid: unknown, distinct_senders: number, transfers: unknown) {
+  return { netuid, distinct_senders, transfers };
 }
 
-// netuid 1: 4 coldkeys, 40 moves -> 10 moves/mover.
-// netuid 2: 2 coldkeys, 30 moves -> 15 moves/mover.
-// netuid 5: 10 coldkeys, 25 moves -> 2.5 moves/mover.
-const SUBNETS = [mrow(1, 4, 40), mrow(2, 2, 30), mrow(5, 10, 25)];
-// True network distinct coldkeys (12) is below the per-subnet sum (16): some movers move stake out
-// of more than one subnet and count once network-wide.
+// netuid 1: 4 coldkeys, 40 transfers -> 10 transfers/sender.
+// netuid 2: 2 coldkeys, 30 transfers -> 15 transfers/sender.
+// netuid 5: 10 coldkeys, 25 transfers -> 2.5 transfers/sender.
+const SUBNETS = [trow(1, 4, 40), trow(2, 2, 30), trow(5, 10, 25)];
+// True network distinct coldkeys (12) is below the per-subnet sum (16): some senders transfer stake
+// out of more than one subnet and count once network-wide.
 const NETWORK = {
-  distinct_movers: 12,
+  distinct_senders: 12,
   newest_observed: OBS,
 };
 
-describe("buildChainStakeMoves", () => {
-  test("shapes the per-subnet leaderboard ranked by total StakeMoved events", () => {
-    const data = buildChainStakeMoves(SUBNETS, {
+describe("buildChainStakeTransfers", () => {
+  test("shapes the per-subnet leaderboard ranked by total StakeTransferred events", () => {
+    const data = buildChainStakeTransfers(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
@@ -39,48 +40,48 @@ describe("buildChainStakeMoves", () => {
       data.subnets.map((s) => s.netuid),
       [1, 2, 5],
     );
-    const s1 = data.subnets.find((s) => s.netuid === 1);
-    assert.equal(s1.distinct_movers, 4);
-    assert.equal(s1.movements, 40);
-    assert.equal(s1.movements_per_mover, 10);
+    const s1 = data.subnets.find((s) => s.netuid === 1)!;
+    assert.equal(s1.distinct_senders, 4);
+    assert.equal(s1.transfers, 40);
+    assert.equal(s1.transfers_per_sender, 10);
     assert.equal(
-      data.subnets.find((s) => s.netuid === 2).movements_per_mover,
+      data.subnets.find((s) => s.netuid === 2)!.transfers_per_sender,
       15,
     );
     assert.equal(
-      data.subnets.find((s) => s.netuid === 5).movements_per_mover,
+      data.subnets.find((s) => s.netuid === 5)!.transfers_per_sender,
       2.5,
     );
   });
 
-  test("rolls up the true distinct mover count and derived total events", () => {
-    const { network } = buildChainStakeMoves(SUBNETS, {
+  test("rolls up the true distinct sender count and derived total events", () => {
+    const { network } = buildChainStakeTransfers(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
-    assert.equal(network.distinct_movers, 12); // true distinct, not the 16 per-subnet sum
-    assert.equal(network.movements, 95);
-    assert.equal(network.movements_per_mover, 7.92); // 95 / 12
+    assert.equal(network.distinct_senders, 12); // true distinct, not the 16 per-subnet sum
+    assert.equal(network.transfers, 95);
+    assert.equal(network.transfers_per_sender, 7.92); // 95 / 12
   });
 
-  test("summarises the spread of per-subnet re-move intensity", () => {
-    const { intensity_distribution } = buildChainStakeMoves(SUBNETS, {
+  test("summarises the spread of per-subnet transfer intensity", () => {
+    const { intensity_distribution } = buildChainStakeTransfers(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
     // intensities 10, 15, 2.5 -> ascending [2.5, 10, 15].
-    assert.equal(intensity_distribution.count, 3);
-    assert.equal(intensity_distribution.min, 2.5);
-    assert.equal(intensity_distribution.p25, 2.5);
-    assert.equal(intensity_distribution.median, 10);
-    assert.equal(intensity_distribution.p75, 15);
-    assert.equal(intensity_distribution.p90, 15);
-    assert.equal(intensity_distribution.max, 15);
-    assert.equal(intensity_distribution.mean, 9.17);
+    assert.equal(intensity_distribution!.count, 3);
+    assert.equal(intensity_distribution!.min, 2.5);
+    assert.equal(intensity_distribution!.p25, 2.5);
+    assert.equal(intensity_distribution!.median, 10);
+    assert.equal(intensity_distribution!.p75, 15);
+    assert.equal(intensity_distribution!.p90, 15);
+    assert.equal(intensity_distribution!.max, 15);
+    assert.equal(intensity_distribution!.mean, 9.17);
   });
 
   test("ties on total events break by netuid ascending", () => {
-    const data = buildChainStakeMoves([mrow(9, 3, 50), mrow(4, 2, 50)], {
+    const data = buildChainStakeTransfers([trow(9, 3, 50), trow(4, 2, 50)], {
       window: "7d",
       networkDistinct: NETWORK,
     });
@@ -92,7 +93,7 @@ describe("buildChainStakeMoves", () => {
 
   // #5579: limit floor is 0 (matching #2984's chain-weights fix).
   test("limit of 0 yields an empty leaderboard, not a single row", () => {
-    const data = buildChainStakeMoves(SUBNETS, {
+    const data = buildChainStakeTransfers(SUBNETS, {
       window: "7d",
       limit: 0,
       networkDistinct: NETWORK,
@@ -102,61 +103,61 @@ describe("buildChainStakeMoves", () => {
   });
 
   test("limit caps the leaderboard; distribution and count stay network-wide", () => {
-    const data = buildChainStakeMoves(SUBNETS, {
+    const data = buildChainStakeTransfers(SUBNETS, {
       window: "7d",
       limit: 2,
       networkDistinct: NETWORK,
     });
     assert.equal(data.subnets.length, 2);
     assert.equal(data.subnet_count, 3);
-    assert.equal(data.intensity_distribution.count, 3);
+    assert.equal(data.intensity_distribution!.count, 3);
   });
 
   test("limit above the max clamps; a non-numeric limit uses the default", () => {
-    const big = buildChainStakeMoves(SUBNETS, {
+    const big = buildChainStakeTransfers(SUBNETS, {
       window: "7d",
-      limit: CHAIN_STAKE_MOVES_LIMIT_MAX + 500,
+      limit: CHAIN_STAKE_TRANSFERS_LIMIT_MAX + 500,
       networkDistinct: NETWORK,
     });
     assert.equal(big.subnets.length, 3);
-    const bogus = buildChainStakeMoves(SUBNETS, {
+    const bogus = buildChainStakeTransfers(SUBNETS, {
       window: "7d",
-      limit: "abc",
+      limit: "abc" as unknown as number,
       networkDistinct: NETWORK,
     });
     assert.equal(bogus.subnets.length, 3);
   });
 
-  test("merges duplicate netuid rows (sum movers and movements)", () => {
-    const data = buildChainStakeMoves([mrow(1, 3, 20), mrow(1, 2, 15)], {
+  test("merges duplicate netuid rows (sum senders and transfers)", () => {
+    const data = buildChainStakeTransfers([trow(1, 3, 20), trow(1, 2, 15)], {
       window: "7d",
       networkDistinct: NETWORK,
     });
     assert.equal(data.subnet_count, 1);
     const s = data.subnets[0];
-    assert.equal(s.distinct_movers, 5); // 3 + 2
-    assert.equal(s.movements, 35); // 20 + 15
+    assert.equal(s.distinct_senders, 5); // 3 + 2
+    assert.equal(s.transfers, 35); // 20 + 15
   });
 
   test("coerces non-numeric count cells to zero", () => {
-    const data = buildChainStakeMoves(
-      [{ netuid: 1, distinct_movers: 3, movements: null }],
+    const data = buildChainStakeTransfers(
+      [{ netuid: 1, distinct_senders: 3, transfers: null }],
       { window: "7d", networkDistinct: NETWORK },
     );
-    assert.equal(data.subnets[0].movements, 0);
-    assert.equal(data.subnets[0].movements_per_mover, 0); // 0 movements / 3 movers
+    assert.equal(data.subnets[0].transfers, 0);
+    assert.equal(data.subnets[0].transfers_per_sender, 0); // 0 transfers / 3 senders
   });
 
-  test("skips rows with a malformed/blank/negative netuid and zero-mover rows", () => {
-    const data = buildChainStakeMoves(
+  test("skips rows with a malformed/blank/negative netuid and zero-sender rows", () => {
+    const data = buildChainStakeTransfers(
       [
-        mrow(1, 4, 40),
-        { netuid: null, distinct_movers: 3 },
-        { netuid: "", distinct_movers: 3 },
-        { netuid: "  ", distinct_movers: 3 },
-        { netuid: "bad", distinct_movers: 3 },
-        { netuid: -1, distinct_movers: 3 },
-        mrow(2, 0, 10), // zero movers: not a movement surface
+        trow(1, 4, 40),
+        { netuid: null, distinct_senders: 3 },
+        { netuid: "", distinct_senders: 3 },
+        { netuid: "  ", distinct_senders: 3 },
+        { netuid: "bad", distinct_senders: 3 },
+        { netuid: -1, distinct_senders: 3 },
+        trow(2, 0, 10), // zero senders: not a transfer surface
       ],
       { window: "7d", networkDistinct: NETWORK },
     );
@@ -165,58 +166,60 @@ describe("buildChainStakeMoves", () => {
   });
 
   test("a zero/absent network distinct count yields null network intensity", () => {
-    const zeroed = buildChainStakeMoves(SUBNETS, {
+    const zeroed = buildChainStakeTransfers(SUBNETS, {
       window: "7d",
       // newest_observed 0 is present-but-invalid: observed_at coerces to null, not a 1970 stamp.
-      networkDistinct: { distinct_movers: 0, newest_observed: 0 },
+      networkDistinct: { distinct_senders: 0, newest_observed: 0 },
     });
-    assert.equal(zeroed.network.distinct_movers, 0);
-    assert.equal(zeroed.network.movements_per_mover, null);
+    assert.equal(zeroed.network.distinct_senders, 0);
+    assert.equal(zeroed.network.transfers_per_sender, null);
     assert.equal(zeroed.observed_at, null);
-    const absent = buildChainStakeMoves(SUBNETS, { window: "7d" });
+    const absent = buildChainStakeTransfers(SUBNETS, { window: "7d" });
     assert.equal(absent.observed_at, null);
-    // A finite but out-of-range epoch (e.g. 1e100) must coerce to null instead of
-    // throwing a RangeError from toISOString (mirrors chain-stake-flow #3016).
-    assert.equal(
-      buildChainStakeMoves(SUBNETS, {
-        window: "7d",
-        networkDistinct: { newest_observed: 1e100 },
-      }).observed_at,
-      null,
-    );
-    assert.equal(absent.network.distinct_movers, 0);
-    assert.equal(absent.network.movements_per_mover, null);
+    assert.equal(absent.network.distinct_senders, 0);
+    assert.equal(absent.network.transfers_per_sender, null);
+  });
+
+  test("an out-of-range newest_observed yields null instead of throwing a RangeError", () => {
+    // A finite but out-of-JS-Date-range epoch (e.g. 1e100) makes new Date(n).toISOString()
+    // throw, which would 500 the endpoint. It must coerce to null, matching chain-stake-flow (#3016).
+    const data = buildChainStakeTransfers(SUBNETS, {
+      window: "7d",
+      networkDistinct: { distinct_senders: 12, newest_observed: 1e100 },
+    });
+    assert.equal(data.observed_at, null);
+    assert.equal(data.subnet_count, 3);
   });
 
   test("an omitted window is emitted as null in both shapes", () => {
     assert.equal(
-      buildChainStakeMoves(SUBNETS, { networkDistinct: NETWORK }).window,
+      buildChainStakeTransfers(SUBNETS, { networkDistinct: NETWORK }).window,
       null,
     );
-    assert.equal(buildChainStakeMoves([], {}).window, null);
+    assert.equal(buildChainStakeTransfers([], {}).window, null);
   });
 
   test("empty, non-array, or all-invalid rows yield the empty block", () => {
     for (const rows of [[], "not-an-array", [{ netuid: null }]]) {
-      const data = buildChainStakeMoves(rows, {
+      const data = buildChainStakeTransfers(rows as unknown as Row[], {
         window: "7d",
         networkDistinct: NETWORK,
       });
       assert.equal(data.subnet_count, 0);
       assert.deepEqual(data.subnets, []);
       assert.equal(data.intensity_distribution, null);
-      assert.equal(data.network.distinct_movers, 0);
-      assert.equal(data.network.movements_per_mover, null);
+      assert.equal(data.network.distinct_senders, 0);
+      assert.equal(data.network.transfers_per_sender, null);
     }
   });
 });
 
 // D1 fully eliminated (2026-07-16): account_events' D1 write path is retired
-// (#4772) and the table is dropped in production, so loadChainStakeMoves
+// (#4772) and the table is dropped in production, so loadChainStakeTransfers
 // (the D1-querying loader) is gone -- the handler now degrades straight to
-// buildChainStakeMoves([], {...}) on any Postgres miss/outage.
-describe("GET /api/v1/chain/stake-moves", () => {
-  function postgresEnv(body) {
+// buildChainStakeTransfers([], {...}) on any Postgres miss/outage.
+describe("GET /api/v1/chain/stake-transfers", () => {
+  function postgresEnv(body: Row) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -224,27 +227,41 @@ describe("GET /api/v1/chain/stake-moves", () => {
     };
   }
   const req = (q = "") =>
-    new Request(`https://api.metagraph.sh/api/v1/chain/stake-moves${q}`);
+    new Request(`https://api.metagraph.sh/api/v1/chain/stake-transfers${q}`);
   const warmBody = {
     schema_version: 1,
     window: "7d",
     observed_at: new Date(OBS).toISOString(),
     subnet_count: 3,
-    network: { distinct_movers: 12, movements: 95, movements_per_mover: 7.92 },
+    network: {
+      distinct_senders: 12,
+      transfers: 95,
+      transfers_per_sender: 7.92,
+    },
     intensity_distribution: { count: 3, min: 2.5, max: 15 },
     subnets: [
-      { netuid: 1, distinct_movers: 4, movements: 40, movements_per_mover: 10 },
-      { netuid: 2, distinct_movers: 2, movements: 30, movements_per_mover: 15 },
+      {
+        netuid: 1,
+        distinct_senders: 4,
+        transfers: 40,
+        transfers_per_sender: 10,
+      },
+      {
+        netuid: 2,
+        distinct_senders: 2,
+        transfers: 30,
+        transfers_per_sender: 15,
+      },
       {
         netuid: 5,
-        distinct_movers: 10,
-        movements: 25,
-        movements_per_mover: 2.5,
+        distinct_senders: 10,
+        transfers: 25,
+        transfers_per_sender: 2.5,
       },
     ],
   };
 
-  test("dispatches to the network stake-movement scorecard", async () => {
+  test("dispatches to the network stake-transfer scorecard", async () => {
     const res = await handleRequest(
       req("?window=7d"),
       postgresEnv(warmBody),
@@ -255,12 +272,15 @@ describe("GET /api/v1/chain/stake-moves", () => {
     assert.equal(body.data.schema_version, 1);
     assert.equal(body.data.subnet_count, 3);
     assert.equal(body.data.subnets[0].netuid, 1);
-    assert.equal(body.meta.artifact_path, "/metagraph/chain/stake-moves.json");
+    assert.equal(
+      body.meta.artifact_path,
+      "/metagraph/chain/stake-transfers.json",
+    );
   });
 
   test("serves a HEAD probe through the GET cache key with no body", async () => {
     const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/chain/stake-moves", {
+      new Request("https://api.metagraph.sh/api/v1/chain/stake-transfers", {
         method: "HEAD",
       }),
       postgresEnv(warmBody),
@@ -341,8 +361,8 @@ describe("GET /api/v1/chain/stake-moves", () => {
     assert.equal(res.status, 400);
   });
 
-  const STAKE_MOVES_CSV_HEADER =
-    "netuid,distinct_movers,movements,movements_per_mover";
+  const STAKE_TRANSFERS_CSV_HEADER =
+    "netuid,distinct_senders,transfers,transfers_per_sender";
 
   test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
     const res = await handleRequest(
@@ -354,18 +374,18 @@ describe("GET /api/v1/chain/stake-moves", () => {
     assert.match(res.headers.get("content-type"), /text\/csv/);
     assert.match(
       res.headers.get("content-disposition"),
-      /attachment; filename="chain-stake-moves\.csv"/,
+      /attachment; filename="chain-stake-transfers\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
-    assert.equal(lines[0], STAKE_MOVES_CSV_HEADER);
-    // Ranked by total movements desc: netuid 1 (40), 2 (30), 5 (25).
+    assert.equal(lines[0], STAKE_TRANSFERS_CSV_HEADER);
+    // Ranked by total transfers desc: netuid 1 (40), 2 (30), 5 (25).
     assert.equal(lines.length, 4); // header + 3 subnet rows
     assert.equal(lines[1], "1,4,40,10");
   });
 
   test("honors Accept: text/csv the same as ?format=csv", async () => {
     const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/chain/stake-moves", {
+      new Request("https://api.metagraph.sh/api/v1/chain/stake-transfers", {
         headers: { accept: "text/csv" },
       }),
       postgresEnv(warmBody),
@@ -383,13 +403,13 @@ describe("GET /api/v1/chain/stake-moves", () => {
     );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /text\/csv/);
-    assert.equal((await res.text()).trim(), STAKE_MOVES_CSV_HEADER);
+    assert.equal((await res.text()).trim(), STAKE_TRANSFERS_CSV_HEADER);
   });
 
   test("serves a CSV HEAD probe with the CSV headers and no body", async () => {
     const res = await handleRequest(
       new Request(
-        "https://api.metagraph.sh/api/v1/chain/stake-moves?format=csv",
+        "https://api.metagraph.sh/api/v1/chain/stake-transfers?format=csv",
         { method: "HEAD" },
       ),
       postgresEnv(warmBody),
@@ -410,22 +430,26 @@ describe("GET /api/v1/chain/stake-moves", () => {
   });
 });
 
-describe("chain/stake-moves edge cache", () => {
-  let originalCaches;
+describe("chain/stake-transfers edge cache", () => {
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   test("routes through the edge cache with caches enabled", async () => {
-    originalCaches = globalThis.caches;
-    const store = new Map();
-    globalThis.caches = {
+    originalCaches = globalWithCaches.caches;
+    const store = new Map<string, Response>();
+    globalWithCaches.caches = {
       default: {
-        async match(request) {
+        async match(request: Request) {
           const cached = store.get(request.url);
           return cached ? cached.clone() : undefined;
         },
-        async put(request, response) {
+        async put(request: Request, response: Response) {
           store.set(request.url, response.clone());
         },
       },
@@ -433,7 +457,7 @@ describe("chain/stake-moves edge cache", () => {
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === "health:meta"
             ? { last_run_at: "2026-06-30T00:00:00.000Z" }
             : null;
@@ -448,40 +472,40 @@ describe("chain/stake-moves edge cache", () => {
             observed_at: new Date(OBS).toISOString(),
             subnet_count: 3,
             network: {
-              distinct_movers: 12,
-              movements: 95,
-              movements_per_mover: 7.92,
+              distinct_senders: 12,
+              transfers: 95,
+              transfers_per_sender: 7.92,
             },
             intensity_distribution: { count: 3, min: 2.5, max: 15 },
             subnets: [
               {
                 netuid: 1,
-                distinct_movers: 4,
-                movements: 40,
-                movements_per_mover: 10,
+                distinct_senders: 4,
+                transfers: 40,
+                transfers_per_sender: 10,
               },
               {
                 netuid: 2,
-                distinct_movers: 2,
-                movements: 30,
-                movements_per_mover: 15,
+                distinct_senders: 2,
+                transfers: 30,
+                transfers_per_sender: 15,
               },
               {
                 netuid: 5,
-                distinct_movers: 10,
-                movements: 25,
-                movements_per_mover: 2.5,
+                distinct_senders: 10,
+                transfers: 25,
+                transfers_per_sender: 2.5,
               },
             ],
           }),
       },
     };
-    const waits = [];
+    const waits: Promise<unknown>[] = [];
     const call = () =>
       handleRequest(
-        new Request("https://api.metagraph.sh/api/v1/chain/stake-moves"),
+        new Request("https://api.metagraph.sh/api/v1/chain/stake-transfers"),
         env,
-        { waitUntil: (promise) => waits.push(promise) },
+        { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();
     assert.equal(res.status, 200);

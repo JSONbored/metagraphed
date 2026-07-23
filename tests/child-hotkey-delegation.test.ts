@@ -10,8 +10,10 @@ import {
 } from "../src/child-hotkey-delegation.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.mjs";
+import type { Row } from "./row-type.ts";
+import { mockEnv } from "./row-type.ts";
 
-function req(path) {
+function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
@@ -23,13 +25,13 @@ const KNOWN_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const KNOWN_CHILD_KEYS_PREFIX =
   "0x658faa385070e074c85bf6b568cf05554bf30057b0f64219556b6cc15bd2804a5410ca7d17d5c641ea125657e96aa6c9b4c087119097fbe3985298eef52f35ef6271c48322a8c2d430902a9cc38d9473";
 
-function hex(bytes) {
+function hex(bytes: Uint8Array) {
   return "0x" + [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-function repeatByte(byte, n) {
+function repeatByte(byte: number, n: number) {
   return new Uint8Array(n).fill(byte);
 }
-function concatBytes(...parts) {
+function concatBytes(...parts: Uint8Array[]) {
   const total = parts.reduce((sum, p) => sum + p.length, 0);
   const out = new Uint8Array(total);
   let offset = 0;
@@ -39,7 +41,7 @@ function concatBytes(...parts) {
   }
   return out;
 }
-function u64le(n) {
+function u64le(n: bigint | number) {
   const out = new Uint8Array(8);
   let v = BigInt(n);
   for (let i = 0; i < 8; i += 1) {
@@ -49,7 +51,7 @@ function u64le(n) {
   return out;
 }
 // SCALE Compact<u32> single-byte mode (values < 64): value << 2 | 0b00.
-function compactU8(n) {
+function compactU8(n: number) {
   return new Uint8Array([(n << 2) & 0xff]);
 }
 
@@ -70,7 +72,7 @@ describe("decodeProportionAccountList", () => {
         CHILD_ACCOUNT_BYTES,
       ),
     );
-    const decoded = decodeProportionAccountList(encoded, "child");
+    const decoded = decodeProportionAccountList(encoded, "child")!;
     assert.equal(decoded.length, 1);
     assert.equal(decoded[0].child, CHILD_ACCOUNT_SS58);
     assert.equal(decoded[0].proportion, "9223372036854775808");
@@ -88,12 +90,12 @@ describe("decodeProportionAccountList", () => {
         secondAccount,
       ),
     );
-    const decoded = decodeProportionAccountList(encoded, "parent");
+    const decoded = decodeProportionAccountList(encoded, "parent")!;
     assert.equal(decoded.length, 2);
     assert.equal(decoded[0].parent, CHILD_ACCOUNT_SS58);
     assert.equal(decoded[0].proportion_fraction, 0);
     assert.equal(decoded[1].parent, encodeAccountId32(secondAccount));
-    assert.ok(decoded[1].proportion_fraction > 0.999);
+    assert.ok((decoded[1].proportion_fraction as number) > 0.999);
   });
 
   test("returns null for trailing bytes past a decoded entry", () => {
@@ -151,7 +153,7 @@ describe("decodeProportionAccountList", () => {
     const encoded = hex(
       concatBytes(lengthBytes, u64le(0n), CHILD_ACCOUNT_BYTES),
     );
-    const decoded = decodeProportionAccountList(encoded, "child");
+    const decoded = decodeProportionAccountList(encoded, "child")!;
     assert.equal(decoded.length, 1);
     assert.equal(decoded[0].child, CHILD_ACCOUNT_SS58);
   });
@@ -167,9 +169,11 @@ describe("decodeProportionAccountList", () => {
   });
 });
 
-function stubFetch(handler) {
+function stubFetch(
+  handler: (url: unknown, init?: RequestInit) => Promise<Row>,
+) {
   const orig = globalThis.fetch;
-  globalThis.fetch = handler;
+  globalThis.fetch = handler as unknown as typeof fetch;
   return () => {
     globalThis.fetch = orig;
   };
@@ -183,7 +187,9 @@ describe("loadAccountChildren", () => {
       throw new Error("should not fetch");
     });
     try {
-      await assert.rejects(() => loadAccountChildren({}, "not-an-address"));
+      await assert.rejects(() =>
+        loadAccountChildren(mockEnv(), "not-an-address"),
+      );
       assert.equal(fetchCalled, false);
     } finally {
       restore();
@@ -191,9 +197,9 @@ describe("loadAccountChildren", () => {
   });
 
   test("computes the correct Blake2_128Concat storage-key prefix for the account", async () => {
-    let seenPrefix;
+    let seenPrefix: string | undefined;
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         seenPrefix = body.params[0];
         return { ok: true, json: async () => ({ result: [] }) };
@@ -201,7 +207,7 @@ describe("loadAccountChildren", () => {
       return { ok: true, json: async () => ({ result: null }) };
     });
     try {
-      await loadAccountChildren({}, KNOWN_SS58);
+      await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.equal(seenPrefix, KNOWN_CHILD_KEYS_PREFIX);
     } finally {
       restore();
@@ -210,14 +216,14 @@ describe("loadAccountChildren", () => {
 
   test("subnets:[] when the hotkey has no children anywhere", async () => {
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
       throw new Error("should not reach state_getStorage");
     });
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.equal(data.schema_version, 1);
       assert.equal(data.account, KNOWN_SS58);
       assert.deepEqual(data.subnets, []);
@@ -239,7 +245,7 @@ describe("loadAccountChildren", () => {
       ),
     );
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return {
           ok: true,
@@ -256,12 +262,12 @@ describe("loadAccountChildren", () => {
       throw new Error(`unexpected key ${key}`);
     });
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       // netuid=1 has an empty entries list, so it's filtered out of the
       // response entirely (only subnets with actual children are shown).
-      assert.equal(data.subnets.length, 1);
-      assert.equal(data.subnets[0].netuid, 9);
-      assert.equal(data.subnets[0].entries[0].child, CHILD_ACCOUNT_SS58);
+      assert.equal(data.subnets!.length, 1);
+      assert.equal(data.subnets![0].netuid, 9);
+      assert.equal(data.subnets![0].entries[0].child, CHILD_ACCOUNT_SS58);
     } finally {
       restore();
     }
@@ -274,7 +280,7 @@ describe("loadAccountChildren", () => {
       concatBytes(compactU8(1), u64le(0n), CHILD_ACCOUNT_BYTES),
     );
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         // Returned in descending order to prove the response is actually
         // re-sorted, not just passed through.
@@ -286,9 +292,9 @@ describe("loadAccountChildren", () => {
       return { ok: true, json: async () => ({ result: entryValue }) };
     });
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.deepEqual(
-        data.subnets.map((s) => s.netuid),
+        data.subnets!.map((s) => s.netuid),
         [3, 9],
       );
     } finally {
@@ -299,7 +305,7 @@ describe("loadAccountChildren", () => {
   test("subnets:null on state_getKeysPaged RPC failure", async () => {
     const restore = stubFetch(async () => ({ ok: false }));
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.equal(data.subnets, null);
     } finally {
       restore();
@@ -309,14 +315,14 @@ describe("loadAccountChildren", () => {
   test("subnets:null when a returned key's state_getStorage fetch fails", async () => {
     const key = KNOWN_CHILD_KEYS_PREFIX + "0900";
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [key] }) };
       }
       return { ok: false };
     });
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.equal(data.subnets, null);
     } finally {
       restore();
@@ -326,14 +332,14 @@ describe("loadAccountChildren", () => {
   test("subnets:null when a returned value fails to decode", async () => {
     const key = KNOWN_CHILD_KEYS_PREFIX + "0900";
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [key] }) };
       }
       return { ok: true, json: async () => ({ result: "0xnotvalid" }) };
     });
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.equal(data.subnets, null);
     } finally {
       restore();
@@ -346,7 +352,7 @@ describe("loadAccountChildren", () => {
     // is never called since there's nothing to look up.
     let stateGetStorageCalled = false;
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: null }) };
       }
@@ -354,7 +360,7 @@ describe("loadAccountChildren", () => {
       return { ok: true, json: async () => ({ result: null }) };
     });
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.deepEqual(data.subnets, []);
       assert.equal(stateGetStorageCalled, false);
     } finally {
@@ -364,14 +370,14 @@ describe("loadAccountChildren", () => {
 
   test("subnets:null when a returned key is malformed (too short to carry a netuid suffix)", async () => {
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: ["0x00"] }) };
       }
       throw new Error("should not reach state_getStorage");
     });
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.equal(data.subnets, null);
     } finally {
       restore();
@@ -398,7 +404,7 @@ describe("loadAccountChildren", () => {
       return { ok: false };
     });
     try {
-      const data = await loadAccountChildren(env, KNOWN_SS58);
+      const data = await loadAccountChildren(env as unknown as Env, KNOWN_SS58);
       assert.deepEqual(data, cached);
       assert.equal(fetchCalled, false);
     } finally {
@@ -407,27 +413,27 @@ describe("loadAccountChildren", () => {
   });
 
   test("positive-caches a successful empty result with the full TTL", async () => {
-    let putOptions;
+    let putOptions: Row | undefined;
     const env = {
       METAGRAPH_CONTROL: {
         async get() {
           return null;
         },
-        async put(_key, _value, options) {
+        async put(_key: unknown, _value: unknown, options: Row) {
           putOptions = options;
         },
       },
     };
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
       return { ok: true, json: async () => ({ result: null }) };
     });
     try {
-      await loadAccountChildren(env, KNOWN_SS58);
-      assert.equal(putOptions.expirationTtl, CHILD_HOTKEY_KV_TTL);
+      await loadAccountChildren(env as unknown as Env, KNOWN_SS58);
+      assert.equal(putOptions!.expirationTtl, CHILD_HOTKEY_KV_TTL);
       assert.equal(CHILD_HOTKEY_KV_TTL, 120);
     } finally {
       restore();
@@ -435,21 +441,21 @@ describe("loadAccountChildren", () => {
   });
 
   test("negative-caches an RPC failure with the short TTL", async () => {
-    let putOptions;
+    let putOptions: Row | undefined;
     const env = {
       METAGRAPH_CONTROL: {
         async get() {
           return null;
         },
-        async put(_key, _value, options) {
+        async put(_key: unknown, _value: unknown, options: Row) {
           putOptions = options;
         },
       },
     };
     const restore = stubFetch(async () => ({ ok: false }));
     try {
-      await loadAccountChildren(env, KNOWN_SS58);
-      assert.equal(putOptions.expirationTtl, CHILD_HOTKEY_NEGATIVE_KV_TTL);
+      await loadAccountChildren(env as unknown as Env, KNOWN_SS58);
+      assert.equal(putOptions!.expirationTtl, CHILD_HOTKEY_NEGATIVE_KV_TTL);
       assert.equal(CHILD_HOTKEY_NEGATIVE_KV_TTL, 10);
     } finally {
       restore();
@@ -457,15 +463,15 @@ describe("loadAccountChildren", () => {
   });
 
   test("passes AbortSignal.timeout to the finney fetch", async () => {
-    let seenSignal;
+    let seenSignal: AbortSignal | undefined;
     const restore = stubFetch(async (_url, init) => {
-      seenSignal = init?.signal;
+      seenSignal = init?.signal as AbortSignal | undefined;
       return { ok: true, json: async () => ({ result: [] }) };
     });
     try {
-      await loadAccountChildren({}, KNOWN_SS58);
+      await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.ok(seenSignal);
-      assert.equal(typeof seenSignal.aborted, "boolean");
+      assert.equal(typeof seenSignal!.aborted, "boolean");
       assert.equal(CHILD_HOTKEY_RPC_TIMEOUT_MS, 5000);
     } finally {
       restore();
@@ -477,7 +483,7 @@ describe("loadAccountChildren", () => {
       throw new Error("network down");
     });
     try {
-      const data = await loadAccountChildren({}, KNOWN_SS58);
+      const data = await loadAccountChildren(mockEnv(), KNOWN_SS58);
       assert.equal(data.subnets, null);
       assert.equal(data.schema_version, 1);
     } finally {
@@ -497,14 +503,14 @@ describe("loadAccountChildren", () => {
       },
     };
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
       return { ok: true, json: async () => ({ result: null }) };
     });
     try {
-      const data = await loadAccountChildren(env, KNOWN_SS58);
+      const data = await loadAccountChildren(env as unknown as Env, KNOWN_SS58);
       assert.deepEqual(data.subnets, []);
     } finally {
       restore();
@@ -521,14 +527,14 @@ describe("loadAccountChildren", () => {
       },
     };
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
       return { ok: true, json: async () => ({ result: null }) };
     });
     try {
-      const data = await loadAccountChildren(env, KNOWN_SS58);
+      const data = await loadAccountChildren(env as unknown as Env, KNOWN_SS58);
       assert.deepEqual(data.subnets, []);
     } finally {
       restore();
@@ -540,7 +546,7 @@ describe("loadAccountParents", () => {
   test("reads ParentKeys, not ChildKeys — a different pallet-item prefix", async () => {
     let seenPrefix;
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         seenPrefix = body.params[0];
         return { ok: true, json: async () => ({ result: [] }) };
@@ -548,10 +554,10 @@ describe("loadAccountParents", () => {
       return { ok: true, json: async () => ({ result: null }) };
     });
     try {
-      await loadAccountParents({}, KNOWN_SS58);
+      await loadAccountParents(mockEnv(), KNOWN_SS58);
       assert.notEqual(seenPrefix, KNOWN_CHILD_KEYS_PREFIX);
       // Same twox128("SubtensorModule") pallet prefix, different item hash.
-      assert.ok(seenPrefix.startsWith("0x658faa385070e074c85bf6b568cf0555"));
+      assert.ok(seenPrefix!.startsWith("0x658faa385070e074c85bf6b568cf0555"));
     } finally {
       restore();
     }
@@ -563,31 +569,31 @@ describe("loadAccountParents", () => {
     // independently verified via twox-storage-key.test.mjs).
     let seenPrefix;
     const restore1 = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         seenPrefix = body.params[0];
         return { ok: true, json: async () => ({ result: [] }) };
       }
       return { ok: true, json: async () => ({ result: null }) };
     });
-    await loadAccountParents({}, KNOWN_SS58);
+    await loadAccountParents(mockEnv(), KNOWN_SS58);
     restore1();
 
-    const key = seenPrefix + "0500";
+    const key = seenPrefix! + "0500";
     const value = hex(
       concatBytes(compactU8(1), u64le(0n), CHILD_ACCOUNT_BYTES),
     );
     const restore2 = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [key] }) };
       }
       return { ok: true, json: async () => ({ result: value }) };
     });
     try {
-      const data = await loadAccountParents({}, KNOWN_SS58);
-      assert.equal(data.subnets[0].netuid, 5);
-      assert.equal(data.subnets[0].entries[0].parent, CHILD_ACCOUNT_SS58);
+      const data = await loadAccountParents(mockEnv(), KNOWN_SS58);
+      assert.equal(data.subnets![0].netuid, 5);
+      assert.equal(data.subnets![0].entries[0].parent, CHILD_ACCOUNT_SS58);
     } finally {
       restore2();
     }
@@ -597,7 +603,7 @@ describe("loadAccountParents", () => {
 describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () => {
   test("children route returns 200 with an empty subnets list for a hotkey with none", async () => {
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
@@ -623,7 +629,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
 
   test("parents route returns 200 with an empty subnets list", async () => {
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
@@ -710,7 +716,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     let fetchCalls = 0;
     const env = {
       RPC_RATE_LIMITER: {
-        limit: async ({ key }) => {
+        limit: async ({ key }: { key: string }) => {
           limiterKey = key;
           return { success: false };
         },
@@ -743,7 +749,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     let limiterKey;
     const env = {
       RPC_RATE_LIMITER: {
-        limit: async ({ key }) => {
+        limit: async ({ key }: { key: string }) => {
           limiterKey = key;
           return { success: false };
         },
@@ -791,7 +797,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
       RPC_RATE_LIMITER: { limit: async () => ({ success: true }) },
     };
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
@@ -816,7 +822,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
       RPC_RATE_LIMITER: { limit: async () => ({ success: true }) },
     };
     const restore = stubFetch(async (_url, init) => {
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init!.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }

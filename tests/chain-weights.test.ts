@@ -1,33 +1,39 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
-  buildChainRegistrations,
-  CHAIN_REGISTRATIONS_LIMIT_MAX,
-} from "../src/chain-registrations.ts";
+  buildChainWeights,
+  CHAIN_WEIGHTS_LIMIT_MAX,
+} from "../src/chain-weights.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 const OBS = 1_700_000_000_000;
 
-// One per-subnet account_events NeuronRegistered aggregate row (the loader GROUPs BY netuid).
-function rrow(netuid, distinct_registrants, registrations) {
-  return { netuid, distinct_registrants, registrations };
+// One per-subnet account_events WeightsSet aggregate row (the loader GROUPs BY netuid).
+function wrow(
+  netuid: number,
+  distinct_setters: number,
+  weight_sets: number | null,
+) {
+  return { netuid, distinct_setters, weight_sets };
 }
 
-// netuid 1: 4 hotkeys, 40 regs -> 10 regs/hotkey.
-// netuid 2: 2 hotkeys, 30 regs -> 15 regs/hotkey.
-// netuid 5: 10 hotkeys, 25 regs -> 2.5 regs/hotkey.
-const SUBNETS = [rrow(1, 4, 40), rrow(2, 2, 30), rrow(5, 10, 25)];
-// True network distinct hotkeys (12) is below the per-subnet sum (16): some registrants register
-// on more than one subnet and count once network-wide.
+// netuid 1: 4 setters, 40 sets -> 10 updates/setter.
+// netuid 2: 2 setters, 30 sets -> 15 updates/setter.
+// netuid 5: 10 setters, 25 sets -> 2.5 updates/setter.
+const SUBNETS = [wrow(1, 4, 40), wrow(2, 2, 30), wrow(5, 10, 25)];
+// True network distinct setters (12) is below the per-subnet sum (16): some validators set
+// weights on more than one subnet and count once network-wide.
 const NETWORK = {
-  distinct_registrants: 12,
+  distinct_setters: 12,
+  weight_sets: 95,
   newest_observed: OBS,
 };
 
-describe("buildChainRegistrations", () => {
-  test("shapes the per-subnet leaderboard ranked by total NeuronRegistered events", () => {
-    const data = buildChainRegistrations(SUBNETS, {
+describe("buildChainWeights", () => {
+  test("shapes the per-subnet leaderboard ranked by total WeightsSet events", () => {
+    const data = buildChainWeights(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
@@ -39,48 +45,45 @@ describe("buildChainRegistrations", () => {
       data.subnets.map((s) => s.netuid),
       [1, 2, 5],
     );
-    const s1 = data.subnets.find((s) => s.netuid === 1);
-    assert.equal(s1.distinct_registrants, 4);
-    assert.equal(s1.registrations, 40);
-    assert.equal(s1.registrations_per_registrant, 10);
+    const s1 = data.subnets.find((s) => s.netuid === 1)!;
+    assert.equal(s1.distinct_setters, 4);
+    assert.equal(s1.weight_sets, 40);
+    assert.equal(s1.sets_per_setter, 10);
+    assert.equal(data.subnets.find((s) => s.netuid === 2)!.sets_per_setter, 15);
     assert.equal(
-      data.subnets.find((s) => s.netuid === 2).registrations_per_registrant,
-      15,
-    );
-    assert.equal(
-      data.subnets.find((s) => s.netuid === 5).registrations_per_registrant,
+      data.subnets.find((s) => s.netuid === 5)!.sets_per_setter,
       2.5,
     );
   });
 
-  test("rolls up the true distinct hotkey count and derived total events", () => {
-    const { network } = buildChainRegistrations(SUBNETS, {
+  test("rolls up the true distinct setter count and derived total events", () => {
+    const { network } = buildChainWeights(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
-    assert.equal(network.distinct_registrants, 12); // true distinct, not the 16 per-subnet sum
-    assert.equal(network.registrations, 95);
-    assert.equal(network.registrations_per_registrant, 7.92); // 95 / 12
+    assert.equal(network.distinct_setters, 12); // true distinct, not the 16 per-subnet sum
+    assert.equal(network.weight_sets, 95);
+    assert.equal(network.sets_per_setter, 7.92); // 95 / 12
   });
 
-  test("summarises the spread of per-subnet re-registration intensity", () => {
-    const { intensity_distribution } = buildChainRegistrations(SUBNETS, {
+  test("summarises the spread of per-subnet update intensity", () => {
+    const { intensity_distribution } = buildChainWeights(SUBNETS, {
       window: "7d",
       networkDistinct: NETWORK,
     });
     // intensities 10, 15, 2.5 -> ascending [2.5, 10, 15].
-    assert.equal(intensity_distribution.count, 3);
-    assert.equal(intensity_distribution.min, 2.5);
-    assert.equal(intensity_distribution.p25, 2.5);
-    assert.equal(intensity_distribution.median, 10);
-    assert.equal(intensity_distribution.p75, 15);
-    assert.equal(intensity_distribution.p90, 15);
-    assert.equal(intensity_distribution.max, 15);
-    assert.equal(intensity_distribution.mean, 9.17);
+    assert.equal(intensity_distribution!.count, 3);
+    assert.equal(intensity_distribution!.min, 2.5);
+    assert.equal(intensity_distribution!.p25, 2.5);
+    assert.equal(intensity_distribution!.median, 10);
+    assert.equal(intensity_distribution!.p75, 15);
+    assert.equal(intensity_distribution!.p90, 15);
+    assert.equal(intensity_distribution!.max, 15);
+    assert.equal(intensity_distribution!.mean, 9.17);
   });
 
   test("ties on total events break by netuid ascending", () => {
-    const data = buildChainRegistrations([rrow(9, 3, 50), rrow(4, 2, 50)], {
+    const data = buildChainWeights([wrow(9, 3, 50), wrow(4, 2, 50)], {
       window: "7d",
       networkDistinct: NETWORK,
     });
@@ -90,9 +93,19 @@ describe("buildChainRegistrations", () => {
     );
   });
 
-  // #5579: limit floor is 0 (matching #2984's chain-weights fix).
+  test("limit caps the leaderboard; distribution and count stay network-wide", () => {
+    const data = buildChainWeights(SUBNETS, {
+      window: "7d",
+      limit: 2,
+      networkDistinct: NETWORK,
+    });
+    assert.equal(data.subnets.length, 2);
+    assert.equal(data.subnet_count, 3);
+    assert.equal(data.intensity_distribution!.count, 3);
+  });
+
   test("limit of 0 yields an empty leaderboard, not a single row", () => {
-    const data = buildChainRegistrations(SUBNETS, {
+    const data = buildChainWeights(SUBNETS, {
       window: "7d",
       limit: 0,
       networkDistinct: NETWORK,
@@ -101,62 +114,51 @@ describe("buildChainRegistrations", () => {
     assert.equal(data.subnet_count, 3);
   });
 
-  test("limit caps the leaderboard; distribution and count stay network-wide", () => {
-    const data = buildChainRegistrations(SUBNETS, {
-      window: "7d",
-      limit: 2,
-      networkDistinct: NETWORK,
-    });
-    assert.equal(data.subnets.length, 2);
-    assert.equal(data.subnet_count, 3);
-    assert.equal(data.intensity_distribution.count, 3);
-  });
-
   test("limit above the max clamps; a non-numeric limit uses the default", () => {
-    const big = buildChainRegistrations(SUBNETS, {
+    const big = buildChainWeights(SUBNETS, {
       window: "7d",
-      limit: CHAIN_REGISTRATIONS_LIMIT_MAX + 500,
+      limit: CHAIN_WEIGHTS_LIMIT_MAX + 500,
       networkDistinct: NETWORK,
     });
     assert.equal(big.subnets.length, 3);
-    const bogus = buildChainRegistrations(SUBNETS, {
+    const bogus = buildChainWeights(SUBNETS, {
       window: "7d",
-      limit: "abc",
+      limit: "abc" as unknown as number,
       networkDistinct: NETWORK,
     });
     assert.equal(bogus.subnets.length, 3);
   });
 
-  test("merges duplicate netuid rows (sum hotkeys and registrations)", () => {
-    const data = buildChainRegistrations([rrow(1, 3, 20), rrow(1, 2, 15)], {
+  test("merges duplicate netuid rows (sum setters and events)", () => {
+    const data = buildChainWeights([wrow(1, 3, 20), wrow(1, 2, 15)], {
       window: "7d",
       networkDistinct: NETWORK,
     });
     assert.equal(data.subnet_count, 1);
     const s = data.subnets[0];
-    assert.equal(s.distinct_registrants, 5); // 3 + 2
-    assert.equal(s.registrations, 35); // 20 + 15
+    assert.equal(s.distinct_setters, 5); // 3 + 2
+    assert.equal(s.weight_sets, 35); // 20 + 15
   });
 
   test("coerces non-numeric count cells to zero", () => {
-    const data = buildChainRegistrations(
-      [{ netuid: 1, distinct_registrants: 3, registrations: null }],
+    const data = buildChainWeights(
+      [{ netuid: 1, distinct_setters: 3, weight_sets: null }],
       { window: "7d", networkDistinct: NETWORK },
     );
-    assert.equal(data.subnets[0].registrations, 0);
-    assert.equal(data.subnets[0].registrations_per_registrant, 0); // 0 registrations / 3 hotkeys
+    assert.equal(data.subnets[0].weight_sets, 0);
+    assert.equal(data.subnets[0].sets_per_setter, 0); // 0 events / 3 setters
   });
 
-  test("skips rows with a malformed/blank/negative netuid and zero-hotkey rows", () => {
-    const data = buildChainRegistrations(
+  test("skips rows with a malformed/blank/negative netuid and zero-setter rows", () => {
+    const data = buildChainWeights(
       [
-        rrow(1, 4, 40),
-        { netuid: null, distinct_registrants: 3 },
-        { netuid: "", distinct_registrants: 3 },
-        { netuid: "  ", distinct_registrants: 3 },
-        { netuid: "bad", distinct_registrants: 3 },
-        { netuid: -1, distinct_registrants: 3 },
-        rrow(2, 0, 10), // zero hotkeys: not a registration surface
+        wrow(1, 4, 40),
+        { netuid: null, distinct_setters: 3 },
+        { netuid: "", distinct_setters: 3 },
+        { netuid: "  ", distinct_setters: 3 },
+        { netuid: "bad", distinct_setters: 3 },
+        { netuid: -1, distinct_setters: 3 },
+        wrow(2, 0, 10), // zero setters: not a consensus surface
       ],
       { window: "7d", networkDistinct: NETWORK },
     );
@@ -165,58 +167,64 @@ describe("buildChainRegistrations", () => {
   });
 
   test("a zero/absent network distinct count yields null network intensity", () => {
-    const zeroed = buildChainRegistrations(SUBNETS, {
+    const zeroed = buildChainWeights(SUBNETS, {
       window: "7d",
       // newest_observed 0 is present-but-invalid: observed_at coerces to null, not a 1970 stamp.
-      networkDistinct: { distinct_registrants: 0, newest_observed: 0 },
+      networkDistinct: { distinct_setters: 0, newest_observed: 0 },
     });
-    assert.equal(zeroed.network.distinct_registrants, 0);
-    assert.equal(zeroed.network.registrations_per_registrant, null);
+    assert.equal(zeroed.network.distinct_setters, 0);
+    assert.equal(zeroed.network.sets_per_setter, null);
     assert.equal(zeroed.observed_at, null);
-    const absent = buildChainRegistrations(SUBNETS, { window: "7d" });
+    const absent = buildChainWeights(SUBNETS, { window: "7d" });
     assert.equal(absent.observed_at, null);
     // A finite but out-of-range epoch (e.g. 1e100) must coerce to null instead of
     // throwing a RangeError from toISOString (mirrors chain-stake-flow #3016).
     assert.equal(
-      buildChainRegistrations(SUBNETS, {
+      buildChainWeights(SUBNETS, {
         window: "7d",
         networkDistinct: { newest_observed: 1e100 },
       }).observed_at,
       null,
     );
-    assert.equal(absent.network.distinct_registrants, 0);
-    assert.equal(absent.network.registrations_per_registrant, null);
+    assert.equal(absent.network.distinct_setters, 0);
+    assert.equal(absent.network.sets_per_setter, null);
   });
 
   test("an omitted window is emitted as null in both shapes", () => {
     assert.equal(
-      buildChainRegistrations(SUBNETS, { networkDistinct: NETWORK }).window,
+      buildChainWeights(SUBNETS, { networkDistinct: NETWORK }).window,
       null,
     );
-    assert.equal(buildChainRegistrations([], {}).window, null);
+    assert.equal(buildChainWeights([], {}).window, null);
   });
 
   test("empty, non-array, or all-invalid rows yield the empty block", () => {
     for (const rows of [[], "not-an-array", [{ netuid: null }]]) {
-      const data = buildChainRegistrations(rows, {
+      const data = buildChainWeights(rows as unknown as Row[], {
         window: "7d",
         networkDistinct: NETWORK,
       });
       assert.equal(data.subnet_count, 0);
       assert.deepEqual(data.subnets, []);
       assert.equal(data.intensity_distribution, null);
-      assert.equal(data.network.distinct_registrants, 0);
-      assert.equal(data.network.registrations_per_registrant, null);
+      assert.equal(data.network.distinct_setters, 0);
+      assert.equal(data.network.sets_per_setter, null);
     }
   });
 });
 
-describe("GET /api/v1/chain/registrations", () => {
-  function registrationsEnv({ networkRow, subnetRows }) {
+describe("GET /api/v1/chain/weights", () => {
+  function weightsEnv({
+    networkRow,
+    subnetRows,
+  }: {
+    networkRow: Row[];
+    subnetRows: Row[];
+  }) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -232,7 +240,7 @@ describe("GET /api/v1/chain/registrations", () => {
     };
   }
   const req = (q = "") =>
-    new Request(`https://api.metagraph.sh/api/v1/chain/registrations${q}`);
+    new Request(`https://api.metagraph.sh/api/v1/chain/weights${q}`);
   const cold = { networkRow: [{ newest_observed: null }], subnetRows: [] };
   const warm = { networkRow: [NETWORK], subnetRows: SUBNETS };
 
@@ -241,7 +249,7 @@ describe("GET /api/v1/chain/registrations", () => {
   // even a "warm" D1 mock (real rows) must not change the response.
   test("never queries D1 even when mocked with real rows (retired -- #4909/#6013)", async () => {
     let d1Called = false;
-    const env = registrationsEnv(warm);
+    const env = weightsEnv(warm);
     env.METAGRAPH_HEALTH_DB.prepare = () => {
       d1Called = true;
       throw new Error("D1 must not be queried -- account_events is retired");
@@ -252,19 +260,16 @@ describe("GET /api/v1/chain/registrations", () => {
     assert.equal(body.data.schema_version, 1);
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.subnets, []);
-    assert.equal(
-      body.meta.artifact_path,
-      "/metagraph/chain/registrations.json",
-    );
+    assert.equal(body.meta.artifact_path, "/metagraph/chain/weights.json");
     assert.equal(d1Called, false);
   });
 
   test("serves a HEAD probe through the GET cache key with no body", async () => {
     const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/chain/registrations", {
+      new Request("https://api.metagraph.sh/api/v1/chain/weights", {
         method: "HEAD",
       }),
-      registrationsEnv(warm),
+      weightsEnv(warm),
       {},
     );
     assert.equal(res.status, 200);
@@ -272,7 +277,7 @@ describe("GET /api/v1/chain/registrations", () => {
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {
-    const res = await handleRequest(req(), registrationsEnv(cold), {});
+    const res = await handleRequest(req(), weightsEnv(cold), {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -288,7 +293,7 @@ describe("GET /api/v1/chain/registrations", () => {
   test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const env = {
-      ...registrationsEnv(cold),
+      ...weightsEnv(cold),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () =>
@@ -297,9 +302,20 @@ describe("GET /api/v1/chain/registrations", () => {
             window: "7d",
             observed_at: "2026-01-01T00:00:00.000Z",
             subnet_count: 99,
-            network: {},
+            network: {
+              distinct_setters: 1,
+              weight_sets: 1,
+              sets_per_setter: 1,
+            },
             intensity_distribution: null,
-            subnets: [{ netuid: 42 }],
+            subnets: [
+              {
+                netuid: 42,
+                distinct_setters: 1,
+                weight_sets: 1,
+                sets_per_setter: 1,
+              },
+            ],
           }),
       },
     };
@@ -321,7 +337,7 @@ describe("GET /api/v1/chain/registrations", () => {
   // empty card, not to whatever a D1 mock might return.
   test("flag=postgres falls back to the empty stub (not D1) when DATA_API fails", async () => {
     const env = {
-      ...registrationsEnv(warm),
+      ...weightsEnv(warm),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
         fetch: async () => {
@@ -336,60 +352,48 @@ describe("GET /api/v1/chain/registrations", () => {
   });
 
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleRequest(
-      req("?window=90d"),
-      registrationsEnv(cold),
-      {},
-    );
+    const res = await handleRequest(req("?window=90d"), weightsEnv(cold), {});
     assert.equal(res.status, 400);
   });
 
   test("rejects an unknown query param with 400", async () => {
-    const res = await handleRequest(
-      req("?bogus=1"),
-      registrationsEnv(cold),
-      {},
-    );
+    const res = await handleRequest(req("?bogus=1"), weightsEnv(cold), {});
     assert.equal(res.status, 400);
   });
 
   test("rejects an out-of-range limit with 400", async () => {
-    const res = await handleRequest(
-      req("?limit=0"),
-      registrationsEnv(cold),
-      {},
-    );
+    const res = await handleRequest(req("?limit=0"), weightsEnv(cold), {});
     assert.equal(res.status, 400);
   });
 
-  const REGISTRATIONS_CSV_HEADER =
-    "netuid,distinct_registrants,registrations,registrations_per_registrant";
+  const WEIGHTS_CSV_HEADER =
+    "netuid,distinct_setters,weight_sets,sets_per_setter";
 
   // #4909/#6013: even a "warm" D1 mock never reaches the response -- the CSV
   // export is always header-only now (account_events is retired).
   test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      registrationsEnv(warm),
+      weightsEnv(warm),
       {},
     );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /text\/csv/);
     assert.match(
       res.headers.get("content-disposition"),
-      /attachment; filename="chain-registrations\.csv"/,
+      /attachment; filename="chain-weights\.csv"/,
     );
     const lines = (await res.text()).trim().split("\r\n");
     assert.equal(lines.length, 1);
-    assert.equal(lines[0], REGISTRATIONS_CSV_HEADER);
+    assert.equal(lines[0], WEIGHTS_CSV_HEADER);
   });
 
   test("honors Accept: text/csv the same as ?format=csv", async () => {
     const res = await handleRequest(
-      new Request("https://api.metagraph.sh/api/v1/chain/registrations", {
+      new Request("https://api.metagraph.sh/api/v1/chain/weights", {
         headers: { accept: "text/csv" },
       }),
-      registrationsEnv(warm),
+      weightsEnv(warm),
       {},
     );
     assert.equal(res.status, 200);
@@ -397,23 +401,18 @@ describe("GET /api/v1/chain/registrations", () => {
   });
 
   test("emits a header-only CSV on a cold store", async () => {
-    const res = await handleRequest(
-      req("?format=csv"),
-      registrationsEnv(cold),
-      {},
-    );
+    const res = await handleRequest(req("?format=csv"), weightsEnv(cold), {});
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /text\/csv/);
-    assert.equal((await res.text()).trim(), REGISTRATIONS_CSV_HEADER);
+    assert.equal((await res.text()).trim(), WEIGHTS_CSV_HEADER);
   });
 
   test("serves a CSV HEAD probe with the CSV headers and no body", async () => {
     const res = await handleRequest(
-      new Request(
-        "https://api.metagraph.sh/api/v1/chain/registrations?format=csv",
-        { method: "HEAD" },
-      ),
-      registrationsEnv(warm),
+      new Request("https://api.metagraph.sh/api/v1/chain/weights?format=csv", {
+        method: "HEAD",
+      }),
+      weightsEnv(warm),
       {},
     );
     assert.equal(res.status, 200);
@@ -422,31 +421,31 @@ describe("GET /api/v1/chain/registrations", () => {
   });
 
   test("rejects an unsupported format value with 400", async () => {
-    const res = await handleRequest(
-      req("?format=xml"),
-      registrationsEnv(cold),
-      {},
-    );
+    const res = await handleRequest(req("?format=xml"), weightsEnv(cold), {});
     assert.equal(res.status, 400);
   });
 });
 
-describe("chain/registrations edge cache", () => {
-  let originalCaches;
+describe("chain/weights edge cache", () => {
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   test("routes through the edge cache with caches enabled", async () => {
-    originalCaches = globalThis.caches;
-    const store = new Map();
-    globalThis.caches = {
+    originalCaches = globalWithCaches.caches;
+    const store = new Map<string, Response>();
+    globalWithCaches.caches = {
       default: {
-        async match(request) {
+        async match(request: Request) {
           const cached = store.get(request.url);
           return cached ? cached.clone() : undefined;
         },
-        async put(request, response) {
+        async put(request: Request, response: Response) {
           store.set(request.url, response.clone());
         },
       },
@@ -454,14 +453,14 @@ describe("chain/registrations edge cache", () => {
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === "health:meta"
             ? { last_run_at: "2026-06-30T00:00:00.000Z" }
             : null;
         },
       },
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -473,12 +472,12 @@ describe("chain/registrations edge cache", () => {
         },
       },
     };
-    const waits = [];
+    const waits: Promise<unknown>[] = [];
     const call = () =>
       handleRequest(
-        new Request("https://api.metagraph.sh/api/v1/chain/registrations"),
+        new Request("https://api.metagraph.sh/api/v1/chain/weights"),
         env,
-        { waitUntil: (promise) => waits.push(promise) },
+        { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();
     assert.equal(res.status, 200);

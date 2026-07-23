@@ -39,7 +39,10 @@ describe("buildChainWeightSetters", () => {
       [null, null],
       [undefined, undefined],
       [[], {}],
-    ]) {
+    ] as [
+      Record<string, unknown>[] | null | undefined,
+      Record<string, unknown> | null | undefined,
+    ][]) {
       const d = buildChainWeightSetters(rows, totals, { window: "7d" });
       assert.equal(d.schema_version, 1);
       assert.equal(d.window, "7d");
@@ -82,7 +85,7 @@ describe("buildChainWeightSetters", () => {
     assert.equal(big.setters.length, 2);
     const bogus = buildChainWeightSetters(LEADER_ROWS, TOTALS, {
       window: "7d",
-      limit: "abc",
+      limit: "abc" as unknown as number,
     });
     assert.equal(bogus.setters.length, 2);
   });
@@ -98,7 +101,7 @@ describe("buildChainWeightSetters", () => {
       ],
       { weight_sets: 50000, distinct_setters: 2 },
     );
-    assert.ok(d.setters[0].share < 1, "near-monopoly share must stay below 1");
+    assert.ok(d.setters[0].share! < 1, "near-monopoly share must stay below 1");
     assert.equal(d.setters[0].share, 0.9999);
     assert.equal(d.setters[1].share, 0); // 1/50000 rounds to 0.0000 at 4dp
   });
@@ -215,7 +218,10 @@ describe("buildChainWeightSetters", () => {
   });
 
   test("null-safe on a non-array rows input", () => {
-    const d = buildChainWeightSetters("nope", TOTALS);
+    const d = buildChainWeightSetters(
+      "nope" as unknown as Record<string, unknown>[],
+      TOTALS,
+    );
     assert.deepEqual(d.setters, []);
     assert.equal(d.weight_sets, 40); // totals still read
   });
@@ -235,7 +241,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/weights/setters${q}`);
 
-  function postgresEnv(body) {
+  function postgresEnv(body: unknown) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",

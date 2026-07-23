@@ -7,6 +7,7 @@ import {
 } from "../src/chain-yield.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 // A network snapshot: two validators + two miners across two subnets, one miner
 // with zero stake (excluded from the return-rate distribution).
@@ -43,7 +44,7 @@ const ROWS = [
 
 describe("yieldDistribution", () => {
   test("computes count/mean/median/min/max + nearest-rank percentiles", () => {
-    const d = yieldDistribution([0.1, 0.04, 0.05]);
+    const d = yieldDistribution([0.1, 0.04, 0.05])!;
     assert.equal(d.count, 3);
     assert.equal(d.min, 0.04);
     assert.equal(d.max, 0.1);
@@ -54,16 +55,19 @@ describe("yieldDistribution", () => {
   });
 
   test("averages the two middle values for an even count", () => {
-    const d = yieldDistribution([0.2, 0.4]);
+    const d = yieldDistribution([0.2, 0.4])!;
     assert.equal(d.median, 0.3); // (0.2 + 0.4) / 2
   });
 
   test("drops null cells; empty / all-null → null (schema-stable)", () => {
-    const d = yieldDistribution([0.5, null, 0.25, null]);
+    const d = yieldDistribution([0.5, null, 0.25, null])!;
     assert.equal(d.count, 2);
     assert.equal(yieldDistribution([]), null);
     assert.equal(yieldDistribution([null, null]), null);
-    assert.equal(yieldDistribution("not-an-array"), null);
+    assert.equal(
+      yieldDistribution("not-an-array" as unknown as number[]),
+      null,
+    );
   });
 });
 
@@ -83,14 +87,14 @@ describe("buildChainYield", () => {
     assert.equal(out.total_stake_tao, 1600);
     assert.equal(out.total_emission_tao, 80);
     assert.equal(out.network_yield, 0.05); // 80 / 1600
-    assert.ok(Math.abs(out.validator_yield - 70 / 1500) < 1e-6);
+    assert.ok(Math.abs(out.validator_yield! - 70 / 1500) < 1e-6);
     assert.equal(out.miner_yield, 0.1); // 10 / 100
   });
 
   test("distribution excludes the zero-stake neuron", () => {
     const out = buildChainYield(ROWS);
-    assert.equal(out.distribution.count, 3); // the 0-stake miner is dropped
-    assert.equal(out.distribution.max, 0.1);
+    assert.equal(out.distribution!.count, 3); // the 0-stake miner is dropped
+    assert.equal(out.distribution!.max, 0.1);
   });
 
   test("subnet_count accepts real ints + numeric strings, rejects blank/null/non-numeric", () => {
@@ -255,7 +259,7 @@ describe("buildChainYield", () => {
   });
 
   test("null-safe on junk rows", () => {
-    const out = buildChainYield("nope");
+    const out = buildChainYield("nope" as unknown as Row[]);
     assert.equal(out.neuron_count, 0);
     assert.equal(out.network_yield, null);
     assert.equal(out.distribution, null);
@@ -265,7 +269,7 @@ describe("buildChainYield", () => {
     // Each row's stake carries a real sub-TAO fractional component (not a
     // round number) -- plain `+=` float accumulation across many rows would
     // drift from the true sum. Summing in rao BigInt space must not.
-    const rows = [];
+    const rows: Row[] = [];
     let expectedTotalRao = 0n;
     for (let i = 0; i < 5000; i += 1) {
       const stakeTao = 1234.987654321 + i * 0.000000001;
@@ -286,15 +290,15 @@ describe("buildChainYield", () => {
   });
 
   test("loadChainYield issues one un-filtered SELECT and shapes it", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
+    let seen: Row | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
       return ROWS;
     };
     const out = await loadChainYield(d1);
-    assert.match(seen.sql, /FROM neurons/);
-    assert.doesNotMatch(seen.sql, /WHERE netuid/); // network-wide: no filter
-    assert.deepEqual(seen.params, []);
+    assert.match(seen!.sql, /FROM neurons/);
+    assert.doesNotMatch(seen!.sql, /WHERE netuid/); // network-wide: no filter
+    assert.deepEqual(seen!.params, []);
     assert.equal(out.subnet_count, 2);
     assert.equal(out.network_yield, 0.05);
   });
@@ -303,11 +307,11 @@ describe("buildChainYield", () => {
 describe("GET /api/v1/chain/yield", () => {
   // The MAX(captured_at) cache stamp and the network neurons read both hit
   // `FROM neurons`, so route the stamp query first (mirrors chain/performance).
-  function neuronsEnv(rows) {
+  function neuronsEnv(rows: Row[]) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -333,9 +337,13 @@ describe("GET /api/v1/chain/yield", () => {
 });
 
 describe("chain/yield edge cache", () => {
-  let originalCaches;
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   // #5358: chain/yield no longer reads D1 for its edge-cache stamp — the
@@ -345,11 +353,11 @@ describe("chain/yield edge cache", () => {
   // frozen stamp ever since). It now busts on the same shared health-cron
   // `last_run_at` KV value every sibling Postgres-tier analytics route already
   // uses.
-  function controlEnv(lastRunAt) {
+  function controlEnv(lastRunAt: string | null) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key !== "health:meta") return null;
           return lastRunAt ? { last_run_at: lastRunAt } : null;
         },
@@ -359,17 +367,17 @@ describe("chain/yield edge cache", () => {
 
   // A Map-backed stand-in for the Workers cache so withEdgeCache actually engages.
   function mockCacheStore() {
-    const store = new Map();
+    const store = new Map<string, Response>();
     return {
       store,
       install() {
-        globalThis.caches = {
+        globalWithCaches.caches = {
           default: {
-            async match(request) {
+            async match(request: Request) {
               const cached = store.get(request.url);
               return cached ? cached.clone() : undefined;
             },
-            async put(request, response) {
+            async put(request: Request, response: Response) {
               store.set(request.url, response.clone());
             },
           },
@@ -379,13 +387,13 @@ describe("chain/yield edge cache", () => {
   }
 
   test("engages the edge cache, busting on the health-cron last_run_at stamp", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCacheStore();
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/yield"),
       controlEnv("2026-06-18T00:00:00.000Z"),
-      { waitUntil: (promise) => promise },
+      { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
     // A warm stamp + 200 means the response was cached: proof the default
@@ -394,13 +402,13 @@ describe("chain/yield edge cache", () => {
   });
 
   test("skips the cache entirely when the health stamp is cold", async () => {
-    originalCaches = globalThis.caches;
+    originalCaches = globalWithCaches.caches;
     const cache = mockCacheStore();
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/yield"),
       controlEnv(null),
-      { waitUntil: (promise) => promise },
+      { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
     // A cold/absent last_run_at must never seed the edge cache (mirrors the

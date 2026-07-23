@@ -70,7 +70,7 @@ describe("selectLatestProductionRelease", () => {
       { version: shaA, dateCreated: "2026-07-19T00:00:00Z" },
       { version: shaB, dateCreated: "2026-07-20T00:00:00Z" },
     ]);
-    assert.equal(release.version, shaB);
+    assert.equal(release!.version, shaB);
   });
 
   test("excludes PR-preview releases even if more recent", () => {
@@ -80,7 +80,7 @@ describe("selectLatestProductionRelease", () => {
       { version: shaA, dateCreated: "2026-07-19T00:00:00Z" },
       { version: `${shaB}-preview`, dateCreated: "2026-07-20T00:00:00Z" },
     ]);
-    assert.equal(release.version, shaA);
+    assert.equal(release!.version, shaA);
   });
 
   test("excludes non-SHA-shaped versions (e.g. a Cloudflare version UUID)", () => {
@@ -91,7 +91,7 @@ describe("selectLatestProductionRelease", () => {
       },
       { version: shaA, dateCreated: "2026-07-19T00:00:00Z" },
     ]);
-    assert.equal(release.version, shaA);
+    assert.equal(release!.version, shaA);
   });
 
   test("returns null when no release is a bare production SHA", () => {

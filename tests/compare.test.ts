@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import addFormatsPlugin from "ajv-formats";
 import { composeCompareData, handleRequest } from "../workers/api.mjs";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import type { Row } from "./row-type.ts";
 
 // composeCompareData is the pure projection at the heart of /api/v1/compare;
 // these craft the resolved source rows directly so every found/missing/dimension
 // branch is exercised without depending on built data artifacts.
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
+
 describe("composeCompareData", () => {
   const subnetMeta = new Map([
     [1, { name: "Apex", slug: "apex" }],
@@ -51,13 +54,13 @@ describe("composeCompareData", () => {
     assert.equal(s1.found, true);
     assert.equal(s1.name, "Apex");
     assert.equal(s1.slug, "apex");
-    assert.equal(s1.structure.completeness_score, 80);
+    assert.equal((s1.structure as Row).completeness_score, 80);
     assert.equal(s1.economics, null);
-    assert.equal(s1.health.ok_count, 4);
+    assert.equal((s1.health as Row).ok_count, 4);
     // Found subnet present only in economics.
     assert.equal(s2.found, true);
     assert.equal(s2.structure, null);
-    assert.equal(s2.economics.registration_cost_tao, 1.5);
+    assert.equal((s2.economics as Row).registration_cost_tao, 1.5);
     assert.equal(s2.health, null);
     // Unknown subnet: found:false, every dimension null, name/slug null.
     assert.equal(s3.found, false);
@@ -101,7 +104,7 @@ describe("composeCompareData", () => {
     const [s] = data.subnets;
     assert.equal("structure" in s, false);
     assert.equal("health" in s, false);
-    assert.equal(s.economics.open_slots, 3);
+    assert.equal((s.economics as Row).open_slots, 3);
   });
 
   test("coerces string-typed D1 numeric cells to numbers across every tier", () => {
@@ -141,8 +144,8 @@ describe("composeCompareData", () => {
       observedAt: null,
     });
 
-    const s1 = data.subnets.find((s) => s.netuid === 1);
-    const s2 = data.subnets.find((s) => s.netuid === 2);
+    const s1 = data.subnets.find((s) => s.netuid === 1)!;
+    const s2 = data.subnets.find((s) => s.netuid === 2)!;
     assert.deepEqual(s1.structure, {
       completeness_score: 80,
       surface_count: 5,
@@ -182,8 +185,11 @@ describe("composeCompareData", () => {
       healthRows: [],
       observedAt: null,
     });
-    assert.equal(passthrough.subnets[0].structure.completeness_score, null);
-    assert.equal(passthrough.subnets[0].structure.surface_count, 5);
+    assert.equal(
+      (passthrough.subnets[0].structure as Row).completeness_score,
+      null,
+    );
+    assert.equal((passthrough.subnets[0].structure as Row).surface_count, 5);
 
     // A blank or non-numeric string is left as-is rather than turned into 0/NaN.
     const oddCells = composeCompareData({
@@ -197,9 +203,9 @@ describe("composeCompareData", () => {
       ],
       observedAt: null,
     });
-    assert.equal(oddCells.subnets[0].health.surface_count, "");
-    assert.equal(oddCells.subnets[0].health.ok_count, "n/a");
-    assert.equal(oddCells.subnets[0].health.avg_latency_ms, 9);
+    assert.equal((oddCells.subnets[0].health as Row).surface_count, "");
+    assert.equal((oddCells.subnets[0].health as Row).ok_count, "n/a");
+    assert.equal((oddCells.subnets[0].health as Row).avg_latency_ms, 9);
   });
 
   test("attaches tiers whose D1 row netuid comes back as a string", () => {
@@ -226,11 +232,11 @@ describe("composeCompareData", () => {
       observedAt: null,
     });
 
-    const s1 = data.subnets.find((s) => s.netuid === 1);
-    const s2 = data.subnets.find((s) => s.netuid === 2);
-    assert.equal(s1.structure.completeness_score, 80);
-    assert.equal(s1.health.ok_count, 4);
-    assert.equal(s2.economics.open_slots, 3);
+    const s1 = data.subnets.find((s) => s.netuid === 1)!;
+    const s2 = data.subnets.find((s) => s.netuid === 2)!;
+    assert.equal((s1.structure as Row).completeness_score, 80);
+    assert.equal((s1.health as Row).ok_count, 4);
+    assert.equal((s2.economics as Row).open_slots, 3);
 
     // A row with an unusable (non-integer) netuid is skipped in every tier,
     // not thrown on and not keyed under a junk value.
@@ -321,7 +327,7 @@ describe("composeCompareData", () => {
 
 describe("GET /api/v1/compare", () => {
   const env = createLocalArtifactEnv();
-  const get = async (path) => {
+  const get = async (path: string) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
       env,
@@ -336,7 +342,7 @@ describe("GET /api/v1/compare", () => {
     assert.equal(body.ok, true);
     assert.deepEqual(body.data.requested_netuids, [1, 7, 64]);
     assert.deepEqual(
-      body.data.subnets.map((s) => s.netuid),
+      body.data.subnets.map((s: Row) => s.netuid),
       [1, 7, 64],
     );
     assert.deepEqual(body.data.dimensions, [
@@ -433,12 +439,12 @@ describe("GET /api/v1/compare", () => {
   // stamping and netuid threading into the synthesized internal
   // compare-health request still work end to end.
   test("stamps observed_at from the live cron snapshot and threads netuids to the health tier", async () => {
-    const requests = [];
+    const requests: string[] = [];
     const healthEnv = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           requests.push(request.url);
           return Response.json({
             rows: [
@@ -448,7 +454,7 @@ describe("GET /api/v1/compare", () => {
         },
       },
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === "health:meta"
             ? { last_run_at: "2026-06-24T01:02:03.000Z" }
             : null;
@@ -475,12 +481,12 @@ describe("GET /api/v1/compare", () => {
   });
 
   test("health tier request is constrained to de-duplicated requested netuids", async () => {
-    const requests = [];
+    const requests: string[] = [];
     const healthEnv = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           requests.push(request.url);
           return Response.json({ rows: [] });
         },
@@ -505,7 +511,7 @@ describe("GET /api/v1/compare", () => {
 // directly, so the route-matching branch itself is covered too.
 describe("GET /api/v1/compare/validators", () => {
   const env = createLocalArtifactEnv();
-  const get = async (path) => {
+  const get = async (path: string) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
       env,
@@ -524,7 +530,7 @@ describe("GET /api/v1/compare/validators", () => {
     assert.equal(body.ok, true);
     assert.equal(body.data.netuid, null);
     assert.deepEqual(
-      body.data.validators.map((v) => v.hotkey),
+      body.data.validators.map((v: Row) => v.hotkey),
       [HOTKEY_A, HOTKEY_B],
     );
     assert.equal(body.meta.artifact_path, "/metagraph/compare/validators.json");

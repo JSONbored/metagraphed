@@ -1,35 +1,50 @@
-// SN64 (SN64) end-to-end verification for the call_subnet_surface MCP tool
-// (metagraphed#7077, MCP execute Phase 1 follow-up #7014/#7215). Unlike
-// tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring with
-// synthetic surfaces -- this file pins SN64's *real* registry surface config
-// (registry/subnets/chutes.json) to the tool's contract, so a future edit that
-// regresses its callability (flipping to HEAD, marking it auth_required,
-// disabling its probe) is caught here.
+// SN83 (CliqueAI) end-to-end verification for the call_subnet_surface MCP tool
+// (metagraphed#7058, MCP execute Phase 1 follow-up #7014/#7215; issue #7096).
+// Unlike tests/call-subnet-surface-mcp.test.mjs -- which proves the tool wiring
+// with synthetic surfaces -- this file pins SN83's *real* registry surface
+// config (registry/subnets/cliqueai.json) to the tool's contract, so a future
+// edit that regresses its callability (flipping to HEAD, marking it
+// auth_required, disabling its probe, moving the url) is caught here.
 //
-// The surface is the public no-auth SN64 API health endpoint
-// (sn-64-chutes-health, GET https://chutes.ai/api/health, JSON, single fixed endpoint -- no schema). Live-verified
-// 2026-07-21 to return HTTP 200 application/json {"status":"healthy"}. The
-// fixture below mirrors that live response rather than fetching it, keeping the
-// test hermetic while still exercising the JSON parse-and-return path.
+// The surface is the public no-auth SN83 indexed subnet feed on TaoMarketCap
+// (sn-83-taomarketcap-subnet-api, GET
+// https://api.taomarketcap.com/public/v1/subnets/83/, JSON, single fixed
+// endpoint -- no schema). Live-verified 2026-07-21 to return HTTP 200
+// application/json -- an object self-reporting netuid 83 (id, is_active,
+// mechanism_count, latest_snapshot). The fixture below mirrors that live
+// response rather than fetching it, keeping the test hermetic while still
+// exercising the tool's JSON parse-and-return path.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import type { Row } from "./row-type.ts";
 
-const SURFACE_ID = "sn-64-chutes-health";
+const SURFACE_ID = "sn-83-taomarketcap-subnet-api";
+const NETUID = 83;
 
-const registry = JSON.parse(
+const registry: Row = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../registry/subnets/chutes.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../registry/subnets/cliqueai.json", import.meta.url),
+    ),
     "utf8",
   ),
 );
-const SURFACE = registry.surfaces.find((surface) => surface.id === SURFACE_ID);
+const SURFACE = registry.surfaces.find(
+  (surface: Row) => surface.id === SURFACE_ID,
+);
 
-// A faithful subset of the live https://chutes.ai/api/health response body.
-const BODY = { status: "healthy" };
+// A faithful subset of the live SN83 TaoMarketCap subnet feed.
+const BODY = {
+  id: "83",
+  netuid: 83,
+  is_active: true,
+  mechanism_count: 1,
+  latest_snapshot_id: "8667931-83",
+};
 
 function upstreamResponse() {
   return new Response(JSON.stringify(BODY), {
@@ -38,7 +53,7 @@ function upstreamResponse() {
   });
 }
 
-describe("SN64 SN64 call_subnet_surface verification (#7077)", () => {
+describe("SN83 CliqueAI call_subnet_surface verification (#7058)", () => {
   test("the registry surface exists and is configured to be callable", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
@@ -47,21 +62,24 @@ describe("SN64 SN64 call_subnet_surface verification (#7077)", () => {
     // No-auth GET returning JSON.
     assert.equal(SURFACE.probe?.method, "GET");
     assert.equal(SURFACE.probe?.expect, "json");
-    assert.equal(SURFACE.url, "https://chutes.ai/api/health");
+    assert.equal(
+      SURFACE.url,
+      "https://api.taomarketcap.com/public/v1/subnets/83/",
+    );
     // Single fixed endpoint -- no machine-readable schema is expected.
     assert.equal(SURFACE.schema_url, undefined);
   });
 
   test("callSubnetSurface returns the real JSON body using the surface's own url + GET", async () => {
-    let requestedUrl;
-    let requestedMethod;
+    let requestedUrl: string | undefined;
+    let requestedMethod: string | undefined;
     const result = await callSubnetSurface(SURFACE, {
       isUnsafeUrl: async () => false,
-      fetchImpl: async (url, init) => {
+      fetchImpl: (async (url: string | URL, init?: RequestInit) => {
         requestedUrl = String(url);
-        requestedMethod = init.method;
+        requestedMethod = init?.method;
         return upstreamResponse();
-      },
+      }) as typeof fetch,
     });
     assert.equal(result.ok, true);
     assert.equal(requestedUrl, SURFACE.url);
@@ -69,21 +87,22 @@ describe("SN64 SN64 call_subnet_surface verification (#7077)", () => {
     assert.equal(result.status_code, 200);
     assert.equal(result.content_type, "application/json");
     assert.equal(result.truncated, false);
-    assert.equal(result.body.status, "healthy");
+    assert.equal((result.body as Row).netuid, NETUID);
+    assert.equal(typeof (result.body as Row).is_active, "boolean");
   });
 
   test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
     const catalog = {
-      surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 64 }],
+      surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: NETUID }],
     };
     const deps = {
-      readArtifact: async (_env, path) =>
+      readArtifact: async (_env: Row, path: string) =>
         path === "/metagraph/operational-surfaces.json"
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = async (input) => {
+    globalThis.fetch = (async (input: string | URL | Request) => {
       const url = String(input);
       if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
         return new Response(JSON.stringify({ Status: 0 }), {
@@ -91,7 +110,7 @@ describe("SN64 SN64 call_subnet_surface verification (#7077)", () => {
         });
       }
       return upstreamResponse();
-    };
+    }) as typeof fetch;
     try {
       const response = await handleMcpRequest(
         new Request("https://metagraph.sh/mcp", {
@@ -110,11 +129,11 @@ describe("SN64 SN64 call_subnet_surface verification (#7077)", () => {
         {},
         deps,
       );
-      const result = (await response.json()).result;
+      const result = ((await response.json()) as Row).result;
       assert.equal(result.isError, false);
       assert.equal(result.structuredContent.surface_id, SURFACE_ID);
       assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(result.structuredContent.body.status, "healthy");
+      assert.equal((result.structuredContent.body as Row).netuid, NETUID);
     } finally {
       globalThis.fetch = originalFetch;
     }

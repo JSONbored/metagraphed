@@ -25,10 +25,11 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import type { Row } from "./row-type.ts";
 
 const SURFACE_ID = "sn-82-compelle-health";
 
-const registry = JSON.parse(
+const registry: Row = JSON.parse(
   readFileSync(
     fileURLToPath(
       new URL("../registry/subnets/compelle.json", import.meta.url),
@@ -36,7 +37,9 @@ const registry = JSON.parse(
     "utf8",
   ),
 );
-const SURFACE = registry.surfaces.find((surface) => surface.id === SURFACE_ID);
+const SURFACE = registry.surfaces.find(
+  (surface: Row) => surface.id === SURFACE_ID,
+);
 
 // A faithful subset of the live https://compelle.com/api/health response body.
 const BODY = {
@@ -73,15 +76,15 @@ describe("SN82 Compelle call_subnet_surface verification (#7095)", () => {
   });
 
   test("callSubnetSurface returns the real JSON body via the surface's own url + default GET", async () => {
-    let requestedUrl;
-    let requestedMethod;
+    let requestedUrl: string | undefined;
+    let requestedMethod: string | undefined;
     const result = await callSubnetSurface(SURFACE, {
       isUnsafeUrl: async () => false,
-      fetchImpl: async (url, init) => {
+      fetchImpl: (async (url: string | URL, init?: RequestInit) => {
         requestedUrl = String(url);
-        requestedMethod = init.method;
+        requestedMethod = init?.method;
         return upstreamResponse();
-      },
+      }) as typeof fetch,
     });
     assert.equal(result.ok, true);
     assert.equal(requestedUrl, SURFACE.url);
@@ -90,10 +93,10 @@ describe("SN82 Compelle call_subnet_surface verification (#7095)", () => {
     assert.equal(result.status_code, 200);
     assert.equal(result.content_type, "application/json; charset=utf-8");
     assert.equal(result.truncated, false);
-    assert.equal(result.body.ok, true);
-    assert.equal(typeof result.body.db_size_bytes, "number");
-    assert.equal(typeof result.body.games, "number");
-    assert.equal(typeof result.body.miners, "number");
+    assert.equal((result.body as Row).ok, true);
+    assert.equal(typeof (result.body as Row).db_size_bytes, "number");
+    assert.equal(typeof (result.body as Row).games, "number");
+    assert.equal(typeof (result.body as Row).miners, "number");
   });
 
   test("end-to-end through the call_subnet_surface MCP tool, resolved by surface id", async () => {
@@ -103,13 +106,13 @@ describe("SN82 Compelle call_subnet_surface verification (#7095)", () => {
       surfaces: [{ ...SURFACE, surface_id: SURFACE.id, netuid: 82 }],
     };
     const deps = {
-      readArtifact: async (_env, path) =>
+      readArtifact: async (_env: Row, path: string) =>
         path === "/metagraph/operational-surfaces.json"
           ? { ok: true, data: catalog }
           : { ok: false, status: 404 },
     };
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = async (input) => {
+    globalThis.fetch = (async (input: string | URL | Request) => {
       const url = String(input);
       // DoH lookups for the SSRF guard: no Answer -> fail open (safe).
       if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
@@ -118,7 +121,7 @@ describe("SN82 Compelle call_subnet_surface verification (#7095)", () => {
         });
       }
       return upstreamResponse();
-    };
+    }) as typeof fetch;
     try {
       const response = await handleMcpRequest(
         new Request("https://metagraph.sh/mcp", {
@@ -137,11 +140,11 @@ describe("SN82 Compelle call_subnet_surface verification (#7095)", () => {
         {},
         deps,
       );
-      const result = (await response.json()).result;
+      const result = ((await response.json()) as Row).result;
       assert.equal(result.isError, false);
       assert.equal(result.structuredContent.surface_id, SURFACE_ID);
       assert.equal(result.structuredContent.status_code, 200);
-      assert.equal(result.structuredContent.body.ok, true);
+      assert.equal((result.structuredContent.body as Row).ok, true);
     } finally {
       globalThis.fetch = originalFetch;
     }

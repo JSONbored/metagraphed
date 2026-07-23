@@ -6,11 +6,18 @@ import {
 } from "../src/chain-stake-flow.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 const OBS = 1_700_000_000_000;
 
 // One GROUP BY netuid, event_kind aggregate row from account_events.
-function ev(netuid, event_kind, total_tao, event_count, last_observed = OBS) {
+function ev(
+  netuid: unknown,
+  event_kind: string,
+  total_tao: unknown,
+  event_count: number,
+  last_observed: unknown = OBS,
+) {
   return { netuid, event_kind, total_tao, event_count, last_observed };
 }
 
@@ -36,7 +43,7 @@ describe("buildChainStakeFlow", () => {
       data.subnets.map((s) => s.netuid),
       [1, 3, 2],
     );
-    const s1 = data.subnets.find((s) => s.netuid === 1);
+    const s1 = data.subnets.find((s) => s.netuid === 1)!;
     assert.equal(s1.total_staked_tao, 100);
     assert.equal(s1.total_unstaked_tao, 30);
     assert.equal(s1.net_flow_tao, 70);
@@ -44,9 +51,12 @@ describe("buildChainStakeFlow", () => {
     assert.equal(s1.stake_events, 5);
     assert.equal(s1.unstake_events, 2);
     assert.equal(s1.direction, "inflow");
-    assert.equal(data.subnets.find((s) => s.netuid === 2).direction, "outflow");
     assert.equal(
-      data.subnets.find((s) => s.netuid === 3).direction,
+      data.subnets.find((s) => s.netuid === 2)!.direction,
+      "outflow",
+    );
+    assert.equal(
+      data.subnets.find((s) => s.netuid === 3)!.direction,
       "balanced",
     );
   });
@@ -68,21 +78,21 @@ describe("buildChainStakeFlow", () => {
   test("summarizes the spread of per-subnet net flow into a distribution", () => {
     // per-subnet net flows [70, 0, -60] -> ascending [-60, 0, 70].
     const { net_flow_distribution: dist } = buildChainStakeFlow(ROWS, {});
-    assert.equal(dist.count, 3);
-    assert.equal(dist.mean, 3.333333333); // 10/3 rounded to rao
-    assert.equal(dist.min, -60);
-    assert.equal(dist.p25, -60);
-    assert.equal(dist.median, 0);
-    assert.equal(dist.p75, 70);
-    assert.equal(dist.p90, 70);
-    assert.equal(dist.max, 70);
+    assert.equal(dist!.count, 3);
+    assert.equal(dist!.mean, 3.333333333); // 10/3 rounded to rao
+    assert.equal(dist!.min, -60);
+    assert.equal(dist!.p25, -60);
+    assert.equal(dist!.median, 0);
+    assert.equal(dist!.p75, 70);
+    assert.equal(dist!.p90, 70);
+    assert.equal(dist!.max, 70);
   });
 
   test("distribution counts every subnet even when the leaderboard is truncated", () => {
     const { net_flow_distribution: dist } = buildChainStakeFlow(ROWS, {
       limit: 1,
     });
-    assert.equal(dist.count, 3);
+    assert.equal(dist!.count, 3);
   });
 
   test("small net relative to gross reads as balanced (churn) and counts flat", () => {
@@ -123,7 +133,8 @@ describe("buildChainStakeFlow", () => {
   });
 
   test("clamps a non-integer / negative / over-max / non-finite limit", () => {
-    const n = (limit) => buildChainStakeFlow(ROWS, { limit }).subnets.length;
+    const n = (limit: number) =>
+      buildChainStakeFlow(ROWS, { limit }).subnets.length;
     assert.equal(n(1.9), 1); // floored
     assert.equal(n(-5), 0); // negative -> 0
     assert.equal(n(9999), 3); // over-max clamps, capped by data
@@ -290,11 +301,11 @@ describe("buildChainStakeFlow", () => {
 });
 
 describe("GET /api/v1/chain/stake-flow", () => {
-  function stakeFlowEnv(rows) {
+  function stakeFlowEnv(rows: Row[]) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -488,21 +499,25 @@ describe("GET /api/v1/chain/stake-flow", () => {
 });
 
 describe("chain/stake-flow edge cache", () => {
-  let originalCaches;
+  // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+  // not a `globalThis` property -- so stubbing/restoring it for a test needs
+  // this cast (matches workers/request-handlers/analytics.ts's own precedent).
+  const globalWithCaches = globalThis as unknown as { caches: Row };
+  let originalCaches: Row;
   afterEach(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
   });
 
   test("routes through the edge cache with caches enabled", async () => {
-    originalCaches = globalThis.caches;
-    const store = new Map();
-    globalThis.caches = {
+    originalCaches = globalWithCaches.caches;
+    const store = new Map<string, Response>();
+    globalWithCaches.caches = {
       default: {
-        async match(request) {
+        async match(request: Request) {
           const cached = store.get(request.url);
           return cached ? cached.clone() : undefined;
         },
-        async put(request, response) {
+        async put(request: Request, response: Response) {
           store.set(request.url, response.clone());
         },
       },
@@ -512,14 +527,14 @@ describe("chain/stake-flow edge cache", () => {
       // A non-null health:meta stamp so withEdgeCache actually engages (it skips caching when
       // the analytics cron stamp is null).
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === "health:meta"
             ? { last_run_at: "2026-06-30T00:00:00.000Z" }
             : null;
         },
       },
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>
@@ -532,12 +547,12 @@ describe("chain/stake-flow edge cache", () => {
       },
     };
     // withEdgeCache writes via ctx.waitUntil, so capture the background put and await it.
-    const waits = [];
+    const waits: Promise<unknown>[] = [];
     const call = () =>
       handleRequest(
         new Request("https://api.metagraph.sh/api/v1/chain/stake-flow"),
         env,
-        { waitUntil: (promise) => waits.push(promise) },
+        { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();
     assert.equal(res.status, 200);

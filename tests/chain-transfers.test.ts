@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildChainTransfers } from "../src/chain-transfers.ts";
 
-const party = (address, volume, count = 1) => ({
+const party = (address: string | null, volume: number, count = 1) => ({
   address,
   volume_tao: volume,
   transfer_count: count,
@@ -11,7 +11,10 @@ const party = (address, volume, count = 1) => ({
 describe("buildChainTransfers", () => {
   test("cold / empty input yields a zeroed, schema-stable card", () => {
     for (const opts of [{}, { totals: null, senders: null, receivers: null }]) {
-      const d = buildChainTransfers({ window: "30d", ...opts });
+      const d = buildChainTransfers({
+        window: "30d",
+        ...opts,
+      } as Parameters<typeof buildChainTransfers>[0]);
       assert.equal(d.schema_version, 1);
       assert.equal(d.window, "30d");
       assert.equal(d.observed_at, null);
@@ -69,7 +72,7 @@ describe("buildChainTransfers", () => {
       totals: { total_volume_tao: 250000, unique_senders: 3 },
       senders: [party("5Sa", 249990)],
     });
-    assert.ok(d.top_sender_share < 1, "near-total share must stay below 1");
+    assert.ok(d.top_sender_share! < 1, "near-total share must stay below 1");
     assert.equal(d.top_sender_share, 0.9999);
   });
 

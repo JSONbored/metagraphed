@@ -4,7 +4,13 @@ import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
 
 const OBSERVED_AT_MS = Date.parse("2026-07-03T00:00:00.000Z");
 
-const pair = (from, to, volume, count = 1, lastBlock = 100) => ({
+const pair = (
+  from: string | null,
+  to: string | null,
+  volume: number,
+  count = 1,
+  lastBlock: unknown = 100,
+) => ({
   from,
   to,
   volume_tao: volume,
@@ -16,7 +22,10 @@ const pair = (from, to, volume, count = 1, lastBlock = 100) => ({
 describe("buildChainTransferPairs", () => {
   test("cold / empty input yields a zeroed, schema-stable card", () => {
     for (const opts of [{}, { totals: null, pairs: null }]) {
-      const d = buildChainTransferPairs({ window: "30d", ...opts });
+      const d = buildChainTransferPairs({
+        window: "30d",
+        ...opts,
+      } as Parameters<typeof buildChainTransferPairs>[0]);
       assert.equal(d.schema_version, 1);
       assert.equal(d.window, "30d");
       assert.equal(d.sort, "volume");
@@ -70,7 +79,7 @@ describe("buildChainTransferPairs", () => {
       pairs: [pair("5A", "5B", 249990), pair("5C", "5D", 10)],
     });
     assert.equal(d.unique_pairs, 2);
-    assert.ok(d.top_pair_share < 1, "share must be strictly below 1");
+    assert.ok(d.top_pair_share! < 1, "share must be strictly below 1");
     assert.equal(d.top_pair_share, 0.9999);
   });
 
