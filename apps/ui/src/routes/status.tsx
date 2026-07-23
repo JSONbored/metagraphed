@@ -391,7 +391,7 @@ function RecentIncidents() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 rounded border border-border bg-card p-3">
+      <Panel as="div" dense bodyClassName="flex flex-wrap items-center gap-3">
         <div>
           <div className="mg-label">
             {ongoingCount > 0 ? "Active now" : "Downtime events · " + window}
@@ -429,7 +429,7 @@ function RecentIncidents() {
             </button>
           ))}
         </div>
-      </div>
+      </Panel>
 
       {surfaces.length === 0 ? (
         <EmptyState title="No sustained downtime in this window" />
