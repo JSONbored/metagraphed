@@ -21,6 +21,7 @@ import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-sc
 import { Tooltip, TooltipContent, TooltipTrigger, TimeAgo, InfoTooltip } from "@jsonbored/ui-kit";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
 import { ErrorState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { formatFreshness } from "@/lib/metagraphed/freshness";
 import { useSubnetFilter, type Severity } from "@/components/metagraphed/subnet-filter-context";
@@ -94,7 +95,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
       {healthQ.error ? (
         <ErrorState error={healthQ.error} onRetry={retryOperational} context="operational status" />
       ) : (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <Panel as="div" flush className="overflow-hidden">
           {/* Status ribbon */}
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border border-b border-border">
             <Stat
@@ -339,7 +340,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
               )}
             </div>
           </div>
-        </div>
+        </Panel>
       )}
     </PanelShell>
   );

@@ -6,6 +6,7 @@ import {
 } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { ErrorState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { SurfaceLatencyPercentiles, SurfaceSla } from "@/lib/metagraphed/types";
 
 // #1114: per-surface reliability — uptime SLA + latency percentiles (p50/p95/p99)
@@ -88,7 +89,7 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
   const errorObj = pctErrorObj ?? slaErrorObj;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <Panel as="div" flush className="overflow-hidden">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Per-surface reliability · uptime · latency percentiles
@@ -176,6 +177,6 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
           </table>
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

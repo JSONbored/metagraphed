@@ -26,6 +26,7 @@ import {
   safeExternalUrl,
 } from "@jsonbored/ui-kit";
 import { PanelShell } from "@/components/metagraphed/panel-shell";
+import { Panel } from "@/components/metagraphed/primitives";
 import { useCopy } from "@/hooks/use-copy";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { classNames } from "@/lib/metagraphed/format";
@@ -102,7 +103,7 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
           </button>
         </div>
       ) : null}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <Panel as="div" flush className="overflow-hidden">
         {seg === "endpoints" ? (
           <Suspense fallback={<Skeleton className="h-40 w-full" />}>
             <EndpointsView netuid={netuid} filter={filter} />
@@ -120,7 +121,7 @@ export function ResourceExplorer({ netuid }: { netuid: number }) {
             </Suspense>
           </div>
         ) : null}
-      </div>
+      </Panel>
     </PanelShell>
   );
 }

@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { leaderboardsQuery } from "@/lib/metagraphed/queries";
 import { BrandIcon } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { LeaderboardBoardKey, LeaderboardRow } from "@/lib/metagraphed/types";
 
 // #6995: surface the registry's own D1-computed leaderboards on /leaderboards.
@@ -169,7 +170,7 @@ function BoardCard({
   metric: (row: LeaderboardRow) => string | null;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Panel as="div" dense>
       <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
         {label}
       </div>
@@ -210,6 +211,6 @@ function BoardCard({
           ))}
         </ol>
       )}
-    </div>
+    </Panel>
   );
 }
