@@ -18,7 +18,7 @@ import { PalletMethodBreakdown } from "@/components/metagraphed/blocks/pallet-me
 import { ShortcutsDialog } from "@/components/metagraphed/blocks/shortcuts-dialog";
 import { AccountAddress } from "@/components/metagraphed/account-address";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
@@ -432,7 +432,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               description="This block has no indexed extrinsics (or the poller window for this shard is still catching up)."
             />
           ) : (
-            <div className="overflow-x-auto rounded border border-border bg-card">
+            <Panel as="div" flush className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-surface/40">
                   <tr>
@@ -497,7 +497,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   })}
                 </tbody>
               </table>
-            </div>
+            </Panel>
           )}
         </SectionAnchor>
 
@@ -577,7 +577,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   description="This block has no decoded pallet events indexed yet, or the all-events backfill hasn't reached it."
                 />
               ) : (
-                <div className="overflow-x-auto rounded border border-border bg-card">
+                <Panel as="div" flush className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-surface/40">
                       <tr>
@@ -620,7 +620,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </Panel>
               )}
             </div>
           </details>
@@ -777,7 +777,7 @@ function GroupedEvents({
   };
 
   return (
-    <div className="rounded border border-border bg-card">
+    <Panel as="div" flush>
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="mg-label">
           {groups.length} extrinsic{groups.length === 1 ? "" : "s"} · {events.length} event
@@ -903,7 +903,7 @@ function GroupedEvents({
           );
         })}
       </ul>
-    </div>
+    </Panel>
   );
 }
 
