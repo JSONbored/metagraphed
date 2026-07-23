@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CopyableCode, ExternalLink, PageHero } from "@jsonbored/ui-kit";
+import { CopyableCode, ExternalLink } from "@jsonbored/ui-kit";
+import { PageMasthead } from "@/components/metagraphed/primitives";
 import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { coverageQuery, freshnessQuery, healthQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/about")({
 function AboutPage() {
   return (
     <AppShell>
-      <PageHero
+      <PageMasthead
         eyebrow="About"
         title="Methodology & scope"
         description="An unofficial, public explorer and integration registry for Bittensor — blocks, subnets, validators, and accounts alongside the public interfaces each subnet exposes, all machine-readable for developers and AI agents."
