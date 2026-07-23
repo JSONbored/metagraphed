@@ -19,7 +19,12 @@ const trackedPublicArtifacts = execFileSync(
   .split(/\r?\n/)
   .filter(Boolean);
 
-const originals = new Map();
+interface OriginalArtifact {
+  existed: boolean;
+  content: Buffer | null;
+}
+
+const originals = new Map<string, OriginalArtifact>();
 for (const relativePath of trackedPublicArtifacts) {
   const filePath = path.join(repoRoot, relativePath);
   originals.set(relativePath, {
@@ -85,7 +90,7 @@ console.log(
   ),
 );
 
-function stagedSnapshotPath(relativePath) {
+function stagedSnapshotPath(relativePath: string): string {
   const filePath = path.resolve(r2StagingRoot, relativePath);
   const relativeToRoot = path.relative(r2StagingRoot, filePath);
   if (
@@ -100,7 +105,7 @@ function stagedSnapshotPath(relativePath) {
   return filePath;
 }
 
-async function restorePublicArtifacts() {
+async function restorePublicArtifacts(): Promise<void> {
   for (const [relativePath, original] of originals) {
     const filePath = path.join(repoRoot, relativePath);
     if (!original.existed) {
@@ -108,18 +113,18 @@ async function restorePublicArtifacts() {
       continue;
     }
     await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, original.content);
+    await writeFile(filePath, original.content as Buffer);
   }
 }
 
-async function loadSchemaSnapshotDetails() {
+async function loadSchemaSnapshotDetails(): Promise<Map<string, Buffer>> {
   const indexPath = path.join(repoRoot, "public/metagraph/schemas/index.json");
   if (!existsSync(indexPath)) {
     return new Map();
   }
 
   const index = JSON.parse(await readFile(indexPath, "utf8"));
-  const details = new Map();
+  const details = new Map<string, Buffer>();
   for (const entry of index.schemas || []) {
     const relativePath = schemaDetailArtifactRelativePath(entry.path || "");
     if (!relativePath) {
