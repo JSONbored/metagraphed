@@ -56,7 +56,7 @@ const fixtureDetail = {
 };
 
 // Register the OpenAPI components block ONCE under an absolute id (mirroring
-// validate-schemas.mjs) instead of re-inlining all ~198 schemas into every
+// validate-schemas.ts) instead of re-inlining all ~198 schemas into every
 // per-route compile. Response schemas resolve their `#/components/...` refs
 // against this single registered schema via an absolute `$ref`.
 const COMPONENTS_ID = "https://metagraph.sh/openapi-components.schema.json";

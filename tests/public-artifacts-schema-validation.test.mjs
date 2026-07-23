@@ -2,7 +2,7 @@
 // every generated public artifact (schema_version: 1, network: "finney", the
 // required per-kind fields), but nothing ever validated a real artifact's data
 // against it — it was only ajv.compile()-syntax-checked and fs.access()
-// -existence-checked. scripts/validate-schemas.mjs now validates each real
+// -existence-checked. scripts/validate-schemas.ts now validates each real
 // artifact against the matching top-level $def. These tests lock that contract:
 // a real committed artifact passes, and deliberate constraint violations fail.
 import assert from "node:assert/strict";

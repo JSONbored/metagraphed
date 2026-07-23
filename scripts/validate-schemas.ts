@@ -1,5 +1,5 @@
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { PUBLIC_ARTIFACTS } from "../src/contracts.mjs";
@@ -18,6 +18,18 @@ import {
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
 import { createComponentValidatorCompiler } from "./lib/component-validator.mjs";
+
+// ajv-formats' default export resolves to the CJS module namespace rather than
+// the plugin function under this project's NodeNext + esModuleInterop
+// resolution -- cast to its real callable signature rather than fight the
+// interop. Mirrors validate-openapi-examples.ts.
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
+
+// Schemas + registry/artifact documents are read for validation only, never
+// trusted for control flow. Mirrors the readJson/readArtifactJson precedent
+// in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
 
 // Artifacts whose schema describes a live-computed API response with no static
 // file on disk (served from D1/KV). Their schema is exercised by validate-api's
@@ -234,7 +246,7 @@ const validators = {
   entity: ajv.getSchema(entitySchema.$id),
 };
 
-const errors = [];
+const errors: string[] = [];
 
 for (const provider of await loadProviders()) {
   validate(validators.provider, provider, `provider:${provider.id}`);
@@ -303,7 +315,7 @@ for (const artifact of artifactTargets) {
 // schema does not document (e.g. openapi) carry no matching property and are
 // skipped; the per-component schema_ref check above still covers every artifact.
 const publicArtifactProperties = publicArtifactsSchema.properties || {};
-const publicArtifactValidators = new Map();
+const publicArtifactValidators = new Map<string, Validator>();
 for (const artifact of artifactTargets) {
   const propertyKey = artifact.label.split(":")[0].replace(/-/g, "_");
   const propertyRef = publicArtifactProperties[propertyKey]?.$ref;
@@ -336,8 +348,8 @@ if (errors.length > 0) {
 
 console.log("JSON Schema validation passed.");
 
-async function artifactValidationTargets() {
-  const targets = [];
+async function artifactValidationTargets(): Promise<Row[]> {
+  const targets: Row[] = [];
   for (const artifact of PUBLIC_ARTIFACTS) {
     if (!artifact.schema_ref || COMPUTED_ARTIFACTS.has(artifact.id)) {
       continue;
@@ -385,7 +397,7 @@ async function artifactValidationTargets() {
   return targets.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function artifactFilePath(artifactPath) {
+function artifactFilePath(artifactPath: string): string {
   const relativePath = artifactPath.replace(/^\/metagraph\//, "");
   const tier = artifactStorageTierForPath(artifactPath);
   const r2Path = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativePath);
@@ -395,8 +407,8 @@ function artifactFilePath(artifactPath) {
   return path.join(repoRoot, "public/metagraph", relativePath);
 }
 
-function templatedArtifactDirectory(artifactId) {
-  const directories = {
+function templatedArtifactDirectory(artifactId: string): string {
+  const directories: Record<string, string> = {
     ...netuidArtifactDirectories(),
     ...slugArtifactDirectories(),
     "health-history": "health/history",
@@ -415,7 +427,7 @@ function templatedArtifactDirectory(artifactId) {
   return path.join(repoRoot, "public/metagraph", relativeDir);
 }
 
-function netuidArtifactDirectories() {
+function netuidArtifactDirectories(): Record<string, string> {
   return {
     "agent-catalog-subnet": "agent-catalog",
     "candidates-subnet": "candidates",
@@ -432,7 +444,7 @@ function netuidArtifactDirectories() {
   };
 }
 
-function slugArtifactDirectories() {
+function slugArtifactDirectories(): Record<string, string> {
   return {
     adapter: "adapters",
     "provider-detail": "providers",
@@ -440,9 +452,17 @@ function slugArtifactDirectories() {
   };
 }
 
-function validate(validator, value, label) {
-  if (!validator(value)) {
-    for (const error of validator.errors || []) {
+type Validator = ((value: unknown) => boolean) & {
+  errors?: ErrorObject[] | null;
+};
+
+function validate(
+  validator: Validator | undefined,
+  value: unknown,
+  label: string,
+): void {
+  if (!validator!(value)) {
+    for (const error of validator!.errors || []) {
       errors.push(
         `${label}${error.instancePath}: ${formatErrorMessage(error, value)}`,
       );
@@ -453,30 +473,30 @@ function validate(validator, value, label) {
 // ajv's default `error.message` for an `enum` keyword is the unhelpful "must
 // be equal to one of the allowed values" with no indication of what those
 // values actually are. Reproduce: set a surface's `kind` to an invalid value,
-// run `node scripts/validate-schemas.mjs`, and see the bare message. Fix:
+// run `node scripts/validate-schemas.ts`, and see the bare message. Fix:
 // append the allowed values (and the offending value, when resolvable) for
 // enum-keyword errors only; every other keyword's message is unchanged.
-function formatErrorMessage(error, value) {
+function formatErrorMessage(error: ErrorObject, value: unknown): string {
   if (error.keyword !== "enum") {
-    return error.message;
+    return error.message ?? "";
   }
-  const allowed = (error.params?.allowedValues || []).join(", ");
+  const allowed = ((error.params?.allowedValues as unknown[]) || []).join(", ");
   const actual = valueAtInstancePath(value, error.instancePath);
   const gotSuffix =
     actual === undefined ? "" : ` (got ${JSON.stringify(actual)})`;
   return `${error.message}: ${allowed}${gotSuffix}`;
 }
 
-function valueAtInstancePath(document, instancePath) {
+function valueAtInstancePath(document: unknown, instancePath: string): unknown {
   if (!instancePath) return undefined;
   const segments = instancePath
     .split("/")
     .slice(1)
     .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
-  let value = document;
+  let value: unknown = document;
   for (const segment of segments) {
     if (value == null) return undefined;
-    value = value[segment];
+    value = (value as Row)[segment];
   }
   return value;
 }

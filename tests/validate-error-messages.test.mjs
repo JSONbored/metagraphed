@@ -1,12 +1,12 @@
 // Regression coverage for the enum-mismatch message clarity fix: both
-// scripts/validate-surface.ts and scripts/validate-schemas.mjs previously
+// scripts/validate-surface.ts and scripts/validate-schemas.ts previously
 // surfaced ajv's bare "must be equal to one of the allowed values" for an
 // invalid `kind`, with no indication of what those values actually are.
 // Both scripts now append the allowed-values list (and the offending value)
 // to enum-keyword error messages.
 //
-// The "validate-schemas.mjs enum error messages" describe block below
-// mutates a REAL registry/subnets/*.json file in place (validate-schemas.mjs
+// The "validate-schemas.ts enum error messages" describe block below
+// mutates a REAL registry/subnets/*.json file in place (validate-schemas.ts
 // takes no file argument, unlike validate-surface.ts, so there's no way to
 // point it at an isolated fixture) and restores it in afterEach. That
 // transient window raced other tests scanning the same directory under
@@ -14,7 +14,7 @@
 // execution in package.json's test:ci exclude list (see
 // public-safety.test.mjs's header comment for the original incident
 // writeup). Do not remove it from that list without either fixing
-// validate-schemas.mjs to accept a file argument or re-verifying there's no
+// validate-schemas.ts to accept a file argument or re-verifying there's no
 // concurrent full-registry scan left to race.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -80,7 +80,7 @@ describe("validate-surface.ts enum error messages", () => {
   });
 });
 
-describe("validate-schemas.mjs enum error messages", () => {
+describe("validate-schemas.ts enum error messages", () => {
   let mutatedFile;
   let originalContents;
 
@@ -113,7 +113,7 @@ describe("validate-schemas.mjs enum error messages", () => {
     targetDocument.surfaces[0].kind = "totally-invalid-kind";
     writeFileSync(mutatedFile, JSON.stringify(targetDocument, null, 2));
 
-    const { status, output } = runNode(["scripts/validate-schemas.mjs"]);
+    const { status, output } = runNode(["scripts/validate-schemas.ts"]);
 
     assert.equal(status, 1);
     assert.match(output, /must be equal to one of the allowed values/);
@@ -146,7 +146,7 @@ describe("validate-schemas.mjs enum error messages", () => {
     targetDocument.partnership.tier = "sponsor";
     writeFileSync(mutatedFile, JSON.stringify(targetDocument, null, 2));
 
-    const { status, output } = runNode(["scripts/validate-schemas.mjs"]);
+    const { status, output } = runNode(["scripts/validate-schemas.ts"]);
 
     assert.equal(status, 1);
     assert.match(output, /must be equal to one of the allowed values/);

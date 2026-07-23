@@ -3,6 +3,11 @@ import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "./lib.ts";
 
+// Live handler responses are read for assertion purposes only, never trusted
+// for control flow. Mirrors the readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const env = createLocalArtifactEnv();
 
 const head = await handleRequest(
@@ -52,7 +57,7 @@ assert.equal(
   "POST should not be allowed for artifact API routes",
 );
 assert.equal(apiPost.headers.get("allow"), "GET, HEAD, OPTIONS");
-assert.equal((await apiPost.json()).error.code, "method_not_allowed");
+assert.equal(((await apiPost.json()) as Row).error.code, "method_not_allowed");
 
 const unknown = await handleRequest(
   new Request("https://metagraph.sh/api/v1/does-not-exist"),
@@ -88,13 +93,13 @@ const r2Fallback = await handleRequest(
       },
     },
     METAGRAPH_CONTROL: {
-      async get(key) {
+      async get(key: string) {
         assert.equal(key, "metagraph:latest");
         return { latest_prefix: "latest/" };
       },
     },
     METAGRAPH_ARCHIVE: {
-      async get(key) {
+      async get(key: string) {
         assert.equal(key, "latest/changelog.json");
         return {
           async json() {
@@ -116,7 +121,7 @@ assert.equal(
   200,
   "Worker should fall back to R2 with KV latest pointer",
 );
-assert.equal((await r2Fallback.json()).meta.source, "r2");
+assert.equal(((await r2Fallback.json()) as Row).meta.source, "r2");
 
 const disabledRpc = await handleRequest(
   new Request("https://metagraph.sh/rpc/v1/finney", { method: "POST" }),
@@ -124,7 +129,10 @@ const disabledRpc = await handleRequest(
   {},
 );
 assert.equal(disabledRpc.status, 501, "RPC proxy must be disabled by default");
-assert.equal((await disabledRpc.json()).error.code, "rpc_proxy_disabled");
+assert.equal(
+  ((await disabledRpc.json()) as Row).error.code,
+  "rpc_proxy_disabled",
+);
 
 const invalidRpc = await handleRequest(
   new Request("https://metagraph.sh/rpc/v1/finney", {
@@ -150,7 +158,10 @@ const blockedRpc = await handleRequest(
   {},
 );
 assert.equal(blockedRpc.status, 403, "unsafe RPC methods must be blocked");
-assert.equal((await blockedRpc.json()).error.code, "rpc_method_blocked");
+assert.equal(
+  ((await blockedRpc.json()) as Row).error.code,
+  "rpc_method_blocked",
+);
 
 for (const unsafeUrl of [
   "http://127.0.0.1:9650/internal",
@@ -202,16 +213,16 @@ for (const unsafeUrl of [
         ...env,
         METAGRAPH_ENABLE_RPC_PROXY: "true",
         ASSETS: {
-          async fetch(request) {
+          async fetch(request: Request) {
             const url = new URL(request.url);
             if (url.pathname === "/metagraph/rpc/pools.json") {
               return Response.json(unsafePoolArtifact);
             }
-            return env.ASSETS.fetch(request);
+            return (env.ASSETS as Row).fetch(request);
           },
         },
         METAGRAPH_ARCHIVE: {
-          async get(key) {
+          async get(key: string) {
             assert.equal(key, "latest/rpc/pools.json");
             return {
               async json() {
@@ -228,7 +239,10 @@ for (const unsafeUrl of [
       502,
       `unsafe endpoint ${unsafeUrl} should be rejected before fetch`,
     );
-    assert.equal((await unsafeRpc.json()).error.code, "rpc_endpoint_unsafe");
+    assert.equal(
+      ((await unsafeRpc.json()) as Row).error.code,
+      "rpc_endpoint_unsafe",
+    );
     assert.equal(
       unsafeFetchCalled,
       false,
@@ -241,10 +255,10 @@ for (const unsafeUrl of [
 
 const originalFetch = globalThis.fetch;
 let upstreamCalled = false;
-globalThis.fetch = async (url, init) => {
+globalThis.fetch = async (_url, init) => {
   upstreamCalled = true;
-  assert.equal(init.method, "POST");
-  assert.equal(JSON.parse(init.body).method, "chain_getHeader");
+  assert.equal(init?.method, "POST");
+  assert.equal(JSON.parse(init?.body as string).method, "chain_getHeader");
   return new Response(
     JSON.stringify({ jsonrpc: "2.0", id: 1, result: { number: "0x1" } }),
     {
@@ -284,16 +298,16 @@ try {
     ...env,
     METAGRAPH_ENABLE_RPC_PROXY: "true",
     ASSETS: {
-      async fetch(request) {
+      async fetch(request: Request) {
         const url = new URL(request.url);
         if (url.pathname === "/metagraph/rpc/pools.json") {
           return Response.json(safePoolArtifact);
         }
-        return env.ASSETS.fetch(request);
+        return (env.ASSETS as Row).fetch(request);
       },
     },
     METAGRAPH_ARCHIVE: {
-      async get(key) {
+      async get(key: string) {
         assert.equal(key, "latest/rpc/pools.json");
         return {
           async json() {
@@ -350,7 +364,7 @@ try {
     "the /wss route is not HTTP-proxyable and must be rejected, not 500",
   );
   assert.equal(
-    (await wssRejected.json()).error.code,
+    ((await wssRejected.json()) as Row).error.code,
     "rpc_websocket_unsupported",
   );
 } finally {
@@ -361,24 +375,24 @@ try {
 // served on repeat; live-overlay routes (e.g. /api/v1/health) are never cached
 // so live operational status can never go stale; conditional GETs still 304.
 {
-  const store = new Map();
+  const store = new Map<string, Response>();
   let puts = 0;
   let matchHits = 0;
-  const originalCaches = globalThis.caches;
-  globalThis.caches = {
+  const originalCaches = (globalThis as Row).caches;
+  (globalThis as Row).caches = {
     default: {
-      async match(req) {
+      async match(req: Request) {
         const r = store.get(req.url);
         if (r) matchHits += 1;
         return r ? r.clone() : undefined;
       },
-      async put(req, res) {
+      async put(req: Request, res: Response) {
         puts += 1;
         store.set(req.url, res.clone());
       },
     },
   };
-  const cacheCtx = { waitUntil: (p) => p };
+  const cacheCtx = { waitUntil: (p: Promise<unknown>) => p };
   try {
     // Pure static-artifact route: cached on first GET, served from cache after.
     const first = await handleRequest(
@@ -449,7 +463,7 @@ try {
       "non-GET requests must not be edge-cached",
     );
   } finally {
-    globalThis.caches = originalCaches;
+    (globalThis as Row).caches = originalCaches;
   }
 }
 

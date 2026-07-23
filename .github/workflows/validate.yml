@@ -252,7 +252,7 @@ jobs:
       # (artifacts.test.mjs, discovery-artifacts.test.mjs) are
       # filesystem-mutating artifact writers; two more (public-safety.test.mjs,
       # validate-error-messages.test.mjs) each transiently write/mutate a real
-      # file validate-schemas.mjs's own full-registry scan reads, which raced
+      # file validate-schemas.ts's own full-registry scan reads, which raced
       # a concurrent registry scan in another test file (see
       # public-safety.test.mjs's header comment for the original incident
       # writeup); refresh-build-summary.test.mjs rewrites the real

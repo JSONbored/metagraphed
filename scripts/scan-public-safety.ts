@@ -397,11 +397,11 @@ function isGeneratedWorkerTypes(relativePath: string): boolean {
   return GENERATED_WORKER_TYPES_PATHS.has(relativePath);
 }
 
-// scripts/worker-test.mjs and deploy/wss-lb/test/*.test.mjs both, by
+// scripts/worker-test.ts and deploy/wss-lb/test/*.test.mjs both, by
 // inspection, build their entire private/loopback-URL content out of two
 // classes: (a) an explicit "these must be rejected" array of unsafe URLs
 // (127.0.0.1/10.0.0.2/169.254.169.254 -- proof the proxy blocks them, worker-
-// test.mjs) or (b) a local test server bootstrapped on 127.0.0.1 (the
+// test.ts) or (b) a local test server bootstrapped on 127.0.0.1 (the
 // generalized loopback allow above already covers this half; this exemption
 // exists for (a), the non-loopback ranges that allow can't touch). Unlike the
 // generalized loopback allow, this is a HARD-pattern file-level exemption --
@@ -409,7 +409,7 @@ function isGeneratedWorkerTypes(relativePath: string): boolean {
 // every pattern or every test file) rather than a shape/range relaxation,
 // since a non-loopback private IP is still real signal everywhere else.
 const UNSAFE_URL_REJECTION_FIXTURE_PATTERNS = [
-  /^scripts\/worker-test\.mjs$/,
+  /^scripts\/worker-test\.ts$/,
   /^deploy\/wss-lb\/test\/[^/]+\.test\.mjs$/,
 ];
 function isUnsafeUrlRejectionFixture(relativePath: string): boolean {

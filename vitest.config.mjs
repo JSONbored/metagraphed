@@ -38,10 +38,10 @@ export default defineConfig({
     //   - tests/public-safety.test.mjs writes a transient fixture into
     //     dist/metagraph-r2/metagraph/fixtures/ (to exercise
     //     scan-public-safety.ts's mirroredFixturePatterns exemption) and
-    //     deletes it in afterEach. scripts/validate-schemas.mjs treats that same
+    //     deletes it in afterEach. scripts/validate-schemas.ts treats that same
     //     directory as a templated artifact location and schema-validates every
     //     .json file in it, so a concurrently-running consumer of
-    //     validate-schemas.mjs (e.g. tests/validate-error-messages.test.mjs) can
+    //     validate-schemas.ts (e.g. tests/validate-error-messages.test.mjs) can
     //     read the fixture mid-write or after cleanup and throw ENOENT.
     // Serializing these files is the clean, low-risk fix. Per-file fork
     // isolation is preserved; only filesystem-race concurrency is removed.

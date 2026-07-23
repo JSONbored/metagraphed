@@ -1,4 +1,4 @@
-// Memoized OpenAPI component-schema validators for validate-schemas.mjs.
+// Memoized OpenAPI component-schema validators for validate-schemas.ts.
 // Each distinct schema_ref compiles at most once per process (#2093).
 export function createComponentValidatorCompiler(
   ajv,

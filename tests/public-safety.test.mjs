@@ -15,16 +15,16 @@ import {
 // from the soft wallet/key terminology rules (legitimate third-party API docs
 // mentioning "private key"/"seed phrase" in a non-leaking context), and this
 // describe block specifically tests that exemption -- do not relocate it.
-// It is, however, also where validate-schemas.mjs's templated-artifact lookup
+// It is, however, also where validate-schemas.ts's templated-artifact lookup
 // lists real artifact JSON to schema-validate, which is why this file is
 // pinned to serial execution (see package.json's test:ci exclude list): under
 // vitest's default parallel file execution, this test's transient fixture
 // write/cleanup raced validate-error-messages.test.mjs's own (concurrent)
-// validate-schemas.mjs invocation scanning the same directory, an
+// validate-schemas.ts invocation scanning the same directory, an
 // intermittent ENOENT once this test's afterEach deleted the fixture before
 // the other process finished reading it. validate-error-messages.test.mjs
 // itself is now ALSO pinned to serial execution (2026-07-17) -- it mutates a
-// real registry/subnets/*.json file in place for its validate-schemas.mjs
+// real registry/subnets/*.json file in place for its validate-schemas.ts
 // enum-error-message test, which was still racing OTHER parallel full-
 // registry scans (e.g. validate-surface-duplicate-url.test.mjs) even after
 // this fix landed for the public-safety-vs-validate-error-messages pair
@@ -872,7 +872,7 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
   });
 
   test("does NOT broadly exempt loopback outside the two known-safe files/literals", async () => {
-    // deploy/__public_safety_test__fixture__.md is not scripts/worker-test.mjs or a
+    // deploy/__public_safety_test__fixture__.md is not scripts/worker-test.ts or a
     // deploy/wss-lb/test/*.test.mjs file (the two known, verified-safe test
     // fixtures that get a file-level exemption below), so an ordinary loopback
     // URL with an arbitrary port/path here must still be flagged -- proving
@@ -897,7 +897,7 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
   });
 
   test("exempts the two known-safe local-server test files, but not an arbitrary third file", async () => {
-    // scripts/worker-test.mjs and deploy/wss-lb/test/*.test.mjs are, by
+    // scripts/worker-test.ts and deploy/wss-lb/test/*.test.mjs are, by
     // inspection, entirely either (a) a local test server bootstrapped on
     // 127.0.0.1, or (b) an explicit "these must be rejected" unsafe-URL array
     // -- verified content, not a blanket file-type exemption. Scan the real
@@ -905,9 +905,9 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
     // keyed by exact path.
     const output = runScanOutput();
     assert.equal(
-      output.includes("scripts/worker-test.mjs:"),
+      output.includes("scripts/worker-test.ts:"),
       false,
-      `scripts/worker-test.mjs's own unsafe-URL test fixtures must not be flagged; got:\n${output}`,
+      `scripts/worker-test.ts's own unsafe-URL test fixtures must not be flagged; got:\n${output}`,
     );
     assert.equal(
       output.includes("deploy/wss-lb/test/"),
