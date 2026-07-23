@@ -290,7 +290,7 @@ Both `workers/mcp-session-hub.mjs` and the `src/mcp-server.mjs` additions are
 unit-tested at effectively 100% (no `WebSocketPair`-shaped code here, unlike
 `ChainFirehoseHub` -- `state.storage` is a plain async KV API and
 `ReadableStream` is a real Web Streams API under Node/vitest), and
-`scripts/validate-mcp.mjs` runs the full `subscribe -> ingest -> notify ->
+`scripts/validate-mcp.ts` runs the full `subscribe -> ingest -> notify ->
 read` round trip through two real (in-memory-backed) Durable Object
 instances on every CI run.
 

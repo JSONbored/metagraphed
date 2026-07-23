@@ -23,6 +23,12 @@ import {
   preservePreviousGithubMetadata,
 } from "./verification-quality.ts";
 
+// Candidate/probe/GitHub-API data is dynamic, untrusted JSON handled for
+// scoring/reporting only, never trusted for control flow. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
@@ -69,7 +75,7 @@ console.log(
   }),
 );
 
-async function verifyCandidate(candidate) {
+async function verifyCandidate(candidate: Row): Promise<Row> {
   const base = {
     candidate_id: candidate.id,
     kind: candidate.kind,
@@ -102,20 +108,23 @@ async function verifyCandidate(candidate) {
   return verifyHttpSurface(base, candidate);
 }
 
-async function loadPreviousVerificationIndex() {
+async function loadPreviousVerificationIndex(): Promise<Map<unknown, Row>> {
   try {
     const previous = await readJson(
       path.join(repoRoot, "registry/verification/promotions.json"),
     );
     return new Map(
-      (previous.results || []).map((result) => [result.candidate_id, result]),
+      ((previous.results as Row[] | undefined) || []).map((result) => [
+        result.candidate_id,
+        result,
+      ]),
     );
   } catch {
     return new Map();
   }
 }
 
-async function compactVerificationArtifact(artifactValue) {
+async function compactVerificationArtifact(artifactValue: Row): Promise<Row> {
   const observedAt =
     process.env.METAGRAPH_VERIFICATION_OBSERVED_AT ||
     artifactValue.verification_finished_at ||
@@ -142,8 +151,8 @@ async function compactVerificationArtifact(artifactValue) {
   };
 }
 
-function compactVerificationResult(result) {
-  const compact = {
+function compactVerificationResult(result: Row): Row {
+  const compact: Row = {
     candidate_id: result.candidate_id,
     classification: result.classification,
     confidence_score: result.confidence_score,
@@ -166,7 +175,10 @@ function compactVerificationResult(result) {
   return stripNullish(compact);
 }
 
-function compactQualitySignals(signals, kind = null) {
+function compactQualitySignals(
+  signals: Row | null | undefined,
+  kind: unknown = null,
+) {
   if (!signals || typeof signals !== "object") {
     return signals;
   }
@@ -192,7 +204,7 @@ function compactQualitySignals(signals, kind = null) {
   });
 }
 
-function stableErrorCategory(error) {
+function stableErrorCategory(error: unknown): string | null {
   if (!error) {
     return null;
   }
@@ -215,13 +227,16 @@ function stableErrorCategory(error) {
   return "probe-failed";
 }
 
-function stripNullish(value) {
+function stripNullish(value: Row): Row {
   return Object.fromEntries(
     Object.entries(value).filter(([, nested]) => nested !== undefined),
   );
 }
 
-async function verifyGithubRepo(base, repo) {
+async function verifyGithubRepo(
+  base: Row,
+  repo: { owner: string; repo: string },
+): Promise<Row> {
   const apiUrl = `https://api.github.com/repos/${repo.owner}/${repo.repo}`;
   const api = await fetchJson(apiUrl, githubHeaders());
   if (api.ok) {
@@ -262,7 +277,9 @@ async function verifyGithubRepo(base, repo) {
     }
   }
 
-  const classification = classifyHttpProbe(fallback);
+  const classification = classifyHttpProbe(
+    fallback as Row & { status_code: number },
+  );
   return {
     ...base,
     classification,
@@ -286,7 +303,12 @@ async function verifyGithubRepo(base, repo) {
   };
 }
 
-function githubMetadataResult(base, apiUrl, metadata, options = {}) {
+function githubMetadataResult(
+  base: Row,
+  apiUrl: string,
+  metadata: Row,
+  options: Row = {},
+): Row {
   const archived = Boolean(metadata.archived);
   const classification = archived
     ? "unsupported"
@@ -322,14 +344,17 @@ function githubMetadataResult(base, apiUrl, metadata, options = {}) {
   });
 }
 
-async function verifyHttpSurface(base, candidate) {
+async function verifyHttpSurface(base: Row, candidate: Row): Promise<Row> {
   const accept = acceptHeader(candidate.kind);
   let probe = await probeUrl(candidate.url, "HEAD", accept);
   if (!probe.ok || [400, 403, 405].includes(probe.status_code)) {
     probe = await probeUrl(candidate.url, "GET", accept);
   }
 
-  const classification = classifyHttpProbe(probe, candidate);
+  const classification = classifyHttpProbe(
+    probe as Row & { status_code: number },
+    candidate,
+  );
   return {
     ...base,
     classification,
@@ -346,7 +371,12 @@ async function verifyHttpSurface(base, candidate) {
   };
 }
 
-async function probeUrl(url, method, accept, redirectCount = 0) {
+async function probeUrl(
+  url: string,
+  method: string,
+  accept: string,
+  redirectCount = 0,
+): Promise<Row> {
   if (await isUnsafeResolvedUrl(url)) {
     return {
       ok: false,
@@ -443,8 +473,8 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
   } catch (error) {
     return {
       ok: false,
-      error: error.message,
-      error_class: error.name,
+      error: (error as Error).message,
+      error_class: (error as Error).name,
       latency_ms: Math.round(performance.now() - started),
       method_tested: method,
     };
@@ -453,7 +483,7 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
   }
 }
 
-async function fetchJson(url, headers = {}) {
+async function fetchJson(url: string, headers: Row = {}): Promise<Row> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
   try {
@@ -474,18 +504,18 @@ async function fetchJson(url, headers = {}) {
   } catch (error) {
     return {
       ok: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   } finally {
     clearTimeout(timer);
   }
 }
 
-function isPromotable(result) {
+function isPromotable(result: Row): boolean {
   return ["live", "redirected"].includes(result.classification);
 }
 
-function scoreCandidate(candidate, probe) {
+function scoreCandidate(candidate: Row, probe: Row): number {
   let score = 0;
   if (["live", "redirected"].includes(probe.classification)) {
     score += 45;
@@ -535,21 +565,24 @@ function scoreCandidate(candidate, probe) {
   return Math.max(0, Math.min(100, score));
 }
 
-function qualitySignals(candidate, probe) {
+function qualitySignals(candidate: Row, probe: Row): Row {
   return {
     public_safe:
       candidate.public_safe === true &&
       !probe.unsafe_url &&
       !probe.private_redirect_blocked,
     source_tier: candidate.source_tier || null,
-    content_type_matches_kind: !isContentMismatch(probe, candidate),
+    content_type_matches_kind: !isContentMismatch(
+      probe as Row & { status_code: number },
+      candidate,
+    ),
     redirected: Boolean(probe.redirect_target),
     rate_limited: probe.classification === "rate-limited",
     transient_failure: ["transient", "timeout"].includes(probe.classification),
   };
 }
 
-function acceptHeader(kind) {
+function acceptHeader(kind: unknown): string {
   switch (kind) {
     case "openapi":
       return "application/json,text/html;q=0.8,*/*;q=0.5";
@@ -567,9 +600,11 @@ function acceptHeader(kind) {
   }
 }
 
-function parseGithubRepo(value) {
+function parseGithubRepo(
+  value: unknown,
+): { owner: string; repo: string } | null {
   try {
-    const url = new URL(value);
+    const url = new URL(value as string);
     if (url.hostname !== "github.com") {
       return null;
     }
@@ -583,7 +618,7 @@ function parseGithubRepo(value) {
   }
 }
 
-function githubHeaders() {
+function githubHeaders(): Record<string, string> {
   if (!process.env.GITHUB_TOKEN) {
     return {};
   }
@@ -593,7 +628,7 @@ function githubHeaders() {
   };
 }
 
-function normalizeNullableUrl(value) {
+function normalizeNullableUrl(value: unknown): string | null {
   if (typeof value !== "string" || value.trim() === "") {
     return null;
   }
@@ -605,14 +640,18 @@ function normalizeNullableUrl(value) {
   }
 }
 
-async function mapLimit(items, limit, mapper) {
+async function mapLimit<T>(
+  items: T[],
+  limit: number,
+  mapper: (item: T) => Promise<Row>,
+): Promise<Row[]> {
   const queue = [...items];
-  const results = [];
+  const results: Row[] = [];
   const workers = Array.from(
     { length: Math.min(limit, queue.length) },
     async () => {
       while (queue.length > 0) {
-        const item = queue.shift();
+        const item = queue.shift() as T;
         results.push(await mapper(item));
       }
     },
@@ -624,10 +663,10 @@ async function mapLimit(items, limit, mapper) {
   );
 }
 
-function countBy(items, key) {
+function countBy(items: Row[], key: string): Record<string, number> {
   return Object.fromEntries(
     Object.entries(
-      items.reduce((accumulator, item) => {
+      items.reduce<Record<string, number>>((accumulator, item) => {
         accumulator[item[key]] = (accumulator[item[key]] || 0) + 1;
         return accumulator;
       }, {}),

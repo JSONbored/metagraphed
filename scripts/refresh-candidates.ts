@@ -30,7 +30,7 @@ const env = {
 
 const steps: [string, string[]][] = [
   ["discover-candidates", ["scripts/discover-candidates.ts", "--write"]],
-  ["verify-candidates", ["scripts/verify-candidates.mjs", "--write"]],
+  ["verify-candidates", ["scripts/verify-candidates.ts", "--write"]],
   // The provenance review queue is a pure transform of the candidates +
   // verification just refreshed above; regenerate it in lockstep so the publish's
   // `npm run validate` (which drift-checks the committed queue) sees a consistent

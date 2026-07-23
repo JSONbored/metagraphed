@@ -7,7 +7,7 @@
 // `checks.length === API_ROUTES.length` invariant.
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.mjs";
 import {
   MCP_SERVER_VERSION,
@@ -32,6 +32,12 @@ import {
   latestArtifactDate,
 } from "./lib.ts";
 
+// MCP tool call results are dynamic JSON-RPC payloads, read only for
+// assertion purposes -- never trusted for control flow. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const env = createLocalArtifactEnv();
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -45,10 +51,16 @@ const OUTPUT_VALIDATORS = new Map(
     .map((def) => [def.name, ajv.compile(def.outputSchema)]),
 );
 
+interface McpCallOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  envOverride?: Row;
+}
+
 async function mcp(
-  payload,
-  { method = "POST", headers = {}, envOverride = env } = {},
-) {
+  payload: unknown,
+  { method = "POST", headers = {}, envOverride = env }: McpCallOptions = {},
+): Promise<Row> {
   const response = await mcpRaw(payload, { method, headers, envOverride });
   const text = await response.text();
   return {
@@ -62,8 +74,8 @@ async function mcp(
 // draining it until MCP_SESSION_MAX_STREAM_DURATION_MS) and DELETE (a bare
 // 204/405, no body to parse).
 async function mcpRaw(
-  payload,
-  { method = "POST", headers = {}, envOverride = env } = {},
+  payload: unknown,
+  { method = "POST", headers = {}, envOverride = env }: McpCallOptions = {},
 ) {
   const request = new Request(MCP_URL, {
     method,
@@ -73,7 +85,7 @@ async function mcpRaw(
   return handleRequest(request, envOverride, {});
 }
 
-async function getJson(path) {
+async function getJson(path: string): Promise<Row> {
   const request = new Request(`https://api.metagraph.sh${path}`, {
     method: "GET",
   });
@@ -82,7 +94,7 @@ async function getJson(path) {
   return { status: response.status, body: text ? JSON.parse(text) : null };
 }
 
-async function call(name, args) {
+async function call(name: string, args: unknown): Promise<Row> {
   const res = await mcp({
     jsonrpc: "2.0",
     id: 1,
@@ -104,7 +116,7 @@ async function call(name, args) {
   return result;
 }
 
-async function callOk(name, args) {
+async function callOk(name: string, args: unknown): Promise<Row> {
   const result = await call(name, args);
   assert.equal(
     result.isError,
@@ -137,16 +149,16 @@ async function callOk(name, args) {
 // hand-rolled simulation of it.
 
 function inMemoryDoStorage() {
-  const data = new Map();
+  const data = new Map<string, unknown>();
   return {
-    async get(keys) {
-      const result = new Map();
+    async get(keys: string[]) {
+      const result = new Map<string, unknown>();
       for (const key of keys) {
         if (data.has(key)) result.set(key, data.get(key));
       }
       return result;
     },
-    async put(entries) {
+    async put(entries: Record<string, unknown>) {
       for (const [key, value] of Object.entries(entries)) data.set(key, value);
     },
     async setAlarm() {
@@ -155,18 +167,25 @@ function inMemoryDoStorage() {
   };
 }
 
+interface DoStub {
+  fetch(request: Request): Promise<Response> | Response;
+}
+
 // A minimal fake DurableObjectNamespace: the SAME id always resolves to the
 // SAME instance (required for GET /stream and POST /subscribe on one
 // session to reach the same McpSessionHub), matching real
 // idFromName()/get() semantics.
-function fakeDoNamespace(makeInstance) {
-  const instances = new Map();
+function fakeDoNamespace(makeInstance: (id: string) => DoStub) {
+  const instances = new Map<string, DoStub>();
   return {
-    idFromName: (name) => name,
-    get(id) {
+    idFromName: (name: string) => name,
+    get(id: string) {
       if (!instances.has(id)) instances.set(id, makeInstance(id));
-      const instance = instances.get(id);
-      return { fetch: (url, init) => instance.fetch(new Request(url, init)) };
+      const instance = instances.get(id) as DoStub;
+      return {
+        fetch: (url: string | URL, init?: RequestInit) =>
+          instance.fetch(new Request(url, init)),
+      };
     },
   };
 }
@@ -176,28 +195,28 @@ function fakeDoNamespace(makeInstance) {
 // McpSessionHub about a new event) -- safe because fakeDoNamespace only
 // calls its factory lazily, by which point all bindings below are fully
 // initialized.
-const mcpSessionHubNS = fakeDoNamespace(
+const mcpSessionHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new McpSessionHub(
-      { storage: inMemoryDoStorage() },
+      { storage: inMemoryDoStorage() } as unknown as DurableObjectState,
       {
         CHAIN_FIREHOSE_HUB: chainFirehoseHubNS,
         SUBNET_STATUS_HUB: subnetStatusHubNS,
-      },
+      } as unknown as Env,
     ),
 );
-const chainFirehoseHubNS = fakeDoNamespace(
+const chainFirehoseHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new ChainFirehoseHub(
-      { getWebSockets: () => [] },
-      { MCP_SESSION_HUB: mcpSessionHubNS },
+      { getWebSockets: () => [] } as unknown as DurableObjectState,
+      { MCP_SESSION_HUB: mcpSessionHubNS } as unknown as Env,
     ),
 );
-const subnetStatusHubNS = fakeDoNamespace(
+const subnetStatusHubNS: ReturnType<typeof fakeDoNamespace> = fakeDoNamespace(
   () =>
     new SubnetStatusHub(
-      { storage: inMemoryDoStorage() },
-      { MCP_SESSION_HUB: mcpSessionHubNS },
+      { storage: inMemoryDoStorage() } as unknown as DurableObjectState,
+      { MCP_SESSION_HUB: mcpSessionHubNS } as unknown as Env,
     ),
 );
 const lifecycleEnv = createLocalArtifactEnv({
@@ -249,7 +268,7 @@ assert.ok(
 );
 
 const listed = await mcp({ jsonrpc: "2.0", id: 2, method: "tools/list" });
-const tools = listed.body.result.tools;
+const tools = listed.body.result.tools as Row[];
 assert.equal(
   tools.length,
   MCP_TOOLS.length,
@@ -292,7 +311,7 @@ assert.equal(
   MCP_TOOLS.length,
   "openai.json must expose every MCP tool",
 );
-for (const entry of openaiSpec.body) {
+for (const entry of openaiSpec.body as Row[]) {
   assert.equal(entry.type, "function", "openai entry must be a function tool");
   assert.ok(
     toolNames.has(entry.function?.name),
@@ -317,7 +336,7 @@ assert.deepEqual(
   buildAnthropicToolSpecs(listToolDefinitions()),
   "served anthropic.json must equal the canonical Anthropic projection",
 );
-for (const entry of anthropicSpec.body) {
+for (const entry of anthropicSpec.body as Row[]) {
   assert.ok(
     toolNames.has(entry.name),
     `anthropic entry references unknown tool ${entry.name}`,
@@ -1270,10 +1289,10 @@ assert.equal(savedRegistrations.data.window, "7d");
 const subnetPrecompileAddress = "0x0000000000000000000000000000000000000803";
 const getWeightsVersionKeyFn = EVM_PRECOMPILE_BY_ADDRESS.get(
   subnetPrecompileAddress,
-).functions.find((fn) => fn.name === "getWeightsVersionKey");
+)!.functions.find((fn) => fn.name === "getWeightsVersionKey");
 const evmDecoded = await callOk("decode_evm_call", {
   to: subnetPrecompileAddress,
-  input: `${getWeightsVersionKeyFn.selector}${"7".padStart(64, "0")}`,
+  input: `${getWeightsVersionKeyFn!.selector}${"7".padStart(64, "0")}`,
 });
 assert.equal(evmDecoded.precompile, "Subnet");
 assert.equal(evmDecoded.function, "getWeightsVersionKey");
@@ -1538,7 +1557,7 @@ const statusNotify = await statusHubStub.fetch(
   },
 );
 assert.equal(statusNotify.status, 200);
-const statusNotifyBody = await statusNotify.json();
+const statusNotifyBody = (await statusNotify.json()) as Row;
 assert.equal(
   statusNotifyBody.delivered,
   1,

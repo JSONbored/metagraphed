@@ -13,7 +13,7 @@ name: Sync MCP server version
 #
 # Contributors should NEVER touch MCP_SERVER_VERSION or server.json's
 # version themselves -- see .claude/skills/metagraphed/reference.md.
-# scripts/validate-mcp.mjs's own check only verifies INTERNAL consistency
+# scripts/validate-mcp.ts's own check only verifies INTERNAL consistency
 # (MCP_SERVER_VERSION == serverInfo.version == server.json's version), which
 # stays true regardless of what number it currently holds, so a
 # contributor's PR that adds a tool without touching either file still

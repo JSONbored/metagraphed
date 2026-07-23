@@ -42,7 +42,7 @@ door; the server-card remains the authoritative, always-current description.
 
 The registry **rejects a re-publish of an existing `version`**. `server.json`'s
 `version` must equal the live `MCP_SERVER_VERSION` / `serverInfo.version` —
-`scripts/validate-mcp.mjs` enforces this in CI, so the three can't drift apart.
+`scripts/validate-mcp.ts` enforces this in CI, so the three can't drift apart.
 The [`sync-mcp-version`](../.github/workflows/sync-mcp-version.yml) workflow
 keeps `server.json` bumped in lockstep with `MCP_SERVER_VERSION` automatically
 whenever the tool registry changes on main, so by the time you dispatch this
