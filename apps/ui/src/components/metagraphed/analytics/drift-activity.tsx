@@ -78,7 +78,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
     <Panel as="div" flush className="overflow-hidden">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-paper/40 px-4 py-2.5">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        <div className="flex items-center gap-2 mg-type-micro text-ink-muted">
           <span
             className="inline-flex size-1.5 rounded-full bg-health-warn animate-pulse"
             aria-hidden
@@ -104,7 +104,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
                 aria-selected={on}
                 onClick={() => setScope(v)}
                 className={classNames(
-                  "rounded px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                  "rounded px-2 py-1 mg-type-micro transition-colors",
                   on ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong",
                 )}
               >
@@ -137,7 +137,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
             <button
               type="button"
               onClick={() => setShowAllDrift((v) => !v)}
-              className="flex w-full items-center justify-center gap-1 border-t border-border/60 px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:bg-surface hover:text-ink-strong"
+              className="flex w-full items-center justify-center gap-1 border-t border-border/60 px-4 py-2 mg-type-micro text-ink-muted hover:bg-surface hover:text-ink-strong"
             >
               {showAllDrift ? "Show recent only" : `Show all ${drifting.length} drifting`}
             </button>
@@ -148,7 +148,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
       {/* Stable list (toggled) */}
       {visibleStable.length > 0 ? (
         <div className="border-t border-border bg-paper/30">
-          <div className="px-4 pt-3 pb-1.5 font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
+          <div className="px-4 pt-3 pb-1.5 mg-type-micro text-ink-muted">
             stable · {visibleStable.length}
           </div>
           <ul className="divide-y divide-border/40">
@@ -190,12 +190,12 @@ function DriftRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => void
               {label}
             </span>
             {schema.netuid != null ? (
-              <span className="shrink-0 rounded-full border border-border bg-paper px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
+              <span className="shrink-0 rounded-full border border-border bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted">
                 SN{schema.netuid}
               </span>
             ) : null}
             {schema.drift_status ? (
-              <span className="shrink-0 rounded-full border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-widest text-health-warn">
+              <span className="shrink-0 rounded-full border border-health-warn/30 bg-health-warn/10 px-1.5 py-0.5 mg-type-micro text-health-warn">
                 {schema.drift_status}
               </span>
             ) : null}
@@ -238,9 +238,7 @@ function StableRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => voi
           {label}
         </span>
         {schema.netuid != null ? (
-          <span className="shrink-0 font-mono text-[9.5px] uppercase tracking-widest text-ink-muted/70">
-            SN{schema.netuid}
-          </span>
+          <span className="shrink-0 mg-type-micro text-ink-muted/70">SN{schema.netuid}</span>
         ) : null}
         <ChevronRight className="ml-auto size-3.5 text-ink-muted opacity-0 transition-opacity group-hover:opacity-60" />
       </button>

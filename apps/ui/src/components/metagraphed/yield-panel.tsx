@@ -163,13 +163,11 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                   )}
                 </div>
                 {n.role === "validator" ? (
-                  <span className="shrink-0 inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+                  <span className="shrink-0 inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
                     Validator
                   </span>
                 ) : (
-                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-muted">
-                    Miner
-                  </span>
+                  <span className="shrink-0 mg-type-micro text-ink-muted">Miner</span>
                 )}
               </div>
               <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[11px] tabular-nums">
@@ -185,7 +183,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
         </div>
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+            <thead className="bg-surface/50 mg-type-micro text-ink-muted">
               <tr>
                 <th className="px-3 py-2.5 text-left">UID</th>
                 <th className="px-3 py-2.5 text-left">Hotkey</th>
@@ -221,13 +219,11 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                   </td>
                   <td className="px-3 py-2.5">
                     {n.role === "validator" ? (
-                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 text-[9.5px] font-mono uppercase tracking-wider text-accent-text">
+                      <span className="inline-flex items-center rounded border border-accent/40 bg-accent-surface px-1.5 py-0.5 mg-type-micro text-accent-text">
                         Validator
                       </span>
                     ) : (
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-ink-muted">
-                        Miner
-                      </span>
+                      <span className="mg-type-micro text-ink-muted">Miner</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-strong">
@@ -247,7 +243,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
             </tbody>
           </table>
         </div>
-        <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+        <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 mg-type-micro text-ink-muted">
           top {ranked.length} of {neurons.length} by yield · subnet {netuid}
         </div>
       </Panel>
@@ -300,7 +296,7 @@ function YieldDriftCard({ netuid }: { netuid: number }) {
           aria-selected={w === win}
           onClick={() => setWin(w)}
           className={classNames(
-            "px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider rounded transition-colors",
+            "px-2.5 py-1 mg-type-label uppercase rounded transition-colors",
             w === win ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
           )}
         >
@@ -348,7 +344,7 @@ function DriftRow({ label, series, color }: { label: string; series: number[]; c
   const last = series[series.length - 1];
   return (
     <div className="grid grid-cols-1 gap-1 min-[400px]:grid-cols-[minmax(0,7rem)_1fr_auto] min-[400px]:items-center min-[400px]:gap-3">
-      <span className="font-mono text-[11px] uppercase tracking-wider text-ink-muted">{label}</span>
+      <span className="mg-type-label uppercase text-ink-muted">{label}</span>
       <div className="min-w-0">
         <Sparkline
           values={series}

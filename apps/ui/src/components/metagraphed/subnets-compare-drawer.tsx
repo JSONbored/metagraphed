@@ -30,7 +30,7 @@ export function SubnetsCompareDrawer() {
         >
           {/* Dock */}
           <div className="flex flex-wrap items-center gap-2 px-3 py-2">
-            <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            <span className="inline-flex items-center gap-1.5 mg-type-micro text-ink-muted">
               <BarChart3 className="size-3 text-accent" />
               Compare
               <span className="text-ink-strong tabular-nums">
@@ -62,7 +62,7 @@ export function SubnetsCompareDrawer() {
                 onClick={() => setExpanded((v) => !v)}
                 disabled={selected.length < 2}
                 className={classNames(
-                  "inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-paper px-3 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                  "inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-paper px-3 mg-type-micro transition-colors",
                   selected.length < 2
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:border-accent/60 hover:text-accent text-ink-strong",
@@ -73,7 +73,7 @@ export function SubnetsCompareDrawer() {
               <button
                 type="button"
                 onClick={clear}
-                className="inline-flex h-7 items-center gap-1 rounded-full border border-border bg-paper px-2.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong transition-colors"
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-border bg-paper px-2.5 mg-type-micro text-ink-muted hover:text-ink-strong transition-colors"
               >
                 Clear
               </button>
@@ -217,7 +217,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
         <button
           type="button"
           onClick={() => refetch()}
-          className="mt-2 inline-flex h-7 items-center rounded-full border border-border bg-paper px-3 font-mono text-[10px] uppercase tracking-widest text-ink-strong hover:border-accent/60 hover:text-accent transition-colors"
+          className="mt-2 inline-flex h-7 items-center rounded-full border border-border bg-paper px-3 mg-type-micro text-ink-strong hover:border-accent/60 hover:text-accent transition-colors"
         >
           Retry
         </button>
@@ -230,13 +230,13 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
       <table className="min-w-full text-[12px]">
         <thead className="sticky top-0 bg-card/95 backdrop-blur z-[1]">
           <tr>
-            <th className="sticky left-0 z-[2] w-40 bg-card/95 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-muted backdrop-blur">
+            <th className="sticky left-0 z-[2] w-40 bg-card/95 px-3 py-2 text-left mg-type-micro text-ink-muted backdrop-blur">
               Metric
             </th>
             {netuids.map((n) => (
               <th
                 key={n}
-                className="min-w-[6rem] whitespace-nowrap px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-ink-strong"
+                className="min-w-[6rem] whitespace-nowrap px-3 py-2 text-left mg-type-micro text-ink-strong"
               >
                 SN{n}
               </th>
@@ -246,7 +246,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.label}>
-              <td className="sticky left-0 z-[1] bg-card px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              <td className="sticky left-0 z-[1] bg-card px-3 py-2 mg-type-micro text-ink-muted">
                 {row.label}
               </td>
               {netuids.map((n) => (

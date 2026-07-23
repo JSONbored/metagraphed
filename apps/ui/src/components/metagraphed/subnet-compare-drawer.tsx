@@ -117,7 +117,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
                   setPeer(null);
                   setDraft("");
                 }}
-                className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+                className="ml-auto inline-flex items-center gap-1 mg-type-micro text-ink-muted hover:text-ink-strong"
               >
                 <X className="size-3" /> clear
               </button>
@@ -142,7 +142,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
           onClick={() => setPeer(null)}
           title="Clear comparison"
           aria-label={`Clear comparison with SN${String(peer).padStart(3, "0")}`}
-          className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-primary-soft px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-accent hover:border-accent/60 mg-focus-ring"
+          className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-primary-soft px-2 py-1 mg-type-micro text-accent hover:border-accent/60 mg-focus-ring"
         >
           <X className="size-3" /> clear
         </button>
@@ -199,7 +199,7 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
       </header>
 
       {loading ? (
-        <div className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        <div className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center mg-type-micro text-ink-muted">
           Loading…
         </div>
       ) : null}
@@ -242,7 +242,7 @@ function CompareBody({ base, peer }: { base: number; peer: number }) {
       />
 
       <Panel flush className="overflow-hidden">
-        <div className="border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+        <div className="border-b border-border px-3 py-2 mg-type-micro text-ink-muted">
           Top providers
         </div>
         <div className="grid grid-cols-2 divide-x divide-border">
@@ -258,9 +258,7 @@ function Header({ label, name, netuid }: { label: string; name?: string; netuid:
   return (
     <Panel as="div" flush>
       <div className="px-2.5 py-2">
-        <div className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted">
-          {label}
-        </div>
+        <div className="mg-type-micro text-ink-muted">{label}</div>
         <div className="mt-0.5 truncate font-display text-sm font-semibold text-ink-strong">
           {name ?? `Subnet ${netuid}`}
         </div>
@@ -292,7 +290,7 @@ function DiffRow({
         highlight ? "border-accent/60" : "border-border",
       )}
     >
-      <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{title}</div>
+      <div className="mg-type-micro text-ink-muted">{title}</div>
       <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
         <span className="font-display text-sm font-semibold tabular-nums text-ink-strong">
           {baseValue}
@@ -332,7 +330,7 @@ function ProviderColumn({
             <span className="font-mono text-[10px] tabular-nums text-ink-muted">
               {r.count}
               {unique ? (
-                <span className="ml-1 rounded border border-accent/40 px-1 text-[9px] uppercase tracking-widest text-accent">
+                <span className="ml-1 rounded border border-accent/40 px-1 mg-type-micro text-accent">
                   only
                 </span>
               ) : null}
