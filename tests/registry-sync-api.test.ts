@@ -1,0 +1,604 @@
+// Unit tests for the registry-sync Worker (workers/registry-sync-api.mjs). postgres.js
+// is mocked so the auth/validation/upsert routing is tested with no real DB — the live
+// Hyperdrive path is validated separately.
+import { beforeEach, expect, test, vi } from "vitest";
+import { jsonBody } from "./row-type.ts";
+import type { AnyFn, Row } from "./row-type.ts";
+
+const sqlCalls = vi.hoisted(() => [] as Row[]);
+const surfaceResult = vi.hoisted(() => ({ current: [{ inserted: true }] }));
+const deleteResult = vi.hoisted(() => ({
+  surfaces: [] as Row[],
+  subnets: [] as Row[],
+}));
+const failure = vi.hoisted(() => ({ error: null as Error | null }));
+
+vi.mock("postgres", () => ({
+  default: () => {
+    const sql = (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const text = Array.from(strings).join("?");
+      sqlCalls.push({ text, values });
+      if (failure.error && /INSERT INTO providers/.test(text)) {
+        return Promise.reject(failure.error);
+      }
+      if (/INSERT INTO surfaces/.test(text)) {
+        return Promise.resolve(surfaceResult.current);
+      }
+      if (/DELETE FROM surfaces/.test(text)) {
+        return Promise.resolve(deleteResult.surfaces);
+      }
+      if (/DELETE FROM subnets/.test(text)) {
+        return Promise.resolve(deleteResult.subnets);
+      }
+      return Promise.resolve([]);
+    };
+    sql.json = (value: unknown) => value;
+    sql.end = () => Promise.resolve();
+    // sql.unsafe(text, params) -- the surfaces-prune's (kind, url) VALUES
+    // join (a bound JS array broke under this Worker's real Hyperdrive
+    // fetch_types:false setting, see the prune's own comment). Recorded into
+    // the SAME sqlCalls list so existing assertions work unchanged
+    // regardless of which call form produced them.
+    sql.unsafe = (text: string, params: unknown[] = []) => {
+      sqlCalls.push({ text, values: params });
+      if (/DELETE FROM surfaces/.test(text)) {
+        return Promise.resolve(deleteResult.surfaces);
+      }
+      return Promise.resolve([]);
+    };
+    // sql.begin(cb) reserves a connection for cb in real postgres.js; the
+    // mock just invokes cb with this same sql function so every existing
+    // tagged-template assertion (sqlCalls) still sees the identical call
+    // stream, and resolves to (or rejects with) whatever cb does.
+    sql.begin = (cb: AnyFn) => cb(sql);
+    return sql;
+  },
+}));
+
+const { default: worker } = await import("../workers/registry-sync-api.ts");
+
+const SECRET = "test-registry-sync-secret";
+
+function post(
+  body: unknown,
+  {
+    secret,
+    method = "POST",
+    raw,
+  }: { secret?: string; method?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (secret) headers["x-registry-sync-token"] = secret;
+  const init: RequestInit = { method, headers };
+  if (method !== "GET" && method !== "HEAD") {
+    init.body = raw !== undefined ? raw : JSON.stringify(body ?? {});
+  }
+  return new Request("https://registry-sync.internal/", init);
+}
+
+function baseEnv(overrides: Record<string, unknown> = {}): Env {
+  return {
+    REGISTRY_SYNC_SECRET: SECRET,
+    HYPERDRIVE: { connectionString: "postgres://mock" },
+    ...overrides,
+  } as unknown as Env;
+}
+
+const provider = () => ({
+  id: "acme",
+  overlay: { id: "acme", name: "Acme" },
+  source_commit: "abc123",
+});
+
+const subnet = () => ({
+  netuid: 8,
+  slug: "taoshi",
+  name: "Taoshi",
+  source: "community",
+  overlay: { netuid: 8, slug: "taoshi", name: "Taoshi" },
+  source_commit: "abc123",
+});
+
+const surface = () => ({
+  subnet_netuid: 8,
+  provider_id: "acme",
+  surface_key: "sn-8-example",
+  kind: "docs",
+  url: "https://example.com/docs",
+  overlay: { kind: "docs", url: "https://example.com/docs" },
+  source_commit: "abc123",
+});
+
+beforeEach(() => {
+  sqlCalls.length = 0;
+  surfaceResult.current = [{ inserted: true }];
+  deleteResult.surfaces = [];
+  deleteResult.subnets = [];
+  failure.error = null;
+});
+
+test("rejects non-POST (405)", async () => {
+  const res = await worker.fetch(post(null, { method: "GET" }), baseEnv());
+  expect(res.status).toBe(405);
+});
+
+test("is disabled (503) when REGISTRY_SYNC_SECRET is not configured", async () => {
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rejects a missing or wrong token (401)", async () => {
+  const env = baseEnv();
+  const wrong = await worker.fetch(
+    post({ providers: [provider()] }, { secret: "wrong" }),
+    env,
+  );
+  expect(wrong.status).toBe(401);
+  const missing = await worker.fetch(post({ providers: [provider()] }), env);
+  expect(missing.status).toBe(401);
+});
+
+// #5548: gated by REGISTRY_SYNC_RATE_LIMITER (a no-op when the binding is
+// absent). Mirrors the webhook-subscription/alert-trigger-create suites:
+// within-limit success, over-limit 429 with the standard header family, and
+// unbound-binding no-op (already covered implicitly by every test above,
+// which uses baseEnv() with no limiter bound).
+const allowLimiter = () => ({ limit: vi.fn(async () => ({ success: true })) });
+const rejectLimiter = () => ({
+  limit: vi.fn(async () => ({ success: false })),
+});
+
+test("rate limiting: 429 with the rate-limit header family when the limiter rejects", async () => {
+  const limiter = rejectLimiter();
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    baseEnv({ REGISTRY_SYNC_RATE_LIMITER: limiter }),
+  );
+  expect(res.status).toBe(429);
+  expect((await jsonBody(res)).error).toMatch(
+    /too many registry sync requests/,
+  );
+  expect(res.headers.get("retry-after")).toBe("60");
+  expect(res.headers.get("x-ratelimit-limit")).toBe("30");
+  expect(res.headers.get("x-ratelimit-policy")).toBe("30;w=60");
+  expect(res.headers.get("x-ratelimit-remaining")).toBe("0");
+  expect(limiter.limit.mock.calls.length).toBe(1);
+  expect(sqlCalls.length).toBe(0);
+});
+
+test("rate limiting: proceeds normally when the limiter allows the request", async () => {
+  const limiter = allowLimiter();
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    baseEnv({ REGISTRY_SYNC_RATE_LIMITER: limiter }),
+  );
+  expect(res.status).toBe(200);
+  expect(limiter.limit.mock.calls.length).toBe(1);
+});
+
+test("rate limiting: rejects an invalid token before consulting the limiter", async () => {
+  const limiter = rejectLimiter();
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: "wrong" }),
+    baseEnv({ REGISTRY_SYNC_RATE_LIMITER: limiter }),
+  );
+  expect(res.status).toBe(401);
+  expect(limiter.limit.mock.calls.length).toBe(0);
+});
+
+test("returns 503 when the HYPERDRIVE binding is unavailable", async () => {
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    { REGISTRY_SYNC_SECRET: SECRET } as unknown as Env,
+  );
+  expect(res.status).toBe(503);
+});
+
+test("rejects a body over the byte cap (413)", async () => {
+  const res = await worker.fetch(
+    post(null, { secret: SECRET, raw: "x".repeat(5_000_000) }),
+    baseEnv(),
+  );
+  expect(res.status).toBe(413);
+});
+
+test("rejects malformed JSON (400)", async () => {
+  const res = await worker.fetch(
+    post(null, { secret: SECRET, raw: "{not json" }),
+    baseEnv(),
+  );
+  expect(res.status).toBe(400);
+});
+
+test("rejects more than the rows-per-kind cap (413)", async () => {
+  const many = Array.from({ length: 5001 }, (_, i) => ({
+    ...subnet(),
+    netuid: i,
+  }));
+  const res = await worker.fetch(
+    post({ subnets: many }, { secret: SECRET }),
+    baseEnv(),
+  );
+  expect(res.status).toBe(413);
+});
+
+test("rejects a non-object row (400)", async () => {
+  const res = await worker.fetch(
+    post({ providers: ["not-an-object"] }, { secret: SECRET }),
+    baseEnv(),
+  );
+  expect(res.status).toBe(400);
+});
+
+test("rejects an empty payload with no rows of any kind (400)", async () => {
+  const res = await worker.fetch(post({}, { secret: SECRET }), baseEnv());
+  expect(res.status).toBe(400);
+});
+
+test("upserts providers + subnets + surfaces and reports written counts", async () => {
+  const res = await worker.fetch(
+    post(
+      { providers: [provider()], subnets: [subnet()], surfaces: [surface()] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({
+    ok: true,
+    providers_written: 1,
+    subnets_written: 1,
+    surfaces_written: 1,
+  });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/INSERT INTO providers/);
+  expect(text).toMatch(/INSERT INTO subnets/);
+  expect(text).toMatch(/INSERT INTO surfaces/);
+  expect(text).toMatch(/INSERT INTO surface_history/);
+});
+
+test("skips rows missing required fields without failing the request", async () => {
+  const res = await worker.fetch(
+    post(
+      {
+        providers: [{ id: "acme" }], // missing overlay/source_commit
+        subnets: [{ netuid: 8 }], // missing slug/name/overlay/source_commit
+        surfaces: [{ subnet_netuid: 8 }], // missing surface_key/kind/url/overlay/source_commit
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body).toMatchObject({
+    providers_written: 0,
+    subnets_written: 0,
+    surfaces_written: 0,
+  });
+});
+
+test("defaults subnet source and surface provider_id when omitted", async () => {
+  const { source: _source, ...subnetWithoutSource } = subnet();
+  const { provider_id: _providerId, ...surfaceWithoutProvider } = surface();
+  const res = await worker.fetch(
+    post(
+      { subnets: [subnetWithoutSource], surfaces: [surfaceWithoutProvider] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+  expect(res.status).toBe(200);
+  const subnetCall = sqlCalls.find((c) => /INSERT INTO subnets/.test(c.text))!;
+  expect(subnetCall.values).toContain("community");
+  const surfaceCall = sqlCalls.find((c) =>
+    /INSERT INTO surfaces/.test(c.text),
+  )!;
+  expect(surfaceCall.values).toContain(null);
+});
+
+test("does not log surface_history when the surface upsert is a no-op", async () => {
+  // WHERE surfaces.overlay IS DISTINCT FROM EXCLUDED.overlay yields zero
+  // RETURNING rows when the overlay is unchanged -- no history entry, no
+  // surfaces_written increment.
+  surfaceResult.current = [];
+  const res = await worker.fetch(
+    post({ surfaces: [surface()] }, { secret: SECRET }),
+    baseEnv(),
+  );
+  expect(res.status).toBe(200);
+  const body = await jsonBody(res);
+  expect(body.surfaces_written).toBe(0);
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).not.toMatch(/INSERT INTO surface_history/);
+});
+
+test("records an update action in surface_history when the row already existed", async () => {
+  surfaceResult.current = [{ inserted: false }];
+  await worker.fetch(
+    post({ surfaces: [surface()] }, { secret: SECRET }),
+    baseEnv(),
+  );
+  // The action is bound as a value, not embedded in the SQL text -- assert it
+  // was passed to the surface_history insert as "update", not "insert".
+  const historyCall = sqlCalls.find((c) =>
+    /INSERT INTO surface_history/.test(c.text),
+  )!;
+  expect(historyCall.values).toContain("update");
+});
+
+test("prunes surfaces absent from the current subnet payload and records delete history", async () => {
+  deleteResult.surfaces = [
+    {
+      id: "00000000-0000-0000-0000-000000000001",
+      subnet_netuid: 8,
+      overlay: { kind: "docs", url: "https://stale.example/docs" },
+    },
+  ];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [
+              { kind: "docs", url: "https://example.com/docs" },
+            ],
+            source_commit: "def456",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ surfaces_deleted: 1 });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/DELETE FROM surfaces/);
+  const historyCall = sqlCalls.find((c) =>
+    /INSERT INTO surface_history/.test(c.text),
+  )!;
+  expect(historyCall.values).toContain("delete");
+});
+
+test("REGRESSION: prune_surfaces with authority_scope 'community' passes a true scope flag, bounding the DELETE to community-authority rows", async () => {
+  deleteResult.surfaces = [];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [
+              { kind: "docs", url: "https://example.com/docs" },
+            ],
+            source_commit: "def456",
+            authority_scope: "community",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text))!;
+  expect(deleteCall.text).toMatch(/authority = 'community'/);
+  // The scope flag is bound as a real parameter (true), not spliced into the query text.
+  expect(deleteCall.values).toContain(true);
+});
+
+test("does not scope by authority when authority_scope is absent (the scheduled full-resync path)", async () => {
+  deleteResult.surfaces = [];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [
+              { kind: "docs", url: "https://example.com/docs" },
+            ],
+            source_commit: "def456",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text))!;
+  // The scope flag is still present in the query shape (always-composed OR clause),
+  // but bound to false so it never actually filters by authority.
+  expect(deleteCall.values).toContain(false);
+});
+
+test("REGRESSION: prunes with a non-empty current_surfaces list via scalar positional binds, not a bound array", async () => {
+  // Hyperdrive's fetch_types:false breaks postgres.js's ANY($1)/array
+  // serialization (confirmed live 2026-07-10, #4771) -- a bound JS array
+  // parameter here sends Postgres a malformed literal with no braces and
+  // every write that pruned against a non-empty current_surfaces list
+  // 502'd. This mock can't reproduce the real Postgres-side failure, but it
+  // pins the query shape that avoids it: every bound value must be a
+  // scalar (never an array), and the (kind, url) pairs must appear as
+  // explicit $N::text placeholders in the query text instead.
+  deleteResult.surfaces = [];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          {
+            subnet_netuid: 8,
+            current_surfaces: [
+              { kind: "docs", url: "https://example.com/docs" },
+              { kind: "website", url: "https://example.com" },
+            ],
+            source_commit: "def456",
+          },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text))!;
+  for (const value of deleteCall.values) {
+    expect(Array.isArray(value)).toBe(false);
+  }
+  expect(deleteCall.values).toEqual([
+    false,
+    8,
+    "docs",
+    "https://example.com/docs",
+    "website",
+    "https://example.com",
+  ]);
+  expect(deleteCall.text).toMatch(/\$3::text, \$4::text/);
+  expect(deleteCall.text).toMatch(/\$5::text, \$6::text/);
+  expect(deleteCall.text).not.toMatch(/ANY\(/);
+});
+
+test("skips a prune_surfaces entry missing subnet_netuid/current_surfaces/source_commit instead of failing the request", async () => {
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          { subnet_netuid: 8 }, // missing current_surfaces and source_commit
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ surfaces_deleted: 0 });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).not.toMatch(/DELETE FROM surfaces/);
+});
+
+test("deletes every surface for a subnet when current_surfaces has no valid kind/url entries", async () => {
+  deleteResult.surfaces = [
+    {
+      id: "00000000-0000-0000-0000-000000000003",
+      subnet_netuid: 8,
+      overlay: { kind: "docs", url: "https://stale.example/docs" },
+    },
+  ];
+
+  const res = await worker.fetch(
+    post(
+      {
+        prune_surfaces: [
+          { subnet_netuid: 8, current_surfaces: [], source_commit: "def456" },
+        ],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ surfaces_deleted: 1 });
+  const deleteCall = sqlCalls.find((c) => /DELETE FROM surfaces/.test(c.text))!;
+  expect(deleteCall.text).not.toMatch(/ANY/);
+});
+
+test("skips a delete_subnets entry missing netuid/source_commit instead of failing the request", async () => {
+  const res = await worker.fetch(
+    post(
+      { delete_subnets: [{ netuid: null, source_commit: "def456" }] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({
+    surfaces_deleted: 0,
+    subnets_deleted: 0,
+  });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).not.toMatch(/DELETE FROM subnets/);
+});
+
+test("deletes a removed subnet after recording delete history for its surfaces", async () => {
+  deleteResult.surfaces = [
+    {
+      id: "00000000-0000-0000-0000-000000000002",
+      subnet_netuid: 9,
+      overlay: { kind: "subnet-api", url: "https://stale.example/api" },
+    },
+  ];
+  deleteResult.subnets = [{ netuid: 9 }];
+
+  const res = await worker.fetch(
+    post(
+      { delete_subnets: [{ netuid: 9, source_commit: "def456" }] },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({
+    surfaces_deleted: 1,
+    subnets_deleted: 1,
+  });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/DELETE FROM surfaces/);
+  expect(text).toMatch(/DELETE FROM subnets/);
+});
+
+test("does not delete a subnet that is also upserted in the same request", async () => {
+  const res = await worker.fetch(
+    post(
+      {
+        subnets: [subnet()],
+        surfaces: [surface()],
+        delete_subnets: [{ netuid: 8, source_commit: "def456" }],
+      },
+      { secret: SECRET },
+    ),
+    baseEnv(),
+  );
+
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({
+    subnets_written: 1,
+    surfaces_written: 1,
+    surfaces_deleted: 0,
+    subnets_deleted: 0,
+  });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/INSERT INTO subnets/);
+  expect(text).toMatch(/INSERT INTO surfaces/);
+  expect(text).not.toMatch(/DELETE FROM subnets/);
+});
+
+test("maps a DB failure to a clean 502 instead of throwing", async () => {
+  failure.error = new Error("connection reset");
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    baseEnv(),
+  );
+  expect(res.status).toBe(502);
+  expect((await jsonBody(res)).error).toBe("write failed");
+});
