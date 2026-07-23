@@ -397,7 +397,7 @@ function isGeneratedWorkerTypes(relativePath: string): boolean {
   return GENERATED_WORKER_TYPES_PATHS.has(relativePath);
 }
 
-// scripts/worker-test.ts and deploy/wss-lb/test/*.test.mjs both, by
+// scripts/worker-test.ts and deploy/wss-lb/test/*.test.ts both, by
 // inspection, build their entire private/loopback-URL content out of two
 // classes: (a) an explicit "these must be rejected" array of unsafe URLs
 // (127.0.0.1/10.0.0.2/169.254.169.254 -- proof the proxy blocks them, worker-
@@ -410,7 +410,7 @@ function isGeneratedWorkerTypes(relativePath: string): boolean {
 // since a non-loopback private IP is still real signal everywhere else.
 const UNSAFE_URL_REJECTION_FIXTURE_PATTERNS = [
   /^scripts\/worker-test\.ts$/,
-  /^deploy\/wss-lb\/test\/[^/]+\.test\.mjs$/,
+  /^deploy\/wss-lb\/test\/[^/]+\.test\.ts$/,
 ];
 function isUnsafeUrlRejectionFixture(relativePath: string): boolean {
   return UNSAFE_URL_REJECTION_FIXTURE_PATTERNS.some((pattern) =>
