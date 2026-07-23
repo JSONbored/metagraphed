@@ -216,9 +216,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-1-apex-orchestrator-openapi.json",
-        "hash": "10ee59d550a0fb3978a38826c63d648d1147dfe030527815dab5cee90d00efb9",
+        "hash": "1cd4afa7225395051a6e08618a6c3a4461c21e79c2f2d9d6d434c6c1ae22cf46",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-1-apex-orchestrator-openapi",
         "url": "https://apex.api.macrocosmos.ai/openapi.json"
@@ -243,9 +243,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-1-apex-orchestrator-openapi.json",
-        "hash": "10ee59d550a0fb3978a38826c63d648d1147dfe030527815dab5cee90d00efb9",
+        "hash": "1cd4afa7225395051a6e08618a6c3a4461c21e79c2f2d9d6d434c6c1ae22cf46",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-1-apex-orchestrator-openapi",
         "url": "https://apex.api.macrocosmos.ai/openapi.json"
@@ -270,9 +270,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-1-apex-orchestrator-openapi.json",
-        "hash": "10ee59d550a0fb3978a38826c63d648d1147dfe030527815dab5cee90d00efb9",
+        "hash": "1cd4afa7225395051a6e08618a6c3a4461c21e79c2f2d9d6d434c6c1ae22cf46",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-1-apex-orchestrator-openapi",
         "url": "https://apex.api.macrocosmos.ai/openapi.json"
@@ -299,7 +299,7 @@
         "artifact": "/metagraph/schemas/sn-2-dsperse-circuit-repository-openapi.json",
         "hash": "84cee89a1b9786d82be128bcb4b93659a2048a11414e22435537703bb7de3d10",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-2-dsperse-circuit-repository-openapi",
         "url": "https://repository.inferencelabs.com/openapi.json"
@@ -326,7 +326,7 @@
         "artifact": "/metagraph/schemas/sn-2-dsperse-circuit-repository-openapi.json",
         "hash": "84cee89a1b9786d82be128bcb4b93659a2048a11414e22435537703bb7de3d10",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-2-dsperse-circuit-repository-openapi",
         "url": "https://repository.inferencelabs.com/openapi.json"
@@ -353,7 +353,7 @@
         "artifact": "/metagraph/schemas/sn-2-dsperse-circuit-repository-openapi.json",
         "hash": "84cee89a1b9786d82be128bcb4b93659a2048a11414e22435537703bb7de3d10",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-2-dsperse-circuit-repository-openapi",
         "url": "https://repository.inferencelabs.com/openapi.json"
@@ -399,7 +399,7 @@
         "artifact": "/metagraph/schemas/sn-3-templar-grafana-openapi.json",
         "hash": "9cb1924711c887d988dea8f6c32c1899cc7357f194e52de30b721e09dd7fff33",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-3-templar-grafana-openapi",
         "url": "https://grafana.tplr.ai/public/openapi3.json"
@@ -426,7 +426,7 @@
         "artifact": "/metagraph/schemas/sn-3-templar-grafana-openapi.json",
         "hash": "9cb1924711c887d988dea8f6c32c1899cc7357f194e52de30b721e09dd7fff33",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-3-templar-grafana-openapi",
         "url": "https://grafana.tplr.ai/public/openapi3.json"
@@ -453,7 +453,7 @@
         "artifact": "/metagraph/schemas/sn-3-templar-grafana-openapi.json",
         "hash": "9cb1924711c887d988dea8f6c32c1899cc7357f194e52de30b721e09dd7fff33",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-3-templar-grafana-openapi",
         "url": "https://grafana.tplr.ai/public/openapi3.json"
@@ -480,7 +480,7 @@
         "artifact": "/metagraph/schemas/sn-3-templar-grafana-openapi.json",
         "hash": "9cb1924711c887d988dea8f6c32c1899cc7357f194e52de30b721e09dd7fff33",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-3-templar-grafana-openapi",
         "url": "https://grafana.tplr.ai/public/openapi3.json"
@@ -507,7 +507,7 @@
         "artifact": "/metagraph/schemas/sn-3-templar-grafana-openapi.json",
         "hash": "9cb1924711c887d988dea8f6c32c1899cc7357f194e52de30b721e09dd7fff33",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-3-templar-grafana-openapi",
         "url": "https://grafana.tplr.ai/public/openapi3.json"
@@ -534,7 +534,7 @@
         "artifact": "/metagraph/schemas/sn-3-templar-grafana-openapi.json",
         "hash": "9cb1924711c887d988dea8f6c32c1899cc7357f194e52de30b721e09dd7fff33",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-3-templar-grafana-openapi",
         "url": "https://grafana.tplr.ai/public/openapi3.json"
@@ -694,7 +694,7 @@
         "artifact": "/metagraph/schemas/sn-6-numinous-openapi-schema.json",
         "hash": "67721cc633e1f5615b2869b592b1e95a2ebad6be43d6c2679ef85a58ad24a5f3",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-6-numinous-openapi-schema",
         "url": "https://api.numinouslabs.io/api/openapi.json"
@@ -740,7 +740,7 @@
         "artifact": "/metagraph/schemas/sn-6-numinous-openapi-schema.json",
         "hash": "67721cc633e1f5615b2869b592b1e95a2ebad6be43d6c2679ef85a58ad24a5f3",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-6-numinous-openapi-schema",
         "url": "https://api.numinouslabs.io/api/openapi.json"
@@ -767,7 +767,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -794,7 +794,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -821,7 +821,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -848,7 +848,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -875,7 +875,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -902,7 +902,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -929,7 +929,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -956,7 +956,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -983,7 +983,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1010,7 +1010,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1037,7 +1037,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1064,7 +1064,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1091,7 +1091,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1118,7 +1118,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1145,7 +1145,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1172,7 +1172,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1199,7 +1199,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1226,7 +1226,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1253,7 +1253,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1299,7 +1299,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1326,7 +1326,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1353,7 +1353,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1380,7 +1380,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1407,7 +1407,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1434,7 +1434,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1461,7 +1461,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1488,7 +1488,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1515,7 +1515,7 @@
         "artifact": "/metagraph/schemas/allways-swagger.json",
         "hash": "0f9f518d887fb292c55b73af19f780c30a1660807eaa9d61c4af492dc629ecb7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "allways-swagger",
         "url": "https://api.all-ways.io/swagger-json"
@@ -1578,9 +1578,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-9-iota-openapi.json",
-        "hash": "b3c89a093ef98e483e7d3713bc7f55027dfccb230155c710323a75a0a715aeb7",
+        "hash": "2b6d377a681c054e409ba2cc338e6e53b9df70cb393b723eb7a78cd2a4a8f662",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-9-iota-openapi",
         "url": "https://iota.api.macrocosmos.ai/openapi.json"
@@ -1605,9 +1605,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-9-iota-openapi.json",
-        "hash": "b3c89a093ef98e483e7d3713bc7f55027dfccb230155c710323a75a0a715aeb7",
+        "hash": "2b6d377a681c054e409ba2cc338e6e53b9df70cb393b723eb7a78cd2a4a8f662",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-9-iota-openapi",
         "url": "https://iota.api.macrocosmos.ai/openapi.json"
@@ -1632,9 +1632,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-9-iota-openapi.json",
-        "hash": "b3c89a093ef98e483e7d3713bc7f55027dfccb230155c710323a75a0a715aeb7",
+        "hash": "2b6d377a681c054e409ba2cc338e6e53b9df70cb393b723eb7a78cd2a4a8f662",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-9-iota-openapi",
         "url": "https://iota.api.macrocosmos.ai/openapi.json"
@@ -1659,9 +1659,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-9-iota-openapi.json",
-        "hash": "b3c89a093ef98e483e7d3713bc7f55027dfccb230155c710323a75a0a715aeb7",
+        "hash": "2b6d377a681c054e409ba2cc338e6e53b9df70cb393b723eb7a78cd2a4a8f662",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-9-iota-openapi",
         "url": "https://iota.api.macrocosmos.ai/openapi.json"
@@ -1726,7 +1726,7 @@
         "artifact": "/metagraph/schemas/sn-12-compute-horde-grafana-openapi.json",
         "hash": "c26d1fcb920e4cf3da3b55dab3d2eac30e2f13321a32c6fcca10e0837bdb93ec",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-12-compute-horde-grafana-openapi",
         "url": "https://grafana.bittensor.church/public/openapi3.json"
@@ -1753,7 +1753,7 @@
         "artifact": "/metagraph/schemas/sn-12-compute-horde-grafana-openapi.json",
         "hash": "c26d1fcb920e4cf3da3b55dab3d2eac30e2f13321a32c6fcca10e0837bdb93ec",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-12-compute-horde-grafana-openapi",
         "url": "https://grafana.bittensor.church/public/openapi3.json"
@@ -1780,7 +1780,7 @@
         "artifact": "/metagraph/schemas/sn-12-compute-horde-grafana-openapi.json",
         "hash": "c26d1fcb920e4cf3da3b55dab3d2eac30e2f13321a32c6fcca10e0837bdb93ec",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-12-compute-horde-grafana-openapi",
         "url": "https://grafana.bittensor.church/public/openapi3.json"
@@ -1864,7 +1864,7 @@
         "artifact": "/metagraph/schemas/sn-14-cacheon-openapi.json",
         "hash": "05d256d9a6306f8184cd8c1ba5a1ce905ccda4100c2ced6f5f850aec27eeb9c4",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-14-cacheon-openapi",
         "url": "https://api.cacheon.ai/openapi.json"
@@ -1891,7 +1891,7 @@
         "artifact": "/metagraph/schemas/sn-14-cacheon-openapi.json",
         "hash": "05d256d9a6306f8184cd8c1ba5a1ce905ccda4100c2ced6f5f850aec27eeb9c4",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-14-cacheon-openapi",
         "url": "https://api.cacheon.ai/openapi.json"
@@ -1918,7 +1918,7 @@
         "artifact": "/metagraph/schemas/sn-14-cacheon-openapi.json",
         "hash": "05d256d9a6306f8184cd8c1ba5a1ce905ccda4100c2ced6f5f850aec27eeb9c4",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-14-cacheon-openapi",
         "url": "https://api.cacheon.ai/openapi.json"
@@ -1945,7 +1945,7 @@
         "artifact": "/metagraph/schemas/sn-14-cacheon-openapi.json",
         "hash": "05d256d9a6306f8184cd8c1ba5a1ce905ccda4100c2ced6f5f850aec27eeb9c4",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-14-cacheon-openapi",
         "url": "https://api.cacheon.ai/openapi.json"
@@ -1972,7 +1972,7 @@
         "artifact": "/metagraph/schemas/sn-14-cacheon-openapi.json",
         "hash": "05d256d9a6306f8184cd8c1ba5a1ce905ccda4100c2ced6f5f850aec27eeb9c4",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-14-cacheon-openapi",
         "url": "https://api.cacheon.ai/openapi.json"
@@ -1999,7 +1999,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2045,7 +2045,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2072,7 +2072,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2099,7 +2099,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2126,7 +2126,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2153,7 +2153,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2180,7 +2180,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2207,7 +2207,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2234,7 +2234,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2299,7 +2299,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2326,7 +2326,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2353,7 +2353,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2380,7 +2380,7 @@
         "artifact": "/metagraph/schemas/sn-15-oro-openapi.json",
         "hash": "ba082a403ce8ab41a42a03e89ecc9bf8fd4a6ab8f46d94f3627bae15aa1d2acf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-15-oro-openapi",
         "url": "https://api.oroagents.com/openapi.json"
@@ -2559,7 +2559,7 @@
         "artifact": "/metagraph/schemas/sn-18-zeus-openapi.json",
         "hash": "dc5ab82127e355c98fb7329edd91bd1c916fd002fa23f9a74cbc19b6e17f905a",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-18-zeus-openapi",
         "url": "https://api.zeussubnet.com/openapi.json"
@@ -2586,7 +2586,7 @@
         "artifact": "/metagraph/schemas/sn-18-zeus-openapi.json",
         "hash": "dc5ab82127e355c98fb7329edd91bd1c916fd002fa23f9a74cbc19b6e17f905a",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-18-zeus-openapi",
         "url": "https://api.zeussubnet.com/openapi.json"
@@ -2613,7 +2613,7 @@
         "artifact": "/metagraph/schemas/sn-18-zeus-openapi.json",
         "hash": "dc5ab82127e355c98fb7329edd91bd1c916fd002fa23f9a74cbc19b6e17f905a",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-18-zeus-openapi",
         "url": "https://api.zeussubnet.com/openapi.json"
@@ -2697,7 +2697,7 @@
         "artifact": "/metagraph/schemas/sn-19-blockmachine-openapi.json",
         "hash": "ee9d2b6f00e593b189ce382ae78e9cf7352b2fd91d9819037ef167ce3e3ac5d7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-19-blockmachine-openapi",
         "url": "https://api.blockmachine.io/openapi.json"
@@ -2724,7 +2724,7 @@
         "artifact": "/metagraph/schemas/sn-19-blockmachine-openapi.json",
         "hash": "ee9d2b6f00e593b189ce382ae78e9cf7352b2fd91d9819037ef167ce3e3ac5d7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-19-blockmachine-openapi",
         "url": "https://api.blockmachine.io/openapi.json"
@@ -2751,7 +2751,7 @@
         "artifact": "/metagraph/schemas/sn-19-blockmachine-openapi.json",
         "hash": "ee9d2b6f00e593b189ce382ae78e9cf7352b2fd91d9819037ef167ce3e3ac5d7",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-19-blockmachine-openapi",
         "url": "https://api.blockmachine.io/openapi.json"
@@ -2835,7 +2835,7 @@
         "artifact": "/metagraph/schemas/sn-21-adtao-validator-openapi.json",
         "hash": "7b222bfc845bb7b441f3493ab957906fe684e5e74769cd61f02fe194bb599416",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-21-adtao-validator-openapi",
         "url": "https://validator.adtao.io/openapi.json"
@@ -2862,7 +2862,7 @@
         "artifact": "/metagraph/schemas/sn-22-desearch-openapi.json",
         "hash": "4b0f0742c087e8bfae13ca5759ad5f744f997a1134baed15597b44eaf34519e9",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-22-desearch-openapi",
         "url": "https://www.desearch.ai/openapi.json"
@@ -2908,7 +2908,7 @@
         "artifact": "/metagraph/schemas/sn-22-desearch-openapi-api-desearch-ai.json",
         "hash": "8567a37b4362bb2302fd5f5c4b2e36ba5056cfc55376978531f2dcaf0604ade1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-22-desearch-openapi-api-desearch-ai",
         "url": "https://api.desearch.ai/openapi.json"
@@ -3239,7 +3239,7 @@
         "artifact": "/metagraph/schemas/sn-28-gm-openapi.json",
         "hash": "a4c11d714e97682e266fa37fd52f676fdc53c493c5cbc13f4690efdac44c7b32",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-28-gm-openapi",
         "url": "https://saygm.com/openapi.json"
@@ -3456,7 +3456,7 @@
         "artifact": "/metagraph/schemas/sn-33-readyai-openapi.json",
         "hash": "00c80719163bd3dceee75d457676319ebe81852ef59fa4f431fc6b8a5282eeb9",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-33-readyai-openapi",
         "url": "https://api.readyai.ai/openapi.json"
@@ -3500,9 +3500,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-34-bitmind-openapi.json",
-        "hash": "aef69620e15ba03aecec8c2ee7a83ffb796a76a5f28399370e983eeb78bb70e2",
+        "hash": "25917624833dfcecee18b0a22bd68a994292d834526ba09d24fbd24e90fcffeb",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-34-bitmind-openapi",
         "url": "https://api.bitmind.ai/openapi.json"
@@ -3548,7 +3548,7 @@
         "artifact": "/metagraph/schemas/sn-35-oxmarkets-openapi.json",
         "hash": "456338b4cdd3c87906a30f1b1f382bd3c10a9e09e54b0097afb9acbb98eb57a0",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-35-oxmarkets-openapi",
         "url": "https://api.cartha.finance/openapi.json"
@@ -3575,7 +3575,7 @@
         "artifact": "/metagraph/schemas/sn-35-oxmarkets-openapi.json",
         "hash": "456338b4cdd3c87906a30f1b1f382bd3c10a9e09e54b0097afb9acbb98eb57a0",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-35-oxmarkets-openapi",
         "url": "https://api.cartha.finance/openapi.json"
@@ -3602,7 +3602,7 @@
         "artifact": "/metagraph/schemas/sn-35-oxmarkets-openapi.json",
         "hash": "456338b4cdd3c87906a30f1b1f382bd3c10a9e09e54b0097afb9acbb98eb57a0",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-35-oxmarkets-openapi",
         "url": "https://api.cartha.finance/openapi.json"
@@ -3648,7 +3648,7 @@
         "artifact": "/metagraph/schemas/sn-35-oxmarkets-openapi.json",
         "hash": "456338b4cdd3c87906a30f1b1f382bd3c10a9e09e54b0097afb9acbb98eb57a0",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-35-oxmarkets-openapi",
         "url": "https://api.cartha.finance/openapi.json"
@@ -3675,7 +3675,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3702,7 +3702,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3729,7 +3729,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3775,7 +3775,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3802,7 +3802,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3829,7 +3829,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3856,7 +3856,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3883,7 +3883,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3910,7 +3910,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -3937,7 +3937,7 @@
         "artifact": "/metagraph/schemas/sn-36-eirel-openapi.json",
         "hash": "4d51fd40b16396073a7b23c05e73f2cc44e1be37ac165502a97134e8fe3e1e11",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-36-eirel-openapi",
         "url": "https://api.eirel.ai/openapi.json"
@@ -4040,7 +4040,7 @@
         "artifact": "/metagraph/schemas/sn-37-aurelius-openapi.json",
         "hash": "3d7f48902d0bdbf5b7d626d2b93fd9966e47f504811d820722b62da7f218a666",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-37-aurelius-openapi",
         "url": "https://new-collector-api-production.up.railway.app/openapi.json"
@@ -4067,7 +4067,7 @@
         "artifact": "/metagraph/schemas/sn-37-aurelius-openapi.json",
         "hash": "3d7f48902d0bdbf5b7d626d2b93fd9966e47f504811d820722b62da7f218a666",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-37-aurelius-openapi",
         "url": "https://new-collector-api-production.up.railway.app/openapi.json"
@@ -4094,7 +4094,7 @@
         "artifact": "/metagraph/schemas/sn-37-aurelius-openapi.json",
         "hash": "3d7f48902d0bdbf5b7d626d2b93fd9966e47f504811d820722b62da7f218a666",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-37-aurelius-openapi",
         "url": "https://new-collector-api-production.up.railway.app/openapi.json"
@@ -4140,7 +4140,7 @@
         "artifact": "/metagraph/schemas/sn-37-aurelius-openapi.json",
         "hash": "3d7f48902d0bdbf5b7d626d2b93fd9966e47f504811d820722b62da7f218a666",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-37-aurelius-openapi",
         "url": "https://new-collector-api-production.up.railway.app/openapi.json"
@@ -4167,7 +4167,7 @@
         "artifact": "/metagraph/schemas/sn-37-aurelius-openapi.json",
         "hash": "3d7f48902d0bdbf5b7d626d2b93fd9966e47f504811d820722b62da7f218a666",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-37-aurelius-openapi",
         "url": "https://new-collector-api-production.up.railway.app/openapi.json"
@@ -4460,7 +4460,7 @@
         "artifact": "/metagraph/schemas/sn-43-graphite-ai-openapi.json",
         "hash": "46cb94ecdbe833d387bbb64348b235071a941e5c00ca4037c0178f654169fb06",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-43-graphite-ai-openapi",
         "url": "https://api.graphite-ai.net/openapi.json"
@@ -4506,7 +4506,7 @@
         "artifact": "/metagraph/schemas/sn-43-graphite-ai-openapi.json",
         "hash": "46cb94ecdbe833d387bbb64348b235071a941e5c00ca4037c0178f654169fb06",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-43-graphite-ai-openapi",
         "url": "https://api.graphite-ai.net/openapi.json"
@@ -4552,7 +4552,7 @@
         "artifact": "/metagraph/schemas/sn-43-graphite-ai-openapi.json",
         "hash": "46cb94ecdbe833d387bbb64348b235071a941e5c00ca4037c0178f654169fb06",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-43-graphite-ai-openapi",
         "url": "https://api.graphite-ai.net/openapi.json"
@@ -4598,7 +4598,7 @@
         "artifact": "/metagraph/schemas/sn-44-score-openapi.json",
         "hash": "8fd6a8db8e728f669db3c180fb467f5aba51122a363e000d7cd034a8f95a25cf",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-44-score-openapi",
         "url": "https://api.scorevision.io/openapi.json"
@@ -4663,7 +4663,7 @@
         "artifact": "/metagraph/schemas/sn-45-talisman-openapi.json",
         "hash": "b4592458148604ef604a90dcc10300157b38c00acd8fb46e2c2eee0bbea05617",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-45-talisman-openapi",
         "url": "https://api.alpharidge.ai/openapi.json"
@@ -4690,7 +4690,7 @@
         "artifact": "/metagraph/schemas/sn-45-talisman-openapi.json",
         "hash": "b4592458148604ef604a90dcc10300157b38c00acd8fb46e2c2eee0bbea05617",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-45-talisman-openapi",
         "url": "https://api.alpharidge.ai/openapi.json"
@@ -4717,7 +4717,7 @@
         "artifact": "/metagraph/schemas/sn-45-talisman-openapi.json",
         "hash": "b4592458148604ef604a90dcc10300157b38c00acd8fb46e2c2eee0bbea05617",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-45-talisman-openapi",
         "url": "https://api.alpharidge.ai/openapi.json"
@@ -4763,7 +4763,7 @@
         "artifact": "/metagraph/schemas/sn-45-talisman-openapi.json",
         "hash": "b4592458148604ef604a90dcc10300157b38c00acd8fb46e2c2eee0bbea05617",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-45-talisman-openapi",
         "url": "https://api.alpharidge.ai/openapi.json"
@@ -4790,7 +4790,7 @@
         "artifact": "/metagraph/schemas/sn-45-talisman-openapi.json",
         "hash": "b4592458148604ef604a90dcc10300157b38c00acd8fb46e2c2eee0bbea05617",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-45-talisman-openapi",
         "url": "https://api.alpharidge.ai/openapi.json"
@@ -4874,7 +4874,7 @@
         "artifact": "/metagraph/schemas/sn-45-talisman-openapi.json",
         "hash": "b4592458148604ef604a90dcc10300157b38c00acd8fb46e2c2eee0bbea05617",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-45-talisman-openapi",
         "url": "https://api.alpharidge.ai/openapi.json"
@@ -4920,7 +4920,7 @@
         "artifact": "/metagraph/schemas/sn-45-talisman-openapi.json",
         "hash": "b4592458148604ef604a90dcc10300157b38c00acd8fb46e2c2eee0bbea05617",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-45-talisman-openapi",
         "url": "https://api.alpharidge.ai/openapi.json"
@@ -5133,15 +5133,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-active-tournament-api",
@@ -5160,15 +5152,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-active-tournament-id-api",
@@ -5187,15 +5171,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-active-tournament-ids-api",
@@ -5233,15 +5209,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-current-block-api",
@@ -5260,15 +5228,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-evaluations-api",
@@ -5306,15 +5266,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-tournament-health",
@@ -5333,15 +5285,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-tournament-pricing",
@@ -5360,15 +5304,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-tournament-readiness",
@@ -5387,15 +5323,7 @@
       },
       "provider": "nepher-robotics",
       "public_safe": true,
-      "schema_source": {
-        "artifact": "/metagraph/schemas/sn-49-nepher-tournament-openapi.json",
-        "hash": "1c5ae5888994a9e6dfc90ba41c754f61f47baf278ac43fd1987ab70f9933933d",
-        "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
-        "status": "captured",
-        "surface_id": "sn-49-nepher-tournament-openapi",
-        "url": "https://tournament-api.nepher.ai/openapi.json"
-      },
+      "schema_source": null,
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
       "surface_id": "sn-49-nepher-tournaments-list-api",
@@ -5418,7 +5346,7 @@
         "artifact": "/metagraph/schemas/sn-50-synth-openapi.json",
         "hash": "bc41fa70270bc8f1a7d638bfaaa5b69578a558fbf4bb592b78972117f2ab6e5f",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-50-synth-openapi",
         "url": "https://api.synthdata.co/swagger.json"
@@ -5445,7 +5373,7 @@
         "artifact": "/metagraph/schemas/sn-50-synth-openapi.json",
         "hash": "bc41fa70270bc8f1a7d638bfaaa5b69578a558fbf4bb592b78972117f2ab6e5f",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-50-synth-openapi",
         "url": "https://api.synthdata.co/swagger.json"
@@ -5472,7 +5400,7 @@
         "artifact": "/metagraph/schemas/sn-50-synth-openapi.json",
         "hash": "bc41fa70270bc8f1a7d638bfaaa5b69578a558fbf4bb592b78972117f2ab6e5f",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-50-synth-openapi",
         "url": "https://api.synthdata.co/swagger.json"
@@ -5516,9 +5444,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5543,9 +5471,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5570,9 +5498,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5597,9 +5525,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5624,9 +5552,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5651,9 +5579,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5678,9 +5606,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5705,9 +5633,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5751,9 +5679,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5797,9 +5725,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-51-lium-io-openapi.json",
-        "hash": "d1cbb88b3de3cc59dac996c3f3394d61289075c0ceb46c6493e16d96f7f60907",
+        "hash": "e96138c8b8778e09385861702637746e03a78a6d360880a3ca478db7335e78ab",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-51-lium-io-openapi",
         "url": "https://lium.io/api/openapi.json"
@@ -5940,7 +5868,7 @@
         "artifact": "/metagraph/schemas/sn-54-yanez-compliance-openapi.json",
         "hash": "85f7d4fc8e614e1f8b588e5851cfe5170c7c22454dbf3d80fb65ac4aa8a6e6c9",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-54-yanez-compliance-openapi",
         "url": "https://miners-stats.yanezcompliance.net/openapi.json"
@@ -5967,7 +5895,7 @@
         "artifact": "/metagraph/schemas/sn-54-yanez-compliance-openapi.json",
         "hash": "85f7d4fc8e614e1f8b588e5851cfe5170c7c22454dbf3d80fb65ac4aa8a6e6c9",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-54-yanez-compliance-openapi",
         "url": "https://miners-stats.yanezcompliance.net/openapi.json"
@@ -5994,7 +5922,7 @@
         "artifact": "/metagraph/schemas/sn-54-yanez-compliance-openapi.json",
         "hash": "85f7d4fc8e614e1f8b588e5851cfe5170c7c22454dbf3d80fb65ac4aa8a6e6c9",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-54-yanez-compliance-openapi",
         "url": "https://miners-stats.yanezcompliance.net/openapi.json"
@@ -6059,7 +5987,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6105,7 +6033,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6132,7 +6060,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6159,7 +6087,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6205,7 +6133,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6232,7 +6160,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6259,7 +6187,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6286,7 +6214,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6313,7 +6241,7 @@
         "artifact": "/metagraph/schemas/sn-56-gradients-openapi.json",
         "hash": "25a7e4ab1326194e7196cce4ce1f55130b8d88889e086951306a5fd09adf2c8f",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-56-gradients-openapi",
         "url": "https://api.gradients.io/openapi.json"
@@ -6378,7 +6306,7 @@
         "artifact": "/metagraph/schemas/sn-58-handshake58-openapi.json",
         "hash": "122dbc524dbed62b6840249afbd03b9f2567fcfdba9603e94e2230237d73fc8e",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-58-handshake58-openapi",
         "url": "https://handshake58.com/openapi.json"
@@ -6405,7 +6333,7 @@
         "artifact": "/metagraph/schemas/sn-58-handshake58-openapi.json",
         "hash": "122dbc524dbed62b6840249afbd03b9f2567fcfdba9603e94e2230237d73fc8e",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-58-handshake58-openapi",
         "url": "https://handshake58.com/openapi.json"
@@ -6432,7 +6360,7 @@
         "artifact": "/metagraph/schemas/sn-58-handshake58-openapi.json",
         "hash": "122dbc524dbed62b6840249afbd03b9f2567fcfdba9603e94e2230237d73fc8e",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-58-handshake58-openapi",
         "url": "https://handshake58.com/openapi.json"
@@ -6459,7 +6387,7 @@
         "artifact": "/metagraph/schemas/sn-58-handshake58-openapi.json",
         "hash": "122dbc524dbed62b6840249afbd03b9f2567fcfdba9603e94e2230237d73fc8e",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-58-handshake58-openapi",
         "url": "https://handshake58.com/openapi.json"
@@ -6486,7 +6414,7 @@
         "artifact": "/metagraph/schemas/sn-59-babelbit-openapi.json",
         "hash": "3bc12b2b9a14db246fde6372a975931175832e4d1f2bdf250c482193ae826798",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-59-babelbit-openapi",
         "url": "https://api.babelbit.ai/openapi.json"
@@ -6513,7 +6441,7 @@
         "artifact": "/metagraph/schemas/sn-59-babelbit-openapi.json",
         "hash": "3bc12b2b9a14db246fde6372a975931175832e4d1f2bdf250c482193ae826798",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-59-babelbit-openapi",
         "url": "https://api.babelbit.ai/openapi.json"
@@ -6559,7 +6487,7 @@
         "artifact": "/metagraph/schemas/sn-59-babelbit-openapi.json",
         "hash": "3bc12b2b9a14db246fde6372a975931175832e4d1f2bdf250c482193ae826798",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-59-babelbit-openapi",
         "url": "https://api.babelbit.ai/openapi.json"
@@ -6586,7 +6514,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6613,7 +6541,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6640,7 +6568,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6667,7 +6595,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6694,7 +6622,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6740,7 +6668,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6767,7 +6695,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6794,7 +6722,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6821,7 +6749,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6848,7 +6776,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6875,7 +6803,7 @@
         "artifact": "/metagraph/schemas/sn-60-bitsec-ai-openapi.json",
         "hash": "d5bd27786407d87b95379741cc263fab3650d89e6a137ddb931ffe4bb2d6eb09",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-60-bitsec-ai-openapi",
         "url": "https://bitsec.ai/api/openapi.json"
@@ -6978,7 +6906,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7005,7 +6933,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7032,7 +6960,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7097,7 +7025,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7124,7 +7052,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7151,7 +7079,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7197,7 +7125,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7224,7 +7152,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7251,7 +7179,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7278,7 +7206,7 @@
         "artifact": "/metagraph/schemas/sn-62-ridges-openapi.json",
         "hash": "a4e2d6263e8443227760e33aeba74d0fdace1d2e33e809521e504d2c802b9344",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-62-ridges-openapi",
         "url": "https://agent-upload.ridges.ai/openapi.json"
@@ -7400,7 +7328,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7427,7 +7355,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7549,7 +7477,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7633,7 +7561,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7679,7 +7607,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7725,7 +7653,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7752,7 +7680,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7779,7 +7707,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7844,7 +7772,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -7947,7 +7875,7 @@
         "artifact": "/metagraph/schemas/sn-64-chutes-openapi.json",
         "hash": "9272861dcc98a2a0a2793461cc6e960f51a794e94a891794f07f850fe4fb91f1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-64-chutes-openapi",
         "url": "https://api.chutes.ai/openapi.json"
@@ -8050,7 +7978,7 @@
         "artifact": "/metagraph/schemas/sn-65-taofu-labs-openapi.json",
         "hash": "76c9a9b6c92a64295ad2071c5f92830c70673a36ed7ebeffcb18069ad4a58754",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-65-taofu-labs-openapi",
         "url": "https://api.taoprivatenetwork.com/api-docs/openapi.json"
@@ -8096,7 +8024,7 @@
         "artifact": "/metagraph/schemas/sn-65-taofu-labs-openapi.json",
         "hash": "76c9a9b6c92a64295ad2071c5f92830c70673a36ed7ebeffcb18069ad4a58754",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-65-taofu-labs-openapi",
         "url": "https://api.taoprivatenetwork.com/api-docs/openapi.json"
@@ -8275,7 +8203,7 @@
         "artifact": "/metagraph/schemas/sn-68-nova-score-share-openapi.json",
         "hash": "5a2c0cb553927829f271cbf06db7c12d899696e80abaa1af942590f116dcca82",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-68-nova-score-share-openapi",
         "url": "https://vali-score-share-api.metanova-labs.ai/openapi.json"
@@ -8682,7 +8610,7 @@
         "artifact": "/metagraph/schemas/sn-71-leadpoet-openapi.json",
         "hash": "f5cfbd42ab3cb7afdc2c4320333aeffd65ead0c52654e05f181755f5e50ec37c",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-71-leadpoet-openapi",
         "url": "https://leadpoet.com/api/openapi.json"
@@ -8728,7 +8656,7 @@
         "artifact": "/metagraph/schemas/sn-71-leadpoet-openapi.json",
         "hash": "f5cfbd42ab3cb7afdc2c4320333aeffd65ead0c52654e05f181755f5e50ec37c",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-71-leadpoet-openapi",
         "url": "https://leadpoet.com/api/openapi.json"
@@ -8755,7 +8683,7 @@
         "artifact": "/metagraph/schemas/sn-71-leadpoet-openapi.json",
         "hash": "f5cfbd42ab3cb7afdc2c4320333aeffd65ead0c52654e05f181755f5e50ec37c",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-71-leadpoet-openapi",
         "url": "https://leadpoet.com/api/openapi.json"
@@ -9105,7 +9033,7 @@
         "artifact": "/metagraph/schemas/sn-74-gittensor-openapi.json",
         "hash": "06d69c7648941b9dff160ea9fa21129d449f326e6508ba719be9060d154b3547",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-74-gittensor-openapi",
         "url": "https://api.gittensor.io/swagger-json"
@@ -9208,7 +9136,7 @@
         "artifact": "/metagraph/schemas/sn-74-gittensor-openapi.json",
         "hash": "06d69c7648941b9dff160ea9fa21129d449f326e6508ba719be9060d154b3547",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-74-gittensor-openapi",
         "url": "https://api.gittensor.io/swagger-json"
@@ -9235,7 +9163,7 @@
         "artifact": "/metagraph/schemas/sn-75-hippius-openapi.json",
         "hash": "07f3f7838c46f470964fca29137c512b9d617be034963818c7e3694847246eae",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-75-hippius-openapi",
         "url": "https://api.hippius.com/swagger.json"
@@ -9281,7 +9209,7 @@
         "artifact": "/metagraph/schemas/sn-75-hippius-openapi.json",
         "hash": "07f3f7838c46f470964fca29137c512b9d617be034963818c7e3694847246eae",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-75-hippius-openapi",
         "url": "https://api.hippius.com/swagger.json"
@@ -9327,7 +9255,7 @@
         "artifact": "/metagraph/schemas/sn-75-hippius-openapi.json",
         "hash": "07f3f7838c46f470964fca29137c512b9d617be034963818c7e3694847246eae",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-75-hippius-openapi",
         "url": "https://api.hippius.com/swagger.json"
@@ -9563,7 +9491,7 @@
         "artifact": "/metagraph/schemas/sn-78-vocence-openapi.json",
         "hash": "431dc35778f4c593104b2cde5a6784fe79cc9cc12787846dbb958c9dacff4499",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-78-vocence-openapi",
         "url": "https://api.vocence.ai/openapi.json"
@@ -9913,7 +9841,7 @@
         "artifact": "/metagraph/schemas/sn-90-degenbrain-openapi.json",
         "hash": "d8beda16e5e6228216d2ccca4ebd09f6d600ad266eeb1963f7163a58058bdac3",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-90-degenbrain-openapi",
         "url": "https://api.subnet90.com/openapi.json"
@@ -9959,7 +9887,7 @@
         "artifact": "/metagraph/schemas/sn-90-degenbrain-openapi.json",
         "hash": "d8beda16e5e6228216d2ccca4ebd09f6d600ad266eeb1963f7163a58058bdac3",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-90-degenbrain-openapi",
         "url": "https://api.subnet90.com/openapi.json"
@@ -9986,7 +9914,7 @@
         "artifact": "/metagraph/schemas/sn-90-degenbrain-openapi.json",
         "hash": "d8beda16e5e6228216d2ccca4ebd09f6d600ad266eeb1963f7163a58058bdac3",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-90-degenbrain-openapi",
         "url": "https://api.subnet90.com/openapi.json"
@@ -10013,7 +9941,7 @@
         "artifact": "/metagraph/schemas/sn-90-degenbrain-openapi.json",
         "hash": "d8beda16e5e6228216d2ccca4ebd09f6d600ad266eeb1963f7163a58058bdac3",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-90-degenbrain-openapi",
         "url": "https://api.subnet90.com/openapi.json"
@@ -10040,7 +9968,7 @@
         "artifact": "/metagraph/schemas/sn-90-degenbrain-openapi.json",
         "hash": "d8beda16e5e6228216d2ccca4ebd09f6d600ad266eeb1963f7163a58058bdac3",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-90-degenbrain-openapi",
         "url": "https://api.subnet90.com/openapi.json"
@@ -10103,9 +10031,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-93-bitcast-network-openapi.json",
-        "hash": "1ac7eda510f712304f30fe713d33ede25167d653807e175c0743fc1b611a7209",
+        "hash": "219f9eaa480e862d036345a9d3b18ca4807f8269abe8bfc455e67d9cd7245240",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-93-bitcast-network-openapi",
         "url": "https://bitcast-api.bitcast.network/openapi.json"
@@ -10130,9 +10058,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-93-bitcast-network-openapi.json",
-        "hash": "1ac7eda510f712304f30fe713d33ede25167d653807e175c0743fc1b611a7209",
+        "hash": "219f9eaa480e862d036345a9d3b18ca4807f8269abe8bfc455e67d9cd7245240",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-93-bitcast-network-openapi",
         "url": "https://bitcast-api.bitcast.network/openapi.json"
@@ -10157,9 +10085,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-93-bitcast-network-openapi.json",
-        "hash": "1ac7eda510f712304f30fe713d33ede25167d653807e175c0743fc1b611a7209",
+        "hash": "219f9eaa480e862d036345a9d3b18ca4807f8269abe8bfc455e67d9cd7245240",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-93-bitcast-network-openapi",
         "url": "https://bitcast-api.bitcast.network/openapi.json"
@@ -10203,9 +10131,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-93-bitcast-network-openapi.json",
-        "hash": "1ac7eda510f712304f30fe713d33ede25167d653807e175c0743fc1b611a7209",
+        "hash": "219f9eaa480e862d036345a9d3b18ca4807f8269abe8bfc455e67d9cd7245240",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-93-bitcast-network-openapi",
         "url": "https://bitcast-api.bitcast.network/openapi.json"
@@ -10230,9 +10158,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-93-bitcast-network-openapi.json",
-        "hash": "1ac7eda510f712304f30fe713d33ede25167d653807e175c0743fc1b611a7209",
+        "hash": "219f9eaa480e862d036345a9d3b18ca4807f8269abe8bfc455e67d9cd7245240",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-93-bitcast-network-openapi",
         "url": "https://bitcast-api.bitcast.network/openapi.json"
@@ -10257,9 +10185,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-93-bitcast-network-openapi.json",
-        "hash": "1ac7eda510f712304f30fe713d33ede25167d653807e175c0743fc1b611a7209",
+        "hash": "219f9eaa480e862d036345a9d3b18ca4807f8269abe8bfc455e67d9cd7245240",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-93-bitcast-network-openapi",
         "url": "https://bitcast-api.bitcast.network/openapi.json"
@@ -10322,9 +10250,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-93-bitcast-network-openapi.json",
-        "hash": "1ac7eda510f712304f30fe713d33ede25167d653807e175c0743fc1b611a7209",
+        "hash": "219f9eaa480e862d036345a9d3b18ca4807f8269abe8bfc455e67d9cd7245240",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-93-bitcast-network-openapi",
         "url": "https://bitcast-api.bitcast.network/openapi.json"
@@ -10368,9 +10296,9 @@
       "public_safe": true,
       "schema_source": {
         "artifact": "/metagraph/schemas/sn-93-bitcast-network-openapi.json",
-        "hash": "1ac7eda510f712304f30fe713d33ede25167d653807e175c0743fc1b611a7209",
+        "hash": "219f9eaa480e862d036345a9d3b18ca4807f8269abe8bfc455e67d9cd7245240",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-93-bitcast-network-openapi",
         "url": "https://bitcast-api.bitcast.network/openapi.json"
@@ -10397,7 +10325,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10443,7 +10371,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10470,7 +10398,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10497,7 +10425,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10524,7 +10452,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10570,7 +10498,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10597,7 +10525,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10643,7 +10571,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10689,7 +10617,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10716,7 +10644,7 @@
         "artifact": "/metagraph/schemas/sn-94-alveus-labs-openapi.json",
         "hash": "190bf52a50652749f2eb9982a9adf68e12e3e07c902f9e3f4ba15c989f1bb621",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-94-alveus-labs-openapi",
         "url": "https://autoresearch.bitsota.com/openapi.json"
@@ -10819,7 +10747,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-openapi.json",
         "hash": "c6d9b04b2e9582f1f21caae8a80b0d607e5d24f402bdec92c3b6095ed1303463",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-openapi",
         "url": "https://verathos.ai/openapi.json"
@@ -10865,7 +10793,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-validator-proxy-openapi.json",
         "hash": "7feb1eb427f64acdae8884bc25839127312999a42b4f7ad96978dd3b81936793",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-validator-proxy-openapi",
         "url": "https://api.verathos.ai/openapi.json"
@@ -10968,7 +10896,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-validator-proxy-openapi.json",
         "hash": "7feb1eb427f64acdae8884bc25839127312999a42b4f7ad96978dd3b81936793",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-validator-proxy-openapi",
         "url": "https://api.verathos.ai/openapi.json"
@@ -10995,7 +10923,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-openapi.json",
         "hash": "c6d9b04b2e9582f1f21caae8a80b0d607e5d24f402bdec92c3b6095ed1303463",
         "match": "schema-url",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-openapi",
         "url": "https://verathos.ai/openapi.json"
@@ -11022,7 +10950,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-openapi.json",
         "hash": "c6d9b04b2e9582f1f21caae8a80b0d607e5d24f402bdec92c3b6095ed1303463",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-openapi",
         "url": "https://verathos.ai/openapi.json"
@@ -11049,7 +10977,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-validator-proxy-openapi.json",
         "hash": "7feb1eb427f64acdae8884bc25839127312999a42b4f7ad96978dd3b81936793",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-validator-proxy-openapi",
         "url": "https://api.verathos.ai/openapi.json"
@@ -11076,7 +11004,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-validator-proxy-openapi.json",
         "hash": "7feb1eb427f64acdae8884bc25839127312999a42b4f7ad96978dd3b81936793",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-validator-proxy-openapi",
         "url": "https://api.verathos.ai/openapi.json"
@@ -11103,7 +11031,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-openapi.json",
         "hash": "c6d9b04b2e9582f1f21caae8a80b0d607e5d24f402bdec92c3b6095ed1303463",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-openapi",
         "url": "https://verathos.ai/openapi.json"
@@ -11130,7 +11058,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-validator-proxy-openapi.json",
         "hash": "7feb1eb427f64acdae8884bc25839127312999a42b4f7ad96978dd3b81936793",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-validator-proxy-openapi",
         "url": "https://api.verathos.ai/openapi.json"
@@ -11176,7 +11104,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-validator-proxy-openapi.json",
         "hash": "7feb1eb427f64acdae8884bc25839127312999a42b4f7ad96978dd3b81936793",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-validator-proxy-openapi",
         "url": "https://api.verathos.ai/openapi.json"
@@ -11260,7 +11188,7 @@
         "artifact": "/metagraph/schemas/sn-96-verathos-validator-proxy-openapi.json",
         "hash": "7feb1eb427f64acdae8884bc25839127312999a42b4f7ad96978dd3b81936793",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-96-verathos-validator-proxy-openapi",
         "url": "https://api.verathos.ai/openapi.json"
@@ -11439,7 +11367,7 @@
         "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
         "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-99-leoma-openapi",
         "url": "https://api.leoma.ai/openapi.json"
@@ -11466,7 +11394,7 @@
         "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
         "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-99-leoma-openapi",
         "url": "https://api.leoma.ai/openapi.json"
@@ -11493,7 +11421,7 @@
         "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
         "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-99-leoma-openapi",
         "url": "https://api.leoma.ai/openapi.json"
@@ -11577,7 +11505,7 @@
         "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
         "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-99-leoma-openapi",
         "url": "https://api.leoma.ai/openapi.json"
@@ -11604,7 +11532,7 @@
         "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
         "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-99-leoma-openapi",
         "url": "https://api.leoma.ai/openapi.json"
@@ -11631,7 +11559,7 @@
         "artifact": "/metagraph/schemas/sn-99-leoma-openapi.json",
         "hash": "59f418a51a0d96947a8404b9c5fb7e09f03a131429035859f032938fcd47ff76",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-99-leoma-openapi",
         "url": "https://api.leoma.ai/openapi.json"
@@ -11658,7 +11586,7 @@
         "artifact": "/metagraph/schemas/sn-100-platform-network-openapi.json",
         "hash": "bd94d5e6964f234a12d149625cf879ec92076462537cab8996cec9abe6e290b5",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-100-platform-network-openapi",
         "url": "https://chain.joinbase.ai/openapi.json"
@@ -11685,7 +11613,7 @@
         "artifact": "/metagraph/schemas/sn-100-platform-network-openapi.json",
         "hash": "bd94d5e6964f234a12d149625cf879ec92076462537cab8996cec9abe6e290b5",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-100-platform-network-openapi",
         "url": "https://chain.joinbase.ai/openapi.json"
@@ -11712,7 +11640,7 @@
         "artifact": "/metagraph/schemas/sn-100-platform-network-openapi.json",
         "hash": "bd94d5e6964f234a12d149625cf879ec92076462537cab8996cec9abe6e290b5",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-100-platform-network-openapi",
         "url": "https://chain.joinbase.ai/openapi.json"
@@ -12100,7 +12028,7 @@
         "artifact": "/metagraph/schemas/sn-105-beam-openapi.json",
         "hash": "a86b61663eedc69bdf40819a7798e008c559fbfb9225aa5650bf2e9fd08ddf69",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-105-beam-openapi",
         "url": "https://beamcore.b1m.ai/openapi.json"
@@ -12146,7 +12074,7 @@
         "artifact": "/metagraph/schemas/sn-105-beam-openapi.json",
         "hash": "a86b61663eedc69bdf40819a7798e008c559fbfb9225aa5650bf2e9fd08ddf69",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-105-beam-openapi",
         "url": "https://beamcore.b1m.ai/openapi.json"
@@ -12173,7 +12101,7 @@
         "artifact": "/metagraph/schemas/sn-105-beam-openapi.json",
         "hash": "a86b61663eedc69bdf40819a7798e008c559fbfb9225aa5650bf2e9fd08ddf69",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-105-beam-openapi",
         "url": "https://beamcore.b1m.ai/openapi.json"
@@ -12200,7 +12128,7 @@
         "artifact": "/metagraph/schemas/sn-105-beam-openapi.json",
         "hash": "a86b61663eedc69bdf40819a7798e008c559fbfb9225aa5650bf2e9fd08ddf69",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-105-beam-openapi",
         "url": "https://beamcore.b1m.ai/openapi.json"
@@ -12417,7 +12345,7 @@
         "artifact": "/metagraph/schemas/sn-110-green-compute-openapi.json",
         "hash": "0c150038ecde26f07837e3b4b77f3e699143ede4fb0d5d6dec9913c342f6bb45",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-110-green-compute-openapi",
         "url": "https://api.green-compute.com/openapi.json"
@@ -12444,7 +12372,7 @@
         "artifact": "/metagraph/schemas/sn-110-green-compute-openapi.json",
         "hash": "0c150038ecde26f07837e3b4b77f3e699143ede4fb0d5d6dec9913c342f6bb45",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-110-green-compute-openapi",
         "url": "https://api.green-compute.com/openapi.json"
@@ -12509,7 +12437,7 @@
         "artifact": "/metagraph/schemas/sn-110-green-compute-openapi.json",
         "hash": "0c150038ecde26f07837e3b4b77f3e699143ede4fb0d5d6dec9913c342f6bb45",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-110-green-compute-openapi",
         "url": "https://api.green-compute.com/openapi.json"
@@ -13030,7 +12958,7 @@
         "artifact": "/metagraph/schemas/sn-120-affine-openapi.json",
         "hash": "bacd35a211fffb28e34742bfa6ca3a28b3a7d46de67faa56edcc0929769cacb1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-120-affine-openapi",
         "url": "https://api.affine.io/openapi.json"
@@ -13057,7 +12985,7 @@
         "artifact": "/metagraph/schemas/sn-120-affine-openapi.json",
         "hash": "bacd35a211fffb28e34742bfa6ca3a28b3a7d46de67faa56edcc0929769cacb1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-120-affine-openapi",
         "url": "https://api.affine.io/openapi.json"
@@ -13084,7 +13012,7 @@
         "artifact": "/metagraph/schemas/sn-120-affine-openapi.json",
         "hash": "bacd35a211fffb28e34742bfa6ca3a28b3a7d46de67faa56edcc0929769cacb1",
         "match": "same-origin-openapi",
-        "observed_at": "2026-07-22T07:33:40.105Z",
+        "observed_at": "2026-07-23T07:31:56.544Z",
         "status": "captured",
         "surface_id": "sn-120-affine-openapi",
         "url": "https://api.affine.io/openapi.json"
