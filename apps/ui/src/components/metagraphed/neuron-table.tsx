@@ -155,12 +155,10 @@ export function NeuronTable({
       </ul>
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
-          <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+          <thead className="bg-surface/50 mg-type-micro text-ink-muted">
             <tr>
               {col("uid", "UID", "left")}
-              <th className="px-3 py-2.5 text-left font-mono text-[10px] uppercase tracking-widest">
-                Hotkey
-              </th>
+              <th className="px-3 py-2.5 text-left mg-type-micro">Hotkey</th>
               {col("stake_tao", "Stake τ")}
               {col("emission_tao", "Emission τ")}
               {isValidator ? (
@@ -168,9 +166,7 @@ export function NeuronTable({
                   {col("dividends", "Dividends")}
                   {col("validator_trust", "Val Trust")}
                   {col("take", "Take")}
-                  <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest">
-                    Est. APY
-                  </th>
+                  <th className="px-3 py-2.5 text-right mg-type-micro">Est. APY</th>
                 </>
               ) : (
                 <>
@@ -179,13 +175,9 @@ export function NeuronTable({
                   {col("consensus", "Consensus")}
                 </>
               )}
-              <th className="px-3 py-2.5 text-center font-mono text-[10px] uppercase tracking-widest">
-                Permit
-              </th>
+              <th className="px-3 py-2.5 text-center mg-type-micro">Permit</th>
               {isValidator ? (
-                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-widest">
-                  Delegate
-                </th>
+                <th className="px-3 py-2.5 text-right mg-type-micro">Delegate</th>
               ) : null}
             </tr>
           </thead>
@@ -315,7 +307,7 @@ export function NeuronTable({
           </tbody>
         </table>
       </div>
-      <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+      <div className="border-t border-border/60 bg-surface/30 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 mg-type-micro text-ink-muted">
         <span>
           {sorted.length} {sorted.length === 1 ? "neuron" : "neurons"} · subnet {netuid}
         </span>
@@ -357,7 +349,7 @@ function NeuronCard({
     <li className={classNames("min-w-0 space-y-2 p-3", active && "bg-accent-surface")}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 font-mono text-[12px] tabular-nums text-ink-strong">
-          <span className="text-[10px] uppercase tracking-widest text-ink-muted">UID</span>
+          <span className="mg-type-micro text-ink-muted">UID</span>
           {onSelect ? (
             <button
               type="button"
