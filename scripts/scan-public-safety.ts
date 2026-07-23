@@ -3,6 +3,21 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { repoRoot } from "./lib.ts";
 
+// Parsed fixture/JSON bodies scanned below are arbitrary, untrusted third-
+// party content (captured API responses) -- read only to test against the
+// regex patterns, never trusted for control flow. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+interface SafetyPattern {
+  name: string;
+  regex: RegExp;
+  allow?: RegExp;
+  soft?: boolean;
+  scanFixtureBody?: boolean;
+}
+
 const targetRoots = [
   "README.md",
   "docs",
@@ -63,7 +78,7 @@ const SKIPPED_DIR_NAMES = new Set([
   ".vscode",
 ]);
 
-const patterns = [
+const patterns: SafetyPattern[] = [
   {
     name: "local absolute path",
     regex: /\/Users\/|\/home\/|C:\\Users\\/,
@@ -307,7 +322,7 @@ const patterns = [
 // JSON key). Fixture body soft scans stay limited to security-sensitive
 // wallet/key phrases because broad Bittensor terminology is legitimate upstream
 // API vocabulary ("The miner hotkey to look up") and wedges publish.
-function isMirroredExternalSpec(relativePath) {
+function isMirroredExternalSpec(relativePath: string): boolean {
   return [
     /^public\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
     /^dist\/metagraph-r2\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
@@ -330,7 +345,7 @@ const mirroredFixturePatterns = [
 
 // This file's own source, and two siblings that define their own sensitive-
 // key-name detectors (scripts/lib.ts's fixture-body key scanner, scripts/
-// snapshot-adapters.mjs's field-name redaction check), are all, by
+// snapshot-adapters.ts's field-name redaction check), are all, by
 // definition, where every soft terminology phrase and example identifier
 // these rules look for is written out literally (in the regex source itself,
 // and in the comments explaining why). None of the three needed this
@@ -339,11 +354,11 @@ const mirroredFixturePatterns = [
 // heuristics are skipped -- the hard secret-value patterns above still apply,
 // in case a real credential is ever pasted into a comment in any of them.
 const SELF_REFERENTIAL_PATHS = new Set([
-  "scripts/scan-public-safety.mjs",
+  "scripts/scan-public-safety.ts",
   "scripts/lib.ts",
-  "scripts/snapshot-adapters.mjs",
+  "scripts/snapshot-adapters.ts",
 ]);
-function isSelfReferential(relativePath) {
+function isSelfReferential(relativePath: string): boolean {
   return SELF_REFERENTIAL_PATHS.has(relativePath);
 }
 
@@ -357,7 +372,7 @@ function isSelfReferential(relativePath) {
 const PROSE_HEAVY_SOFT_SKIP_PATHS = new Set([
   "scripts/fetch-account-identity.py",
 ]);
-function isProseHeavy(relativePath) {
+function isProseHeavy(relativePath: string): boolean {
   return PROSE_HEAVY_SOFT_SKIP_PATHS.has(relativePath);
 }
 
@@ -378,7 +393,7 @@ const GENERATED_WORKER_TYPES_PATHS = new Set([
   "workers/data-api.worker-configuration.d.ts",
   "workers/registry-sync-api.worker-configuration.d.ts",
 ]);
-function isGeneratedWorkerTypes(relativePath) {
+function isGeneratedWorkerTypes(relativePath: string): boolean {
   return GENERATED_WORKER_TYPES_PATHS.has(relativePath);
 }
 
@@ -397,19 +412,19 @@ const UNSAFE_URL_REJECTION_FIXTURE_PATTERNS = [
   /^scripts\/worker-test\.mjs$/,
   /^deploy\/wss-lb\/test\/[^/]+\.test\.mjs$/,
 ];
-function isUnsafeUrlRejectionFixture(relativePath) {
+function isUnsafeUrlRejectionFixture(relativePath: string): boolean {
   return UNSAFE_URL_REJECTION_FIXTURE_PATTERNS.some((pattern) =>
     pattern.test(relativePath),
   );
 }
 
-function isMirroredExternalFixture(relativePath) {
+function isMirroredExternalFixture(relativePath: string): boolean {
   return mirroredFixturePatterns.some((pattern) => pattern.test(relativePath));
 }
 
-const findings = [];
+const findings: string[] = [];
 
-async function* walk(target) {
+async function* walk(target: string): AsyncGenerator<string> {
   const fullPath = path.join(repoRoot, target);
   let stat;
   try {
@@ -429,7 +444,7 @@ async function* walk(target) {
   } catch (err) {
     // Same TOCTOU race as the readFile guard below: the stat above can see a
     // directory that a concurrent rebuild removes before readdir gets to it.
-    if (err.code === "ENOENT") {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return;
     }
     throw err;
@@ -455,7 +470,7 @@ async function* walk(target) {
 // side-effects a live repo-wide scan + process.exit -- that previously made
 // the import's outcome depend on whatever transient state happened to be on
 // disk the first time any test in the run imported this module.
-async function runScan() {
+async function runScan(): Promise<void> {
   findings.length = 0;
   for (const root of targetRoots) {
     for await (const filePath of walk(root)) {
@@ -463,7 +478,7 @@ async function runScan() {
       if (isBinaryOrIgnored(relative)) {
         continue;
       }
-      let content;
+      let content: string;
       try {
         content = await fs.readFile(filePath, "utf8");
       } catch (err) {
@@ -472,7 +487,7 @@ async function runScan() {
         // walking) -- that's nothing to scan, not a scan failure, so skip it
         // rather than crashing the whole run on an ENOENT race. Any other
         // error (permissions, etc.) is a real problem and still propagates.
-        if (err.code === "ENOENT") {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
           continue;
         }
         throw err;
@@ -557,8 +572,8 @@ if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
   await runScan();
 }
 
-function scanCapturedFixtureBody(relativePath, content) {
-  let fixture;
+function scanCapturedFixtureBody(relativePath: string, content: string): void {
+  let fixture: Row;
   try {
     fixture = JSON.parse(content);
   } catch {
@@ -617,7 +632,10 @@ function scanCapturedFixtureBody(relativePath, content) {
   }
 }
 
-function isOpenApiDocumentationField(valuePath, body) {
+function isOpenApiDocumentationField(
+  valuePath: string,
+  body: unknown,
+): boolean {
   const isDocumentationField =
     valuePath.endsWith(".description") ||
     valuePath.endsWith(".summary") ||
@@ -638,20 +656,29 @@ function isOpenApiDocumentationField(valuePath, body) {
   );
 }
 
-function isOpenApiBody(body) {
-  return (
+function isOpenApiBody(body: unknown): boolean {
+  return Boolean(
     body &&
     typeof body === "object" &&
     !Array.isArray(body) &&
-    (typeof body.openapi === "string" ||
-      typeof body.swagger === "string" ||
-      (body.paths &&
-        typeof body.paths === "object" &&
-        !Array.isArray(body.paths)))
+    (typeof (body as Row).openapi === "string" ||
+      typeof (body as Row).swagger === "string" ||
+      ((body as Row).paths &&
+        typeof (body as Row).paths === "object" &&
+        !Array.isArray((body as Row).paths))),
   );
 }
 
-function* walkJsonStrings(node, valuePath = "") {
+interface JsonStringEntry {
+  valuePath: string;
+  value: string;
+  kind?: "key";
+}
+
+function* walkJsonStrings(
+  node: unknown,
+  valuePath = "",
+): Generator<JsonStringEntry> {
   if (typeof node === "string") {
     yield { valuePath, value: node };
     return;
@@ -671,7 +698,7 @@ function* walkJsonStrings(node, valuePath = "") {
   }
 }
 
-function isBinaryOrIgnored(relativePath) {
+function isBinaryOrIgnored(relativePath: string): boolean {
   return (
     relativePath.endsWith(".DS_Store") ||
     relativePath.endsWith(".png") ||

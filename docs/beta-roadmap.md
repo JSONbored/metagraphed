@@ -61,7 +61,7 @@ subnets and demonstrate the product to the broader ecosystem.
    `registry/adapters/latest/gittensor.json` currently shows `Bad credentials`
    (401), all 18 repos at `html-fallback` with `null` `pushed_at`/`open_issues_count`,
    and `captured_count: 0` — committed from a local, tokenless, epoch-stamped run.
-   The snapshot code is already hardened: `scripts/snapshot-adapters.mjs` reads
+   The snapshot code is already hardened: `scripts/snapshot-adapters.ts` reads
    `GITHUB_TOKEN`/`GH_TOKEN`, warns and carries forward on 401, and honors
    `METAGRAPH_REQUIRE_ADAPTER_AUTH=1` to fail closed — and `sync-subnets.yml`
    already sets that guard and passes the token. Remaining work is **operational**:

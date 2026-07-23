@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   stripObservationTimestamps,
   committedSnapshotIsCurrent,
-} from "../scripts/snapshot-adapters.mjs";
+} from "../scripts/snapshot-adapters.ts";
 
 // A snapshot shaped like the committed registry/adapters/latest/*.json files:
 // a top-level generated_at plus per-dimension and per-schema captured_at, with

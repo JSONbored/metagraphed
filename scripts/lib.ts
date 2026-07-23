@@ -1028,7 +1028,7 @@ const schemaDroppedContentKeys = new Set([
 ]);
 const schemaAbsoluteUrlPattern = /\b(?:https?|wss?):\/\/[^\s<>"'`)}\]]+/gi;
 // Local absolute filesystem paths, scheme-less so distinct from the URL
-// pattern above. Mirrors scan-public-safety.mjs's "local absolute path" hard
+// pattern above. Mirrors scan-public-safety.ts's "local absolute path" hard
 // pattern, which has no soft-content exemption for mirrored/captured fixture
 // bodies by design (a real leak shape, not terminology) -- a live-captured
 // third-party response can echo one back regardless (e.g. a genomics

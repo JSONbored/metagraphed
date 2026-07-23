@@ -37,7 +37,7 @@ export default defineConfig({
     //     input+output tree copy.
     //   - tests/public-safety.test.mjs writes a transient fixture into
     //     dist/metagraph-r2/metagraph/fixtures/ (to exercise
-    //     scan-public-safety.mjs's mirroredFixturePatterns exemption) and
+    //     scan-public-safety.ts's mirroredFixturePatterns exemption) and
     //     deletes it in afterEach. scripts/validate-schemas.mjs treats that same
     //     directory as a templated artifact location and schema-validates every
     //     .json file in it, so a concurrently-running consumer of
@@ -58,7 +58,7 @@ export default defineConfig({
     // the three writers serially. The passes are sequential, so writers never
     // overlap readers. Coverage is collected only in `test:ci` (all three
     // writers drive their assertions primarily via execFileSync child
-    // processes — build-artifacts.mjs for the first two, scan-public-safety.mjs
+    // processes — build-artifacts.mjs for the first two, scan-public-safety.ts
     // for the third — contributing zero in-process coverage there; none of the
     // three scripts are in the `include` globs below, so moving their tests to
     // the serial pass has no coverage effect either way — verified Δ=0.00

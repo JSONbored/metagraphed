@@ -5,7 +5,7 @@ import {
   apiRouteUrl,
   fixtureSurfaceIdFromIndex,
   liveSmokeApiRoutes,
-} from "../scripts/smoke-live-api.mjs";
+} from "../scripts/smoke-live-api.ts";
 
 // PR-time guard for the recurring #1682 class: the live smoke substitutes path
 // placeholders ({netuid}/{slug}/{date}/{uid}/{hash}/{ref}/{ss58}) before

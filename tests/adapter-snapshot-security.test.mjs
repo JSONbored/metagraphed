@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
-import { fetchJson } from "../scripts/snapshot-adapters.mjs";
+import { fetchJson } from "../scripts/snapshot-adapters.ts";
 
 const originalFetch = globalThis.fetch;
 

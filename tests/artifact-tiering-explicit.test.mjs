@@ -17,7 +17,7 @@ import {
 } from "../src/artifact-storage.ts";
 
 // Concrete sample values for the path-template tokens, mirroring
-// scripts/smoke-live-api.mjs so a templated path resolves to a real-shaped
+// scripts/smoke-live-api.ts so a templated path resolves to a real-shaped
 // relative path before pattern matching (the patterns also accept the literal
 // `{token}` form, but substituting proves a *concrete* request path tiers
 // explicitly too).

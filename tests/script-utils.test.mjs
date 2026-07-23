@@ -93,7 +93,7 @@ import {
 import {
   summarizeGithubMetadata,
   summarizeGittensorMaster,
-} from "../scripts/snapshot-adapters.mjs";
+} from "../scripts/snapshot-adapters.ts";
 
 describe("script utility contracts", () => {
   test("uses public-safe fixture capture parse failure reasons", () => {

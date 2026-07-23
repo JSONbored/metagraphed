@@ -1121,7 +1121,7 @@ describe("sanitizeFixtureBody (#352)", () => {
     // A live-captured third-party response can echo back a real local path
     // incidentally (e.g. a genomics subnet's per-miner submitted log text
     // carrying a path from whoever ran their own tooling), which
-    // scan-public-safety.mjs's "local absolute path" hard pattern has no
+    // scan-public-safety.ts's "local absolute path" hard pattern has no
     // soft-content exemption for by design -- must be redacted here instead.
     const out = sanitizeFixtureBody({
       macLog: "Processing dataset at /Users/researcher/data/output.csv now",

@@ -4,6 +4,15 @@ import { fileURLToPath } from "node:url";
 import { API_ROUTES } from "../src/contracts.mjs";
 import { MCP_TOOLS } from "../src/mcp-server.mjs";
 
+// Live production response bodies (API envelopes, MCP JSON-RPC results) --
+// every field below is read for assertion/reporting only, and an unexpected
+// shape is exactly what these assertions exist to catch. Typing each hop
+// through `unknown` would force a cast at every `?.` for no real safety gain
+// over the assertions themselves. Mirrors the readJson/readArtifactJson
+// precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const DEFAULT_BASE_URL = "https://api.metagraph.sh";
 const baseUrl = normalizeBaseUrl(
   process.env.METAGRAPH_LIVE_BASE_URL || DEFAULT_BASE_URL,
@@ -20,7 +29,7 @@ if (
   await runLiveSmoke();
 }
 
-async function runLiveSmoke() {
+async function runLiveSmoke(): Promise<void> {
   const healthDate = await discoverHealthHistoryDate();
   const fixtureSurfaceId =
     process.env.METAGRAPH_LIVE_FIXTURE_SURFACE_ID ||
@@ -39,7 +48,7 @@ async function runLiveSmoke() {
     "/metagraph/candidates.json",
     "/metagraph/review-queue.json",
   ];
-  const results = [];
+  const results: Row[] = [];
 
   for (const check of apiChecks) {
     const result = await fetchJson(check.url);
@@ -400,12 +409,16 @@ async function runLiveSmoke() {
 // by_publication_state, which folds in auth/pool-eligibility rules) would
 // need its derivation logic reimplemented here to check safely, which is
 // its own bug surface -- skip those rather than guess.
-export function reconcileRollups(summary, detail, fieldsToKeys) {
-  const mismatches = [];
+export function reconcileRollups(
+  summary: Row | null | undefined,
+  detail: Row[],
+  fieldsToKeys: Record<string, string>,
+): Row[] {
+  const mismatches: Row[] = [];
   for (const [rollupKey, field] of Object.entries(fieldsToKeys)) {
     const rollup = summary?.[rollupKey];
     if (!rollup || typeof rollup !== "object") continue;
-    const actual = Object.create(null);
+    const actual: Record<string, number> = Object.create(null);
     for (const row of detail) {
       const value = row?.[field];
       if (value === undefined || value === null) continue;
@@ -424,7 +437,12 @@ export function reconcileRollups(summary, detail, fieldsToKeys) {
   return mismatches;
 }
 
-function assertRollupsReconcile(routeLabel, summary, detail, fieldsToKeys) {
+function assertRollupsReconcile(
+  routeLabel: string,
+  summary: Row | null | undefined,
+  detail: Row[],
+  fieldsToKeys: Record<string, string>,
+): void {
   const mismatches = reconcileRollups(summary, detail, fieldsToKeys);
   assert.deepEqual(
     mismatches,
@@ -433,7 +451,7 @@ function assertRollupsReconcile(routeLabel, summary, detail, fieldsToKeys) {
   );
 }
 
-async function discoverHealthHistoryDate() {
+async function discoverHealthHistoryDate(): Promise<string> {
   // Current-state health is live-only — the static /metagraph/health/latest.json
   // artifact is retired (410). Bootstrap the probe date from the live
   // /api/v1/health endpoint, then walk backward to the most recent date that
@@ -467,7 +485,11 @@ async function discoverHealthHistoryDate() {
   });
 }
 
-export function apiRouteUrl(routePath, date, options = {}) {
+export function apiRouteUrl(
+  routePath: string,
+  date: string,
+  options: { surfaceId?: string | null } = {},
+): string {
   // D1-tier detail routes carry id placeholders beyond {netuid}/{slug}/{date}.
   // Substitute constant, dependency-free sample ids that resolve to a live 200:
   // uid 0 always exists; an all-zero hash / block 0 hit the cold→null wrapper
@@ -525,7 +547,9 @@ export function apiRouteUrl(routePath, date, options = {}) {
   return url.toString();
 }
 
-export function liveSmokeApiRoutes(fixtureSurfaceId = null) {
+export function liveSmokeApiRoutes(
+  fixtureSurfaceId: string | null = null,
+): Row[] {
   // Fixture detail is a live, R2-only detail route whose path requires a
   // currently published surface id. The smoke runner derives that id from the
   // fixture index when the deployment does not supply an explicit override.
@@ -534,12 +558,14 @@ export function liveSmokeApiRoutes(fixtureSurfaceId = null) {
   );
 }
 
-export async function discoverFixtureSurfaceId() {
+export async function discoverFixtureSurfaceId(): Promise<string | null> {
   const result = await fetchJson(`${baseUrl}/api/v1/fixtures`);
   return fixtureSurfaceIdFromIndex(result.body);
 }
 
-export function fixtureSurfaceIdFromIndex(body) {
+export function fixtureSurfaceIdFromIndex(
+  body: Row | null | undefined,
+): string | null {
   const fixtures = body?.data?.fixtures;
   if (!Array.isArray(fixtures)) {
     return null;
@@ -550,7 +576,10 @@ export function fixtureSurfaceIdFromIndex(body) {
   );
 }
 
-async function fetchJson(url, options = {}) {
+async function fetchJson(
+  url: string,
+  options: RequestInit = {},
+): Promise<{ body: Row; headers: Headers; status: number }> {
   const response = await fetch(url, {
     ...options,
     signal: AbortSignal.timeout(timeoutMs),
@@ -562,13 +591,18 @@ async function fetchJson(url, options = {}) {
     `${url}: expected JSON content-type, got ${contentType || "none"}`,
   );
   return {
-    body: await response.json(),
+    body: (await response.json()) as Row,
     headers: response.headers,
     status: response.status,
   };
 }
 
-function assertHeader(result, name, expected, route) {
+function assertHeader(
+  result: { headers: Headers },
+  name: string,
+  expected: string | null,
+  route: string,
+): void {
   assert.equal(
     result.headers.get(name),
     expected,
@@ -576,7 +610,7 @@ function assertHeader(result, name, expected, route) {
   );
 }
 
-function normalizeBaseUrl(value) {
+function normalizeBaseUrl(value: string): string {
   const url = new URL(value);
   url.pathname = url.pathname.replace(/\/+$/, "");
   url.search = "";

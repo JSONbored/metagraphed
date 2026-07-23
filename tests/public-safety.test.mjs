@@ -10,7 +10,7 @@ import {
   repoRoot,
 } from "../scripts/lib.ts";
 
-// This exact path is load-bearing: scan-public-safety.mjs's own
+// This exact path is load-bearing: scan-public-safety.ts's own
 // mirroredFixturePatterns exempts dist/metagraph-r2/metagraph/fixtures/*.json
 // from the soft wallet/key terminology rules (legitimate third-party API docs
 // mentioning "private key"/"seed phrase" in a non-leaking context), and this
@@ -35,7 +35,7 @@ const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);
 const TEST_PUBLIC_FILE = "__public_safety_test__.txt";
 const TEST_PUBLIC_PATH = path.join(repoRoot, "public", TEST_PUBLIC_FILE);
 // Each of the 38 tests that call runScanOutput() spawns a real `node
-// scripts/scan-public-safety.mjs` subprocess that walks the entire repo tree
+// scripts/scan-public-safety.ts` subprocess that walks the entire repo tree
 // -- unlike this file's other (in-process) tests, its cost scales with repo
 // size and is subject to real process-spawn/scheduler variance, not just
 // this file's own logic. 15000ms (set when the registry was a fraction of
@@ -62,7 +62,7 @@ async function writeTestFixture(body, { kind } = {}) {
 // off the test fixture's path in the output, which is independent of that.
 function runScanOutput() {
   try {
-    execFileSync("node", ["scripts/scan-public-safety.mjs"], {
+    execFileSync("node", ["scripts/scan-public-safety.ts"], {
       cwd: repoRoot,
       encoding: "utf8",
     });
@@ -537,7 +537,7 @@ describe("captured-fixture body scan", () => {
       `generated CSV headers should be exempt; got:\n${output}`,
     );
 
-    await import("../scripts/scan-public-safety.mjs");
+    await import("../scripts/scan-public-safety.ts");
   });
 
   test("still flags suspicious coldkey prose that a hyphen can't smuggle past", async () => {

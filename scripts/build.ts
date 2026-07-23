@@ -181,7 +181,7 @@ function productionSteps(): Step[] {
     // Auth posture (METAGRAPH_REQUIRE_ADAPTER_AUTH) + token are supplied by
     // the caller (publish-cloudflare.yml); without a token this carries
     // forward committed adapter data rather than failing.
-    nodeStep("adapters-snapshot", "scripts/snapshot-adapters.mjs", "--write"),
+    nodeStep("adapters-snapshot", "scripts/snapshot-adapters.ts", "--write"),
     // Capture one sanitized live request/response sample per no-auth GET
     // surface (issue #352) before build-artifacts, mirroring schemas-snapshot:
     // build-artifacts grabs the fixtures/{surface_id}.json files before its

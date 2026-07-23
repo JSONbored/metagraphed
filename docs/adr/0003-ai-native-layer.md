@@ -94,7 +94,7 @@ contract. No new authority, no new pipeline.
 - `tests/mcp-server.test.mjs` unit-tests every tool and the JSON-RPC envelope
   (notifications, batch, parse/transport errors, isError degradation) under the
   ≥98%-line coverage gate.
-- `scripts/smoke-live-api.mjs` exercises the live MCP handshake + a `tools/call`
+- `scripts/smoke-live-api.ts` exercises the live MCP handshake + a `tools/call`
   post-deploy.
 
 ## Consequences

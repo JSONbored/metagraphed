@@ -13,6 +13,14 @@ import {
   writeJson,
 } from "./lib.ts";
 
+// Third-party adapter response bodies (Allways, Gittensor, generic OpenAPI
+// specs) are untrusted external JSON, summarized/hashed for reporting only --
+// never trusted for control flow. Typing every hop through `unknown` would
+// force a cast at every access for no real safety gain. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
@@ -32,7 +40,7 @@ const githubToken = (
 // invalid/expired-token case; a deliberately tokenless run is never failed.
 const requireAdapterAuth = process.env.METAGRAPH_REQUIRE_ADAPTER_AUTH === "1";
 
-async function loadPreviousAdapterSnapshot(slug) {
+async function loadPreviousAdapterSnapshot(slug: string): Promise<Row | null> {
   try {
     return await readJson(path.join(outputRoot, `${slug}.json`));
   } catch {
@@ -52,12 +60,12 @@ const OBSERVATION_TIMESTAMP_KEYS = new Set([
 
 // Deep clone with every observation timestamp nulled, so two snapshots can be
 // compared on substance alone.
-export function stripObservationTimestamps(value) {
+export function stripObservationTimestamps(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(stripObservationTimestamps);
   }
   if (value && typeof value === "object") {
-    const out = {};
+    const out: Row = {};
     for (const [key, inner] of Object.entries(value)) {
       out[key] = OBSERVATION_TIMESTAMP_KEYS.has(key)
         ? null
@@ -71,7 +79,10 @@ export function stripObservationTimestamps(value) {
 // True when the committed snapshot already reflects this run's data and differs
 // only in observation timestamps — i.e. re-writing would churn timestamps with
 // no substantive change.
-export function committedSnapshotIsCurrent(previous, fresh) {
+export function committedSnapshotIsCurrent(
+  previous: unknown,
+  fresh: unknown,
+): boolean {
   return (
     stableStringify(stripObservationTimestamps(previous)) ===
     stableStringify(stripObservationTimestamps(fresh))
@@ -95,7 +106,7 @@ if (
   await main();
 }
 
-async function main() {
+async function main(): Promise<void> {
   const [allways, gittensor] = await Promise.all([
     snapshotAllways(),
     snapshotGittensor(),
@@ -144,8 +155,8 @@ async function main() {
   );
 }
 
-async function snapshotAllways() {
-  const endpoints = [
+async function snapshotAllways(): Promise<Row> {
+  const endpoints: [string, string][] = [
     ["health", "https://api.all-ways.io/health"],
     ["protocol_constants", "https://api.all-ways.io/protocol/constants"],
     ["protocol_chain_state", "https://api.all-ways.io/protocol/chain-state"],
@@ -156,7 +167,7 @@ async function snapshotAllways() {
     ["events_latest", "https://api.all-ways.io/events/latest"],
     ["crown", "https://api.all-ways.io/crown"],
   ];
-  const dimensions = {};
+  const dimensions: Row = {};
   await mapLimit(endpoints, 6, async ([key, url]) => {
     dimensions[key] = await fetchJsonSummary(url);
   });
@@ -178,11 +189,11 @@ async function snapshotAllways() {
   };
 }
 
-async function snapshotGittensor() {
+async function snapshotGittensor(): Promise<Row> {
   const masterUrl =
     "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/master_repositories.json";
   const master = await fetchJson(masterUrl);
-  const dimensions = {
+  const dimensions: Row = {
     master_repositories: summarizeGittensorMaster(masterUrl, master),
     bounties: {
       status: "docs-only",
@@ -199,8 +210,8 @@ async function snapshotGittensor() {
   };
 
   const previous = await loadPreviousAdapterSnapshot("gittensor");
-  const repositoryNames = Object.keys(master.body || {}).sort();
-  const repoMetadata = [];
+  const repositoryNames: string[] = Object.keys(master.body || {}).sort();
+  const repoMetadata: Row[] = [];
   await mapLimit(repositoryNames, 6, async (fullName) => {
     const metadata = await fetchGithubRepo(fullName);
     repoMetadata.push(metadata);
@@ -243,11 +254,13 @@ async function snapshotGittensor() {
   };
 }
 
-async function snapshotGenericOpenApiAdapters(excludedSlugs) {
+async function snapshotGenericOpenApiAdapters(
+  excludedSlugs: Set<string>,
+): Promise<Row[]> {
   const overlays = await loadSubnets();
-  const snapshots = [];
+  const snapshots: Row[] = [];
   await mapLimit(
-    overlays.filter((overlay) => !excludedSlugs.has(overlay.slug)),
+    overlays.filter((overlay) => !excludedSlugs.has(overlay.slug as string)),
     4,
     async (overlay) => {
       const schemaSurfaces = machineReadableOpenApiSurfaces(overlay);
@@ -262,9 +275,9 @@ async function snapshotGenericOpenApiAdapters(excludedSlugs) {
   return snapshots;
 }
 
-function machineReadableOpenApiSurfaces(overlay) {
-  const surfaces = overlay.surfaces || [];
-  const seen = new Set();
+function machineReadableOpenApiSurfaces(overlay: Row): Row[] {
+  const surfaces: Row[] = overlay.surfaces || [];
+  const seen = new Set<string>();
   return surfaces
     .filter(
       (surface) =>
@@ -290,21 +303,24 @@ function machineReadableOpenApiSurfaces(overlay) {
     .sort((a, b) => a.schema_url.localeCompare(b.schema_url));
 }
 
-async function snapshotGenericOpenApiAdapter(overlay, schemaSurfaces) {
-  const schemas = [];
+async function snapshotGenericOpenApiAdapter(
+  overlay: Row,
+  schemaSurfaces: Row[],
+): Promise<Row> {
+  const schemas: Row[] = [];
   await mapLimit(schemaSurfaces, 4, async (surface) => {
     schemas.push(await fetchOpenApiSchemaSummary(surface));
   });
   schemas.sort((a, b) => a.surface_id.localeCompare(b.surface_id));
 
-  const apiSurfaces = (overlay.surfaces || [])
+  const apiSurfaces = ((overlay.surfaces as Row[] | undefined) || [])
     .filter((surface) =>
       ["subnet-api", "data-artifact", "sse"].includes(surface.kind),
     )
     .map(publicSurfaceSummary)
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  const dimensions = {
+  const dimensions: Row = {
     openapi_schemas: summarizeOpenApiSchemas(schemas),
     public_api_surfaces: {
       status: "captured",
@@ -331,7 +347,7 @@ async function snapshotGenericOpenApiAdapter(overlay, schemaSurfaces) {
   };
 }
 
-async function fetchOpenApiSchemaSummary(surface) {
+async function fetchOpenApiSchemaSummary(surface: Row): Promise<Row> {
   const schemaUrl = surface.schema_url || surface.url;
   const fetched = await fetchJson(schemaUrl);
   const base = {
@@ -365,7 +381,7 @@ async function fetchOpenApiSchemaSummary(surface) {
   };
 }
 
-function summarizeOpenApiSchemas(schemas) {
+function summarizeOpenApiSchemas(schemas: Row[]): Row {
   const captured = schemas.filter((schema) => schema.status === "captured");
   return {
     status:
@@ -389,11 +405,11 @@ function summarizeOpenApiSchemas(schemas) {
   };
 }
 
-function summarizeOpenApiShape(schema) {
+function summarizeOpenApiShape(schema: Row): Row {
   const paths =
     schema.paths && typeof schema.paths === "object" ? schema.paths : {};
-  const pathEntries = Object.entries(paths);
-  const methodCounts = {};
+  const pathEntries = Object.entries(paths) as [string, Row][];
+  const methodCounts: Record<string, number> = {};
   let operationCount = 0;
   for (const [, pathDefinition] of pathEntries) {
     if (!pathDefinition || typeof pathDefinition !== "object") {
@@ -444,7 +460,7 @@ function summarizeOpenApiShape(schema) {
   };
 }
 
-function publicSurfaceSummary(surface) {
+function publicSurfaceSummary(surface: Row): Row {
   return {
     id: surface.id,
     kind: surface.kind,
@@ -457,11 +473,11 @@ function publicSurfaceSummary(surface) {
   };
 }
 
-function latestTimestamp(values) {
+function latestTimestamp(values: unknown[]): string | null {
   return (
     values
       .filter(Boolean)
-      .map((value) => new Date(value))
+      .map((value) => new Date(value as string))
       .filter((value) => !Number.isNaN(value.getTime()))
       .sort((a, b) => a.getTime() - b.getTime())
       .at(-1)
@@ -469,13 +485,13 @@ function latestTimestamp(values) {
   );
 }
 
-function isPublicSafeOpenApiPath(apiPath) {
+function isPublicSafeOpenApiPath(apiPath: unknown): boolean {
   return !/(address|coldkey|hotkey|keypair|private|secret|seed|token|wallet)/i.test(
     String(apiPath),
   );
 }
 
-async function fetchJsonSummary(url) {
+async function fetchJsonSummary(url: string): Promise<Row> {
   const fetched = await fetchJson(url);
   if (!fetched.ok) {
     return {
@@ -500,7 +516,7 @@ async function fetchJsonSummary(url) {
   };
 }
 
-function parseContentLength(value) {
+function parseContentLength(value: string | null): number | null {
   if (value === null) {
     return null;
   }
@@ -508,12 +524,15 @@ function parseContentLength(value) {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-async function readResponseText(response, maxBytes) {
+async function readResponseText(
+  response: Response,
+  maxBytes: number,
+): Promise<{ ok: boolean; text?: string }> {
   if (!response.body) {
     return { ok: true, text: "" };
   }
   const reader = response.body.getReader();
-  const chunks = [];
+  const chunks: Uint8Array[] = [];
   let totalBytes = 0;
   while (true) {
     const { done, value } = await reader.read();
@@ -536,7 +555,7 @@ async function readResponseText(response, maxBytes) {
   return { ok: true, text: new TextDecoder().decode(bodyBytes) };
 }
 
-export async function fetchJson(url, redirectCount = 0) {
+export async function fetchJson(url: string, redirectCount = 0): Promise<Row> {
   if (await isUnsafeResolvedUrl(url)) {
     return {
       ok: false,
@@ -661,9 +680,9 @@ export async function fetchJson(url, redirectCount = 0) {
   } catch (error) {
     return {
       ok: false,
-      status: error.name === "AbortError" ? "timeout" : "failed",
-      error: error.message,
-      error_class: error.name,
+      status: (error as Error).name === "AbortError" ? "timeout" : "failed",
+      error: (error as Error).message,
+      error_class: (error as Error).name,
       latency_ms: Math.round(performance.now() - started),
       captured_at: new Date().toISOString(),
     };
@@ -672,7 +691,7 @@ export async function fetchJson(url, redirectCount = 0) {
   }
 }
 
-async function fetchSseSummary(url) {
+async function fetchSseSummary(url: string): Promise<Row> {
   if (await isUnsafeResolvedUrl(url)) {
     return {
       status: "unsafe",
@@ -715,10 +734,10 @@ async function fetchSseSummary(url) {
     };
   } catch (error) {
     return {
-      status: error.name === "AbortError" ? "timeout" : "failed",
+      status: (error as Error).name === "AbortError" ? "timeout" : "failed",
       url,
-      error: error.message,
-      error_class: error.name,
+      error: (error as Error).message,
+      error_class: (error as Error).name,
       latency_ms: Math.round(performance.now() - started),
       captured_at: new Date().toISOString(),
     };
@@ -727,8 +746,8 @@ async function fetchSseSummary(url) {
   }
 }
 
-function summarizeJsonShape(value) {
-  const shape = {
+function summarizeJsonShape(value: unknown): Row {
+  const shape: Row = {
     type: Array.isArray(value)
       ? "array"
       : value === null
@@ -758,7 +777,10 @@ function summarizeJsonShape(value) {
       .filter(
         ([key, nested]) => Array.isArray(nested) && isPublicSafeFieldName(key),
       )
-      .map(([key, nested]) => ({ key, item_count: nested.length }))
+      .map(([key, nested]) => ({
+        key,
+        item_count: (nested as unknown[]).length,
+      }))
       .sort((a, b) => a.key.localeCompare(b.key));
     shape.object_fields = entries
       .filter(
@@ -768,23 +790,26 @@ function summarizeJsonShape(value) {
           typeof nested === "object" &&
           !Array.isArray(nested),
       )
-      .map(([key, nested]) => ({ key, key_count: Object.keys(nested).length }))
+      .map(([key, nested]) => ({
+        key,
+        key_count: Object.keys(nested as Row).length,
+      }))
       .sort((a, b) => a.key.localeCompare(b.key));
   }
   return shape;
 }
 
-function publicSafeFieldNames(keys) {
+function publicSafeFieldNames(keys: string[]): string[] {
   return keys.filter(isPublicSafeFieldName);
 }
 
-function isPublicSafeFieldName(key) {
+function isPublicSafeFieldName(key: unknown): boolean {
   return !/(address|coldkey|hotkey|keypair|private|secret|seed|token|wallet)/i.test(
     String(key),
   );
 }
 
-export function summarizeGittensorMaster(url, fetched) {
+export function summarizeGittensorMaster(url: string, fetched: Row): Row {
   if (!fetched.ok || !fetched.body || typeof fetched.body !== "object") {
     return {
       status: fetched.status || "failed",
@@ -801,9 +826,9 @@ export function summarizeGittensorMaster(url, fetched) {
   // A repo value may be JSON null, so read shares through optional chaining.
   const repoShares = entries.map(([repository, config]) => ({
     repository,
-    emission_share: Number(config?.emission_share) || 0,
-    maintainer_cut: Number(config?.maintainer_cut) || 0,
-    issue_discovery_share: Number(config?.issue_discovery_share) || 0,
+    emission_share: Number((config as Row)?.emission_share) || 0,
+    maintainer_cut: Number((config as Row)?.maintainer_cut) || 0,
+    issue_discovery_share: Number((config as Row)?.issue_discovery_share) || 0,
   }));
   const emissionShares = repoShares.map((repo) => repo.emission_share);
   const maintainerCuts = repoShares.map((repo) => repo.maintainer_cut);
@@ -840,12 +865,12 @@ export function summarizeGittensorMaster(url, fetched) {
   };
 }
 
-async function fetchGithubRepo(fullName) {
+async function fetchGithubRepo(fullName: string): Promise<Row> {
   const [owner, repo] = fullName.split("/");
   if (!owner || !repo) {
     return { status: "invalid", full_name: fullName };
   }
-  const headers = {
+  const headers: Record<string, string> = {
     accept: "application/vnd.github+json",
     "user-agent": "metagraphed-adapter-snapshot/0.0",
   };
@@ -859,7 +884,7 @@ async function fetchGithubRepo(fullName) {
       `https://api.github.com/repos/${owner}/${repo}`,
       { headers },
     );
-    const body = await response.json().catch(() => null);
+    const body = (await response.json().catch(() => null)) as Row;
     if (!response.ok) {
       return githubHtmlFallback(fullName, {
         status:
@@ -895,14 +920,17 @@ async function fetchGithubRepo(fullName) {
     return githubHtmlFallback(fullName, {
       status: "failed",
       full_name: fullName,
-      error: error.message,
+      error: (error as Error).message,
       latency_ms: Math.round(performance.now() - started),
       captured_at: new Date().toISOString(),
     });
   }
 }
 
-async function githubHtmlFallback(fullName, failure) {
+async function githubHtmlFallback(
+  fullName: string,
+  failure: Row,
+): Promise<Row> {
   const started = performance.now();
   try {
     const response = await fetch(`https://github.com/${fullName}`, {
@@ -929,13 +957,16 @@ async function githubHtmlFallback(fullName, failure) {
   }
 }
 
-export function summarizeGithubMetadata(repos, previousSummary = null) {
+export function summarizeGithubMetadata(
+  repos: Row[],
+  previousSummary: Row | null = null,
+): Row {
   // Index the previously-published per-repo metadata so a degraded fresh fetch
   // (bad/missing token, rate limit, transient error) carries forward the last
   // known-good GitHub API values instead of regressing the published adapter to
   // null `pushed_at`/`open_issues_count` rows.
   const previousByName = new Map(
-    (previousSummary?.repositories || [])
+    ((previousSummary?.repositories as Row[] | undefined) || [])
       .filter((repo) => repo && repo.full_name)
       .map((repo) => [repo.full_name, repo]),
   );
@@ -994,7 +1025,7 @@ export function summarizeGithubMetadata(repos, previousSummary = null) {
     return null;
   });
 
-  const repositories = rows.filter(Boolean);
+  const repositories = rows.filter(Boolean) as Row[];
   const capturedCount = repositories.filter(
     (repo) => repo.metadata_level === "github-api",
   ).length;
@@ -1034,7 +1065,10 @@ export function summarizeGithubMetadata(repos, previousSummary = null) {
   };
 }
 
-function reportAdapterAuth(slug, summary) {
+function reportAdapterAuth(
+  slug: string,
+  summary: Row | null | undefined,
+): void {
   if (!summary) {
     return;
   }
@@ -1061,7 +1095,7 @@ function reportAdapterAuth(slug, summary) {
   }
 }
 
-function adapterStatus(dimensions) {
+function adapterStatus(dimensions: Row[]): string {
   const values = dimensions.filter(Boolean);
   if (values.length === 0) {
     return "unknown";
@@ -1083,17 +1117,21 @@ function adapterStatus(dimensions) {
   return "failed";
 }
 
-function round6(value) {
+function round6(value: number): number {
   return Number(value.toFixed(6));
 }
 
-async function mapLimit(items, limit, mapper) {
+async function mapLimit<T>(
+  items: T[],
+  limit: number,
+  mapper: (item: T) => Promise<void>,
+): Promise<void> {
   const queue = [...items];
   const workers = Array.from(
     { length: Math.min(limit, queue.length) },
     async () => {
       while (queue.length > 0) {
-        await mapper(queue.shift());
+        await mapper(queue.shift() as T);
       }
     },
   );

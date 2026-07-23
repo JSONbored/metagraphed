@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { reconcileRollups } from "../scripts/smoke-live-api.mjs";
+import { reconcileRollups } from "../scripts/smoke-live-api.ts";
 
 // Offline unit coverage for the rollup/detail self-consistency check added for
 // #4503 -- a real, once-live bug had summary.by_status silently drift from the
 // endpoints[] rows in the SAME /api/v1/endpoints response (schema-valid on
 // both sides, the values just didn't reconcile). The live-network assertion
-// itself lives in smoke-live-api.mjs's runLiveSmoke() (only runs against
+// itself lives in smoke-live-api.ts's runLiveSmoke() (only runs against
 // production, not in CI); this covers reconcileRollups' own logic against
 // fixed, offline inputs.
 describe("reconcileRollups", () => {
