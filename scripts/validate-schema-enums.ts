@@ -13,7 +13,7 @@ const subnetSchema = await readJson(
 );
 
 const componentSchemas = schemaBundle.components.schemas;
-const errors = [];
+const errors: string[] = [];
 
 compareComponent("SurfaceKind", QUERY_ENUMS.surfaceKind);
 compareComponent("EndpointLayer", QUERY_ENUMS.endpointLayer);
@@ -95,25 +95,25 @@ if (errors.length > 0) {
 console.log("Schema enum validation passed.");
 
 function compareComponent(
-  componentName,
-  queryValues,
-  schemaOnlyValues = new Set(),
-) {
+  componentName: string,
+  queryValues: unknown[],
+  schemaOnlyValues: Set<unknown> = new Set(),
+): void {
   const schemaValues = (componentSchemas[componentName]?.enum || []).filter(
-    (value) => !schemaOnlyValues.has(value),
+    (value: unknown) => !schemaOnlyValues.has(value),
   );
   compareSchemaEnum(componentName, schemaValues, queryValues);
 }
 
 function comparePropertyEnum(
-  componentName,
-  propertyName,
-  queryValues,
-  schemaOnlyValues = new Set(),
-) {
+  componentName: string,
+  propertyName: string,
+  queryValues: unknown[],
+  schemaOnlyValues: Set<unknown> = new Set(),
+): void {
   const schemaValues = (
     componentSchemas[componentName]?.properties?.[propertyName]?.enum || []
-  ).filter((value) => !schemaOnlyValues.has(value));
+  ).filter((value: unknown) => !schemaOnlyValues.has(value));
   compareSchemaEnum(
     `${componentName}.${propertyName}`,
     schemaValues,
@@ -121,7 +121,11 @@ function comparePropertyEnum(
   );
 }
 
-function compareSchemaEnum(label, schemaValues = [], queryValues = []) {
+function compareSchemaEnum(
+  label: string,
+  schemaValues: unknown[] = [],
+  queryValues: unknown[] = [],
+): void {
   const schemaSet = new Set(schemaValues);
   const querySet = new Set(queryValues);
   const missingFromSchema = [...querySet].filter(

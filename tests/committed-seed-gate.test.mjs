@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import {
   committedSeedRoutes,
   runCommittedSeedGate,
-} from "../scripts/validate-committed-seed.mjs";
+} from "../scripts/validate-committed-seed.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "../scripts/lib.ts";
 
 const openapi = await readJson(

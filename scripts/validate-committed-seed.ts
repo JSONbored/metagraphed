@@ -22,8 +22,8 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { API_ROUTES } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import {
@@ -31,6 +31,18 @@ import {
   artifactStorageTierForPath,
 } from "../src/artifact-storage.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.ts";
+
+// ajv-formats' default export resolves to the CJS module namespace rather than
+// the plugin function under this project's NodeNext + esModuleInterop
+// resolution -- cast to its real callable signature rather than fight the
+// interop. Mirrors validate-openapi-examples.ts.
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
+
+// The OpenAPI document + generated route table are read for schema validation
+// only, never trusted for control flow. Mirrors the readJson/readArtifactJson
+// precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
 
 export const SEED_FAILURE_HINT =
   "Fix: run `npm run build`, then commit the regenerated public/ artifacts " +
@@ -40,7 +52,7 @@ export const SEED_FAILURE_HINT =
 // Paramless GET routes whose backing artifact is committed to git (DUAL tier) —
 // the only routes guaranteed to resolve from the committed seed on a clean
 // checkout, with no build and no R2/D1.
-export function committedSeedRoutes(routes = API_ROUTES) {
+export function committedSeedRoutes(routes: Row[] = API_ROUTES): Row[] {
   return routes.filter(
     (route) =>
       route.method === "GET" &&
@@ -54,7 +66,13 @@ export function committedSeedRoutes(routes = API_ROUTES) {
 // Exercise each committed-seed-backed route through the Worker and validate the
 // response against the generated OpenAPI 200 schema. Returns the routes checked
 // and a list of human-readable failures (empty = the committed seed is valid).
-export async function runCommittedSeedGate({ env, openapi }) {
+export async function runCommittedSeedGate({
+  env,
+  openapi,
+}: {
+  env: Row;
+  openapi: Row;
+}): Promise<{ checked: number; errors: string[] }> {
   const ajv = new Ajv2020({
     allErrors: true,
     allowUnionTypes: true,
@@ -64,7 +82,7 @@ export async function runCommittedSeedGate({ env, openapi }) {
   addFormats(ajv);
 
   const routes = committedSeedRoutes();
-  const errors = [];
+  const errors: string[] = [];
 
   for (const route of routes) {
     let response;
@@ -75,7 +93,9 @@ export async function runCommittedSeedGate({ env, openapi }) {
         {},
       );
     } catch (error) {
-      errors.push(`${route.path}: handler threw — ${error?.message ?? error}`);
+      errors.push(
+        `${route.path}: handler threw — ${(error as Row)?.message ?? error}`,
+      );
       continue;
     }
     if (response.status !== 200) {
@@ -84,7 +104,7 @@ export async function runCommittedSeedGate({ env, openapi }) {
       );
       continue;
     }
-    const body = await response.json();
+    const body = (await response.json()) as Row;
     if (body.ok !== true) {
       errors.push(`${route.path}: committed seed should serve an ok envelope`);
       continue;
@@ -114,7 +134,7 @@ export async function runCommittedSeedGate({ env, openapi }) {
   return { checked: routes.length, errors };
 }
 
-async function main() {
+async function main(): Promise<void> {
   const openapi = await readJson(
     path.join(repoRoot, "public/metagraph/openapi.json"),
   );
