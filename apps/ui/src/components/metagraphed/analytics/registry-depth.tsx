@@ -5,6 +5,7 @@ import { registrySummaryQuery, coverageDepthQuery } from "@/lib/metagraphed/quer
 import { classNames } from "@/lib/metagraphed/format";
 import { InfoTooltip, TableState, BarMini, type BarMiniDatum } from "@jsonbored/ui-kit";
 import { SortHeader, ariaSort } from "@/components/metagraphed/table-controls";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { CoverageDepthQueueRow } from "@/lib/metagraphed/types";
 
 /* ------------------------------------------------------------------ *
@@ -39,75 +40,77 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
   const scored = cov.scored_subnet_count;
 
   return (
-    <div className={classNames("rounded-lg border border-border bg-card p-5", className)}>
-      <header className="mb-2 flex items-center justify-between">
-        <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Completeness
+    <Panel as="div" flush className={className}>
+      <div className="p-5">
+        <header className="mb-2 flex items-center justify-between">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              Completeness
+            </div>
+            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+              Score distribution
+            </h3>
           </div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
-            Score distribution
-          </h3>
-        </div>
-        <div className="flex items-center gap-3 font-mono text-[10px] text-ink-muted">
-          {cov.median_score != null ? <Stat label="p50" value={`${cov.median_score}`} /> : null}
-          {cov.average_score != null ? <Stat label="μ" value={`${cov.average_score}`} /> : null}
-          <InfoTooltip label="Per-subnet completeness_score (0–100) bucketed by /api/v1/registry/summary. The rightmost bin (100) is the fully-complete set." />
-        </div>
-      </header>
-      <svg
-        width="100%"
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        className="block w-full"
-        role="img"
-        aria-label="Registry completeness score distribution"
-      >
-        {bins.map((b, i) => {
-          const x = PAD + i * colW;
-          const h = (b.value / max) * innerH;
-          const isFull = b.key === "100";
-          return (
-            <g key={b.key}>
-              <title>{`${b.label}: ${b.value} subnets`}</title>
-              <rect
-                x={x + 2}
-                y={PAD + innerH - h}
-                width={colW - 4}
-                height={h}
-                fill={isFull ? "var(--health-ok)" : "var(--accent)"}
-                opacity={isFull ? 0.85 : 0.75}
-                rx={1.5}
-              />
-              <text
-                x={x + colW / 2}
-                y={PAD + innerH - h - 4}
-                textAnchor="middle"
-                fontFamily="ui-monospace, monospace"
-                fontSize={9}
-                fill="var(--ink-strong)"
-              >
-                {b.value || ""}
-              </text>
-              <text
-                x={x + colW / 2}
-                y={H - 6}
-                textAnchor="middle"
-                fontFamily="ui-monospace, monospace"
-                fontSize={9}
-                fill="var(--ink-muted)"
-              >
-                {b.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-      <p className="mt-1 font-mono text-[10px] text-ink-muted">
-        {scored != null ? `${scored} subnets scored.` : ""} Each bin is a completeness band; the
-        goal is to push the registry rightward.
-      </p>
-    </div>
+          <div className="flex items-center gap-3 font-mono text-[10px] text-ink-muted">
+            {cov.median_score != null ? <Stat label="p50" value={`${cov.median_score}`} /> : null}
+            {cov.average_score != null ? <Stat label="μ" value={`${cov.average_score}`} /> : null}
+            <InfoTooltip label="Per-subnet completeness_score (0–100) bucketed by /api/v1/registry/summary. The rightmost bin (100) is the fully-complete set." />
+          </div>
+        </header>
+        <svg
+          width="100%"
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          className="block w-full"
+          role="img"
+          aria-label="Registry completeness score distribution"
+        >
+          {bins.map((b, i) => {
+            const x = PAD + i * colW;
+            const h = (b.value / max) * innerH;
+            const isFull = b.key === "100";
+            return (
+              <g key={b.key}>
+                <title>{`${b.label}: ${b.value} subnets`}</title>
+                <rect
+                  x={x + 2}
+                  y={PAD + innerH - h}
+                  width={colW - 4}
+                  height={h}
+                  fill={isFull ? "var(--health-ok)" : "var(--accent)"}
+                  opacity={isFull ? 0.85 : 0.75}
+                  rx={1.5}
+                />
+                <text
+                  x={x + colW / 2}
+                  y={PAD + innerH - h - 4}
+                  textAnchor="middle"
+                  fontFamily="ui-monospace, monospace"
+                  fontSize={9}
+                  fill="var(--ink-strong)"
+                >
+                  {b.value || ""}
+                </text>
+                <text
+                  x={x + colW / 2}
+                  y={H - 6}
+                  textAnchor="middle"
+                  fontFamily="ui-monospace, monospace"
+                  fontSize={9}
+                  fill="var(--ink-muted)"
+                >
+                  {b.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+        <p className="mt-1 font-mono text-[10px] text-ink-muted">
+          {scored != null ? `${scored} subnets scored.` : ""} Each bin is a completeness band; the
+          goal is to push the registry rightward.
+        </p>
+      </div>
+    </Panel>
   );
 }
 
@@ -164,29 +167,31 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
   const subnetCount = res.data.subnet_count;
 
   return (
-    <div className={classNames("rounded-lg border border-border bg-card p-5", className)}>
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            Coverage
+    <Panel as="div" flush className={className}>
+      <div className="p-5">
+        <header className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              Coverage
+            </div>
+            <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
+              Surface dimensions
+            </h3>
           </div>
-          <h3 className="mt-0.5 font-display text-sm font-semibold text-ink-strong">
-            Surface dimensions
-          </h3>
+          <InfoTooltip label="Share of subnets with at least one surface of each kind, registry-wide (/api/v1/registry/summary). Green ≥75%, amber/red are the enrichment frontier." />
+        </header>
+        <BarMini data={data} max={100} showValue />
+        <div className="mt-3 flex items-center justify-between font-mono text-[10px] text-ink-muted">
+          <span>% of {subnetCount ?? "all"} subnets covered</span>
+          <span className="inline-flex items-center gap-2">
+            <Swatch color="var(--health-ok)" label="≥75" />
+            <Swatch color="var(--chart-3)" label="≥40" />
+            <Swatch color="var(--health-warn)" label="≥15" />
+            <Swatch color="var(--health-down)" label="<15" />
+          </span>
         </div>
-        <InfoTooltip label="Share of subnets with at least one surface of each kind, registry-wide (/api/v1/registry/summary). Green ≥75%, amber/red are the enrichment frontier." />
-      </header>
-      <BarMini data={data} max={100} showValue />
-      <div className="mt-3 flex items-center justify-between font-mono text-[10px] text-ink-muted">
-        <span>% of {subnetCount ?? "all"} subnets covered</span>
-        <span className="inline-flex items-center gap-2">
-          <Swatch color="var(--health-ok)" label="≥75" />
-          <Swatch color="var(--chart-3)" label="≥40" />
-          <Swatch color="var(--health-warn)" label="≥15" />
-          <Swatch color="var(--health-down)" label="<15" />
-        </span>
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -248,7 +253,7 @@ export function EnrichmentQueueTable({ limit = 12 }: { limit?: number }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
+    <Panel as="div" flush className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
           <tr>
@@ -295,7 +300,7 @@ export function EnrichmentQueueTable({ limit = 12 }: { limit?: number }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </Panel>
   );
 }
 
