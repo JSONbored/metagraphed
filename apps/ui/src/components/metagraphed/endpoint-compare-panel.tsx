@@ -50,14 +50,12 @@ export function EndpointComparePanel({
           <span className="font-display text-[12px] font-medium text-ink-strong">
             Compare — {endpoints.length} endpoint{endpoints.length === 1 ? "" : "s"}
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            side-by-side
-          </span>
+          <span className="mg-type-micro text-ink-muted">side-by-side</span>
         </div>
         <button
           type="button"
           onClick={onClear}
-          className="mg-focus-ring rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+          className="mg-focus-ring rounded px-1.5 py-0.5 mg-type-micro text-ink-muted hover:text-ink-strong"
         >
           Clear all
         </button>
@@ -191,9 +189,7 @@ function CompareColumn({
           </span>
         </Field>
         <Field label="Access">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            {ELIGIBILITY_LABEL[eligibility]}
-          </span>
+          <span className="mg-type-micro text-ink-muted">{ELIGIBILITY_LABEL[eligibility]}</span>
         </Field>
         <Field label="Incidents (retained)">
           <span
@@ -211,7 +207,7 @@ function CompareColumn({
           </span>
         </Field>
         <Field label="Region · Kind">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+          <span className="mg-type-micro text-ink-muted">
             {endpoint.region ?? "global"} · {endpoint.kind ?? "endpoint"}
           </span>
         </Field>
@@ -232,7 +228,7 @@ function CompareColumn({
               formatValue={(v) => `${Math.round(v)}ms`}
             />
           ) : (
-            <div className="flex h-full items-center justify-center font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            <div className="flex h-full items-center justify-center mg-type-micro text-ink-muted">
               Collecting samples…
             </div>
           )}

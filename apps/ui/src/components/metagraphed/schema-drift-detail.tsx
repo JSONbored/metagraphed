@@ -94,7 +94,7 @@ function DriftBody({
       <DialogHeader>
         <DialogTitle className="flex flex-wrap items-center gap-2">
           <span>{schema.name ?? schema.id}</span>
-          <span className="inline-flex items-center rounded-full border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-health-warn">
+          <span className="inline-flex items-center rounded-full border border-health-warn/40 bg-health-warn/10 px-2 py-0.5 mg-type-micro text-health-warn">
             drift
           </span>
           {schema.netuid != null ? (
@@ -130,7 +130,7 @@ function DriftBody({
               onOpenInExplorer(schema.id);
               onClose();
             }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-primary-soft px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-accent-text hover:bg-primary-soft/80"
+            className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-label uppercase text-accent-text hover:bg-primary-soft/80"
           >
             open in explorer
           </button>
@@ -138,7 +138,7 @@ function DriftBody({
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3 py-1.5 mg-type-label uppercase text-ink-muted hover:text-ink-strong"
         >
           close
         </button>
@@ -181,14 +181,14 @@ function EvidenceSection({
 
   return (
     <div className="rounded-lg border border-border bg-card/60 p-3">
-      <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+      <div className="mb-2 flex items-center gap-2 mg-type-micro text-ink-muted">
         evidence &amp; sources
         <InfoTooltip label="Where the snapshot diff was derived from. Open or copy these to verify the change against the source." />
       </div>
       <ul className="space-y-1.5">
         {links.map((l) => (
           <li key={l.href} className="flex items-center gap-2 font-mono text-[11px] text-ink">
-            <span className="shrink-0 rounded border border-border bg-paper px-1.5 py-0.5 text-[9.5px] uppercase tracking-widest text-ink-muted">
+            <span className="shrink-0 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted">
               {l.label}
             </span>
             {l.href.startsWith("http") ? (

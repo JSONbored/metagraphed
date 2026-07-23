@@ -169,13 +169,13 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
           >
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-card text-left px-3 py-2 text-[10px] uppercase tracking-widest text-ink-muted border-b border-border">
+                <th className="sticky left-0 z-10 bg-card text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
                   Provider
                 </th>
                 {kinds.map((k) => (
                   <th
                     key={k}
-                    className="px-2 py-2 text-[10px] uppercase tracking-widest text-ink-muted border-b border-border"
+                    className="px-2 py-2 mg-type-micro text-ink-muted border-b border-border"
                   >
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -343,7 +343,7 @@ function Cell({ cell }: { cell: Cell }) {
                     category: KIND_TO_CATEGORY[cell.kind] ?? "all",
                   } as never
                 }
-                className="sm:ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-accent hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                className="sm:ml-auto inline-flex items-center gap-1 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted hover:text-accent hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                 aria-label={`Open endpoints filtered to ${cell.provider} ${cell.kind}`}
               >
                 <Filter className="size-3" /> filter endpoints
@@ -407,7 +407,7 @@ function Cell({ cell }: { cell: Cell }) {
 function ChipGroup({ label, id, children }: { label: string; id: string; children: ReactNode }) {
   return (
     <div>
-      <div id={id} className="font-mono text-[9.5px] uppercase tracking-widest text-ink-muted mb-1">
+      <div id={id} className="mg-type-micro text-ink-muted mb-1">
         {label}
       </div>
       <div className="flex flex-wrap gap-1.5" role="list" aria-labelledby={id}>
@@ -421,7 +421,7 @@ function CellStat({ label, value, color }: { label: string; value: number; color
   return (
     <div className="rounded border border-border bg-paper px-2 py-1 text-center" role="listitem">
       <div className={classNames("tabular-nums text-[12px] font-semibold", color)}>{value}</div>
-      <div className="uppercase tracking-widest text-[9px] text-ink-muted">{label}</div>
+      <div className="mg-type-micro text-ink-muted">{label}</div>
     </div>
   );
 }

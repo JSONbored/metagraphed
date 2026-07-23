@@ -156,13 +156,13 @@ export function EndpointOperationalList({
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: group.netuid }}
-                    className="mg-focus-ring font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-accent-text"
+                    className="mg-focus-ring mg-type-micro text-ink-muted hover:text-accent-text"
                   >
                     Open subnet →
                   </Link>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              <div className="flex items-center gap-2 mg-type-micro text-ink-muted">
                 {okCount ? <span className="text-health-ok">{okCount} live</span> : null}
                 {warnCount ? <span className="text-health-warn-text">{warnCount} warn</span> : null}
                 {downCount ? <span className="text-health-down">{downCount} down</span> : null}
@@ -200,7 +200,7 @@ export function EndpointOperationalList({
                       />
                       {onToggleCompare ? (
                         <label
-                          className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded border border-border bg-paper/85 px-1 py-0.5 font-mono text-[9px] uppercase tracking-widest text-ink-muted backdrop-blur hover:text-ink-strong"
+                          className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded border border-border bg-paper/85 px-1 py-0.5 mg-type-micro text-ink-muted backdrop-blur hover:text-ink-strong"
                           onClick={(e) => e.stopPropagation()}
                           title={
                             compareIds?.has(endpoint.id)
@@ -253,7 +253,7 @@ export function EndpointOperationalList({
                         >
                           {/* Headline: kind chip + URL as h4 */}
                           <div className="min-w-0">
-                            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 mg-type-micro text-ink-muted">
                               <span className="text-ink-strong">{endpoint.kind ?? "endpoint"}</span>
                               <span className="text-ink-subtle-text" aria-hidden>
                                 ·
@@ -335,9 +335,7 @@ export function EndpointOperationalList({
                                   : "—"}
                               </span>
                               {endpoint.latency_ms != null ? (
-                                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                                  ms
-                                </span>
+                                <span className="mg-type-micro text-ink-muted">ms</span>
                               ) : null}
                             </div>
                             <div className="mt-1.5 h-[18px]">

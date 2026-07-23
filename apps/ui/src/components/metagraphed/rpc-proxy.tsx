@@ -66,12 +66,12 @@ export function ProxyHero() {
   return (
     <div className="rounded-lg border border-accent/30 bg-accent-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded border border-health-ok/40 bg-health-ok/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-health-ok">
+        <span className="inline-flex items-center gap-1.5 rounded border border-health-ok/40 bg-health-ok/10 px-1.5 py-0.5 mg-type-micro text-health-ok">
           <span className="size-1.5 rounded-full bg-health-ok" />
           Live
         </span>
         <span className="mg-label">Load-balanced reverse proxy</span>
-        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent-text">
+        <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 mg-type-micro text-accent-text">
           {label}
         </span>
       </div>
@@ -149,7 +149,7 @@ function UsageStat({
     >
       <div className="flex items-center gap-1.5 text-ink-muted">
         <Icon className="size-3" aria-hidden />
-        <span className="font-mono text-[10px] uppercase tracking-widest">{eyebrow}</span>
+        <span className="mg-type-micro">{eyebrow}</span>
       </div>
       <div className="mt-1 font-mono text-lg font-semibold text-ink-strong">{value}</div>
       {hint ? <div className="font-mono text-[10px] text-ink-muted">{hint}</div> : null}
@@ -187,7 +187,7 @@ export function ProxyUsagePanel() {
               type="button"
               onClick={() => navigate({ search: (prev) => ({ ...prev, window: w }) })}
               className={classNames(
-                "rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                "rounded px-2 py-0.5 mg-type-micro transition-colors",
                 window === w ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -268,7 +268,7 @@ export function ProxyUsagePanel() {
                 <caption className="px-3 pt-2 text-left mg-label">
                   Per-endpoint distribution
                 </caption>
-                <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+                <thead className="bg-surface/50 mg-type-micro text-ink-muted">
                   <tr>
                     <th className="px-3 py-2 text-left">Endpoint</th>
                     <th className="px-3 py-2 text-left">Provider</th>
