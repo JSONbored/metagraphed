@@ -6,6 +6,7 @@ import { API_BASE } from "@/lib/metagraphed/config";
 import { classNames } from "@/lib/metagraphed/format";
 import { TimeAgo, CopyableCode } from "@jsonbored/ui-kit";
 import { EmptyState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 
 function driftTone(status?: string): string {
   switch (status) {
@@ -60,7 +61,7 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
 
   if (compact) {
     return (
-      <div className="rounded border border-border bg-card p-3">
+      <Panel as="div" dense>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
             <GitCompare className="size-3.5 text-ink-muted" />
@@ -103,7 +104,7 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
             ) : null}
           </ul>
         ) : null}
-      </div>
+      </Panel>
     );
   }
 

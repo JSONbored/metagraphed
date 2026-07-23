@@ -3,6 +3,7 @@ import { subnetLeaseHistoryQuery, subnetLeaseQuery } from "@/lib/metagraphed/que
 import type { SubnetLeaseEvent, SubnetLeaseTerms } from "@/lib/metagraphed/types";
 import { CopyableCode, StatTile, TimeAgo } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 
 /**
@@ -125,7 +126,7 @@ function LeaseStatusCard({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+    <Panel as="div" dense bodyClassName="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent-text">
@@ -167,7 +168,7 @@ function LeaseStatusCard({
         <KeySs58 label="Coldkey" value={lease.coldkey} />
         <KeySs58 label="Hotkey" value={lease.hotkey} />
       </dl>
-    </div>
+    </Panel>
   );
 }
 

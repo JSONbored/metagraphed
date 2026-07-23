@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { TimeAgo } from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { RuntimeTransition } from "@/lib/metagraphed/types";
 
 /**
@@ -32,9 +33,12 @@ export function RuntimeUpgradeCardList({ rows, className }: RuntimeUpgradeCardLi
   return (
     <div className={className}>
       {rows.map((row) => (
-        <div
+        <Panel
+          as="div"
+          dense
           key={`${row.spec_version}-${row.block_number}`}
-          className="min-w-0 space-y-2 rounded-lg border border-border bg-card p-3"
+          className="min-w-0"
+          bodyClassName="space-y-2"
         >
           <div className="flex items-baseline justify-between gap-2">
             <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
@@ -70,7 +74,7 @@ export function RuntimeUpgradeCardList({ rows, className }: RuntimeUpgradeCardLi
               {row.observed_at ? <TimeAgo at={row.observed_at} /> : "—"}
             </span>
           </div>
-        </div>
+        </Panel>
       ))}
     </div>
   );

@@ -3,6 +3,7 @@ import { AlertTriangle, Crown, Swords } from "lucide-react";
 import { subnetConvictionQuery } from "@/lib/metagraphed/queries";
 import { CopyableCode } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import {
   rowGapPct,
@@ -113,7 +114,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
           {data.maturity_rate != null ? ` · maturity_rate ${formatNumber(data.maturity_rate)}` : ""}
         </p>
       ) : null}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <Panel as="div" flush className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface/40">
@@ -194,7 +195,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { subnetHistoryQuery } from "@/lib/metagraphed/queries";
 import { Sparkline } from "@jsonbored/ui-kit";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames, formatNumber, formatTao } from "@/lib/metagraphed/format";
 import type { SubnetHistoryPoint } from "@/lib/metagraphed/types";
@@ -86,7 +87,7 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
           description="Daily snapshots will appear here once enough chain history has accumulated for this subnet."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <Panel as="div" dense bodyClassName="space-y-3">
           {series.neurons.length > 0 ? (
             <HistoryRow label="Neurons" series={series.neurons} color="var(--accent)" />
           ) : null}
@@ -113,7 +114,7 @@ export function SubnetHistoryChart({ netuid }: { netuid: number }) {
               format={formatTao}
             />
           ) : null}
-        </div>
+        </Panel>
       )}
     </div>
   );
