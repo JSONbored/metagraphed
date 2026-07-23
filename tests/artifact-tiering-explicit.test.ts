@@ -32,7 +32,7 @@ const TOKEN_SAMPLES = {
   "{hash}": `0x${"0".repeat(64)}`,
 };
 
-function substituteTemplate(path) {
+function substituteTemplate(path: string) {
   let resolved = path;
   for (const [token, sample] of Object.entries(TOKEN_SAMPLES)) {
     resolved = resolved.split(token).join(sample);
@@ -40,7 +40,7 @@ function substituteTemplate(path) {
   return resolved;
 }
 
-function matchesExplicitTier(relativePath) {
+function matchesExplicitTier(relativePath: string) {
   return (
     R2_ONLY_PATTERNS.some((pattern) => pattern.test(relativePath)) ||
     DUAL_PATTERNS.some((pattern) => pattern.test(relativePath))

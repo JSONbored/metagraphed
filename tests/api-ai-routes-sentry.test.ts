@@ -10,6 +10,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
+import type { Row } from "./row-type.ts";
 
 const captureException = vi.hoisted(() => vi.fn());
 
@@ -30,11 +31,11 @@ afterEach(() => {
 const SEMANTIC_URL = "https://api.metagraph.sh/api/v1/search/semantic";
 const ASK_URL = "https://api.metagraph.sh/api/v1/ask";
 
-function stubAi(run) {
+function stubAi(run: () => Promise<unknown>) {
   return { run };
 }
 
-function aiWorkerEnv(overrides = {}) {
+function aiWorkerEnv(overrides: Record<string, unknown> = {}) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_ENABLE_AI: "true",
@@ -84,11 +85,11 @@ test("an ask backend failure reaches Sentry, tagged by route", async () => {
 // alongside the existing Sentry.captureException above -- parallel-run, same
 // route tag on both sides.
 test("a semantic-search backend failure also reaches PostHog as $exception, tagged by the same route", async () => {
-  const posted = [];
-  globalThis.fetch = async (url, init) => {
-    posted.push({ url, body: JSON.parse(init.body) });
+  const posted: Row[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init!.body as string) });
     return { ok: true };
-  };
+  }) as typeof fetch;
   const env = aiWorkerEnv({
     [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
     AI: stubAi(() => Promise.reject(new Error("model down"))),
@@ -106,11 +107,11 @@ test("a semantic-search backend failure also reaches PostHog as $exception, tagg
 });
 
 test("an ask backend failure also reaches PostHog as $exception, tagged by the same route", async () => {
-  const posted = [];
-  globalThis.fetch = async (url, init) => {
-    posted.push({ url, body: JSON.parse(init.body) });
+  const posted: Row[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init!.body as string) });
     return { ok: true };
-  };
+  }) as typeof fetch;
   const env = aiWorkerEnv({
     [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
     AI: stubAi(() => Promise.reject(new Error("model down"))),
@@ -129,11 +130,11 @@ test("an ask backend failure also reaches PostHog as $exception, tagged by the s
 });
 
 test("a caller-input rejection (aiInput) on either route never reaches PostHog either", async () => {
-  const posted = [];
-  globalThis.fetch = async (url, init) => {
-    posted.push({ url, body: JSON.parse(init.body) });
+  const posted: Row[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init!.body as string) });
     return { ok: true };
-  };
+  }) as typeof fetch;
   const env = aiWorkerEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" });
   await handleRequest(new Request(`${SEMANTIC_URL}?q=x&type=bogus`), env, {});
   await handleRequest(

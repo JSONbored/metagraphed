@@ -6,6 +6,7 @@ import {
 } from "../src/blocks-summary.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { Row } from "./row-type.ts";
 
 // Five blocks: 100-103 consecutive (12s apart), then a gap to 110. Two authors.
 const ROWS = [
@@ -70,12 +71,12 @@ describe("buildBlocksSummary", () => {
 
   test("block-time uses only consecutive blocks (excludes the 103→110 gap)", () => {
     const out = buildBlocksSummary(ROWS);
-    assert.equal(out.block_time.count, 3); // 100→101, 101→102, 102→103
-    assert.equal(out.block_time.mean_ms, 12000);
-    assert.equal(out.block_time.min_ms, 12000);
-    assert.equal(out.block_time.max_ms, 12000);
-    assert.equal(out.block_time.p50_ms, 12000);
-    assert.equal(out.block_time.p90_ms, 12000);
+    assert.equal(out.block_time!.count, 3); // 100→101, 101→102, 102→103
+    assert.equal(out.block_time!.mean_ms, 12000);
+    assert.equal(out.block_time!.min_ms, 12000);
+    assert.equal(out.block_time!.max_ms, 12000);
+    assert.equal(out.block_time!.p50_ms, 12000);
+    assert.equal(out.block_time!.p90_ms, 12000);
   });
 
   test("block-time is null with fewer than two consecutive blocks", () => {
@@ -94,8 +95,8 @@ describe("buildBlocksSummary", () => {
       { block_number: 2, observed_at: 1_000 }, // equal → not > prev → skipped
       { block_number: 3, observed_at: 3_000 }, // +2000 → counted
     ]);
-    assert.equal(out.block_time.count, 1);
-    assert.equal(out.block_time.mean_ms, 2000);
+    assert.equal(out.block_time!.count, 1);
+    assert.equal(out.block_time!.mean_ms, 2000);
   });
 
   test("nearest-rank p50/p90 over the interval spread", () => {
@@ -107,26 +108,26 @@ describe("buildBlocksSummary", () => {
       { block_number: 5, observed_at: 160 }, // +70
     ]);
     // intervals [10,30,50,70] → p50 rank ceil(0.5·4)=2 → 30; p90 rank 4 → 70
-    assert.equal(out.block_time.count, 4);
-    assert.equal(out.block_time.p50_ms, 30);
-    assert.equal(out.block_time.p90_ms, 70);
+    assert.equal(out.block_time!.count, 4);
+    assert.equal(out.block_time!.p50_ms, 30);
+    assert.equal(out.block_time!.p90_ms, 70);
   });
 
   test("throughput totals, per-block means, and max", () => {
     const out = buildBlocksSummary(ROWS);
-    assert.equal(out.throughput.total_extrinsics, 11); // 3+2+5+1+0
-    assert.equal(out.throughput.total_events, 42); // 10+8+20+4+0
-    assert.equal(out.throughput.mean_extrinsics_per_block, 2.2);
-    assert.equal(out.throughput.mean_events_per_block, 8.4);
-    assert.equal(out.throughput.max_extrinsics_in_block, 5);
+    assert.equal(out.throughput!.total_extrinsics, 11); // 3+2+5+1+0
+    assert.equal(out.throughput!.total_events, 42); // 10+8+20+4+0
+    assert.equal(out.throughput!.mean_extrinsics_per_block, 2.2);
+    assert.equal(out.throughput!.mean_events_per_block, 8.4);
+    assert.equal(out.throughput!.max_extrinsics_in_block, 5);
   });
 
   test("author concentration is over each author's block count", () => {
     const out = buildBlocksSummary(ROWS);
     assert.equal(out.distinct_authors, 2); // Alice + Bob (null excluded)
-    assert.equal(out.author_concentration.holders, 2);
-    assert.equal(out.author_concentration.total, 4); // Alice 3 + Bob 1
-    assert.equal(out.author_concentration.nakamoto_coefficient, 1); // Alice > 50%
+    assert.equal((out.author_concentration as Row).holders, 2);
+    assert.equal((out.author_concentration as Row).total, 4); // Alice 3 + Bob 1
+    assert.equal((out.author_concentration as Row).nakamoto_coefficient, 1); // Alice > 50%
   });
 
   test("spec-version spread + latest at the newest block", () => {
@@ -151,15 +152,15 @@ describe("buildBlocksSummary", () => {
     ]);
     assert.equal(out.block_count, 1);
     assert.equal(out.first_block, 100);
-    assert.equal(out.throughput.total_extrinsics, 2); // "2" coerced
+    assert.equal(out.throughput!.total_extrinsics, 2); // "2" coerced
   });
 
   test("junk count cells contribute 0, never poison the totals", () => {
     const out = buildBlocksSummary([
       { block_number: 1, extrinsic_count: "junk", event_count: null },
     ]);
-    assert.equal(out.throughput.total_extrinsics, 0);
-    assert.equal(out.throughput.total_events, 0);
+    assert.equal(out.throughput!.total_extrinsics, 0);
+    assert.equal(out.throughput!.total_events, 0);
   });
 
   test("blocks with no author/spec/observed_at stay schema-stable", () => {
@@ -198,30 +199,32 @@ describe("buildBlocksSummary", () => {
   });
 
   test("null-safe on junk rows", () => {
-    const out = buildBlocksSummary("nope");
+    const out = buildBlocksSummary(
+      "nope" as unknown as Record<string, unknown>[],
+    );
     assert.equal(out.block_count, 0);
     assert.equal(out.throughput, null);
   });
 
   test("loadBlocksSummary reads recent blocks newest-first and shapes them", async () => {
-    let seen;
-    const d1 = async (sql, params) => {
+    let seen: { sql: string; params: unknown[] } | undefined;
+    const d1 = async (sql: string, params: unknown[]) => {
       seen = { sql, params };
       return ROWS;
     };
     const out = await loadBlocksSummary(d1);
-    assert.match(seen.sql, /FROM blocks ORDER BY block_number DESC LIMIT/);
+    assert.match(seen!.sql, /FROM blocks ORDER BY block_number DESC LIMIT/);
     assert.equal(out.block_count, 5);
     assert.equal(out.distinct_authors, 2);
   });
 });
 
 describe("GET /api/v1/blocks/summary", () => {
-  function blocksEnv(rows) {
+  function blocksEnv(rows: Row[]) {
     return {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             bind: () => ({
               all: () =>

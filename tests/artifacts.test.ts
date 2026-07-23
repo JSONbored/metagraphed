@@ -35,6 +35,7 @@ import {
   PRIMARY_DOMAIN,
 } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
+import type { Row } from "./row-type.ts";
 
 // The committed digests the forged-build tests snapshot + restore (so a forged
 // rebuild never dirties version-controlled files). Only r2-manifest.json stays
@@ -42,7 +43,7 @@ import { handleRequest } from "../workers/api.mjs";
 // — they live in dist/ (gitignored, freely regenerated) and need no preservation.
 const SUPPORT_ARTIFACT_PATHS = ["public/metagraph/r2-manifest.json"];
 
-function runNode(script) {
+function runNode(script: string) {
   execFileSync(process.execPath, [script], {
     cwd: process.cwd(),
     encoding: "utf8",
@@ -60,8 +61,8 @@ function runNode(script) {
 // keeps `npm test` idempotent — a contributor can't accidentally commit drift.
 const PUBLIC_TREE = path.join(process.cwd(), "public");
 
-function walkFilesRecursive(dir) {
-  const out = [];
+function walkFilesRecursive(dir: string): string[] {
+  const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
@@ -73,16 +74,19 @@ function walkFilesRecursive(dir) {
   return out;
 }
 
-function snapshotPublicTree() {
+function snapshotPublicTree(): Map<string, Buffer> {
   if (!existsSync(PUBLIC_TREE)) {
     return new Map();
   }
   return new Map(
-    walkFilesRecursive(PUBLIC_TREE).map((file) => [file, readFileSync(file)]),
+    walkFilesRecursive(PUBLIC_TREE).map((file: string): [string, Buffer] => [
+      file,
+      readFileSync(file),
+    ]),
   );
 }
 
-function restorePublicTree(snapshot) {
+function restorePublicTree(snapshot: Map<string, Buffer>) {
   if (existsSync(PUBLIC_TREE)) {
     for (const file of walkFilesRecursive(PUBLIC_TREE)) {
       if (!snapshot.has(file)) {
@@ -96,7 +100,7 @@ function restorePublicTree(snapshot) {
   }
 }
 
-let publicTreeSnapshot;
+let publicTreeSnapshot: Map<string, Buffer>;
 beforeAll(() => {
   publicTreeSnapshot = snapshotPublicTree();
 });
@@ -115,7 +119,8 @@ test("llms.txt family is generated with the expected structure", async () => {
   let short, wellKnown, full;
   try {
     runNode("scripts/build-artifacts.ts");
-    const read = (rel) => readFileSync(path.join(PUBLIC_TREE, rel), "utf8");
+    const read = (rel: string) =>
+      readFileSync(path.join(PUBLIC_TREE, rel), "utf8");
     short = read("llms.txt");
     wellKnown = read(".well-known/llms.txt");
     full = read("llms-full.txt");
@@ -197,7 +202,7 @@ test("registry validation warns but does not block on cross-netuid on-chain name
   const original = readFileSync(nativePath, "utf8");
   const nativeSnapshot = JSON.parse(original);
   const attackerControlledSubnet = nativeSnapshot.subnets.find(
-    (subnet) => subnet.netuid === 1,
+    (subnet: Row) => subnet.netuid === 1,
   );
   assert(
     attackerControlledSubnet,
@@ -246,12 +251,12 @@ test("registry validation rejects registry-observed surfaces without verificatio
     source_urls: ["https://example.invalid/source"],
   });
 
-  let failure;
+  let failure: Row | undefined;
   try {
     writeFileSync(overlayPath, `${JSON.stringify(tampered, null, 2)}\n`);
     runNode("scripts/validate.ts");
   } catch (error) {
-    failure = error;
+    failure = error as Row;
   } finally {
     rmSync(overlayPath, { force: true });
   }
@@ -286,12 +291,12 @@ test("registry validation rejects registry-observed surfaces with only inline ve
     },
   });
 
-  let failure;
+  let failure: Row | undefined;
   try {
     writeFileSync(overlayPath, `${JSON.stringify(tampered, null, 2)}\n`);
     runNode("scripts/validate.ts");
   } catch (error) {
-    failure = error;
+    failure = error as Row;
   } finally {
     rmSync(overlayPath, { force: true });
   }
@@ -306,7 +311,7 @@ test("registry validation rejects registry-observed surfaces with only inline ve
   );
 });
 
-function tamperedOverlayFixture(slug) {
+function tamperedOverlayFixture(slug: string) {
   return {
     categories: ["test"],
     curation: {
@@ -324,7 +329,7 @@ function tamperedOverlayFixture(slug) {
     schema_version: 1,
     slug,
     status: "active",
-    surfaces: [],
+    surfaces: [] as Row[],
   };
 }
 
@@ -334,12 +339,12 @@ test("registry validation rejects tampered per-subnet artifacts", () => {
   const tampered = JSON.parse(original);
   tampered.phishing_url = "https://example.invalid/phish";
 
-  let failure;
+  let failure: Row | undefined;
   try {
     writeFileSync(artifactPath, `${JSON.stringify(tampered, null, 2)}\n`);
     runNode("scripts/validate.ts");
   } catch (error) {
-    failure = error;
+    failure = error as Row;
   } finally {
     writeFileSync(artifactPath, original);
   }
@@ -362,7 +367,7 @@ test("artifact build does not preserve forged endpoint index health", () => {
   rmSync(cachePath, { force: true });
   const tampered = JSON.parse(original);
   const target = tampered.endpoints.find(
-    (endpoint) => endpoint.public_safe === true,
+    (endpoint: Row) => endpoint.public_safe === true,
   );
   assert(target, "expected a public-safe endpoint row to tamper");
 
@@ -388,7 +393,7 @@ test("artifact build does not preserve forged endpoint index health", () => {
 
     const rebuilt = JSON.parse(readFileSync(endpointsPath, "utf8"));
     const rebuiltTarget = rebuilt.endpoints.find(
-      (endpoint) => endpoint.surface_id === target.surface_id,
+      (endpoint: Row) => endpoint.surface_id === target.surface_id,
     );
     assert.equal(rebuiltTarget.status, "unknown");
     assert.equal(rebuiltTarget.classification, "unknown");
@@ -450,8 +455,9 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
   const driftTarget = schemaDrift?.surfaces?.[0];
   const indexTarget =
     schemaIndex.schemas?.find(
-      (schema) => schema.surface_id === driftTarget?.surface_id,
-    ) || schemaIndex.schemas?.find((schema) => schema.status === "captured");
+      (schema: Row) => schema.surface_id === driftTarget?.surface_id,
+    ) ||
+    schemaIndex.schemas?.find((schema: Row) => schema.status === "captured");
   assert(indexTarget, "expected a schema index entry to tamper");
 
   const forgedMarker = "AUTOVALIDATOR_FORGED_METADATA_SHOULD_NOT_SURVIVE_BUILD";
@@ -545,7 +551,7 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
 // silently reorders keys, changes a number, or drops an artifact flips this hash.
 // It deliberately compares the whole staging tree (not a hardcoded golden), so it
 // never needs touching when the committed source data legitimately refreshes.
-function digestArtifactTree(root) {
+function digestArtifactTree(root: string) {
   const hash = createHash("sha256");
   for (const file of walkFilesRecursive(root)
     .filter((file) => path.basename(file) !== ".DS_Store") // OS noise, not an artifact
@@ -560,13 +566,16 @@ function digestArtifactTree(root) {
 
 test("artifact build is deterministic (byte-identical across rebuilds)", () => {
   const supportArtifacts = snapshotSupportArtifacts();
-  const buildEnv = { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" };
+  const buildEnv: Row = {
+    ...process.env,
+    METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+  };
   delete buildEnv.METAGRAPH_BUILD_TIMESTAMP; // force the reproducible epoch
   const runBuild = () =>
     execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
-      env: buildEnv,
+      env: buildEnv as unknown as NodeJS.ProcessEnv,
       stdio: "pipe",
     });
   try {
@@ -647,7 +656,7 @@ test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured 
   const supportArtifacts = snapshotSupportArtifacts();
   const schemaIndex = JSON.parse(originalSchemaIndex);
   const indexTarget = schemaIndex.schemas?.find(
-    (schema) => schema.status === "captured",
+    (schema: Row) => schema.status === "captured",
   );
   assert(indexTarget, "expected a captured schema index entry to retype");
 
@@ -673,7 +682,7 @@ test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured 
     );
     assert.equal(rebuiltSchemaIndex.source, "openapi-snapshot");
     const rebuiltTarget = rebuiltSchemaIndex.schemas.find(
-      (schema) => schema.surface_id === indexTarget.surface_id,
+      (schema: Row) => schema.surface_id === indexTarget.surface_id,
     );
     assert.equal(rebuiltTarget?.content_type, indexTarget.content_type);
     assert.equal(rebuiltTarget?.hash, indexTarget.hash);
@@ -705,7 +714,8 @@ test("committed R2 manifest does not use fallback history keys", () => {
   assert.notEqual(manifest.run_prefix, "runs/1970-01-01T00-00-00-000Z/");
   assert.ok(
     manifest.artifacts.every(
-      (artifact) => !artifact.key.startsWith("runs/1970-01-01T00-00-00-000Z/"),
+      (artifact: Row) =>
+        !artifact.key.startsWith("runs/1970-01-01T00-00-00-000Z/"),
     ),
   );
 });
@@ -819,8 +829,8 @@ test("public artifacts are internally consistent", () => {
   // Chain Discord contact on the index (issue #344). Display-only fields sourced
   // from on-chain SubnetIdentitiesV3: a raw handle-or-URL (sanitized), a
   // normalized invite URL, and the contact_present flag.
-  const nativeByNetuid = new Map(
-    native.subnets.map((subnet) => [subnet.netuid, subnet]),
+  const nativeByNetuid = new Map<number, Row>(
+    native.subnets.map((subnet: Row): [number, Row] => [subnet.netuid, subnet]),
   );
   let handleOnlyCount = 0;
   let discordUrlCount = 0;
@@ -872,7 +882,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     contactPresentCount,
-    native.subnets.filter((s) => s.chain_identity?.contact_present).length,
+    native.subnets.filter((s: Row) => s.chain_identity?.contact_present).length,
     "contact_present count must match the native snapshot",
   );
 
@@ -900,7 +910,9 @@ test("public artifacts are internally consistent", () => {
   // projection, reproducible from chain text + curated categories, and the
   // values are always drawn from the controlled vocabulary.
   let derivedTagCount = 0;
-  const profileByNetuid = new Map(profiles.profiles.map((p) => [p.netuid, p]));
+  const profileByNetuid = new Map<number, Row>(
+    profiles.profiles.map((p: Row): [number, Row] => [p.netuid, p]),
+  );
   for (const entry of subnets.subnets) {
     const chain = nativeByNetuid.get(entry.netuid)?.chain_identity || {};
     const expected = deriveDomainTags({
@@ -1086,28 +1098,28 @@ test("public artifacts are internally consistent", () => {
   );
   assert.ok(
     agentCatalog.subnets.every(
-      (entry) => entry.agent_readiness?.status === "callable",
+      (entry: Row) => entry.agent_readiness?.status === "callable",
     ),
     "callable agent-catalog entries must carry callable readiness status",
   );
   const blockedRecall = agentCatalog.blocked_subnets.find(
-    (entry) => entry.netuid === 31,
+    (entry: Row) => entry.netuid === 31,
   );
   assert.ok(blockedRecall, "SN31 should be represented as a blocked subnet");
   assert.equal(blockedRecall.agent_readiness.status, "blocked");
   assert.ok(
     blockedRecall.agent_readiness.blockers.some(
-      (blocker) => blocker.code === "missing-callable-service",
+      (blocker: Row) => blocker.code === "missing-callable-service",
     ),
     "blocked subnets must explain the missing callable service",
   );
   const rootBlocker = agentCatalog.blocked_subnets.find(
-    (entry) => entry.netuid === 0,
+    (entry: Row) => entry.netuid === 0,
   );
   assert.equal(rootBlocker.agent_readiness.status, "base-layer");
   assert.ok(
     rootBlocker.agent_readiness.blockers.some(
-      (blocker) => blocker.code === "base-layer-only",
+      (blocker: Row) => blocker.code === "base-layer-only",
     ),
     "root subnet must explain the base-layer-only boundary",
   );
@@ -1127,12 +1139,13 @@ test("public artifacts are internally consistent", () => {
   );
   assert.ok(
     coverageDepth.rows.every(
-      (row, index, rows) => index === 0 || rows[index - 1].netuid < row.netuid,
+      (row: Row, index: number, rows: Row[]) =>
+        index === 0 || rows[index - 1].netuid < row.netuid,
     ),
     "coverage-depth rows must be sorted by netuid",
   );
   assert.equal(
-    Object.values(coverageDepth.summary.tier_counts).reduce(
+    (Object.values(coverageDepth.summary.tier_counts) as number[]).reduce(
       (sum, count) => sum + count,
       0,
     ),
@@ -1146,7 +1159,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.ok(
     coverageDepth.ranked_queue.every(
-      (entry, index, rows) =>
+      (entry: Row, index: number, rows: Row[]) =>
         index === 0 ||
         rows[index - 1].priority_score > entry.priority_score ||
         (rows[index - 1].priority_score === entry.priority_score &&
@@ -1165,7 +1178,7 @@ test("public artifacts are internally consistent", () => {
     "coverage-depth must separate hard-blocked subnets",
   );
   const coverageDepthAllways = coverageDepth.rows.find(
-    (entry) => entry.netuid === 7,
+    (entry: Row) => entry.netuid === 7,
   );
   assert.ok(coverageDepthAllways, "SN7 must have a coverage-depth row");
   assert.equal(coverageDepthAllways.agent_status, "callable");
@@ -1178,7 +1191,7 @@ test("public artifacts are internally consistent", () => {
     "SN7 coverage-depth row must expose deterministic fixture absence",
   );
   const coverageDepthRecall = coverageDepth.rows.find(
-    (entry) => entry.netuid === 31,
+    (entry: Row) => entry.netuid === 31,
   );
   assert.equal(coverageDepthRecall.agent_status, "blocked");
   assert.ok(
@@ -1187,7 +1200,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.ok(
     coverageDepth.ranked_queue.some(
-      (entry) =>
+      (entry: Row) =>
         entry.top_gap_codes.includes("missing-fixture") ||
         entry.top_gap_codes.includes("missing-schema") ||
         entry.top_gap_codes.includes("candidate-api-needs-review"),
@@ -1200,13 +1213,13 @@ test("public artifacts are internally consistent", () => {
     catalog31.agent_readiness.missing_fields.includes("surfaces"),
     "per-subnet detail must expose blocker missing_fields",
   );
-  const callableAgentServices = agentCatalog.subnets.flatMap((subnet) =>
+  const callableAgentServices = agentCatalog.subnets.flatMap((subnet: Row) =>
     readArtifact(`agent-catalog/${subnet.netuid}.json`).services.filter(
-      (service) => service.eligibility?.callable,
+      (service: Row) => service.eligibility?.callable,
     ),
   );
   const callableWithoutSchema = callableAgentServices.filter(
-    (service) => !service.schema_artifact,
+    (service: Row) => !service.schema_artifact,
   );
   // The callable-service population grows with every community surface addition,
   // so we assert the schema-projection invariants rather than freezing an
@@ -1224,14 +1237,15 @@ test("public artifacts are internally consistent", () => {
   );
   assert.ok(
     callableAgentServices
-      .filter((service) => service.kind === "sse")
+      .filter((service: Row) => service.kind === "sse")
       .every(
-        (service) => service.schema_source?.match !== "same-origin-openapi",
+        (service: Row) =>
+          service.schema_source?.match !== "same-origin-openapi",
       ),
     "SSE streams should not inherit same-origin OpenAPI schemas implicitly",
   );
-  const serviceById = (catalog, surfaceId) =>
-    catalog.services.find((service) => service.surface_id === surfaceId);
+  const serviceById = (catalog: Row, surfaceId: string) =>
+    catalog.services.find((service: Row) => service.surface_id === surfaceId);
   const catalog7 = readArtifact("agent-catalog/7.json");
   const allwaysHealth = serviceById(catalog7, "allways-api-health");
   assert.equal(
@@ -1311,7 +1325,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     fixturesIndex.missing_count,
-    fixturesIndex.coverage.filter((entry) => entry.status !== "available")
+    fixturesIndex.coverage.filter((entry: Row) => entry.status !== "available")
       .length,
     "fixture missing_count must summarize non-available coverage rows",
   );
@@ -1321,16 +1335,18 @@ test("public artifacts are internally consistent", () => {
     "deterministic no-capture builds should classify fixture candidates as missing",
   );
   const allwaysFixtureCandidate = fixturesIndex.coverage.find(
-    (entry) => entry.surface_id === "allways-api-health",
+    (entry: Row) => entry.surface_id === "allways-api-health",
   );
   assert.equal(allwaysFixtureCandidate.status, "missing");
   const allwaysFixtureService = readArtifact(
     "agent-catalog/7.json",
-  ).services.find((service) => service.surface_id === "allways-api-health");
+  ).services.find(
+    (service: Row) => service.surface_id === "allways-api-health",
+  );
   assert.equal(allwaysFixtureService.fixture_status.status, "missing");
   const allwaysSseFixtureService = readArtifact(
     "agent-catalog/7.json",
-  ).services.find((service) => service.surface_id === "allways-sse");
+  ).services.find((service: Row) => service.surface_id === "allways-sse");
   assert.equal(
     allwaysSseFixtureService.fixture_status.status,
     "unsupported-kind",
@@ -1342,7 +1358,9 @@ test("public artifacts are internally consistent", () => {
   // deterministic no-capture build, same as allwaysFixtureService above.
   const allwaysHistoryFixtureService = readArtifact(
     "agent-catalog/7.json",
-  ).services.find((service) => service.surface_id === "allways-crown-history");
+  ).services.find(
+    (service: Row) => service.surface_id === "allways-crown-history",
+  );
   assert.equal(allwaysHistoryFixtureService.fixture_status.status, "missing");
 
   // AI-resources index: the copyable agent + the live MCP tool list + resources.
@@ -1350,18 +1368,20 @@ test("public artifacts are internally consistent", () => {
   assert.match(agentResources.mcp.install, /^claude mcp add/);
   assert.ok(agentResources.mcp.tools.length > 5, "expected MCP tools listed");
   assert.ok(
-    agentResources.mcp.tools.some((t) => t.name === "how_do_i_call"),
+    agentResources.mcp.tools.some((t: Row) => t.name === "how_do_i_call"),
     "MCP tool list must reflect the live server tools",
   );
   assert.ok(
-    agentResources.resources.some((r) => r.id === "agent"),
+    agentResources.resources.some((r: Row) => r.id === "agent"),
     "resources must include the copyable agent",
   );
   assert.ok(
-    agentResources.resources.some((r) => r.id === "agent-workflows"),
+    agentResources.resources.some((r: Row) => r.id === "agent-workflows"),
     "resources must include the public agent workflow guide",
   );
-  assert.ok(agentResources.resources.every((r) => r.id && r.title && r.url));
+  assert.ok(
+    agentResources.resources.every((r: Row) => r.id && r.title && r.url),
+  );
   // every profile that claims to have graduated appears in the lineage artifact
   for (const profile of profiles.profiles) {
     if (profile.lineage) {
@@ -1375,12 +1395,12 @@ test("public artifacts are internally consistent", () => {
   }
   // The domain coverage facet sums the per-subnet tags.
   assert.equal(typeof coverage.domain_coverage, "object");
-  const facetSum = Object.values(coverage.domain_coverage).reduce(
+  const facetSum = (Object.values(coverage.domain_coverage) as number[]).reduce(
     (a, b) => a + b,
     0,
   );
   const tagSum = subnets.subnets.reduce(
-    (a, s) => a + s.derived_categories.length,
+    (a: Row, s: Row) => a + s.derived_categories.length,
     0,
   );
   assert.equal(
@@ -1392,18 +1412,18 @@ test("public artifacts are internally consistent", () => {
   assert.equal(surfaces.surfaces.length, coverage.surface_count);
   assert.equal(
     rpcEndpoints.endpoints.length,
-    surfaces.surfaces.filter((surface) =>
+    surfaces.surfaces.filter((surface: Row) =>
       ["subtensor-rpc", "subtensor-wss"].includes(surface.kind),
     ).length,
   );
   assert.equal(
-    rpcEndpoints.endpoints.every((endpoint) => endpoint.netuid === 0),
+    rpcEndpoints.endpoints.every((endpoint: Row) => endpoint.netuid === 0),
     true,
   );
   assert.equal(endpoints.endpoints.length, surfaces.surfaces.length);
   assert.equal(profiles.profiles.length, native.subnets.length);
   const candidateDiscoverySource = freshness.sources.find(
-    (source) => source.id === "candidate-discovery",
+    (source: Row) => source.id === "candidate-discovery",
   );
   const expectedCandidateDiscoveryAsOf =
     generatedCandidateDiscovery.observed_at ||
@@ -1426,13 +1446,14 @@ test("public artifacts are internally consistent", () => {
       schemaDrift.observed_at || schemaDrift.generated_at;
     assert.equal(freshness.summary.schema_snapshot_as_of, schemaSnapshotAsOf);
     assert.equal(
-      freshness.sources.find((source) => source.id === "schema-drift")?.as_of,
+      freshness.sources.find((source: Row) => source.id === "schema-drift")
+        ?.as_of,
       schemaSnapshotAsOf,
     );
   }
   assert.equal(
     profiles.profiles.every(
-      (profile) =>
+      (profile: Row) =>
         Number.isInteger(profile.completeness_score) &&
         profile.completeness_score >= 0 &&
         profile.completeness_score <= 100 &&
@@ -1455,7 +1476,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     profileCompleteness.profiles.every(
-      (profile) =>
+      (profile: Row) =>
         Array.isArray(profile.missing_required) &&
         Array.isArray(profile.missing_identity) &&
         Array.isArray(profile.missing_operational) &&
@@ -1480,7 +1501,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     endpoints.endpoints.every(
-      (endpoint) =>
+      (endpoint: Row) =>
         endpoint.publication_state === "pool-eligible" ||
         endpoint.publication_state === "monitored" ||
         endpoint.publication_state === "verified" ||
@@ -1489,19 +1510,23 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(
-    endpoints.endpoints.filter((endpoint) => endpoint.pool_eligible).length <=
-      endpointPools.pools.reduce((sum, pool) => sum + pool.eligible_count, 0),
+    endpoints.endpoints.filter((endpoint: Row) => endpoint.pool_eligible)
+      .length <=
+      endpointPools.pools.reduce(
+        (sum: Row, pool: Row) => sum + pool.eligible_count,
+        0,
+      ),
     true,
   );
   assert.equal(Array.isArray(endpointPools.provider_scores), true);
   assert.equal(
-    endpoints.endpoints.every((endpoint) =>
+    endpoints.endpoints.every((endpoint: Row) =>
       Array.isArray(endpoint.pool_eligibility_reasons),
     ),
     true,
   );
   assert.equal(
-    endpoints.endpoints.every((endpoint) =>
+    endpoints.endpoints.every((endpoint: Row) =>
       Array.isArray(endpoint.score_reasons),
     ),
     true,
@@ -1512,18 +1537,18 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     endpointIncidents.incidents.every(
-      (incident) =>
+      (incident: Row) =>
         incident.source === "probe-derived" && !incident.user_reported,
     ),
     true,
   );
   assert.equal(
-    subnetEndpoints.endpoints.every((endpoint) => endpoint.netuid === 7),
+    subnetEndpoints.endpoints.every((endpoint: Row) => endpoint.netuid === 7),
     true,
   );
   assert.equal(
     providerEndpoints.endpoints.every(
-      (endpoint) => endpoint.provider === "allways",
+      (endpoint: Row) => endpoint.provider === "allways",
     ),
     true,
   );
@@ -1531,11 +1556,13 @@ test("public artifacts are internally consistent", () => {
   assert.equal(
     healthHistory.surfaces.length,
     surfaces.surfaces.filter(
-      (surface) => surface.probe?.enabled && surface.public_safe,
+      (surface: Row) => surface.probe?.enabled && surface.public_safe,
     ).length,
   );
   assert.equal(
-    healthHistory.surfaces.every((surface) => !Object.hasOwn(surface, "url")),
+    healthHistory.surfaces.every(
+      (surface: Row) => !Object.hasOwn(surface, "url"),
+    ),
     true,
   );
   // #1006: per-field provenance. Every served surface exposes last_verified_at
@@ -1562,28 +1589,28 @@ test("public artifacts are internally consistent", () => {
   // The curation→surface verified_at join must actually populate timestamps, not
   // leave every surface unverified (guard against a silent no-op).
   assert.ok(
-    surfaces.surfaces.some((surface) => surface.last_verified_at !== null),
+    surfaces.surfaces.some((surface: Row) => surface.last_verified_at !== null),
     "expected at least one surface to carry a last_verified_at timestamp",
   );
   // #1008: code-examples entity. example-kind surfaces are indexed + surfaced in
   // the agent-catalog (per-subnet `examples` + `example_count`); they also flow
   // into every subnet's profile via supported_interface_kinds.
   const exampleSurfaces = surfaces.surfaces.filter(
-    (surface) => surface.kind === "example",
+    (surface: Row) => surface.kind === "example",
   );
   assert.ok(
     exampleSurfaces.length >= 5,
     `expected >=5 example surfaces, got ${exampleSurfaces.length}`,
   );
   assert.equal(
-    exampleSurfaces.every((surface) => /^https?:\/\//.test(surface.url)),
+    exampleSurfaces.every((surface: Row) => /^https?:\/\//.test(surface.url)),
     true,
     "example surfaces must carry an http(s) url",
   );
   // The agent-catalog index carries example_count, and the per-subnet detail
   // lists the examples. SN64 (chutes) has both a callable service and an example.
   assert.equal(
-    agentCatalog.subnets.every((entry) =>
+    agentCatalog.subnets.every((entry: Row) =>
       Number.isInteger(entry.example_count),
     ),
     true,
@@ -1597,7 +1624,7 @@ test("public artifacts are internally consistent", () => {
   assert.equal(catalog64.examples.length, catalog64.example_count);
   assert.equal(
     catalog64.examples.every(
-      (example) => example.surface_id && /^https?:\/\//.test(example.url),
+      (example: Row) => example.surface_id && /^https?:\/\//.test(example.url),
     ),
     true,
     "agent-catalog examples must carry a surface_id + http(s) url",
@@ -1626,10 +1653,9 @@ test("public artifacts are internally consistent", () => {
     "number",
   );
   assert.equal(
-    Object.values(coverage.completeness.score_distribution).reduce(
-      (sum, value) => sum + value,
-      0,
-    ),
+    (
+      Object.values(coverage.completeness.score_distribution) as number[]
+    ).reduce((sum, value) => sum + value, 0),
     coverage.completeness.scored_subnet_count,
   );
   assert.equal(curation.curation.length, native.subnets.length);
@@ -1640,10 +1666,10 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   const candidateIds = new Set(
-    candidates.candidates.map((candidate) => candidate.id),
+    candidates.candidates.map((candidate: Row) => candidate.id),
   );
   assert.equal(
-    verification.results.every((result) =>
+    verification.results.every((result: Row) =>
       candidateIds.has(result.candidate_id),
     ),
     true,
@@ -1654,7 +1680,7 @@ test("public artifacts are internally consistent", () => {
   // its (netuid, kind, normalized-url) identity, and such candidates are
   // excluded from the review/enrichment queue so duplicates are not re-targeted.
   const surfaceIdByRegistryKey = new Map(
-    surfaces.surfaces.map((surface) => [
+    surfaces.surfaces.map((surface: Row) => [
       registrySurfaceKey(surface),
       surface.id,
     ]),
@@ -1679,13 +1705,13 @@ test("public artifacts are internally consistent", () => {
     }
   }
   assert.equal(
-    reviewQueue.candidates.some((candidate) => candidate.superseded_by),
+    reviewQueue.candidates.some((candidate: Row) => candidate.superseded_by),
     false,
     "review queue must not contain candidates superseded by a curated surface",
   );
   // Guard against a no-op: the dedup must actually fire on real registry data.
   assert.ok(
-    candidates.candidates.some((candidate) => candidate.superseded_by),
+    candidates.candidates.some((candidate: Row) => candidate.superseded_by),
     "expected at least one candidate to be superseded by a curated surface",
   );
   // #1002 PR2: count propagation. A surface-superseded candidate is the curated
@@ -1694,7 +1720,7 @@ test("public artifacts are internally consistent", () => {
   // candidates.json), but every per-subnet count/list, profile, overview, and the
   // enrichment/curation leaderboards drop the dupe.
   const activeCandidates = candidates.candidates.filter(
-    (candidate) => !candidate.superseded_by,
+    (candidate: Row) => !candidate.superseded_by,
   );
   const activeByNetuid = new Map();
   for (const candidate of activeCandidates) {
@@ -1703,15 +1729,18 @@ test("public artifacts are internally consistent", () => {
       (activeByNetuid.get(candidate.netuid) || 0) + 1,
     );
   }
-  const subnetNetuids = new Set(subnets.subnets.map((subnet) => subnet.netuid));
+  const subnetNetuids = new Set(
+    subnets.subnets.map((subnet: Row) => subnet.netuid),
+  );
   const perSubnetCandidateTotal = subnets.subnets.reduce(
-    (sum, subnet) => sum + subnet.candidate_count,
+    (sum: Row, subnet: Row) => sum + subnet.candidate_count,
     0,
   );
   assert.equal(
     perSubnetCandidateTotal,
-    activeCandidates.filter((candidate) => subnetNetuids.has(candidate.netuid))
-      .length,
+    activeCandidates.filter((candidate: Row) =>
+      subnetNetuids.has(candidate.netuid),
+    ).length,
     "per-subnet candidate_count must sum to the active (non-superseded) candidate count",
   );
   assert.ok(
@@ -1737,9 +1766,11 @@ test("public artifacts are internally consistent", () => {
   // superseded candidates, so this exercises the dedup, not a vacuous pass.
   const subnetDetail7 = readArtifact("subnets/7.json");
   const overview7 = readArtifact("overview/7.json");
-  const subnet7Index = subnets.subnets.find((subnet) => subnet.netuid === 7);
+  const subnet7Index = subnets.subnets.find(
+    (subnet: Row) => subnet.netuid === 7,
+  );
   const rawCandidateCount7 = candidates.candidates.filter(
-    (candidate) => candidate.netuid === 7,
+    (candidate: Row) => candidate.netuid === 7,
   ).length;
   assert.ok(
     subnet7Index.candidate_count < rawCandidateCount7,
@@ -1761,7 +1792,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     subnetProfile.candidate_surfaces.every(
-      (candidate) => !candidate.superseded_by,
+      (candidate: Row) => !candidate.superseded_by,
     ),
     true,
     "profile candidate_surfaces must exclude superseded candidates",
@@ -1798,7 +1829,7 @@ test("public artifacts are internally consistent", () => {
   }
   assert.ok(
     candidates.candidates.some(
-      (candidate) => (candidate.confirmed_by || []).length >= 2,
+      (candidate: Row) => (candidate.confirmed_by || []).length >= 2,
     ),
     "expected at least one candidate corroborated by 2+ distinct sources",
   );
@@ -1826,7 +1857,7 @@ test("public artifacts are internally consistent", () => {
   // Rows are ordered by emission share, highest first.
   assert.equal(
     economics.subnets.every(
-      (row, i) =>
+      (row: Row, i: number) =>
         i === 0 ||
         (row.emission_share ?? -1) <=
           (economics.subnets[i - 1].emission_share ?? -1),
@@ -1836,7 +1867,7 @@ test("public artifacts are internally consistent", () => {
   );
   // Price-weighted shares sum to ~1 across all priced subnets.
   const economicsShareSum = economics.subnets.reduce(
-    (sum, row) => sum + (row.emission_share || 0),
+    (sum: Row, row: Row) => sum + (row.emission_share || 0),
     0,
   );
   assert.ok(
@@ -1847,7 +1878,7 @@ test("public artifacts are internally consistent", () => {
   assert.equal(contracts.status_domain, null);
   assert.equal(
     contracts.artifacts.some(
-      (artifact) =>
+      (artifact: Row) =>
         artifact.id === "contracts" &&
         artifact.schema_ref === "#/components/schemas/ContractsArtifact",
     ),
@@ -1855,7 +1886,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     contracts.artifacts.some(
-      (artifact) =>
+      (artifact: Row) =>
         artifact.id === "health-history" &&
         artifact.schema_ref === "#/components/schemas/HealthHistoryArtifact",
     ),
@@ -1863,7 +1894,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     contracts.artifacts.some(
-      (artifact) =>
+      (artifact: Row) =>
         artifact.id === "endpoint-incidents" &&
         artifact.schema_ref ===
           "#/components/schemas/EndpointIncidentsArtifact",
@@ -1871,19 +1902,21 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(
-    new Set(contracts.artifacts.map((artifact) => artifact.id)).size,
+    new Set(contracts.artifacts.map((artifact: Row) => artifact.id)).size,
     contracts.artifacts.length,
   );
   assert.equal(
-    apiIndex.routes.some((route) => route.path === "/api/v1/subnets"),
+    apiIndex.routes.some((route: Row) => route.path === "/api/v1/subnets"),
     true,
   );
   assert.equal(
-    apiIndex.routes.some((route) => route.path === "/api/v1/changelog"),
+    apiIndex.routes.some((route: Row) => route.path === "/api/v1/changelog"),
     true,
   );
   assert.equal(
-    apiIndex.routes.some((route) => route.path === "/api/v1/source-snapshots"),
+    apiIndex.routes.some(
+      (route: Row) => route.path === "/api/v1/source-snapshots",
+    ),
     true,
   );
   assert.equal(changelog.source, "generated-artifact-diff");
@@ -1897,19 +1930,19 @@ test("public artifacts are internally consistent", () => {
   assert.equal(searchIndex.documents.length, search.documents.length);
   assert.equal(
     searchIndex.documents.every(
-      (document) => !Object.hasOwn(document, "tokens"),
+      (document: Row) => !Object.hasOwn(document, "tokens"),
     ),
     true,
     "slim search index documents must not carry token blobs",
   );
   assert.deepEqual(
-    searchIndex.documents.map((document) => document.id),
-    search.documents.map((document) => document.id),
+    searchIndex.documents.map((document: Row) => document.id),
+    search.documents.map((document: Row) => document.id),
     "slim search index must preserve the full index's documents and order",
   );
   for (const slimDocument of searchIndex.documents) {
     const fullDocument = search.documents.find(
-      (document) => document.id === slimDocument.id,
+      (document: Row) => document.id === slimDocument.id,
     );
     const { tokens: _tokens, ...expected } = fullDocument;
     assert.deepEqual(
@@ -1919,7 +1952,7 @@ test("public artifacts are internally consistent", () => {
     );
   }
   const nodexoSearchDocument = search.documents.find(
-    (document) => document.id === "subnet:27",
+    (document: Row) => document.id === "subnet:27",
   );
   // subnet:27 is indexed with a title + non-empty tokens. The specific token
   // WORDS derive from the live chain description (which changes over time), so
@@ -1938,13 +1971,13 @@ test("public artifacts are internally consistent", () => {
   assert.equal(freshness.summary.native_data_as_of, native.captured_at);
   assert.equal(
     freshness.summary.blocking_source_count,
-    freshness.sources.filter((source) => source.stale_behavior === "block")
+    freshness.sources.filter((source: Row) => source.stale_behavior === "block")
       .length,
   );
   assert.equal(
     freshness.summary.missing_blocking_source_count,
     freshness.sources.filter(
-      (source) =>
+      (source: Row) =>
         source.stale_behavior === "block" && source.status === "missing",
     ).length,
   );
@@ -1958,7 +1991,7 @@ test("public artifacts are internally consistent", () => {
   // must never block publish. This is the decoupling that fixed the cascade.
   assert.equal(
     freshness.sources.some(
-      (source) =>
+      (source: Row) =>
         source.id === "surface-health" &&
         source.lane === "health-probe" &&
         source.stale_behavior === "warn" &&
@@ -1972,7 +2005,9 @@ test("public artifacts are internally consistent", () => {
     sourceSnapshots.sources.length,
   );
   assert.equal(
-    sourceSnapshots.sources.some((source) => source.id === "native-subnets"),
+    sourceSnapshots.sources.some(
+      (source: Row) => source.id === "native-subnets",
+    ),
     true,
   );
   assert.equal(
@@ -1984,7 +2019,8 @@ test("public artifacts are internally consistent", () => {
   assert.equal(r2Manifest.artifact_count, r2Manifest.artifacts.length);
   assert.equal(
     schemaDrift.openapi_surface_count ?? schemaDrift.summary?.surface_count,
-    surfaces.surfaces.filter((surface) => surface.kind === "openapi").length,
+    surfaces.surfaces.filter((surface: Row) => surface.kind === "openapi")
+      .length,
   );
   assert.equal(Array.isArray(schemaIndex.schemas), true);
   assert.equal(reviewCuration.summary.subnet_count, native.subnets.length);
@@ -2001,20 +2037,24 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     enrichmentTargets.groups.reduce(
-      (sum, group) => sum + group.target_count,
+      (sum: Row, group: Row) => sum + group.target_count,
       0,
     ),
     enrichmentTargets.targets.length,
   );
   assert.equal(
-    new Set(enrichmentTargets.targets.map((target) => target.target_id)).size,
+    new Set(enrichmentTargets.targets.map((target: Row) => target.target_id))
+      .size,
     enrichmentTargets.targets.length,
   );
-  const enrichmentQueueByNetuid = new Map(
-    enrichmentQueue.queue.map((entry) => [entry.netuid, entry]),
+  const enrichmentQueueByNetuid = new Map<number, Row>(
+    enrichmentQueue.queue.map((entry: Row): [number, Row] => [
+      entry.netuid,
+      entry,
+    ]),
   );
   assert.equal(
-    enrichmentTargets.targets.every((target) => {
+    enrichmentTargets.targets.every((target: Row) => {
       const queueEntry = enrichmentQueueByNetuid.get(target.netuid);
       return (
         queueEntry &&
@@ -2030,15 +2070,15 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     enrichmentTargets.targets.filter(
-      (target) => target.target_type === "surface-candidate",
+      (target: Row) => target.target_type === "surface-candidate",
     ).length,
     enrichmentQueue.queue.reduce(
-      (sum, entry) => sum + entry.direct_submission_kinds.length,
+      (sum: Row, entry: Row) => sum + entry.direct_submission_kinds.length,
       0,
     ),
   );
   assert.equal(
-    enrichmentTargets.targets.every((target) =>
+    enrichmentTargets.targets.every((target: Row) =>
       target.target_type === "surface-candidate"
         ? target.kind && target.candidate_command?.startsWith("npm run ")
         : target.kind === null && target.candidate_command === null,
@@ -2047,7 +2087,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     enrichmentTargets.targets.some(
-      (target) =>
+      (target: Row) =>
         target.target_type === "surface-candidate" &&
         target.kind === "openapi" &&
         target.submission_route === "direct-candidate-pr",
@@ -2056,12 +2096,12 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     enrichmentTargets.targets.some(
-      (target) => target.target_type === "adapter-review",
+      (target: Row) => target.target_type === "adapter-review",
     ),
     true,
   );
   assert.equal(
-    enrichmentTargets.targets.every((target) => {
+    enrichmentTargets.targets.every((target: Row) => {
       if (target.target_type !== "surface-candidate") {
         return true;
       }
@@ -2092,7 +2132,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     enrichmentTargets.targets.some(
-      (target) =>
+      (target: Row) =>
         target.target_type === "surface-candidate" &&
         target.evidence_action === "submit-new-evidence" &&
         target.candidate_evidence?.candidate_count === 0,
@@ -2100,22 +2140,24 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(
-    enrichmentQueue.queue.some((entry) => entry.lane === "direct-submission"),
+    enrichmentQueue.queue.some(
+      (entry: Row) => entry.lane === "direct-submission",
+    ),
     true,
   );
   assert.equal(
-    enrichmentQueue.queue.some((entry) => entry.manual_review_required),
+    enrichmentQueue.queue.some((entry: Row) => entry.manual_review_required),
     true,
   );
   assert.equal(
-    enrichmentQueue.queue.every((entry) =>
+    enrichmentQueue.queue.every((entry: Row) =>
       Array.isArray(entry.direct_submission_kinds),
     ),
     true,
   );
   assert.equal(
     enrichmentQueue.queue.every(
-      (entry) =>
+      (entry: Row) =>
         entry.candidate_evidence_summary &&
         typeof entry.candidate_evidence_summary === "object",
     ),
@@ -2123,19 +2165,19 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     enrichmentQueue.queue.some(
-      (entry) => entry.evidence_action === "replace-stale-evidence",
+      (entry: Row) => entry.evidence_action === "replace-stale-evidence",
     ),
     true,
   );
   assert.equal(
-    enrichmentQueue.queue.every((entry) =>
+    enrichmentQueue.queue.every((entry: Row) =>
       Number.isInteger(entry.stale_candidate_count),
     ),
     true,
   );
   assert.equal(
     enrichmentQueue.queue.every(
-      (entry) =>
+      (entry: Row) =>
         Array.isArray(entry.sample_live_candidate_ids) &&
         Array.isArray(entry.sample_stale_candidate_ids) &&
         Array.isArray(entry.sample_target_candidate_ids),
@@ -2144,25 +2186,25 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     enrichmentQueue.queue.some(
-      (entry) => entry.sample_target_candidate_ids.length > 0,
+      (entry: Row) => entry.sample_target_candidate_ids.length > 0,
     ),
     true,
   );
   assert.equal(
     enrichmentEvidence.entries.some(
-      (entry) => entry.candidate_evidence_by_kind["source-repo"],
+      (entry: Row) => entry.candidate_evidence_by_kind["source-repo"],
     ),
     true,
   );
   assert.deepEqual(
     Object.fromEntries(
-      enrichmentQueue.queue.map((entry) => [
+      enrichmentQueue.queue.map((entry: Row) => [
         entry.netuid,
         entry.candidate_evidence_summary,
       ]),
     ),
     Object.fromEntries(
-      enrichmentEvidence.entries.map((entry) => [
+      enrichmentEvidence.entries.map((entry: Row) => [
         entry.netuid,
         entry.candidate_evidence_summary,
       ]),
@@ -2170,14 +2212,14 @@ test("public artifacts are internally consistent", () => {
   );
   assert.deepEqual(
     profileCompleteness.summary.by_profile_level,
-    profileCompleteness.profiles.reduce((counts, profile) => {
+    profileCompleteness.profiles.reduce((counts: Row, profile: Row) => {
       counts[profile.profile_level] = (counts[profile.profile_level] || 0) + 1;
       return counts;
     }, {}),
   );
   assert.equal(
     profiles.profiles.every(
-      (profile) =>
+      (profile: Row) =>
         profile.identity_evidence &&
         profile.identity_evidence.curated_identity_count ===
           profile.identity_evidence.curated_identity_kinds.length &&
@@ -2188,7 +2230,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     profileCompleteness.profiles.every(
-      (profile) =>
+      (profile: Row) =>
         profile.identity_evidence &&
         profile.identity_promotion_kind_count ===
           profile.identity_promotion_kinds.length &&
@@ -2200,18 +2242,19 @@ test("public artifacts are internally consistent", () => {
   assert.equal(
     profileCompleteness.summary.identity_promotion_candidate_count,
     profileCompleteness.profiles.filter(
-      (profile) => profile.identity_promotion_kind_count > 0,
+      (profile: Row) => profile.identity_promotion_kind_count > 0,
     ).length,
   );
   assert.equal(
     profiles.summary.identity_promotion_candidate_count,
     profiles.profiles.filter(
-      (profile) => profile.identity_evidence.needs_promotion_kinds.length > 0,
+      (profile: Row) =>
+        profile.identity_evidence.needs_promotion_kinds.length > 0,
     ).length,
   );
   assert.deepEqual(
     profiles.summary.by_identity_level,
-    profiles.profiles.reduce((counts, profile) => {
+    profiles.profiles.reduce((counts: Row, profile: Row) => {
       counts[profile.identity_level] =
         (counts[profile.identity_level] || 0) + 1;
       return counts;
@@ -2219,7 +2262,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.deepEqual(
     profileCompleteness.summary.by_identity_level,
-    profileCompleteness.profiles.reduce((counts, profile) => {
+    profileCompleteness.profiles.reduce((counts: Row, profile: Row) => {
       counts[profile.identity_level] =
         (counts[profile.identity_level] || 0) + 1;
       return counts;
@@ -2227,16 +2270,15 @@ test("public artifacts are internally consistent", () => {
   );
   assert.deepEqual(
     enrichmentQueue.summary.identity_level_counts,
-    enrichmentQueue.queue.reduce((counts, entry) => {
+    enrichmentQueue.queue.reduce((counts: Row, entry: Row) => {
       counts[entry.identity_level] = (counts[entry.identity_level] || 0) + 1;
       return counts;
     }, {}),
   );
   assert.equal(
-    Object.values(profileCompleteness.summary.by_profile_level).reduce(
-      (sum, count) => sum + count,
-      0,
-    ),
+    (
+      Object.values(profileCompleteness.summary.by_profile_level) as number[]
+    ).reduce((sum, count) => sum + count, 0),
     native.subnets.length,
   );
   assert.equal(
@@ -2282,7 +2324,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     adapterCandidates.candidates.every(
-      (candidate) =>
+      (candidate: Row) =>
         Array.isArray(candidate.operational_surface_ids) &&
         Array.isArray(candidate.candidate_api_ids) &&
         Array.isArray(candidate.candidate_api_kinds) &&
@@ -2293,7 +2335,7 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(
-    adapterCandidates.candidates.some((candidate) =>
+    adapterCandidates.candidates.some((candidate: Row) =>
       candidate.reason_codes.includes("openapi-surface"),
     ),
     true,
@@ -2302,27 +2344,29 @@ test("public artifacts are internally consistent", () => {
   assert.equal(Array.isArray(reviewDecisions.decisions), true);
   assert.equal(coverage.probed_count, native.subnets.length);
   const generatedSurfaces = surfaces.surfaces.filter(
-    (surface) => surface.authority === "registry-observed",
+    (surface: Row) => surface.authority === "registry-observed",
   );
   assert.equal(generatedSurfaces.length > 0, true);
   assert.equal(
-    generatedSurfaces.some((surface) => surface.verification !== undefined),
+    generatedSurfaces.some(
+      (surface: Row) => surface.verification !== undefined,
+    ),
     false,
   );
   assert.deepEqual(
-    subnets.subnets.map((subnet) => subnet.netuid),
-    native.subnets.map((subnet) => subnet.netuid),
+    subnets.subnets.map((subnet: Row) => subnet.netuid),
+    native.subnets.map((subnet: Row) => subnet.netuid),
   );
   assert.equal(
-    subnets.subnets.find((subnet) => subnet.netuid === 0).subnet_type,
+    subnets.subnets.find((subnet: Row) => subnet.netuid === 0).subnet_type,
     "root",
   );
   assert.equal(
-    subnets.subnets.find((subnet) => subnet.netuid === 7).coverage_level,
+    subnets.subnets.find((subnet: Row) => subnet.netuid === 7).coverage_level,
     "probed",
   );
   assert.equal(
-    subnets.subnets.find((subnet) => subnet.netuid === 74).coverage_level,
+    subnets.subnets.find((subnet: Row) => subnet.netuid === 74).coverage_level,
     "probed",
   );
 
@@ -2472,7 +2516,7 @@ test("limited R2 upload dry run skips control manifests", () => {
 
 test("enrichment guidance ignores maintainer-excluded candidate IDs", () => {
   const queue = readArtifact("review/enrichment-queue.json");
-  const ditto = queue.queue.find((entry) => entry.netuid === 118);
+  const ditto = queue.queue.find((entry: Row) => entry.netuid === 118);
 
   assert(ditto, "expected SN118 Ditto enrichment queue entry");
   // SN118's maintainer-excluded source-repo candidates (ditto.json
@@ -2498,7 +2542,7 @@ test("enrichment guidance ignores maintainer-excluded candidate IDs", () => {
 
 test("enrichment guidance ignores maintainer-excluded candidate URLs", () => {
   const queue = readArtifact("review/enrichment-queue.json");
-  const colosseum = queue.queue.find((entry) => entry.netuid === 38);
+  const colosseum = queue.queue.find((entry: Row) => entry.netuid === 38);
 
   assert(colosseum, "expected SN38 colosseum enrichment queue entry");
   // evidence_action tracks the queue entry's lane (submit-new-evidence vs.
@@ -2542,11 +2586,11 @@ test("Worker API serves public artifact envelopes", async () => {
   assert.equal(body.data.subnet.netuid, 7);
 });
 
-function readArtifact(relativePath) {
+function readArtifact(relativePath: string): Row {
   return JSON.parse(readFileSync(artifactFilePath(relativePath), "utf8"));
 }
 
-function latestArtifactDate(relativePath) {
+function latestArtifactDate(relativePath: string) {
   return readdirSync(artifactDirectoryPath(relativePath))
     .filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file))
     .map((file) => file.replace(/\.json$/, ""))
@@ -2554,16 +2598,16 @@ function latestArtifactDate(relativePath) {
     .at(-1);
 }
 
-function snapshotSupportArtifacts() {
+function snapshotSupportArtifacts(): Map<string, string> {
   return new Map(
-    SUPPORT_ARTIFACT_PATHS.map((filePath) => [
+    SUPPORT_ARTIFACT_PATHS.map((filePath): [string, string] => [
       filePath,
       readFileSync(filePath, "utf8"),
     ]),
   );
 }
 
-function restoreSupportArtifacts(snapshot) {
+function restoreSupportArtifacts(snapshot: Map<string, string>) {
   for (const [filePath, content] of snapshot) {
     writeFileSync(filePath, content);
   }
@@ -2582,7 +2626,7 @@ test("#745 social accounts stay display-only and never feed completeness", () =>
   const index = JSON.parse(
     readFileSync(artifactFilePath("subnets.json"), "utf8"),
   );
-  const withSocial = index.subnets.filter((subnet) => subnet.social);
+  const withSocial = index.subnets.filter((subnet: Row) => subnet.social);
   // The on-chain `additional` corpus currently yields a handful of handles. If a
   // snapshot ever yields zero, the lib-helpers unit tests still pin extraction;
   // this invariant guards the build wiring whenever the data is present.
@@ -2637,11 +2681,11 @@ test("#745 provider social is display-only and borrows from a single subnet", ()
   );
   const subnetSocialByNetuid = new Map(
     JSON.parse(readFileSync(artifactFilePath("subnets.json"), "utf8"))
-      .subnets.filter((subnet) => subnet.social)
-      .map((subnet) => [subnet.netuid, subnet.social]),
+      .subnets.filter((subnet: Row) => subnet.social)
+      .map((subnet: Row) => [subnet.netuid, subnet.social]),
   );
 
-  for (const provider of providers.filter((entry) => entry.social)) {
+  for (const provider of providers.filter((entry: Row) => entry.social)) {
     assert.deepEqual(
       Object.keys(provider.social).filter(
         (key) => !["x", "telegram", "reddit", "youtube"].includes(key),

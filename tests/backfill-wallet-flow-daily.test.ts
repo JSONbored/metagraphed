@@ -41,7 +41,13 @@ test("parseArgs throws on an unrecognized flag", () => {
 
 test("assertValidOptions requires --from and --to", () => {
   assert.throws(
-    () => assertValidOptions({ from: null, to: null, databaseUrl: "x" }),
+    () =>
+      assertValidOptions({
+        from: null,
+        to: null,
+        databaseUrl: "x",
+        dryRun: false,
+      }),
     /--from and --to are required/,
   );
 });
@@ -53,6 +59,7 @@ test("assertValidOptions rejects a malformed date", () => {
         from: "not-a-date",
         to: "2026-01-31",
         databaseUrl: "x",
+        dryRun: false,
       }),
     /must be YYYY-MM-DD/,
   );
@@ -65,6 +72,7 @@ test("assertValidOptions rejects --from after --to", () => {
         from: "2026-02-01",
         to: "2026-01-01",
         databaseUrl: "x",
+        dryRun: false,
       }),
     /must not be after/,
   );
@@ -77,6 +85,7 @@ test("assertValidOptions requires a database URL", () => {
         from: "2026-01-01",
         to: "2026-01-31",
         databaseUrl: "",
+        dryRun: false,
       }),
     /DATABASE_URL required/,
   );
@@ -88,6 +97,7 @@ test("assertValidOptions accepts a valid, complete option set", () => {
       from: "2026-01-01",
       to: "2026-01-31",
       databaseUrl: "postgres://example",
+      dryRun: false,
     }),
   );
 });

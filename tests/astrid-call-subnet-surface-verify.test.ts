@@ -28,30 +28,32 @@ import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
+import type { Row } from "./row-type.ts";
 
 const NETUID = 127;
 
-const registry = JSON.parse(
+const registry: Row = JSON.parse(
   readFileSync(
     fileURLToPath(new URL("../registry/subnets/astrid.json", import.meta.url)),
     "utf8",
   ),
 );
-const surfaceById = (id) => registry.surfaces.find((s) => s.id === id);
+const surfaceById = (id: string) =>
+  registry.surfaces.find((s: Row) => s.id === id);
 
-function upstreamResponse(spec) {
+function upstreamResponse(spec: Row) {
   return new Response(spec.method === "HEAD" ? null : spec.rawBody, {
     status: 200,
     headers: { "content-type": spec.contentType },
   });
 }
 
-async function callThroughMcpTool(surface, spec) {
+async function callThroughMcpTool(surface: Row, spec: Row) {
   const catalog = {
     surfaces: [{ ...surface, surface_id: surface.id, netuid: NETUID }],
   };
   const deps = {
-    readArtifact: async (_env, path) =>
+    readArtifact: async (_env: Row, path: string) =>
       path === "/metagraph/operational-surfaces.json"
         ? { ok: true, data: catalog }
         : { ok: false, status: 404 },
@@ -84,7 +86,7 @@ async function callThroughMcpTool(surface, spec) {
       {},
       deps,
     );
-    return (await httpResponse.json()).result;
+    return ((await httpResponse.json()) as Row).result;
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -173,13 +175,13 @@ for (const spec of SURFACES) {
     });
 
     test(`callSubnetSurface issues a ${spec.method} to the surface's own url and returns the body`, async () => {
-      let requestedUrl;
-      let requestedMethod;
+      let requestedUrl: string | undefined;
+      let requestedMethod: string | undefined;
       const result = await callSubnetSurface(SURFACE, {
         isUnsafeUrl: async () => false,
         fetchImpl: async (url, init) => {
           requestedUrl = String(url);
-          requestedMethod = init.method;
+          requestedMethod = init?.method;
           return upstreamResponse(spec);
         },
       });

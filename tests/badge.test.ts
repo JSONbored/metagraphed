@@ -11,6 +11,10 @@ import {
 } from "../src/badge.ts";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import type { StorageReadResult } from "../workers/storage.ts";
+import { mockEnv, type Row } from "./row-type.ts";
+
+type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SUBNETS = {
   subnets: [
@@ -35,19 +39,19 @@ const PROFILES = {
   ],
 };
 
-function makeReadArtifact(fixtures) {
-  return (_env, path) =>
+function makeReadArtifact(fixtures: Row) {
+  return ((_env: Row, path: string) =>
     Promise.resolve(
       Object.prototype.hasOwnProperty.call(fixtures, path)
         ? { ok: true, data: fixtures[path] }
         : { ok: false, code: "artifact_not_found" },
-    );
+    )) as unknown as ReadArtifact;
 }
 
 // Fake reliability loader keyed by the set of netuids it's asked to score —
 // stands in for the live D1 surface_uptime_daily rollup (loadReliabilityAggregate).
-function makeLoadReliability(byNetuids) {
-  return ({ netuids }) =>
+function makeLoadReliability(byNetuids: Row) {
+  return ({ netuids }: { netuids: number[] }) =>
     Promise.resolve(
       byNetuids[[...netuids].sort((a, b) => a - b).join(",")] ?? null,
     );
@@ -74,18 +78,26 @@ const SURFACES = {
   // netuid 9 has no surfaces artifact → n/a
 };
 
-async function badge(pathname, { method = "GET", fixtures = {} } = {}) {
+async function badge(
+  pathname: string,
+  { method = "GET", fixtures = {} }: { method?: string; fixtures?: Row } = {},
+) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
-  const res = await handleBadgeRequest(new Request(url, { method }), {}, url, {
-    readArtifact: makeReadArtifact({
-      "/metagraph/subnets.json": SUBNETS,
-      "/metagraph/providers.json": PROVIDERS,
-      "/metagraph/profiles.json": PROFILES,
-      ...SURFACES,
-      ...fixtures,
-    }),
-    loadReliability: makeLoadReliability(RELIABILITY),
-  });
+  const res = await handleBadgeRequest(
+    new Request(url, { method }),
+    mockEnv(),
+    url,
+    {
+      readArtifact: makeReadArtifact({
+        "/metagraph/subnets.json": SUBNETS,
+        "/metagraph/providers.json": PROVIDERS,
+        "/metagraph/profiles.json": PROFILES,
+        ...SURFACES,
+        ...fixtures,
+      }),
+      loadReliability: makeLoadReliability(RELIABILITY),
+    },
+  );
   return { res, text: await res.text() };
 }
 
@@ -124,7 +136,7 @@ describe("badge — rendering", () => {
     // sanitizeLabel admits emoji, but textWidth used to size every non-ASCII
     // glyph at the 6.5px lowercase default — narrower than the 8px capital `W`,
     // so an emoji label clipped its own segment (#1650).
-    const widthOf = (svg) => Number(svg.match(/width="(\d+)"/)[1]);
+    const widthOf = (svg: string) => Number(svg.match(/width="(\d+)"/)![1]);
     const capW = widthOf(renderBadge("ok", "#000", { label: "W" }));
     const emoji = widthOf(renderBadge("ok", "#000", { label: "😀" }));
     const cjk = widthOf(renderBadge("ok", "#000", { label: "字" }));
@@ -211,7 +223,7 @@ describe("badge — rendering", () => {
   });
 
   test("renderBadge for-the-badge width branches cover narrow, wide, CJK, and accented glyphs", () => {
-    const widthOf = (svg) => Number(svg.match(/width="(\d+)"/)[1]);
+    const widthOf = (svg: string) => Number(svg.match(/width="(\d+)"/)![1]);
     const narrow = widthOf(
       renderBadge(".", "#000", { style: "for-the-badge", label: "." }),
     );
@@ -270,7 +282,7 @@ describe("badge — rendering", () => {
   });
 
   test("parseBadgeOptions allow-lists metric/style + sanitizes label", () => {
-    const sp = (q) => new URL(`https://x/?${q}`).searchParams;
+    const sp = (q: string) => new URL(`https://x/?${q}`).searchParams;
     // metric: readiness default; uptime + reliability both map to reliability.
     assert.equal(parseBadgeOptions(sp("")).metric, "readiness");
     assert.equal(parseBadgeOptions(sp("metric=UPTIME")).metric, "reliability");
@@ -329,8 +341,8 @@ describe("badge — handleBadgeRequest", () => {
   test("subnet badge shows the real score + score color + svg headers", async () => {
     const { res, text } = await badge("/api/v1/subnets/7/badge.svg");
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
-    assert.match(res.headers.get("cache-control"), /max-age=3600/);
+    assert.match(res.headers.get("content-type")!, /image\/svg\+xml/);
+    assert.match(res.headers.get("cache-control")!, /max-age=3600/);
     assert.match(text, /92\/100/);
     assert.match(text, /#2ea44f/); // green (>= 80)
   });
@@ -379,14 +391,14 @@ describe("badge — handleBadgeRequest", () => {
       method: "HEAD",
     });
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
+    assert.match(res.headers.get("content-type")!, /image\/svg\+xml/);
     assert.equal(text, "");
   });
 
   test("badge response is CORS-open + keeps cache/nosniff", async () => {
     const { res } = await badge("/api/v1/subnets/7/badge.svg");
     assert.equal(res.headers.get("access-control-allow-origin"), "*");
-    assert.match(res.headers.get("cache-control"), /max-age=3600/);
+    assert.match(res.headers.get("cache-control")!, /max-age=3600/);
     assert.equal(res.headers.get("x-content-type-options"), "nosniff");
     // Headers are uniform across metric/entity (n/a included).
     const { res: na } = await badge(
@@ -439,32 +451,12 @@ describe("badge — uptime / reliability metric", () => {
     const url = new URL(
       "https://api.metagraph.sh/api/v1/providers/partial/badge.svg?metric=uptime",
     );
-    const db = {
-      prepare(_sql) {
-        return {
-          bind() {
-            return this;
-          },
-          async first() {
-            // Only netuid 7 has rows in-window; netuid 9 is absent from DISTINCT.
-            return {
-              covered_netuids: 1,
-              samples: 100,
-              ok_count: 90,
-              avg_latency_ms: 500,
-              latency_samples: 90,
-            };
-          },
-        };
-      },
-    };
-    const res = await handleBadgeRequest(new Request(url), {}, url, {
+    const res = await handleBadgeRequest(new Request(url), mockEnv(), url, {
       readArtifact: makeReadArtifact({
         "/metagraph/providers.json": {
           providers: [{ slug: "partial", netuids: [7, 9] }],
         },
       }),
-      db,
     });
     assert.equal(res.status, 200);
     assert.match(await res.text(), /n\/a/);
@@ -586,7 +578,7 @@ describe("badge — apis metric", () => {
     const url = new URL(
       "https://api.metagraph.sh/api/v1/subnets/7/badge.svg?metric=apis",
     );
-    const res = await handleBadgeRequest(new Request(url), {}, url, {
+    const res = await handleBadgeRequest(new Request(url), mockEnv(), url, {
       readArtifact: () => {
         throw new Error("artifact read failed");
       },
@@ -660,7 +652,7 @@ describe("badge — Worker dispatch integration", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
+    assert.match(res.headers.get("content-type")!, /image\/svg\+xml/);
     assert.match(await res.text(), /<svg /);
   });
 });

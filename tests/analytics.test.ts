@@ -15,6 +15,7 @@ import {
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { mockEnv, type Row } from "./row-type.ts";
 
 // --- Pure format helpers ----------------------------------------------------
 
@@ -46,7 +47,7 @@ describe("formatPercentiles", () => {
           max_latency_ms: 500,
         },
       ],
-    });
+    }) as Row;
     assert.equal(out.schema_version, 1);
     assert.equal(out.netuid, 7);
     assert.equal(out.surfaces[0].surface_id, "a");
@@ -60,7 +61,7 @@ describe("formatPercentiles", () => {
       window: "7d",
       observedAt: null,
       rows: [],
-    });
+    }) as Row;
     assert.deepEqual(out.surfaces, []);
     assert.equal(out.observed_at, null);
   });
@@ -89,7 +90,7 @@ describe("formatIncidents", () => {
           failed_samples: 2,
         },
       ],
-    });
+    }) as Row;
     const surface = out.surfaces[0];
     assert.equal(surface.uptime_ratio, 0.96);
     assert.equal(surface.incident_count, 2);
@@ -102,7 +103,7 @@ describe("formatIncidents", () => {
       netuid: 1,
       slaRows: [{ surface_id: "y", total: 10, ok_count: 10 }],
       incidentRows: [],
-    });
+    }) as Row;
     assert.equal(out.surfaces[0].incident_count, 0);
     assert.equal(out.surfaces[0].uptime_ratio, 1);
   });
@@ -111,7 +112,7 @@ describe("formatIncidents", () => {
       netuid: 1,
       slaRows: [{ surface_id: "z", total: 0, ok_count: 0 }],
       incidentRows: [],
-    });
+    }) as Row;
     assert.equal(out.surfaces[0].uptime_ratio, null);
   });
   test("caps materialized incidents when requested by the API", () => {
@@ -126,7 +127,7 @@ describe("formatIncidents", () => {
         failed_samples: 1,
       })),
       maxIncidents: 2,
-    });
+    }) as Row;
     assert.equal(out.surfaces[0].incident_count, 2);
     assert.equal(out.surfaces[0].incidents.length, 2);
   });
@@ -153,9 +154,9 @@ describe("formatIncidents", () => {
         })),
       ],
       maxIncidents: 2,
-    });
-    const a = out.surfaces.find((surface) => surface.surface_id === "a");
-    const z = out.surfaces.find((surface) => surface.surface_id === "z");
+    }) as Row;
+    const a = out.surfaces.find((surface: Row) => surface.surface_id === "a");
+    const z = out.surfaces.find((surface: Row) => surface.surface_id === "z");
     assert.equal(a.incident_count, 2);
     assert.equal(z.incident_count, 2);
   });
@@ -228,7 +229,11 @@ describe("formatLeaderboards", () => {
   };
 
   test("assembles all boards when no board filter", () => {
-    const out = formatLeaderboards({ ...inputs, board: null, limit: 10 });
+    const out = formatLeaderboards({
+      ...inputs,
+      board: null,
+      limit: 10,
+    }) as Row;
     assert.deepEqual(
       Object.keys(out.boards).sort(),
       [...LEADERBOARD_BOARDS].sort(),
@@ -244,7 +249,10 @@ describe("formatLeaderboards", () => {
     assert.equal(out.boards["most-reliable"][0].netuid, 1); // 100% uptime ranks first
   });
   test("most-reliable ranks by windowed score and drops zero-sample subnets", () => {
-    const out = formatLeaderboards({ ...inputs, board: "most-reliable" });
+    const out = formatLeaderboards({
+      ...inputs,
+      board: "most-reliable",
+    }) as Row;
     const board = out.boards["most-reliable"];
     // netuid 3 has no samples in the window → null score → excluded.
     assert.equal(board.length, 2);
@@ -283,10 +291,10 @@ describe("formatLeaderboards", () => {
         },
       ],
       board: "most-reliable",
-    });
+    }) as Row;
     // 4 and 9 (latency 100) outrank 7 (latency 300); 4 before 9 on netuid.
     assert.deepEqual(
-      out.boards["most-reliable"].map((e) => e.netuid),
+      out.boards["most-reliable"].map((e: Row) => e.netuid),
       [4, 9, 7],
     );
   });
@@ -300,12 +308,14 @@ describe("formatLeaderboards", () => {
       { netuid: 2, total: 4, ok_count: 4, avg_latency_ms: 100 },
       { netuid: 9, total: 4, ok_count: 4, avg_latency_ms: 100 },
     ];
-    const order = (healthRows) =>
-      formatLeaderboards({
-        ...inputs,
-        healthRows,
-        board: "healthiest",
-      }).boards.healthiest.map((e) => e.netuid);
+    const order = (healthRows: Row[]) =>
+      (
+        formatLeaderboards({
+          ...inputs,
+          healthRows,
+          board: "healthiest",
+        }) as Row
+      ).boards.healthiest.map((e: Row) => e.netuid);
     assert.deepEqual(order(tied), [2, 5, 9]);
     assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
   });
@@ -315,10 +325,14 @@ describe("formatLeaderboards", () => {
       { netuid: 2, min_latency_ms: 100 },
       { netuid: 9, min_latency_ms: 100 },
     ];
-    const order = (rpcRows) =>
-      formatLeaderboards({ ...inputs, rpcRows, board: "fastest-rpc" }).boards[
-        "fastest-rpc"
-      ].map((e) => e.netuid);
+    const order = (rpcRows: Row[]) =>
+      (
+        formatLeaderboards({
+          ...inputs,
+          rpcRows,
+          board: "fastest-rpc",
+        }) as Row
+      ).boards["fastest-rpc"].map((e: Row) => e.netuid);
     assert.deepEqual(order(tied), [2, 5, 9]);
     assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
   });
@@ -328,12 +342,14 @@ describe("formatLeaderboards", () => {
       { netuid: 2, slug: "two", name: "Two", completeness_score: 90 },
       { netuid: 9, slug: "nine", name: "Nine", completeness_score: 90 },
     ];
-    const order = (mostComplete) =>
-      formatLeaderboards({
-        ...inputs,
-        mostComplete,
-        board: "most-complete",
-      }).boards["most-complete"].map((e) => e.netuid);
+    const order = (mostComplete: Row[]) =>
+      (
+        formatLeaderboards({
+          ...inputs,
+          mostComplete,
+          board: "most-complete",
+        }) as Row
+      ).boards["most-complete"].map((e: Row) => e.netuid);
     assert.deepEqual(order(tied), [2, 5, 9]);
     assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
   });
@@ -348,7 +364,7 @@ describe("formatLeaderboards", () => {
         { netuid: 9, slug: "nine", name: "Nine", completeness_score: null },
       ],
       board: "most-complete",
-    });
+    }) as Row;
     assert.equal(out.boards["most-complete"].length, 1);
     assert.equal(out.boards["most-complete"][0].netuid, 1);
   });
@@ -376,12 +392,14 @@ describe("formatLeaderboards", () => {
         operational_interface_count: 2,
       },
     ];
-    const order = (mostComplete) =>
-      formatLeaderboards({
-        ...inputs,
-        mostComplete,
-        board: "most-enriched",
-      }).boards["most-enriched"].map((e) => e.netuid);
+    const order = (mostComplete: Row[]) =>
+      (
+        formatLeaderboards({
+          ...inputs,
+          mostComplete,
+          board: "most-enriched",
+        }) as Row
+      ).boards["most-enriched"].map((e: Row) => e.netuid);
     assert.deepEqual(order(tied), [2, 5, 9]);
     assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
   });
@@ -391,12 +409,14 @@ describe("formatLeaderboards", () => {
       { netuid: 2, delta: 7 },
       { netuid: 9, delta: 7 },
     ];
-    const order = (growthRows) =>
-      formatLeaderboards({
-        ...inputs,
-        growthRows,
-        board: "fastest-growing",
-      }).boards["fastest-growing"].map((e) => e.netuid);
+    const order = (growthRows: Row[]) =>
+      (
+        formatLeaderboards({
+          ...inputs,
+          growthRows,
+          board: "fastest-growing",
+        }) as Row
+      ).boards["fastest-growing"].map((e: Row) => e.netuid);
     assert.deepEqual(order(tied), [2, 5, 9]);
     assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
   });
@@ -408,7 +428,7 @@ describe("formatLeaderboards", () => {
         { netuid: 9, slug: "nine", name: "Nine", surface_count: 0 },
       ],
       board: "most-enriched",
-    });
+    }) as Row;
     assert.equal(out.boards["most-enriched"].length, 1);
     assert.equal(out.boards["most-enriched"][0].netuid, 1);
   });
@@ -417,15 +437,15 @@ describe("formatLeaderboards", () => {
       ...inputs,
       board: "healthiest",
       limit: 1,
-    });
+    }) as Row;
     assert.deepEqual(Object.keys(out.boards), ["healthiest"]);
     assert.equal(out.boards.healthiest.length, 1);
     assert.equal(out.board, "healthiest");
   });
   test("excludes zero-surface subnets from healthiest", () => {
-    const out = formatLeaderboards({ ...inputs, board: "healthiest" });
+    const out = formatLeaderboards({ ...inputs, board: "healthiest" }) as Row;
     assert.equal(
-      out.boards.healthiest.some((e) => e.netuid === 3),
+      out.boards.healthiest.some((e: Row) => e.netuid === 3),
       false,
     );
   });
@@ -499,17 +519,17 @@ describe("formatLeaderboards", () => {
       economicsRows,
       board: null,
       limit: 10,
-    });
+    }) as Row;
     // open-slots: most room first; full + unknown excluded.
     assert.deepEqual(
-      out.boards["open-slots"].map((e) => e.netuid),
+      out.boards["open-slots"].map((e: Row) => e.netuid),
       [10, 11],
     );
     assert.equal(out.boards["open-slots"][0].open_slots, 200);
     assert.equal(out.boards["open-slots"][0].name, "Ten");
     // cheapest-registration: lowest cost first; closed + unknown-cost excluded.
     assert.deepEqual(
-      out.boards["cheapest-registration"].map((e) => e.netuid),
+      out.boards["cheapest-registration"].map((e: Row) => e.netuid),
       [11, 10],
     );
     assert.equal(
@@ -518,12 +538,12 @@ describe("formatLeaderboards", () => {
     );
     // highest-emission: largest share first; only null-emission excluded.
     assert.deepEqual(
-      out.boards["highest-emission"].map((e) => e.netuid),
+      out.boards["highest-emission"].map((e: Row) => e.netuid),
       [11, 10, 12],
     );
     // validator-headroom: max_validators - validator_count, desc; zero excluded.
     assert.deepEqual(
-      out.boards["validator-headroom"].map((e) => e.netuid),
+      out.boards["validator-headroom"].map((e: Row) => e.netuid),
       [10, 11],
     );
     assert.equal(out.boards["validator-headroom"][0].validator_headroom, 54);
@@ -576,9 +596,9 @@ describe("formatLeaderboards", () => {
           emission_share: null,
         },
       ],
-    });
+    }) as Row;
     assert.deepEqual(
-      out.boards["biggest-alpha-gain-1d"].map((e) => e.netuid),
+      out.boards["biggest-alpha-gain-1d"].map((e: Row) => e.netuid),
       [11, 10],
     );
     assert.equal(
@@ -586,52 +606,54 @@ describe("formatLeaderboards", () => {
       80,
     );
     assert.deepEqual(
-      out.boards["biggest-alpha-gain-7d"].map((e) => e.netuid),
+      out.boards["biggest-alpha-gain-7d"].map((e: Row) => e.netuid),
       [12, 10, 11],
     );
   });
 
   test("biggest-alpha-gain boards break ties on alpha_price_tao (null last)", () => {
-    const ranked = (board) =>
-      formatLeaderboards({
-        ...inputs,
-        board,
-        limit: 10,
-        economicsRows: [
-          {
-            netuid: 20,
-            slug: "a",
-            name: "A",
-            alpha_price_change_1d: 10,
-            alpha_price_change_7d: 10,
-            alpha_price_tao: null,
-            emission_share: null,
-          },
-          {
-            netuid: 21,
-            slug: "b",
-            name: "B",
-            alpha_price_change_1d: 10,
-            alpha_price_change_7d: 10,
-            alpha_price_tao: 5,
-            emission_share: 0.1,
-          },
-          {
-            netuid: 22,
-            slug: "c",
-            name: "C",
-            alpha_price_change_1d: 10,
-            alpha_price_change_7d: 10,
-            // missing alpha_price_tao → null via finiteOrNull
-            emission_share: 0.2,
-          },
-        ],
-      }).boards[board];
+    const ranked = (board: string) =>
+      (
+        formatLeaderboards({
+          ...inputs,
+          board,
+          limit: 10,
+          economicsRows: [
+            {
+              netuid: 20,
+              slug: "a",
+              name: "A",
+              alpha_price_change_1d: 10,
+              alpha_price_change_7d: 10,
+              alpha_price_tao: null,
+              emission_share: null,
+            },
+            {
+              netuid: 21,
+              slug: "b",
+              name: "B",
+              alpha_price_change_1d: 10,
+              alpha_price_change_7d: 10,
+              alpha_price_tao: 5,
+              emission_share: 0.1,
+            },
+            {
+              netuid: 22,
+              slug: "c",
+              name: "C",
+              alpha_price_change_1d: 10,
+              alpha_price_change_7d: 10,
+              // missing alpha_price_tao → null via finiteOrNull
+              emission_share: 0.2,
+            },
+          ],
+        }) as Row
+      ).boards[board];
 
     for (const board of ["biggest-alpha-gain-1d", "biggest-alpha-gain-7d"]) {
       const entries = ranked(board);
       assert.deepEqual(
-        entries.map((e) => e.netuid),
+        entries.map((e: Row) => e.netuid),
         [21, 20, 22],
         board,
       );
@@ -642,7 +664,11 @@ describe("formatLeaderboards", () => {
   });
 
   test("economic boards are null-safe when the economics tier is cold", () => {
-    const out = formatLeaderboards({ ...inputs, board: null, limit: 10 });
+    const out = formatLeaderboards({
+      ...inputs,
+      board: null,
+      limit: 10,
+    }) as Row;
     for (const key of [
       "open-slots",
       "cheapest-registration",
@@ -663,60 +689,64 @@ describe("formatLeaderboards", () => {
       economicsRows,
       board: "highest-emission",
       limit: 1,
-    });
+    }) as Row;
     assert.deepEqual(Object.keys(out.boards), ["highest-emission"]);
     assert.equal(out.boards["highest-emission"].length, 1);
     assert.equal(out.boards["highest-emission"][0].netuid, 11);
   });
 
   test("economic boards break metric ties by tiebreak then netuid, nulls last", () => {
-    const ranked = (board, rows) =>
-      formatLeaderboards({
-        ...inputs,
-        board,
-        limit: 10,
-        economicsRows: rows,
-      }).boards[board].map((entry) => entry.netuid);
+    const ranked = (board: string, rows: Row[]) =>
+      (
+        formatLeaderboards({
+          ...inputs,
+          board,
+          limit: 10,
+          economicsRows: rows,
+        }) as Row
+      ).boards[board].map((entry: Row) => entry.netuid);
 
     // open-slots all tie at 100: cheaper cost first, equal cost breaks on netuid,
     // unknown cost (Infinity) ranks last. netuid 2 is in subnetMeta, so its
     // identity resolves from the map rather than the row.
-    const openSlots = formatLeaderboards({
-      ...inputs,
-      board: "open-slots",
-      limit: 10,
-      economicsRows: [
-        {
-          netuid: 30,
-          open_slots: 100,
-          registration_cost_tao: 5,
-          registration_allowed: true,
-        },
-        {
-          netuid: 2,
-          open_slots: 100,
-          registration_cost_tao: 5,
-          registration_allowed: true,
-        },
-        {
-          netuid: 31,
-          open_slots: 100,
-          registration_cost_tao: null,
-          registration_allowed: true,
-        },
-        {
-          netuid: 32,
-          open_slots: 100,
-          registration_cost_tao: 1,
-          registration_allowed: true,
-        },
-      ],
-    }).boards["open-slots"];
+    const openSlots = (
+      formatLeaderboards({
+        ...inputs,
+        board: "open-slots",
+        limit: 10,
+        economicsRows: [
+          {
+            netuid: 30,
+            open_slots: 100,
+            registration_cost_tao: 5,
+            registration_allowed: true,
+          },
+          {
+            netuid: 2,
+            open_slots: 100,
+            registration_cost_tao: 5,
+            registration_allowed: true,
+          },
+          {
+            netuid: 31,
+            open_slots: 100,
+            registration_cost_tao: null,
+            registration_allowed: true,
+          },
+          {
+            netuid: 32,
+            open_slots: 100,
+            registration_cost_tao: 1,
+            registration_allowed: true,
+          },
+        ],
+      }) as Row
+    ).boards["open-slots"];
     assert.deepEqual(
-      openSlots.map((e) => e.netuid),
+      openSlots.map((e: Row) => e.netuid),
       [32, 2, 30, 31],
     );
-    assert.equal(openSlots.find((e) => e.netuid === 2).name, "Two");
+    assert.equal(openSlots.find((e: Row) => e.netuid === 2).name, "Two");
 
     // cheapest-registration tie at cost 2: more open slots first, unknown last.
     assert.deepEqual(
@@ -791,7 +821,7 @@ describe("formatTrajectory", () => {
         endpoint_count: 20 + d,
       });
     }
-    const out = formatTrajectory({ netuid: 7, rows });
+    const out = formatTrajectory({ netuid: 7, rows }) as Row;
     assert.equal(out.point_count, 14);
     assert.equal(out.deltas["7d"].completeness_score, 7);
     assert.equal(out.deltas["7d"].from_date, "2026-06-07");
@@ -799,7 +829,7 @@ describe("formatTrajectory", () => {
     assert.equal(out.deltas["30d"], null); // not enough history
   });
   test("empty rows yield a cold-but-valid shape", () => {
-    const out = formatTrajectory({ netuid: 1, rows: [] });
+    const out = formatTrajectory({ netuid: 1, rows: [] }) as Row;
     assert.equal(out.point_count, 0);
     assert.deepEqual(out.points, []);
     assert.equal(out.deltas["7d"], null);
@@ -820,7 +850,7 @@ describe("formatTrajectory", () => {
           emission_share: "0.01",
         },
       ],
-    });
+    }) as Row;
     const point = out.points[0];
     assert.equal(typeof point.completeness_score, "number");
     assert.equal(typeof point.surface_count, "number");
@@ -851,7 +881,7 @@ describe("formatTrajectory", () => {
           emission_share: "Infinity",
         },
       ],
-    });
+    }) as Row;
     const point = out.points[0];
     assert.equal(point.total_stake_tao, null);
     assert.equal(point.alpha_price_tao, null);
@@ -864,7 +894,7 @@ describe("formatTrajectory", () => {
     // this loader is only reached on a tier miss and always returns an empty
     // trajectory. See tests/request-handlers-analytics-routes.test.mjs for the
     // Postgres-tier-hit coverage of handleTrajectory itself.
-    const out = await loadSubnetTrajectory(11);
+    const out = (await loadSubnetTrajectory(11)) as Row;
     assert.equal(out.netuid, 11);
     assert.equal(out.point_count, 0);
     assert.deepEqual(out.points, []);
@@ -881,27 +911,12 @@ describe("formatTrajectory", () => {
           emission_share: "0.000049",
         },
       ],
-    });
+    }) as Row;
     assert.equal(out.points[0].emission_share, 0.000049);
   });
 });
 
 // --- writeSubnetSnapshot ----------------------------------------------------
-
-function fakeBatchDb() {
-  const calls = { batched: [] };
-  const stmt = {
-    bind: (...params) => ({ __params: params }),
-  };
-  return {
-    calls,
-    prepare: () => stmt,
-    batch: (statements) => {
-      calls.batched.push(statements);
-      return Promise.resolve(statements.map(() => ({})));
-    },
-  };
-}
 
 // D1 write retired 2026-07-16 (item 2 of the D1->Postgres cleanup):
 // writeSubnetSnapshot's own `subnet_snapshots` result now comes entirely from
@@ -935,7 +950,7 @@ describe("writeSubnetSnapshot", () => {
       ],
     },
   };
-  const reader = (data) => () => Promise.resolve(data);
+  const reader = (data: unknown) => () => Promise.resolve(data as Row);
 
   // Mocks BOTH DATA_API sync routes writeSubnetSnapshot fires --
   // subnet-identity-sync (unrelated table, best-effort/independent) and
@@ -943,11 +958,11 @@ describe("writeSubnetSnapshot", () => {
   // each route's request body separately by URL so asserting on one never
   // depends on call order between the two.
   function postgresEnv({ snapshotOk = true, identityOk = true } = {}) {
-    const captured = {};
+    const captured: Row = {};
     const env = {
       DATA_API: {
-        fetch: async (request) => {
-          const body = await request.json();
+        fetch: async (request: Request) => {
+          const body = (await request.json()) as Row;
           if (request.url.includes("subnet-identity-sync")) {
             captured.identity = body;
             return identityOk
@@ -970,29 +985,30 @@ describe("writeSubnetSnapshot", () => {
   }
 
   test("returns unavailable without a reader", async () => {
-    assert.equal((await writeSubnetSnapshot({}, {})).reason, "unavailable");
     assert.equal(
-      (await writeSubnetSnapshot({}, { db: fakeBatchDb() })).reason,
+      (await writeSubnetSnapshot(mockEnv(), {})).reason,
+      "unavailable",
+    );
+    assert.equal(
+      (await writeSubnetSnapshot(mockEnv(), { now: () => Date.now() })).reason,
       "unavailable",
     );
   });
   test("reports when profiles are unavailable", async () => {
-    const r = await writeSubnetSnapshot(
-      {},
-      { readArtifact: reader({ ok: false }) },
-    );
+    const r = await writeSubnetSnapshot(mockEnv(), {
+      readArtifact: reader({ ok: false }),
+    });
     assert.equal(r.reason, "profiles_unavailable");
   });
   test("reports when there are no profiles", async () => {
-    const r = await writeSubnetSnapshot(
-      {},
-      { readArtifact: reader({ ok: true, data: { profiles: [] } }) },
-    );
+    const r = await writeSubnetSnapshot(mockEnv(), {
+      readArtifact: reader({ ok: true, data: { profiles: [] } }),
+    });
     assert.equal(r.reason, "no_profiles");
   });
   test("writes one row per integer-netuid profile to Postgres", async () => {
     const { env } = postgresEnv();
-    const r = await writeSubnetSnapshot(env, {
+    const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
     });
@@ -1002,7 +1018,7 @@ describe("writeSubnetSnapshot", () => {
   });
   test("mirrors the same profiles into Postgres identity-sync, independent of the snapshot-sync result", async () => {
     const { env, captured } = postgresEnv();
-    const r = await writeSubnetSnapshot(env, {
+    const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
     });
@@ -1012,7 +1028,7 @@ describe("writeSubnetSnapshot", () => {
   });
   test("returns ok:false with the sync's reason when the Postgres snapshot sync fails, even if identity-sync succeeds", async () => {
     const { env } = postgresEnv({ snapshotOk: false });
-    const r = await writeSubnetSnapshot(env, {
+    const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
     });
@@ -1020,10 +1036,10 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.reason, "status_502");
   });
   test("returns unavailable without DATA_API/secret configured", async () => {
-    const r = await writeSubnetSnapshot(
-      {},
-      { readArtifact: reader(profiles), now: () => Date.UTC(2026, 5, 10) },
-    );
+    const r = await writeSubnetSnapshot(mockEnv(), {
+      readArtifact: reader(profiles),
+      now: () => Date.UTC(2026, 5, 10),
+    });
     assert.equal(r.ok, false);
     assert.equal(r.reason, "unavailable");
   });
@@ -1036,7 +1052,7 @@ describe("writeSubnetSnapshot", () => {
       },
       SUBNET_SNAPSHOT_SYNC_SECRET: "shh-snapshot",
     };
-    const r = await writeSubnetSnapshot(env, {
+    const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
     });
     assert.equal(r.ok, false);
@@ -1057,7 +1073,7 @@ describe("writeSubnetSnapshot", () => {
         })),
       },
     };
-    const r = await writeSubnetSnapshot(env, {
+    const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(manyProfiles),
       now: () => Date.UTC(2026, 5, 10),
     });
@@ -1067,7 +1083,7 @@ describe("writeSubnetSnapshot", () => {
   });
   test("still counts structural rows when optional economics read throws", async () => {
     const { env, captured } = postgresEnv();
-    const r = await writeSubnetSnapshot(env, {
+    const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: (_env, path) => {
         if (path === "/metagraph/economics.json") {
           throw new Error("malformed economics artifact");
@@ -1100,7 +1116,7 @@ describe("syncSubnetSnapshotToPostgres", () => {
 
   test("returns unavailable when DATA_API is not bound", async () => {
     const result = await syncSubnetSnapshotToPostgres(
-      { SUBNET_SNAPSHOT_SYNC_SECRET: "shh" },
+      mockEnv({ SUBNET_SNAPSHOT_SYNC_SECRET: "shh" }),
       opts,
     );
     assert.deepEqual(result, { synced: false, reason: "unavailable" });
@@ -1108,7 +1124,9 @@ describe("syncSubnetSnapshotToPostgres", () => {
 
   test("returns unavailable when the secret is not configured", async () => {
     const result = await syncSubnetSnapshotToPostgres(
-      { DATA_API: { fetch: async () => new Response("{}", { status: 200 }) } },
+      mockEnv({
+        DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
+      }),
       opts,
     );
     assert.deepEqual(result, { synced: false, reason: "unavailable" });
@@ -1120,10 +1138,13 @@ describe("syncSubnetSnapshotToPostgres", () => {
       SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
     };
     assert.deepEqual(
-      await syncSubnetSnapshotToPostgres(env, { ...opts, profiles: [] }),
+      await syncSubnetSnapshotToPostgres(mockEnv(env), {
+        ...opts,
+        profiles: [],
+      }),
       { synced: false, reason: "no_profiles" },
     );
-    assert.deepEqual(await syncSubnetSnapshotToPostgres(env, {}), {
+    assert.deepEqual(await syncSubnetSnapshotToPostgres(mockEnv(env), {}), {
       synced: false,
       reason: "no_profiles",
     });
@@ -1134,7 +1155,7 @@ describe("syncSubnetSnapshotToPostgres", () => {
       DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
       SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
     };
-    const result = await syncSubnetSnapshotToPostgres(env, {
+    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), {
       ...opts,
       profiles: [{ netuid: null }],
     });
@@ -1147,7 +1168,7 @@ describe("syncSubnetSnapshotToPostgres", () => {
     let receivedBody;
     const env = {
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           receivedToken = request.headers.get("x-subnet-snapshot-sync-token");
           receivedPath = new URL(request.url).pathname;
           receivedBody = await request.json();
@@ -1156,7 +1177,7 @@ describe("syncSubnetSnapshotToPostgres", () => {
       },
       SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
     };
-    const result = await syncSubnetSnapshotToPostgres(env, opts);
+    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), opts);
     assert.deepEqual(result, { synced: true, rows: 1 });
     assert.equal(receivedToken, "shh");
     assert.equal(receivedPath, "/api/v1/internal/subnet-snapshot-sync");
@@ -1188,7 +1209,7 @@ describe("syncSubnetSnapshotToPostgres", () => {
       DATA_API: { fetch: async () => new Response("{}", { status: 502 }) },
       SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
     };
-    const result = await syncSubnetSnapshotToPostgres(env, opts);
+    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), opts);
     assert.deepEqual(result, { synced: false, reason: "status_502" });
   });
 
@@ -1201,7 +1222,7 @@ describe("syncSubnetSnapshotToPostgres", () => {
       },
       SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
     };
-    const result = await syncSubnetSnapshotToPostgres(env, opts);
+    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), opts);
     assert.deepEqual(result, { synced: false, reason: "fetch_failed" });
   });
 
@@ -1209,14 +1230,14 @@ describe("syncSubnetSnapshotToPostgres", () => {
     let receivedBody;
     const env = {
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           receivedBody = await request.json();
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
         },
       },
       SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
     };
-    const result = await syncSubnetSnapshotToPostgres(env, {
+    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), {
       profiles: [{ netuid: 9 }],
       date: "2026-06-10",
       capturedAt: 1,
@@ -1248,13 +1269,13 @@ describe("syncSubnetSnapshotToPostgres", () => {
 
 // --- Worker dispatch (cold D1 -> empty-valid; fake D1 -> with data) ----------
 
-function captureD1Env(queries) {
+function captureD1Env(queries: Row[]) {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
-          bind(...params) {
+          bind(...params: unknown[]) {
             queries.push({ sql, params });
             return {
               all: () => Promise.resolve({ results: rowsForSql(sql) }),
@@ -1265,7 +1286,7 @@ function captureD1Env(queries) {
     },
   };
 }
-function rowsForSql(sql) {
+function rowsForSql(sql: string) {
   if (sql.includes("WITH ranked")) {
     // Shared ok-latency CTE backs BOTH the percentiles and the trends routes, so
     // the fixture row carries uptime (total/ok_count) AND the latency stats.
@@ -1348,7 +1369,7 @@ function rowsForSql(sql) {
   return [];
 }
 
-async function getJson(url, env) {
+async function getJson(url: string, env: Row) {
   const res = await handleRequest(new Request(url), env, {});
   return { status: res.status, body: await res.json() };
 }
@@ -1505,7 +1526,7 @@ describe("analytics routes (cold local D1)", () => {
     const liveEnv = {
       ...env,
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           if (key !== "economics:current") return null;
           return {
             schema_version: 1,
@@ -1532,7 +1553,7 @@ describe("analytics routes (cold local D1)", () => {
       liveEnv,
     );
     assert.deepEqual(
-      body.data.boards["open-slots"].map((e) => e.netuid),
+      body.data.boards["open-slots"].map((e: Row) => e.netuid),
       [777],
     );
   });
@@ -1552,7 +1573,7 @@ describe("analytics routes reject malformed params before any tier call", () => 
   // schema-stable empty payload), so the query-validation-before-any-read
   // contract is the only thing left to assert here.
   test("uptime rejects a malformed min_samples with a 400", async () => {
-    const queries = [];
+    const queries: Row[] = [];
     const envWithCapture = captureD1Env(queries);
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/uptime?min_samples=lots",
@@ -1593,15 +1614,10 @@ describe("analytics routes tolerate a failing D1", () => {
 
 describe("writeSubnetSnapshot no integer netuids", () => {
   test("returns no_rows when no profile has an integer netuid", async () => {
-    const db = fakeBatchDb();
-    const r = await writeSubnetSnapshot(
-      {},
-      {
-        db,
-        readArtifact: () =>
-          Promise.resolve({ ok: true, data: { profiles: [{ netuid: "x" }] } }),
-      },
-    );
+    const r = await writeSubnetSnapshot(mockEnv(), {
+      readArtifact: () =>
+        Promise.resolve({ ok: true, data: { profiles: [{ netuid: "x" }] } }),
+    });
     assert.equal(r.reason, "no_rows");
   });
 });
@@ -1612,7 +1628,7 @@ describe("hourly cron writes a daily snapshot", () => {
     // D1->Postgres cleanup) -- the snapshot batch this test used to capture
     // off METAGRAPH_HEALTH_DB.batch is now a POST to DATA_API's
     // subnet-snapshot-sync route instead.
-    let snapshotRowCount = null;
+    let snapshotRowCount: number | null = null;
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
@@ -1623,9 +1639,9 @@ describe("hourly cron writes a daily snapshot", () => {
         }),
       },
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           if (request.url.includes("subnet-snapshot-sync")) {
-            const rows = await request.json();
+            const rows = (await request.json()) as Row[];
             snapshotRowCount = rows.length;
           }
           return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -1635,8 +1651,8 @@ describe("hourly cron writes a daily snapshot", () => {
       SUBNET_SNAPSHOT_SYNC_SECRET: "test-secret",
     };
     const result = await handleScheduled({ cron: "0 * * * *" }, env, {});
-    assert.equal(result.pruned, true);
-    assert.ok(snapshotRowCount > 0, "snapshot sync should ship rows");
+    assert.equal((result as Row).pruned, true);
+    assert.ok(snapshotRowCount! > 0, "snapshot sync should ship rows");
   });
 });
 

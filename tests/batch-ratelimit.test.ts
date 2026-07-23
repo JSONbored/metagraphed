@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.mjs";
+import type { Row } from "./row-type.ts";
 
 const env = createLocalArtifactEnv();
-const get = (path) =>
+const get = (path: string) =>
   handleRequest(new Request(`https://metagraph.sh${path}`), env, {});
 
 describe("batch subnet lookups (?netuids=)", () => {
@@ -13,15 +14,15 @@ describe("batch subnet lookups (?netuids=)", () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     const netuids = body.data.subnets
-      .map((s) => s.netuid)
-      .sort((a, b) => a - b);
+      .map((s: Row) => s.netuid)
+      .sort((a: number, b: number) => a - b);
     assert.deepEqual(netuids, [0, 7]);
   });
 
   test("a single netuid works", async () => {
     const res = await get("/api/v1/subnets?netuids=7");
     assert.equal(res.status, 200);
-    const netuids = (await res.json()).data.subnets.map((s) => s.netuid);
+    const netuids = (await res.json()).data.subnets.map((s: Row) => s.netuid);
     assert.deepEqual(netuids, [7]);
   });
 
@@ -72,7 +73,7 @@ describe("RPC proxy rate-limit headers", () => {
   const rpcEnv = {
     METAGRAPH_ENABLE_RPC_PROXY: "true",
     ASSETS: {
-      async fetch(request) {
+      async fetch(request: Request) {
         const url = new URL(request.url);
         if (url.pathname === "/metagraph/rpc/pools.json") {
           return Response.json(pool);

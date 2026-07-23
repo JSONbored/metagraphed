@@ -1,43 +1,44 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { validateApiKey } from "../src/api-key-validation.ts";
+import { mockEnv, type AnyFn } from "./row-type.ts";
 
 const RAW_KEY = "mg_aVeryOpaqueUnkeyGeneratedSuffixHere";
 const OTHER_RAW_KEY = "mg_aDifferentOpaqueUnkeyGeneratedSuffix";
 
 function createFakeKv() {
-  const store = new Map();
+  const store = new Map<string, string>();
   return {
-    async get(key, options) {
+    async get(key: string, options?: { type?: string }) {
       if (!store.has(key)) return null;
-      const raw = store.get(key);
+      const raw = store.get(key)!;
       return options?.type === "json" ? JSON.parse(raw) : raw;
     },
-    async put(key, value) {
+    async put(key: string, value: string) {
       store.set(key, value);
     },
     _store: store,
   };
 }
 
-function fakeDataApi(handler) {
+function fakeDataApi(handler: AnyFn) {
   return { fetch: handler };
 }
 
 describe("validateApiKey", () => {
   test("rejects a malformed key string", async () => {
     const env = { METAGRAPH_CONTROL: createFakeKv() };
-    const result = await validateApiKey(env, "not-a-key");
+    const result = await validateApiKey(mockEnv(env), "not-a-key");
     assert.deepEqual(result, { ok: false, code: "invalid_key" });
   });
 
   test("rejects an empty/non-string value", async () => {
     const env = { METAGRAPH_CONTROL: createFakeKv() };
-    assert.deepEqual(await validateApiKey(env, ""), {
+    assert.deepEqual(await validateApiKey(mockEnv(env), ""), {
       ok: false,
       code: "invalid_key",
     });
-    assert.deepEqual(await validateApiKey(env, undefined), {
+    assert.deepEqual(await validateApiKey(mockEnv(env), undefined), {
       ok: false,
       code: "invalid_key",
     });
@@ -60,7 +61,7 @@ describe("validateApiKey", () => {
           ),
       ),
     };
-    const result = await validateApiKey(env, `Bearer ${RAW_KEY}`);
+    const result = await validateApiKey(mockEnv(env), `Bearer ${RAW_KEY}`);
     assert.deepEqual(result, { ok: true, tier: "free", accountId: "1" });
   });
 
@@ -80,13 +81,13 @@ describe("validateApiKey", () => {
           ),
       ),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.deepEqual(result, { ok: true, tier: "free", accountId: "1" });
   });
 
   test("fails closed when DATA_API/token are unbound and KV is cold", async () => {
     const env = { METAGRAPH_CONTROL: createFakeKv() };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.deepEqual(result, { ok: false, code: "invalid_key" });
   });
 
@@ -101,7 +102,7 @@ describe("validateApiKey", () => {
           }),
       ),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.deepEqual(result, { ok: false, code: "invalid_key" });
   });
 
@@ -111,7 +112,7 @@ describe("validateApiKey", () => {
       API_KEY_LOOKUP_INTERNAL_TOKEN: "test-token",
       DATA_API: fakeDataApi(async () => new Response("{}", { status: 503 })),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.deepEqual(result, { ok: false, code: "invalid_key" });
   });
 
@@ -123,7 +124,7 @@ describe("validateApiKey", () => {
         throw new Error("network down");
       }),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.deepEqual(result, { ok: false, code: "invalid_key" });
   });
 
@@ -138,18 +139,18 @@ describe("validateApiKey", () => {
           }),
       ),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.deepEqual(result, { ok: false, code: "key_revoked" });
   });
 
   test("accepts a valid key (happy path), sends the bare key + token, and caches it", async () => {
     const kv = createFakeKv();
     let fetchCalls = 0;
-    let capturedRequest;
+    let capturedRequest: Request | undefined;
     const env = {
       METAGRAPH_CONTROL: kv,
       API_KEY_LOOKUP_INTERNAL_TOKEN: "test-token",
-      DATA_API: fakeDataApi(async (request) => {
+      DATA_API: fakeDataApi(async (request: Request) => {
         fetchCalls += 1;
         capturedRequest = request;
         return new Response(
@@ -163,16 +164,16 @@ describe("validateApiKey", () => {
         );
       }),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
 
     assert.deepEqual(result, { ok: true, tier: "pro", accountId: "7" });
     assert.equal(fetchCalls, 1);
-    assert.equal(capturedRequest.method, "POST");
+    assert.equal(capturedRequest!.method, "POST");
     assert.equal(
-      capturedRequest.headers.get("x-api-key-lookup-token"),
+      capturedRequest!.headers.get("x-api-key-lookup-token"),
       "test-token",
     );
-    assert.deepEqual(await capturedRequest.clone().json(), { key: RAW_KEY });
+    assert.deepEqual(await capturedRequest!.clone().json(), { key: RAW_KEY });
     assert.equal(kv._store.size, 1);
   });
 
@@ -194,8 +195,8 @@ describe("validateApiKey", () => {
         );
       }),
     };
-    await validateApiKey(env, RAW_KEY);
-    const second = await validateApiKey(env, RAW_KEY);
+    await validateApiKey(mockEnv(env), RAW_KEY);
+    const second = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.equal(fetchCalls, 1);
     assert.deepEqual(second, { ok: true, tier: "free", accountId: "3" });
   });
@@ -218,8 +219,8 @@ describe("validateApiKey", () => {
         );
       }),
     };
-    await validateApiKey(env, RAW_KEY);
-    await validateApiKey(env, OTHER_RAW_KEY);
+    await validateApiKey(mockEnv(env), RAW_KEY);
+    await validateApiKey(mockEnv(env), OTHER_RAW_KEY);
     assert.equal(fetchCalls, 2);
   });
 
@@ -238,8 +239,8 @@ describe("validateApiKey", () => {
         );
       }),
     };
-    await validateApiKey(env, RAW_KEY);
-    await validateApiKey(env, RAW_KEY);
+    await validateApiKey(mockEnv(env), RAW_KEY);
+    await validateApiKey(mockEnv(env), RAW_KEY);
     assert.equal(fetchCalls, 1);
   });
 
@@ -265,7 +266,7 @@ describe("validateApiKey", () => {
           ),
       ),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.equal(result.ok, true);
   });
 
@@ -293,7 +294,7 @@ describe("validateApiKey", () => {
           ),
       ),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.equal(result.ok, true);
   });
 
@@ -311,7 +312,7 @@ describe("validateApiKey", () => {
           ),
       ),
     };
-    const result = await validateApiKey(env, RAW_KEY);
+    const result = await validateApiKey(mockEnv(env), RAW_KEY);
     assert.deepEqual(result, { ok: true, tier: "keyed", accountId: null });
   });
 });

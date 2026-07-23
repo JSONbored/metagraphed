@@ -11,7 +11,7 @@ const EXTRINSICS_CSV_HEADER =
 const EVENTS_CSV_HEADER =
   "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index";
 
-function req(path, init) {
+function req(path: string, init?: RequestInit) {
   return new Request(`https://api.metagraph.sh${path}`, init);
 }
 

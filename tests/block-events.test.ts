@@ -2,17 +2,23 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 
-function req(path) {
+function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
 // D1 mock routing by SQL shape: a ref (0x hash OR numeric) resolves to a
 // block_number via `blocks`, then events are read from `account_events` by
 // block_number (#1852). `blockNumber` null/absent → the block does not exist.
-function dbWith({ events, blockNumber } = {}) {
+function dbWith({
+  events,
+  blockNumber,
+}: {
+  events?: Record<string, unknown>[];
+  blockNumber?: number | null;
+} = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {

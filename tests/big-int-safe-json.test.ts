@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { parseJsonPreservingBigInts } from "../src/big-int-safe-json.ts";
+import type { Row } from "./row-type.ts";
 
 describe("parseJsonPreservingBigInts", () => {
   test("preserves a large integer literal as an exact string instead of rounding it (the real corruption case caught by Gittensory review on #4692's original PR)", () => {
@@ -9,14 +10,14 @@ describe("parseJsonPreservingBigInts", () => {
     // true 9131459485341369597. Plain JSON.parse reproduces that exact
     // corruption; this must not.
     const text = '{"nonce":[9131459485341369597]}';
-    const parsed = parseJsonPreservingBigInts(text);
+    const parsed = parseJsonPreservingBigInts(text) as Row;
     assert.equal(typeof parsed.nonce[0], "string");
     assert.equal(parsed.nonce[0], "9131459485341369597");
   });
 
   test("preserves a large limb inside a nested U256 array shape", () => {
     const text = '{"value":[[9131459485341369597,0,0,0]]}';
-    const parsed = parseJsonPreservingBigInts(text);
+    const parsed = parseJsonPreservingBigInts(text) as Row;
     assert.equal(parsed.value[0][0], "9131459485341369597");
     assert.equal(parsed.value[0][1], 0);
   });
@@ -32,14 +33,14 @@ describe("parseJsonPreservingBigInts", () => {
 
   test("leaves Number.MAX_SAFE_INTEGER itself as a plain number (boundary, not past it)", () => {
     const text = `{"n":${Number.MAX_SAFE_INTEGER}}`;
-    const parsed = parseJsonPreservingBigInts(text);
+    const parsed = parseJsonPreservingBigInts(text) as Row;
     assert.equal(typeof parsed.n, "number");
     assert.equal(parsed.n, Number.MAX_SAFE_INTEGER);
   });
 
   test("wraps Number.MAX_SAFE_INTEGER + 1 as a string (just past the boundary)", () => {
     const justPast = (BigInt(Number.MAX_SAFE_INTEGER) + 1n).toString();
-    const parsed = parseJsonPreservingBigInts(`{"n":${justPast}}`);
+    const parsed = parseJsonPreservingBigInts(`{"n":${justPast}}`) as Row;
     assert.equal(typeof parsed.n, "string");
     assert.equal(parsed.n, justPast);
   });
@@ -64,13 +65,13 @@ describe("parseJsonPreservingBigInts", () => {
 
   test("preserves a negative large integer as a string", () => {
     const text = '{"n":-9131459485341369597}';
-    const parsed = parseJsonPreservingBigInts(text);
+    const parsed = parseJsonPreservingBigInts(text) as Row;
     assert.equal(parsed.n, "-9131459485341369597");
   });
 
   test("leaves a decimal (non-integer) large literal as a plain number -- Number() is already the only sane representation for a fractional value", () => {
     const text = '{"n":123456789012345678901.5}';
-    const parsed = parseJsonPreservingBigInts(text);
+    const parsed = parseJsonPreservingBigInts(text) as Row;
     assert.equal(typeof parsed.n, "number");
   });
 

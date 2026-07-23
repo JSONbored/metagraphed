@@ -13,24 +13,26 @@ import workerDefault from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
 import * as workerConfig from "../workers/config.ts";
+import { type AnyFn, type Row } from "./row-type.ts";
+import type { RpcEndpoint } from "../workers/request-handlers/rpc-proxy.ts";
 
-const req = (path, init) =>
+const req = (path: string, init?: RequestInit) =>
   new Request(`https://api.metagraph.sh${path}`, init);
 
 // In-memory KV mock matching the Workers KV surface the worker uses.
-function makeKv(entries = {}) {
+function makeKv(entries: Row = {}) {
   const store = new Map(Object.entries(entries));
   return {
     store,
-    async get(key, opts) {
+    async get(key: string, opts?: { type?: string }) {
       if (!store.has(key)) return null;
       const value = store.get(key);
       return opts?.type === "json" ? value : JSON.stringify(value);
     },
-    async put(key, value) {
+    async put(key: string, value: string) {
       store.set(key, JSON.parse(value));
     },
-    async delete(key) {
+    async delete(key: string) {
       store.delete(key);
     },
   };
@@ -108,10 +110,10 @@ const COVERAGE_DEPTH_ARTIFACT = {
   ],
 };
 
-function withCoverageDepthArchive(overrides = {}) {
-  const env = createLocalArtifactEnv(overrides);
+function withCoverageDepthArchive(overrides: Row = {}) {
+  const env = createLocalArtifactEnv(overrides) as Row;
   const originalGet = env.METAGRAPH_ARCHIVE.get;
-  env.METAGRAPH_ARCHIVE.get = async (key) => {
+  env.METAGRAPH_ARCHIVE.get = async (key: string) => {
     const normalized = String(key).replace(/^latest\//, "");
     if (normalized === "coverage-depth.json") {
       const text = JSON.stringify(COVERAGE_DEPTH_ARTIFACT);
@@ -170,10 +172,10 @@ const REVIEW_GAP_PRIORITIES_ARTIFACT = {
   ],
 };
 
-function withReviewGapPrioritiesArchive(overrides = {}) {
-  const env = createLocalArtifactEnv(overrides);
+function withReviewGapPrioritiesArchive(overrides: Row = {}) {
+  const env = createLocalArtifactEnv(overrides) as Row;
   const originalGet = env.METAGRAPH_ARCHIVE.get;
-  env.METAGRAPH_ARCHIVE.get = async (key) => {
+  env.METAGRAPH_ARCHIVE.get = async (key: string) => {
     const normalized = String(key).replace(/^latest\//, "");
     if (normalized === "review/gap-priorities.json") {
       const text = JSON.stringify(REVIEW_GAP_PRIORITIES_ARTIFACT);
@@ -192,11 +194,11 @@ function withReviewGapPrioritiesArchive(overrides = {}) {
 }
 
 // RPC-proxy env that serves the pool artifact through ASSETS + R2.
-function rpcEnv(overrides = {}) {
+function rpcEnv(overrides: Row = {}) {
   return {
     METAGRAPH_ENABLE_RPC_PROXY: "true",
     ASSETS: {
-      async fetch(request) {
+      async fetch(request: Request) {
         const url = new URL(request.url);
         if (url.pathname === "/metagraph/rpc/pools.json") {
           return Response.json(RPC_POOL);
@@ -227,7 +229,7 @@ const SYNTHETIC_ENDPOINT_ROWS = Array.from({ length: 260 }, (_, index) => ({
   latency_ms: 25 + index,
 }));
 
-function endpointArtifact(value) {
+function endpointArtifact(value: Row) {
   return {
     async json() {
       return value;
@@ -239,7 +241,7 @@ function endpointArtifact(value) {
 }
 
 function createEndpointCsvEnv() {
-  const base = createLocalArtifactEnv();
+  const base = createLocalArtifactEnv() as Row;
   const artifacts = new Map([
     ["/metagraph/endpoints.json", { endpoints: SYNTHETIC_ENDPOINT_ROWS }],
     [
@@ -251,7 +253,7 @@ function createEndpointCsvEnv() {
   return {
     ...base,
     ASSETS: {
-      async fetch(request) {
+      async fetch(request: Request) {
         const pathname = new URL(request.url).pathname;
         if (artifacts.has(pathname)) {
           return Response.json(artifacts.get(pathname));
@@ -260,10 +262,10 @@ function createEndpointCsvEnv() {
       },
     },
     METAGRAPH_ARCHIVE: {
-      async get(key) {
+      async get(key: string) {
         const pathname = `/metagraph/${String(key).replace(/^latest\//, "")}`;
         if (artifacts.has(pathname)) {
-          return endpointArtifact(artifacts.get(pathname));
+          return endpointArtifact(artifacts.get(pathname) as Row);
         }
         return base.METAGRAPH_ARCHIVE.get(key);
       },
@@ -302,7 +304,7 @@ const SYNTHETIC_CANDIDATE_ROWS = [
 ];
 
 function createCandidatesCsvEnv() {
-  const base = createLocalArtifactEnv();
+  const base = createLocalArtifactEnv() as Row;
   const artifacts = new Map([
     [
       "/metagraph/candidates.json",
@@ -324,7 +326,7 @@ function createCandidatesCsvEnv() {
   return {
     ...base,
     ASSETS: {
-      async fetch(request) {
+      async fetch(request: Request) {
         const pathname = new URL(request.url).pathname;
         if (artifacts.has(pathname)) {
           return Response.json(artifacts.get(pathname));
@@ -333,10 +335,10 @@ function createCandidatesCsvEnv() {
       },
     },
     METAGRAPH_ARCHIVE: {
-      async get(key) {
+      async get(key: string) {
         const pathname = `/metagraph/${String(key).replace(/^latest\//, "")}`;
         if (artifacts.has(pathname)) {
-          return endpointArtifact(artifacts.get(pathname));
+          return endpointArtifact(artifacts.get(pathname) as Row);
         }
         return base.METAGRAPH_ARCHIVE.get(key);
       },
@@ -344,18 +346,23 @@ function createCandidatesCsvEnv() {
   };
 }
 
-function withGlobals({ cache, fetchImpl }, run) {
-  const originalCaches = globalThis.caches;
+// `caches` is `declare const caches: CacheStorage` -- a module-scope const,
+// not a `globalThis` property -- so stubbing/restoring it for a test needs
+// this cast (matches workers/request-handlers/analytics.ts's own precedent).
+const globalWithCaches = globalThis as unknown as { caches: Row };
+
+function withGlobals({ cache, fetchImpl }: Row, run: AnyFn) {
+  const originalCaches = globalWithCaches.caches;
   const originalFetch = globalThis.fetch;
-  if (cache !== undefined) globalThis.caches = { default: cache };
+  if (cache !== undefined) globalWithCaches.caches = { default: cache };
   if (fetchImpl !== undefined) globalThis.fetch = fetchImpl;
   return Promise.resolve(run()).finally(() => {
-    globalThis.caches = originalCaches;
+    globalWithCaches.caches = originalCaches;
     globalThis.fetch = originalFetch;
   });
 }
 
-const rpcReq = (method, params = [], id = 1) =>
+const rpcReq = (method: string, params: unknown[] = [], id = 1) =>
   req("/rpc/v1/finney", {
     method: "POST",
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
@@ -557,13 +564,13 @@ describe("/health readiness", () => {
 
   test("reports chain-event index freshness (#1361, #5357)", async () => {
     const atMs = Date.now() - 18_000; // latest indexed event ~18s ago
-    const requestedUrls = [];
+    const requestedUrls: string[] = [];
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
       DATA_API: {
-        async fetch(request) {
+        async fetch(request: Request) {
           requestedUrls.push(request.url);
           return new Response(
             JSON.stringify({
@@ -702,7 +709,7 @@ describe("raw artifact route", () => {
   function fixtureEnv() {
     return createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: {
-        async get(key) {
+        async get(key: string) {
           if (key === "latest/fixtures/7:subnet-api:new_v2.json") {
             const body = JSON.stringify(fixture);
             return {
@@ -804,7 +811,7 @@ describe("fixture detail API", () => {
   function env() {
     return createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: {
-        async get(key) {
+        async get(key: string) {
           if (key === "latest/fixtures/7:subnet-api:new_v2.json") {
             return {
               async json() {
@@ -1173,7 +1180,7 @@ describe("invalid query handling", () => {
       await handleRequest(req("/api/v1/subnets?limit=200"), env, {})
     ).json();
     const expected = all.data.subnets.filter(
-      (s) =>
+      (s: Row) =>
         (s.derived_categories || []).includes("inference") ||
         (s.categories || []).includes("inference"),
     );
@@ -1190,7 +1197,7 @@ describe("invalid query handling", () => {
     assert.equal(body.meta.pagination.total, expected.length);
     assert.ok(
       body.data.subnets.every(
-        (s) =>
+        (s: Row) =>
           (s.derived_categories || []).includes("inference") ||
           (s.categories || []).includes("inference"),
       ),
@@ -1216,7 +1223,9 @@ describe("invalid query handling", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const names = (await res.json()).data.subnets.map((s) => String(s.name));
+    const names = (await res.json()).data.subnets.map((s: Row) =>
+      String(s.name),
+    );
     const sorted = [...names].sort((a, b) => b.localeCompare(a));
     assert.deepEqual(names, sorted);
   });
@@ -1231,7 +1240,7 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnets.csv"',
@@ -1266,7 +1275,7 @@ describe("subnets CSV export", () => {
     assert.equal(lines[0], "netuid,status");
     assert.ok(lines.length > 1);
     assert.equal(
-      lines.slice(1).every((line) => line.endsWith(",active")),
+      lines.slice(1).every((line: string) => line.endsWith(",active")),
       true,
     );
   });
@@ -1350,7 +1359,7 @@ describe("subnets CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     assert.equal(await res.text(), "netuid,name");
   });
 
@@ -1397,7 +1406,7 @@ describe("providers CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     const lines = (await res.text()).split("\r\n").filter(Boolean);
     assert.equal(lines[0], "id,name");
     assert.equal(lines.length, 3);
@@ -1410,7 +1419,7 @@ describe("providers CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     const text = await res.text();
     const lines = text.split("\r\n").filter(Boolean);
     assert.equal(lines[0], "id,netuids,social");
@@ -1425,18 +1434,18 @@ describe("providers CSV export", () => {
 
 // --- Review enrichment list CSV export (#2527) --------------------------------
 describe("review enrichment list CSV export", () => {
-  const parseCsv = async (res) => {
+  const parseCsv = async (res: Response) => {
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     const lines = (await res.text()).split("\r\n");
     const header = lines[0].split(",");
     const rows = lines
       .slice(1)
       .filter(Boolean)
-      .map((line) => {
+      .map((line: string) => {
         const values = line.split(",");
         return Object.fromEntries(
-          header.map((name, index) => [name, values[index]]),
+          header.map((name: string, index: number) => [name, values[index]]),
         );
       });
     return { header, rows, lines };
@@ -1454,10 +1463,10 @@ describe("review enrichment list CSV export", () => {
     assert.equal(header.join(","), "netuid,priority_score,curation_level");
     assert.ok(rows.length > 0);
     assert.ok(
-      rows.every((row) => row.curation_level === "candidate-discovered"),
+      rows.every((row: Row) => row.curation_level === "candidate-discovered"),
     );
-    assert.ok(rows.every((row) => /^\d+$/.test(row.netuid)));
-    assert.ok(rows.every((row) => row.priority_score !== ""));
+    assert.ok(rows.every((row: Row) => /^\d+$/.test(row.netuid)));
+    assert.ok(rows.every((row: Row) => row.priority_score !== ""));
   });
 
   // #6237: subnets/{netuid}/gaps is the netuid-scoped view of the SAME review-gap-priorities
@@ -1472,7 +1481,7 @@ describe("review enrichment list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnet-gaps.csv"',
@@ -1481,8 +1490,8 @@ describe("review enrichment list CSV export", () => {
     assert.equal(header.join(","), "netuid,priority_score,curation_level");
     assert.ok(rows.length > 0);
     // netuid is simply constant for the one subnet -- the scoped view of the same row shape.
-    assert.ok(rows.every((row) => row.netuid === "1"));
-    assert.ok(rows.every((row) => row.priority_score !== ""));
+    assert.ok(rows.every((row: Row) => row.netuid === "1"));
+    assert.ok(rows.every((row: Row) => row.priority_score !== ""));
   });
 
   test("subnets/{netuid}/gaps without format= keeps its existing JSON envelope", async () => {
@@ -1513,8 +1522,8 @@ describe("review enrichment list CSV export", () => {
     const { header, rows } = await parseCsv(res);
     assert.equal(header.join(","), "netuid,priority_score,identity_level");
     assert.ok(rows.length > 0);
-    assert.ok(rows.every((row) => row.identity_level === "partial"));
-    assert.ok(rows.every((row) => row.priority_score !== ""));
+    assert.ok(rows.every((row: Row) => row.identity_level === "partial"));
+    assert.ok(rows.every((row: Row) => row.priority_score !== ""));
   });
 
   test("review/adapter-candidates ?format=csv exports priority_score and honors operational_kinds", async () => {
@@ -1528,8 +1537,10 @@ describe("review enrichment list CSV export", () => {
     const { header, rows } = await parseCsv(res);
     assert.equal(header.join(","), "netuid,priority_score,operational_kinds");
     assert.ok(rows.length > 0);
-    assert.ok(rows.every((row) => row.operational_kinds.includes("openapi")));
-    assert.ok(rows.every((row) => row.priority_score !== ""));
+    assert.ok(
+      rows.every((row: Row) => row.operational_kinds.includes("openapi")),
+    );
+    assert.ok(rows.every((row: Row) => row.priority_score !== ""));
   });
 
   test("review/enrichment-queue ?format=csv exports priority_score and honors lane", async () => {
@@ -1543,23 +1554,23 @@ describe("review enrichment list CSV export", () => {
     const { header, rows } = await parseCsv(res);
     assert.equal(header.join(","), "netuid,priority_score,lane");
     assert.ok(rows.length > 0);
-    assert.ok(rows.every((row) => row.lane === "direct-submission"));
-    assert.ok(rows.every((row) => row.priority_score !== ""));
+    assert.ok(rows.every((row: Row) => row.lane === "direct-submission"));
+    assert.ok(rows.every((row: Row) => row.priority_score !== ""));
   });
 });
 
 // --- registry list CSV export (#2521-#2526) -----------------------------------
 describe("registry list CSV export", () => {
-  const parseCsv = async (res) => {
+  const parseCsv = async (res: Response) => {
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     const text = await res.text();
     const lines = text.split("\r\n").filter(Boolean);
     const header = lines[0].split(",");
-    const rows = lines.slice(1).map((line) => {
+    const rows = lines.slice(1).map((line: string) => {
       const values = line.split(",");
       return Object.fromEntries(
-        header.map((name, index) => [name, values[index]]),
+        header.map((name: string, index: number) => [name, values[index]]),
       );
     });
     return { header, rows, lines };
@@ -1585,7 +1596,7 @@ describe("registry list CSV export", () => {
       assert.ok(entry, `route ${id} should exist`);
       assert.equal(entry.csv_response, true, `${id} should set csv_response`);
       const formatParam = (entry.query_parameters || []).find(
-        (param) => param.name === "format",
+        (param: Row) => param.name === "format",
       );
       assert.ok(formatParam, `${id} should expose a format parameter`);
       assert.deepEqual(formatParam.schema.enum, ["json", "csv"]);
@@ -1618,7 +1629,7 @@ describe("registry list CSV export", () => {
         {},
       );
       assert.equal(res.status, 200);
-      assert.match(res.headers.get("content-type"), /^text\/csv/);
+      assert.match(res.headers.get("content-type")!, /^text\/csv/);
       assert.equal(
         res.headers.get("content-disposition"),
         `attachment; filename="${filename}"`,
@@ -1638,7 +1649,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="profiles.csv"',
@@ -1650,15 +1661,15 @@ describe("registry list CSV export", () => {
       "netuid,completeness_score,curation_level,profile_level",
     );
     assert.ok(rows.length > 1);
-    const scores = rows.map((row) => Number(row.completeness_score));
+    const scores = rows.map((row: Row) => Number(row.completeness_score));
     assert.ok(scores.every(Number.isFinite));
     assert.deepEqual(
       scores,
       [...scores].sort((a, b) => b - a),
     );
-    assert.ok(rows.every((row) => /^\d+$/.test(row.netuid)));
-    assert.ok(rows.every((row) => row.curation_level !== ""));
-    assert.ok(rows.every((row) => row.profile_level !== ""));
+    assert.ok(rows.every((row: Row) => /^\d+$/.test(row.netuid)));
+    assert.ok(rows.every((row: Row) => row.curation_level !== ""));
+    assert.ok(rows.every((row: Row) => row.profile_level !== ""));
   });
 
   test("subnet-scoped surfaces export CSV for one netuid", async () => {
@@ -1668,7 +1679,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnet-surfaces.csv"',
@@ -1676,15 +1687,15 @@ describe("registry list CSV export", () => {
   });
 
   test("surfaces CSV export projects kind/provider/name and honors kind filters (#2522)", async () => {
-    const parseCsv = async (res) => {
+    const parseCsv = async (res: Response) => {
       assert.equal(res.status, 200);
-      assert.match(res.headers.get("content-type"), /^text\/csv/);
+      assert.match(res.headers.get("content-type")!, /^text\/csv/);
       const lines = (await res.text()).split("\r\n").filter(Boolean);
       const header = lines[0].split(",");
-      const rows = lines.slice(1).map((line) => {
+      const rows = lines.slice(1).map((line: string) => {
         const values = line.split(",");
         return Object.fromEntries(
-          header.map((name, index) => [name, values[index]]),
+          header.map((name: string, index: number) => [name, values[index]]),
         );
       });
       return { header, rows };
@@ -1700,9 +1711,9 @@ describe("registry list CSV export", () => {
     const allCsv = await parseCsv(all);
     assert.equal(allCsv.header.join(","), "kind,provider,name");
     assert.ok(allCsv.rows.length > 0);
-    assert.ok(allCsv.rows.every((row) => row.kind === "openapi"));
-    assert.ok(allCsv.rows.every((row) => row.provider !== ""));
-    assert.ok(allCsv.rows.every((row) => row.name !== ""));
+    assert.ok(allCsv.rows.every((row: Row) => row.kind === "openapi"));
+    assert.ok(allCsv.rows.every((row: Row) => row.provider !== ""));
+    assert.ok(allCsv.rows.every((row: Row) => row.name !== ""));
 
     const subnet = await handleRequest(
       req(
@@ -1714,21 +1725,21 @@ describe("registry list CSV export", () => {
     const subnetCsv = await parseCsv(subnet);
     assert.equal(subnetCsv.header.join(","), "kind,provider,name");
     assert.ok(subnetCsv.rows.length > 0);
-    assert.ok(subnetCsv.rows.every((row) => row.kind === "openapi"));
-    assert.ok(subnetCsv.rows.every((row) => row.provider !== ""));
-    assert.ok(subnetCsv.rows.every((row) => row.name !== ""));
+    assert.ok(subnetCsv.rows.every((row: Row) => row.kind === "openapi"));
+    assert.ok(subnetCsv.rows.every((row: Row) => row.provider !== ""));
+    assert.ok(subnetCsv.rows.every((row: Row) => row.name !== ""));
   });
 
   test("candidates CSV export projects kind/provider/state/confidence and honors state filters (#2524)", async () => {
-    const parseCsv = async (res) => {
+    const parseCsv = async (res: Response) => {
       assert.equal(res.status, 200);
-      assert.match(res.headers.get("content-type"), /^text\/csv/);
+      assert.match(res.headers.get("content-type")!, /^text\/csv/);
       const lines = (await res.text()).split("\r\n").filter(Boolean);
       const header = lines[0].split(",");
-      const rows = lines.slice(1).map((line) => {
+      const rows = lines.slice(1).map((line: string) => {
         const values = line.split(",");
         return Object.fromEntries(
-          header.map((name, index) => [name, values[index]]),
+          header.map((name: string, index: number) => [name, values[index]]),
         );
       });
       return { header, rows };
@@ -1746,10 +1757,10 @@ describe("registry list CSV export", () => {
     const allCsv = await parseCsv(all);
     assert.equal(allCsv.header.join(","), "kind,provider,state,confidence");
     assert.ok(allCsv.rows.length > 0);
-    assert.ok(allCsv.rows.every((row) => row.kind !== ""));
-    assert.ok(allCsv.rows.every((row) => row.provider !== ""));
-    assert.ok(allCsv.rows.every((row) => row.state !== ""));
-    assert.ok(allCsv.rows.every((row) => row.confidence !== ""));
+    assert.ok(allCsv.rows.every((row: Row) => row.kind !== ""));
+    assert.ok(allCsv.rows.every((row: Row) => row.provider !== ""));
+    assert.ok(allCsv.rows.every((row: Row) => row.state !== ""));
+    assert.ok(allCsv.rows.every((row: Row) => row.confidence !== ""));
 
     const filtered = await handleRequest(
       req(
@@ -1760,7 +1771,9 @@ describe("registry list CSV export", () => {
     );
     const filteredCsv = await parseCsv(filtered);
     assert.ok(filteredCsv.rows.length > 0);
-    assert.ok(filteredCsv.rows.every((row) => row.state === "schema-valid"));
+    assert.ok(
+      filteredCsv.rows.every((row: Row) => row.state === "schema-valid"),
+    );
 
     const verified = await handleRequest(
       req(
@@ -1771,7 +1784,7 @@ describe("registry list CSV export", () => {
     );
     const verifiedCsv = await parseCsv(verified);
     assert.ok(verifiedCsv.rows.length > 0);
-    assert.ok(verifiedCsv.rows.every((row) => row.state === "verified"));
+    assert.ok(verifiedCsv.rows.every((row: Row) => row.state === "verified"));
 
     const subnet = await handleRequest(
       req(
@@ -1787,10 +1800,10 @@ describe("registry list CSV export", () => {
     const subnetCsv = await parseCsv(subnet);
     assert.equal(subnetCsv.header.join(","), "kind,provider,state,confidence");
     assert.ok(subnetCsv.rows.length > 0);
-    assert.ok(subnetCsv.rows.every((row) => row.kind !== ""));
-    assert.ok(subnetCsv.rows.every((row) => row.provider !== ""));
-    assert.ok(subnetCsv.rows.every((row) => row.state !== ""));
-    assert.ok(subnetCsv.rows.every((row) => row.confidence !== ""));
+    assert.ok(subnetCsv.rows.every((row: Row) => row.kind !== ""));
+    assert.ok(subnetCsv.rows.every((row: Row) => row.provider !== ""));
+    assert.ok(subnetCsv.rows.every((row: Row) => row.state !== ""));
+    assert.ok(subnetCsv.rows.every((row: Row) => row.confidence !== ""));
   });
 
   test("endpoints CSV export filters, projects, and streams the large route path (#2523)", async () => {
@@ -1802,7 +1815,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="endpoints.csv"',
@@ -1839,7 +1852,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="subnet-endpoints.csv"',
@@ -1852,7 +1865,7 @@ describe("registry list CSV export", () => {
     assert.equal(
       lines
         .slice(1)
-        .every((line) =>
+        .every((line: string) =>
           /^(data-provider|subnet-app),(openapi|subnet-api),ok,\d+$/.test(line),
         ),
       true,
@@ -1866,7 +1879,7 @@ describe("registry list CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
   });
 
   test("?format=json keeps the JSON envelope on a registry route", async () => {
@@ -1887,7 +1900,7 @@ describe("registry list CSV export", () => {
 });
 
 describe("coverage-depth CSV export", () => {
-  const parseCsvRows = (text) => {
+  const parseCsvRows = (text: string) => {
     const rows = [];
     let currentRow = [];
     let currentField = "";
@@ -1946,8 +1959,8 @@ describe("coverage-depth CSV export", () => {
     return rows;
   };
 
-  const parseCoverageCsv = async (res) => {
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
+  const parseCoverageCsv = async (res: Response) => {
+    assert.match(res.headers.get("content-type")!, /^text\/csv/);
     const text = await res.text();
     const lines = parseCsvRows(text).filter(
       (line) => line.length !== 0 && !line.every((value) => value === ""),
@@ -2036,8 +2049,8 @@ describe("coverage-depth CSV export", () => {
 // here proves the wiring for all of them. The fixture sorts to a stable netuid
 // run, so limit=50 yields exactly three pages at cursors 0 / 50 / 100.
 describe("pagination Link header", () => {
-  const parseLink = (value) => {
-    const links = {};
+  const parseLink = (value: Row) => {
+    const links: Row = {};
     for (const part of String(value || "").split(",")) {
       const match = part.match(/<([^>]+)>;\s*rel="([^"]+)"/);
       if (match) {
@@ -2046,7 +2059,7 @@ describe("pagination Link header", () => {
     }
     return links;
   };
-  const page = async (querySuffix, init) => {
+  const page = async (querySuffix: string, init?: RequestInit) => {
     const res = await handleRequest(
       req(`/api/v1/subnets?sort=netuid&${querySuffix}`, init),
       createLocalArtifactEnv(),
@@ -2160,7 +2173,7 @@ describe("/api/v1/search-index slim route", () => {
     assert.equal(body.ok, true);
     assert.ok(body.data.documents.length > 0);
     assert.equal(
-      body.data.documents.every((document) => !("tokens" in document)),
+      body.data.documents.every((document: Row) => !("tokens" in document)),
       true,
       "slim route documents must omit the heavy tokens field",
     );
@@ -2176,7 +2189,7 @@ describe("/api/v1/search-index slim route", () => {
     const body = await res.json();
     assert.deepEqual(body.meta.projection.fields, ["id", "title", "type"]);
     assert.equal(
-      body.data.documents.every((document) =>
+      body.data.documents.every((document: Row) =>
         Object.keys(document).every((key) =>
           ["id", "title", "type"].includes(key),
         ),
@@ -2332,7 +2345,7 @@ describe("RPC proxy edges", () => {
     const env = {
       METAGRAPH_ENABLE_RPC_PROXY: "true",
       ASSETS: {
-        async fetch(request) {
+        async fetch(request: Request) {
           const url = new URL(request.url);
           if (url.pathname === "/metagraph/rpc/pools.json") {
             return Response.json(emptyPool);
@@ -2375,7 +2388,7 @@ describe("RPC proxy edges", () => {
     const env = {
       METAGRAPH_ENABLE_RPC_PROXY: "true",
       ASSETS: {
-        async fetch(request) {
+        async fetch(request: Request) {
           const url = new URL(request.url);
           if (url.pathname === "/metagraph/rpc/pools.json") {
             return Response.json(unsafePool);
@@ -2469,11 +2482,11 @@ describe("RPC proxy edges", () => {
   test("malformed cached entry is treated as a miss and re-fetched", async () => {
     const store = new Map();
     const cache = {
-      async match(r) {
+      async match(r: Row) {
         const hit = store.get(r.url);
         return hit ? hit.clone() : undefined;
       },
-      async put(r, resp) {
+      async put(r: Row, resp: Response) {
         store.set(r.url, resp);
       },
     };
@@ -2500,8 +2513,8 @@ describe("RPC proxy edges", () => {
           }
           return undefined;
         };
-        const waits = [];
-        const ctx = { waitUntil: (p) => waits.push(p) };
+        const waits: Promise<unknown>[] = [];
+        const ctx = { waitUntil: (p: Promise<unknown>) => waits.push(p) };
         const res = await handleRequest(
           rpcReq("chain_getBlockHash", [9]),
           rpcEnv(),
@@ -2521,7 +2534,7 @@ describe("RPC proxy edges", () => {
 describe("proxyWithFailover tee inspection", () => {
   const SAFE_A = "https://bittensor-finney.api.onfinality.io/public";
   const SAFE_B = "https://bittensor-public.nodies.app/rpc";
-  const ep = (id, url) => ({
+  const ep = (id: string, url: string) => ({
     id,
     url,
     provider: "fixture",
@@ -2536,7 +2549,7 @@ describe("proxyWithFailover tee inspection", () => {
     // it transient (-32603) → fail over to the next endpoint.
     const healthMap = new Map();
     let calls = 0;
-    const fetchFn = async (url) => {
+    const fetchFn = async (url: string) => {
       calls += 1;
       if (url === SAFE_A) {
         return new Response(
@@ -2556,7 +2569,7 @@ describe("proxyWithFailover tee inspection", () => {
     const res = await proxyWithFailover([ep("a", SAFE_A), ep("b", SAFE_B)], {
       bodyText: "{}",
       poolId: "finney-rpc",
-      fetchFn,
+      fetchFn: fetchFn as unknown as typeof fetch,
       healthMap,
     });
     assert.equal(res.status, 200);
@@ -2578,7 +2591,7 @@ describe("proxyWithFailover tee inspection", () => {
       healthMap: new Map(),
     });
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).result.peers, 3);
+    assert.equal(((await res.json()) as Row).result.peers, 3);
   });
 });
 
@@ -2591,7 +2604,7 @@ describe("R2 timeout and static fallback", () => {
       METAGRAPH_R2_TIMEOUT_MS: "10",
       METAGRAPH_DISABLE_REQUEST_LOGS: "true",
       ASSETS: {
-        async fetch(request) {
+        async fetch(request: Request) {
           const url = new URL(request.url);
           if (url.pathname === "/metagraph/rpc-endpoints.json") {
             assetHit = true;
@@ -2747,7 +2760,7 @@ describe("weightedPickEndpoint", () => {
     const endpoints = [
       { id: "a", score: 1 },
       { id: "b", score: 1 },
-    ];
+    ] as unknown as RpcEndpoint[];
     const picked = weightedPickEndpoint(endpoints, () => 0.999999999);
     assert.equal(picked.id, "b");
   });
@@ -2760,13 +2773,16 @@ describe("weightedPickEndpoint", () => {
       { id: "a", score: 1 },
       { id: "b", score: 1 },
       { id: "c", score: 1 },
-    ];
+    ] as unknown as RpcEndpoint[];
     const picked = weightedPickEndpoint(endpoints, () => 1);
     assert.equal(picked.id, "c");
   });
 
   test("single-endpoint shortcut", () => {
-    assert.equal(weightedPickEndpoint([{ id: "solo" }]).id, "solo");
+    assert.equal(
+      weightedPickEndpoint([{ id: "solo" }] as unknown as RpcEndpoint[]).id,
+      "solo",
+    );
   });
 });
 
@@ -2822,7 +2838,7 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
     const env = {
       ROLLUP_SYNC_SECRET: "shared-secret",
       DATA_API: {
-        fetch(request) {
+        fetch(request: Request) {
           receivedToken = request.headers.get("x-rollup-sync-token");
           receivedPath = new URL(request.url).pathname;
           receivedMethod = request.method;
@@ -2864,9 +2880,9 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
       env,
       {},
     );
-    assert.equal(result.ok, false);
-    assert.equal(result.status, 502);
-    assert.deepEqual(result.body, { error: "db unavailable" });
+    assert.equal((result as Row).ok, false);
+    assert.equal((result as Row).status, 502);
+    assert.deepEqual((result as Row).body, { error: "db unavailable" });
   });
 
   test("an unreadable DATA_API response body degrades to a clean error, not a throw", async () => {
@@ -2883,10 +2899,10 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
       env,
       {},
     );
-    assert.equal(result.ok, false);
-    assert.equal(result.status, 502);
+    assert.equal((result as Row).ok, false);
+    assert.equal((result as Row).status, 502);
     assert.equal(
-      result.body.error.code,
+      (result as Row).body.error.code,
       "rollup_account_events_daily_unavailable",
     );
   });
@@ -2935,7 +2951,7 @@ describe("internal sync routes reach DATA_API through handleRequest", () => {
       const env = {
         ...createLocalArtifactEnv(),
         DATA_API: {
-          fetch(request) {
+          fetch(request: Request) {
             received = true;
             assert.equal(new URL(request.url).pathname, path);
             assert.equal(request.method, "POST");
@@ -3042,7 +3058,8 @@ describe("semantic-search HEAD probe", () => {
 // each CORS-open surface: the standard builder (list), the error path (ask), and
 // the hand-rolled SSE headers. RPC and MCP are covered in their own suites.
 describe("Access-Control-Expose-Headers", () => {
-  const expose = (res) => res.headers.get("access-control-expose-headers");
+  const expose = (res: Response) =>
+    res.headers.get("access-control-expose-headers");
 
   test("list endpoint exposes the canonical custom-header list", async () => {
     const res = await handleRequest(
@@ -3114,7 +3131,7 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
     "/api/v1/webhooks/", // subscription management (POST/DELETE/GET)
   ];
 
-  function buildSamplePath(routePath) {
+  function buildSamplePath(routePath: string) {
     return routePath
       .replace("{netuid}", "7")
       .replace("{slug}", "allways")
@@ -3132,7 +3149,7 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
     buildSamplePath(route.path),
   );
 
-  function pathIsContracted(pathname) {
+  function pathIsContracted(pathname: string) {
     return API_ROUTES.some((route) =>
       compileRoutePattern(route.path).test(pathname),
     );
@@ -3185,7 +3202,7 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
   for (const [name, pattern] of apiPathPatterns) {
     test(`config ${name} backs a contract route`, () => {
       assert.ok(
-        contractSamplePaths.some((sample) => pattern.test(sample)),
+        contractSamplePaths.some((sample) => (pattern as RegExp).test(sample)),
         `workers/config.mjs ${name} dispatches a /api/v1 path that no API_ROUTES entry covers — add the matching route() in src/contracts.mjs.`,
       );
     });

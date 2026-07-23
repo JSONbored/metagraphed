@@ -18,6 +18,8 @@ import {
   rowTuple,
   sqlLiteral,
 } from "../scripts/backfill-subnet-snapshots-postgres.ts";
+
+type SpawnRunner = Parameters<typeof fetchPage>[3];
 import { chunkRows as sharedChunkRows } from "../scripts/lib.ts";
 
 const SAMPLE_ROW = {
@@ -246,13 +248,13 @@ test("buildBackfillSql wraps batched statements in a single transaction", () => 
   assert.equal((sql.match(/^INSERT INTO subnet_snapshots/gm) || []).length, 3);
 });
 
-function stubRunner(pages) {
+function stubRunner(pages: unknown[][]) {
   let call = 0;
-  return () => {
+  return (() => {
     const page = pages[call] ?? [];
     call += 1;
     return { status: 0, stdout: JSON.stringify([{ results: page }]) };
-  };
+  }) as unknown as SpawnRunner;
 }
 
 test("fetchPage parses a successful wrangler --json response", () => {
@@ -262,7 +264,11 @@ test("fetchPage parses a successful wrangler --json response", () => {
 });
 
 test("fetchPage throws when the wrangler subprocess exits non-zero", () => {
-  const runner = () => ({ status: 1, stdout: "", stderr: "boom" });
+  const runner = (() => ({
+    status: 1,
+    stdout: "",
+    stderr: "boom",
+  })) as unknown as SpawnRunner;
   assert.throws(
     () => fetchPage("metagraphed-health", 0, 3000, runner),
     /wrangler d1 execute failed.*boom/s,
@@ -270,7 +276,10 @@ test("fetchPage throws when the wrangler subprocess exits non-zero", () => {
 });
 
 test("fetchPage throws on non-JSON stdout", () => {
-  const runner = () => ({ status: 0, stdout: "not json" });
+  const runner = (() => ({
+    status: 0,
+    stdout: "not json",
+  })) as unknown as SpawnRunner;
   assert.throws(
     () => fetchPage("metagraphed-health", 0, 3000, runner),
     /not valid JSON/,
@@ -278,7 +287,10 @@ test("fetchPage throws on non-JSON stdout", () => {
 });
 
 test("fetchPage throws on an unexpected JSON shape", () => {
-  const runner = () => ({ status: 0, stdout: JSON.stringify([{}]) });
+  const runner = (() => ({
+    status: 0,
+    stdout: JSON.stringify([{}]),
+  })) as unknown as SpawnRunner;
   assert.throws(
     () => fetchPage("metagraphed-health", 0, 3000, runner),
     /unexpected wrangler d1 output shape/,

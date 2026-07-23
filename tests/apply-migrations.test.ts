@@ -68,9 +68,9 @@ describe("parseArgs", () => {
 
 describe("pendingMigrations (idempotency guard)", () => {
   const migrations = [
-    { version: "0001", name: "0001_init.sql" },
-    { version: "0002", name: "0002_add.sql" },
-    { version: "0003", name: "0003_more.sql" },
+    { version: "0001", name: "0001_init.sql", sql: "" },
+    { version: "0002", name: "0002_add.sql", sql: "" },
+    { version: "0003", name: "0003_more.sql", sql: "" },
   ];
 
   test("returns every migration when none are applied yet", () => {
@@ -104,7 +104,7 @@ describe("pendingMigrations (idempotency guard)", () => {
 });
 
 describe("loadMigrationFiles (ordering + filtering)", () => {
-  let dir;
+  let dir: string | undefined;
   afterEach(async () => {
     if (dir) await rm(dir, { recursive: true, force: true });
     dir = undefined;
