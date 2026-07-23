@@ -8,11 +8,23 @@
 // standalone AI response schemas, plus the input/rate-limit negative paths.
 import assert from "node:assert/strict";
 import path from "node:path";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { handleRequest } from "../workers/api.mjs";
 import { EMBED_MODEL } from "../src/ai-search.ts";
 import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.ts";
+
+// ajv-formats' default export resolves to the CJS module namespace rather than
+// the plugin function under this project's NodeNext + esModuleInterop
+// resolution -- cast to its real callable signature rather than fight the
+// interop. Mirrors validate-openapi-examples.ts.
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
+
+// Live handler responses/env stubs are read/built dynamically for assertion
+// purposes only, never trusted for control flow. Mirrors the
+// readJson/readArtifactJson precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
@@ -26,10 +38,15 @@ const askSchema = ajv.compile(
 const SEMANTIC_URL = "https://api.metagraph.sh/api/v1/search/semantic";
 const ASK_URL = "https://api.metagraph.sh/api/v1/ask";
 
-function get(url, env) {
+function get(url: string, env: Row) {
   return handleRequest(new Request(url), env, {});
 }
-function post(url, body, env, headers = {}) {
+function post(
+  url: string,
+  body: unknown,
+  env: Row,
+  headers: Record<string, string> = {},
+) {
   return handleRequest(
     new Request(url, {
       method: "POST",
@@ -51,7 +68,7 @@ assert.equal(
   "semantic must 503 when AI is unconfigured",
 );
 assert.equal(
-  (await coldSemantic.json()).error.code,
+  ((await coldSemantic.json()) as Row).error.code,
   "ai_unavailable",
   "semantic must report ai_unavailable when disabled",
 );
@@ -61,11 +78,11 @@ const coldAsk = await post(
   coldEnv,
 );
 assert.equal(coldAsk.status, 503, "ask must 503 when AI is unconfigured");
-assert.equal((await coldAsk.json()).error.code, "ai_unavailable");
+assert.equal(((await coldAsk.json()) as Row).error.code, "ai_unavailable");
 
 // --- Stub AI + Vectorize bindings ------------------------------------------
 
-function stubMatch(i) {
+function stubMatch(i: number): Row {
   return {
     id: `subnet:${i}`,
     score: 0.9 - i * 0.1,
@@ -80,12 +97,12 @@ function stubMatch(i) {
   };
 }
 
-function makeAiEnv(overrides = {}) {
+function makeAiEnv(overrides: Row = {}): Row {
   return {
     ...createLocalArtifactEnv(),
     METAGRAPH_ENABLE_AI: "true",
     AI: {
-      run(model, input) {
+      run(model: unknown, input: Row) {
         if (model === EMBED_MODEL) {
           const n = Array.isArray(input.text) ? input.text.length : 1;
           return Promise.resolve({
@@ -96,7 +113,7 @@ function makeAiEnv(overrides = {}) {
       },
     },
     VECTORIZE: {
-      query(_vector, options) {
+      query(_vector: unknown, options: Row | undefined) {
         const topK = options?.topK ?? 3;
         return Promise.resolve({
           matches: Array.from({ length: Math.min(topK, 3) }, (_, i) =>
@@ -118,7 +135,7 @@ const semantic = await get(
   aiEnv,
 );
 assert.equal(semantic.status, 200, "enabled semantic must return 200");
-const semanticBody = await semantic.json();
+const semanticBody = (await semantic.json()) as Row;
 assert.equal(semanticBody.ok, true);
 assert.equal(
   semanticSchema(semanticBody.data),
@@ -133,7 +150,7 @@ const ask = await post(
   aiEnv,
 );
 assert.equal(ask.status, 200, "enabled ask must return 200");
-const askBody = await ask.json();
+const askBody = (await ask.json()) as Row;
 assert.equal(askBody.ok, true);
 assert.equal(
   askSchema(askBody.data),
@@ -146,14 +163,14 @@ assert.ok(askBody.data.citations.length > 0, "ask must return citations");
 
 const noQuery = await get(SEMANTIC_URL, aiEnv);
 assert.equal(noQuery.status, 400, "semantic without q must be 400");
-assert.equal((await noQuery.json()).error.code, "invalid_query");
+assert.equal(((await noQuery.json()) as Row).error.code, "invalid_query");
 
 const emptyQuestion = await post(ASK_URL, { question: "  " }, aiEnv);
 assert.equal(emptyQuestion.status, 400, "ask with blank question must be 400");
 
 const badJson = await post(ASK_URL, "{not json", aiEnv);
 assert.equal(badJson.status, 400, "ask with invalid JSON must be 400");
-assert.equal((await badJson.json()).error.code, "invalid_json");
+assert.equal(((await badJson.json()) as Row).error.code, "invalid_json");
 
 const askViaGet = await get(ASK_URL, aiEnv);
 assert.equal(askViaGet.status, 405, "GET /api/v1/ask must be 405");
@@ -164,7 +181,7 @@ const limitedEnv = makeAiEnv({
 });
 const limited = await get(`${SEMANTIC_URL}?q=image`, limitedEnv);
 assert.equal(limited.status, 429, "rate-limited semantic must be 429");
-assert.equal((await limited.json()).error.code, "rate_limited");
+assert.equal(((await limited.json()) as Row).error.code, "rate_limited");
 
 console.log(
   "AI route validation passed: disabled->503, enabled->200 (schema-valid), negatives + rate-limit.",
