@@ -6,7 +6,7 @@
 // alone (validate:contract-drift regenerates it offline). Values are seeded by
 // field name + format + pattern so the examples read like real metagraphed
 // responses rather than bare placeholders. Validity is enforced downstream by
-// scripts/validate-openapi-examples.mjs (ajv against each operation's schema).
+// scripts/validate-openapi-examples.ts (ajv against each operation's schema).
 
 type Schema = Record<string, unknown>;
 type Sample = Record<string, unknown>;

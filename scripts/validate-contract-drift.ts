@@ -6,7 +6,14 @@ import { buildCanonicalOpenApiArtifact } from "./openapi-components.ts";
 import { readJson, repoRoot, stableStringify } from "./lib.ts";
 import { promises as fs } from "node:fs";
 
-const errors = [];
+// The OpenAPI document read below is generated JSON, deep-traversed only to
+// compare against a freshly-rebuilt copy or report a route path -- never
+// trusted for control flow. Mirrors the readJson/readArtifactJson precedent
+// in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+const errors: string[] = [];
 
 const currentBundle = await readJson(
   path.join(repoRoot, "schemas/api-components.schema.json"),
@@ -75,7 +82,9 @@ check(
   "generated/metagraphed-client.ts is stale. Run npm run build.",
 );
 
-for (const [routePath, methods] of Object.entries(currentOpenApi.paths || {})) {
+for (const [routePath, methods] of Object.entries(
+  (currentOpenApi.paths as Row | undefined) || {},
+)) {
   const operation = methods.get;
   const dataRef =
     operation?.responses?.["200"]?.content?.["application/json"]?.schema
@@ -98,7 +107,7 @@ if (errors.length > 0) {
 
 console.log("Contract drift validation passed.");
 
-function failWithErrors() {
+function failWithErrors(): never {
   console.error(
     `Contract drift validation failed with ${errors.length} issue(s):`,
   );
@@ -108,7 +117,7 @@ function failWithErrors() {
   process.exit(1);
 }
 
-function check(condition, message) {
+function check(condition: unknown, message: string): void {
   if (!condition) {
     errors.push(message);
   }

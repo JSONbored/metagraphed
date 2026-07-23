@@ -5,11 +5,17 @@
 // reproducible (no live data) and self-maintaining; this gate guarantees they
 // stay present + schema-correct, and surfaces any schema construct the sampler
 // mishandles.
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020, type Schema, type ValidateFunction } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import path from "node:path";
 import { API_ROUTES } from "../src/contracts.mjs";
 import { readJson, repoRoot } from "./lib.ts";
+
+// ajv-formats' default export resolves to the CJS module namespace rather than
+// the plugin function under this project's NodeNext + esModuleInterop
+// resolution (no named-export alternative exists, unlike Ajv2020 above) --
+// cast to its real callable signature rather than fight the interop.
+const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
@@ -35,12 +41,12 @@ ajv.addSchema(
 // Rewrite every internal `#/components/...` reference to its absolute form so it
 // resolves against the registered components schema. Pure structural transform —
 // validation behaviour and error text are unchanged.
-function absolutizeComponentRefs(node) {
+function absolutizeComponentRefs(node: unknown): unknown {
   if (Array.isArray(node)) {
     return node.map(absolutizeComponentRefs);
   }
   if (node && typeof node === "object") {
-    const out = {};
+    const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(node)) {
       out[key] =
         key === "$ref" &&
@@ -56,19 +62,19 @@ function absolutizeComponentRefs(node) {
 
 // Memoize compiled validators by their (rewritten) schema, so routes that share
 // a response schema reuse one compiled function.
-const validatorCache = new Map();
-function compileResponseValidator(responseSchema) {
+const validatorCache = new Map<string, ValidateFunction>();
+function compileResponseValidator(responseSchema: unknown): ValidateFunction {
   const rewritten = absolutizeComponentRefs(responseSchema);
   const key = JSON.stringify(rewritten);
   let validator = validatorCache.get(key);
   if (!validator) {
-    validator = ajv.compile(rewritten);
+    validator = ajv.compile(rewritten as Schema);
     validatorCache.set(key, validator);
   }
   return validator;
 }
 
-const errors = [];
+const errors: string[] = [];
 let validated = 0;
 
 for (const route of API_ROUTES) {
