@@ -807,6 +807,73 @@ describe("handleCompare", () => {
     assert.equal(body.data.subnets[0].found, true);
     assert.equal(body.data.subnets[0].health, null);
   });
+
+  // Regression: leaderboardProfilesProjection's in-isolate profiles-projection
+  // memo used to be keyed only on a wall-clock TTL, with no check that the
+  // CALLING env was the one the cached projection was built from. In
+  // production a Worker isolate only ever sees one env, so this never
+  // mattered there -- but under a shared test process (many test files/envs
+  // resolving within the same 5-minute TTL window), a DIFFERENT env's compare
+  // call could silently reuse a stale projection built from someone else's
+  // profiles.json, making `subnetMeta.get(netuid)` miss for a netuid that
+  // genuinely exists in the CURRENT env's own data. Since composeCompareData
+  // forces every dimension to null when the subnet isn't found in subnetMeta
+  // (`entry.health = meta ? ... : null`), that miss silently nulled out a
+  // dimension that should have been populated. This is the exact bug behind
+  // metagraphed#7784's intermittent tests/compare.test.mjs CI failure.
+  test("never reuses another env's cached profiles projection for a different env", async () => {
+    const poisonEnv = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          if (String(key).endsWith("profiles.json")) {
+            return {
+              async json() {
+                return {
+                  profiles: [{ netuid: 99999, slug: "other", name: "Other" }],
+                };
+              },
+            };
+          }
+          return createLocalArtifactEnv().METAGRAPH_ARCHIVE.get(key);
+        },
+      },
+    });
+    // Prime the module-level cache with an env whose profiles.json has no
+    // NETUID at all.
+    await handleCompare(
+      req("/"),
+      poisonEnv,
+      url(`/api/v1/compare?netuids=99999&dimensions=structure`),
+    );
+
+    // A fresh, unrelated env (real committed profiles.json, includes NETUID)
+    // must resolve NETUID on its own data, not the poisoned cache above.
+    const realEnv = createLocalArtifactEnv();
+    realEnv.METAGRAPH_HEALTH_SOURCE = "postgres";
+    realEnv.DATA_API = {
+      fetch: async () =>
+        Response.json({
+          rows: [
+            {
+              netuid: NETUID,
+              surface_count: 3,
+              ok_count: 2,
+              avg_latency_ms: 120,
+            },
+          ],
+        }),
+    };
+    const body = await json(
+      await handleCompare(
+        req("/"),
+        realEnv,
+        url(`/api/v1/compare?netuids=${NETUID}&dimensions=health`),
+      ),
+    );
+    assert.equal(body.data.subnets[0].netuid, NETUID);
+    assert.equal(body.data.subnets[0].found, true);
+    assert.equal(body.data.subnets[0].health.ok_count, 2);
+  });
 });
 
 describe("handleCompareValidators", () => {

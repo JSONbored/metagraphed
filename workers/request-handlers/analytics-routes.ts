@@ -211,8 +211,11 @@ interface LeaderboardProfilesProjection {
   builtAt: number;
 }
 
+// Keyed on env (not just TTL) so tests / multi-binding callers never
+// cross-read -- same pattern as readEconomicsCurrentKv (workers/api.mjs).
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache: LeaderboardProfilesProjection | null = null;
+let leaderboardProfilesCacheEnv: Env | null = null;
 
 // Week-over-week structural trajectory from daily snapshots.
 export async function handleTrajectory(
@@ -492,6 +495,7 @@ async function leaderboardProfilesProjection(
 ): Promise<LeaderboardProfilesProjection> {
   if (
     leaderboardProfilesCache &&
+    leaderboardProfilesCacheEnv === env &&
     now - leaderboardProfilesCache.builtAt <= LEADERBOARD_PROFILES_TTL_MS
   ) {
     return leaderboardProfilesCache;
@@ -521,6 +525,7 @@ async function leaderboardProfilesProjection(
   const projection = { subnetMeta, mostComplete, builtAt: now };
   if (mostComplete.length > 0) {
     leaderboardProfilesCache = projection;
+    leaderboardProfilesCacheEnv = env;
   }
   return projection;
 }
