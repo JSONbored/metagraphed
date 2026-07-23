@@ -21,7 +21,7 @@ import {
 import {
   optionalHttpStatus,
   preservePreviousGithubMetadata,
-} from "./verification-quality.mjs";
+} from "./verification-quality.ts";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");

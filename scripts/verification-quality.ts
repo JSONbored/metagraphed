@@ -1,4 +1,9 @@
-export function preservePreviousGithubMetadata(result, previousByCandidate) {
+type Row = Record<string, unknown>;
+
+export function preservePreviousGithubMetadata(
+  result: Row,
+  previousByCandidate: Map<unknown, Row>,
+): Row {
   const previous = previousByCandidate.get(result.candidate_id);
   if (isRetryableFailure(result) && isPreviouslyHealthy(previous)) {
     return {
@@ -21,12 +26,12 @@ export function preservePreviousGithubMetadata(result, previousByCandidate) {
   if (
     result.kind !== "source-repo" ||
     result.status !== "ok" ||
-    !["live", "redirected"].includes(result.classification)
+    !["live", "redirected"].includes(result.classification as string)
   ) {
     return result;
   }
 
-  const currentSignals = result.quality_signals || {};
+  const currentSignals = (result.quality_signals as Row | undefined) || {};
   const hasCurrentGithubMetadata =
     currentSignals.archived !== undefined ||
     currentSignals.has_default_branch !== undefined ||
@@ -38,12 +43,12 @@ export function preservePreviousGithubMetadata(result, previousByCandidate) {
   if (
     !previous ||
     previous.status !== "ok" ||
-    !["live", "redirected"].includes(previous.classification)
+    !["live", "redirected"].includes(previous.classification as string)
   ) {
     return result;
   }
 
-  const previousSignals = previous.quality_signals || {};
+  const previousSignals = (previous.quality_signals as Row | undefined) || {};
   const preservedSignals = stripUndefined({
     archived: previousSignals.archived,
     has_default_branch: previousSignals.has_default_branch,
@@ -66,24 +71,24 @@ export function preservePreviousGithubMetadata(result, previousByCandidate) {
   };
 }
 
-export function optionalHttpStatus(statusCode) {
-  return Number.isInteger(statusCode) ? statusCode : undefined;
+export function optionalHttpStatus(statusCode: unknown): number | undefined {
+  return Number.isInteger(statusCode) ? (statusCode as number) : undefined;
 }
 
-function isRetryableFailure(result) {
+function isRetryableFailure(result: Row): boolean {
   return ["rate-limited", "timeout", "transient"].includes(
-    result?.classification,
+    result?.classification as string,
   );
 }
 
-function isPreviouslyHealthy(previous) {
+function isPreviouslyHealthy(previous: Row | undefined): previous is Row {
   return (
     previous?.status === "ok" &&
-    ["live", "redirected"].includes(previous?.classification)
+    ["live", "redirected"].includes(previous?.classification as string)
   );
 }
 
-function stripUndefined(value) {
+function stripUndefined(value: Row): Row {
   return Object.fromEntries(
     Object.entries(value).filter(([, nested]) => nested !== undefined),
   );

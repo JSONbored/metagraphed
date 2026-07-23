@@ -8,7 +8,7 @@ const assetsIgnorePath = path.join(repoRoot, "public/.assetsignore");
 const rawConfig = await fs.readFile(configPath, "utf8");
 const config = JSON.parse(stripJsonComments(rawConfig));
 const assetsIgnore = await fs.readFile(assetsIgnorePath, "utf8");
-const errors = [];
+const errors: string[] = [];
 
 check(config.name === "metagraphed", "wrangler name must be metagraphed");
 // workers/api.sentry.ts is the real deployed entry point as of
@@ -69,7 +69,9 @@ check(
 );
 check(
   Array.isArray(config.r2_buckets) &&
-    config.r2_buckets.some((bucket) => bucket.binding === "METAGRAPH_ARCHIVE"),
+    (config.r2_buckets as { binding: string }[]).some(
+      (bucket) => bucket.binding === "METAGRAPH_ARCHIVE",
+    ),
   "METAGRAPH_ARCHIVE R2 binding is required",
 );
 check(config.observability?.enabled === true, "observability must be enabled");
@@ -86,7 +88,7 @@ if (errors.length > 0) {
 
 console.log("Worker deploy dry-run passed.");
 
-function check(condition, message) {
+function check(condition: unknown, message: string): void {
   if (!condition) {
     errors.push(message);
   }

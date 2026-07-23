@@ -103,7 +103,7 @@
     "webhooks:dispatch": "node scripts/dispatch-webhooks.ts --write",
     "cloudflare:verify:dry-run": "node scripts/cloudflare-verify.ts",
     "worker:test": "node scripts/worker-test.mjs",
-    "worker:deploy:dry-run": "node scripts/worker-deploy-dry-run.mjs",
+    "worker:deploy:dry-run": "node scripts/worker-deploy-dry-run.ts",
     "worker:bundle:budget": "node scripts/worker-bundle-budget.mjs",
     "types:workers": "wrangler types -c wrangler.jsonc workers/worker-configuration.d.ts && wrangler types -c wrangler.data.jsonc --include-runtime=false workers/data-api.worker-configuration.d.ts && wrangler types -c wrangler.registry.jsonc --include-runtime=false workers/registry-sync-api.worker-configuration.d.ts",
     "worker:check-deploy-drift": "node scripts/check-worker-deploy-drift.ts",

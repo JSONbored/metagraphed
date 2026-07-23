@@ -89,7 +89,7 @@ import { classifyHttpProbe } from "../scripts/http-probe-classification.ts";
 import {
   optionalHttpStatus,
   preservePreviousGithubMetadata,
-} from "../scripts/verification-quality.mjs";
+} from "../scripts/verification-quality.ts";
 import {
   summarizeGithubMetadata,
   summarizeGittensorMaster,
