@@ -255,7 +255,7 @@ export function EnrichmentQueueTable({ limit = 12 }: { limit?: number }) {
   return (
     <Panel as="div" flush className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
+        <thead className="bg-surface/50 mg-type-micro text-ink-muted">
           <tr>
             <th className="px-3 py-2.5" aria-sort={ariaSort(sort === "rank", order)}>
               <SortHeader
@@ -325,7 +325,7 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
         {row.severity ? (
           <span
             className={classNames(
-              "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest",
+              "inline-flex items-center rounded border px-1.5 py-0.5 mg-type-micro",
               tone,
             )}
           >

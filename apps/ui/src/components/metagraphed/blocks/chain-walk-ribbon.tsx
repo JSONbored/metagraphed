@@ -161,7 +161,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
               <span className="font-mono text-[11px] text-ink-muted">—</span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-ink-muted shrink-0">
+          <div className="flex items-center gap-1.5 mg-type-micro text-ink-muted shrink-0">
             <Kbd>←</Kbd>
             <Kbd>→</Kbd>
             <span className="hidden sm:inline">to walk</span>

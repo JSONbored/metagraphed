@@ -109,9 +109,7 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
     <Panel as="div" flush className="overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border bg-paper/30">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-            Registry activity
-          </span>
+          <span className="mg-type-micro text-ink-muted">Registry activity</span>
           <InfoTooltip label="Daily probe samples and recorded incidents — not GitHub commits. Drives the registry's freshness signal." />
         </div>
         <span className="font-mono text-[10px] text-ink-muted">

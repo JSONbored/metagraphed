@@ -83,7 +83,7 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
             type="button"
             autoFocus
             onClick={() => setOpen(false)}
-            className="mg-focus-ring rounded px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted hover:text-ink-strong"
+            className="mg-focus-ring rounded px-2 py-1 mg-type-micro text-ink-muted hover:text-ink-strong"
           >
             Esc
           </button>

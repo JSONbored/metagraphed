@@ -222,9 +222,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
       {hasIncidents ? (
         <div className="border-t border-border bg-paper/30 px-4 py-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-              Downtime windows
-            </span>
+            <span className="mg-type-micro text-ink-muted">Downtime windows</span>
             <div
               className="ml-auto flex flex-wrap items-center gap-1.5"
               role="group"
@@ -241,7 +239,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                     aria-pressed={active}
                     aria-label={`${f.label} incidents (${count}). Click to ${active ? "hide" : "show"}.`}
                     className={classNames(
-                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 mg-type-micro transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       active
                         ? "border-border bg-card text-ink-strong"
                         : "border-border/60 bg-paper/40 text-ink-muted/60 opacity-60",
@@ -289,7 +287,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-[11px] leading-relaxed">
-                    <div className="font-mono text-[10px] uppercase tracking-widest text-primary-foreground/80">
+                    <div className="mg-type-micro text-primary-foreground/80">
                       {sev} · {dur}
                     </div>
                     <div className="mt-1 break-all">{i.surface_id}</div>

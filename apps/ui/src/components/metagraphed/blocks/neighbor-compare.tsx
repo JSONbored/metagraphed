@@ -102,7 +102,7 @@ function DeltaChip({
         : "text-health-down";
   return (
     <div className="rounded border border-border/60 bg-paper px-2 py-1.5">
-      <div className="text-[9px] uppercase tracking-widest text-ink-subtle">{label}</div>
+      <div className="mg-type-micro text-ink-subtle">{label}</div>
       <div className="mt-0.5 flex items-baseline justify-between gap-2">
         <span className="text-ink-strong">
           {loading ? "…" : value != null ? formatNumber(value) : "—"}
