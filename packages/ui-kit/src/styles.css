@@ -863,6 +863,7 @@ html[data-density="compact"] .bg-card > table td {
 /* ── Lovable redesign utilities (#1124 port batch 1) ── */
 :root {
   --mg-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --mg-sticky-offset: 3.5rem;
 }
 @media (prefers-reduced-motion: reduce) {
   .mg-fade-in,
@@ -980,6 +981,22 @@ html[data-density="compact"] .bg-card > table td {
 
 .mg-chip-rail > div {
   scrollbar-width: none;
+  /* Fade the leading/trailing edges so chips clip visually cleanly rather than
+     mid-word at the container edge (matches .mg-ticker treatment). */
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1.25rem,
+    #000 calc(100% - 1.25rem),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1.25rem,
+    #000 calc(100% - 1.25rem),
+    transparent 100%
+  );
 }
 
 .mg-ticker-track {
@@ -1328,6 +1345,75 @@ html[data-density="compact"] .bg-card > table td {
    equally-silently-broken max-h-[300px] -- neither ever reaches dist/index.css). */
 .mg-table-scroll {
   max-height: 70vh;
+  /* Fade the leading/trailing edges so wide tables soft-clip instead of
+     hard-cutting mid-column — users see there's more to scroll. */
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1rem,
+    #000 calc(100% - 1rem),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1rem,
+    #000 calc(100% - 1rem),
+    transparent 100%
+  );
+  /* Thin, modern horizontal scrollbar. The table's <thead> sticks against the
+     page scroll (under the filter bar) via --mg-sticky-offset, so the
+     wrapper itself never needs to scroll vertically -- no nested scrollbar. */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--ink-strong) 20%, transparent) transparent;
+}
+/* Only apply the mask when the table actually overflows — on desktop where
+   everything fits, the mask would fade content pointlessly. */
+@media (min-width: 1024px) {
+  .mg-table-scroll {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+}
+.mg-table-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.mg-table-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--ink-strong) 18%, transparent);
+  border-radius: 9999px;
+}
+.mg-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--ink-strong) 32%, transparent);
+}
+.mg-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+@media (min-width: 1024px) {
+  .mg-table-scroll::-webkit-scrollbar {
+    height: 0;
+  }
+}
+
+/* QueryBar — the shared hairline command surface that anchors search,
+   filter triggers, and utility controls on every list route. Focus-within
+   promotes the whole shell to accent so the bar reads as one control. */
+.mg-query-shell {
+  transition:
+    border-color 140ms ease-out,
+    box-shadow 140ms ease-out,
+    background-color 140ms ease-out;
+}
+.mg-ghost-trigger {
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-query-shell,
+  .mg-ghost-trigger {
+    transition: none;
+  }
 }
 
 @keyframes mg-marquee {

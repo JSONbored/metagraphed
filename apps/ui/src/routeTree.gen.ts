@@ -41,6 +41,7 @@ import { Route as GraphqlExplorerRouteImport } from './routes/graphql.explorer'
 import { Route as ExtrinsicsHashRouteImport } from './routes/extrinsics.$hash'
 import { Route as DocsLlmsDottxtRouteImport } from './routes/docs.llms[.]txt'
 import { Route as DocsSplatRouteImport } from './routes/docs.$'
+import { Route as DesignPrimitivesRouteImport } from './routes/design.primitives'
 import { Route as BlocksRefRouteImport } from './routes/blocks.$ref'
 import { Route as ApiSearchRouteImport } from './routes/api.search'
 import { Route as AccountsSs58RouteImport } from './routes/accounts.$ss58'
@@ -206,6 +207,11 @@ const DocsSplatRoute = DocsSplatRouteImport.update({
   path: '/docs/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DesignPrimitivesRoute = DesignPrimitivesRouteImport.update({
+  id: '/design/primitives',
+  path: '/design/primitives',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlocksRefRoute = BlocksRefRouteImport.update({
   id: '/blocks/$ref',
   path: '/blocks/$ref',
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
@@ -283,6 +290,7 @@ export interface FileRoutesByTo {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
@@ -322,6 +330,7 @@ export interface FileRoutesById {
   '/accounts/$ss58': typeof AccountsSs58Route
   '/api/search': typeof ApiSearchRoute
   '/blocks/$ref': typeof BlocksRefRoute
+  '/design/primitives': typeof DesignPrimitivesRoute
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/extrinsics/$hash': typeof ExtrinsicsHashRoute
@@ -362,6 +371,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/blocks/$ref'
+    | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
     | '/extrinsics/$hash'
@@ -400,6 +410,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/blocks/$ref'
+    | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
     | '/extrinsics/$hash'
@@ -438,6 +449,7 @@ export interface FileRouteTypes {
     | '/accounts/$ss58'
     | '/api/search'
     | '/blocks/$ref'
+    | '/design/primitives'
     | '/docs/$'
     | '/docs/llms.txt'
     | '/extrinsics/$hash'
@@ -477,6 +489,7 @@ export interface RootRouteChildren {
   AccountsSs58Route: typeof AccountsSs58Route
   ApiSearchRoute: typeof ApiSearchRoute
   BlocksRefRoute: typeof BlocksRefRoute
+  DesignPrimitivesRoute: typeof DesignPrimitivesRoute
   DocsSplatRoute: typeof DocsSplatRoute
   DocsLlmsDottxtRoute: typeof DocsLlmsDottxtRoute
   ExtrinsicsHashRoute: typeof ExtrinsicsHashRoute
@@ -724,6 +737,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/design/primitives': {
+      id: '/design/primitives'
+      path: '/design/primitives'
+      fullPath: '/design/primitives'
+      preLoaderRoute: typeof DesignPrimitivesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blocks/$ref': {
       id: '/blocks/$ref'
       path: '/blocks/$ref'
@@ -773,6 +793,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsSs58Route: AccountsSs58Route,
   ApiSearchRoute: ApiSearchRoute,
   BlocksRefRoute: BlocksRefRoute,
+  DesignPrimitivesRoute: DesignPrimitivesRoute,
   DocsSplatRoute: DocsSplatRoute,
   DocsLlmsDottxtRoute: DocsLlmsDottxtRoute,
   ExtrinsicsHashRoute: ExtrinsicsHashRoute,

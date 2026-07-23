@@ -30,3 +30,226 @@
     0 0 0 2px var(--background, var(--paper, #fff)),
     0 0 0 4px var(--ring);
 }
+
+/* ============================================================
+ * Bone & Ink rhythm + type tokens (Batch B, plan step 1).
+ * Named so components and route heros read semantic rhythm
+ * ("section gap", "panel pad") instead of raw utilities.
+ * Contributors must reach for these — the ESLint guardrails in
+ * eslint.config.js now block raw p-* / gap-* / space-y-* outside
+ * the primitives folder and the vendor snapshot.
+ * ============================================================ */
+:root {
+  /* 4pt base scale — the only allowed padding/gap steps. */
+  --mg-space-3xs: 0.125rem;   /* 2  */
+  --mg-space-2xs: 0.25rem;    /* 4  */
+  --mg-space-xs:  0.5rem;     /* 8  */
+  --mg-space-sm:  0.75rem;    /* 12 */
+  --mg-space-md:  1rem;       /* 16 */
+  --mg-space-lg:  1.5rem;     /* 24 */
+  --mg-space-xl:  2rem;       /* 32 */
+  --mg-space-2xl: 3rem;       /* 48 */
+  --mg-space-3xl: 4rem;       /* 64 */
+
+  /* Semantic layout rhythm — use in page/panel/hero shells. */
+  --mg-section-gap:     var(--mg-space-2xl);
+  --mg-section-gap-sm:  var(--mg-space-xl);
+  --mg-stack-gap:       var(--mg-space-md);
+  --mg-stack-gap-tight: var(--mg-space-sm);
+  --mg-panel-pad:       var(--mg-space-lg);
+  --mg-panel-pad-dense: var(--mg-space-md);
+  --mg-hero-pad-y:      var(--mg-space-2xl);
+  --mg-hero-pad-y-sm:   var(--mg-space-xl);
+  --mg-toolbar-pad-y:   var(--mg-space-sm);
+  --mg-gutter-x:        clamp(1rem, 4vw, 1.5rem);
+
+  /* Type scale — locks the micro/label idiom into named tokens. */
+  --mg-type-micro:      9.5px;
+  --mg-type-label:      11px;
+  --mg-type-body:       14px;
+  --mg-type-body-lg:    15px;
+  --mg-type-h4:         16px;
+  --mg-type-h3:         18px;
+  --mg-type-h2:         22px;
+  --mg-type-h1:         28px;
+  --mg-tracking-label:  0.14em;
+  --mg-tracking-micro:  0.18em;
+}
+
+/* Page-level rhythm helpers — reserved for Panel / PageHero / route shells. */
+.mg-section-stack > * + * { margin-top: var(--mg-section-gap); }
+@media (max-width: 640px) {
+  .mg-section-stack > * + * { margin-top: var(--mg-section-gap-sm); }
+}
+.mg-panel-pad       { padding: var(--mg-panel-pad); }
+.mg-panel-pad-dense { padding: var(--mg-panel-pad-dense); }
+.mg-panel-pad-flush { padding: 0; }
+.mg-stack-gap       > * + * { margin-top: var(--mg-stack-gap); }
+.mg-stack-gap-tight > * + * { margin-top: var(--mg-stack-gap-tight); }
+.mg-gutter-x        { padding-left: var(--mg-gutter-x); padding-right: var(--mg-gutter-x); }
+
+.mg-type-micro {
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-micro);
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: var(--mg-tracking-micro);
+}
+.mg-type-label {
+  font-family: var(--font-mono);
+  font-size: var(--mg-type-label);
+  line-height: 1.25;
+  letter-spacing: var(--mg-tracking-label);
+}
+
+/* Horizontal scroll fade for mobile tables — apply to overflow-x containers
+   to hint at scrollable content off-canvas. Kept subtle (24px) so it doesn't
+   obscure adjacent columns. */
+.mg-x-scroll-fade {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+}
+@media (min-width: 768px) {
+  .mg-x-scroll-fade {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+}
+
+/* Horizontal rails should never allocate a cross-axis gutter. Touch, wheel,
+   keyboard, and trackpad scrolling remain available; edge fades communicate
+   overflow without a stray nested scrollbar. */
+.mg-scroll {
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.mg-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Skeleton pulse used by TableSkeleton primitive. */
+@keyframes mg-skel-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="mg-skel-pulse"] { animation: none !important; }
+}
+
+/* ============================================================
+ * Paint-safety invariants.
+ *
+ * Entrance motion must never be responsible for making content visible.
+ * Embedded/backgrounded browsers can pause animations on their first frame;
+ * opacity-based keyframes then leave a healthy DOM looking completely blank.
+ * Keep motion as a transform-only enhancement with visible endpoints.
+ * ============================================================ */
+@keyframes mg-safe-rise {
+  from { transform: translateY(8px); }
+  to   { transform: translateY(0); }
+}
+@keyframes mg-safe-scale {
+  from { transform: scale(0.8); }
+  to   { transform: scale(1); }
+}
+.mg-fade-in {
+  opacity: 1;
+  animation-name: mg-safe-rise;
+  animation-fill-mode: none;
+}
+.mg-pulse-cell {
+  opacity: 1;
+  animation-name: mg-safe-scale;
+  animation-fill-mode: none;
+}
+
+/* Radix portals normally unmount closed overlays. If an interrupted route or
+   exit animation leaves one behind, it must not remain a full-viewport black
+   layer above a working page. This guards the shared Dialog and Sheet
+   primitives without modifying the vendored UI snapshot. */
+[data-state="closed"].fixed.inset-0 {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  animation: none !important;
+}
+
+/* Compact page masthead — data-explorer counterpart to .mg-hero-slab. */
+.mg-masthead {
+  background: transparent;
+}
+.mg-masthead-kpi {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+@media (min-width: 640px) {
+  .mg-masthead-kpi {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .mg-masthead-kpi {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.mg-masthead-kpi > * + * {
+  padding-left: 1rem;
+  border-left: 1px solid var(--border);
+}
+@media (max-width: 639.98px) {
+  .mg-masthead-kpi > * + * {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .mg-masthead-kpi > *:nth-child(odd) {
+    padding-right: 0.5rem;
+    border-right: 1px solid var(--border);
+  }
+}
+
+/* ============================================================
+ * Loading / progress microinteractions (used by ChartSkeleton,
+ * QueryProgress). Both respect prefers-reduced-motion.
+ * ============================================================ */
+@keyframes mg-shimmer-sweep {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(400%); }
+}
+.mg-shimmer-sweep {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--ink-strong) 6%, transparent),
+    transparent
+  );
+  animation: mg-shimmer-sweep 1.6s ease-in-out infinite;
+}
+@keyframes mg-query-progress-track {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.mg-query-progress-track {
+  animation: mg-query-progress-track 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-shimmer-sweep,
+  .mg-query-progress-track {
+    animation: none;
+  }
+}

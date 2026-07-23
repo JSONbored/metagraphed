@@ -631,6 +631,7 @@ html[data-density=compact] .bg-card > table td {
 }
 :root {
   --mg-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --mg-sticky-offset: 3.5rem;
 }
 @media (prefers-reduced-motion: reduce) {
   .mg-fade-in,
@@ -713,6 +714,20 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-chip-rail > div {
   scrollbar-width: none;
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      #000 1.25rem,
+      #000 calc(100% - 1.25rem),
+      transparent 100%);
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      #000 1.25rem,
+      #000 calc(100% - 1.25rem),
+      transparent 100%);
 }
 .mg-ticker-track {
   width: max-content;
@@ -995,6 +1010,62 @@ html[data-density=compact] .bg-card > table td {
 }
 .mg-table-scroll {
   max-height: 70vh;
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      #000 1rem,
+      #000 calc(100% - 1rem),
+      transparent 100%);
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      #000 1rem,
+      #000 calc(100% - 1rem),
+      transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--ink-strong) 20%, transparent) transparent;
+}
+@media (min-width: 1024px) {
+  .mg-table-scroll {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+}
+.mg-table-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.mg-table-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--ink-strong) 18%, transparent);
+  border-radius: 9999px;
+}
+.mg-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--ink-strong) 32%, transparent);
+}
+.mg-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+@media (min-width: 1024px) {
+  .mg-table-scroll::-webkit-scrollbar {
+    height: 0;
+  }
+}
+.mg-query-shell {
+  transition:
+    border-color 140ms ease-out,
+    box-shadow 140ms ease-out,
+    background-color 140ms ease-out;
+}
+.mg-ghost-trigger {
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-query-shell,
+  .mg-ghost-trigger {
+    transition: none;
+  }
 }
 @keyframes mg-marquee {
   from {
