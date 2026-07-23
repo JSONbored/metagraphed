@@ -29,15 +29,17 @@ import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import { shouldPublishEconomics } from "./economics-floor.ts";
 import { initSentry, endSessionAndFlush } from "./observability.ts";
 
+type Row = Record<string, unknown>;
+
 initSentry("refresh-economics");
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
 
-const subnets = await loadSubnets();
-const native = await loadNativeSnapshot();
-const economicsByNetuid = new Map();
-for (const subnet of native.subnets || []) {
+const subnets: Row[] = await loadSubnets();
+const native: Row = await loadNativeSnapshot();
+const economicsByNetuid = new Map<unknown, unknown>();
+for (const subnet of (native.subnets as Row[] | undefined) || []) {
   if (subnet.economics) economicsByNetuid.set(subnet.netuid, subnet.economics);
 }
 
@@ -45,7 +47,11 @@ for (const subnet of native.subnets || []) {
 // present (indexer box). Missing DB → null change fields (schema-stable).
 const priceHistoryByNetuid = await loadAlphaPriceHistoryByNetuid();
 
-const economics = buildEconomicsArtifact({
+// buildEconomicsArtifact's untyped .mjs default params (network = null,
+// capturedAt = null, priceHistoryByNetuid = null) lock TS's cross-file
+// inference to null; cast until Phase 4 Batch 7 converts
+// scripts/lib/economics-artifacts.mjs.
+const economics = (buildEconomicsArtifact as unknown as (options: Row) => Row)({
   subnets,
   economicsByNetuid,
   generatedAt: buildTimestamp(),
@@ -58,7 +64,8 @@ const economics = buildEconomicsArtifact({
 economics.contract_version = CONTRACT_VERSION;
 
 const summary = {
-  with_economics_count: economics.summary?.with_economics_count ?? 0,
+  with_economics_count:
+    (economics.summary as Row | undefined)?.with_economics_count ?? 0,
   captured_at: economics.captured_at,
   contract_version: economics.contract_version,
 };

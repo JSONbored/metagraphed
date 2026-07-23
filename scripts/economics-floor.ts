@@ -1,4 +1,4 @@
-// Content floor for the live economics writer (refresh-economics.mjs). The live KV
+// Content floor for the live economics writer (refresh-economics.ts). The live KV
 // tier ('economics:current') must never be overwritten with an empty / near-empty
 // blob: a partial chain-fetch (0 rows, or far below the subnet count) or a missing
 // captured_at must not clobber the last good value — the serve path keeps the last

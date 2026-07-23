@@ -23,7 +23,7 @@ GIT_REPO_URL="https://github.com/JSONbored/metagraphed.git"
 GIT_REF="main"
 
 # npm ci runs in the SAME shared /repo volume the economics step later reads
-# scripts/refresh-economics.mjs (and node_modules/.bin/wrangler, the exact
+# scripts/refresh-economics.ts (and node_modules/.bin/wrangler, the exact
 # binary that makes the authenticated Cloudflare API call) from -- a
 # security review correctly pointed out that this breaks the stated trust
 # boundary between the snapshot step (untrusted, no secrets) and the
@@ -102,7 +102,7 @@ case "$STEP" in
     ;;
   economics)
     echo "entrypoint: publishing live economics"
-    exec node scripts/refresh-economics.mjs --write
+    exec node scripts/refresh-economics.ts --write
     ;;
   *)
     echo "entrypoint: unknown STEP '$STEP' (want snapshot|economics)" >&2
