@@ -192,7 +192,7 @@ function productionSteps(): Step[] {
     // returns nothing.
     nodeStep("capture-fixtures", "scripts/capture-fixtures.ts", "--write"),
     nodeStep("build-artifacts", "scripts/build-artifacts.mjs"),
-    nodeStep("probes-smoke", "scripts/probes-smoke.mjs", {
+    nodeStep("probes-smoke", "scripts/probes-smoke.ts", {
       METAGRAPH_WRITE_PROBE_RESULTS: "1",
     }),
     nodeStep(

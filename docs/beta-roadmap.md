@@ -263,7 +263,7 @@ guarantees); and a handful of copy-paste example queries against the live beta.
 - Community gap-fill CTAs (Finding 13) and adapter expansion (Finding 14).
 - **Recommended follow-up (not yet done):** close the freshness loop — auto-flag
   and demote surfaces not probed healthy within N days, so "complete" can never
-  drift to "complete but stale/dead." Touches `probes-smoke.mjs` →
+  drift to "complete but stale/dead." Touches `probes-smoke.ts` →
   `curate-baseline.mjs`/`build-artifacts.mjs`.
 
 ## Verification

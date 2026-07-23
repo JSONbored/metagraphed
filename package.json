@@ -49,7 +49,7 @@
     "schemas:bundle:check": "node scripts/bundle-schemas.ts",
     "adapters:snapshot": "node scripts/snapshot-adapters.mjs --write",
     "adapters:snapshot:dry-run": "node scripts/snapshot-adapters.mjs --dry-run",
-    "probes:smoke": "node scripts/probes-smoke.mjs",
+    "probes:smoke": "node scripts/probes-smoke.ts",
     "sync:summary": "node scripts/sync-summary.mjs",
     "scan:public-safety": "node scripts/scan-public-safety.mjs",
     "validate:schemas": "node scripts/validate-schemas.mjs",

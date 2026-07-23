@@ -7,7 +7,7 @@
 ## Context
 
 The backend served **all** health from the same 6h batch as structural data:
-`scripts/probes-smoke.mjs` probed ~1,140 surfaces during `sync-subnets.yml`
+`scripts/probes-smoke.ts` probed ~1,140 surfaces during `sync-subnets.yml`
 (2×/day), and the results were baked into static R2 artifacts. Two problems:
 
 1. **Staleness.** Operational health (RPC/WSS chain nodes, subnet APIs, SSE) was
