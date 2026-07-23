@@ -1495,7 +1495,7 @@ const candidateLocators = new Set();
 // filename must equal slugify(name), falling back to sn-<netuid> ONLY when the
 // name doesn't produce a usable slug (scripts/subnet-new.mjs's exact rule). Two
 // independent code paths (an old ad-hoc taostats-enrich pass, and a bug in
-// scripts/promote-reviewed.mjs's local safeSlug()) both drifted into naming new
+// scripts/promote-reviewed.ts's local safeSlug()) both drifted into naming new
 // files sn-<netuid>.json even when the subnet had a perfectly good name — this
 // fails closed so a filename mismatch can never silently recur (registry/subnets/
 // generated/** is machine-owned and intentionally sn-<netuid>-only; excluded by
@@ -1611,7 +1611,7 @@ for (const subnet of subnets) {
 // maintainer-reviewed LEVEL has a backing decision — never that a recorded
 // decision actually PRODUCED the level. That let a decision sit in
 // maintainer-reviewed.json while the subnet's own overlay stayed at a lower
-// pre-tier (community-seeded etc.), invisibly, because promote-reviewed.mjs only
+// pre-tier (community-seeded etc.), invisibly, because promote-reviewed.ts only
 // promoted a machine-verified starting level (the SN59/SN107 drift). Surface any
 // still-unmaterialized decision as a NON-BLOCKING advisory (mirrors the #5739
 // reviewed-tier convention advisory): materializing it edits an overlay's

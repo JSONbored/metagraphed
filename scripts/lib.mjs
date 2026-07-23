@@ -250,7 +250,7 @@ export function assertNoSubnetFilePathCollision({
 // Merges the full generated overlay set with the manually-curated
 // registry/subnets/*.json files, keyed by netuid — the manual file wins where
 // one exists, otherwise the generated overlay materializes to the slug-derived
-// path a fresh `subnet:new` would use. Pulled out of scripts/promote-reviewed.mjs
+// path a fresh `subnet:new` would use. Pulled out of scripts/promote-reviewed.ts
 // so it's exercised in-process by its own unit tests rather than only via that
 // script's execFileSync entrypoint (which the coverage collector can't see).
 export function buildSubnetOverlaysByNetuid({
