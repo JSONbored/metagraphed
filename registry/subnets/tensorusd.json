@@ -186,8 +186,11 @@
     },
     {
       "auth": {
-        "scheme": "custom",
-        "scopes_note": "The exact credential mechanism is not publicly documented by the subnet; this endpoint requires authentication to access."
+        "scheme": "basic",
+        "scopes_note": "Requires HTTP Basic Authentication (live-verified 2026-07-22: an unauthenticated request returns HTTP 401 with a \"WWW-Authenticate: Basic\" challenge header). No bearer token, API key, or hotkey-signed request is accepted for this route.",
+        "location": "header",
+        "name": "Authorization",
+        "value_format": "Basic <base64(username:password)>"
       },
       "auth_required": true,
       "authority": "community",
