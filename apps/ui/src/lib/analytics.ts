@@ -1,11 +1,17 @@
 /**
- * Centralized PostHog web-analytics seam (metagraphed#7760).
+ * Centralized PostHog web-analytics + error-tracking seam
+ * (metagraphed#7760, #7759).
  *
- * Single chokepoint for client-side product analytics: the app calls
- * `initAnalytics()`/`capturePageview()`/`captureEvent()` and never touches
- * `posthog-js` directly elsewhere. Additive alongside the existing
- * self-hosted Umami tracker (src/server.ts) while parity is proven -- see
- * the consolidation epic (metagraphed#7757) for the decommission plan.
+ * Single chokepoint for client-side product analytics AND exception
+ * reporting: the app calls `initAnalytics()`/`capturePageview()`/
+ * `captureEvent()`/`captureException()` and never touches `posthog-js`
+ * directly elsewhere. `captureException` is called from
+ * error-reporting.ts's `reportError` -- a second, parallel sink alongside
+ * the existing Sentry one there, sharing THIS module's one `posthog-js`
+ * instance rather than each maintaining its own. Additive alongside the
+ * existing self-hosted Umami tracker (src/server.ts) and Sentry while parity
+ * is proven -- see the consolidation epic (metagraphed#7757) for the
+ * decommission plan.
  *
  * `posthog-js` is loaded via a DYNAMIC import, mirroring error-reporting.ts's
  * exact Sentry-loading pattern: this keeps it out of the initial client
@@ -134,4 +140,18 @@ export function capturePageview(url?: string): void {
 export function captureEvent(name: string, properties?: Record<string, unknown>): void {
   if (!POSTHOG_TOKEN) return;
   void loadPostHog().then((posthog) => posthog?.capture(name, properties));
+}
+
+/** Captures a caught exception via posthog-js's dedicated `captureException`
+ * (never the generic `.capture("$exception", ...)`, which PostHog's own docs
+ * warn is "unreliable because it does not attach required metadata" --
+ * `captureException` builds the stack trace / mechanism / fingerprint
+ * PostHog's error tracking needs automatically). `properties` is merged
+ * flat into the event (PostHog's own signature), not nested the way
+ * Sentry's `{ extra: context }` shape is -- see error-reporting.ts's own
+ * call site. Same best-effort, no-op-when-unconfigured contract as every
+ * other export here. */
+export function captureException(error: unknown, properties?: Record<string, unknown>): void {
+  if (!POSTHOG_TOKEN) return;
+  void loadPostHog().then((posthog) => posthog?.captureException(error, properties));
 }

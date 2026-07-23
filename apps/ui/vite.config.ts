@@ -6,8 +6,10 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig, type LovableViteTanstackOptions } from "@lovable.dev/vite-tanstack-config";
 import type { NitroPluginConfig } from "nitro/vite";
+import type { NormalizedOutputOptions, OutputBundle, Plugin, PluginContext } from "rollup";
 import mdx from "fumadocs-mdx/vite";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
+import posthogRollupPlugin from "@posthog/rollup-plugin";
 
 // Cloudflare Workers Builds auto-injects this (no manual dashboard step) --
 // confirmed via Cloudflare's own docs (workers/ci-cd/builds/configuration/,
@@ -16,6 +18,53 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 // locally/in PR CI, where it's simply undefined -- Sentry accepts an
 // undefined release (just omits release tagging), not an error condition.
 const commitSha = process.env.WORKERS_CI_COMMIT_SHA;
+
+// @posthog/rollup-plugin's own `writeBundle` hook (the step that actually
+// uploads source maps, node_modules/@posthog/rollup-plugin/src/index.ts) has
+// NO `errorHandler` option, unlike sentryVitePlugin above -- a rejected
+// upload (network blip, expired personal API key, missing `posthog-cli`
+// binary -- confirmed via @posthog/plugin-utils' spawnLocal, which rejects
+// on any non-zero exit code) propagates straight out of the hook and fails
+// the ENTIRE build. Wrap the returned plugin's handler in the same
+// tolerant warn-and-continue behavior sentryVitePlugin gets for free via its
+// own `errorHandler`, so a PostHog-side hiccup can never block a real deploy.
+function withTolerantSourcemapUpload(plugin: Plugin): Plugin {
+  const writeBundle = plugin.writeBundle;
+  if (typeof writeBundle !== "object" || writeBundle === null) return plugin;
+  const originalHandler = writeBundle.handler as (
+    this: PluginContext,
+    options: NormalizedOutputOptions,
+    bundle: OutputBundle,
+  ) => void | Promise<void>;
+  return {
+    ...plugin,
+    writeBundle: {
+      ...writeBundle,
+      async handler(this: PluginContext, options: NormalizedOutputOptions, bundle: OutputBundle) {
+        try {
+          await originalHandler.call(this, options, bundle);
+        } catch (err) {
+          console.warn("[posthog-rollup-plugin] source map upload failed:", err);
+        }
+      },
+    },
+  };
+}
+
+// POSTHOG_API_KEY (a personal API key, NOT the VITE_POSTHOG_PROJECT_TOKEN
+// client-side ingest token from src/lib/analytics.ts -- that one is
+// write-only/public-safe, this one is a real secret with read access) and
+// POSTHOG_PROJECT_ID gate sourcemap upload the same opt-in way
+// SENTRY_AUTH_TOKEN gates Sentry's above: both env vars must be present, or
+// this stays a true no-op. Explicit `sourcemaps.enabled` (rather than relying
+// on @posthog/plugin-utils' own default) is load-bearing here -- resolveConfig
+// THROWS SYNCHRONOUSLY at plugin-construction time (i.e. this very module's
+// eval, not a lazy build step) when sourcemaps default-enable with either
+// value missing (node_modules/@posthog/plugin-utils/src/config.ts), which
+// would otherwise break every unconfigured build (every PR/local dev today).
+const posthogApiKey = process.env.POSTHOG_API_KEY;
+const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
+const posthogSourcemapsEnabled = Boolean(posthogApiKey && posthogProjectId);
 
 export default defineConfig({
   tanstackStart: {
@@ -70,6 +119,30 @@ export default defineConfig({
         filesToDeleteAfterUpload: ["**/*.js.map"],
       },
     }),
+    // PostHog error tracking (metagraphed#7759) source-map upload --
+    // independent of sentryVitePlugin above (no documented ordering
+    // requirement between the two; each only touches its own upload step),
+    // wrapped for the two build-safety gaps documented above this file's
+    // `posthogSourcemapsEnabled` const.
+    withTolerantSourcemapUpload(
+      posthogRollupPlugin({
+        personalApiKey: posthogApiKey ?? "",
+        projectId: posthogProjectId,
+        sourcemaps: {
+          enabled: posthogSourcemapsEnabled,
+          // Same release-correlation value as Sentry's `release.name` above
+          // (Cloudflare Workers Builds' own commit SHA) -- undefined locally/
+          // in PR CI, where sourcemaps.enabled is already false anyway.
+          releaseName: commitSha,
+          // Same "don't publicly serve the app's own source maps" rationale
+          // as Sentry's filesToDeleteAfterUpload above -- this plugin's own
+          // equivalent option (config.ts's `deleteAfterUpload`, defaults
+          // true) already matches, set explicitly so the intent is documented
+          // here rather than relying on an unstated default.
+          deleteAfterUpload: true,
+        },
+      }),
+    ),
   ],
   // `vite: { ... }` is this preset's own documented passthrough for plain
   // Vite options beyond plugins (see the header comment above) --

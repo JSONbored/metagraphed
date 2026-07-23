@@ -1,4 +1,5 @@
 import { reportLovableError } from "./lovable-error-reporting";
+import { captureException as capturePostHogException } from "./analytics";
 
 /**
  * Centralized error-reporting seam for React error boundaries.
@@ -22,8 +23,19 @@ import { reportLovableError } from "./lovable-error-reporting";
  *     token, unlike the DSN below, so it can't have a code-level default
  *     the same way -- sourcemap upload stays opt-in until a maintainer sets
  *     it as a Workers Builds dashboard build variable).
- *  2. Lovable capture channel — best-effort, no-op outside the Lovable editor.
- *  3. `console.error` in dev so the boundary + context are always greppable
+ *  2. PostHog (metagraphed#7759) — a second, PARALLEL sink, not a
+ *     replacement; enabled whenever `VITE_POSTHOG_PROJECT_TOKEN` is
+ *     configured (see analytics.ts). Reuses analytics.ts's own
+ *     `captureException`, which shares the SAME lazily-loaded `posthog-js`
+ *     instance web analytics already manages -- this file never touches
+ *     `posthog-js` directly or triggers a second init. Release correlation
+ *     for PostHog works differently than Sentry's `release` property: it's
+ *     inferred at read time from the chunk IDs `@posthog/rollup-plugin`
+ *     injects into the built JS at upload time (vite.config.ts), not
+ *     something passed at capture time -- so there's no per-call release tag
+ *     to set here, unlike the Sentry sink above.
+ *  3. Lovable capture channel — best-effort, no-op outside the Lovable editor.
+ *  4. `console.error` in dev so the boundary + context are always greppable
  *     locally.
  *
  * DSN resolution mirrors DEFAULT_API_BASE's own convention
@@ -80,10 +92,14 @@ export function reportError(error: unknown, context: Record<string, unknown> = {
     });
   }
 
-  // 2. Forward to the existing Lovable capture channel (no-op when unavailable / SSR).
+  // 2. PostHog — a parallel sink, not a replacement; analytics.ts's own
+  // VITE_POSTHOG_PROJECT_TOKEN gate makes this a no-op when unconfigured.
+  capturePostHogException(error, context);
+
+  // 3. Forward to the existing Lovable capture channel (no-op when unavailable / SSR).
   reportLovableError(error, context);
 
-  // 3. Always surface locally in dev for greppable boundary + context.
+  // 4. Always surface locally in dev for greppable boundary + context.
   if (import.meta.env?.DEV) {
     console.error("[reportError]", context.boundary ?? "boundary", error, context);
   }

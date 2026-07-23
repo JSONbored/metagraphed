@@ -6,14 +6,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // `import posthog from 'posthog-js'` in real code).
 const init = vi.hoisted(() => vi.fn());
 const capture = vi.hoisted(() => vi.fn());
+const captureExceptionSpy = vi.hoisted(() => vi.fn());
 
-vi.mock("posthog-js", () => ({ default: { init, capture } }));
+vi.mock("posthog-js", () => ({
+  default: { init, capture, captureException: captureExceptionSpy },
+}));
 
 describe("analytics (PostHog web analytics)", () => {
   beforeEach(() => {
     vi.resetModules();
     init.mockClear();
     capture.mockClear();
+    captureExceptionSpy.mockClear();
   });
 
   afterEach(() => {
@@ -45,6 +49,15 @@ describe("analytics (PostHog web analytics)", () => {
       await Promise.resolve();
       expect(init).not.toHaveBeenCalled();
       expect(capture).not.toHaveBeenCalled();
+    });
+
+    it("captureException never loads posthog-js or captures", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "");
+      const { captureException } = await import("./analytics");
+      captureException(new Error("boom"), { boundary: "panel_shell" });
+      await Promise.resolve();
+      expect(init).not.toHaveBeenCalled();
+      expect(captureExceptionSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -119,6 +132,30 @@ describe("analytics (PostHog web analytics)", () => {
       captureEvent("web_vitals", { metric: "CLS", value: 12 });
       await vi.waitFor(() => expect(capture).toHaveBeenCalled());
       expect(capture).toHaveBeenCalledWith("web_vitals", { metric: "CLS", value: 12 });
+    });
+
+    it("captureException calls posthog-js's dedicated captureException (never the generic .capture)", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const { captureException } = await import("./analytics");
+      const err = new Error("boom");
+      captureException(err, { boundary: "panel_shell", componentStack: "<stack>" });
+      await vi.waitFor(() => expect(captureExceptionSpy).toHaveBeenCalled());
+      expect(captureExceptionSpy).toHaveBeenCalledWith(err, {
+        boundary: "panel_shell",
+        componentStack: "<stack>",
+      });
+      // Properties are merged FLAT (posthog-js's own signature), never
+      // nested under an `extra` key the way the Sentry sink does it.
+      expect(capture).not.toHaveBeenCalled();
+    });
+
+    it("captureException shares the same lazily-loaded instance as capturePageview/captureEvent (no second init)", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const { capturePageview, captureException } = await import("./analytics");
+      capturePageview("https://metagraph.sh/");
+      captureException(new Error("boom"));
+      await vi.waitFor(() => expect(captureExceptionSpy).toHaveBeenCalled());
+      expect(init).toHaveBeenCalledTimes(1);
     });
 
     it("a posthog-js init failure never throws, and later captures are silently dropped", async () => {

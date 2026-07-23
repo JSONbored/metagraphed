@@ -32,6 +32,7 @@
     "@jsonbored/ui-kit": "*",
     "@polkadot/api": "^16.5.6",
     "@polkadot/extension-dapp": "^0.63.1",
+    "@posthog/rollup-plugin": "^1.4.7",
     "@sentry/browser": "^10.60.0",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.83.0",
