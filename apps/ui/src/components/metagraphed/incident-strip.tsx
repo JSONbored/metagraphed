@@ -30,14 +30,26 @@ function persistDismissed(set: Set<string>) {
   }
 }
 
-function isActive(i: EndpointIncident): boolean {
+// The base Bittensor RPC/WSS layer -- the endpoints metagraphed's own proxy
+// actually routes through -- as opposed to a subnet's own dashboard/API/data
+// artifacts (`subnet-api`/`openapi`/`sse`/`data-artifact`), which fail their
+// content probes constantly and are data-quality drift, not a network event.
+const BASE_LAYER = "bittensor-base";
+
+export function isMajorOutage(i: EndpointIncident): boolean {
   if (i.ended_at) return false;
-  const state = (i.state ?? "").toLowerCase();
-  return state === "down" || state === "warn" || state === "degraded";
+  return i.layer === BASE_LAYER && i.severity === "critical";
 }
 
 /**
  * Site-wide active-incident banner for operational routes.
+ *
+ * Reserved for major, network-affecting events: a proxied Bittensor RPC/WSS
+ * node fully down (`layer: "bittensor-base"`, `severity: "critical"`) -- not
+ * the much larger and noisier stream of individual subnets' own dashboards
+ * and APIs failing their content probes, nor transient/degraded blips on an
+ * otherwise-redundant RPC pool. Those still show up in the fuller incident
+ * feed on /health; they just don't warrant interrupting every page.
  *
  * On a subnet detail page the masthead HealthPill is the sole health signal for
  * *that* subnet (#5332). Incidents scoped to the viewed netuid are therefore
@@ -60,7 +72,7 @@ export function IncidentStrip() {
     if (error || !data) return [];
     return (
       (data.data as EndpointIncident[])
-        .filter(isActive)
+        .filter(isMajorOutage)
         .filter((i) => !dismissed.has(i.id))
         // Masthead owns health for the currently viewed subnet (coerce netuid
         // so string/number API values never leave "SN1 DEGRADED" stuck on /subnets/1).

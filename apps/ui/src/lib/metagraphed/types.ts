@@ -361,6 +361,9 @@ export interface EndpointIncident {
   message?: string;
   started_at?: string;
   ended_at?: string | null;
+  kind?: string; // subtensor-rpc | subtensor-wss | archive | subnet-api | openapi | sse | data-artifact
+  layer?: string; // bittensor-base | subnet-app | data-provider
+  severity?: string; // critical | warning | info
   [key: string]: unknown;
 }
 
