@@ -15,6 +15,42 @@ import {
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.ts";
 
+type Row = Record<string, unknown>;
+
+interface Artifact {
+  content_type: string;
+  key: string;
+  latest_key: string;
+  path: string;
+  sha256: string;
+  size_bytes: number;
+  storage_tier: string;
+}
+
+interface FullManifest {
+  schema_version: number;
+  contract_version: string;
+  generated_at: string;
+  bucket_binding: string;
+  bucket_name: string;
+  latest_prefix: string;
+  run_prefix: string;
+  artifact_count: number;
+  artifact_size_bytes: number;
+  artifacts: Artifact[];
+}
+
+interface CompactManifest extends FullManifest {
+  manifest_kind: string;
+  full_manifest_key: string;
+  full_manifest_run_key: string;
+  full_artifact_count: number;
+  full_artifact_size_bytes: number;
+  required_artifact_paths: string[];
+  storage_tier_counts: Record<string, number>;
+  storage_tier_size_bytes: Record<string, number>;
+}
+
 // og-image.png (#6502) is the one binary exception to this otherwise
 // JSON/.d.ts-only manifest -- named exactly, not a general ".png" allowance,
 // so a stray image dropped anywhere under these roots is never accidentally
@@ -34,18 +70,24 @@ const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 // METAGRAPH_RUN_ID nor METAGRAPH_BUILD_TIMESTAMP is set (local dev), reuse
 // the committed manifest's generated_at as the runId so the run_prefix stays
 // stable and never shows 1970 epoch timestamps.
-const manifest = await readJson(manifestPath).catch(() => null);
+const manifest: Row | null = await readJson(manifestPath).catch(() => null);
 const buildGeneratedAt =
   process.env.METAGRAPH_RUN_ID || process.env.METAGRAPH_BUILD_TIMESTAMP
     ? buildTimestamp()
-    : (manifest?.generated_at ?? new Date().toISOString());
-const fullManifest = write
+    : ((manifest?.generated_at as string | undefined) ??
+      new Date().toISOString());
+const fullManifest: FullManifest | null = write
   ? await buildManifest(buildGeneratedAt)
   : existsSync(r2StagingRoot)
-    ? await buildManifest(manifest.generated_at)
-    : await readJson(fullManifestPath).catch(() => null);
-const compactManifest = write ? buildCompactManifest(fullManifest) : manifest;
-const validationManifest = fullManifest || compactManifest;
+    ? await buildManifest(manifest?.generated_at as string)
+    : ((await readJson(fullManifestPath).catch(
+        () => null,
+      )) as FullManifest | null);
+const compactManifest: CompactManifest | Row = write
+  ? buildCompactManifest(fullManifest as FullManifest)
+  : (manifest as Row);
+const validationManifest: FullManifest | CompactManifest | Row =
+  fullManifest || compactManifest;
 
 if (!write && fullManifest) {
   const expectedManifest = buildCompactManifest(fullManifest);
@@ -69,8 +111,9 @@ const summary = {
   bucket_binding: compactManifest.bucket_binding,
   bucket_name: compactManifest.bucket_name,
   full_artifact_count:
-    compactManifest.full_artifact_count || compactManifest.artifact_count,
-  manifest_kind: compactManifest.manifest_kind || "full",
+    (compactManifest as Row).full_artifact_count ||
+    compactManifest.artifact_count,
+  manifest_kind: (compactManifest as Row).manifest_kind || "full",
   latest_prefix: compactManifest.latest_prefix,
   run_prefix: compactManifest.run_prefix,
 };
@@ -81,7 +124,7 @@ if (write) {
   await writeJson(manifestPath, compactManifest);
 }
 
-for (const artifact of validationManifest.artifacts) {
+for (const artifact of (validationManifest as Row).artifacts as Row[]) {
   if (
     !artifact.key ||
     !artifact.latest_key ||
@@ -98,7 +141,9 @@ for (const artifact of validationManifest.artifacts) {
 
 console.log(stableStringify(summary));
 
-async function buildManifest(generatedAt = buildTimestamp()) {
+async function buildManifest(
+  generatedAt: string = buildTimestamp(),
+): Promise<FullManifest> {
   // The R2 immutable run prefix must stay UNIQUE per publish even though
   // generated_at is a deterministic epoch marker (issue #349) — otherwise every
   // publish would collide on runs/1970.../ and lose atomic-swap safety. The publish
@@ -109,7 +154,7 @@ async function buildManifest(generatedAt = buildTimestamp()) {
   const publicRoot = path.join(repoRoot, "public/metagraph");
   const r2Root = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
   const files = await listManifestArtifactFiles({ publicRoot, r2Root });
-  const artifacts = [];
+  const artifacts: Artifact[] = [];
   for (const { file, root } of files) {
     const relative = path.relative(root, file).replace(/\\/g, "/");
     if (["build-summary.json", "r2-manifest.json"].includes(relative)) {
@@ -145,7 +190,7 @@ async function buildManifest(generatedAt = buildTimestamp()) {
   };
 }
 
-function buildCompactManifest(fullManifest) {
+function buildCompactManifest(fullManifest: FullManifest): CompactManifest {
   const compactArtifacts = fullManifest.artifacts.filter(
     (artifact) => artifact.storage_tier !== "r2",
   );
@@ -176,22 +221,39 @@ function buildCompactManifest(fullManifest) {
   };
 }
 
-function countByStorageTier(artifacts) {
-  return artifacts.reduce((counts, artifact) => {
-    counts[artifact.storage_tier] = (counts[artifact.storage_tier] || 0) + 1;
-    return counts;
-  }, {});
+function countByStorageTier(artifacts: Artifact[]): Record<string, number> {
+  return artifacts.reduce(
+    (counts: Record<string, number>, artifact) => {
+      counts[artifact.storage_tier] = (counts[artifact.storage_tier] || 0) + 1;
+      return counts;
+    },
+    {} as Record<string, number>,
+  );
 }
 
-function sumBytesByStorageTier(artifacts) {
-  return artifacts.reduce((counts, artifact) => {
-    counts[artifact.storage_tier] =
-      (counts[artifact.storage_tier] || 0) + artifact.size_bytes;
-    return counts;
-  }, {});
+function sumBytesByStorageTier(artifacts: Artifact[]): Record<string, number> {
+  return artifacts.reduce(
+    (counts: Record<string, number>, artifact) => {
+      counts[artifact.storage_tier] =
+        (counts[artifact.storage_tier] || 0) + artifact.size_bytes;
+      return counts;
+    },
+    {} as Record<string, number>,
+  );
 }
 
-async function listManifestArtifactFiles({ publicRoot, r2Root }) {
+interface ManifestFileEntry {
+  file: string;
+  root: string;
+}
+
+async function listManifestArtifactFiles({
+  publicRoot,
+  r2Root,
+}: {
+  publicRoot: string;
+  r2Root: string;
+}): Promise<ManifestFileEntry[]> {
   const publicFiles = (await listArtifactFiles(publicRoot))
     .filter((file) => {
       const relative = path.relative(publicRoot, file).replace(/\\/g, "/");
@@ -209,18 +271,18 @@ async function listManifestArtifactFiles({ publicRoot, r2Root }) {
   });
 }
 
-async function listArtifactFiles(dirPath) {
+async function listArtifactFiles(dirPath: string): Promise<string[]> {
   let entries;
   try {
     entries = await readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    if (error.code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return [];
     }
     throw error;
   }
 
-  const files = [];
+  const files: string[] = [];
   for (const entry of entries) {
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
@@ -232,7 +294,7 @@ async function listArtifactFiles(dirPath) {
   return files.sort((a, b) => a.localeCompare(b));
 }
 
-function isManifestedArtifact(fileName) {
+function isManifestedArtifact(fileName: string): boolean {
   return (
     fileName.endsWith(".json") ||
     fileName.endsWith(".d.ts") ||
@@ -240,7 +302,7 @@ function isManifestedArtifact(fileName) {
   );
 }
 
-function contentTypeFor(relativePath) {
+function contentTypeFor(relativePath: string): string {
   if (relativePath.endsWith(".d.ts")) {
     return "text/plain; charset=utf-8";
   }

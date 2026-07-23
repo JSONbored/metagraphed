@@ -425,7 +425,7 @@ test("artifact build does not preserve forged endpoint index health", () => {
       env: process.env,
       stdio: "pipe",
     });
-    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+    execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,
@@ -528,7 +528,7 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       env: process.env,
       stdio: "pipe",
     });
-    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+    execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: process.env,
@@ -726,7 +726,7 @@ test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", 
 
   try {
     rmSync(r2StagingRoot, { recursive: true, force: true });
-    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+    execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: {
@@ -738,7 +738,7 @@ test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", 
 
     const dryRunEnv = { ...process.env };
     delete dryRunEnv.METAGRAPH_BUILD_TIMESTAMP;
-    const output = execFileSync(process.execPath, ["scripts/r2-manifest.mjs"], {
+    const output = execFileSync(process.execPath, ["scripts/r2-manifest.ts"], {
       cwd: process.cwd(),
       encoding: "utf8",
       env: dryRunEnv,
@@ -2567,7 +2567,7 @@ function restoreSupportArtifacts(snapshot) {
   for (const [filePath, content] of snapshot) {
     writeFileSync(filePath, content);
   }
-  execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+  execFileSync(process.execPath, ["scripts/r2-manifest.ts", "--write"], {
     cwd: process.cwd(),
     encoding: "utf8",
     env: process.env,

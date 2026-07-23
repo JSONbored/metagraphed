@@ -61,7 +61,7 @@ if (result.status !== 0) {
 
 const manifestResult = spawnSync(
   process.execPath,
-  ["scripts/r2-manifest.mjs", "--write"],
+  ["scripts/r2-manifest.ts", "--write"],
   {
     cwd: repoRoot,
     encoding: "utf8",

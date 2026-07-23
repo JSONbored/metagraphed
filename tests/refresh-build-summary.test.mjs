@@ -7,7 +7,7 @@ import { r2StagingRoot, repoRoot } from "../scripts/lib.mjs";
 
 // build-summary.json lives at the R2 staging root (#1003). It is the artifact the
 // refresh script rewrites, so — like the canonical writer in build-artifacts.mjs
-// and r2-manifest.mjs — it must exclude build-summary.json (and r2-manifest.json)
+// and r2-manifest.ts — it must exclude build-summary.json (and r2-manifest.json)
 // from its own artifact inventory. A stale self-entry would inflate
 // artifact_count / artifact_size_bytes and embed a hash of the pre-rewrite file.
 //
