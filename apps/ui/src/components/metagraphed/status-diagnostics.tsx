@@ -367,7 +367,10 @@ export function SourceHealthTable() {
 
   return (
     <div className="space-y-3">
-      <Panel dense bodyClassName="flex flex-wrap items-center gap-4 font-mono text-[12px] tabular-nums">
+      <Panel
+        dense
+        bodyClassName="flex flex-wrap items-center gap-4 font-mono text-[12px] tabular-nums"
+      >
         <span className="text-health-ok">{summary.status_counts.ok ?? 0} ok</span>
         <span className="text-health-warn">{summary.status_counts.degraded ?? 0} degraded</span>
         <span className="text-health-down">{summary.status_counts.failed ?? 0} failed</span>
