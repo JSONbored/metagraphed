@@ -20,6 +20,7 @@ import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
 import { Route as DomainsRouteImport } from './routes/domains'
+import { Route as DelegateRouteImport } from './routes/delegate'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -100,6 +101,11 @@ const EndpointsRoute = EndpointsRouteImport.update({
 const DomainsRoute = DomainsRouteImport.update({
   id: '/domains',
   path: '/domains',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DelegateRoute = DelegateRouteImport.update({
+  id: '/delegate',
+  path: '/delegate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsRoute = AgentsRouteImport.update({
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -316,6 +324,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/agents': typeof AgentsRoute
+  '/delegate': typeof DelegateRoute
   '/domains': typeof DomainsRoute
   '/endpoints': typeof EndpointsRoute
   '/explorer': typeof ExplorerRoute
@@ -357,6 +366,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/delegate'
     | '/domains'
     | '/endpoints'
     | '/explorer'
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/delegate'
     | '/domains'
     | '/endpoints'
     | '/explorer'
@@ -435,6 +446,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/agents'
+    | '/delegate'
     | '/domains'
     | '/endpoints'
     | '/explorer'
@@ -475,6 +487,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AgentsRoute: typeof AgentsRoute
+  DelegateRoute: typeof DelegateRoute
   DomainsRoute: typeof DomainsRoute
   EndpointsRoute: typeof EndpointsRoute
   ExplorerRoute: typeof ExplorerRoute
@@ -588,6 +601,13 @@ declare module '@tanstack/react-router' {
       path: '/domains'
       fullPath: '/domains'
       preLoaderRoute: typeof DomainsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delegate': {
+      id: '/delegate'
+      path: '/delegate'
+      fullPath: '/delegate'
+      preLoaderRoute: typeof DelegateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents': {
@@ -779,6 +799,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AgentsRoute: AgentsRoute,
+  DelegateRoute: DelegateRoute,
   DomainsRoute: DomainsRoute,
   EndpointsRoute: EndpointsRoute,
   ExplorerRoute: ExplorerRoute,
