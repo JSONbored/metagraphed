@@ -31,7 +31,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { stableStringify } from "./lib.mjs";
-import { initSentry, endSessionAndFlush } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.ts";
 import {
   ABSOLUTE_FLOOR_TAO,
   ALERT_THRESHOLD_RATIO,

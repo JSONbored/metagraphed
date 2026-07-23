@@ -37,7 +37,7 @@ import { html } from "satori-html";
 import { R2_STAGING_RELATIVE_ROOT } from "../src/artifact-storage.ts";
 import { buildStatParts, renderMarkup } from "../src/og-image.ts";
 import { repoRoot, stableStringify } from "./lib.mjs";
-import { initSentry, endSessionAndFlush } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.ts";
 import * as Sentry from "@sentry/node";
 
 initSentry("refresh-og-image");

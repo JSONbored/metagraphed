@@ -73,7 +73,7 @@ export function initSentry(): void {
     // session on every process boot) and replace it, instead of there being
     // exactly one session per boot. Confirmed empirically against a real
     // local Sentry-envelope-receiving HTTP server (see scripts/
-    // observability.mjs's own comment on this same integration for the
+    // observability.ts's own comment on this same integration for the
     // canonical writeup).
     integrations: (integrations) =>
       integrations.filter(
@@ -83,11 +83,11 @@ export function initSentry(): void {
   Sentry.setTag("component", "chain-firehose-relay");
   // Release-health session tracking (Crash Free Sessions/Users), process-
   // lifetime model: this is an always-on relay, not a one-shot batch script
-  // (contrast scripts/observability.mjs's per-run sessions) -- one session
+  // (contrast scripts/observability.ts's per-run sessions) -- one session
   // per process boot, closed healthy on the existing graceful SIGTERM/SIGINT
   // shutdown path below, or marked crashed in main()'s own top-level .catch()
   // (see that catch block's comment for why no separate uncaughtException/
-  // unhandledRejection wiring is needed here, unlike scripts/observability.mjs).
+  // unhandledRejection wiring is needed here, unlike scripts/observability.ts).
   Sentry.startSession();
 }
 
@@ -867,7 +867,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       // this same chain, there's no other unguarded top-level code), so
       // marking the session crashed here -- rather than a separate
       // uncaughtException/unhandledRejection handler like
-      // scripts/observability.mjs needs -- covers every real crash.
+      // scripts/observability.ts needs -- covers every real crash.
       Sentry.captureException(error);
       const session = Sentry.getIsolationScope().getSession();
       if (session) {

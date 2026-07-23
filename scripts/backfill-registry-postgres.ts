@@ -41,7 +41,7 @@ import {
 } from "./lib.mjs";
 import { generateBaselineOverlaySet } from "./generated-overlays.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
-import { initSentry, endSessionAndFlush } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.ts";
 
 type Row = Record<string, unknown>;
 

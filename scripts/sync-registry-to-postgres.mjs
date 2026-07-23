@@ -49,7 +49,7 @@ import {
   subnetSurfaceKey,
 } from "./lib.mjs";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
-import { initSentry, endSessionAndFlush } from "./observability.mjs";
+import { initSentry, endSessionAndFlush } from "./observability.ts";
 
 initSentry("sync-registry-to-postgres");
 

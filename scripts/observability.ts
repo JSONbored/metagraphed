@@ -34,7 +34,7 @@ import * as Sentry from "@sentry/node";
 // complete without an unhandled error," not a user session.
 let sentryInitialized = false;
 
-async function handleFatal(error, exitCode) {
+async function handleFatal(error: unknown, exitCode: number): Promise<void> {
   console.error("[observability] fatal:", error);
   if (sentryInitialized) {
     Sentry.captureException(error);
@@ -54,7 +54,7 @@ async function handleFatal(error, exitCode) {
 // client-side/public code, write-only -- so passing it into these scripts'
 // existing "gets zero secrets" trust boundaries where applicable doesn't
 // weaken them).
-export function initSentry(component) {
+export function initSentry(component: string): void {
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return;
 
@@ -112,6 +112,9 @@ export async function endSessionAndFlush() {
 // "unhandled" once something calls .catch() on it, so that script calls
 // this directly instead of relying on the uncaughtException/
 // unhandledRejection handlers above.
-export async function captureFatalAndExit(error, exitCode = 1) {
+export async function captureFatalAndExit(
+  error: unknown,
+  exitCode = 1,
+): Promise<void> {
   await handleFatal(error, exitCode);
 }

@@ -1,4 +1,4 @@
-// Unit tests for scripts/observability.mjs -- the shared Sentry init for
+// Unit tests for scripts/observability.ts -- the shared Sentry init for
 // the box-side data-refresh-economics/data-refresh-node scripts, plus the
 // release-health (crash-free session) tracking layered on top of it.
 import assert from "node:assert/strict";
@@ -31,7 +31,7 @@ import {
   initSentry,
   endSessionAndFlush,
   captureFatalAndExit,
-} from "../scripts/observability.mjs";
+} from "../scripts/observability.ts";
 
 let onSpy;
 beforeEach(() => {

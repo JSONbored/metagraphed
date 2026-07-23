@@ -13,14 +13,14 @@ import * as Sentry from "@sentry/node";
 
 // Release-health session tracking (Crash Free Sessions/Users), process-
 // lifetime model: this is an always-on server, not a one-shot batch script
-// (contrast the canonical metagraphed repo's scripts/observability.mjs,
+// (contrast the canonical metagraphed repo's scripts/observability.ts,
 // which sessions per script run) -- one session per process boot, closed
 // healthy on graceful SIGTERM/SIGINT shutdown (see server.mjs's own
 // shutdown handler) or marked crashed here on a genuinely uncaught
 // exception. @sentry/node's default OnUncaughtException/OnUnhandledRejection
 // integrations don't mark the active session crashed before exiting
 // (confirmed by reading node_modules/@sentry/node-core's actual source --
-// same finding scripts/observability.mjs's own header documents), and unlike
+// same finding scripts/observability.ts's own header documents), and unlike
 // scripts/chain-firehose-relay.ts this server has no single top-level
 // main().catch() boundary every crash funnels through (any of its event
 // handlers -- the HTTP server, the WS upgrade handler, the refresh/heartbeat

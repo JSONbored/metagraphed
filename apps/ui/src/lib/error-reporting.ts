@@ -31,7 +31,7 @@ import { reportLovableError } from "./lovable-error-reporting";
  * sets it (e.g. a future Workers Builds dashboard config), otherwise falls
  * back to the real "metagraphed" project DSN -- safe to hardcode since a
  * Sentry DSN is designed to be public/embeddable in client JS (see
- * scripts/observability.mjs's own comment on the same point). The fallback
+ * scripts/observability.ts's own comment on the same point). The fallback
  * only applies to production builds (`import.meta.env.PROD`); `vite dev`
  * stays silent by default so local debugging doesn't mix into production
  * error tracking, matching this module's pre-existing "no eager Sentry load

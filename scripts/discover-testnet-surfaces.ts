@@ -27,7 +27,7 @@ import {
   initSentry,
   endSessionAndFlush,
   captureFatalAndExit,
-} from "./observability.mjs";
+} from "./observability.ts";
 
 type Row = Record<string, unknown>;
 
@@ -309,7 +309,7 @@ if (
         `testnet discovery failed: ${(error as Error)?.message || error}`,
       );
       // Explicit capture required here (not left to @sentry/node's default
-      // OnUnhandledRejection integration, see observability.mjs's own
+      // OnUnhandledRejection integration, see observability.ts's own
       // comment): Node stops considering a promise "unhandled" once
       // something calls .catch() on it, which this script already did
       // before Sentry instrumentation existed.
