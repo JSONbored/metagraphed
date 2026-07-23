@@ -6,7 +6,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, ErrorState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { statPhase, type StatPhase } from "@/lib/metagraphed/stat-phase";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { AsyncPanel } from "@/components/metagraphed/primitives";
+import { AsyncPanel, Panel } from "@/components/metagraphed/primitives";
 import {
   AccentBand,
   BrandIcon,
@@ -292,7 +292,7 @@ function OverviewPage() {
               title="Public, read-only, JSON-Schema canonical."
               description="Every list and detail view in this app is also a documented API route. Same data, same envelope."
             />
-            <div className="rounded-xl border border-border bg-card p-6 max-w-2xl">
+            <Panel as="div" className="max-w-2xl">
               <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted mb-2">
                 Try it
               </div>
@@ -314,7 +314,7 @@ function OverviewPage() {
                   OpenAPI spec
                 </a>
               </div>
-            </div>
+            </Panel>
           </section>
 
           <div className="mt-section-gap flex justify-center">
@@ -662,36 +662,38 @@ function PerfCard({
 }) {
   const hasSeries = phase === "ready" && !!series && series.length > 1;
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-baseline justify-between mb-3">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          {label}
+    <Panel as="div" flush>
+      <div className="p-5">
+        <div className="flex items-baseline justify-between mb-3">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            {label}
+          </div>
+          <div className="font-mono text-[10px] text-ink-muted">{hint}</div>
         </div>
-        <div className="font-mono text-[10px] text-ink-muted">{hint}</div>
-      </div>
-      <div
-        className={`font-display text-3xl md:text-4xl font-semibold leading-none tabular-nums ${accent ? "text-accent" : "text-ink-strong"}`}
-      >
-        {phase === "pending" ? (
-          <Skeleton className="h-9 w-24" />
-        ) : phase === "error" ? (
-          <StatUnavailable iconClassName="size-4" />
-        ) : (
-          value
-        )}
-      </div>
-      {hasSeries ? (
-        <div className="mt-4">
-          <Sparkline
-            values={series}
-            width={520}
-            height={56}
-            color={accent ? "var(--accent)" : "var(--ink-strong)"}
-            ariaLabel={label}
-          />
+        <div
+          className={`font-display text-3xl md:text-4xl font-semibold leading-none tabular-nums ${accent ? "text-accent" : "text-ink-strong"}`}
+        >
+          {phase === "pending" ? (
+            <Skeleton className="h-9 w-24" />
+          ) : phase === "error" ? (
+            <StatUnavailable iconClassName="size-4" />
+          ) : (
+            value
+          )}
         </div>
-      ) : null}
-    </div>
+        {hasSeries ? (
+          <div className="mt-4">
+            <Sparkline
+              values={series}
+              width={520}
+              height={56}
+              color={accent ? "var(--accent)" : "var(--ink-strong)"}
+              ariaLabel={label}
+            />
+          </div>
+        ) : null}
+      </div>
+    </Panel>
   );
 }
 
@@ -848,13 +850,13 @@ function PilotCard({
 
 function TableSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel as="div" flush className="overflow-hidden">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="border-b border-border last:border-b-0 px-4 py-3">
           <Skeleton className="h-4 w-full" />
         </div>
       ))}
-    </div>
+    </Panel>
   );
 }
 
@@ -891,7 +893,7 @@ function SubnetPreviewTable() {
   const total = coverage?.netuids_active ?? coverage?.netuids_total;
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <Panel as="div" flush className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-surface/40 text-[10px] font-mono uppercase tracking-[0.18em] text-ink-muted">
@@ -973,7 +975,7 @@ function SubnetPreviewTable() {
           refresh
         </button>
       </div>
-    </div>
+    </Panel>
   );
 }
 
