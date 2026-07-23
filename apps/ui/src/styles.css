@@ -157,6 +157,38 @@
   height: 0;
 }
 
+/* A desktop subnet table fits the shell, so an overflow ancestor is both
+   unnecessary and harmful: it becomes the sticky cells' containing block.
+   Tablet retains horizontal scrolling; mobile uses the card fallback. */
+@media (min-width: 1024px) {
+  /* The desktop table header is the persistent navigation layer. Keeping the
+     filter toolbar in normal flow prevents two sticky rows from racing for a
+     ResizeObserver-derived offset as filters wrap. */
+  #subnets-list > div > div:first-child {
+    position: static;
+  }
+  #subnets-list .mg-table-scroll {
+    overflow: visible;
+  }
+  #subnets-list div:has(> .mg-table-scroll) {
+    overflow: visible;
+  }
+}
+
+.mg-subnets-sticky-head {
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--border);
+}
+@media (min-width: 1024px) {
+  .mg-subnets-sticky-head {
+    position: sticky;
+    top: var(--mg-sticky-offset, 3.5rem);
+    z-index: 10;
+    background: color-mix(in oklab, var(--card) 94%, transparent);
+    backdrop-filter: blur(8px);
+  }
+}
+
 /* Skeleton pulse used by TableSkeleton primitive. */
 @keyframes mg-skel-pulse {
   0%,

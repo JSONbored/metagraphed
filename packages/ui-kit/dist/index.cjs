@@ -396,42 +396,6 @@ var SheetDescription = React3__namespace.forwardRef(({ className, ...props }, re
   }
 ));
 SheetDescription.displayName = DialogPrimitive__namespace.Description.displayName;
-var Toaster = ({ ...props }) => {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    sonner.Toaster,
-    {
-      className: "toaster group",
-      toastOptions: {
-        classNames: {
-          toast: "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground"
-        }
-      },
-      ...props
-    }
-  );
-};
-var TooltipProvider = TooltipPrimitive__namespace.Provider;
-var Tooltip = TooltipPrimitive__namespace.Root;
-var TooltipTrigger = TooltipPrimitive__namespace.Trigger;
-var TooltipContent = React3__namespace.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(TooltipPrimitive__namespace.Portal, { children: /* @__PURE__ */ jsxRuntime.jsx(
-  TooltipPrimitive__namespace.Content,
-  {
-    ref,
-    sideOffset,
-    className: cn(
-      "z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-tooltip-content-transform-origin)",
-      className
-    ),
-    ...props
-  }
-) }));
-TooltipContent.displayName = TooltipPrimitive__namespace.Content.displayName;
-function Skeleton({ className = "h-4 w-full" }) {
-  return /* @__PURE__ */ jsxRuntime.jsx("div", { className: `animate-pulse rounded bg-surface-2 ${className}` });
-}
 
 // src/lib/format.ts
 function classNames(...parts) {
@@ -497,6 +461,86 @@ function relative(diffMs) {
   if (hr < 48) return `${hr}h ago`;
   const day = Math.round(hr / 24);
   return `${day}d ago`;
+}
+function SegmentedToggle({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    "div",
+    {
+      role: "tablist",
+      "aria-label": ariaLabel,
+      className: classNames(
+        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
+        className
+      ),
+      children: options.map(
+        ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
+          const active = v === value;
+          return /* @__PURE__ */ jsxRuntime.jsxs(
+            "button",
+            {
+              type: "button",
+              role: "tab",
+              "aria-selected": active,
+              "aria-label": optionAriaLabel ?? label,
+              title: title ?? label,
+              onClick: () => onChange(v),
+              className: classNames(
+                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
+                active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
+              ),
+              children: [
+                Icon ? /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5" }) : null,
+                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
+              ]
+            },
+            v
+          );
+        }
+      )
+    }
+  );
+}
+var Toaster = ({ ...props }) => {
+  return /* @__PURE__ */ jsxRuntime.jsx(
+    sonner.Toaster,
+    {
+      className: "toaster group",
+      toastOptions: {
+        classNames: {
+          toast: "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
+          description: "group-[.toast]:text-muted-foreground",
+          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
+          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground"
+        }
+      },
+      ...props
+    }
+  );
+};
+var TooltipProvider = TooltipPrimitive__namespace.Provider;
+var Tooltip = TooltipPrimitive__namespace.Root;
+var TooltipTrigger = TooltipPrimitive__namespace.Trigger;
+var TooltipContent = React3__namespace.forwardRef(({ className, sideOffset = 4, ...props }, ref) => /* @__PURE__ */ jsxRuntime.jsx(TooltipPrimitive__namespace.Portal, { children: /* @__PURE__ */ jsxRuntime.jsx(
+  TooltipPrimitive__namespace.Content,
+  {
+    ref,
+    sideOffset,
+    className: cn(
+      "z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-tooltip-content-transform-origin)",
+      className
+    ),
+    ...props
+  }
+) }));
+TooltipContent.displayName = TooltipPrimitive__namespace.Content.displayName;
+function Skeleton({ className = "h-4 w-full" }) {
+  return /* @__PURE__ */ jsxRuntime.jsx("div", { className: `animate-pulse rounded bg-surface-2 ${className}` });
 }
 function AccentBand({
   children,
@@ -1479,50 +1523,6 @@ function CopyableCode({
     /* @__PURE__ */ jsxRuntime.jsx(CopyStatusRegion, { children: copied ? `${label ?? "Value"} copied to clipboard` : "" })
   ] });
 }
-function SegmentedToggle({
-  options,
-  value,
-  onChange,
-  ariaLabel,
-  className
-}) {
-  return /* @__PURE__ */ jsxRuntime.jsx(
-    "div",
-    {
-      role: "tablist",
-      "aria-label": ariaLabel,
-      className: classNames(
-        "inline-flex items-center rounded-md border border-border bg-card p-0.5",
-        className
-      ),
-      children: options.map(
-        ({ value: v, label, Icon, ariaLabel: optionAriaLabel, title }) => {
-          const active = v === value;
-          return /* @__PURE__ */ jsxRuntime.jsxs(
-            "button",
-            {
-              type: "button",
-              role: "tab",
-              "aria-selected": active,
-              "aria-label": optionAriaLabel ?? label,
-              title: title ?? label,
-              onClick: () => onChange(v),
-              className: classNames(
-                "inline-flex items-center gap-1.5 rounded px-2 py-1 text-[11px] font-medium transition-colors min-h-8",
-                active ? "bg-surface text-ink-strong" : "text-ink-muted hover:text-ink-strong"
-              ),
-              children: [
-                Icon ? /* @__PURE__ */ jsxRuntime.jsx(Icon, { className: "size-3.5" }) : null,
-                /* @__PURE__ */ jsxRuntime.jsx("span", { className: "hidden sm:inline", children: label })
-              ]
-            },
-            v
-          );
-        }
-      )
-    }
-  );
-}
 function DensityToggle({
   value,
   onChange,
@@ -1916,39 +1916,48 @@ function ListShell({
   empty,
   isEmpty,
   isStale,
-  /** When true, the rendered table can stick its <thead> at `top-0` inside a
-   *  bounded-height, internally-scrolling viewport (both axes) -- the
-   *  standard sticky-header-data-table pattern. A page-scroll-relative
-   *  sticky header and native horizontal scroll cannot coexist on the same
-   *  wrapper: `overflow-x: auto` makes that wrapper the header's nearest
-   *  scroll-container ancestor per the CSS sticky-positioning spec, and
-   *  since the wrapper itself never scrolls internally (the page scrolls
-   *  past it instead), the header's "stuck" trigger never fires -- verified
-   *  directly (#5073). Bounding the wrapper's height and letting it scroll
-   *  internally makes it the header's OWN scroll reference, so both work.
-   */
-  stickyHeader = true
+  stickyHeader: _stickyHeader = true
 }) {
+  const rootRef = React3.useRef(null);
+  const filterRef = React3.useRef(null);
+  const [filterH, setFilterH] = React3.useState(0);
+  React3.useLayoutEffect(() => {
+    const el = filterRef.current;
+    if (!el) return;
+    setFilterH(Math.round(el.getBoundingClientRect().height));
+  }, []);
+  React3.useEffect(() => {
+    const el = filterRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const h = Math.round(entries[0]?.contentRect.height ?? el.getBoundingClientRect().height);
+      setFilterH((prev) => prev === h ? prev : h);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const tableCard = "rounded border border-border bg-card overflow-hidden";
-  const tableScroll = stickyHeader ? "mg-table-scroll overflow-auto" : "overflow-x-auto";
-  return /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
+  return /* @__PURE__ */ jsxRuntime.jsxs("div", { ref: rootRef, style: { ["--mg-list-filter-offset"]: `${filterH}px` }, children: [
     /* @__PURE__ */ jsxRuntime.jsx(
       "div",
       {
+        ref: filterRef,
         className: classNames(
-          // Sticky filter bar. Offset matches header height (h-nav).
-          "sticky top-nav z-20 -mx-4 md:mx-0 mb-3",
+          // Sticky filter bar. Offset reads --mg-sticky-offset (published by
+          // AppShell to match real header + ticker height) with a fallback.
+          "sticky z-20 -mx-4 md:mx-0 mb-3",
           "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5"
         ),
+        style: { top: "var(--mg-sticky-offset, 3.5rem)" },
         children: /* @__PURE__ */ jsxRuntime.jsx("div", { className: "flex flex-wrap items-center gap-2", children: filters })
       }
     ),
     isEmpty ? empty : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
       cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
       /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: tableCard, children: [
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: tableScroll, children: table }),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-table-scroll overflow-x-auto", children: table }),
         footer
       ] }) }),
       cards && footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden mt-3", children: footer }) : null
@@ -4069,6 +4078,7 @@ exports.SCOPES = SCOPES;
 exports.ScrollReveal = ScrollReveal;
 exports.SectionAnchor = SectionAnchor;
 exports.SectionHeading = SectionHeading;
+exports.SegmentedToggle = SegmentedToggle;
 exports.ShareButton = ShareButton;
 exports.Sheet = Sheet;
 exports.SheetClose = SheetClose;
