@@ -9,6 +9,7 @@ import {
 } from "@jsonbored/ui-kit";
 
 import { resolveEndpointCard } from "@/components/metagraphed/endpoint-card-fields";
+import { Panel } from "@/components/metagraphed/primitives";
 import type { Endpoint, Provider, Subnet } from "@/lib/metagraphed/types";
 
 export interface EndpointCardListProps {
@@ -43,7 +44,7 @@ export function EndpointCardList({
           subnetById,
         );
         return (
-          <div key={e.id} className="min-w-0 rounded border border-border bg-card p-3 space-y-2">
+          <Panel as="div" dense key={e.id} className="min-w-0" bodyClassName="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                 {kindLabel}
@@ -132,7 +133,7 @@ export function EndpointCardList({
                 probed <TimeAgo at={e.last_probed_at} />
               </span>
             </SparkLegend>
-          </div>
+          </Panel>
         );
       })}
     </div>

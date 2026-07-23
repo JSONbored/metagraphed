@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Kbd } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 
 const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
   { keys: ["J", "←"], label: "Previous block" },
@@ -73,7 +74,7 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
         if (e.target === e.currentTarget) setOpen(false);
       }}
     >
-      <div className="w-full max-w-md rounded border border-border bg-card">
+      <Panel as="div" flush className="w-full max-w-md">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 id="mg-shortcut-title" className="mg-type-micro text-ink-muted">
             Keyboard shortcuts
@@ -99,7 +100,7 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
             </div>
           ))}
         </dl>
-      </div>
+      </Panel>
     </div>
   );
 }

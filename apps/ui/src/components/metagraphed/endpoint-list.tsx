@@ -15,6 +15,7 @@ import {
   Sparkline,
 } from "@jsonbored/ui-kit";
 import { useCopy } from "@/hooks/use-copy";
+import { Panel } from "@/components/metagraphed/primitives";
 import { healthColorVar } from "@/lib/health-tokens";
 import { classNames } from "@/lib/metagraphed/format";
 import {
@@ -66,7 +67,7 @@ export function EndpointList({
   return (
     <TooltipProvider delayDuration={150}>
       {/* Desktop */}
-      <div className="hidden md:block rounded-xl border border-border bg-card overflow-hidden">
+      <Panel as="div" flush className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
@@ -106,7 +107,7 @@ export function EndpointList({
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
 
       {/* Mobile */}
       <div className="md:hidden space-y-4">

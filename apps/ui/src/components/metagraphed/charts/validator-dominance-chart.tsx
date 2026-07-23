@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { BarMini, TreemapMini, type TreemapMiniDatum } from "@jsonbored/ui-kit";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { EmptyState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { TopShareCaption } from "@/components/metagraphed/top-share-caption";
 import {
   VALIDATOR_DOMINANCE_TOP_N,
@@ -47,7 +48,7 @@ export function ValidatorDominanceChart() {
   const coveredPct = rows.reduce((sum, r) => sum + r.share, 0) * 100;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <Panel as="div" dense>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Stake dominance · top {rows.length}
@@ -74,6 +75,6 @@ export function ValidatorDominanceChart() {
           />
         </div>
       ) : null}
-    </div>
+    </Panel>
   );
 }

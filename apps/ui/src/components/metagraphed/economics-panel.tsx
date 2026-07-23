@@ -15,6 +15,7 @@ import {
   RealtimeFreshness,
   type SparklinePoint,
 } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { stakeMovesTileModel } from "@/lib/metagraphed/stake-moves-tile";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { stakeTransfersTileModel } from "@/lib/metagraphed/stake-transfers-tile";
@@ -27,9 +28,9 @@ import { stakeTransfersTileModel } from "@/lib/metagraphed/stake-transfers-tile"
 
 function Notice({ children }: { children: string }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 text-xs text-ink-muted">
+    <Panel as="div" dense bodyClassName="text-xs text-ink-muted">
       {children}
-    </div>
+    </Panel>
   );
 }
 

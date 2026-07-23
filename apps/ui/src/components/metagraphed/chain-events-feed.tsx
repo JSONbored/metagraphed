@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { ResetFiltersButton, SearchInput } from "@/components/metagraphed/table-controls";
 import { TimeAgo, ListShell, LoadMore } from "@jsonbored/ui-kit";
@@ -206,9 +207,11 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
   );
 
   const cards = events.map((event) => (
-    <div
+    <Panel
+      as="div"
+      dense
       key={`${event.block_number}-${event.event_index}-card`}
-      className="rounded border border-border bg-card p-3 min-h-11"
+      className="min-h-11"
     >
       <div className="font-mono text-[11px] text-ink-strong">
         {extrinsicCall(event.pallet, event.method)}
@@ -227,7 +230,7 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
         )}
         <TimeAgo at={event.observed_at} />
       </div>
-    </div>
+    </Panel>
   ));
 
   if (isPending) return <Skeleton className="h-56 w-full" />;

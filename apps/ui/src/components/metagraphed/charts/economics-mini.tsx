@@ -4,6 +4,7 @@ import { BarChart3, Maximize2 } from "lucide-react";
 import { economicsQuery, subnetUptimeQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { Skeleton } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import {
   Dialog,
   DialogContent,
@@ -253,7 +254,7 @@ function EconomicsFallback({ netuid, surfaces }: { netuid: number; surfaces?: Su
   const uptime = dailyUptimeSeries(surfaces);
   const lastUp = uptime[uptime.length - 1];
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <Panel as="div" flush className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-b border-border bg-paper/30 px-4 py-2.5">
         <div className="flex items-center gap-3 min-w-0">
           <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
@@ -299,6 +300,6 @@ function EconomicsFallback({ netuid, surfaces }: { netuid: number; surfaces?: Su
           probes.
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

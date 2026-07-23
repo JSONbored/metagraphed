@@ -5,7 +5,7 @@ import { InfoTooltip, Kbd, Sparkline } from "@jsonbored/ui-kit";
 import { BLOCK_TERM_HINTS } from "@/lib/metagraphed/section-hints";
 import { blocksQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, humaniseSeconds, classNames } from "@/lib/metagraphed/format";
-import { ChartSkeleton } from "@/components/metagraphed/primitives";
+import { ChartSkeleton, Panel } from "@/components/metagraphed/primitives";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Block } from "@/lib/metagraphed/types";
 
@@ -62,7 +62,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
   const next = current.next_block_number;
 
   return (
-    <div className="rounded border border-border bg-card p-3">
+    <Panel as="div" dense>
       <div className="flex items-stretch gap-2">
         {/* Prev arrow */}
         <ArrowBtn
@@ -168,7 +168,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
           </div>
         </div>
       ) : null}
-    </div>
+    </Panel>
   );
 }
 
