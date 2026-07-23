@@ -394,7 +394,7 @@ function HomeHero() {
               type="button"
               onClick={openCommandPalette}
               aria-label="Search subnets, validators, endpoints, accounts. Opens command palette (⌘K)"
-              className="flex flex-1 items-center gap-3 px-4 py-3.5 text-left text-sm text-ink-muted transition-colors hover:text-ink"
+              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left text-sm text-ink-muted transition-colors hover:text-ink"
             >
               <svg
                 aria-hidden="true"
@@ -407,7 +407,7 @@ function HomeHero() {
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" strokeLinecap="round" />
               </svg>
-              <span className="flex-1 truncate">
+              <span className="min-w-0 flex-1 truncate">
                 Search subnets, validators, endpoints, accounts…
               </span>
               <kbd className="hidden sm:inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-muted">
