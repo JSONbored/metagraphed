@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, StaleBanner, RECOVERY } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import {
   BrandIcon,
@@ -420,7 +421,7 @@ function BreakdownCard({ title, data }: { title: string; data: Record<string, nu
   if (entries.length === 0) return null;
   const max = Math.max(...entries.map((e) => e[1]));
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
+    <Panel dense>
       <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong mb-2">
         {title}
       </h3>
@@ -440,7 +441,7 @@ function BreakdownCard({ title, data }: { title: string; data: Record<string, nu
           </li>
         ))}
       </ul>
-    </section>
+    </Panel>
   );
 }
 

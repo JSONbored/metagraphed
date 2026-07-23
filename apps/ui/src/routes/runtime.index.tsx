@@ -5,7 +5,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { Skeleton } from "@/components/metagraphed/states";
 import { ShareButton, DownloadCsvButton, ActionBar, TableState, TimeAgo } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import {
   RuntimeUpgradeCardList,
   orderRuntimeUpgradesNewestFirst,
@@ -83,7 +83,7 @@ function RuntimeContent() {
         />
       ) : (
         <>
-          <div className="hidden md:block rounded-xl border border-border bg-card overflow-hidden">
+          <Panel as="div" flush className="hidden md:block overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="mg-type-micro bg-surface/50 text-[10px] text-ink-muted">
@@ -125,7 +125,7 @@ function RuntimeContent() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
           <RuntimeUpgradeCardList rows={rows} className="grid gap-3 sm:grid-cols-2 md:hidden" />
         </>
       )}
@@ -161,10 +161,12 @@ function PageHeroKpis({ history }: { history: RuntimeVersionHistory }) {
 
 function KpiTile({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-3">
-      <div className="mg-type-micro text-[10px] text-ink-muted">{label}</div>
-      <div className="mt-1 font-mono text-lg text-ink-strong tabular-nums">{value}</div>
-      {hint ? <div className="mt-0.5 text-xs text-ink-muted">{hint}</div> : null}
-    </div>
+    <Panel as="div" flush>
+      <div className="px-4 py-3">
+        <div className="mg-type-micro text-[10px] text-ink-muted">{label}</div>
+        <div className="mt-1 font-mono text-lg text-ink-strong tabular-nums">{value}</div>
+        {hint ? <div className="mt-0.5 text-xs text-ink-muted">{hint}</div> : null}
+      </div>
+    </Panel>
   );
 }

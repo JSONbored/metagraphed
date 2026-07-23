@@ -7,6 +7,7 @@ import { Globe, Github, BookOpen, Radio, Layers, Network } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, StaleBanner } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import {
   AsyncPanel,
   FilterChipRow,
@@ -148,10 +149,7 @@ function ProvidersSkeleton() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-lg border border-border bg-card p-4 animate-pulse h-[180px]"
-        >
+        <Panel as="div" dense className="animate-pulse h-[180px]" key={i}>
           <div className="flex items-start gap-3">
             <div className="size-9 rounded bg-surface" />
             <div className="flex-1 space-y-2">
@@ -161,7 +159,7 @@ function ProvidersSkeleton() {
             </div>
           </div>
           <div className="mt-4 h-8 rounded bg-surface" />
-        </div>
+        </Panel>
       ))}
     </div>
   );
@@ -731,7 +729,12 @@ function SourceHealthRollup() {
   const summary = useSuspenseQuery(sourceHealthProvidersQuery()).data.data.summary;
   const status = summary.status_counts;
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-4 rounded border border-border bg-card p-3 font-mono text-[12px] tabular-nums">
+    <Panel
+      as="div"
+      dense
+      className="mt-3"
+      bodyClassName="flex flex-wrap items-center gap-4 font-mono text-[12px] tabular-nums"
+    >
       <span className="mg-label">Source health</span>
       <span className="text-health-ok">{status.ok ?? 0} ok</span>
       <span className="text-health-warn">{status.degraded ?? 0} degraded</span>
@@ -740,7 +743,7 @@ function SourceHealthRollup() {
       <span className="ml-auto text-ink-muted">
         {summary.provider_count ?? 0} providers · {summary.endpoint_count ?? 0} endpoints
       </span>
-    </div>
+    </Panel>
   );
 }
 

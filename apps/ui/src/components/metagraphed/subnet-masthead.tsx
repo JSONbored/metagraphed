@@ -28,6 +28,7 @@ import {
   Sparkline,
 } from "@jsonbored/ui-kit";
 import { StaleBanner } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import {
   subnetEndpointsQuery,
   subnetDeregistrationsQuery,
@@ -474,7 +475,11 @@ export function SubnetMasthead({
           leaving empty column slots — grid tracks are shared across every
           row, but flex lines size independently (same pattern as the
           flex-wrap strip in operational-panel.tsx). */}
-      <div className="mt-5 flex flex-wrap divide-x divide-border rounded-xl border border-border bg-card overflow-hidden [&>*]:grow [&>*]:basis-[150px] [&>*]:min-w-[150px]">
+      <Panel
+        as="div"
+        flush
+        className="mt-5 flex flex-wrap divide-x divide-border overflow-hidden [&>*]:grow [&>*]:basis-[150px] [&>*]:min-w-[150px]"
+      >
         <StatWithSpark
           label="Netuid"
           value={String(netuid).padStart(3, "0")}
@@ -650,7 +655,7 @@ export function SubnetMasthead({
           updatedAt={generatedAt}
           viz={<DotRow dots={sourceKinds} />}
         />
-      </div>
+      </Panel>
     </header>
   );
 }

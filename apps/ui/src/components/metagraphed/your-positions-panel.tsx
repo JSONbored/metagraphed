@@ -12,6 +12,7 @@ import {
 import { StakeUnstakeModal } from "@/components/metagraphed/stake-unstake-modal";
 import { MoveStakeModal } from "@/components/metagraphed/move-stake-modal";
 import { EmptyState } from "@/components/metagraphed/states";
+import { Panel } from "@/components/metagraphed/primitives";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import { classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
@@ -173,7 +174,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden overflow-x-auto rounded-xl border border-border bg-card md:block">
+      <Panel as="div" flush className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
             <tr>
@@ -228,12 +229,12 @@ export function YourPositionsPanel({ address }: { address: string }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </Panel>
 
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {positions.map((p, i) => (
-          <div key={p.key} className="space-y-2 rounded-lg border border-border bg-card p-3">
+          <Panel as="div" dense bodyClassName="space-y-2" key={p.key}>
             <div className="flex items-center justify-between gap-2">
               <Link
                 to="/subnets/$netuid"
@@ -263,7 +264,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
                 positionSpotTao={p.spotTao}
               />
             </div>
-          </div>
+          </Panel>
         ))}
       </div>
     </div>

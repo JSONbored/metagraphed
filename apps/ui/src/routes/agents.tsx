@@ -21,7 +21,7 @@ import {
   McpToolsList,
   SectionHeading,
 } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { AskBox } from "@/components/metagraphed/ask-box";
 import { SearchBox } from "@/components/metagraphed/search-box";
 import { Skeleton } from "@/components/metagraphed/states";
@@ -174,21 +174,20 @@ function AgentsBody() {
           />
           <div className="space-y-2.5">
             {SDKS.map((sdk) => (
-              <div
-                key={sdk.lang}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3"
-              >
-                <Package className="size-4 shrink-0 text-ink-muted" aria-hidden />
-                <div className="min-w-0 flex-1">
-                  <code className="block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-ink-strong">
-                    {sdk.install}
-                  </code>
-                  <ExternalLink href={sdk.url} className="font-mono text-[10px] text-ink-muted">
-                    {sdk.lang} · {sdk.pkg}
-                  </ExternalLink>
+              <Panel as="div" flush key={sdk.lang}>
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <Package className="size-4 shrink-0 text-ink-muted" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <code className="block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-ink-strong">
+                      {sdk.install}
+                    </code>
+                    <ExternalLink href={sdk.url} className="font-mono text-[10px] text-ink-muted">
+                      {sdk.lang} · {sdk.pkg}
+                    </ExternalLink>
+                  </div>
+                  <CopyButton value={sdk.install} label={`${sdk.lang} install`} compact />
                 </div>
-                <CopyButton value={sdk.install} label={`${sdk.lang} install`} compact />
-              </div>
+              </Panel>
             ))}
           </div>
         </div>
@@ -255,7 +254,7 @@ function AgentsBody() {
         <SectionHeading title="Try it" intro="No key, no account — hit any surface with curl." />
         <div className="space-y-2.5">
           {QUICKSTART.map((q) => (
-            <div key={q.label} className="rounded-lg border border-border bg-card">
+            <Panel as="div" flush key={q.label}>
               <div className="flex items-center justify-between border-b border-border px-4 py-2">
                 <span className="mg-label">{q.label}</span>
                 <CopyButton value={q.cmd} label={q.label} compact />
@@ -263,7 +262,7 @@ function AgentsBody() {
               <pre className="overflow-x-auto px-4 py-3 font-mono text-[11px] leading-relaxed text-ink">
                 {q.cmd}
               </pre>
-            </div>
+            </Panel>
           ))}
         </div>
       </section>
