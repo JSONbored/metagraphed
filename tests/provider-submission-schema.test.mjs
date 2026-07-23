@@ -2,7 +2,7 @@
 // intake shape with real constraints (submitted_by / submitted_by_url patterns,
 // additionalProperties:false at both levels, a nested provider that must satisfy
 // provider.schema.json) but was never compiled/validated against anything — only
-// validate-intake.mjs's weaker presence-only checks touched the fixture. These
+// validate-intake.ts's weaker presence-only checks touched the fixture. These
 // tests exercise the schema directly: the shipped example fixture must pass, and
 // each class of violation the schema newly catches must fail.
 import assert from "node:assert/strict";

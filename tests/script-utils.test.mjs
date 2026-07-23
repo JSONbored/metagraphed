@@ -2631,7 +2631,7 @@ test("validate:intake rejects nested retired community candidate files", async (
   await mkdir(retiredDir, { recursive: true });
   try {
     await writeFile(retiredFile, "{}\n");
-    const result = spawnSync("node", ["scripts/validate-intake.mjs"], {
+    const result = spawnSync("node", ["scripts/validate-intake.ts"], {
       cwd: repoRoot,
       encoding: "utf8",
     });

@@ -45,7 +45,13 @@ const directProviderExample = await readJson(
 const statusReportExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/status-report.json"),
 );
-const errors = [];
+// Submission example documents are read for shape-check assertions only,
+// never trusted for control flow. Mirrors the readJson/readArtifactJson
+// precedent in lib.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
+const errors: string[] = [];
 
 // The per-surface community-candidate intake lane is retired — surfaces now live
 // in ONE file per subnet (registry/subnets/<slug>.json), added with
@@ -64,7 +70,7 @@ try {
     );
   }
 } catch (error) {
-  if (error.code !== "ENOENT") throw error;
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 }
 
 checkIncludes(surfaceTemplate.toLowerCase(), "surface template", [
@@ -182,7 +188,11 @@ if (errors.length > 0) {
 
 console.log("Issue intake templates passed validation.");
 
-function checkIncludes(content, label, needles) {
+function checkIncludes(
+  content: string,
+  label: string,
+  needles: string[],
+): void {
   for (const needle of needles) {
     if (!content.includes(needle)) {
       errors.push(`${label}: missing ${needle}`);
@@ -190,7 +200,7 @@ function checkIncludes(content, label, needles) {
   }
 }
 
-function checkExampleProvider(provider) {
+function checkExampleProvider(provider: Row): void {
   for (const field of [
     "schema_version",
     "id",
@@ -205,7 +215,7 @@ function checkExampleProvider(provider) {
   }
 }
 
-function checkExampleProviderSubmission(document) {
+function checkExampleProviderSubmission(document: Row): void {
   if (document?.schema_version !== 1 || !document?.provider) {
     errors.push(
       "direct provider profile example: missing schema_version or provider",
@@ -230,7 +240,7 @@ function checkExampleProviderSubmission(document) {
   }
 }
 
-function checkExampleStatusReport(report) {
+function checkExampleStatusReport(report: Row): void {
   if (report?.affects_observed_health !== false) {
     errors.push(
       "status report example: affects_observed_health must remain false",

@@ -71,7 +71,7 @@
     "readme:catalog": "node scripts/generate-registry-readme-section.ts",
     "validate:adapters": "node scripts/validate-adapters.ts",
     "assert:probe-health": "node scripts/assert-published-probe-health.ts",
-    "validate:intake": "node scripts/validate-intake.mjs",
+    "validate:intake": "node scripts/validate-intake.ts",
     "validate:private-boundary": "node scripts/validate-private-boundary.ts",
     "validate:workflows": "node scripts/validate-workflows.mjs",
     "validate:migrations": "node scripts/validate-migrations.ts",

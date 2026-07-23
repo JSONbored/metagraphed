@@ -271,7 +271,7 @@ for (const filePath of await listJsonFiles(
 
 // #5476: enforce the direct-provider-profile intake fixture against its actual
 // schema (patterns, additionalProperties:false, the nested provider sub-schema)
-// rather than validate-intake.mjs's weaker presence-only checks. The authority
+// rather than validate-intake.ts's weaker presence-only checks. The authority
 // narrowing to community/provider-claimed stays enforced there, on top of this.
 const providerSubmissionExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/direct-provider-profile.json"),
