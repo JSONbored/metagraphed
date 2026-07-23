@@ -40,9 +40,12 @@ describe("subnets.index.tsx Total stake tile (#6271)", () => {
     expect(strip).toContain("useSuspenseQuery(economicsTrendsQuery())");
   });
 
-  it("the Suspense fallback skeleton count matches the real tile count (5), avoiding a layout shift on load", () => {
-    const fallback = source.slice(source.indexOf("<Suspense"), source.indexOf("<SubnetsStatStrip"));
-    const skeletonCount = (fallback.match(/<Skeleton className="h-20"/g) ?? []).length;
+  it("the AsyncPanel fallback skeleton count matches the real tile count (5), avoiding a layout shift on load", () => {
+    const fallback = source.slice(
+      source.indexOf('context="subnets summary"'),
+      source.indexOf("<SubnetsStatStrip"),
+    );
+    const skeletonCount = (fallback.match(/<PanelSkeleton height="xs" \/>/g) ?? []).length;
     const tileCount = (strip.match(/<StatTile/g) ?? []).length;
     expect(skeletonCount).toBe(tileCount);
     expect(skeletonCount).toBe(5);
