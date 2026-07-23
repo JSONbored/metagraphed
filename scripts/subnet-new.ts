@@ -15,18 +15,22 @@ import {
   writeRepositoryJson,
 } from "./lib.ts";
 
+type Row = Record<string, unknown>;
+
 const args = process.argv.slice(2);
 const write = args.includes("--write");
 const netuid = Number(valueAfter("--netuid"));
 
 const native = await loadNativeSnapshot();
-const subnet = native.subnets.find((entry) => entry.netuid === netuid);
+const subnet = ((native.subnets as Row[] | undefined) || []).find(
+  (entry) => entry.netuid === netuid,
+);
 if (!subnet) fail("--netuid must be an active Finney netuid");
 
 const subnetsDir = path.join(repoRoot, "registry/subnets");
 const files = await listJsonFiles(subnetsDir);
 for (const file of files) {
-  const doc = await readJson(file);
+  const doc = (await readJson(file)) as Row | null;
   if (doc?.netuid === netuid) {
     fail(
       `Subnet ${netuid} already has a file: ${path.relative(repoRoot, file)}. ` +
@@ -63,9 +67,9 @@ const document = {
   name,
   slug: `sn-${netuid}`,
   status: subnet.status === "inactive" ? "inactive" : "active",
-  categories: [],
+  categories: [] as string[],
   curation: { level: "community-seeded", review_state: "unreviewed" },
-  surfaces: [],
+  surfaces: [] as unknown[],
 };
 
 if (write) {
@@ -81,12 +85,12 @@ console.log(
   }),
 );
 
-function valueAfter(flag) {
+function valueAfter(flag: string): string | null {
   const index = args.indexOf(flag);
   return index === -1 ? null : args[index + 1] || null;
 }
 
-function fail(message) {
+function fail(message: string): never {
   console.error(message);
   process.exit(1);
 }

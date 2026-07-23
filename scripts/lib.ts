@@ -208,7 +208,7 @@ export function netuidFromEvidenceSubject(subject: unknown): number | null {
  * Read a CLI flag's value, accepting both `--flag=value` and `--flag value`.
  *
  * `scripts/` grew both conventions independently: some parsers match `--flag=`
- * only (r2-download.ts), while others take the next argv entry (subnet-new.mjs,
+ * only (r2-download.ts), while others take the next argv entry (subnet-new.ts,
  * curation-brief.ts, and endpoint-ops-brief.ts's own `valueAfter`). A parser
  * that accepts only one form silently ignores the other -- no error, no warning,
  * the flag is simply dropped and the default applies instead. That is exactly
@@ -312,7 +312,7 @@ export function buildSubnetOverlaysByNetuid({
       const materializedFilePath = path.join(
         root,
         "registry/subnets",
-        // Same convention as scripts/subnet-new.mjs: slug the display name, not
+        // Same convention as scripts/subnet-new.ts: slug the display name, not
         // the internal sn-<netuid> slug field (which would just echo back
         // sn-<netuid> as the FILENAME too, reintroducing the drift this fixes).
         `${slugify(overlay.name) || `sn-${overlay.netuid}`}.json`,

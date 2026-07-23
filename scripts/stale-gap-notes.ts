@@ -14,12 +14,34 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { listJsonFiles, loadProviders, readJson, repoRoot } from "./lib.ts";
 
+type Row = Record<string, unknown>;
+
+interface StaleGapNoteEntry {
+  note: unknown;
+  kind: string;
+  surface_id: unknown;
+}
+
+interface StaleSubnetEntry {
+  slug: unknown;
+  netuid: unknown;
+  name: unknown;
+  file: string;
+  stale_notes: StaleGapNoteEntry[];
+}
+
+interface StaleGapNotesReport {
+  subnet_count: number;
+  stale_note_count: number;
+  subnets: StaleSubnetEntry[];
+}
+
 // Keyword → surface kind, checked in this order against a gap_notes entry that
 // already matches the "No verified ... yet" shape. Order only matters where a
 // note could plausibly contain more than one keyword; the observed corpus
 // (issue #5738) has no such overlap, but "openapi" is checked ahead of the
 // generic "docs" match since some notes read "... OpenAPI/Swagger surface".
-const KIND_KEYWORDS = [
+const KIND_KEYWORDS: { kind: string; pattern: RegExp }[] = [
   { kind: "sse", pattern: /\bsse\b|event stream/i },
   { kind: "openapi", pattern: /openapi|swagger/i },
   { kind: "subnet-api", pattern: /subnet api/i },
@@ -34,7 +56,7 @@ const KIND_KEYWORDS = [
 // verified <thing> yet" — other note shapes (404 observations, identity
 // disputes, auth-boundary explanations) are not "not yet found" claims and are
 // left alone.
-export function classifyGapNote(note) {
+export function classifyGapNote(note: unknown): string | null {
   if (typeof note !== "string" || !note.startsWith("No verified")) {
     return null;
   }
@@ -51,17 +73,25 @@ export function classifyGapNote(note) {
 // surface. A third-party aggregator's wrapper around a subnet's data (e.g.
 // TaoMarketCap's generic per-subnet API) is not the same claim as "the subnet
 // publishes its own API" — see registry/subnets/oneoneone.json (#5738).
-export function isFirstPartySurface(surface, providersById) {
+export function isFirstPartySurface(
+  surface: Row,
+  providersById: Map<unknown, Row>,
+): boolean {
   const provider = providersById.get(surface.provider);
   return provider?.kind === "subnet-team";
 }
 
 // Returns the stale gap_notes entries for a single subnet document, or [] if
 // none of its notes are contradicted by its own surfaces[].
-export function findStaleGapNotes(document, providersById) {
-  const notes = document.curation?.gap_notes || [];
-  const surfaces = document.surfaces || [];
-  const stale = [];
+export function findStaleGapNotes(
+  document: Row,
+  providersById: Map<unknown, Row>,
+): StaleGapNoteEntry[] {
+  const notes =
+    ((document.curation as Row | undefined)?.gap_notes as
+      unknown[] | undefined) || [];
+  const surfaces = (document.surfaces as Row[] | undefined) || [];
+  const stale: StaleGapNoteEntry[] = [];
   for (const note of notes) {
     const kind = classifyGapNote(note);
     if (!kind) continue;
@@ -76,14 +106,14 @@ export function findStaleGapNotes(document, providersById) {
   return stale;
 }
 
-export async function collectStaleGapNotes() {
-  const providersById = new Map(
+export async function collectStaleGapNotes(): Promise<StaleGapNotesReport> {
+  const providersById = new Map<unknown, Row>(
     (await loadProviders()).map((provider) => [provider.id, provider]),
   );
   const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
-  const subnets = [];
+  const subnets: StaleSubnetEntry[] = [];
   for (const file of files) {
-    const document = await readJson(file);
+    const document = (await readJson(file)) as Row;
     const stale = findStaleGapNotes(document, providersById);
     if (stale.length > 0) {
       subnets.push({
@@ -106,7 +136,7 @@ export async function collectStaleGapNotes() {
   };
 }
 
-function renderReport(report) {
+function renderReport(report: StaleGapNotesReport): string {
   if (report.subnets.length === 0) {
     return "No stale curation.gap_notes found.\n";
   }
@@ -135,7 +165,7 @@ if (isCliEntrypoint()) {
   }
 }
 
-function isCliEntrypoint() {
+function isCliEntrypoint(): boolean {
   return process.argv[1]
     ? import.meta.url === pathToFileURL(process.argv[1]).href
     : false;

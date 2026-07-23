@@ -1493,7 +1493,7 @@ const candidateLocators = new Set();
 
 // Guard the single-file naming convention itself: registry/subnets/<slug>.json's
 // filename must equal slugify(name), falling back to sn-<netuid> ONLY when the
-// name doesn't produce a usable slug (scripts/subnet-new.mjs's exact rule). Two
+// name doesn't produce a usable slug (scripts/subnet-new.ts's exact rule). Two
 // independent code paths (an old ad-hoc taostats-enrich pass, and a bug in
 // scripts/promote-reviewed.ts's local safeSlug()) both drifted into naming new
 // files sn-<netuid>.json even when the subnet had a perfectly good name — this

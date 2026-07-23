@@ -81,7 +81,7 @@
     "openapi:generate:dry-run": "node scripts/generate-openapi.ts",
     "types:generate": "node scripts/generate-types.ts",
     "surface:add": "node scripts/surface-add.mjs",
-    "subnet:new": "node scripts/subnet-new.mjs",
+    "subnet:new": "node scripts/subnet-new.ts",
     "enrich:issues": "node scripts/enrichment-issues.ts --write",
     "enrich:issues:dry-run": "node scripts/enrichment-issues.ts --dry-run",
     "validate:surface": "node scripts/validate-surface.mjs",
@@ -123,7 +123,7 @@
     "test:ci": "vitest run --coverage --fileParallelism --testTimeout=30000 --exclude '**/artifacts.test.mjs' --exclude '**/discovery-artifacts.test.mjs' --exclude '**/public-safety.test.mjs' --exclude '**/validate-error-messages.test.mjs' --exclude '**/refresh-build-summary.test.mjs'",
     "test:ci:artifacts": "vitest run tests/artifacts.test.mjs tests/discovery-artifacts.test.mjs tests/public-safety.test.mjs tests/validate-error-messages.test.mjs tests/refresh-build-summary.test.mjs",
     "curation:brief": "node scripts/curation-brief.ts",
-    "curation:stale-notes": "node scripts/stale-gap-notes.mjs",
+    "curation:stale-notes": "node scripts/stale-gap-notes.ts",
     "curation:identity-divergence": "node scripts/identity-field-divergence.ts",
     "endpoint:brief": "node scripts/endpoint-ops-brief.ts"
   },

@@ -17,7 +17,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { listJsonFiles, loadProviders, readJson, repoRoot } from "./lib.ts";
-import { isFirstPartySurface } from "./stale-gap-notes.mjs";
+import { isFirstPartySurface } from "./stale-gap-notes.ts";
 
 type Row = Record<string, unknown>;
 

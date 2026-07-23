@@ -5,7 +5,7 @@ import {
   collectStaleGapNotes,
   findStaleGapNotes,
   isFirstPartySurface,
-} from "../scripts/stale-gap-notes.mjs";
+} from "../scripts/stale-gap-notes.ts";
 
 describe("classifyGapNote", () => {
   test("classifies each observed 'No verified ... yet' phrasing", () => {

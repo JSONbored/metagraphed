@@ -27,7 +27,7 @@ to trust a surface. "community-submitted" ≠ verified truth until the gate/buil
 
 **The filename is the slugified name, not the netuid.** Correct: `registry/subnets/zeus.json`. Wrong:
 `registry/subnets/sn-18.json`. The `sn-<netuid>` form is only correct as a fallback for the rare subnet
-whose name doesn't produce a usable slug — see `scripts/subnet-new.mjs`, the only correct way to
+whose name doesn't produce a usable slug — see `scripts/subnet-new.ts`, the only correct way to
 scaffold a new subnet file (`npm run subnet:new -- --netuid <n> --name "<Real Name>" --write`). Never
 hand-name a new file, including during an ad-hoc enrichment pass (e.g. a taostats identity gap-fill) run
 interactively rather than through a committed script — always scaffold through `subnet:new`. `npm run
