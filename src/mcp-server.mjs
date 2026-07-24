@@ -140,6 +140,12 @@ import {
   loadSubnetEvidenceList,
 } from "./subnet-evidence-mcp.ts";
 import {
+  LIST_SUBNET_CANDIDATES_INSTRUCTIONS,
+  LIST_SUBNET_CANDIDATES_MCP_TOOL,
+  LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA,
+  loadSubnetCandidatesList,
+} from "./subnet-candidates-mcp.ts";
+import {
   LIST_EVIDENCE_INSTRUCTIONS,
   LIST_EVIDENCE_MCP_TOOL,
   LIST_EVIDENCE_OUTPUT_SCHEMA,
@@ -1007,7 +1013,9 @@ export const MCP_INSTRUCTIONS =
   LIST_PROVIDER_ENDPOINTS_INSTRUCTIONS +
   "get_subnet_endpoints one subnet\u0027s endpoint resources, " +
   LIST_SUBNET_ENDPOINTS_INSTRUCTIONS +
-  "get_subnet_candidates its pending candidate surfaces, get_subnet_evidence " +
+  "get_subnet_candidates its pending candidate surfaces, " +
+  LIST_SUBNET_CANDIDATES_INSTRUCTIONS +
+  "get_subnet_evidence " +
   "its provenance evidence claims, " +
   LIST_SUBNET_EVIDENCE_INSTRUCTIONS +
   "get_subnet_surfaces its curated public " +
@@ -9842,6 +9850,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_SUBNET_CANDIDATES_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadSubnetCandidatesList(ctx, args);
+    },
+  },
+  {
     name: "get_subnet_evidence",
     title: "Get one subnet's evidence ledger",
     description:
@@ -15367,6 +15381,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: ["string", "integer", "null"] },
     },
   },
+  list_subnet_candidates: LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA,
   get_subnet_endpoints: {
     type: "object",
     additionalProperties: true,
