@@ -3092,7 +3092,10 @@ const rootValue = {
     });
   },
 
-  async incidents({ window }: Row, context: GqlContext) {
+  async incidents(
+    { window, netuid, sort, order, limit, cursor }: Row,
+    context: GqlContext,
+  ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL BAD_USER_INPUT
     // error, not a silent empty result. analyticsWindow reads only the ?window param.
@@ -3119,13 +3122,56 @@ const rootValue = {
         "METAGRAPH_HEALTH_SOURCE",
       )) as Row | null) ??
       (await loadGlobalIncidentsLedger(context.env, { label })).data;
-    return {
+    const ledger = {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
       observed_at: data.observed_at ?? null,
       source: data.source ?? null,
       summary: data.summary ?? null,
       surfaces: data.surfaces ?? [],
+    };
+    // #7875: apply the same list query GET /api/v1/incidents runs over the
+    // ledger's surfaces (listQueryWith("incidents", [window])) -- the netuid
+    // filter plus sort/order and limit/cursor paging. applyQueryFilters is the
+    // same helper the REST pipeline and the list_* MCP loaders use, so the
+    // allowlists cannot drift; an unsupported sort/limit/cursor is a GraphQL
+    // error rather than a silently substituted default.
+    if (netuid != null && (!Number.isInteger(netuid) || netuid < 0)) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const queryUrl = new URL("https://graphql.internal/incidents");
+    for (const [name, value] of [
+      ["netuid", netuid],
+      ["sort", sort],
+      ["order", order],
+      ["limit", limit],
+      ["cursor", cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
+    }
+    const transformed = applyQueryFilters(ledger, queryUrl, "incidents", [
+      "netuid",
+    ]);
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const filtered = transformed.data as Row;
+    const page = ((transformed.meta as Row)?.pagination ?? {}) as Row;
+    const surfaces = Array.isArray(filtered.surfaces) ? filtered.surfaces : [];
+    return {
+      ...ledger,
+      surfaces,
+      total: page.total ?? surfaces.length,
+      returned: page.returned ?? surfaces.length,
+      limit: page.limit ?? surfaces.length,
+      cursor: page.cursor ?? 0,
+      next_cursor: page.next_cursor ?? null,
+      sort: page.sort ?? null,
+      order: page.order ?? null,
     };
   },
 
@@ -3134,8 +3180,8 @@ const rootValue = {
   // Identical window validation (7d/30d -> BAD_USER_INPUT), Postgres-tier ->
   // retired-D1 fallback, and schema-stable cold-tier degradation; nothing
   // re-derived. Distinct from endpoint_incidents (the active endpoint feed).
-  async global_incidents({ window }: Row, context: GqlContext) {
-    return rootValue.incidents({ window }, context);
+  async global_incidents(args: Row, context: GqlContext) {
+    return rootValue.incidents(args, context);
   },
 
   // #7876: GraphQL parity for the search field's REST/MCP filters. Reuse

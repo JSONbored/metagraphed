@@ -2009,12 +2009,26 @@ export type GlobalHealth = {
 /** Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope. */
 export type GlobalIncidents = {
   __typename?: 'GlobalIncidents';
+  /** Offset this page started at (#7875). */
+  cursor: Scalars['Int']['output'];
+  /** Page size actually applied (#7875). */
+  limit: Scalars['Int']['output'];
+  /** Offset to pass as cursor for the next page, or null on the last page (#7875). */
+  next_cursor?: Maybe<Scalars['Int']['output']>;
   observed_at?: Maybe<Scalars['String']['output']>;
+  /** Sort direction applied (#7875). */
+  order?: Maybe<Scalars['String']['output']>;
+  /** Surfaces returned on this page (#7875). */
+  returned: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
+  /** Sort field applied, or null when unsorted (#7875). */
+  sort?: Maybe<Scalars['String']['output']>;
   source?: Maybe<Scalars['String']['output']>;
   /** Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape. */
   summary?: Maybe<Scalars['JSON']['output']>;
   surfaces: Array<EndpointIncident>;
+  /** Surfaces matching the filters before paging (#7875). Equals the surfaces length when no limit/cursor is supplied. */
+  total: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
 };
 
@@ -3181,6 +3195,11 @@ export type QueryGapsArgs = {
 
 
 export type QueryGlobal_IncidentsArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3215,6 +3234,11 @@ export type QueryHealth_HistoryArgs = {
 
 
 export type QueryIncidentsArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -7364,11 +7388,18 @@ export type GlobalHealthResolvers<ContextType = GqlContext, ParentType extends R
 }>;
 
 export type GlobalIncidentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GlobalIncidents'] = ResolversParentTypes['GlobalIncidents']> = ResolversObject<{
+  cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   surfaces?: Resolver<Array<ResolversTypes['EndpointIncident']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 

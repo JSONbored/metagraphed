@@ -7558,6 +7558,176 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     assert.equal(FIELD_COMPLEXITY.global_incidents, FIELD_COMPLEXITY.incidents);
   });
 
+  // #7875: netuid filter + sort/order + limit/cursor paging, applied through the
+  // same list query GET /api/v1/incidents runs over the ledger's surfaces.
+  function threeSurfaceEnv() {
+    const surface = (id: string, netuid: number, downtime: number) => ({
+      id,
+      endpoint_id: `ep-${id}`,
+      state: "resolved",
+      severity: "minor",
+      status: "failed",
+      netuid,
+      provider: "alpha",
+      downtime_ms: downtime,
+      incident_count: 1,
+      surface_id: id,
+    });
+    return {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi({
+        schema_version: 1,
+        window: "30d",
+        observed_at: "2026-07-01T00:00:00.000Z",
+        source: "postgres",
+        summary: { incident_count: 3 },
+        surfaces: [
+          surface("inc-a", 5, 300),
+          surface("inc-b", 7, 200),
+          surface("inc-c", 5, 100),
+        ],
+      }),
+      METAGRAPH_HEALTH_DB: emptyHealthDb,
+    } as unknown as Env;
+  }
+
+  test("filters by netuid (#7875)", async () => {
+    const { status, body } = await gql(
+      '{ global_incidents(window: "30d", netuid: 5) { total returned surfaces { id netuid } } }',
+      threeSurfaceEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const out = body.data.global_incidents;
+    assert.equal(out.total, 2);
+    assert.deepEqual(out.surfaces.map((s: Row) => s.id).sort(), [
+      "inc-a",
+      "inc-c",
+    ]);
+  });
+
+  test("pages with limit/cursor and reports next_cursor (#7875)", async () => {
+    const first = await gql(
+      '{ global_incidents(window: "30d", sort: "surface_id", order: "asc", limit: 2) { total returned limit cursor next_cursor sort order surfaces { id } } }',
+      threeSurfaceEnv(),
+    );
+    assert.equal(first.body.errors, undefined);
+    const p1 = first.body.data.global_incidents;
+    assert.equal(p1.total, 3);
+    assert.equal(p1.returned, 2);
+    assert.equal(p1.limit, 2);
+    assert.equal(p1.cursor, 0);
+    assert.equal(p1.next_cursor, 2);
+    assert.equal(p1.sort, "surface_id");
+    assert.equal(p1.order, "asc");
+    assert.deepEqual(
+      p1.surfaces.map((s: Row) => s.id),
+      ["inc-a", "inc-b"],
+    );
+
+    const second = await gql(
+      '{ global_incidents(window: "30d", sort: "surface_id", order: "asc", limit: 2, cursor: 2) { returned next_cursor surfaces { id } } }',
+      threeSurfaceEnv(),
+    );
+    const p2 = second.body.data.global_incidents;
+    assert.equal(p2.returned, 1);
+    assert.equal(p2.next_cursor, null);
+    assert.deepEqual(
+      p2.surfaces.map((s: Row) => s.id),
+      ["inc-c"],
+    );
+  });
+
+  test("combines a netuid filter with paging (#7875)", async () => {
+    const { body } = await gql(
+      '{ global_incidents(window: "30d", netuid: 5, sort: "surface_id", order: "asc", limit: 1) { total returned next_cursor surfaces { id netuid } } }',
+      threeSurfaceEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    const out = body.data.global_incidents;
+    assert.equal(out.total, 2);
+    assert.equal(out.returned, 1);
+    assert.equal(out.next_cursor, 1);
+    assert.equal(out.surfaces[0].id, "inc-a");
+  });
+
+  test("an unfiltered query reports schema-stable pagination meta (#7875)", async () => {
+    const { body } = await gql(
+      '{ global_incidents(window: "30d") { total returned next_cursor sort order surfaces { id } } }',
+      threeSurfaceEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    const out = body.data.global_incidents;
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 3);
+    assert.equal(out.next_cursor, null);
+    // No sort was requested, so no ordering was applied; `order` still reports
+    // the list query's default direction, exactly as the REST route does.
+    assert.equal(out.sort, null);
+    assert.equal(out.order, "asc");
+  });
+
+  test("falls back to schema-stable meta when the list query returns no pagination (#7875)", async () => {
+    // The envelope's total/returned/limit/cursor are non-null Ints, so the
+    // resolver must degrade rather than emit undefined if the shared list
+    // query ever returns a page without pagination meta.
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { surfaces: [{ id: "inc-a" }, { id: "inc-b" }] },
+      meta: {},
+    } as unknown as ReturnType<typeof listQuery.applyQueryFilters>);
+    try {
+      const { body } = await gql(
+        '{ global_incidents(window: "30d") { total returned limit cursor next_cursor sort order surfaces { id } } }',
+        threeSurfaceEnv(),
+      );
+      assert.equal(body.errors, undefined);
+      const out = body.data.global_incidents;
+      assert.equal(out.total, 2);
+      assert.equal(out.returned, 2);
+      assert.equal(out.limit, 2);
+      assert.equal(out.cursor, 0);
+      assert.equal(out.next_cursor, null);
+      assert.equal(out.sort, null);
+      assert.equal(out.order, null);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("degrades to an empty page when the list query returns no surfaces array (#7875)", async () => {
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { surfaces: null },
+      meta: {},
+    } as unknown as ReturnType<typeof listQuery.applyQueryFilters>);
+    try {
+      const { body } = await gql(
+        '{ global_incidents(window: "30d") { total returned surfaces { id } } }',
+        threeSurfaceEnv(),
+      );
+      assert.equal(body.errors, undefined);
+      assert.deepEqual(body.data.global_incidents.surfaces, []);
+      assert.equal(body.data.global_incidents.total, 0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("a negative netuid and an unsupported sort are GraphQL errors (#7875)", async () => {
+    const badNetuid = await gql(
+      '{ global_incidents(window: "30d", netuid: -1) { total } }',
+      threeSurfaceEnv(),
+    );
+    assert.ok(badNetuid.body.errors, "expected an error for netuid");
+    assert.equal(badNetuid.body.errors[0].extensions.code, "BAD_USER_INPUT");
+
+    const badSort = await gql(
+      '{ global_incidents(window: "30d", sort: "not_a_column") { total } }',
+      threeSurfaceEnv(),
+    );
+    assert.ok(badSort.body.errors, "expected an error for sort");
+    assert.equal(badSort.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
   test("has the identical GraphQL signature as incidents (args + return type)", async () => {
     const { status, body } = await gql(
       `{ __type(name: "Query") { fields {
