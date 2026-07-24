@@ -831,7 +831,7 @@ export const SDL = `
     "Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn."
     subnet_burn(netuid: Int!): SubnetBurn
     "One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover."
-    subnet_turnover(netuid: Int!, window: String): SubnetTurnover!
+    subnet_turnover(netuid: Int!, window: String, changes: Boolean): SubnetTurnover!
     "Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream -- Bittensor subnet ownership is a permissionless, conviction-weighted contest that transfers automatically once a challenger's conviction overtakes the incumbent owner's, no vote required. A subnet that has never changed hands returns an empty list. Reaches the Postgres-only all-events tier directly (no D1 predecessor); an out-of-range netuid or an unavailable tier is a GraphQL error, never a silent empty list. Mirrors GET /api/v1/subnets/{netuid}/ownership-history."
     subnet_ownership_history(netuid: Int!): SubnetOwnershipHistory!
     "Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) -- who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to subnet_ownership_history (that's the event log of past flips; this is the current standings). A subnet with no active challengers/owner lock returns an empty leaderboard. Reaches the Postgres-only all-events tier directly; an out-of-range netuid or an unavailable tier is a GraphQL error, never a silent empty leaderboard. Mirrors GET /api/v1/subnets/{netuid}/conviction."
@@ -3158,6 +3158,32 @@ export const SDL = `
     uids_deregistered: Int!
     neuron_retention: Float
     stability_score: Int
+    "Per-neuron churn detail behind the counts above, populated only when the field's changes toggle is set (mirroring REST's ?changes=true). Null otherwise, and on a cold store."
+    changes: SubnetTurnoverChanges
+  }
+
+  "One validator that entered or left a subnet's validator set between the window's boundary snapshots."
+  type TurnoverValidatorChange {
+    hotkey: String!
+    "The UID it held at the boundary snapshot, null when the row carried no usable uid."
+    uid: Int
+  }
+
+  "One UID that changed hands between the window's boundary snapshots."
+  type TurnoverUidReassignment {
+    uid: Int!
+    from_hotkey: String!
+    to_hotkey: String!
+  }
+
+  "The per-neuron churn behind a subnet's turnover scorecard: which validators entered and exited, and which UIDs were reassigned. Mirrors the changes block of GET /api/v1/subnets/{netuid}/turnover?changes=true."
+  type SubnetTurnoverChanges {
+    validators_entered_count: Int!
+    validators_exited_count: Int!
+    uid_reassignment_count: Int!
+    validators_entered: [TurnoverValidatorChange!]!
+    validators_exited: [TurnoverValidatorChange!]!
+    uid_reassignments: [TurnoverUidReassignment!]!
   }
 
   "Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history."
@@ -4831,6 +4857,49 @@ function subnetNode(identity: Row, prefetch: Row = {}) {
 // exists in this schema yet) -- stringify it here rather than letting
 // graphql-js' default String serializer coerce the object via `String(...)`
 // (which would silently produce "[object Object]").
+// REST's turnoverChangeDetail block, normalized into the SubnetTurnoverChanges
+// type. Absent when the caller did not set the changes toggle and on the cold
+// buildTurnover([]) fallback, both of which resolve the field to null rather
+// than a fabricated empty block. Counts fall back to their own list lengths so
+// a body carrying lists but no counts still answers consistently, and entries
+// missing a hotkey/uid are dropped rather than surfaced as nulls inside the
+// non-nullable list items.
+function turnoverChangesNode(detail: Row | null | undefined) {
+  if (!detail || typeof detail !== "object") return null;
+  const validatorList = (value: unknown) =>
+    (Array.isArray(value) ? value : [])
+      .filter((entry: Row) => typeof entry?.hotkey === "string")
+      .map((entry: Row) => ({
+        hotkey: entry.hotkey,
+        uid: Number.isInteger(entry.uid) ? entry.uid : null,
+      }));
+  const entered = validatorList(detail.validators_entered);
+  const exited = validatorList(detail.validators_exited);
+  const reassignments = (
+    Array.isArray(detail.uid_reassignments) ? detail.uid_reassignments : []
+  )
+    .filter(
+      (entry: Row) =>
+        Number.isInteger(entry?.uid) &&
+        typeof entry?.from_hotkey === "string" &&
+        typeof entry?.to_hotkey === "string",
+    )
+    .map((entry: Row) => ({
+      uid: entry.uid,
+      from_hotkey: entry.from_hotkey,
+      to_hotkey: entry.to_hotkey,
+    }));
+  return {
+    validators_entered_count: detail.validators_entered_count ?? entered.length,
+    validators_exited_count: detail.validators_exited_count ?? exited.length,
+    uid_reassignment_count:
+      detail.uid_reassignment_count ?? reassignments.length,
+    validators_entered: entered,
+    validators_exited: exited,
+    uid_reassignments: reassignments,
+  };
+}
+
 function extrinsicNode(extrinsic: Row) {
   if (!extrinsic) return null;
   return {
@@ -10151,7 +10220,7 @@ const rootValue = {
     return loadSubnetBurn(context.env, netuid);
   },
 
-  async subnet_turnover({ netuid, window }: Row, context: GqlContext) {
+  async subnet_turnover({ netuid, window, changes }: Row, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError("netuid must be a u16 subnet id (0-65535).", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -10169,11 +10238,14 @@ const rootValue = {
     const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
+    // Opt into REST's ?changes=true per-neuron detail. Only forward the param
+    // when true, so the default scorecard request stays byte-identical.
+    if (changes === true) params.set("changes", "true");
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildTurnover([]) empty-card
     // fallback contract the REST handler uses (neuron_daily boundary snapshots); a
     // subnet with no boundary rows in the window is a schema-stable empty card,
-    // never a GraphQL error. Mirrors the default scorecard (REST's ?changes=true
-    // detail is omitted).
+    // never a GraphQL error. The cold fallback carries no `changes` block, so the
+    // field resolves to null even when the toggle is set.
     const data =
       ((await tryPostgresTier(
         context.env,
@@ -10201,6 +10273,7 @@ const rootValue = {
       uids_deregistered: data.uids_deregistered ?? 0,
       neuron_retention: data.neuron_retention ?? null,
       stability_score: data.stability_score ?? null,
+      changes: turnoverChangesNode(data.changes as Row | null | undefined),
     };
   },
 
