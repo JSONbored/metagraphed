@@ -65,6 +65,11 @@ import { loadProfileCompletenessList } from "./profile-completeness-mcp.ts";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.ts";
+// #7876: type/netuid/q/sort/order parity on the search field, reusing the same
+// loadSearchList loader MCP list_search / REST GET /api/v1/search already call
+// (over the same /metagraph/search.json artifact listPage reads) -- not a
+// reimplementation.
+import { loadSearchList } from "./search-mcp.ts";
 // #7170: GraphQL parity for the changelog/contracts/health-history REST routes,
 // reusing the same loaders MCP get_changelog/get_contracts/get_health_history
 // already call -- not a reimplementation.
@@ -560,7 +565,7 @@ export const SDL = `
     "The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when the holders tier is cold, never null. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders."
     top_holders(sort: String, limit: Int): JSON
     "The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search."
-    search(limit: Int, cursor: String): SearchDocumentList!
+    search(limit: Int, cursor: String, type: String, netuid: Int, q: String, sort: String, order: String): SearchDocumentList!
     "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Mirrors GET /api/v1/search-index."
     search_index(limit: Int, cursor: String): SearchDocumentList!
     "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains."
@@ -6665,15 +6670,43 @@ const rootValue = {
     return rootValue.incidents({ window }, context);
   },
 
-  search({ limit, cursor }: Row, context: GqlContext) {
-    // Same baked search artifact + list-window the REST route serves, paged
-    // through the shared listPage helper the other artifact lists use.
-    return listPage(context, ARTIFACT.search, "documents", {
-      limit,
-      cursor,
-      resultKey: "documents",
-      keyFn: (d: Row) => d.id,
-    });
+  search(
+    { limit, cursor, type, netuid, q, sort, order }: Row,
+    context: GqlContext,
+  ) {
+    // #7876: with no type/netuid/q/sort/order this stays byte-identical -- the
+    // same baked search artifact paged through the shared listPage helper the
+    // other artifact lists use. Supplying any of those filters routes through
+    // loadSearchList instead: the same /metagraph/search.json read plus the
+    // shared query engine REST's GET /api/v1/search and MCP list_search apply,
+    // so a filtered GraphQL search matches them rather than a GraphQL-only
+    // reimplementation. loadSearchList validates its own args (an unsupported
+    // type/sort is a GraphQL error, not a silently substituted default) and
+    // returns the same {documents,total,next_cursor,...} shape listPage does.
+    if (
+      type == null &&
+      netuid == null &&
+      q == null &&
+      sort == null &&
+      order == null
+    ) {
+      return listPage(context, ARTIFACT.search, "documents", {
+        limit,
+        cursor,
+        resultKey: "documents",
+        keyFn: (d: Row) => d.id,
+      });
+    }
+    // loadSearchList validates its own args and returns the same
+    // {documents,total,next_cursor,...} shape listPage does. Note its cursor is
+    // the shared query engine's integer keyset offset, so pairing a filter with
+    // the listPage path's opaque string cursor is a BAD_USER_INPUT (surfaced by
+    // the loader), matching REST/MCP.
+    return loadSearchList(
+      mcpCtx(context),
+      { limit, cursor, type, netuid, q, sort, order },
+      { readArtifact },
+    );
   },
 
   search_index({ limit, cursor }: Row, context: GqlContext) {

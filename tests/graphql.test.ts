@@ -20632,3 +20632,113 @@ describe("graphql — subnet_hyperparameters_history cursor (#7882)", () => {
     assert.equal(new URL(seen.url!).searchParams.has("cursor"), false);
   });
 });
+
+// #7876: the search field gained the type/netuid/q/sort/order filters
+// GET /api/v1/search and MCP list_search already accept, delegating to
+// loadSearchList when any is supplied while keeping the unfiltered listPage
+// path byte-identical. SearchDocumentList.documents is opaque JSON, so tests
+// select it whole and assert on the parsed rows.
+describe("graphql — search filters (#7876)", () => {
+  const searchEnv = () =>
+    fixtureEnv({
+      "/metagraph/search.json": {
+        documents: [
+          {
+            id: "subnet:7",
+            type: "subnet",
+            netuid: 7,
+            title: "Allways",
+            tokens: "alpha",
+          },
+          {
+            id: "surface:7",
+            type: "surface",
+            netuid: 7,
+            title: "Allways API",
+            tokens: "beta",
+          },
+          {
+            id: "subnet:9",
+            type: "subnet",
+            netuid: 9,
+            title: "Other",
+            tokens: "gamma",
+          },
+          {
+            id: "provider:x",
+            type: "provider",
+            title: "Acme",
+            tokens: "delta",
+          },
+        ],
+      },
+    });
+
+  const ids = (docs: Row[]) => docs.map((d) => d.id);
+
+  test("filters by type", async () => {
+    const { status, body } = await gql(
+      `{ search(type: "provider") { documents total } }`,
+      searchEnv() as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.search.total, 1);
+    assert.deepEqual(ids(body.data.search.documents), ["provider:x"]);
+  });
+
+  test("filters by type + netuid together", async () => {
+    const { body } = await gql(
+      `{ search(type: "subnet", netuid: 7) { documents total } }`,
+      searchEnv() as unknown as Env,
+    );
+    assert.equal(body.data.search.total, 1);
+    assert.deepEqual(ids(body.data.search.documents), ["subnet:7"]);
+  });
+
+  test("runs a keyword q search over the index", async () => {
+    const { body } = await gql(
+      `{ search(q: "Allways") { documents total } }`,
+      searchEnv() as unknown as Env,
+    );
+    assert.ok(body.data.search.total >= 1);
+    assert.ok(ids(body.data.search.documents).includes("subnet:7"));
+  });
+
+  test("accepts sort/order", async () => {
+    const { body } = await gql(
+      `{ search(type: "subnet", sort: "netuid", order: "desc") { documents } }`,
+      searchEnv() as unknown as Env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.search.documents[0].netuid, 9);
+  });
+
+  test("with no filter argument stays on the unfiltered listPage path", async () => {
+    const { body } = await gql(
+      `{ search(limit: 1) { documents total next_cursor } }`,
+      searchEnv() as unknown as Env,
+    );
+    // Byte-identical to today: full index, tokens retained, opaque next_cursor.
+    assert.equal(body.data.search.total, 4);
+    assert.equal(body.data.search.documents.length, 1);
+    assert.equal(body.data.search.documents[0].tokens, "alpha");
+    assert.ok(body.data.search.next_cursor);
+  });
+
+  test("an invalid type is a GraphQL error, not a silently substituted default", async () => {
+    const { body } = await gql(
+      `{ search(type: "not-a-type") { total } }`,
+      searchEnv() as unknown as Env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("a negative netuid is a GraphQL error", async () => {
+    const { body } = await gql(
+      `{ search(netuid: -1) { total } }`,
+      searchEnv() as unknown as Env,
+    );
+    assert.ok(body.errors?.length);
+  });
+});
