@@ -35,6 +35,10 @@ import {
 import { loadProfilesList } from "./profiles-mcp.ts";
 import { contractVersion } from "../workers/responses.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
+// #7887: the root `endpoints` field reuses the SAME shared list-query filter/sort
+// machinery REST /api/v1/endpoints and MCP list_endpoints apply, so its
+// kind/layer/provider/... filters can never drift from theirs.
+import { applyQueryFilters } from "../workers/list-query.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
 // routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
 // list_endpoint_incidents already call for MCP parity -- not a reimplementation.
@@ -637,7 +641,7 @@ export const SDL = `
     "Curated public interface surfaces, optionally scoped to one subnet."
     surfaces(netuid: Int, limit: Int, cursor: String): SurfaceList!
     "Endpoint/resource registry, optionally scoped to one subnet."
-    endpoints(netuid: Int, limit: Int, cursor: String): EndpointList!
+    endpoints(netuid: Int, kind: String, layer: String, provider: String, publication_state: String, status: String, pool_eligible: Boolean, min_latency_ms: Int, max_latency_ms: Int, min_score: Float, max_score: Float, sort: String, order: String, fields: [String!], limit: Int, cursor: String): EndpointList!
     "One provider's endpoint rows with full REST filter parity: filter by kind/layer/publication_state/status, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints."
     provider_endpoints(slug: String!, kind: String, layer: String, publication_state: String, status: String, min_latency_ms: Int, max_latency_ms: Int, min_score: Float, max_score: Float, sort: String, order: String, limit: Int, cursor: String): JSON
     "Generalized endpoint pool scores -- each pool's kind, eligible/total endpoint count, and probe-derived routing score. Filter by id/kind, threshold with min_/max_eligible_count and min_/max_endpoint_count, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-pools."
@@ -6321,13 +6325,65 @@ const rootValue = {
     });
   },
 
-  endpoints({ netuid, limit, cursor }: Row, context: GqlContext) {
-    return listPage(context, ARTIFACT.endpoints, "endpoints", {
-      limit,
-      cursor,
-      netuid,
-      keyFn: (e: Row) => e.id ?? e.surface_id,
-    });
+  // #7887: full REST filter/sort parity for GET /api/v1/endpoints. Rather than
+  // re-deriving a GraphQL-only filterFn, reuse applyQueryFilters (the same
+  // machinery REST + list_endpoints use) for the filter + sort pass -- passing
+  // only the filter/sort args, NOT limit/cursor, so it filters and orders the
+  // full set without paginating -- then apply this field's own established
+  // keyset pagination over the result, preserving EndpointList's String cursor.
+  // An invalid filter/sort is a GraphQL error, matching REST's 400 and every
+  // sibling field's "not a silently substituted default" convention.
+  async endpoints(args: Row, context: GqlContext) {
+    const data = (await loadArtifact(context, ARTIFACT.endpoints)) ?? {
+      endpoints: [],
+    };
+    const url = new URL("https://graphql.local/endpoints");
+    const set = (name: string, value: unknown) => {
+      if (value !== undefined && value !== null && value !== "") {
+        url.searchParams.set(name, String(value));
+      }
+    };
+    set("netuid", args.netuid);
+    set("kind", args.kind);
+    set("layer", args.layer);
+    set("provider", args.provider);
+    set("publication_state", args.publication_state);
+    set("status", args.status);
+    if (args.pool_eligible !== undefined && args.pool_eligible !== null) {
+      set("pool_eligible", args.pool_eligible ? "true" : "false");
+    }
+    set("min_latency_ms", args.min_latency_ms);
+    set("max_latency_ms", args.max_latency_ms);
+    set("min_score", args.min_score);
+    set("max_score", args.max_score);
+    set("sort", args.sort);
+    set("order", args.order);
+    if (Array.isArray(args.fields) && args.fields.length > 0) {
+      set("fields", args.fields.join(","));
+    }
+    const transformed = applyQueryFilters(
+      data as Record<string, unknown>,
+      url,
+      "endpoints",
+      [],
+    );
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const rows = Array.isArray(
+      (transformed.data as Record<string, unknown>)?.endpoints,
+    )
+      ? ((transformed.data as { endpoints: Row[] }).endpoints as Row[])
+      : [];
+    const { page, total, nextCursor } = paginate(
+      rows,
+      args.limit,
+      args.cursor,
+      (e: Row) => e.id ?? e.surface_id,
+    );
+    return { items: page, total, next_cursor: nextCursor };
   },
 
   // #7868: reuse list_provider_endpoints' own loader unchanged (provider-

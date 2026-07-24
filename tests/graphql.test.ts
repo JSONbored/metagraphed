@@ -1315,6 +1315,80 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     assert.equal(second.body.data.endpoints.items[0].id, "e2");
   });
 
+  test("endpoints applies the full REST filter/sort set (#7887)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/endpoints.json": {
+        endpoints: [
+          {
+            id: "e1",
+            netuid: 1,
+            kind: "subnet-api",
+            provider: "acme",
+            status: "ok",
+            latency_ms: 50,
+            score: 90,
+          },
+          {
+            id: "e2",
+            netuid: 1,
+            kind: "rpc",
+            provider: "acme",
+            status: "ok",
+            latency_ms: 200,
+            score: 40,
+          },
+          {
+            id: "e3",
+            netuid: 2,
+            kind: "subnet-api",
+            provider: "other",
+            status: "failed",
+            latency_ms: 30,
+            score: 70,
+          },
+        ],
+      },
+    });
+
+    // Three filters combined (kind + status + provider) → only e1.
+    const filtered = await gql(
+      '{ endpoints(kind: "subnet-api", status: "ok", provider: "acme") { items { id } total } }',
+      env as unknown as Env,
+    );
+    assert.equal(filtered.status, 200);
+    assert.equal(filtered.body.data.endpoints.total, 1);
+    assert.equal(filtered.body.data.endpoints.items[0].id, "e1");
+
+    // sort + order.
+    const sorted = await gql(
+      '{ endpoints(sort: "score", order: "desc") { items { id score } } }',
+      env as unknown as Env,
+    );
+    assert.deepEqual(
+      sorted.body.data.endpoints.items.map((e: Row) => e.id),
+      ["e1", "e3", "e2"],
+    );
+
+    // A range filter (min_score) → e1 (90) and e3 (70), not e2 (40).
+    const ranged = await gql(
+      "{ endpoints(min_score: 70) { items { id } total } }",
+      env as unknown as Env,
+    );
+    assert.equal(ranged.body.data.endpoints.total, 2);
+    assert.deepEqual(
+      ranged.body.data.endpoints.items.map((e: Row) => e.id).sort(),
+      ["e1", "e3"],
+    );
+
+    // An invalid filter value is a GraphQL error, not a silent default.
+    const invalid = await gql(
+      '{ endpoints(kind: "not-a-real-kind") { total } }',
+      env as unknown as Env,
+    );
+    assert.ok(invalid.body.errors?.length);
+    assert.equal(invalid.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
   test("health lifts the live rollup and exposes per-subnet summaries", async () => {
     const env = fixtureEnv(
       {},
