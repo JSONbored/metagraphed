@@ -121,6 +121,7 @@ import {
   LIST_REVIEW_GAPS_OUTPUT_SCHEMA,
   loadReviewGapsList,
 } from "./review-gaps-mcp.ts";
+import { loadSubnetGapsList } from "./subnet-gaps-mcp.ts";
 import {
   LIST_REVIEW_ENRICHMENT_TARGETS_INSTRUCTIONS,
   LIST_REVIEW_ENRICHMENT_TARGETS_MCP_TOOL,
@@ -10550,10 +10551,11 @@ export const MCP_TOOLS = [
     description:
       "Fetch one subnet's interface gap priorities and contributor enrichment " +
       "queue: missing surface kinds, priority scores, recommended actions, and " +
-      "copyable submission hints. This is the per-subnet contribution flywheel " +
-      "view behind GET /api/v1/subnets/{netuid}/gaps — distinct from " +
-      "list_enrichment_targets, which ranks the registry-wide coverage-depth " +
-      "scorecard.",
+      "copyable submission hints. Filter by curation_level/missing_kinds/" +
+      "review_state, sort with sort/order, and page with limit/cursor. This is " +
+      "the per-subnet contribution flywheel view behind " +
+      "GET /api/v1/subnets/{netuid}/gaps — distinct from list_enrichment_targets, " +
+      "which ranks the registry-wide coverage-depth scorecard.",
     inputSchema: {
       type: "object",
       properties: {
@@ -10562,24 +10564,56 @@ export const MCP_TOOLS = [
           description: "Subnet netuid.",
           minimum: 0,
         },
+        curation_level: {
+          type: "string",
+          description: "Filter priorities by curation level.",
+        },
+        missing_kinds: {
+          type: "string",
+          description:
+            "Filter priorities whose missing_kinds include this surface kind.",
+        },
+        review_state: {
+          type: "string",
+          description: "Filter by review_state substring match.",
+        },
+        sort: {
+          type: "string",
+          description: "Field to sort priorities by before paging.",
+        },
+        order: {
+          type: "string",
+          enum: ["asc", "desc"],
+          description: "Sort direction for sort (default asc).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max priority rows to return (1-100).",
+          minimum: 1,
+          maximum: 100,
+        },
+        cursor: {
+          type: "integer",
+          description: "Pagination cursor from a prior response's next_cursor.",
+          minimum: 0,
+        },
       },
       required: ["netuid"],
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      const netuid = requireNetuid(args);
-      const gaps = await loadOptionalArtifact(
-        ctx,
-        `/metagraph/review/gaps/${netuid}.json`,
-      );
-      if (!gaps) {
-        throw toolError(
-          "not_found",
-          `No gap report exists for netuid ${netuid}. Use list_subnets or ` +
-            "search_subnets to discover valid netuids.",
-        );
+      try {
+        return await loadSubnetGapsList(ctx, args);
+      } catch (err) {
+        if (err?.toolError && err.code === "not_found") {
+          throw toolError(
+            "not_found",
+            `No gap report exists for netuid ${args?.netuid}. Use list_subnets or ` +
+              "search_subnets to discover valid netuids.",
+          );
+        }
+        throw err;
       }
-      return gaps;
     },
   },
   {
