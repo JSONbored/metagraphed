@@ -49,6 +49,10 @@ import { loadProviderEndpointsList } from "./provider-endpoints-mcp.ts";
 // loadRpcEndpointsList (live overlay + applyQueryFilters on the endpoints
 // collection), matching endpoint_pools / rpc_pools / provider_endpoints.
 import { loadRpcEndpointsList } from "./rpc-endpoints-mcp.ts";
+// #7888: GraphQL parity for GET /api/v1/providers list filters (id/kind/
+// authority/sort/order/fields + limit/cursor), reusing loadProvidersList that
+// MCP list_providers already calls -- not a reimplementation.
+import { loadProvidersList } from "./providers-mcp.ts";
 // #7167: GraphQL parity for the /api/v1/review/* contributor-review family,
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
 // and page logic REST and MCP already use) -- not a reimplementation.
@@ -633,8 +637,8 @@ export const SDL = `
     subnet_overview(netuid: Int!): JSON
     "One subnet's contributor-review profile: candidate surfaces, contract version, endpoints, and completeness/curation metadata. Null when no profile has been baked for that netuid (rather than a GraphQL error); a negative netuid is a BAD_USER_INPUT error. Opaque JSON passed through verbatim, matching the get_subnet_profile MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/profile."
     subnet_profile(netuid: Int!): JSON
-    "Paginated provider/source registry."
-    providers(limit: Int, cursor: String): ProviderList!
+    "Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers)."
+    providers(id: String, kind: String, authority: String, sort: String, order: String, fields: String, limit: Int, cursor: String): ProviderList!
     "One provider with its subnets."
     provider(id: String!): Provider
     "One adapter-backed public metrics snapshot by slug (e.g. 'gittensor', 'allways', 'sn-64'): the captured adapter snapshot, extension metadata, and netuid linkage. An invalid slug is a BAD_USER_INPUT error; a missing slug resolves to null (schema-stable, never a GraphQL error). Mirrors GET /api/v1/adapters/{slug}."
@@ -6272,13 +6276,51 @@ const rootValue = {
     };
   },
 
-  providers({ limit, cursor }: Row, context: GqlContext) {
-    return listPage(context, ARTIFACT.providers, "providers", {
+  // #7888: add REST/MCP list-query filters (id/kind/authority/sort/order/fields)
+  // by reusing loadProvidersList for validate+filter+sort, while preserving the
+  // pre-existing GraphQL providers contract the gate flagged as a breaker on
+  // #7920: opaque string id-keyset cursor/next_cursor (not REST's Int offset)
+  // and schema-stable empty list on a cold/absent artifact (not a GraphQL
+  // error). limit/cursor are applied here via paginate, not the loader.
+  async providers(args: Row, context: GqlContext) {
+    const { limit, cursor, ...filters } = args;
+    // Default empty list; only overwrite on a successful load. Cold/absent
+    // (or any non-invalid_params loader failure) keeps this historical contract.
+    let rows: Row[] = [];
+    try {
+      // Omit GraphQL limit/cursor so the loader returns the full filtered set.
+      // When a fields projection is supplied, keep/force `id` so the opaque
+      // string keyset cursor still resolves.
+      const loadArgs: Row = { ...filters };
+      if (typeof loadArgs.fields === "string" && loadArgs.fields.trim()) {
+        const trimmed = loadArgs.fields.trim();
+        loadArgs.fields = /(^|,)\s*id\s*(,|$)/i.test(trimmed)
+          ? trimmed
+          : `id,${trimmed}`;
+      }
+      const data = await loadProvidersList(mcpCtx(context), loadArgs, {
+        readArtifact,
+      });
+      rows = data.providers as Row[];
+    } catch (rawErr) {
+      const err = rawErr as Row;
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+    }
+    const { page, total, nextCursor } = paginate(
+      rows,
       limit,
       cursor,
-      keyFn: (p: Row) => p.id,
-      map: providerNode,
-    });
+      (p: Row) => p.id,
+    );
+    return {
+      items: page.map(providerNode),
+      total,
+      next_cursor: nextCursor,
+    };
   },
 
   async provider({ id }: Row, context: GqlContext) {
