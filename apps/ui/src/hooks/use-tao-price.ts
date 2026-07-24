@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { getTaoMarket, type TaoMarketData } from "@/lib/metagraphed/market.functions";
 
+/** Guards against a missing/non-positive price; exported for unit tests. */
+export function resolveTaoPrice(data: TaoMarketData | undefined): number | null {
+  return typeof data?.price === "number" && data.price > 0 ? data.price : null;
+}
+
 /**
  * Shared TAO/USD price hook. Backed by the same coinpaprika query used on
  * /subnets so the browser cache dedupes across the app.
@@ -16,6 +21,5 @@ export function useTaoPrice() {
     gcTime: 5 * 60_000,
     retry: 1,
   });
-  const price = typeof data?.price === "number" && data.price > 0 ? data.price : null;
-  return { price, isPending, isError };
+  return { price: resolveTaoPrice(data), isPending, isError };
 }
