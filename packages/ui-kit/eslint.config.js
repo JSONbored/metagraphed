@@ -66,6 +66,26 @@ const DESIGN_RULES = [
   },
 ];
 
+// SSR footguns -- see apps/ui/docs/ssr-safety.md. ui-kit's own components
+// only ever render inside apps/ui's TanStack Start SSR tree, so the same
+// hydration-mismatch risk applies here even though ui-kit itself has no
+// server. Ported alongside DESIGN_RULES 2026-07-24 (missed in the initial
+// guardrail port).
+const SSR_SAFETY_RULES = [
+  {
+    selector:
+      "CallExpression[callee.name='useState'] > ArrowFunctionExpression Identifier[name='localStorage']",
+    message:
+      "Reading localStorage in a useState initializer hydration-mismatches. Read inside useEffect and setState from there.",
+  },
+  {
+    selector:
+      "CallExpression[callee.name='useState'] > ArrowFunctionExpression Identifier[name='matchMedia']",
+    message:
+      "Reading matchMedia in a useState initializer hydration-mismatches. Read inside useEffect.",
+  },
+];
+
 // The primitives relocated from apps/ui (2026-07-23) authoritatively define
 // these patterns (Panel/SectionLabel don't wrap themselves in <Panel>, and
 // external-link.tsx/table-state.tsx are known, documented exceptions -- see
@@ -156,7 +176,7 @@ export default tseslint.config(
       ],
       // "warn", not "error" -- matching apps/ui's own rationale: fix
       // incrementally as files are touched, don't block unrelated PRs.
-      "no-restricted-syntax": ["warn", ...DESIGN_RULES],
+      "no-restricted-syntax": ["warn", ...DESIGN_RULES, ...SSR_SAFETY_RULES],
     },
   },
   {
