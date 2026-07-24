@@ -10,6 +10,7 @@ import {
 import { describe, test, vi } from "vitest";
 import * as listQuery from "../workers/list-query.ts";
 import * as subnetCandidatesMcp from "../src/subnet-candidates-mcp.ts";
+import * as subnetEndpointsMcp from "../src/subnet-endpoints-mcp.ts";
 import * as subnetEvidenceMcp from "../src/subnet-evidence-mcp.ts";
 import {
   FIELD_COMPLEXITY,
@@ -9857,6 +9858,257 @@ describe("graphql — subnet_candidates (#7641, baked per-subnet candidate artif
       );
       assert.ok(body.errors, "expected the raw failure to surface");
       assert.match(body.errors[0].message, /loader exploded/);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("graphql — subnet_endpoints (#7869, baked per-subnet endpoint artifact)", () => {
+  const ENDPOINTS_ENV = () =>
+    fixtureEnv({
+      "/metagraph/endpoints/5.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        netuid: 5,
+        endpoints: [
+          {
+            id: "ep-a",
+            netuid: 5,
+            kind: "subnet-api",
+            layer: "subnet-app",
+            publication_state: "monitored",
+            status: "ok",
+            latency_ms: 100,
+            score: 90,
+          },
+          {
+            id: "ep-b",
+            netuid: 5,
+            kind: "openapi",
+            layer: "subnet-app",
+            publication_state: "verified",
+            status: "degraded",
+            latency_ms: 300,
+            score: 40,
+          },
+          {
+            id: "ep-c",
+            netuid: 5,
+            kind: "subnet-api",
+            layer: "data-provider",
+            publication_state: "monitored",
+            status: "ok",
+            latency_ms: 200,
+            score: 70,
+          },
+        ],
+      },
+    });
+
+  test("resolves the baked per-subnet endpoints artifact", async () => {
+    const { status, body } = await gql(
+      "{ subnet_endpoints(netuid: 5) }",
+      ENDPOINTS_ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_endpoints.netuid, 5);
+    assert.equal(body.data.subnet_endpoints.total, 3);
+    assert.equal(body.data.subnet_endpoints.endpoints[0].id, "ep-a");
+  });
+
+  test("degrades to null when no endpoint artifact is baked, never an error", async () => {
+    const { status, body } = await gql("{ subnet_endpoints(netuid: 999) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_endpoints, null);
+  });
+
+  test("a negative netuid is a GraphQL error", async () => {
+    const { body } = await gql("{ subnet_endpoints(netuid: -1) }");
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
+  test("is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_endpoints, 5);
+  });
+
+  test("filters by kind, reusing the shared loader", async () => {
+    const { status, body } = await gql(
+      '{ subnet_endpoints(netuid: 5, kind: "subnet-api") }',
+      ENDPOINTS_ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const out = body.data.subnet_endpoints;
+    assert.equal(out.returned, 2);
+    assert.deepEqual(
+      out.endpoints.map((e: Row) => e.id),
+      ["ep-a", "ep-c"],
+    );
+  });
+
+  test("bounds latency/score ranges", async () => {
+    const { body } = await gql(
+      "{ subnet_endpoints(netuid: 5, min_score: 80) }",
+      ENDPOINTS_ENV(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_endpoints.returned, 1);
+    assert.equal(body.data.subnet_endpoints.endpoints[0].id, "ep-a");
+  });
+
+  test("sorts, pages, and round-trips next_cursor", async () => {
+    const first = await gql(
+      '{ subnet_endpoints(netuid: 5, status: "ok", sort: "score", order: "desc", limit: 1) }',
+      ENDPOINTS_ENV(),
+    );
+    assert.equal(first.body.errors, undefined);
+    const page1 = first.body.data.subnet_endpoints;
+    assert.equal(page1.total, 2);
+    assert.equal(page1.returned, 1);
+    assert.equal(page1.endpoints[0].id, "ep-a");
+    assert.equal(page1.next_cursor, 1);
+
+    const second = await gql(
+      '{ subnet_endpoints(netuid: 5, status: "ok", sort: "score", order: "desc", limit: 1, cursor: 1) }',
+      ENDPOINTS_ENV(),
+    );
+    const page2 = second.body.data.subnet_endpoints;
+    assert.equal(page2.endpoints[0].id, "ep-c");
+    assert.equal(page2.next_cursor, null);
+  });
+
+  test("an unsupported filter or sort value is a GraphQL error", async () => {
+    const badKind = await gql(
+      '{ subnet_endpoints(netuid: 5, kind: "not-a-kind") }',
+      ENDPOINTS_ENV(),
+    );
+    assert.ok(badKind.body.errors, "expected a GraphQL error for kind");
+
+    const badSort = await gql(
+      '{ subnet_endpoints(netuid: 5, sort: "not_a_column") }',
+      ENDPOINTS_ENV(),
+    );
+    assert.ok(badSort.body.errors, "expected a GraphQL error for sort");
+  });
+
+  test("an unexpected loader failure propagates", async () => {
+    // Only the loader's own toolErrors map to null/BAD_USER_INPUT; anything else
+    // is a real fault and must surface rather than being masked as "no endpoints
+    // baked".
+    const spy = vi
+      .spyOn(subnetEndpointsMcp, "loadSubnetEndpointsList")
+      .mockRejectedValue(new Error("loader exploded"));
+    try {
+      const { body } = await gql(
+        "{ subnet_endpoints(netuid: 5) }",
+        ENDPOINTS_ENV(),
+      );
+      assert.ok(body.errors, "expected the raw failure to surface");
+      assert.match(body.errors[0].message, /loader exploded/);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("graphql — nested Subnet.endpoints filter args (#7869)", () => {
+  const NESTED_ENV = () =>
+    fixtureEnv({
+      "/metagraph/subnets/5.json": {
+        subnet: { netuid: 5, name: "Five", slug: "five" },
+        surfaces: [],
+        endpoints: [{ id: "bundled-1", netuid: 5, kind: "rpc", status: "ok" }],
+      },
+      "/metagraph/endpoints/5.json": {
+        netuid: 5,
+        endpoints: [
+          {
+            id: "ep-a",
+            netuid: 5,
+            kind: "subnet-api",
+            layer: "subnet-app",
+            status: "ok",
+            latency_ms: 100,
+            score: 90,
+          },
+          {
+            id: "ep-b",
+            netuid: 5,
+            kind: "openapi",
+            layer: "subnet-app",
+            status: "degraded",
+            latency_ms: 300,
+            score: 40,
+          },
+        ],
+      },
+    });
+
+  test("with no arguments returns the bundled full list unchanged", async () => {
+    const { status, body } = await gql(
+      "{ subnet(netuid: 5) { endpoints { id } } }",
+      NESTED_ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(
+      body.data.subnet.endpoints.map((e: Row) => e.id),
+      ["bundled-1"],
+    );
+  });
+
+  test("a filter arg routes through the shared loader and returns just the rows", async () => {
+    const { status, body } = await gql(
+      '{ subnet(netuid: 5) { endpoints(kind: "subnet-api") { id kind } } }',
+      NESTED_ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(
+      body.data.subnet.endpoints.map((e: Row) => e.id),
+      ["ep-a"],
+    );
+  });
+
+  test("an unsupported filter value on the nested field is a GraphQL error", async () => {
+    const { body } = await gql(
+      '{ subnet(netuid: 5) { endpoints(kind: "not-a-kind") { id } } }',
+      NESTED_ENV(),
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+  });
+
+  test("a cold per-subnet endpoint artifact degrades to an empty list", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets/5.json": {
+        subnet: { netuid: 5, name: "Five" },
+        surfaces: [],
+        endpoints: [{ id: "bundled-1", netuid: 5 }],
+      },
+    });
+    const { status, body } = await gql(
+      '{ subnet(netuid: 5) { endpoints(status: "ok") { id } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet.endpoints, []);
+  });
+
+  test("an unexpected loader failure on the nested field propagates", async () => {
+    const spy = vi
+      .spyOn(subnetEndpointsMcp, "loadSubnetEndpointsList")
+      .mockRejectedValue(new Error("nested loader exploded"));
+    try {
+      const { body } = await gql(
+        '{ subnet(netuid: 5) { endpoints(kind: "subnet-api") { id } } }',
+        NESTED_ENV(),
+      );
+      assert.ok(body.errors, "expected the raw failure to surface");
+      assert.match(body.errors[0].message, /nested loader exploded/);
     } finally {
       spy.mockRestore();
     }

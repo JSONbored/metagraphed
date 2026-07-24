@@ -162,6 +162,22 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: Int
     ): JSON
+    "One subnet's endpoint/resource registry rows with full REST filter parity — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, publication_state, status, and latency (min_/max_latency_ms) / score (min_/max_score) ranges; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the network-wide endpoint catalog) and the nested Subnet.endpoints field. Mirrors GET /api/v1/subnets/{netuid}/endpoints."
+    subnet_endpoints(
+      netuid: Int!
+      kind: String
+      layer: String
+      publication_state: String
+      status: String
+      min_latency_ms: Int
+      max_latency_ms: Int
+      min_score: Float
+      max_score: Float
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+    ): JSON
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
@@ -831,8 +847,21 @@ export const SDL = /* GraphQL */ `
     economics: SubnetEconomics
     "Curated public interface surfaces of this subnet."
     surfaces: [Surface!]!
-    "Endpoint/resource registry rows for this subnet."
-    endpoints: [Endpoint!]!
+    "Endpoint/resource registry rows for this subnet. Accepts the same filter/sort/page arguments as the root subnet_endpoints(...) field (netuid comes from the parent Subnet); when any is supplied the field is served through the same list_subnet_endpoints loader, and an unsupported filter/sort value is a GraphQL error. With no arguments it returns the subnet's full unfiltered endpoint list."
+    endpoints(
+      kind: String
+      layer: String
+      publication_state: String
+      status: String
+      min_latency_ms: Int
+      max_latency_ms: Int
+      min_score: Float
+      max_score: Float
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+    ): [Endpoint!]!
   }
 
   type ProviderList {

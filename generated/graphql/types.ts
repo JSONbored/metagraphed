@@ -2602,6 +2602,8 @@ export type Query = {
   subnet_conviction: SubnetConviction;
   /** Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, NeuronDeregistered count, and deregistrations per hotkey); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
   subnet_deregistrations: SubnetDeregistrations;
+  /** One subnet's endpoint/resource registry rows with full REST filter parity — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, publication_state, status, and latency (min_/max_latency_ms) / score (min_/max_score) ranges; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the network-wide endpoint catalog) and the nested Subnet.endpoints field. Mirrors GET /api/v1/subnets/{netuid}/endpoints. */
+  subnet_endpoints?: Maybe<Scalars['JSON']['output']>;
   /** One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary. */
   subnet_event_summary: SubnetEventSummary;
   /** One subnet's paginated first-party chain-event feed (newest first): each event's kind, block, UID, hot/cold keys, amount, and timestamp. Filter by kind and by block_start/block_end (inclusive block bounds); page with limit (1-1000, default 100)/offset. event_count is the page count, not a grand total. A subnet with no matching events resolves to a schema-stable empty feed, never null. Mirrors GET /api/v1/subnets/{netuid}/events. */
@@ -3521,6 +3523,23 @@ export type QuerySubnet_DeregistrationsArgs = {
 };
 
 
+export type QuerySubnet_EndpointsArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  kind?: InputMaybe<Scalars['String']['input']>;
+  layer?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  max_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  max_score?: InputMaybe<Scalars['Float']['input']>;
+  min_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  min_score?: InputMaybe<Scalars['Float']['input']>;
+  netuid: Scalars['Int']['input'];
+  order?: InputMaybe<Scalars['String']['input']>;
+  publication_state?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QuerySubnet_Event_SummaryArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
@@ -4094,7 +4113,7 @@ export type Subnet = {
   docs_url?: Maybe<Scalars['String']['output']>;
   /** Per-subnet economic + validator metrics. */
   economics?: Maybe<SubnetEconomics>;
-  /** Endpoint/resource registry rows for this subnet. */
+  /** Endpoint/resource registry rows for this subnet. Accepts the same filter/sort/page arguments as the root subnet_endpoints(...) field (netuid comes from the parent Subnet); when any is supplied the field is served through the same list_subnet_endpoints loader, and an unsupported filter/sort value is a GraphQL error. With no arguments it returns the subnet's full unfiltered endpoint list. */
   endpoints: Array<Endpoint>;
   first_party?: Maybe<Scalars['Boolean']['output']>;
   gap_count?: Maybe<Scalars['Int']['output']>;
@@ -4115,6 +4134,22 @@ export type Subnet = {
   surfaces: Array<Surface>;
   symbol?: Maybe<Scalars['String']['output']>;
   website_url?: Maybe<Scalars['String']['output']>;
+};
+
+
+export type SubnetEndpointsArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  kind?: InputMaybe<Scalars['String']['input']>;
+  layer?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  max_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  max_score?: InputMaybe<Scalars['Float']['input']>;
+  min_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  min_score?: InputMaybe<Scalars['Float']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  publication_state?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SubnetAxonRemovals = {
@@ -7782,6 +7817,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_concentration_history?: Resolver<ResolversTypes['SubnetConcentrationHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Concentration_HistoryArgs, 'netuid'>>;
   subnet_conviction?: Resolver<ResolversTypes['SubnetConviction'], ParentType, ContextType, RequireFields<QuerySubnet_ConvictionArgs, 'netuid'>>;
   subnet_deregistrations?: Resolver<ResolversTypes['SubnetDeregistrations'], ParentType, ContextType, RequireFields<QuerySubnet_DeregistrationsArgs, 'netuid'>>;
+  subnet_endpoints?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_EndpointsArgs, 'netuid'>>;
   subnet_event_summary?: Resolver<ResolversTypes['SubnetEventSummary'], ParentType, ContextType, RequireFields<QuerySubnet_Event_SummaryArgs, 'netuid'>>;
   subnet_events?: Resolver<ResolversTypes['SubnetEvents'], ParentType, ContextType, RequireFields<QuerySubnet_EventsArgs, 'netuid'>>;
   subnet_evidence?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_EvidenceArgs, 'netuid'>>;
@@ -8045,7 +8081,7 @@ export type SubnetResolvers<ContextType = GqlContext, ParentType extends Resolve
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   docs_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   economics?: Resolver<Maybe<ResolversTypes['SubnetEconomics']>, ParentType, ContextType>;
-  endpoints?: Resolver<Array<ResolversTypes['Endpoint']>, ParentType, ContextType>;
+  endpoints?: Resolver<Array<ResolversTypes['Endpoint']>, ParentType, ContextType, Partial<SubnetEndpointsArgs>>;
   first_party?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   gap_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   health?: Resolver<Maybe<ResolversTypes['SubnetHealth']>, ParentType, ContextType>;

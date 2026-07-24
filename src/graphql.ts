@@ -73,6 +73,10 @@ import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp
 // loadSubnetCandidatesList that MCP list_subnet_candidates already calls
 // (#7899) -- not a reimplementation.
 import { loadSubnetCandidatesList } from "./subnet-candidates-mcp.ts";
+// #7869: GraphQL parity for GET /api/v1/subnets/{netuid}/endpoints, reusing
+// loadSubnetEndpointsList that MCP list_subnet_endpoints already calls -- not a
+// reimplementation.
+import { loadSubnetEndpointsList } from "./subnet-endpoints-mcp.ts";
 // #7879: GraphQL parity for GET /api/v1/subnets/{netuid}/evidence, reusing
 // loadSubnetEvidenceList that MCP list_subnet_evidence already calls -- not a
 // reimplementation.
@@ -720,6 +724,7 @@ export const FIELD_COMPLEXITY = {
   subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_evidence: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1214,7 +1219,12 @@ function subnetNode(identity: Row, prefetch: Row = {}) {
     economics: (_args: unknown, context: GqlContext) =>
       loadSubnetEconomics(context, netuid),
     surfaces: bundledOr(prefetch.surfaces, loadSubnetSurfaces),
-    endpoints: bundledOr(prefetch.endpoints, loadSubnetEndpoints),
+    // #7869: filter/sort/page args route to the shared loader; with no args the
+    // field keeps its original bundled-or-lazy full-list behaviour.
+    endpoints: (args: Row, context: GqlContext) =>
+      hasSubnetEndpointsFilterArgs(args)
+        ? loadFilteredSubnetEndpoints(context, netuid, args)
+        : bundledOr(prefetch.endpoints, loadSubnetEndpoints)(args, context),
   };
 }
 
@@ -1386,6 +1396,64 @@ function loadSubnetSurfaces(context: GqlContext, netuid: number) {
 
 function loadSubnetEndpoints(context: GqlContext, netuid: number) {
   return loadRows(context, ARTIFACT.endpoints, "endpoints", netuid);
+}
+
+// #7869: the nested Subnet.endpoints field's filter args mirror the root
+// subnet_endpoints(...) set minus netuid (which comes from the parent Subnet).
+// The presence of any one routes the field through loadSubnetEndpointsList --
+// the same loader the root subnet_endpoints field and the list_subnet_endpoints
+// MCP tool call -- so the filtered nested field cannot drift from
+// GET /api/v1/subnets/{netuid}/endpoints; with no arguments the field keeps its
+// original unbounded full-list behaviour (served from the bundled detail
+// artifact when present, matching the pre-#7869 shape byte-for-byte).
+const SUBNET_ENDPOINTS_FILTER_ARG_NAMES = [
+  "kind",
+  "layer",
+  "publication_state",
+  "status",
+  "min_latency_ms",
+  "max_latency_ms",
+  "min_score",
+  "max_score",
+  "sort",
+  "order",
+  "limit",
+  "cursor",
+];
+
+function hasSubnetEndpointsFilterArgs(args: Row): boolean {
+  return SUBNET_ENDPOINTS_FILTER_ARG_NAMES.some(
+    (name) => args?.[name] !== undefined && args?.[name] !== null,
+  );
+}
+
+// The filtered nested path returns just the endpoint rows (preserving the
+// [Endpoint!]! shape), whereas the root subnet_endpoints field returns the full
+// paginated envelope. An unsupported filter/sort is BAD_USER_INPUT; a
+// cold/absent per-subnet artifact degrades to an empty list because the field
+// is non-null, matching the unfiltered path's cold behaviour.
+async function loadFilteredSubnetEndpoints(
+  context: GqlContext,
+  netuid: number,
+  args: Row,
+): Promise<Row[]> {
+  try {
+    const result = await loadSubnetEndpointsList(
+      mcpCtx(context),
+      { ...args, netuid },
+      { readArtifact },
+    );
+    return result.endpoints as Row[];
+  } catch (rawErr) {
+    const err = rawErr as Row;
+    if (err?.toolError && err.code === "invalid_params") {
+      throw new GraphQLError(err.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (err?.toolError) return [];
+    throw err;
+  }
 }
 
 async function loadProviderSubnets(context: GqlContext, netuids: number[]) {
@@ -3596,6 +3664,40 @@ const rootValue = {
       // preserving this field's documented cold-artifact contract --
       // loadArtifact, which this resolver used before, swallowed those the
       // same way.
+      if (err?.toolError) return null;
+      throw err;
+    }
+  },
+
+  async subnet_endpoints(args: Row, context: GqlContext) {
+    const { netuid } = args;
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // #7869: reuse loadSubnetEndpointsList -- the same loader the
+    // list_subnet_endpoints MCP tool calls -- rather than reimplementing the
+    // filter/sort/page pass here, so this field cannot drift from
+    // GET /api/v1/subnets/{netuid}/endpoints. It reads the same baked per-subnet
+    // artifact (distinct from the network-wide endpoints(...) catalog) and
+    // validates every filter/sort value against the REST allowlists, throwing on
+    // an unsupported one; that throw surfaces as a normal GraphQL error.
+    try {
+      return await loadSubnetEndpointsList(mcpCtx(context), args, {
+        readArtifact,
+      });
+    } catch (rawErr) {
+      const err = rawErr as Row;
+      // An unsupported filter/sort value is BAD_USER_INPUT, matching every other
+      // field's "not a silently substituted default" convention.
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      // Any other loader miss (not baked / cold R2 / unavailable) stays null,
+      // preserving this field's documented cold-artifact contract.
       if (err?.toolError) return null;
       throw err;
     }
