@@ -21161,3 +21161,104 @@ describe("graphql — subnet_hyperparameters_history cursor (#7882)", () => {
     assert.equal(new URL(seen.url!).searchParams.has("cursor"), false);
   });
 });
+
+// #7885: the nested Subnet.surfaces field gained the same filter/sort/page
+// vocabulary MCP list_surfaces and REST GET /api/v1/surfaces accept, delegating
+// to that loader rather than re-deriving a GraphQL-only filter. Unfiltered
+// reads keep their existing bundled behaviour.
+describe("graphql — nested Subnet.surfaces filters (#7885)", () => {
+  const NETUID = 7;
+
+  const surfacesArtifact = {
+    surfaces: [
+      {
+        id: "sn7-api",
+        netuid: NETUID,
+        kind: "subnet-api",
+        provider: "allways",
+        status: "ok",
+      },
+      {
+        id: "sn7-openapi",
+        netuid: NETUID,
+        kind: "openapi",
+        provider: "allways",
+        status: "ok",
+      },
+      {
+        id: "sn7-docs",
+        netuid: NETUID,
+        kind: "docs",
+        provider: "other-co",
+        status: "ok",
+      },
+      // A different subnet's row must never leak into the nested field.
+      { id: "sn9-api", netuid: 9, kind: "subnet-api", provider: "allways" },
+    ],
+  };
+
+  const subnetEnv = () =>
+    fixtureEnv({
+      "/metagraph/surfaces.json": surfacesArtifact,
+      [`/metagraph/subnets/${NETUID}.json`]: {
+        subnet: { netuid: NETUID, name: "Allways", slug: "allways" },
+        surfaces: [
+          { id: "bundled-only", netuid: NETUID, kind: "rpc", status: "ok" },
+        ],
+      },
+    });
+
+  test("filters the nested list by kind", async () => {
+    const { status, body } = await gql(
+      `{ subnet(netuid: ${NETUID}) { surfaces(kind: "openapi") { id kind } } }`,
+      subnetEnv() as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const rows = body.data.subnet.surfaces;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, "sn7-openapi");
+  });
+
+  test("filters the nested list by provider, scoped to the parent subnet", async () => {
+    const { body } = await gql(
+      `{ subnet(netuid: ${NETUID}) { surfaces(provider: "allways") { id netuid } } }`,
+      subnetEnv() as unknown as Env,
+    );
+    const rows = body.data.subnet.surfaces;
+    assert.deepEqual(rows.map((r: Row) => r.id).sort(), [
+      "sn7-api",
+      "sn7-openapi",
+    ]);
+    // netuid 9's allways row is excluded — the parent subnet still scopes it.
+    assert.ok(rows.every((r: Row) => r.netuid === NETUID));
+  });
+
+  test("sorts and pages the nested list like REST", async () => {
+    const { body } = await gql(
+      `{ subnet(netuid: ${NETUID}) { surfaces(sort: "id", order: "desc", limit: 1) { id } } }`,
+      subnetEnv() as unknown as Env,
+    );
+    const rows = body.data.subnet.surfaces;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].id, "sn7-openapi");
+  });
+
+  test("surfaces an invalid nested filter as a GraphQL error, not a silent default", async () => {
+    const { body } = await gql(
+      `{ subnet(netuid: ${NETUID}) { surfaces(kind: "bogus-kind") { id } } }`,
+      subnetEnv() as unknown as Env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("with no arguments keeps its existing bundled behaviour", async () => {
+    const { body } = await gql(
+      `{ subnet(netuid: ${NETUID}) { surfaces { id } } }`,
+      subnetEnv() as unknown as Env,
+    );
+    // Still the row bundled onto the subnet detail artifact — unfiltered
+    // callers never go through the list loader.
+    assert.equal(body.data.subnet.surfaces.length, 1);
+    assert.equal(body.data.subnet.surfaces[0].id, "bundled-only");
+  });
+});
