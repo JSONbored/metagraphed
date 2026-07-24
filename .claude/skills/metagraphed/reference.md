@@ -170,6 +170,8 @@ real test-tree/module-boundary refactor, not a CI config change.
 **Gates (all must pass):** `lint` · `format:check` · `typecheck` (`tsc --noEmit`, whole-tree, not
 diff-scoped — reads `tsconfig.json`'s own `include`/`exclude`) · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
+`validate:graphql-types-drift` (types-epic D, metagraphed#7862 — `generated/graphql/types.ts` from
+`codegen.ts` against `src/graphql-sdl.ts`; run `npm run build:graphql-types` and commit on drift) ·
 `validate:committed-seed` · `npm run build` · committed-derived-artifact freshness (working tree clean
 under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA/CONTENT-derived artifacts
 are NOT: `public/datasets/` + the llms.txt catalogs are gitignored, the README catalog is refreshed

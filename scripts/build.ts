@@ -150,6 +150,7 @@ function localSteps(): Step[] {
     nodeStep("build-network-registries", "scripts/build-network-registry.ts"),
     nodeStep("generate-types", "scripts/generate-types.ts"),
     nodeStep("generate-client", "scripts/generate-client.ts", "--write"),
+    nodeStep("graphql-types", "scripts/generate-graphql-types.ts"),
     nodeStep("r2-manifest", "scripts/r2-manifest.ts", "--write"),
   ];
 }
@@ -206,6 +207,7 @@ function productionSteps(): Step[] {
     nodeStep("build-network-registries", "scripts/build-network-registry.ts"),
     nodeStep("generate-types", "scripts/generate-types.ts"),
     nodeStep("generate-client", "scripts/generate-client.ts", "--write"),
+    nodeStep("graphql-types", "scripts/generate-graphql-types.ts"),
     // Reads registry-summary.json (just rewritten by build-artifacts above)
     // for live stats and renders the /og.png card into the same R2 staging
     // tree, so r2-manifest below picks it up like any other artifact (#6502).

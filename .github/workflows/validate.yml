@@ -337,6 +337,7 @@ jobs:
           npm run validate:schema-enums
           npm run validate:openapi-examples
           npm run validate:generated-client
+          npm run validate:graphql-types-drift
           npm run validate:committed-seed
 
       # Stage artifacts for BOTH halves: the suite's reader tests serve R2-only artifacts with NO

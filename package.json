@@ -81,6 +81,8 @@
     "openapi:generate": "node scripts/generate-openapi.ts --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.ts",
     "types:generate": "node scripts/generate-types.ts",
+    "build:graphql-types": "node scripts/generate-graphql-types.ts",
+    "validate:graphql-types-drift": "node scripts/validate-graphql-types-drift.ts",
     "surface:add": "node scripts/surface-add.ts",
     "subnet:new": "node scripts/subnet-new.ts",
     "enrich:issues": "node scripts/enrichment-issues.ts --write",
@@ -147,6 +149,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@graphql-codegen/cli": "^7.2.0",
+    "@graphql-codegen/typescript": "^6.1.0",
+    "@graphql-codegen/typescript-resolvers": "^6.1.0",
     "@sentry/cli": "^3.6.0",
     "@vitest/coverage-v8": "^4.1.10",
     "ajv": "^8.20.0",
