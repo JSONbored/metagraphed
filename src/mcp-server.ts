@@ -9877,7 +9877,11 @@ export const MCP_TOOLS = [
       if (transformed.error) {
         throw toolError("invalid_params", transformed.error.message);
       }
-      const page = (transformed.meta?.pagination ?? {}) as Row;
+      // config/data_key are guaranteed here (the "endpoints" collection always
+      // exists and data.endpoints is always an array by this point, thanks to
+      // the schema-stability guard above), so applyQueryFilters always returns
+      // meta.pagination -- no fallback to reason about.
+      const page = transformed.meta!.pagination as Row;
       return {
         ...(transformed.data as Row),
         total: page.total,
