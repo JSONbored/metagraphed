@@ -306,7 +306,7 @@ function SchemaExplorer() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { data } = useSuspenseQuery(schemasQuery());
-  const all = (data.data ?? []) as SchemaInfo[];
+  const all = useMemo(() => (data.data ?? []) as SchemaInfo[], [data.data]);
 
   const filtered = useMemo(() => {
     const needle = search.q.trim().toLowerCase();

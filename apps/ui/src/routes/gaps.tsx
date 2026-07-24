@@ -336,7 +336,7 @@ function GapsKpiStrip() {
  */
 function MissingKindsAtAGlance() {
   const gapsRes = useSuspenseQuery(gapsQuery()).data;
-  const rows = (gapsRes.data ?? []) as Gap[];
+  const rows = useMemo(() => (gapsRes.data ?? []) as Gap[], [gapsRes.data]);
   const navigate = useNavigate({ from: Route.fullPath });
   const search = Route.useSearch();
   const activeMissing = useMemo<Set<string>>(
@@ -482,7 +482,7 @@ function OpenGapsSection() {
     for (const s of (snRes.data ?? []) as Subnet[]) m.set(s.netuid, s);
     return m;
   }, [snRes]);
-  const rows = (data.data ?? []) as Gap[];
+  const rows = useMemo(() => (data.data ?? []) as Gap[], [data.data]);
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 

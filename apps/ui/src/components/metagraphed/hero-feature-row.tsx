@@ -106,7 +106,10 @@ function ChainThroughputCard() {
 function LiveSubnetsCard() {
   const hydrated = useHydrated();
   const { data } = useQuery({ ...subnetsQuery({ limit: 128 }), enabled: hydrated });
-  const subnets = hydrated ? ((data?.data as Subnet[] | undefined) ?? []) : [];
+  const subnets = useMemo(
+    () => (hydrated ? ((data?.data as Subnet[] | undefined) ?? []) : []),
+    [hydrated, data?.data],
+  );
 
   const featured = useMemo(() => pickFeatured(subnets, 6), [subnets]);
 

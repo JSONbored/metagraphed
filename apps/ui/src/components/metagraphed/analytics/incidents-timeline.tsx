@@ -45,9 +45,9 @@ export function IncidentsTimeline({ className }: { className?: string }) {
   const { data: eRes } = useSuspenseQuery(endpointsQuery({ limit: 500 }));
   const { data: pRes } = useSuspenseQuery(rpcPoolsQuery());
 
-  const incidents = (iRes.data ?? []) as EndpointIncident[];
-  const endpoints = (eRes.data ?? []) as Endpoint[];
-  const pools = (pRes.data ?? []) as RpcPool[];
+  const incidents = useMemo(() => (iRes.data ?? []) as EndpointIncident[], [iRes.data]);
+  const endpoints = useMemo(() => (eRes.data ?? []) as Endpoint[], [eRes.data]);
+  const pools = useMemo(() => (pRes.data ?? []) as RpcPool[], [pRes.data]);
 
   // Map endpoint_id → endpoint metadata so each incident can deep-link.
   const endpointMap = useMemo(() => {

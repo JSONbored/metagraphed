@@ -319,7 +319,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
     ...searchQuery(debounced, 20),
     retry: 0,
   });
-  const allHits = (data?.data ?? []) as SearchHit[];
+  const allHits = useMemo(() => (data?.data ?? []) as SearchHit[], [data?.data]);
 
   // Semantic (vector-similarity) fallback/complement to the keyword hits above.
   // Isolated in its own query so a 503 (AI disabled) or 502 (AI error) just

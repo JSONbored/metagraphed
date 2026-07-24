@@ -84,7 +84,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
   const navigate = useNavigate();
   const { data: sRes } = useSuspenseQuery(schemasQuery());
   const { data: eRes } = useSuspenseQuery(evidenceQuery({ limit: 500 }));
-  const schemas = (sRes.data ?? []) as SchemaInfo[];
+  const schemas = useMemo(() => (sRes.data ?? []) as SchemaInfo[], [sRes.data]);
   const evidence = (eRes.data ?? []) as EvidenceItem[];
 
   const [filter, setFilter] = useState<"all" | DriftKind>("all");

@@ -49,8 +49,8 @@ const CELL_TONE: Record<Cell, { bg: string; ring: string; label: string }> = {
 export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
   const { data: cRes } = useSuspenseQuery(reviewProfileCompletenessQuery());
   const { data: sRes } = useSuspenseQuery(subnetsQuery({ limit: 250 }));
-  const profiles = cRes.data ?? [];
-  const subnets = (sRes.data ?? []) as Subnet[];
+  const profiles = useMemo(() => cRes.data ?? [], [cRes.data]);
+  const subnets = useMemo(() => (sRes.data ?? []) as Subnet[], [sRes.data]);
 
   const [sort, setSort] = useState<"missing-desc" | "missing-asc" | "netuid">("missing-desc");
 
@@ -271,7 +271,7 @@ function Legend({ cell, count }: { cell: Cell; count: number }) {
  */
 export function CompletenessHistogram() {
   const { data } = useSuspenseQuery(reviewProfileCompletenessQuery());
-  const rows = data.data ?? [];
+  const rows = useMemo(() => data.data ?? [], [data.data]);
 
   const buckets = useMemo(() => {
     const arr = new Array(10).fill(0) as number[];

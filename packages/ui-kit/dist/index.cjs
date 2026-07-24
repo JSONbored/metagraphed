@@ -5613,7 +5613,10 @@ function QueryBarFilterTrigger(props) {
   } = props;
   const id = React3.useId();
   const [open, setOpen] = React3.useState(false);
-  const selected = props.multi ? props.value : props.value ? [props.value] : [];
+  const selected = React3.useMemo(
+    () => props.multi ? props.value : props.value ? [props.value] : [],
+    [props.multi, props.value]
+  );
   const active = selected.length > 0;
   const preview = React3.useMemo(() => {
     if (!active) return placeholder;

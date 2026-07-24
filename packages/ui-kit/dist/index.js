@@ -5584,7 +5584,10 @@ function QueryBarFilterTrigger(props) {
   } = props;
   const id = useId();
   const [open, setOpen] = useState(false);
-  const selected = props.multi ? props.value : props.value ? [props.value] : [];
+  const selected = useMemo(
+    () => props.multi ? props.value : props.value ? [props.value] : [],
+    [props.multi, props.value]
+  );
   const active = selected.length > 0;
   const preview = useMemo(() => {
     if (!active) return placeholder;

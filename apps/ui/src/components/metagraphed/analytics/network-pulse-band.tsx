@@ -42,7 +42,7 @@ export function NetworkPulseBand({ className }: { className?: string }) {
   const { data: iRes } = useSuspenseQuery(endpointIncidentsQuery());
   const { data: tRes } = useSuspenseQuery(bulkHealthTrendsQuery());
   const h = hRes.data;
-  const incidents = (iRes.data ?? []) as EndpointIncident[];
+  const incidents = useMemo(() => (iRes.data ?? []) as EndpointIncident[], [iRes.data]);
 
   const total = (h?.total ?? 0) || 1;
   const ok = h?.ok ?? 0;

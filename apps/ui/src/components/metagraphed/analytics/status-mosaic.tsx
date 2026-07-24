@@ -24,7 +24,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
   const { range } = useTimeRange();
   const cutoff = Date.now() - RANGE_HOURS[range] * 3_600_000;
   const { data: res } = useSuspenseQuery(endpointsQuery({ limit }));
-  const allEndpoints = (res.data ?? []) as Endpoint[];
+  const allEndpoints = useMemo(() => (res.data ?? []) as Endpoint[], [res.data]);
   const endpoints = useMemo(
     () =>
       allEndpoints.filter((e) => {
