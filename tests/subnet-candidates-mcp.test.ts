@@ -424,4 +424,16 @@ describe("subnet-candidates-mcp", () => {
     assert.ok(tool);
     assert.equal(tool.title, "List one subnet's candidate surfaces");
   });
+
+  test("the registered tool handler delegates to loadSubnetCandidatesList", async () => {
+    const tool = MCP_TOOLS.find(
+      (t: Row) => t.name === "list_subnet_candidates",
+    );
+    const out = await tool.handler(
+      { netuid: NETUID, kind: "subnet-api", state: "schema-valid" },
+      { env: {}, readArtifact } as unknown as LoadCtx,
+    );
+    assert.equal(out.returned, 1);
+    assert.equal(out.candidates[0].id, "beta-api");
+  });
 });
