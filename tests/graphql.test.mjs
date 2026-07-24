@@ -4303,6 +4303,62 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
     assert.equal(body.data, null);
     assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
   });
+
+  test("changes: true forwards ?changes=true and passes the detail through as JSON (#7883)", async () => {
+    let capturedUrl;
+    const changesDetail = {
+      validators_entered_count: 2,
+      validators_exited_count: 1,
+      uid_reassignment_count: 0,
+      validators_entered: ["5Hentered1", "5Hentered2"],
+      validators_exited: ["5Hexited1"],
+      uid_reassignments: [],
+    };
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: 5,
+            window: "30d",
+            comparable: true,
+            changes: changesDetail,
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5, changes: true) { netuid comparable changes } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.searchParams.get("changes"), "true");
+    assert.deepEqual(body.data.subnet_turnover.changes, changesDetail);
+  });
+
+  test("without the changes toggle the param is omitted and changes resolves to null (#7883)", async () => {
+    let capturedUrl;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ schema_version: 1, netuid: 5, window: "30d" });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5) { changes } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.searchParams.has("changes"), false);
+    assert.equal(body.data.subnet_turnover.changes, null);
+  });
 });
 
 // #6978: GraphQL parity for the conviction/ownership-contest (#4302) and
