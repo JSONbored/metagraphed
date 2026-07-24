@@ -53,6 +53,9 @@ import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.ts";
 import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.ts";
 import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.ts";
 import { loadReviewGapsList } from "./review-gaps-mcp.ts";
+// #7880: GraphQL parity for GET /api/v1/subnets/{netuid}/gaps filters — reuse
+// loadSubnetGapsList (review-gap-priorities list-query on the per-subnet artifact).
+import { loadSubnetGapsList } from "./subnet-gaps-mcp.ts";
 import { loadProfileCompletenessList } from "./profile-completeness-mcp.ts";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
@@ -544,8 +547,8 @@ export const SDL = `
     subnet_validators(netuid: Int!): SubnetValidatorList!
     "One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary."
     subnet_event_summary(netuid: Int!, window: String, limit: Int): SubnetEventSummary!
-    "One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_gaps MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/gaps."
-    subnet_gaps(netuid: Int!): JSON
+    "One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Filter by curation_level/missing_kinds/review_state, sort with sort/order, and page with limit/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_gaps MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/gaps."
+    subnet_gaps(netuid: Int!, curation_level: String, missing_kinds: [String!], review_state: String, limit: Int, cursor: String, sort: String, order: String): JSON
     "One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_evidence MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/evidence."
     subnet_evidence(netuid: Int!): JSON
     "One subnet's unpromoted candidate-surface queue — the baked per-subnet /metagraph/candidates/{netuid}.json artifact the REST route and get_subnet_candidates MCP tool read. Null when no candidate artifact has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim. Distinct from candidates(...) (the filterable network-wide candidate catalog). Mirrors GET /api/v1/subnets/{netuid}/candidates."
@@ -6868,17 +6871,22 @@ const rootValue = {
     };
   },
 
-  async subnet_gaps({ netuid }, context) {
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      throw new GraphQLError("netuid must be a non-negative integer.", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
+  async subnet_gaps(args, context) {
+    // #7880: reuse loadSubnetGapsList — same review-gap-priorities list-query
+    // transforms REST applies on /api/v1/subnets/{netuid}/gaps. Invalid filters
+    // are GraphQL BAD_USER_INPUT errors; a cold/absent artifact degrades to null
+    // (matching this field's historical schema-stable convention, not a throw).
+    try {
+      return await loadSubnetGapsList(context, args, { readArtifact });
+    } catch (err) {
+      if (err?.toolError && err.code === "not_found") return null;
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      throw err;
     }
-    // Same baked review-gaps artifact the REST route + get_subnet_gaps MCP tool
-    // read. The MCP tool raises not_found for a netuid with no report; GraphQL
-    // degrades to null instead, matching how every other artifact-backed
-    // resolver here treats a cold/absent artifact.
-    return loadArtifact(context, `/metagraph/review/gaps/${netuid}.json`);
   },
 
   async subnet_evidence({ netuid }, context) {
