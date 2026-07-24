@@ -9,7 +9,7 @@ import {
   contractsToolError,
   loadContracts,
 } from "../src/contracts-mcp.ts";
-import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 

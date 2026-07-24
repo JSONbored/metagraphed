@@ -9,7 +9,7 @@
 // validation, error-code mapping) end-to-end through the real JSON-RPC path.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
 
@@ -388,7 +388,7 @@ async function callTool(args: Row, fetchImpl?: typeof fetch) {
           params: { name: "call_subnet_surface", arguments: args },
         }),
       }),
-      {},
+      {} as unknown as Env,
       deps,
     );
     return ((await response.json()) as Row).result;
@@ -1426,7 +1426,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
               },
             }),
           }),
-          { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+          { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" } as unknown as Env,
           {
             ...deps,
             executionCtx: { waitUntil: (p: Row) => p },
@@ -1475,7 +1475,7 @@ describe("call_subnet_surface MCP tool (#7014)", () => {
             },
           }),
         }),
-        { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+        { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" } as unknown as Env,
         {
           ...deps,
           executionCtx: { waitUntil: (p: Row) => p },

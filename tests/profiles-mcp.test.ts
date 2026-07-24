@@ -13,7 +13,7 @@ import {
   profilesMcpError,
   profilesQueryUrl,
 } from "../src/profiles-mcp.ts";
-import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 type ProfilesCtx = Parameters<typeof loadProfilesList>[0];

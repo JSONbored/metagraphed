@@ -13,7 +13,7 @@ import {
   MCP_SERVER_VERSION,
   MCP_TOOLS,
   listToolDefinitions,
-} from "../src/mcp-server.mjs";
+} from "../src/mcp-server.ts";
 import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,

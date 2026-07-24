@@ -27,7 +27,7 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { mockEnv, type Row } from "./row-type.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 
 const SURFACE_ID = "sn-25-mainframe-pdb-file-api";
 

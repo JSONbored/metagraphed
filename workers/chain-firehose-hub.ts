@@ -53,7 +53,7 @@ import {
   maxComplexityRule,
   maxDepthRule,
   schema as chainEventsGraphqlSchema,
-} from "../src/graphql.mjs";
+} from "../src/graphql.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";

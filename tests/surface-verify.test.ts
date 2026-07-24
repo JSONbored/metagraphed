@@ -8,7 +8,7 @@ import {
   SURFACE_ID_PATTERN,
 } from "../src/surface-verify.ts";
 import { handleRequest } from "../workers/api.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row, AnyFn } from "./row-type.ts";
 
@@ -508,7 +508,7 @@ describe("verify_integration MCP tool (#358)", () => {
             params: { name: "verify_integration", arguments: args },
           }),
         }),
-        {},
+        {} as unknown as Env,
         deps,
       );
       return ((await response.json()) as Row).result;
@@ -566,7 +566,7 @@ describe("verify_integration MCP tool (#358)", () => {
             },
           }),
         }),
-        {},
+        {} as unknown as Env,
         deps,
       );
       const result = ((await response.json()) as Row).result;
@@ -612,7 +612,7 @@ describe("verify_integration MCP tool (#358)", () => {
             params: { name: "verify_integration", arguments: args },
           }),
         }),
-        {},
+        {} as unknown as Env,
         deps,
       );
       return ((await response.json()) as Row).result;

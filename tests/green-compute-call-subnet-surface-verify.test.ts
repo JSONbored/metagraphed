@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import type { Row } from "./row-type.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 
 const SURFACE_ID = "sn-110-green-compute-healthz";
 
@@ -112,7 +112,7 @@ describe("SN110 SN110 call_subnet_surface verification (#7121)", () => {
             },
           }),
         }),
-        {},
+        {} as unknown as Env,
         deps,
       );
       const result = ((await response.json()) as Row).result;

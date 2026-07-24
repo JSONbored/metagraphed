@@ -465,6 +465,36 @@ import {
 } from "./chain-transfer-pairs.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyFn = (...args: any[]) => any;
+
+// The MCP loaders' ctx parameter requires a readArtifact field, but every
+// call site in this file supplies readArtifact through the loaders' own deps
+// override (`read = deps.readArtifact ?? ctx.readArtifact`), so ctx.readArtifact
+// is never dereferenced here. This cast bridges that gap without weakening the
+// loaders' own signatures.
+const mcpCtx = (context: GqlContext) =>
+  context as GqlContext & {
+    readArtifact: (env: Env, path: string) => ReturnType<typeof readArtifact>;
+  };
+
+// The contextValue handleGraphQLRequest passes to execute() (env + a
+// per-request memo Map + the raw Request), plus the extra fields the
+// graphql-ws subscription path stamps on (clientIp/graphqlWsConnection) and
+// the Sentry hook. Kept loose (all optional except env) because different
+// entry points populate different subsets.
+interface GqlContext {
+  env: Env;
+  cache: Map<string, unknown>;
+  request?: Request;
+  clientIp?: string | null;
+  graphqlWsConnection?: unknown;
+  chainFirehose?: unknown;
+  reportError?: (err: unknown) => void;
+}
+
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
 export const GRAPHQL_MAX_BODY_BYTES = 64 * 1024;
@@ -4139,8 +4169,12 @@ export const schema = buildSchema(SDL);
 // whichever Durable Object drives the graphql-ws server (workers/chain-firehose-hub.mjs)
 // -- see GRAPHQL_SUBSCRIPTION_CONTEXT_KEY below.
 export const GRAPHQL_SUBSCRIPTION_CONTEXT_KEY = "chainFirehose";
-schema.getSubscriptionType().getFields().chainEvents.subscribe =
-  async function* chainEventsSubscribe(_source, args, context) {
+schema.getSubscriptionType()!.getFields().chainEvents.subscribe =
+  async function* chainEventsSubscribe(
+    _source: unknown,
+    args: Row,
+    context: Row,
+  ) {
     const hub = context?.[GRAPHQL_SUBSCRIPTION_CONTEXT_KEY];
     if (!hub) {
       throw new GraphQLError(
@@ -4374,13 +4408,16 @@ export const FIELD_COMPLEXITY = {
   evm_address_mapping: LIVE_RPC_FIELD_COMPLEXITY,
 };
 
-function fieldComplexity(fieldName) {
-  return FIELD_COMPLEXITY[fieldName] ?? DEFAULT_FIELD_COMPLEXITY;
+function fieldComplexity(fieldName: string) {
+  return (
+    (FIELD_COMPLEXITY as Record<string, number>)[fieldName] ??
+    DEFAULT_FIELD_COMPLEXITY
+  );
 }
 
 // --- Validation rules ---
 
-function buildFragmentMap(documentNode) {
+function buildFragmentMap(documentNode: Row) {
   const fragments = new Map();
   for (const def of documentNode.definitions) {
     if (def.kind === "FragmentDefinition") {
@@ -4398,7 +4435,7 @@ function buildFragmentMap(documentNode) {
 // stays enabled over POST, matching the documented contract. Sibling data fields
 // in the same operation are still measured, so a mixed query stays bounded.
 const INTROSPECTION_ROOT_FIELDS = new Set(["__schema", "__type"]);
-function isIntrospectionRootField(sel) {
+function isIntrospectionRootField(sel: Row) {
   return sel.kind === "Field" && INTROSPECTION_ROOT_FIELDS.has(sel.name?.value);
 }
 
@@ -4413,7 +4450,13 @@ function isIntrospectionRootField(sel) {
 // are likewise transparent: a type condition is not a nesting level or an extra
 // field. Counting them would over-measure a query relative to its equivalent
 // inlined or named-fragment form, wrongly rejecting valid queries.
-function selectionDepth(selectionSet, fragments, visited, memo, max) {
+function selectionDepth(
+  selectionSet: Row,
+  fragments: Map<string, Row>,
+  visited: Set<string>,
+  memo: Map<string, number>,
+  max: number,
+) {
   let deepest = 0;
   for (const sel of selectionSet.selections) {
     if (isIntrospectionRootField(sel)) continue; // schema-only: depth 0
@@ -4423,7 +4466,7 @@ function selectionDepth(selectionSet, fragments, visited, memo, max) {
       const frag = fragments.get(fragName);
       if (frag && !visited.has(fragName)) {
         if (memo.has(fragName)) {
-          depth = memo.get(fragName);
+          depth = memo.get(fragName)!;
         } else {
           depth = selectionDepth(
             frag.selectionSet,
@@ -4448,10 +4491,10 @@ function selectionDepth(selectionSet, fragments, visited, memo, max) {
   return deepest;
 }
 
-export function maxDepthRule(max) {
-  return (context) => ({
+export function maxDepthRule(max: number) {
+  return (context: Row) => ({
     Document: {
-      leave(node) {
+      leave(node: Row) {
         const fragments = buildFragmentMap(node);
         for (const def of node.definitions) {
           if (def.kind === "OperationDefinition") {
@@ -4477,7 +4520,13 @@ export function maxDepthRule(max) {
   });
 }
 
-function selectionComplexity(selectionSet, fragments, visited, memo, max) {
+function selectionComplexity(
+  selectionSet: Row,
+  fragments: Map<string, Row>,
+  visited: Set<string>,
+  memo: Map<string, number>,
+  max: number,
+) {
   let count = 0;
   for (const sel of selectionSet.selections) {
     if (isIntrospectionRootField(sel)) continue; // schema-only: no complexity cost
@@ -4486,7 +4535,7 @@ function selectionComplexity(selectionSet, fragments, visited, memo, max) {
       const frag = fragments.get(fragName);
       if (frag && !visited.has(fragName)) {
         if (memo.has(fragName)) {
-          count += memo.get(fragName);
+          count += memo.get(fragName)!;
         } else {
           const fragCount = selectionComplexity(
             frag.selectionSet,
@@ -4526,10 +4575,10 @@ function selectionComplexity(selectionSet, fragments, visited, memo, max) {
   return count;
 }
 
-export function maxComplexityRule(max) {
-  return (context) => ({
+export function maxComplexityRule(max: number) {
+  return (context: Row) => ({
     Document: {
-      leave(node) {
+      leave(node: Row) {
         const fragments = buildFragmentMap(node);
         for (const def of node.definitions) {
           if (def.kind === "OperationDefinition") {
@@ -4562,7 +4611,12 @@ export function maxComplexityRule(max) {
 export const DEFAULT_PAGE_LIMIT = 20;
 export const MAX_PAGE_LIMIT = 100;
 
-function paginate(items, limit, cursor, keyFn) {
+function paginate(
+  items: Row[],
+  limit: unknown,
+  cursor: unknown,
+  keyFn: (row: Row) => unknown,
+) {
   // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
   // 1. An explicit `limit: 0` reaching `Math.max(1, …)` would return a single
   // result, which reads to an agent as "this registry knows one subnet" (the same
@@ -4573,7 +4627,7 @@ function paginate(items, limit, cursor, keyFn) {
       : DEFAULT_PAGE_LIMIT;
   let start = 0;
   if (cursor) {
-    const idx = items.findIndex((item) => String(keyFn(item)) === cursor);
+    const idx = items.findIndex((item: Row) => String(keyFn(item)) === cursor);
     if (idx >= 0) start = idx + 1;
   }
   const page = items.slice(start, start + safeLimit);
@@ -4604,25 +4658,34 @@ const LIVE_ECONOMICS_KEY = "live:economics";
 // Resolve an async value at most once per query: a page of subnets each pulling
 // a relationship shares one read of each registry artifact (and one live health
 // snapshot). The promise is cached so concurrent thunks collapse onto one read.
-function once(context, key, load) {
+function once(
+  context: GqlContext,
+  key: string,
+  load: AnyFn,
+): Promise<Row | null> {
   let pending = context.cache.get(key);
   if (!pending) {
     pending = load();
     context.cache.set(key, pending);
   }
-  return pending;
+  return pending as Promise<Row | null>;
 }
 
 // Artifact data, or null when cold/absent — resolvers degrade to empty shapes
 // rather than erroring, like the REST handlers.
-function loadArtifact(context, path) {
+function loadArtifact(context: GqlContext, path: string) {
   return once(context, path, () =>
     readArtifact(context.env, path).then((res) => (res.ok ? res.data : null)),
   );
 }
 
 // Rows under `key`, filtered to one subnet when `netuid` is given.
-async function loadRows(context, path, key, netuid) {
+async function loadRows(
+  context: GqlContext,
+  path: string,
+  key: string,
+  netuid?: number | null,
+) {
   const data = await loadArtifact(context, path);
   const rows = data?.[key];
   if (!Array.isArray(rows)) return [];
@@ -4632,16 +4695,22 @@ async function loadRows(context, path, key, netuid) {
 // Live operational health (KV health:current → Postgres tier) — the build no
 // longer publishes static health, so this mirrors the REST /api/v1/health
 // source. Null when the live store is cold.
-function loadLiveHealth(context) {
+function loadLiveHealth(context: GqlContext) {
   return once(context, LIVE_HEALTH_KEY, () =>
-    resolveLiveHealth({ readHealthKv, env: context.env }),
+    resolveLiveHealth({
+      readHealthKv: readHealthKv as (
+        env: Env,
+        key: string,
+      ) => Promise<Row | null>,
+      env: context.env,
+    }),
   );
 }
 
 // Economics blob, preferring the fresh KV tier over the committed R2 artifact —
 // the same source REST (/api/v1/economics, registry leaderboards) serves, so the
 // GraphQL rows and opportunity boards never lag it. Null when both are cold.
-function loadEconomics(context) {
+function loadEconomics(context: GqlContext) {
   return once(context, LIVE_ECONOMICS_KEY, async () => {
     const live = await resolveLiveEconomics({
       readHealthKv,
@@ -4656,16 +4725,19 @@ function loadEconomics(context) {
 
 // Cron snapshot freshness stamp (KV health:meta) — the same observed_at REST
 // compare stamps its envelope with. Null when the live store is cold.
-function loadObservedAt(context) {
+function loadObservedAt(context: GqlContext): Promise<string | null> {
   return once(context, KV_HEALTH_META, async () => {
-    const meta = await readHealthKv(context.env, KV_HEALTH_META);
+    const meta = (await readHealthKv(
+      context.env,
+      KV_HEALTH_META,
+    )) as Row | null;
     return meta?.last_run_at || null;
-  });
+  }) as Promise<string | null>;
 }
 
 // Economics subnet rows for compare, reusing the live-preferring economics memo
 // (same source the `economics` root + opportunity boards serve).
-async function loadEconomicsRows(context) {
+async function loadEconomicsRows(context: GqlContext) {
   const data = await loadEconomics(context);
   return Array.isArray(data?.subnets) ? data.subnets : [];
 }
@@ -4677,8 +4749,12 @@ async function loadEconomicsRows(context) {
 // handleCompare's health dimension uses for its own internal compare-health
 // forward (workers/request-handlers/analytics-routes.mjs) rather than
 // forwarding the caller's request unchanged.
-function postgresTierRequest(context, pathname, params) {
-  const pgUrl = new URL(context.request.url);
+function postgresTierRequest(
+  context: GqlContext,
+  pathname: string,
+  params?: Row,
+) {
+  const pgUrl = new URL((context.request as Request).url);
   pgUrl.pathname = pathname;
   pgUrl.search = params ? params.toString() : "";
   return new Request(pgUrl);
@@ -4693,7 +4769,10 @@ function postgresTierRequest(context, pathname, params) {
 // reimplemented here rather than imported since mcp-server.mjs already
 // imports this file's handleGraphQLRequest and importing back would be
 // circular.
-async function fetchAllEventsTier(context, pathname) {
+async function fetchAllEventsTier(
+  context: GqlContext,
+  pathname: string,
+): Promise<Row | null> {
   const dataApi = context.env?.DATA_API;
   if (!dataApi?.fetch) {
     throw new GraphQLError(
@@ -4713,7 +4792,7 @@ async function fetchAllEventsTier(context, pathname) {
       `The chain-events tier returned an error (status ${response.status}). Try again shortly.`,
     );
   }
-  return response.json();
+  return response.json() as Promise<Row | null>;
 }
 
 // --- Node builders (attach lazy relationship resolvers to artifact rows) ---
@@ -4724,16 +4803,18 @@ async function fetchAllEventsTier(context, pathname) {
 // straight off the row, relationships resolve on demand through the shared memo.
 // `prefetch` lets the single-subnet path serve surfaces/endpoints from the
 // detail artifact it already read; economics + health are not in that artifact.
-function subnetNode(identity, prefetch = {}) {
+function subnetNode(identity: Row, prefetch: Row = {}) {
   const netuid = identity.netuid;
-  const bundledOr = (rows, load) =>
+  const bundledOr = (rows: Row[] | undefined, load: AnyFn) =>
     rows !== undefined
       ? () => rows ?? []
-      : (_args, context) => load(context, netuid);
+      : (_args: unknown, context: GqlContext) => load(context, netuid);
   return {
     ...identity,
-    health: (_args, context) => loadSubnetHealth(context, netuid),
-    economics: (_args, context) => loadSubnetEconomics(context, netuid),
+    health: (_args: unknown, context: GqlContext) =>
+      loadSubnetHealth(context, netuid),
+    economics: (_args: unknown, context: GqlContext) =>
+      loadSubnetEconomics(context, netuid),
     surfaces: bundledOr(prefetch.surfaces, loadSubnetSurfaces),
     endpoints: bundledOr(prefetch.endpoints, loadSubnetEndpoints),
   };
@@ -4744,7 +4825,7 @@ function subnetNode(identity, prefetch = {}) {
 // exists in this schema yet) -- stringify it here rather than letting
 // graphql-js' default String serializer coerce the object via `String(...)`
 // (which would silently produce "[object Object]").
-function extrinsicNode(extrinsic) {
+function extrinsicNode(extrinsic: Row) {
   if (!extrinsic) return null;
   return {
     ...extrinsic,
@@ -4764,7 +4845,7 @@ function extrinsicNode(extrinsic) {
 // fields ValidatorSubnet declares, and graphql-js' default field resolver
 // reads them straight off each row, the same technique this file's other node
 // builders use for rows with more columns than any one GraphQL type exposes.
-function validatorNode(validator) {
+function validatorNode(validator: Row) {
   return {
     ...validator,
     featured: validator.featured === true,
@@ -4778,7 +4859,7 @@ function validatorNode(validator) {
 // zeroed aggregate), but a malformed Postgres-tier response body degrades to
 // `{}` -- merged here with the cold-safe base the same way accountSummaryNode
 // normalizes a bad upstream body into the schema-stable zero card.
-function validatorDetailNode(data, hotkey) {
+function validatorDetailNode(data: Row, hotkey: string) {
   const base = buildValidatorDetail([], hotkey);
   const raw = data && typeof data === "object" ? data : {};
   return validatorNode({
@@ -4799,7 +4880,7 @@ function validatorDetailNode(data, hotkey) {
 // malformed extrinsic-detail body, so a bad upstream body still resolves to
 // the same schema-stable zero shape as a genuinely cold store, not a
 // Non-Null-field error.
-function accountSummaryNode(data, ss58) {
+function accountSummaryNode(data: Row, ss58: string) {
   return {
     ss58: data.ss58 ?? ss58,
     event_count: data.event_count ?? 0,
@@ -4816,13 +4897,15 @@ function accountSummaryNode(data, ss58) {
   };
 }
 
-function providerNode(provider) {
+function providerNode(provider: Row) {
   const netuids = provider?.netuids || [];
   return {
     ...provider,
     netuids,
-    subnets: (_args, context) => loadProviderSubnets(context, netuids),
-    endpoints: (_args, context) => loadProviderEndpoints(context, provider.id),
+    subnets: (_args: unknown, context: GqlContext) =>
+      loadProviderSubnets(context, netuids),
+    endpoints: (_args: unknown, context: GqlContext) =>
+      loadProviderEndpoints(context, provider.id),
   };
 }
 
@@ -4834,10 +4917,10 @@ function providerNode(provider) {
 // artifact (the loader's not_found throw) degrades to an empty list rather than
 // erroring the parent query -- the same schema-stable convention Subnet.endpoints
 // and the provider node's own cold-artifact paths follow.
-async function loadProviderEndpoints(context, slug) {
+async function loadProviderEndpoints(context: GqlContext, slug: string) {
   try {
     const result = await loadProviderEndpointsList(
-      context,
+      mcpCtx(context),
       { slug },
       { readArtifact },
     );
@@ -4847,31 +4930,31 @@ async function loadProviderEndpoints(context, slug) {
   }
 }
 
-async function loadSubnetHealth(context, netuid) {
+async function loadSubnetHealth(context: GqlContext, netuid: number) {
   return subnetBadgeStatus(await loadLiveHealth(context), netuid);
 }
 
-async function loadSubnetEconomics(context, netuid) {
+async function loadSubnetEconomics(context: GqlContext, netuid: number) {
   const data = await loadEconomics(context);
-  return data?.subnets?.find((row) => row?.netuid === netuid) ?? null;
+  return data?.subnets?.find((row: Row) => row?.netuid === netuid) ?? null;
 }
 
-function loadSubnetSurfaces(context, netuid) {
+function loadSubnetSurfaces(context: GqlContext, netuid: number) {
   return loadRows(context, ARTIFACT.surfaces, "surfaces", netuid);
 }
 
-function loadSubnetEndpoints(context, netuid) {
+function loadSubnetEndpoints(context: GqlContext, netuid: number) {
   return loadRows(context, ARTIFACT.endpoints, "endpoints", netuid);
 }
 
-async function loadProviderSubnets(context, netuids) {
+async function loadProviderSubnets(context: GqlContext, netuids: number[]) {
   if (!netuids.length) return [];
   const rows = await loadRows(context, ARTIFACT.subnets, "subnets");
   const byNetuid = new Map(rows.map((row) => [row.netuid, row]));
   return netuids
-    .map((netuid) => byNetuid.get(netuid))
+    .map((netuid: number) => byNetuid.get(netuid))
     .filter(Boolean)
-    .map((row) => subnetNode(row));
+    .map((row: Row) => subnetNode(row));
 }
 
 // --- Resolvers ---
@@ -4881,8 +4964,8 @@ async function loadProviderSubnets(context, netuids) {
 // contracts subnets.arrayFilters.domain). Unrecognized values simply match zero
 // rows; GraphQL does not 400 on bad filter tokens.
 function matchesSubnetListFilters(
-  row,
-  { status, subnet_type, domain, coverage_level, curation_level } = {},
+  row: Row,
+  { status, subnet_type, domain, coverage_level, curation_level }: Row = {},
 ) {
   for (const [key, raw] of [
     ["status", status],
@@ -4913,10 +4996,10 @@ function matchesSubnetListFilters(
 // node-wraps rows; `resultKey` is the list field's name (economics uses
 // `subnets`, the rest use `items`).
 async function listPage(
-  context,
-  path,
-  key,
-  { limit, cursor, keyFn, netuid, map, resultKey = "items", filterFn },
+  context: GqlContext,
+  path: string,
+  key: string,
+  { limit, cursor, keyFn, netuid, map, resultKey = "items", filterFn }: Row,
 ) {
   let all = await loadRows(context, path, key, netuid);
   if (filterFn) {
@@ -4943,7 +5026,7 @@ const VALID_PROVIDER_ID = /^[A-Za-z0-9._:-]+$/;
 // itself is live chain RPC, not the Postgres tier, reusing loadAddressMapping's
 // own KV cache/TTL, matching REST's /evm/address/{h160} handler exactly; ss58 is
 // null on an unresolved mapping (schema-stable), never a GraphQL error.
-function resolveEvmAddressMapping(h160, context) {
+function resolveEvmAddressMapping(h160: string, context: GqlContext) {
   if (typeof h160 !== "string" || !H160_PATTERN.test(h160)) {
     throw new GraphQLError("h160 must be a 20-byte 0x-prefixed hex address.", {
       extensions: { code: "BAD_USER_INPUT" },
@@ -4963,8 +5046,8 @@ const rootValue = {
       curation_level,
       limit,
       cursor,
-    },
-    context,
+    }: Row,
+    context: GqlContext,
   ) {
     const hasCategoricalFilters =
       status != null ||
@@ -4976,10 +5059,10 @@ const rootValue = {
       limit,
       cursor,
       netuid,
-      keyFn: (s) => s.netuid,
+      keyFn: (s: Row) => s.netuid,
       map: subnetNode,
       filterFn: hasCategoricalFilters
-        ? (row) =>
+        ? (row: Row) =>
             matchesSubnetListFilters(row, {
               status,
               subnet_type,
@@ -4991,7 +5074,7 @@ const rootValue = {
     });
   },
 
-  async subnet({ netuid }, context) {
+  async subnet({ netuid }: Row, context: GqlContext) {
     const data = await loadArtifact(
       context,
       `/metagraph/subnets/${netuid}.json`,
@@ -5016,20 +5099,20 @@ const rootValue = {
     });
   },
 
-  async subnet_hyperparameters({ netuid }, context) {
+  async subnet_hyperparameters({ netuid }: Row, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_SUBNET_HYPERPARAMS_SOURCE) -> buildSubnetHyperparams
     // fallback contract handleSubnetHyperparams uses. The D1 write path is retired, so a
     // cold tier is an expected steady state, not an error: it yields a schema-stable card
     // with hyperparameters:null rather than a GraphQL error or a 404.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/subnets/${netuid}/hyperparameters`,
         ),
         "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-      )) ?? buildSubnetHyperparams(null, netuid);
+      )) as Row | null) ?? buildSubnetHyperparams(null, netuid);
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5042,7 +5125,10 @@ const rootValue = {
     };
   },
 
-  async subnet_hyperparameters_history({ netuid, limit, offset }, context) {
+  async subnet_hyperparameters_history(
+    { netuid, limit, offset }: Row,
+    context: GqlContext,
+  ) {
     // Same FEED_PAGINATION bounds parsePagination applies for REST, so a GraphQL
     // caller cannot request a wider page than the route allows.
     const safeLimit = clampLimit(limit, FEED_PAGINATION);
@@ -5051,7 +5137,7 @@ const rootValue = {
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5059,7 +5145,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildSubnetHyperparamsHistory([], netuid, {
         limit: safeLimit,
         offset: safeOffset,
@@ -5079,14 +5165,17 @@ const rootValue = {
   // #7169: the three composed subnet routes that had no GraphQL mirror. Each
   // reuses exactly what REST/MCP already call, so the three surfaces can't
   // drift.
-  async subnet_metagraph({ netuid, validator_permit }, context) {
+  async subnet_metagraph(
+    { netuid, validator_permit }: Row,
+    context: GqlContext,
+  ) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
     // fallback contract get_subnet_metagraph uses; a subnet with no indexed
     // neurons is a schema-stable empty metagraph, never a GraphQL error.
     const params = new URLSearchParams();
     if (validator_permit) params.set("validator_permit", "true");
     return (
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5094,11 +5183,11 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildSubnetMetagraph([], netuid)
+      )) as Row | null) ?? buildSubnetMetagraph([], netuid)
     );
   },
 
-  async subnet_overview({ netuid }, context) {
+  async subnet_overview({ netuid }: Row, context: GqlContext) {
     // Same baked-overview + overlayOverviewHealth composition the REST
     // "subnet-overview" case and the get_subnet MCP tool perform. An
     // un-baked netuid resolves to null rather than a GraphQL error.
@@ -5111,17 +5200,18 @@ const rootValue = {
     return overlayOverviewHealth(overview, live, netuid) || overview;
   },
 
-  async subnet_profile({ netuid }, context) {
+  async subnet_profile({ netuid }: Row, context: GqlContext) {
     // Reuse loadSubnetProfile (the loader get_subnet_profile already calls)
     // unchanged; its deps.readArtifact is invoked as (ctx, path) -- exactly
     // loadArtifact's shape -- so the read shares the request-scoped once()
     // cache. Its only throw is an invalid netuid, which becomes BAD_USER_INPUT
     // (mirroring REST's invalid_params 400); an un-baked profile is null.
     try {
-      return await loadSubnetProfile(context, netuid, {
-        readArtifact: loadArtifact,
+      return await loadSubnetProfile(mcpCtx(context), netuid, {
+        readArtifact: loadArtifact as AnyFn,
       });
-    } catch (err) {
+    } catch (rawErr) {
+      const err = rawErr as Row;
       if (err?.profilesMcp) {
         throw new GraphQLError(err.message, {
           extensions: { code: "BAD_USER_INPUT" },
@@ -5134,11 +5224,14 @@ const rootValue = {
   // #6991: five registry-meta routes that had an MCP tool but no GraphQL
   // field. Each reads the same baked artifact (and applies the same overlay /
   // builder) its MCP tool does, so REST, MCP, and GraphQL can't drift.
-  async candidates({ netuid, kind, provider, state, limit, cursor }, context) {
+  async candidates(
+    { netuid, kind, provider, state, limit, cursor }: Row,
+    context: GqlContext,
+  ) {
     const data = await loadArtifact(context, "/metagraph/candidates.json");
     const all = Array.isArray(data?.candidates) ? data.candidates : [];
     const filtered = all.filter(
-      (c) =>
+      (c: Row) =>
         (netuid == null || c.netuid === netuid) &&
         (kind == null || c.kind === kind) &&
         (provider == null || c.provider === provider) &&
@@ -5148,16 +5241,16 @@ const rootValue = {
       filtered,
       limit,
       cursor,
-      (c) => c.id ?? c.key,
+      (c: Row) => c.id ?? c.key,
     );
     return { items: page, total, next_cursor: nextCursor };
   },
 
-  fixtures(_args, context) {
+  fixtures(_args: unknown, context: GqlContext) {
     return loadArtifact(context, "/metagraph/fixtures.json");
   },
 
-  async agent_catalog({ netuid }, context) {
+  async agent_catalog({ netuid }: Row, context: GqlContext) {
     const live = await loadLiveHealth(context);
     if (netuid == null) {
       const index = await loadArtifact(
@@ -5173,15 +5266,18 @@ const rootValue = {
     return detail && (overlayCatalogDetail(detail, live, netuid) || detail);
   },
 
-  async freshness(_args, context) {
+  async freshness(_args: unknown, context: GqlContext) {
     // Same baked-artifact + live KV meta merge loadFreshness performs for MCP.
     const base = await loadArtifact(context, "/metagraph/freshness.json");
     if (!base) return null;
-    const meta = await readHealthKv(context.env, KV_HEALTH_META);
+    const meta = (await readHealthKv(
+      context.env,
+      KV_HEALTH_META,
+    )) as Row | null;
     return mergeFreshness(base, meta) ?? base;
   },
 
-  async top_holders({ sort, limit }, context) {
+  async top_holders({ sort, limit }: Row, context: GqlContext) {
     // Same allowlist REST enforces -- an unknown sort is BAD_USER_INPUT rather
     // than silently falling back, mirroring the route's invalid_query 400.
     if (sort != null && !TOP_HOLDERS_SORTS.includes(sort)) {
@@ -5202,24 +5298,25 @@ const rootValue = {
       limit: String(safeLimit),
     });
     return (
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/accounts/top-holders", params),
         "METAGRAPH_TOP_HOLDERS_SOURCE",
-      )) ?? buildTopHoldersList([], { sort: safeSort, limit: safeLimit })
+      )) as Row | null) ??
+      buildTopHoldersList([], { sort: safeSort, limit: safeLimit })
     );
   },
 
-  async subnet_trajectory({ netuid }, context) {
+  async subnet_trajectory({ netuid }: Row, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_SUBNET_SNAPSHOTS_SOURCE) -> loadSubnetTrajectory
     // fallback contract handleTrajectory uses; a subnet with no daily snapshots is
     // a schema-stable empty trajectory, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/trajectory`),
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-      )) ?? (await loadSubnetTrajectory(netuid));
+      )) as Row | null) ?? (await loadSubnetTrajectory(netuid));
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5230,11 +5327,11 @@ const rootValue = {
       // dropping windows with no comparable prior point (null delta).
       deltas: Object.entries(data.deltas ?? {})
         .filter(([, delta]) => delta != null)
-        .map(([window, delta]) => ({ window, ...delta })),
+        .map(([window, delta]) => ({ window, ...(delta as Row) })),
     };
   },
 
-  async subnet_registrations({ netuid, window }, context) {
+  async subnet_registrations({ netuid, window }: Row, context: GqlContext) {
     // Same 7d/30d window validation handleSubnetRegistrations uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
@@ -5251,7 +5348,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5259,7 +5356,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetRegistrations(null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetRegistrations(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5271,7 +5369,7 @@ const rootValue = {
     };
   },
 
-  async subnet_deregistrations({ netuid, window }, context) {
+  async subnet_deregistrations({ netuid, window }: Row, context: GqlContext) {
     // Same 7d/30d window validation handleSubnetDeregistrations uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
@@ -5288,7 +5386,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5296,7 +5394,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetDeregistrations(null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetDeregistrations(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5308,7 +5407,7 @@ const rootValue = {
     };
   },
 
-  async subnet_serving({ netuid, window }, context) {
+  async subnet_serving({ netuid, window }: Row, context: GqlContext) {
     // Same 7d/30d window validation handleSubnetServing uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_SERVING_WINDOW;
@@ -5325,7 +5424,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5333,7 +5432,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetServing(null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetServing(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5345,7 +5445,7 @@ const rootValue = {
     };
   },
 
-  async subnet_axon_removals({ netuid, window }, context) {
+  async subnet_axon_removals({ netuid, window }: Row, context: GqlContext) {
     // Same 7d/30d window validation handleSubnetAxonRemovals uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
@@ -5362,7 +5462,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5370,7 +5470,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetAxonRemovals(null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetAxonRemovals(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5382,7 +5483,10 @@ const rootValue = {
     };
   },
 
-  async subnet_identity_history({ netuid, limit, offset, cursor }, context) {
+  async subnet_identity_history(
+    { netuid, limit, offset, cursor }: Row,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5400,7 +5504,7 @@ const rootValue = {
     // the schema-stable empty timeline (entry_count 0), never a GraphQL
     // error and never a live D1 read.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5408,7 +5512,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildSubnetIdentityHistory([], netuid, {
         limit: safeLimit,
         offset: safeOffset,
@@ -5425,7 +5529,7 @@ const rootValue = {
     };
   },
 
-  async chain_identity_history({ limit }, context) {
+  async chain_identity_history({ limit }: Row, context: GqlContext) {
     // Same FEED_PAGINATION clamp REST applies. This chain-wide feed is
     // limit-only (no offset/cursor) -- the network view returns the most-recent
     // changes across every subnet in one pass.
@@ -5436,11 +5540,11 @@ const rootValue = {
     // (2026-07-16), so a Postgres miss/outage degrades to a schema-stable
     // empty feed (count 0), never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/identity-history", params),
         "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-      )) ?? buildChainIdentityHistory([], { limit: safeLimit });
+      )) as Row | null) ?? buildChainIdentityHistory([], { limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
       count: data.count ?? 0,
@@ -5449,7 +5553,7 @@ const rootValue = {
     };
   },
 
-  async subnet_performance({ netuid }, context) {
+  async subnet_performance({ netuid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5460,7 +5564,7 @@ const rootValue = {
     // use: a subnet with no neurons is a schema-stable zeroed card (metric
     // blocks null), never a GraphQL error. No window — current snapshot only.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5468,7 +5572,7 @@ const rootValue = {
           new URLSearchParams(),
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildSubnetPerformance([], netuid);
+      )) as Row | null) ?? buildSubnetPerformance([], netuid);
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5484,7 +5588,7 @@ const rootValue = {
     };
   },
 
-  async subnet_concentration({ netuid }, context) {
+  async subnet_concentration({ netuid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5495,7 +5599,7 @@ const rootValue = {
     // use: a subnet with no neurons is a schema-stable zeroed card (metric blocks
     // null), never a GraphQL error. No window -- current snapshot only.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5503,7 +5607,7 @@ const rootValue = {
           new URLSearchParams(),
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildConcentration([], netuid);
+      )) as Row | null) ?? buildConcentration([], netuid);
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5519,7 +5623,10 @@ const rootValue = {
     };
   },
 
-  async subnet_performance_history({ netuid, window }, context) {
+  async subnet_performance_history(
+    { netuid, window }: Row,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5540,7 +5647,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5548,7 +5655,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildSubnetPerformanceHistory([], netuid, {
         window: windowParam,
         capped: false,
@@ -5562,7 +5669,7 @@ const rootValue = {
     };
   },
 
-  async subnet_yield_history({ netuid, window }, context) {
+  async subnet_yield_history({ netuid, window }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5583,7 +5690,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5591,7 +5698,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildSubnetYieldHistory([], netuid, {
         window: windowParam,
         capped: false,
@@ -5605,7 +5712,10 @@ const rootValue = {
     };
   },
 
-  async subnet_concentration_history({ netuid, window }, context) {
+  async subnet_concentration_history(
+    { netuid, window }: Row,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5626,7 +5736,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5634,7 +5744,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildConcentrationHistory([], netuid, {
         window: windowParam,
         capped: false,
@@ -5648,7 +5758,7 @@ const rootValue = {
     };
   },
 
-  async neuron({ netuid, uid }, context) {
+  async neuron({ netuid, uid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5663,14 +5773,14 @@ const rootValue = {
     // cold fallback contract handleNeuron / MCP get_neuron use: an absent UID
     // is a schema-stable card with neuron:null, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/subnets/${netuid}/neurons/${uid}`,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildNeuronDetail(null, netuid);
+      )) as Row | null) ?? buildNeuronDetail(null, netuid);
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5680,7 +5790,7 @@ const rootValue = {
     };
   },
 
-  async neuron_history({ netuid, uid, window }, context) {
+  async neuron_history({ netuid, uid, window }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5693,12 +5803,14 @@ const rootValue = {
     }
     // Same parseHistoryWindow REST's handleNeuronHistory uses, so accepted
     // window labels (7d/30d/90d/1y/all, default 30d) match exactly.
-    const { label, error } = parseHistoryWindow(window);
-    if (error) {
+    const windowResult = parseHistoryWindow(window);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronHistory([])
@@ -5706,7 +5818,7 @@ const rootValue = {
     // UID with no neuron_daily rows in the window is a schema-stable
     // empty-points card, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5714,7 +5826,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildNeuronHistory([], netuid, uid, { window: label });
+      )) as Row | null) ??
+      buildNeuronHistory([], netuid, uid, { window: label });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5725,13 +5838,13 @@ const rootValue = {
     };
   },
 
-  async subnet_yield({ netuid }, context) {
+  async subnet_yield({ netuid }: Row, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetYield cold
     // fallback contract handleSubnetYield uses: a subnet with no neurons is a
     // schema-stable zeroed card, never a GraphQL error. No window param — the
     // route reads the CURRENT metagraph snapshot.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5739,7 +5852,7 @@ const rootValue = {
           new URLSearchParams(),
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildSubnetYield([], netuid);
+      )) as Row | null) ?? buildSubnetYield([], netuid);
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5762,7 +5875,7 @@ const rootValue = {
     };
   },
 
-  async subnet_weights({ netuid, window }, context) {
+  async subnet_weights({ netuid, window }: Row, context: GqlContext) {
     // Same 7d/30d window validation handleSubnetWeights uses -- an unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -5779,7 +5892,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5787,7 +5900,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetWeights(null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetWeights(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5799,7 +5913,7 @@ const rootValue = {
     };
   },
 
-  async subnet_stake_moves({ netuid, window }, context) {
+  async subnet_stake_moves({ netuid, window }: Row, context: GqlContext) {
     // Same 7d/30d window validation handleSubnetStakeMoves uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
@@ -5816,7 +5930,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5824,7 +5938,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetStakeMoves(null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetStakeMoves(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5836,7 +5951,7 @@ const rootValue = {
     };
   },
 
-  async subnet_stake_transfers({ netuid, window }, context) {
+  async subnet_stake_transfers({ netuid, window }: Row, context: GqlContext) {
     // Same 7d/30d window validation handleSubnetStakeTransfers uses -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     const windowParam = window ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
@@ -5853,7 +5968,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5861,7 +5976,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetStakeTransfers(null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetStakeTransfers(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5873,7 +5989,7 @@ const rootValue = {
     };
   },
 
-  async subnet_idle_stake({ netuid }, context) {
+  async subnet_idle_stake({ netuid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5884,11 +6000,11 @@ const rootValue = {
     // tool use; a subnet with no neurons is a schema-stable zeroed card, never a
     // GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/idle-stake`),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildSubnetIdleStake([], netuid);
+      )) as Row | null) ?? buildSubnetIdleStake([], netuid);
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5899,7 +6015,10 @@ const rootValue = {
     };
   },
 
-  async subnet_stake_flow({ netuid, window, direction }, context) {
+  async subnet_stake_flow(
+    { netuid, window, direction }: Row,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -5939,7 +6058,8 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      tier?.data ?? buildStakeFlow([], netuid, { window: windowParam });
+      (tier?.data as Row | undefined) ??
+      buildStakeFlow([], netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -5953,8 +6073,8 @@ const rootValue = {
   },
 
   async subnet_events(
-    { netuid, kind, block_start, block_end, limit, offset },
-    context,
+    { netuid, kind, block_start, block_end, limit, offset }: Row,
+    context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
@@ -5980,7 +6100,7 @@ const rootValue = {
     // list passes through whole; graphql's default resolver reads each AccountEvent
     // field, matching account_events' shaped rows.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -5988,7 +6108,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildSubnetEvents([], netuid, {
         limit: safeLimit,
         offset: safeOffset,
@@ -6005,7 +6125,7 @@ const rootValue = {
     };
   },
 
-  async subnet_history({ netuid, window }, context) {
+  async subnet_history({ netuid, window }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6013,19 +6133,21 @@ const rootValue = {
     }
     // Same parseHistoryWindow handleSubnetHistory + loadSubnetHistory (MCP) use,
     // so accepted window labels (7d/30d/90d/1y/all, default 30d) match exactly.
-    const { label, error } = parseHistoryWindow(window);
-    if (error) {
+    const windowResult = parseHistoryWindow(window);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetHistory([])
     // empty-series fallback handleSubnetHistory uses; a subnet with no daily
     // rollup is a schema-stable point_count:0 series, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -6033,7 +6155,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildSubnetHistory([], netuid, { window: label });
+      )) as Row | null) ?? buildSubnetHistory([], netuid, { window: label });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6043,7 +6165,7 @@ const rootValue = {
     };
   },
 
-  async subnet_prometheus({ netuid, window }, context) {
+  async subnet_prometheus({ netuid, window }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6066,7 +6188,7 @@ const rootValue = {
     // uses; a subnet with no PrometheusServed events is a schema-stable zeroed
     // card, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -6074,7 +6196,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetPrometheus(null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetPrometheus(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6086,7 +6209,7 @@ const rootValue = {
     };
   },
 
-  async subnet_weight_setters({ netuid, window }, context) {
+  async subnet_weight_setters({ netuid, window }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6107,7 +6230,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", windowParam);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -6115,7 +6238,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildSubnetWeightSetters([], null, netuid, { window: windowParam });
+      )) as Row | null) ??
+      buildSubnetWeightSetters([], null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6128,16 +6252,16 @@ const rootValue = {
     };
   },
 
-  providers({ limit, cursor }, context) {
+  providers({ limit, cursor }: Row, context: GqlContext) {
     return listPage(context, ARTIFACT.providers, "providers", {
       limit,
       cursor,
-      keyFn: (p) => p.id,
+      keyFn: (p: Row) => p.id,
       map: providerNode,
     });
   },
 
-  async provider({ id }, context) {
+  async provider({ id }: Row, context: GqlContext) {
     if (typeof id !== "string" || !VALID_PROVIDER_ID.test(id)) return null;
     const data = await loadArtifact(context, `/metagraph/providers/${id}.json`);
     if (!data) return null;
@@ -6150,10 +6274,11 @@ const rootValue = {
   // loader miss (not_found / cold R2 / unavailable) resolves to null
   // (schema-stable), matching provider's cold/absent convention -- never a
   // GraphQL error for an unregistered slug.
-  async adapter({ slug }, context) {
+  async adapter({ slug }: Row, context: GqlContext) {
     try {
-      return await loadAdapter(context, { slug }, { readArtifact });
-    } catch (err) {
+      return await loadAdapter(mcpCtx(context), { slug }, { readArtifact });
+    } catch (rawErr) {
+      const err = rawErr as Row;
       if (err?.toolError && err.code === "invalid_params") {
         throw new GraphQLError(err.message, {
           extensions: { code: "BAD_USER_INPUT" },
@@ -6164,14 +6289,14 @@ const rootValue = {
     }
   },
 
-  async economics({ limit, cursor }, context) {
+  async economics({ limit, cursor }: Row, context: GqlContext) {
     // Live-preferring source (not the static-only listPage), paginated like it.
     const data = await loadEconomics(context);
     const { page, total, nextCursor } = paginate(
       data?.subnets || [],
       limit,
       cursor,
-      (s) => s.netuid,
+      (s: Row) => s.netuid,
     );
     return {
       subnets: page,
@@ -6181,21 +6306,21 @@ const rootValue = {
     };
   },
 
-  surfaces({ netuid, limit, cursor }, context) {
+  surfaces({ netuid, limit, cursor }: Row, context: GqlContext) {
     return listPage(context, ARTIFACT.surfaces, "surfaces", {
       limit,
       cursor,
       netuid,
-      keyFn: (s) => s.id ?? s.key,
+      keyFn: (s: Row) => s.id ?? s.key,
     });
   },
 
-  endpoints({ netuid, limit, cursor }, context) {
+  endpoints({ netuid, limit, cursor }: Row, context: GqlContext) {
     return listPage(context, ARTIFACT.endpoints, "endpoints", {
       limit,
       cursor,
       netuid,
-      keyFn: (e) => e.id ?? e.surface_id,
+      keyFn: (e: Row) => e.id ?? e.surface_id,
     });
   },
 
@@ -6207,22 +6332,26 @@ const rootValue = {
   // executor surfaces as a normal GraphQL error, matching every other field's
   // "an unsupported filter/sort is a GraphQL error, not a silently substituted
   // default" convention.
-  endpoint_pools(args, context) {
-    return loadEndpointPoolsList(context, args, { readArtifact });
+  endpoint_pools(args: Row, context: GqlContext) {
+    return loadEndpointPoolsList(mcpCtx(context), args, { readArtifact });
   },
 
-  rpc_pools(args, context) {
+  rpc_pools(args: Row, context: GqlContext) {
     // rpc-pools' loader additionally reads ctx.readHealthKv for its live
     // 15-minute cron eligibility overlay (rpc-pools-mcp.ts) -- graphql.mjs's
     // own context has no such property, so it's supplied here from the same
     // module-level import loadLiveHealth/loadEconomics already use.
-    return loadRpcPoolsList({ ...context, readHealthKv }, args, {
-      readArtifact,
-    });
+    return loadRpcPoolsList(
+      { ...context, readHealthKv } as unknown as Parameters<
+        typeof loadRpcPoolsList
+      >[0],
+      args,
+      { readArtifact },
+    );
   },
 
-  endpoint_incidents(args, context) {
-    return loadEndpointIncidentsList(context, args, { readArtifact });
+  endpoint_incidents(args: Row, context: GqlContext) {
+    return loadEndpointIncidentsList(mcpCtx(context), args, { readArtifact });
   },
 
   // #6986: reuse list_source_snapshots' own loader unchanged. It validates its
@@ -6231,8 +6360,8 @@ const rootValue = {
   // as a normal GraphQL error, matching every other field's "an unsupported
   // filter/sort is a GraphQL error, not a silently substituted default"
   // convention.
-  source_snapshots(args, context) {
-    return loadSourceSnapshotsList(context, args, { readArtifact });
+  source_snapshots(args: Row, context: GqlContext) {
+    return loadSourceSnapshotsList(mcpCtx(context), args, { readArtifact });
   },
 
   // #7171: reuse list_gaps / list_evidence loaders unchanged. Each validates
@@ -6240,12 +6369,12 @@ const rootValue = {
   // error, matching source_snapshots' "unsupported filter/sort is a GraphQL
   // error, not a silently substituted default" convention. A cold/absent
   // artifact is likewise a GraphQL error (matching REST/MCP not_found).
-  gaps(args, context) {
-    return loadGapsList(context, args, { readArtifact });
+  gaps(args: Row, context: GqlContext) {
+    return loadGapsList(mcpCtx(context), args, { readArtifact });
   },
 
-  evidence(args, context) {
-    return loadEvidenceList(context, args, { readArtifact });
+  evidence(args: Row, context: GqlContext) {
+    return loadEvidenceList(mcpCtx(context), args, { readArtifact });
   },
 
   // #6992: reuse list_profiles' own loader unchanged. Its readOptionalArtifact
@@ -6253,20 +6382,20 @@ const rootValue = {
   // (not a throw) -- this file's own loadArtifact(context, path) already has
   // exactly that shape (readArtifact(context.env, path), null if not ok), so
   // it's reused directly rather than adding a redundant wrapper.
-  profiles(args, context) {
-    return loadProfilesList(context, args, {
-      readOptionalArtifact: loadArtifact,
+  profiles(args: Row, context: GqlContext) {
+    return loadProfilesList(mcpCtx(context), args, {
+      readOptionalArtifact: loadArtifact as AnyFn,
     });
   },
 
-  registry_summary(_args, context) {
+  registry_summary(_args: unknown, context: GqlContext) {
     // Same baked artifact the REST route + registry_summary MCP tool read.
     // Degrades to null when cold instead of erroring, matching every other
     // artifact-backed resolver here.
     return loadArtifact(context, "/metagraph/registry-summary.json");
   },
 
-  async saved_query({ id, params }, context) {
+  async saved_query({ id, params }: Row, context: GqlContext) {
     // #7642: the same maintainer-curated template executor the REST route and
     // run_saved_query MCP tool share (src/saved-queries.ts) -- template
     // lookup, param coercion/validation, and execution are all its. Its
@@ -6275,7 +6404,8 @@ const rootValue = {
     // other executor failure surfaces as a normal GraphQL error.
     try {
       return await runSavedQuery(context.env, id, params ?? {});
-    } catch (err) {
+    } catch (rawErr) {
+      const err = rawErr as Row;
       if (
         err?.toolError &&
         (err.code === "not_found" || err.code === "invalid_params")
@@ -6288,17 +6418,17 @@ const rootValue = {
     }
   },
 
-  source_health(_args, context) {
+  source_health(_args: unknown, context: GqlContext) {
     // Same baked artifact the REST route + get_source_health MCP tool read.
     return loadArtifact(context, "/metagraph/source-health.json");
   },
 
-  lineage(_args, context) {
+  lineage(_args: unknown, context: GqlContext) {
     // Same baked artifact the REST route + get_lineage MCP tool read.
     return loadArtifact(context, "/metagraph/lineage.json");
   },
 
-  async rpc_endpoints(_args, context) {
+  async rpc_endpoints(_args: unknown, context: GqlContext) {
     // Same baked catalog the REST route + list_rpc_endpoints MCP tool read,
     // with the same live overlay: the 15-minute cron RPC-pool KV snapshot
     // replaces the stale build-time health/latency (mergeRpcEndpoints). With no
@@ -6308,8 +6438,11 @@ const rootValue = {
       context,
       "/metagraph/rpc-endpoints.json",
     );
-    const pool = await readHealthKv(context.env, KV_HEALTH_RPC_POOL);
-    return pool ? mergeRpcEndpoints(staticData, pool) : staticData;
+    const pool = (await readHealthKv(
+      context.env,
+      KV_HEALTH_RPC_POOL,
+    )) as Row | null;
+    return pool ? mergeRpcEndpoints(staticData ?? {}, pool) : staticData;
   },
 
   // #7170: reuse get_changelog's/get_contracts's own loaders unchanged (the same
@@ -6318,19 +6451,19 @@ const rootValue = {
   // pass. A cold/absent artifact makes the loader throw, which the graphql
   // executor surfaces as a normal GraphQL error, matching REST's 404 and the
   // source_snapshots convention for a missing artifact.
-  changelog(_args, context) {
-    return loadChangelog(context, { readArtifact });
+  changelog(_args: unknown, context: GqlContext) {
+    return loadChangelog(mcpCtx(context), { readArtifact });
   },
 
-  contracts(_args, context) {
-    return loadContracts(context, { readArtifact });
+  contracts(_args: unknown, context: GqlContext) {
+    return loadContracts(mcpCtx(context), { readArtifact });
   },
 
   // #7431: reuse get_build's own loader unchanged (the same baked artifact read
   // REST and MCP already use). A cold/absent artifact makes the loader throw,
   // which the graphql executor surfaces as a normal GraphQL error.
-  build(_args, context) {
-    return loadBuildSummary(context, { readArtifact });
+  build(_args: unknown, context: GqlContext) {
+    return loadBuildSummary(mcpCtx(context), { readArtifact });
   },
 
   // #7170: reuse get_health_history's own loader unchanged. It takes deps as
@@ -6340,8 +6473,10 @@ const rootValue = {
   // and throws invalid_params on a bad one / not_found on a missing snapshot;
   // that throw becomes a GraphQL error, matching every other field's "an
   // unsupported filter/sort is a GraphQL error, not a silent default".
-  health_history(args, context) {
-    return loadHealthHistory(context, args, { readArtifact: loadArtifact });
+  health_history(args: Row, context: GqlContext) {
+    return loadHealthHistory(context, args, {
+      readArtifact: loadArtifact as AnyFn,
+    });
   },
 
   // #7167: reuse each review-family list_* MCP loader unchanged. Each validates
@@ -6351,31 +6486,33 @@ const rootValue = {
   // filter/sort is a GraphQL error, not a silently substituted default"
   // convention. A cold/missing artifact is also a GraphQL error (matches
   // REST 404 / MCP not_found); an empty filtered page is a success with total 0.
-  review_adapter_candidates(args, context) {
-    return loadAdapterCandidatesList(context, args, { readArtifact });
+  review_adapter_candidates(args: Row, context: GqlContext) {
+    return loadAdapterCandidatesList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_evidence(args, context) {
-    return loadEnrichmentEvidenceList(context, args, { readArtifact });
+  review_enrichment_evidence(args: Row, context: GqlContext) {
+    return loadEnrichmentEvidenceList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_queue(args, context) {
-    return loadEnrichmentQueueList(context, args, { readArtifact });
+  review_enrichment_queue(args: Row, context: GqlContext) {
+    return loadEnrichmentQueueList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_enrichment_targets(args, context) {
-    return loadReviewEnrichmentTargetsList(context, args, { readArtifact });
+  review_enrichment_targets(args: Row, context: GqlContext) {
+    return loadReviewEnrichmentTargetsList(mcpCtx(context), args, {
+      readArtifact,
+    });
   },
 
-  review_gaps(args, context) {
-    return loadReviewGapsList(context, args, { readArtifact });
+  review_gaps(args: Row, context: GqlContext) {
+    return loadReviewGapsList(mcpCtx(context), args, { readArtifact });
   },
 
-  review_profile_completeness(args, context) {
-    return loadProfileCompletenessList(context, args, { readArtifact });
+  review_profile_completeness(args: Row, context: GqlContext) {
+    return loadProfileCompletenessList(mcpCtx(context), args, { readArtifact });
   },
 
-  async health(_args, context) {
+  async health(_args: unknown, context: GqlContext) {
     const snapshot = await loadLiveHealth(context);
     const result = snapshot ? buildGlobalHealth(snapshot, {}) : null;
     if (!result) return null;
@@ -6391,7 +6528,7 @@ const rootValue = {
     };
   },
 
-  async opportunity_boards({ limit }, context) {
+  async opportunity_boards({ limit }: Row, context: GqlContext) {
     const data = await loadEconomics(context);
     const rows = Array.isArray(data?.subnets) ? data.subnets : [];
     // Reuse the live economics tier + the leaderboard ranking, so the boards
@@ -6403,7 +6540,7 @@ const rootValue = {
       economicsRows: rows,
       subnetMeta: new Map(),
     });
-    const boards = ranked.boards;
+    const boards = ranked.boards as Row;
     return {
       observed_at: ranked.observed_at,
       with_economics_count: rows.length,
@@ -6419,7 +6556,7 @@ const rootValue = {
     };
   },
 
-  async compare({ netuids, dimensions }, context) {
+  async compare({ netuids, dimensions }: Row, context: GqlContext) {
     // Reuse the REST/MCP shared parsers so the GraphQL contract matches
     // /api/v1/compare and the compare_subnets MCP tool exactly (distinctness +
     // range + the dimension whitelist), then the shared loader composes the rows.
@@ -6443,40 +6580,42 @@ const rootValue = {
       : [];
     return loadCompareSubnets({
       profiles,
-      economicsRows: parsedDimensions.includes("economics")
+      economicsRows: parsedDimensions!.includes("economics")
         ? await loadEconomicsRows(context)
         : [],
       netuids: parsedNetuids,
-      dimensions: parsedDimensions,
+      dimensions: parsedDimensions!,
       observedAt: await loadObservedAt(context),
     });
   },
 
-  async incidents({ window }, context) {
+  async incidents({ window }: Row, context: GqlContext) {
     // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL BAD_USER_INPUT
     // error, not a silent empty result. analyticsWindow reads only the ?window param.
-    const windowUrl = new URL(context.request.url);
+    const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
-    const { label, days, error } = analyticsWindow(windowUrl);
-    if (error) {
+    const windowResult = analyticsWindow(windowUrl);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     // Same METAGRAPH_HEALTH_SOURCE Postgres tier -> loadGlobalIncidentsLedger D1
     // fallback contract handleGlobalIncidents uses; the ledger is schema-stable on
     // a cold/retired tier (empty surfaces + zeroed summary), never a GraphQL error.
     const params = new URLSearchParams();
     params.set("window", label);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/incidents", params),
         "METAGRAPH_HEALTH_SOURCE",
-      )) ??
-      (await loadGlobalIncidentsLedger(context.env, { label, days })).data;
+      )) as Row | null) ??
+      (await loadGlobalIncidentsLedger(context.env, { label })).data;
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
@@ -6492,33 +6631,33 @@ const rootValue = {
   // Identical window validation (7d/30d -> BAD_USER_INPUT), Postgres-tier ->
   // retired-D1 fallback, and schema-stable cold-tier degradation; nothing
   // re-derived. Distinct from endpoint_incidents (the active endpoint feed).
-  async global_incidents({ window }, context) {
+  async global_incidents({ window }: Row, context: GqlContext) {
     return rootValue.incidents({ window }, context);
   },
 
-  search({ limit, cursor }, context) {
+  search({ limit, cursor }: Row, context: GqlContext) {
     // Same baked search artifact + list-window the REST route serves, paged
     // through the shared listPage helper the other artifact lists use.
     return listPage(context, ARTIFACT.search, "documents", {
       limit,
       cursor,
       resultKey: "documents",
-      keyFn: (d) => d.id,
+      keyFn: (d: Row) => d.id,
     });
   },
 
-  search_index({ limit, cursor }, context) {
+  search_index({ limit, cursor }: Row, context: GqlContext) {
     // The slim companion: identical documents minus the per-document token
     // blobs, served from its own artifact exactly as REST serves it.
     return listPage(context, ARTIFACT.searchIndex, "documents", {
       limit,
       cursor,
       resultKey: "documents",
-      keyFn: (d) => d.id,
+      keyFn: (d: Row) => d.id,
     });
   },
 
-  async domains(_args, context) {
+  async domains(_args: unknown, context: GqlContext) {
     // Composed live from the subnets index + economics tier (no static file),
     // via the same buildDomainOverview the REST route calls.
     const [subnetRows, economicsRows] = await Promise.all([
@@ -6528,7 +6667,7 @@ const rootValue = {
     return buildDomainOverview(subnetRows, economicsRows);
   },
 
-  async domain_summary({ tag }, context) {
+  async domain_summary({ tag }: Row, context: GqlContext) {
     // The same fixed 14-tag enum ?domain= validates on subnets -- an unknown
     // tag is a GraphQL BAD_USER_INPUT error, not an empty rollup.
     if (!DOMAIN_TAGS.includes(tag)) {
@@ -6543,7 +6682,7 @@ const rootValue = {
     return buildDomainSummary(tag, subnetRows, economicsRows);
   },
 
-  async compare_validators({ hotkeys, netuid }, context) {
+  async compare_validators({ hotkeys, netuid }: Row, context: GqlContext) {
     // Same parse/validate contract the REST route + compare_validators MCP
     // tool share: 1..COMPARE_VALIDATORS_MAX distinct SS58 addresses.
     const parsed = parseCompareHotkeyList(hotkeys);
@@ -6566,45 +6705,45 @@ const rootValue = {
     const details = [];
     for (const hotkey of parsed) {
       details.push(
-        (await tryPostgresTier(
+        ((await tryPostgresTier(
           context.env,
           postgresTierRequest(
             context,
             `/api/v1/validators/${encodeURIComponent(hotkey)}`,
           ),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildValidatorDetail([], hotkey),
+        )) as Row | null) ?? buildValidatorDetail([], hotkey),
       );
     }
     return composeValidatorComparison(details, { netuid: netuid ?? null });
   },
 
-  async agent_resources(_args, context) {
+  async agent_resources(_args: unknown, context: GqlContext) {
     // Same baked artifact the REST route + get_agent_resources MCP tool read.
     // The MCP tool raises not_found when it is absent; GraphQL degrades to
     // null instead, matching every other artifact-backed resolver here.
     return loadArtifact(context, AGENT_RESOURCES_ARTIFACT);
   },
 
-  async curation(_args, context) {
+  async curation(_args: unknown, context: GqlContext) {
     // Same baked artifact the REST /api/v1/curation route + list_curation MCP
     // tool read; opaque-JSON passthrough degrading to null on cold.
     return loadArtifact(context, CURATION_ARTIFACT);
   },
 
-  async coverage(_args, context) {
+  async coverage(_args: unknown, context: GqlContext) {
     // Same baked artifact the REST /api/v1/coverage route + get_coverage MCP
     // tool read; GraphQL degrades to null when cold, like agent_resources.
     return loadArtifact(context, "/metagraph/coverage.json");
   },
 
-  async coverage_depth(_args, context) {
+  async coverage_depth(_args: unknown, context: GqlContext) {
     // Raw passthrough of the /api/v1/coverage-depth artifact (the same one the
     // list_enrichment_targets MCP tool shapes); degrades to null when cold.
     return loadArtifact(context, "/metagraph/coverage-depth.json");
   },
 
-  async subnet_volume({ netuid }, context) {
+  async subnet_volume({ netuid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6626,7 +6765,9 @@ const rootValue = {
       postgresTierRequest(context, `/api/v1/subnets/${netuid}/volume`),
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
-    const data = tier?.data ?? buildAlphaVolume([], netuid, { marketCapTao });
+    const data =
+      (tier?.data as Row | undefined) ??
+      buildAlphaVolume([], netuid, { marketCapTao });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6646,7 +6787,7 @@ const rootValue = {
     };
   },
 
-  async subnet_ohlc({ netuid, interval, days }, context) {
+  async subnet_ohlc({ netuid, interval, days }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6677,15 +6818,12 @@ const rootValue = {
     params.set("interval", intervalParam);
     params.set("days", String(daysParam));
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/ohlc`, params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
-      buildSubnetOhlc([], netuid, {
-        interval: intervalParam,
-        days: daysParam,
-      });
+      )) as Row | null) ??
+      buildSubnetOhlc([], netuid, { interval: intervalParam });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6695,7 +6833,10 @@ const rootValue = {
     };
   },
 
-  async subnet_stake_quote({ netuid, amount, direction }, context) {
+  async subnet_stake_quote(
+    { netuid, amount, direction }: Row,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6729,7 +6870,7 @@ const rootValue = {
     return { schema_version: 1, ...result.quote };
   },
 
-  async subnet_validators({ netuid }, context) {
+  async subnet_validators({ netuid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6739,11 +6880,11 @@ const rootValue = {
     // empty-snapshot fallback the REST route and list_subnet_validators share.
     // REST takes no filter params here, so neither does this mirror.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/validators`),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildSubnetValidators([], netuid);
+      )) as Row | null) ?? buildSubnetValidators([], netuid);
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6754,20 +6895,25 @@ const rootValue = {
     };
   },
 
-  async subnet_health_percentiles({ netuid, window }, context) {
+  async subnet_health_percentiles(
+    { netuid, window }: Row,
+    context: GqlContext,
+  ) {
     // Reuse the exact analyticsWindow parse/validate REST's percentiles handler
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty result, matching
     // subnet_health_incidents.
-    const windowUrl = new URL(context.request.url);
+    const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
-    const { label, error } = analyticsWindow(windowUrl);
-    if (error) {
+    const windowResult = analyticsWindow(windowUrl);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetPercentiles
     // fallback the REST route and the get_subnet_health_percentiles MCP tool
     // share -- the tier owns the percentile computation, so nothing is
@@ -6776,7 +6922,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", label);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -6784,7 +6930,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_HEALTH_SOURCE",
-      )) ??
+      )) as Row | null) ??
       (await loadSubnetPercentiles(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
@@ -6799,7 +6945,10 @@ const rootValue = {
     };
   },
 
-  async subnet_event_summary({ netuid, window, limit }, context) {
+  async subnet_event_summary(
+    { netuid, window, limit }: Row,
+    context: GqlContext,
+  ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6829,7 +6978,7 @@ const rootValue = {
     params.set("window", windowParam);
     params.set("limit", String(limitParam));
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -6837,7 +6986,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildSubnetEventSummary([], [], netuid, {
         window: windowParam,
         limit: limitParam,
@@ -6858,7 +7007,7 @@ const rootValue = {
     };
   },
 
-  async subnet_gaps({ netuid }, context) {
+  async subnet_gaps({ netuid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6871,7 +7020,7 @@ const rootValue = {
     return loadArtifact(context, `/metagraph/review/gaps/${netuid}.json`);
   },
 
-  async subnet_evidence({ netuid }, context) {
+  async subnet_evidence({ netuid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6882,7 +7031,7 @@ const rootValue = {
     return loadArtifact(context, `/metagraph/evidence/${netuid}.json`);
   },
 
-  async subnet_candidates({ netuid }, context) {
+  async subnet_candidates({ netuid }: Row, context: GqlContext) {
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -6895,19 +7044,21 @@ const rootValue = {
     return loadArtifact(context, `/metagraph/candidates/${netuid}.json`);
   },
 
-  async subnet_health_incidents({ netuid, window }, context) {
+  async subnet_health_incidents({ netuid, window }: Row, context: GqlContext) {
     // Reuse the exact analyticsWindow parse/validate REST's handleHealthIncidents
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty result.
-    const windowUrl = new URL(context.request.url);
+    const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
-    const { label, error } = analyticsWindow(windowUrl);
-    if (error) {
+    const windowResult = analyticsWindow(windowUrl);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetIncidents D1
     // fallback contract handleHealthIncidents and the get_subnet_health_incidents
     // MCP tool share -- the tier owns the gap-island incident reconstruction, so
@@ -6916,7 +7067,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("window", label);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -6924,7 +7075,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_HEALTH_SOURCE",
-      )) ??
+      )) as Row | null) ??
       (await loadSubnetIncidents(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
@@ -6949,8 +7100,8 @@ const rootValue = {
       call_module: callModule,
       call_function: callFunction,
       success,
-    },
-    context,
+    }: Row,
+    context: GqlContext,
   ) {
     if (block != null && (!Number.isInteger(block) || block < 0)) {
       throw new GraphQLError("block must be a non-negative integer.", {
@@ -6969,11 +7120,11 @@ const rootValue = {
     if (callFunction) params.set("call_function", callFunction);
     if (success != null) params.set("success", String(success));
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/extrinsics", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildExtrinsicFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -6992,11 +7143,11 @@ const rootValue = {
   // schema-stable empty feed, never a GraphQL error — matching extrinsics'
   // cold-empty convention. Distinct from Subscription.chainEvents.
   async chain_events(
-    { pallet, method, block, extrinsic, cursor, before, limit },
-    context,
+    { pallet, method, block, extrinsic, cursor, before, limit }: Row,
+    context: GqlContext,
   ) {
     try {
-      const data = await loadChainEventsFeed(context, {
+      const data = await loadChainEventsFeed(mcpCtx(context), {
         pallet,
         method,
         block,
@@ -7011,7 +7162,7 @@ const rootValue = {
         count: data.count,
         next_before: data.next_before,
         next_cursor: data.next_cursor,
-        events: data.events.map((event) => ({
+        events: (data.events as Row[]).map((event) => ({
           block_number: event.block_number ?? null,
           event_index: event.event_index ?? null,
           pallet: event.pallet ?? null,
@@ -7022,7 +7173,8 @@ const rootValue = {
           observed_at: event.observed_at ?? null,
         })),
       };
-    } catch (err) {
+    } catch (rawErr) {
+      const err = rawErr as Row;
       if (err?.toolError && err.code === "invalid_params") {
         throw new GraphQLError(err.message, {
           extensions: { code: "BAD_USER_INPUT" },
@@ -7043,11 +7195,12 @@ const rootValue = {
   // (the same 1000-default/positive-integer/1-5000-cap validation MCP's
   // get_chain_activity applies) then loadChainActivity — both relocated to
   // data-api-mcp.ts beside loadChainEventsFeed.
-  async chain_events_stats({ blocks }, context) {
+  async chain_events_stats({ blocks }: Row, context: GqlContext) {
     let window;
     try {
       window = optionalBlocksWindow({ blocks });
-    } catch (err) {
+    } catch (rawErr) {
+      const err = rawErr as Row;
       // optionalBlocksWindow's only failure is invalid_params (a non-positive
       // or non-integer blocks) — surface it as BAD_USER_INPUT, mirroring how
       // chain_events maps the sibling feed's invalid-filter error.
@@ -7056,7 +7209,7 @@ const rootValue = {
       });
     }
     try {
-      return await loadChainActivity(context, window);
+      return await loadChainActivity(mcpCtx(context), window);
     } catch {
       // A cold/unbound/rate-limited tier degrades to a schema-stable empty
       // aggregate (echoing the validated window), never a GraphQL error —
@@ -7066,8 +7219,8 @@ const rootValue = {
   },
 
   async sudo(
-    { limit, offset, cursor, block, call_function: callFunction, success },
-    context,
+    { limit, offset, cursor, block, call_function: callFunction, success }: Row,
+    context: GqlContext,
   ) {
     // The Sudo governance feed is the /extrinsics feed with call_module fixed
     // to Sudo by the route itself, so it takes no signer/call_module args and
@@ -7087,11 +7240,11 @@ const rootValue = {
     if (callFunction) params.set("call_function", callFunction);
     if (success != null) params.set("success", String(success));
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/sudo", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildExtrinsicFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -7104,16 +7257,16 @@ const rootValue = {
     };
   },
 
-  async extrinsic({ ref }, context) {
+  async extrinsic({ ref }: Row, context: GqlContext) {
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/extrinsics/${encodeURIComponent(ref)}`,
         ),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ?? buildExtrinsic(undefined, ref);
+      )) as Row | null) ?? buildExtrinsic(undefined, ref);
     return {
       ref: data.ref ?? ref,
       extrinsic: extrinsicNode(data.extrinsic),
@@ -7121,8 +7274,8 @@ const rootValue = {
   },
 
   async governance_config_changes(
-    { limit, offset, cursor, block, call_function: callFunction, success },
-    context,
+    { limit, offset, cursor, block, call_function: callFunction, success }: Row,
+    context: GqlContext,
   ) {
     if (block != null && (!Number.isInteger(block) || block < 0)) {
       throw new GraphQLError("block must be a non-negative integer.", {
@@ -7143,7 +7296,7 @@ const rootValue = {
     // itself (see SUDO_GOVERNANCE_ROUTES in workers/data-api.mjs) -- no filter
     // logic duplicated here; the REST route and MCP tool share this exact path.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -7151,7 +7304,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildExtrinsicFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -7164,7 +7317,7 @@ const rootValue = {
     };
   },
 
-  async blocks({ limit, offset, cursor }, context) {
+  async blocks({ limit, offset, cursor }: Row, context: GqlContext) {
     const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
     const safeOffset = clampOffset(offset);
     const params = new URLSearchParams();
@@ -7175,11 +7328,11 @@ const rootValue = {
     // production, so the Postgres tier being cold is the expected steady state —
     // fall back to the same pure builder REST uses, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/blocks", params),
         "METAGRAPH_BLOCKS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildBlockFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -7192,18 +7345,18 @@ const rootValue = {
     };
   },
 
-  async blocks_summary(_args, context) {
+  async blocks_summary(_args: unknown, context: GqlContext) {
     // #5664: same tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) -> buildBlocksSummary([])
     // fallback contract handleBlocksSummary uses. blocks' D1 write path is retired
     // (#4909) so a cold Postgres tier is the steady state -- the empty builder
     // shape (block_count 0, every aggregate null) satisfies the non-null
     // BlocksSummary! contract, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/blocks/summary"),
         "METAGRAPH_BLOCKS_SOURCE",
-      )) ?? buildBlocksSummary([]);
+      )) as Row | null) ?? buildBlocksSummary([]);
     return {
       schema_version: data.schema_version ?? 1,
       block_count: data.block_count ?? 0,
@@ -7220,18 +7373,18 @@ const rootValue = {
     };
   },
 
-  async runtime(_args, context) {
+  async runtime(_args: unknown, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) -> buildRuntimeVersionHistory([])
     // fallback contract GET /api/v1/runtime and the get_runtime MCP tool use; blocks'
     // D1 write path is retired (#4909) so a cold Postgres tier is the steady state --
     // the empty builder shape (transition_count 0, current_spec_version null) satisfies
     // the non-null RuntimeVersionHistory! contract, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/runtime"),
         "METAGRAPH_BLOCKS_SOURCE",
-      )) ?? buildRuntimeVersionHistory([]);
+      )) as Row | null) ?? buildRuntimeVersionHistory([]);
     return {
       schema_version: data.schema_version ?? 1,
       transitions: data.transitions || [],
@@ -7242,16 +7395,16 @@ const rootValue = {
     };
   },
 
-  async block({ ref }, context) {
+  async block({ ref }: Row, context: GqlContext) {
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/blocks/${encodeURIComponent(ref)}`,
         ),
         "METAGRAPH_BLOCKS_SOURCE",
-      )) ?? buildBlock(undefined, ref);
+      )) as Row | null) ?? buildBlock(undefined, ref);
     return {
       ref: data.ref ?? ref,
       block: data.block ?? null,
@@ -7264,7 +7417,7 @@ const rootValue = {
   // Postgres tier + schema-stable fallback builder REST and MCP already use. The
   // /blocks/:ref/{extrinsics,events} routes wrap their body in `{ data }` (unlike
   // the flat /blocks/:ref route), so the tier result is destructured accordingly.
-  async block_extrinsics({ ref, limit, offset }, context) {
+  async block_extrinsics({ ref, limit, offset }: Row, context: GqlContext) {
     const safeLimit = Number.isFinite(limit)
       ? Math.max(1, Math.min(100, Math.floor(limit)))
       : 50;
@@ -7274,7 +7427,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
-    const { data } = (await tryPostgresTier(
+    const { data } = ((await tryPostgresTier(
       context.env,
       postgresTierRequest(
         context,
@@ -7282,7 +7435,7 @@ const rootValue = {
         params,
       ),
       "METAGRAPH_EXTRINSICS_SOURCE",
-    )) ?? {
+    )) as Row | null) ?? {
       data: buildBlockExtrinsics([], ref, null, {
         limit: safeLimit,
         offset: safeOffset,
@@ -7291,7 +7444,7 @@ const rootValue = {
     return data;
   },
 
-  async block_events({ ref, limit, offset }, context) {
+  async block_events({ ref, limit, offset }: Row, context: GqlContext) {
     const safeLimit = Number.isFinite(limit)
       ? Math.max(1, Math.min(1000, Math.floor(limit)))
       : 100;
@@ -7301,7 +7454,7 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
-    const { data } = (await tryPostgresTier(
+    const { data } = ((await tryPostgresTier(
       context.env,
       postgresTierRequest(
         context,
@@ -7309,7 +7462,7 @@ const rootValue = {
         params,
       ),
       "METAGRAPH_EXTRINSICS_SOURCE",
-    )) ?? {
+    )) as Row | null) ?? {
       data: buildBlockEvents([], ref, null, {
         limit: safeLimit,
         offset: safeOffset,
@@ -7321,11 +7474,11 @@ const rootValue = {
   // Reuses loadBlockChainEvents unchanged (the get_block_chain_events tool's own
   // loader); it throws invalid_params on a bad block_number and tier_unavailable
   // where the all-events Worker is absent -- both surface as normal GraphQL errors.
-  block_chain_events({ block_number: blockNumber }, context) {
-    return loadBlockChainEvents(context, blockNumber);
+  block_chain_events({ block_number: blockNumber }: Row, context: GqlContext) {
+    return loadBlockChainEvents(mcpCtx(context), blockNumber);
   },
 
-  async validators({ sort, limit, cursor }, context) {
+  async validators({ sort, limit, cursor }: Row, context: GqlContext) {
     const requestedSort = sort ?? DEFAULT_GLOBAL_VALIDATOR_SORT;
     if (!GLOBAL_VALIDATOR_SORTS.includes(requestedSort)) {
       throw new GraphQLError(
@@ -7339,22 +7492,22 @@ const rootValue = {
     params.set("sort", requestedSort);
     params.set("limit", String(GLOBAL_VALIDATOR_LIMIT_MAX));
     const data = overlayFeaturedValidators(
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/validators", params),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ??
+      )) as Row | null) ??
         buildGlobalValidators([], {
           sort: requestedSort,
           limit: GLOBAL_VALIDATOR_LIMIT_MAX,
         }),
-    );
+    )! as Row;
     const nodes = (data.validators || []).map(validatorNode);
     const { page, total, nextCursor } = paginate(
       nodes,
       limit,
       cursor,
-      (v) => v.hotkey,
+      (v: Row) => v.hotkey,
     );
     return {
       items: page,
@@ -7366,7 +7519,10 @@ const rootValue = {
     };
   },
 
-  async validator_nominators({ hotkey, window, sort }, context) {
+  async validator_nominators(
+    { hotkey, window, sort }: Row,
+    context: GqlContext,
+  ) {
     // Same window/sort allow-lists handleValidatorNominators validates against --
     // an unsupported value is a GraphQL BAD_USER_INPUT error, not a silently
     // substituted default. `sort` is optional: omitted resolves to
@@ -7396,7 +7552,7 @@ const rootValue = {
     // retirement: the `account_events` D1 table is dropped in production, so the
     // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const data =
-      (
+      ((
         await tryPostgresTier(
           context.env,
           postgresTierRequest(
@@ -7406,7 +7562,7 @@ const rootValue = {
           ),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )
-      )?.data ??
+      )?.data as Row | undefined) ??
       buildValidatorNominators([], hotkey, {
         window: requestedWindow,
         sort: sort ?? undefined,
@@ -7423,7 +7579,7 @@ const rootValue = {
     };
   },
 
-  async validator({ hotkey }, context) {
+  async validator({ hotkey }: Row, context: GqlContext) {
     const data = await tryPostgresTier(
       context.env,
       postgresTierRequest(
@@ -7432,18 +7588,20 @@ const rootValue = {
       ),
       "METAGRAPH_NEURONS_SOURCE",
     );
-    return validatorDetailNode(data, hotkey);
+    return validatorDetailNode(data as Row, hotkey);
   },
 
-  async validator_history({ hotkey, window }, context) {
+  async validator_history({ hotkey, window }: Row, context: GqlContext) {
     // Same parseHistoryWindow REST's handleValidatorHistory uses, so accepted
     // window labels (7d/30d/90d/1y/all, default 30d) match exactly.
-    const { label, error } = parseHistoryWindow(window);
-    if (error) {
+    const windowResult = parseHistoryWindow(window);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildValidatorHistory
@@ -7451,7 +7609,7 @@ const rootValue = {
     // neuron_daily rows in the window is a schema-stable empty-points card,
     // never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -7459,7 +7617,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildValidatorHistory([], hotkey, { window: label });
+      )) as Row | null) ?? buildValidatorHistory([], hotkey, { window: label });
     return {
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,
@@ -7469,7 +7627,10 @@ const rootValue = {
     };
   },
 
-  async account_position_history({ ss58, netuid, window }, context) {
+  async account_position_history(
+    { ss58, netuid, window }: Row,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7482,12 +7643,14 @@ const rootValue = {
     }
     // Same parseHistoryWindow the REST position-history handler uses, so
     // accepted window labels (7d/30d/90d/1y/all, default 30d) match exactly.
-    const { label, error } = parseHistoryWindow(window);
-    if (error) {
+    const windowResult = parseHistoryWindow(window);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPositionHistory
@@ -7495,7 +7658,7 @@ const rootValue = {
     // rows for the subnet in the window is a schema-stable empty-points card,
     // never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -7503,7 +7666,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildAccountPositionHistory([], ss58, netuid, { window: label });
+      )) as Row | null) ??
+      buildAccountPositionHistory([], ss58, netuid, { window: label });
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -7514,7 +7678,7 @@ const rootValue = {
     };
   },
 
-  async accounts({ sort, limit }, context) {
+  async accounts({ sort, limit }: Row, context: GqlContext) {
     const requestedSort = sort ?? DEFAULT_ACCOUNTS_LIST_SORT;
     if (!ACCOUNTS_LIST_SORTS.includes(requestedSort)) {
       throw new GraphQLError(
@@ -7530,11 +7694,11 @@ const rootValue = {
     params.set("sort", requestedSort);
     params.set("limit", String(safeLimit));
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/accounts", params),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildAccountsList([], {
         sort: requestedSort,
         limit: safeLimit,
@@ -7548,25 +7712,25 @@ const rootValue = {
     };
   },
 
-  async account({ ss58 }, context) {
+  async account({ ss58 }: Row, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/accounts/${encodeURIComponent(ss58)}`,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildAccountSummary(ss58, {});
+      )) as Row | null) ?? buildAccountSummary(ss58, {});
     return accountSummaryNode(data, ss58);
   },
 
-  async account_prometheus({ ss58, window }, context) {
+  async account_prometheus({ ss58, window }: Row, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7596,7 +7760,8 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      pg?.data ?? buildAccountPrometheus([], ss58, { window: requestedWindow });
+      (pg?.data as Row | undefined) ??
+      buildAccountPrometheus([], ss58, { window: requestedWindow });
     return {
       schema_version: data.schema_version ?? 1,
       address: data.address ?? ss58,
@@ -7609,7 +7774,10 @@ const rootValue = {
     };
   },
 
-  async account_stake_flow({ ss58, window, direction }, context) {
+  async account_stake_flow(
+    { ss58, window, direction }: Row,
+    context: GqlContext,
+  ) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7647,7 +7815,8 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      pg?.data ?? buildAccountStakeFlow([], ss58, { window: requestedWindow });
+      (pg?.data as Row | undefined) ??
+      buildAccountStakeFlow([], ss58, { window: requestedWindow });
     return {
       schema_version: data.schema_version ?? 1,
       address: data.address ?? ss58,
@@ -7667,7 +7836,7 @@ const rootValue = {
     };
   },
 
-  async account_portfolio({ ss58 }, context) {
+  async account_portfolio({ ss58 }: Row, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7678,14 +7847,14 @@ const rootValue = {
     // body is flat (like `account`'s own), not the { data, generatedAt } envelope
     // the account-event-footprint family uses.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/accounts/${encodeURIComponent(ss58)}/portfolio`,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildAccountPortfolio([], ss58);
+      )) as Row | null) ?? buildAccountPortfolio([], ss58);
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -7702,7 +7871,7 @@ const rootValue = {
     };
   },
 
-  async account_positions({ ss58 }, context) {
+  async account_positions({ ss58 }: Row, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7714,14 +7883,14 @@ const rootValue = {
     // body (like account_portfolio's), not the { data, generatedAt } envelope
     // the account-event-footprint family uses.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/accounts/${encodeURIComponent(ss58)}/positions`,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildAccountPositions([], new Map(), ss58);
+      )) as Row | null) ?? buildAccountPositions([], new Map(), ss58);
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -7732,7 +7901,7 @@ const rootValue = {
     };
   },
 
-  async account_subnets({ ss58 }, context) {
+  async account_subnets({ ss58 }: Row, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -7744,14 +7913,14 @@ const rootValue = {
     // not the { data, generatedAt } envelope the account-event footprint family
     // uses. An unregistered address is a schema-stable empty card, never null.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/accounts/${encodeURIComponent(ss58)}/subnets`,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildAccountSubnets([], ss58);
+      )) as Row | null) ?? buildAccountSubnets([], ss58);
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -7760,7 +7929,7 @@ const rootValue = {
     };
   },
 
-  async account_registrations({ ss58, window }, context) {
+  async account_registrations({ ss58, window }: Row, context: GqlContext) {
     // Same SS58 + window validation handleAccountRegistrations (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -7792,7 +7961,7 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      tier?.data ??
+      (tier?.data as Row | undefined) ??
       buildAccountRegistrations([], ss58, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -7802,7 +7971,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s) => ({
+      subnets: (data.subnets ?? []).map((s: Row) => ({
         netuid: s.netuid,
         registrations: s.registrations,
         first_registered_at: s.first_registered_at ?? null,
@@ -7811,7 +7980,7 @@ const rootValue = {
     };
   },
 
-  async account_deregistrations({ ss58, window }, context) {
+  async account_deregistrations({ ss58, window }: Row, context: GqlContext) {
     // Same SS58 + window validation handleAccountDeregistrations (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -7843,7 +8012,7 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      tier?.data ??
+      (tier?.data as Row | undefined) ??
       buildAccountDeregistrations([], ss58, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -7853,7 +8022,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s) => ({
+      subnets: (data.subnets ?? []).map((s: Row) => ({
         netuid: s.netuid,
         deregistrations: s.deregistrations,
         first_deregistered_at: s.first_deregistered_at ?? null,
@@ -7862,7 +8031,7 @@ const rootValue = {
     };
   },
 
-  async account_serving({ ss58, window }, context) {
+  async account_serving({ ss58, window }: Row, context: GqlContext) {
     // Same SS58 + window validation handleAccountServing (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -7894,7 +8063,8 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      tier?.data ?? buildAccountServing([], ss58, { window: windowParam });
+      (tier?.data as Row | undefined) ??
+      buildAccountServing([], ss58, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       address: data.address ?? ss58,
@@ -7903,7 +8073,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s) => ({
+      subnets: (data.subnets ?? []).map((s: Row) => ({
         netuid: s.netuid,
         announcements: s.announcements,
         first_served_at: s.first_served_at ?? null,
@@ -7912,7 +8082,7 @@ const rootValue = {
     };
   },
 
-  async account_axon_removals({ ss58, window }, context) {
+  async account_axon_removals({ ss58, window }: Row, context: GqlContext) {
     // Same SS58 + window validation handleAccountAxonRemovals (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -7944,7 +8114,8 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      tier?.data ?? buildAccountAxonRemovals([], ss58, { window: windowParam });
+      (tier?.data as Row | undefined) ??
+      buildAccountAxonRemovals([], ss58, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       address: data.address ?? ss58,
@@ -7953,7 +8124,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s) => ({
+      subnets: (data.subnets ?? []).map((s: Row) => ({
         netuid: s.netuid,
         removals: s.removals,
         first_removed_at: s.first_removed_at ?? null,
@@ -7962,7 +8133,7 @@ const rootValue = {
     };
   },
 
-  async account_stake_moves({ ss58, window }, context) {
+  async account_stake_moves({ ss58, window }: Row, context: GqlContext) {
     // Same SS58 + window validation handleAccountStakeMoves (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
@@ -7994,7 +8165,8 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      tier?.data ?? buildAccountStakeMoves([], ss58, { window: windowParam });
+      (tier?.data as Row | undefined) ??
+      buildAccountStakeMoves([], ss58, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
       address: data.address ?? ss58,
@@ -8003,7 +8175,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s) => ({
+      subnets: (data.subnets ?? []).map((s: Row) => ({
         netuid: s.netuid,
         movements: s.movements,
         first_moved_at: s.first_moved_at ?? null,
@@ -8013,7 +8185,7 @@ const rootValue = {
     };
   },
 
-  async account_weight_setters({ ss58, window }, context) {
+  async account_weight_setters({ ss58, window }: Row, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -8044,7 +8216,7 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     const data =
-      pg?.data ??
+      (pg?.data as Row | undefined) ??
       buildAccountWeightSetters([], ss58, { window: requestedWindow });
     return {
       schema_version: data.schema_version ?? 1,
@@ -8058,7 +8230,7 @@ const rootValue = {
     };
   },
 
-  async account_entities({ ss58 }, context) {
+  async account_entities({ ss58 }: Row, context: GqlContext) {
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -8084,7 +8256,7 @@ const rootValue = {
     const data = ownershipData ?? buildAccountEntities(ss58, { entities: [] });
     const labels = labelsForSs58(
       entityLabelsIndex(
-        entitiesArtifact.ok ? entitiesArtifact.data?.entities : [],
+        entitiesArtifact.ok ? (entitiesArtifact.data as Row)?.entities : [],
       ),
       ss58,
     );
@@ -8097,7 +8269,7 @@ const rootValue = {
     };
   },
 
-  async account_identity({ ss58 }, context) {
+  async account_identity({ ss58 }: Row, context: GqlContext) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty card.
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -8111,14 +8283,14 @@ const rootValue = {
     // every field null, never a GraphQL error -- a Postgres miss/outage
     // degrades to that exact same schema-stable shape, never a live D1 read.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/accounts/${encodeURIComponent(ss58)}/identity`,
         ),
         "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-      )) ?? buildAccountIdentity(null, ss58);
+      )) as Row | null) ?? buildAccountIdentity(null, ss58);
     return {
       schema_version: data.schema_version ?? 1,
       account: data.account ?? ss58,
@@ -8134,7 +8306,10 @@ const rootValue = {
     };
   },
 
-  async account_identity_history({ ss58, limit, offset, cursor }, context) {
+  async account_identity_history(
+    { ss58, limit, offset, cursor }: Row,
+    context: GqlContext,
+  ) {
     // Same SS58 validation every account_* resolver uses -- a malformed
     // address is a GraphQL BAD_USER_INPUT error, not a silent empty timeline.
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -8152,7 +8327,7 @@ const rootValue = {
     if (offset != null) params.set("offset", String(offset));
     if (cursor != null) params.set("cursor", cursor);
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -8160,7 +8335,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildAccountIdentityHistory([], ss58, {
         limit,
         offset,
@@ -8173,7 +8348,7 @@ const rootValue = {
       limit: data.limit ?? null,
       offset: data.offset ?? null,
       next_cursor: data.next_cursor ?? null,
-      entries: (data.entries ?? []).map((e) => ({
+      entries: (data.entries ?? []).map((e: Row) => ({
         observed_at: e.observed_at ?? null,
         name: e.name ?? null,
         url: e.url ?? null,
@@ -8187,7 +8362,10 @@ const rootValue = {
     };
   },
 
-  async account_counterparties({ ss58, counterparty, limit }, context) {
+  async account_counterparties(
+    { ss58, counterparty, limit }: Row,
+    context: GqlContext,
+  ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty card.
     if (!SS58_ADDRESS_PATTERN.test(ss58)) {
@@ -8227,7 +8405,7 @@ const rootValue = {
       ),
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
-    let data = tier;
+    let data = tier as Row | null;
     if (data == null) {
       if (counterparty != null) {
         const rel = buildCounterpartyRelationship([], ss58, counterparty, {
@@ -8257,7 +8435,7 @@ const rootValue = {
       scan_capped: data.scan_capped ?? false,
       total_sent_tao: data.total_sent_tao ?? 0,
       total_received_tao: data.total_received_tao ?? 0,
-      counterparties: (data.counterparties ?? []).map((c) => ({
+      counterparties: (data.counterparties ?? []).map((c: Row) => ({
         address: c.address,
         sent_tao: c.sent_tao ?? 0,
         received_tao: c.received_tao ?? 0,
@@ -8281,7 +8459,7 @@ const rootValue = {
             first_seen_at: rel.first_seen_at ?? null,
             last_seen_at: rel.last_seen_at ?? null,
             limit: rel.limit ?? 0,
-            transfers: (rel.transfers ?? []).map((t) => ({
+            transfers: (rel.transfers ?? []).map((t: Row) => ({
               block_number: t.block_number ?? null,
               event_index: t.event_index ?? null,
               netuid: t.netuid ?? null,
@@ -8297,8 +8475,8 @@ const rootValue = {
   },
 
   async account_transfers(
-    { ss58, limit, offset, cursor, direction, block_start, block_end },
-    context,
+    { ss58, limit, offset, cursor, direction, block_start, block_end }: Row,
+    context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
@@ -8325,7 +8503,7 @@ const rootValue = {
     // retired (#4772), so a tier miss resolves through buildAccountTransfers over
     // an empty scan -- a schema-stable empty feed, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -8333,7 +8511,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildAccountTransfers([], ss58, {
         limit: safeLimit,
         offset: safeOffset,
@@ -8346,7 +8524,7 @@ const rootValue = {
       limit: data.limit ?? safeLimit,
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
-      transfers: (data.transfers ?? []).map((t) => ({
+      transfers: (data.transfers ?? []).map((t: Row) => ({
         block_number: t.block_number ?? null,
         event_index: t.event_index ?? null,
         from: t.from ?? null,
@@ -8359,8 +8537,8 @@ const rootValue = {
   },
 
   async account_extrinsics(
-    { ss58, limit, offset, cursor, block_start, block_end },
-    context,
+    { ss58, limit, offset, cursor, block_start, block_end }: Row,
+    context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
@@ -8386,7 +8564,7 @@ const rootValue = {
     // (#4772), so a tier miss resolves through buildAccountExtrinsics over an
     // empty scan -- a schema-stable empty feed, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -8394,7 +8572,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildAccountExtrinsics([], ss58, {
         limit: safeLimit,
         offset: safeOffset,
@@ -8414,8 +8592,8 @@ const rootValue = {
   },
 
   async account_events(
-    { ss58, kind, netuid, block_start, block_end, limit, offset, cursor },
-    context,
+    { ss58, kind, netuid, block_start, block_end, limit, offset, cursor }: Row,
+    context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
@@ -8443,7 +8621,7 @@ const rootValue = {
     // retired (#4772), so a tier miss resolves through buildAccountEvents over an
     // empty scan -- a schema-stable empty feed, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -8451,7 +8629,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildAccountEvents([], ss58, {
         limit: safeLimit,
         offset: safeOffset,
@@ -8464,7 +8642,7 @@ const rootValue = {
       limit: data.limit ?? safeLimit,
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
-      events: (data.events ?? []).map((e) => ({
+      events: (data.events ?? []).map((e: Row) => ({
         block_number: e.block_number ?? null,
         event_index: e.event_index ?? null,
         event_kind: e.event_kind ?? null,
@@ -8481,8 +8659,8 @@ const rootValue = {
   },
 
   async account_history(
-    { ss58, netuid, from, to, limit, offset, cursor },
-    context,
+    { ss58, netuid, from, to, limit, offset, cursor }: Row,
+    context: GqlContext,
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty series.
@@ -8533,7 +8711,7 @@ const rootValue = {
       cursor: cursor ?? undefined,
     };
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -8541,7 +8719,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? (await loadAccountHistory(ss58, historyOptions));
+      )) as Row | null) ?? (await loadAccountHistory(ss58, historyOptions));
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -8549,7 +8727,7 @@ const rootValue = {
       limit: data.limit ?? safeLimit,
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
-      days: (data.days ?? []).map((d) => ({
+      days: (data.days ?? []).map((d: Row) => ({
         day: d.day ?? null,
         netuid: d.netuid ?? null,
         event_count: d.event_count ?? null,
@@ -8560,31 +8738,28 @@ const rootValue = {
     };
   },
 
-  async economics_trends({ window }, context) {
+  async economics_trends({ window }: Row, context: GqlContext) {
     // Same parseHistoryWindow REST uses, so accepted window labels and the
     // resulting { label, days } stay identical between REST and GraphQL.
-    const { label, days, error } = parseHistoryWindow(window);
-    if (error) {
+    const windowResult = parseHistoryWindow(window);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same tier
     // and fallback contract REST's handleEconomicsTrends uses.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/economics/trends", params),
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-      )) ??
-      (
-        await loadEconomicsTrends({
-          windowLabel: label,
-          windowDays: days,
-        })
-      ).data;
+      )) as Row | null) ??
+      (await loadEconomicsTrends({ windowLabel: label })).data;
     // Normalized the same way blocks/validators/accounts are (schema-stable,
     // never a GraphQL error), so a malformed/partial Postgres-tier body still
     // satisfies the non-null EconomicsTrends! contract.
@@ -8596,7 +8771,7 @@ const rootValue = {
     };
   },
 
-  async subnet_movers({ window, sort, limit }, context) {
+  async subnet_movers({ window, sort, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_MOVERS_WINDOW;
     if (!Object.hasOwn(MOVERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -8630,11 +8805,11 @@ const rootValue = {
     // handleSubnetMovers uses -- a cold/absent tier yields a schema-stable
     // empty leaderboard, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/subnets/movers", params),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildMovers([], [], {
         window: requestedWindow,
         startDate: null,
@@ -8670,7 +8845,7 @@ const rootValue = {
     };
   },
 
-  async chain_turnover({ window, limit }, context) {
+  async chain_turnover({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
     if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -8692,11 +8867,11 @@ const rootValue = {
     // store yields the schema-stable empty/non-comparable envelope, never a
     // GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/turnover", params),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainTurnover([], {
         window: requestedWindow,
         startDate: null,
@@ -8723,19 +8898,21 @@ const rootValue = {
     };
   },
 
-  async chain_activity({ window }, context) {
+  async chain_activity({ window }: Row, context: GqlContext) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainActivity
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty result.
-    const windowUrl = new URL(context.request.url);
+    const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
-    const { label, error } = analyticsWindow(windowUrl);
-    if (error) {
+    const windowResult = analyticsWindow(windowUrl);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainActivity
@@ -8743,17 +8920,17 @@ const rootValue = {
     // rollup (no logic duplicated here), and a cold store yields a schema-stable
     // empty series.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/activity", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ?? buildChainActivity({ window: label });
+      )) as Row | null) ?? buildChainActivity({ window: label });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
       observed_at: data.observed_at ?? null,
       day_count: data.day_count ?? 0,
-      days: (data.days ?? []).map((d) => ({
+      days: (data.days ?? []).map((d: Row) => ({
         day: d.day,
         block_count: d.block_count ?? 0,
         extrinsic_count: d.extrinsic_count ?? 0,
@@ -8766,21 +8943,23 @@ const rootValue = {
   },
 
   async chain_calls(
-    { window, group_by: groupBy, limit, call_module: callModule },
-    context,
+    { window, group_by: groupBy, limit, call_module: callModule }: Row,
+    context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainCalls
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty result.
-    const windowUrl = new URL(context.request.url);
+    const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
-    const { label, error } = analyticsWindow(windowUrl);
-    if (error) {
+    const windowResult = analyticsWindow(windowUrl);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     const requestedGroupBy = groupBy ?? "module";
     if (
       requestedGroupBy !== "module" &&
@@ -8806,11 +8985,12 @@ const rootValue = {
     // handleChainCalls uses; the tier owns the call-mix aggregation (no logic
     // duplicated here), and a cold store yields a schema-stable empty breakdown.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/calls", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ?? buildChainCalls({ window: label, groupBy: requestedGroupBy });
+      )) as Row | null) ??
+      buildChainCalls({ window: label, groupBy: requestedGroupBy });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
@@ -8818,7 +8998,7 @@ const rootValue = {
       observed_at: data.observed_at ?? null,
       total_extrinsics: data.total_extrinsics ?? 0,
       call_count: data.call_count ?? 0,
-      calls: (data.calls ?? []).map((c) => ({
+      calls: (data.calls ?? []).map((c: Row) => ({
         call_module: c.call_module,
         call_function: c.call_function ?? null,
         count: c.count ?? 0,
@@ -8827,19 +9007,24 @@ const rootValue = {
     };
   },
 
-  async chain_fees({ window, limit, call_module: callModule }, context) {
+  async chain_fees(
+    { window, limit, call_module: callModule }: Row,
+    context: GqlContext,
+  ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainFees
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty result.
-    const windowUrl = new URL(context.request.url);
+    const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
-    const { label, error } = analyticsWindow(windowUrl);
-    if (error) {
+    const windowResult = analyticsWindow(windowUrl);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     if (callModule != null && callModule.length > 100) {
       throw new GraphQLError("call_module must be at most 100 characters.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -8854,17 +9039,17 @@ const rootValue = {
     // handleChainFees uses; the tier owns the daily/median/payer aggregation (no
     // logic duplicated here), and a cold store yields a schema-stable empty series.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/fees", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ?? buildChainFees({ window: label });
+      )) as Row | null) ?? buildChainFees({ window: label });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
       observed_at: data.observed_at ?? null,
       day_count: data.day_count ?? 0,
-      daily: (data.daily ?? []).map((d) => ({
+      daily: (data.daily ?? []).map((d: Row) => ({
         day: d.day,
         extrinsic_count: d.extrinsic_count ?? 0,
         total_fee_tao: d.total_fee_tao ?? null,
@@ -8874,7 +9059,7 @@ const rootValue = {
         avg_tip_tao: d.avg_tip_tao ?? null,
         median_tip_tao: d.median_tip_tao ?? null,
       })),
-      top_fee_payers: (data.top_fee_payers ?? []).map((p) => ({
+      top_fee_payers: (data.top_fee_payers ?? []).map((p: Row) => ({
         signer: p.signer,
         total_fee_tao: p.total_fee_tao ?? null,
         total_tip_tao: p.total_tip_tao ?? null,
@@ -8883,7 +9068,7 @@ const rootValue = {
     };
   },
 
-  async chain_weights({ window, limit }, context) {
+  async chain_weights({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_WEIGHTS_WINDOW;
     if (!Object.hasOwn(CHAIN_WEIGHTS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -8904,15 +9089,15 @@ const rootValue = {
     // the `account_events` D1 table is dropped in production, so the fallback goes
     // straight to the pure builder with no rows, never a live D1 query.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/weights", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainWeights([], {
         window: requestedWindow,
         limit: safeLimit,
-        networkDistinct: null,
+        networkDistinct: undefined,
       });
     return {
       schema_version: data.schema_version ?? 1,
@@ -8929,7 +9114,7 @@ const rootValue = {
     };
   },
 
-  async chain_serving({ window, limit }, context) {
+  async chain_serving({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_SERVING_WINDOW;
     if (!Object.hasOwn(CHAIN_SERVING_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -8950,11 +9135,11 @@ const rootValue = {
     // schema-stable zeroed card contract REST's chainServing route uses, never
     // a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/serving", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainServing([], { window: requestedWindow, limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
@@ -8971,7 +9156,7 @@ const rootValue = {
     };
   },
 
-  async chain_axon_removals({ window, limit }, context) {
+  async chain_axon_removals({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
     if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -8992,11 +9177,11 @@ const rootValue = {
     // schema-stable zeroed card contract REST's handleChainAxonRemovals uses,
     // never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/axon-removals", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainAxonRemovals([], { window: requestedWindow, limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
@@ -9013,7 +9198,7 @@ const rootValue = {
     };
   },
 
-  async chain_deregistrations({ window, limit }, context) {
+  async chain_deregistrations({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW;
     if (!Object.hasOwn(CHAIN_DEREGISTRATIONS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9037,11 +9222,11 @@ const rootValue = {
     // schema-stable zeroed card contract REST's handleChainDeregistrations
     // uses, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/deregistrations", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainDeregistrations([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -9061,7 +9246,7 @@ const rootValue = {
     };
   },
 
-  async chain_registrations({ window, limit }, context) {
+  async chain_registrations({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_REGISTRATIONS_WINDOW;
     if (!Object.hasOwn(CHAIN_REGISTRATIONS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9082,11 +9267,11 @@ const rootValue = {
     // schema-stable zeroed card contract REST's handleChainRegistrations uses,
     // never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/registrations", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainRegistrations([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -9106,7 +9291,7 @@ const rootValue = {
     };
   },
 
-  async chain_prometheus({ window, limit }, context) {
+  async chain_prometheus({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_PROMETHEUS_WINDOW;
     if (!Object.hasOwn(CHAIN_PROMETHEUS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9127,11 +9312,11 @@ const rootValue = {
     // schema-stable zeroed card contract REST's handleChainPrometheus uses,
     // never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/prometheus", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainPrometheus([], { window: requestedWindow, limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
@@ -9149,21 +9334,23 @@ const rootValue = {
   },
 
   async chain_signers(
-    { window, limit, sort, call_module: callModule },
-    context,
+    { window, limit, sort, call_module: callModule }: Row,
+    context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleChainSigners
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
     // BAD_USER_INPUT error, not a silent empty leaderboard.
-    const windowUrl = new URL(context.request.url);
+    const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
-    const { label, error } = analyticsWindow(windowUrl);
-    if (error) {
+    const windowResult = analyticsWindow(windowUrl);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     // Same CHAIN_SIGNERS_SORTS allow-list REST validates against; sort is
     // optional (null -> the loader's tx_count default), so only a non-null
     // value is checked.
@@ -9199,7 +9386,7 @@ const rootValue = {
       "METAGRAPH_EXTRINSICS_SOURCE",
     );
     const data =
-      tier ??
+      (tier as Row | null) ??
       buildChainSigners({
         window: label,
         sort,
@@ -9212,7 +9399,7 @@ const rootValue = {
       sort: data.sort ?? CHAIN_SIGNERS_SORTS[0],
       observed_at: data.observed_at ?? null,
       signer_count: data.signer_count ?? 0,
-      signers: (data.signers ?? []).map((entry) => ({
+      signers: (data.signers ?? []).map((entry: Row) => ({
         signer: entry.signer,
         tx_count: entry.tx_count ?? 0,
         total_fee_tao: entry.total_fee_tao ?? null,
@@ -9222,7 +9409,7 @@ const rootValue = {
     };
   },
 
-  async chain_weight_setters({ window, limit }, context) {
+  async chain_weight_setters({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW;
     if (!Object.hasOwn(CHAIN_WEIGHT_SETTERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9241,11 +9428,11 @@ const rootValue = {
     // and the table is dropped in production, so a D1 query here would
     // always miss. Postgres → schema-stable empty stub, never a live D1 read.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/weights/setters", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainWeightSetters([], null, {
         window: requestedWindow,
         limit: safeLimit,
@@ -9261,7 +9448,7 @@ const rootValue = {
     };
   },
 
-  async chain_alpha_volume({ limit }, context) {
+  async chain_alpha_volume({ limit }: Row, context: GqlContext) {
     const safeLimit = clampLimit(limit, {
       defaultLimit: CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
       maxLimit: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
@@ -9275,11 +9462,11 @@ const rootValue = {
     // retirement: the `account_events` D1 table is dropped in production, so the
     // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/alpha-volume", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? buildChainAlphaVolume([], { limit: safeLimit });
+      )) as Row | null) ?? buildChainAlphaVolume([], { limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? "24h",
@@ -9303,17 +9490,17 @@ const rootValue = {
     };
   },
 
-  async chain_idle_stake(_args, context) {
+  async chain_idle_stake(_args: unknown, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainIdleStake([])
     // cold fallback contract handleChainIdleStake / MCP get_chain_idle_stake
     // use: a cold/absent tier yields a schema-stable empty ranking, never a
     // GraphQL error. No window/limit args -- current snapshot only.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/idle-stake"),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildChainIdleStake([]);
+      )) as Row | null) ?? buildChainIdleStake([]);
     return {
       schema_version: data.schema_version ?? 1,
       captured_at: data.captured_at ?? null,
@@ -9323,7 +9510,7 @@ const rootValue = {
     };
   },
 
-  async chain_stake_flow({ window, limit }, context) {
+  async chain_stake_flow({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9342,11 +9529,11 @@ const rootValue = {
     // buildChainStakeFlow empty-card fallback REST's handleChainStakeFlow
     // uses. #4909 D1 retirement: never a live D1 read.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/stake-flow", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainStakeFlow([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -9372,7 +9559,7 @@ const rootValue = {
     };
   },
 
-  async chain_stake_moves({ window, limit }, context) {
+  async chain_stake_moves({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_MOVES_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_MOVES_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9391,11 +9578,11 @@ const rootValue = {
     // buildChainStakeMoves empty-card fallback REST's handleChainStakeMoves
     // uses. #4909 D1 retirement: never a live D1 read.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/stake-moves", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainStakeMoves([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -9415,7 +9602,7 @@ const rootValue = {
     };
   },
 
-  async chain_stake_transfers({ window, limit }, context) {
+  async chain_stake_transfers({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
     if (!Object.hasOwn(CHAIN_STAKE_TRANSFERS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9437,11 +9624,11 @@ const rootValue = {
     // buildChainStakeTransfers empty-card fallback REST's
     // handleChainStakeTransfers uses. #4909 D1 retirement: never a live D1 read.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/stake-transfers", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainStakeTransfers([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -9461,7 +9648,10 @@ const rootValue = {
     };
   },
 
-  async chain_transfer_pairs({ window, sort, limit }, context) {
+  async chain_transfer_pairs(
+    { window, sort, limit }: Row,
+    context: GqlContext,
+  ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
     if (!Object.hasOwn(CHAIN_TRANSFER_PAIR_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9489,11 +9679,11 @@ const rootValue = {
     // buildChainTransferPairs empty-card fallback REST uses, including the KV
     // health:meta observed_at stamp. #4909 D1 retirement: never a live D1 read.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/transfer-pairs", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainTransferPairs({
         window: requestedWindow,
         sort,
@@ -9515,7 +9705,7 @@ const rootValue = {
     };
   },
 
-  async chain_transfers({ window, limit }, context) {
+  async chain_transfers({ window, limit }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
     if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9535,11 +9725,11 @@ const rootValue = {
     // uses, including the KV health:meta observed_at stamp. #4909 D1
     // retirement: never a live D1 read.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/transfers", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      )) as Row | null) ??
       buildChainTransfers({
         window: requestedWindow,
         observedAt: await loadObservedAt(context),
@@ -9561,17 +9751,17 @@ const rootValue = {
     };
   },
 
-  async health_trends(_args, context) {
+  async health_trends(_args: unknown, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadBulkHealthTrends
     // fallback contract REST's handleBulkHealthTrends and the get_health_trends
     // MCP tool share -- a cold store yields both windows zeroed, never a
     // GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/health/trends"),
         "METAGRAPH_HEALTH_SOURCE",
-      )) ??
+      )) as Row | null) ??
       (
         await loadBulkHealthTrends({
           observedAt: await loadObservedAt(context),
@@ -9585,7 +9775,7 @@ const rootValue = {
     };
   },
 
-  async subnet_health_trends({ netuid }, context) {
+  async subnet_health_trends({ netuid }: Row, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetHealthTrends D1
     // fallback contract REST's handleHealthTrends and the
     // get_subnet_health_trends MCP tool share -- the route takes no window arg
@@ -9594,11 +9784,11 @@ const rootValue = {
     // tier owns the per-surface uptime/latency aggregation; nothing is
     // duplicated here.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, `/api/v1/subnets/${netuid}/health/trends`),
         "METAGRAPH_HEALTH_SOURCE",
-      )) ??
+      )) as Row | null) ??
       (await loadSubnetHealthTrends(netuid, {
         observedAt: await loadObservedAt(context),
       }));
@@ -9611,7 +9801,7 @@ const rootValue = {
     };
   },
 
-  async subnet_health({ netuid }, context) {
+  async subnet_health({ netuid }: Row, context: GqlContext) {
     // Same non-negative netuid gate the other per-subnet resolvers use --
     // GraphQL Int coercion rejects non-integers at parse time; a negative
     // netuid is a BAD_USER_INPUT error, not a silent card.
@@ -9628,7 +9818,13 @@ const rootValue = {
     // it resolves to the identical schema-stable "unknown" card the MCP tool
     // returns on a cold store -- never a GraphQL error. Nothing is re-derived.
     const [live, reliability] = await Promise.all([
-      resolveLiveHealth({ readHealthKv, env: context.env }),
+      resolveLiveHealth({
+        readHealthKv: readHealthKv as (
+          env: Env,
+          key: string,
+        ) => Promise<Row | null>,
+        env: context.env,
+      }),
       loadSubnetReliability(),
     ]);
     const overlaid = overlaySubnetHealth(null, live, netuid);
@@ -9646,7 +9842,10 @@ const rootValue = {
     };
   },
 
-  async subnet_uptime({ netuid, window, min_samples: minSamples }, context) {
+  async subnet_uptime(
+    { netuid, window, min_samples: minSamples }: Row,
+    context: GqlContext,
+  ) {
     // Same 90d/1y window validation handleUptime / get_subnet_uptime use -- an
     // unsupported window is a GraphQL BAD_USER_INPUT error, not a silent card.
     // parseUptimeWindow(undefined) → "90d"; a supplied bad value → null.
@@ -9673,7 +9872,7 @@ const rootValue = {
     // surfaces card, never a GraphQL error. The tier owns the
     // surface_uptime_daily aggregation; nothing is duplicated here.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -9681,12 +9880,11 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_HEALTH_SOURCE",
-      )) ??
-      (await loadSubnetUptime(netuid, {
+      )) as Row | null) ??
+      ((await loadSubnetUptime(netuid, {
         window: windowParam,
         observedAt: await loadObservedAt(context),
-        minSamples: sampleFloor,
-      }));
+      })) as Row);
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -9698,7 +9896,7 @@ const rootValue = {
     };
   },
 
-  async rpc_usage({ window }, context) {
+  async rpc_usage({ window }: Row, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_ANALYTICS_WINDOW;
     if (!Object.hasOwn(ANALYTICS_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -9712,11 +9910,11 @@ const rootValue = {
     // contract REST's handleRpcUsage and the get_rpc_usage MCP tool share -- a
     // cold store yields a schema-stable zeroed card, never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/rpc/usage", params),
         "METAGRAPH_RPC_USAGE_SOURCE",
-      )) ??
+      )) as Row | null) ??
       (await loadRpcUsage({
         window: requestedWindow,
         observedAt: await loadObservedAt(context),
@@ -9750,7 +9948,7 @@ const rootValue = {
     };
   },
 
-  async registry_leaderboards({ board, limit }, context) {
+  async registry_leaderboards({ board, limit }: Row, context: GqlContext) {
     // Same board allowlist handleLeaderboards enforces -- an unknown board is a
     // GraphQL BAD_USER_INPUT error, mirroring REST's invalid_query 400 rather
     // than silently resolving to an empty board.
@@ -9792,7 +9990,7 @@ const rootValue = {
     };
   },
 
-  async chain_performance(_args, context) {
+  async chain_performance(_args: unknown, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainPerformance([])
     // cold fallback contract handleChainPerformance / MCP get_chain_performance
     // use: a cold/absent tier yields a schema-stable zeroed card (every metric
@@ -9800,11 +9998,11 @@ const rootValue = {
     // against an EMPTY param allowlist, so there is no window/limit arg to
     // mirror -- current snapshot only.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/performance"),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildChainPerformance([]);
+      )) as Row | null) ?? buildChainPerformance([]);
     return {
       schema_version: data.schema_version ?? 1,
       subnet_count: data.subnet_count ?? 0,
@@ -9820,16 +10018,16 @@ const rootValue = {
     };
   },
 
-  async chain_yield(_args, context) {
+  async chain_yield(_args: unknown, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainYield([])
     // fallback contract handleChainYield uses -- a cold/absent tier yields a
     // schema-stable zeroed card (every aggregate null), never a GraphQL error.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/yield"),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildChainYield([]);
+      )) as Row | null) ?? buildChainYield([]);
     const distribution = data.distribution ?? null;
     return {
       schema_version: data.schema_version ?? 1,
@@ -9859,7 +10057,7 @@ const rootValue = {
     };
   },
 
-  async chain_concentration(_args, context) {
+  async chain_concentration(_args: unknown, context: GqlContext) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildChainConcentration([])
     // cold fallback contract handleChainConcentration / MCP get_chain_concentration
     // use: a cold/absent tier yields a schema-stable zeroed card (every metric
@@ -9868,11 +10066,11 @@ const rootValue = {
     // param allowlist, so there is no window/limit arg to mirror -- current
     // snapshot only.
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/concentration"),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildChainConcentration([]);
+      )) as Row | null) ?? buildChainConcentration([]);
     return {
       schema_version: data.schema_version ?? 1,
       subnet_count: data.subnet_count ?? 0,
@@ -9888,7 +10086,7 @@ const rootValue = {
     };
   },
 
-  async subnet_recycled({ netuid }, context) {
+  async subnet_recycled({ netuid }: Row, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -9903,7 +10101,7 @@ const rootValue = {
     return loadSubnetRecycled(context.env, netuid);
   },
 
-  async subnet_burn({ netuid }, context) {
+  async subnet_burn({ netuid }: Row, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -9918,7 +10116,7 @@ const rootValue = {
     return loadSubnetBurn(context.env, netuid);
   },
 
-  async subnet_turnover({ netuid, window }, context) {
+  async subnet_turnover({ netuid, window }: Row, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError("netuid must be a u16 subnet id (0-65535).", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -9926,12 +10124,14 @@ const rootValue = {
     }
     // Same parseHistoryWindow the REST turnover handler uses, so accepted
     // window labels (7d/30d/90d/1y/all, default 30d) match exactly.
-    const { label, error } = parseHistoryWindow(window);
-    if (error) {
+    const windowResult = parseHistoryWindow(window);
+    if ("error" in windowResult) {
+      const { error } = windowResult;
       throw new GraphQLError(error.message, {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildTurnover([]) empty-card
@@ -9940,7 +10140,7 @@ const rootValue = {
     // never a GraphQL error. Mirrors the default scorecard (REST's ?changes=true
     // detail is omitted).
     const data =
-      (await tryPostgresTier(
+      ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
@@ -9948,7 +10148,7 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) ?? buildTurnover([], netuid, { window: label });
+      )) as Row | null) ?? buildTurnover([], netuid, { window: label });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -9969,7 +10169,7 @@ const rootValue = {
     };
   },
 
-  async subnet_ownership_history({ netuid }, context) {
+  async subnet_ownership_history({ netuid }: Row, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -9990,7 +10190,7 @@ const rootValue = {
     };
   },
 
-  async subnet_conviction({ netuid }, context) {
+  async subnet_conviction({ netuid }: Row, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -10013,7 +10213,7 @@ const rootValue = {
     };
   },
 
-  async subnet_lease_history({ netuid }, context) {
+  async subnet_lease_history({ netuid }: Row, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -10032,7 +10232,7 @@ const rootValue = {
     };
   },
 
-  async subnet_lease({ netuid }, context) {
+  async subnet_lease({ netuid }: Row, context: GqlContext) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -10046,7 +10246,7 @@ const rootValue = {
     return loadSubnetLease(context.env, netuid);
   },
 
-  async account_balance({ ss58 }, context) {
+  async account_balance({ ss58 }: Row, context: GqlContext) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -10060,7 +10260,7 @@ const rootValue = {
     return loadAccountBalance(context.env, ss58);
   },
 
-  async account_root_claim({ ss58 }, context) {
+  async account_root_claim({ ss58 }: Row, context: GqlContext) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -10072,7 +10272,7 @@ const rootValue = {
     return loadAccountRootClaim(context.env, ss58);
   },
 
-  async account_children({ ss58 }, context) {
+  async account_children({ ss58 }: Row, context: GqlContext) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -10086,7 +10286,7 @@ const rootValue = {
     return loadAccountChildren(context.env, ss58);
   },
 
-  async account_parents({ ss58 }, context) {
+  async account_parents({ ss58 }: Row, context: GqlContext) {
     if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid Finney ss58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -10100,7 +10300,7 @@ const rootValue = {
     return loadAccountParents(context.env, ss58);
   },
 
-  async sudo_key(_args, context) {
+  async sudo_key(_args: unknown, context: GqlContext) {
     // Live chain RPC, not the Postgres tier -- reuses loadSudoKey's own KV
     // cache/TTL, matching REST's sudo/key handler exactly. hotkey stays null
     // on RPC failure or a renounced sudo (schema-stable), never a GraphQL
@@ -10109,7 +10309,7 @@ const rootValue = {
     return loadSudoKey(context.env);
   },
 
-  async network_parameters(_args, context) {
+  async network_parameters(_args: unknown, context: GqlContext) {
     // Live chain RPC, not the Postgres tier -- reuses loadNetworkParameters'
     // own KV cache/TTL, matching REST's /network/parameters handler exactly.
     // Each field stays independently null on its own RPC failure
@@ -10118,7 +10318,7 @@ const rootValue = {
     // needed for those.
     return loadNetworkParameters(context.env);
   },
-  async network_randomness(_args, context) {
+  async network_randomness(_args: unknown, context: GqlContext) {
     // Live chain RPC, not the Postgres tier -- reuses loadRandomnessStatus'
     // own KV cache/TTL, matching REST's /network/randomness handler exactly.
     // Each round field stays independently null on RPC failure (schema-stable),
@@ -10129,16 +10329,16 @@ const rootValue = {
   // -- a thin delegate so MCP tool names and GraphQL fields line up. Identical
   // loader, KV cache/TTL, and independently-null RPC-failure behavior; nothing
   // re-implemented.
-  async randomness_status(_args, context) {
+  async randomness_status(_args: unknown, context: GqlContext) {
     return rootValue.network_randomness(_args, context);
   },
-  async evm_address({ h160 }, context) {
+  async evm_address({ h160 }: Row, context: GqlContext) {
     return resolveEvmAddressMapping(h160, context);
   },
   // Same resolver as evm_address, under the get_evm_address_mapping tool name so
   // MCP and GraphQL agree; delegating rather than duplicating keeps the two
   // fields from ever drifting apart.
-  async evm_address_mapping({ h160 }, context) {
+  async evm_address_mapping({ h160 }: Row, context: GqlContext) {
     return resolveEvmAddressMapping(h160, context);
   },
 };
@@ -10154,7 +10354,12 @@ const SDL_CONTENT_TYPE = "application/graphql; charset=utf-8";
 // REST route -- this file had no such header at all before. Required (every
 // call site below already has one), not optional -- no path should ever
 // produce an error response with no category.
-const graphqlError = (message, status, code, extraHeaders = {}) =>
+const graphqlError = (
+  message: string,
+  status: number,
+  code: string,
+  extraHeaders: Row = {},
+) =>
   new Response(JSON.stringify({ errors: [{ message }] }), {
     status,
     headers: graphqlHeaders({
@@ -10172,7 +10377,7 @@ const graphqlHeaders = (extra = {}) => ({
 
 // --- Handler ---
 
-async function readLimitedJson(request) {
+async function readLimitedJson(request: Request) {
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
     const length = Number(declaredLength);
@@ -10245,8 +10450,8 @@ async function readLimitedJson(request) {
   }
 }
 
-function utf8ByteLength(value) {
-  return new TextEncoder().encode(value).byteLength;
+function utf8ByteLength(value: unknown) {
+  return new TextEncoder().encode(value as string).byteLength;
 }
 
 // GET publishes the schema document so the shape is discoverable without a
@@ -10263,7 +10468,7 @@ function sdlResponse() {
   });
 }
 
-export async function handleGraphQLRequest(request, env) {
+export async function handleGraphQLRequest(request: Request, env: Env) {
   if (request.method === "GET") {
     return sdlResponse();
   }
@@ -10314,7 +10519,7 @@ export async function handleGraphQLRequest(request, env) {
     document = parse(query);
   } catch (err) {
     return new Response(
-      JSON.stringify({ errors: [{ message: err.message }] }),
+      JSON.stringify({ errors: [{ message: (err as Error).message }] }),
       {
         status: 400,
         headers: graphqlHeaders({
