@@ -93,6 +93,21 @@ export function searchIndexQueryUrl(
     }
     url.searchParams.set("cursor", String(cursor));
   }
+  const type = optionalEnum(args, "type", ["subnet", "surface", "provider"]);
+  if (type) url.searchParams.set("type", type);
+  if (args?.netuid !== undefined) {
+    if (
+      typeof args.netuid !== "number" ||
+      !Number.isInteger(args.netuid) ||
+      (args.netuid as number) < 0
+    ) {
+      throw searchIndexMcpError(
+        "invalid_params",
+        "netuid must be a non-negative integer.",
+      );
+    }
+    url.searchParams.set("netuid", String(args.netuid));
+  }
   return url;
 }
 
@@ -183,16 +198,26 @@ export const LIST_SEARCH_INDEX_MCP_TOOL = {
   description:
     "Fetch slim search-index documents from the registry: subnet/provider " +
     "entries with title, slug, kind, and netuid without the heavy per-document " +
-    "token blobs in search.json. Filter with q, sort with sort + order, project " +
-    "with fields, and page with limit (1-100) / cursor. Use semantic_search for " +
-    "meaning-based discovery or search_subnets for keyword subnet lookup. Mirrors " +
-    "GET /api/v1/search-index.",
+    "token blobs in search.json. Filter with q, type, netuid; sort with sort + " +
+    "order; project with fields; and page with limit (1-100) / cursor. Use " +
+    "semantic_search for meaning-based discovery or search_subnets for keyword " +
+    "subnet lookup. Mirrors GET /api/v1/search-index.",
   inputSchema: {
     type: "object",
     properties: {
       q: {
         type: "string",
         description: "Keyword search across title, subtitle, slug, and tokens.",
+      },
+      type: {
+        type: "string",
+        enum: ["subnet", "surface", "provider"],
+        description: "Filter by document type (subnet, surface, or provider).",
+      },
+      netuid: {
+        type: "integer",
+        description: "Filter by subnet netuid.",
+        minimum: 0,
       },
       sort: {
         type: "string",

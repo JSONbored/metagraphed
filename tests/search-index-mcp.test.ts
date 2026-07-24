@@ -24,13 +24,23 @@ const SAMPLE_BLOB = {
   documents: [
     {
       id: "subnet-7",
+      type: "subnet",
       kind: "subnet",
       netuid: 7,
       slug: "sn-7",
       title: "Subnet Seven",
     },
     {
+      id: "surface-7-openapi",
+      type: "surface",
+      kind: "subnet-api",
+      netuid: 7,
+      slug: "sn-7-openapi",
+      title: "Seven OpenAPI",
+    },
+    {
       id: "provider-datura",
+      type: "provider",
       kind: "provider",
       slug: "datura",
       title: "Datura",
@@ -107,6 +117,27 @@ describe("search-index-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "id,title");
   });
 
+  test("searchIndexQueryUrl sets type and netuid params", () => {
+    const url = searchIndexQueryUrl({ type: "subnet", netuid: 7 });
+    assert.equal(url.searchParams.get("type"), "subnet");
+    assert.equal(url.searchParams.get("netuid"), "7");
+  });
+
+  test("searchIndexQueryUrl rejects invalid type and negative netuid", () => {
+    assert.throws(
+      () => searchIndexQueryUrl({ type: "miner" }),
+      (err: Row) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => searchIndexQueryUrl({ netuid: -1 }),
+      (err: Row) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => searchIndexQueryUrl({ netuid: 1.5 }),
+      (err: Row) => err.code === "invalid_params",
+    );
+  });
+
   test("searchIndexQueryUrl rejects a non-numeric limit", () => {
     assert.throws(
       () => searchIndexQueryUrl({ limit: "lots" }),
@@ -145,13 +176,36 @@ describe("search-index-mcp", () => {
     assert.equal(out.documents[0].netuid, 7);
   });
 
+  test("loadSearchIndexList filters by type and netuid", async () => {
+    const byType = await loadSearchIndexList(
+      { env: {}, readArtifact } as unknown as LoadCtx,
+      { type: "provider" },
+    );
+    assert.equal(byType.returned, 1);
+    assert.equal(byType.documents[0].type, "provider");
+
+    const byNetuid = await loadSearchIndexList(
+      { env: {}, readArtifact } as unknown as LoadCtx,
+      { netuid: 7 },
+    );
+    assert.equal(byNetuid.returned, 2);
+
+    const byBoth = await loadSearchIndexList(
+      { env: {}, readArtifact } as unknown as LoadCtx,
+      { type: "surface", netuid: 7 },
+    );
+    assert.equal(byBoth.returned, 1);
+    assert.equal(byBoth.documents[0].type, "surface");
+    assert.equal(byBoth.documents[0].netuid, 7);
+  });
+
   test("loadSearchIndexList sorts and pages the collection", async () => {
     const out = await loadSearchIndexList(
       { env: {}, readArtifact } as unknown as LoadCtx,
       { sort: "title", order: "desc", limit: 1 },
     );
     assert.equal(out.returned, 1);
-    assert.equal(out.total, 2);
+    assert.equal(out.total, 3);
     assert.equal(out.documents[0].slug, "sn-7");
     assert.equal(out.next_cursor, 1);
   });
