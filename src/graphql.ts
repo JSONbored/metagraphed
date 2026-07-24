@@ -518,8 +518,8 @@ export const SDL = `
     subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
     "One subnet's live on-chain hyperparameters (latest snapshot only). The hyperparameters block is null when the subnet has no captured row -- a schema-stable card, never a GraphQL error, matching the Query.block ref-lookup convention. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters."
     subnet_hyperparameters(netuid: Int!): SubnetHyperparameters
-    "One subnet's append-only hyperparameter-change history, newest first, one entry per observed change. Forward-only: entries exist only from when the diff-on-change write started. A subnet with no recorded changes resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters/history."
-    subnet_hyperparameters_history(netuid: Int!, limit: Int, offset: Int): SubnetHyperparamsHistory!
+    "One subnet's append-only hyperparameter-change history, newest first, one entry per observed change. Forward-only: entries exist only from when the diff-on-change write started. Page with limit/offset, or follow next_cursor via the optional cursor arg -- the same pagination set MCP get_subnet_hyperparams_history and GET /api/v1/subnets/{netuid}/hyperparameters/history accept. A subnet with no recorded changes resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters/history."
+    subnet_hyperparameters_history(netuid: Int!, limit: Int, offset: Int, cursor: String): SubnetHyperparamsHistory!
     "Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, NeuronDeregistered count, and deregistrations per hotkey); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/deregistrations."
     subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
     "Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving."
@@ -5129,16 +5129,20 @@ const rootValue = {
   },
 
   async subnet_hyperparameters_history(
-    { netuid, limit, offset }: Row,
+    { netuid, limit, offset, cursor }: Row,
     context: GqlContext,
   ) {
     // Same FEED_PAGINATION bounds parsePagination applies for REST, so a GraphQL
-    // caller cannot request a wider page than the route allows.
+    // caller cannot request a wider page than the route allows. cursor is
+    // forwarded verbatim for the route to re-parse (keyset seek takes
+    // precedence over offset), matching MCP get_subnet_hyperparams_history and
+    // the sibling account_history feed resolver (#7882).
     const safeLimit = clampLimit(limit, FEED_PAGINATION);
     const safeOffset = clampOffset(offset);
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
     params.set("offset", String(safeOffset));
+    if (cursor != null) params.set("cursor", cursor);
     const data =
       ((await tryPostgresTier(
         context.env,

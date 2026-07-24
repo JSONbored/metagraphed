@@ -17439,6 +17439,9 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
     assert.equal(seen!.pathname, "/api/v1/subnets/2/hyperparameters/history");
     assert.equal(seen!.searchParams.get("limit"), "5");
     assert.equal(seen!.searchParams.get("offset"), "10");
+    // Unset cursor must not appear on the query string (REST treats a missing
+    // cursor as offset-mode paging).
+    assert.equal(seen!.searchParams.has("cursor"), false);
 
     // Over-wide pages are clamped to MAX_LIMIT rather than forwarded verbatim.
     await gql(
@@ -17451,6 +17454,86 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
     await gql(`{ subnet_hyperparameters_history(netuid: 2) { netuid } }`, env);
     assert.equal(seen!.searchParams.get("limit"), "100");
     assert.equal(seen!.searchParams.get("offset"), "0");
+    assert.equal(seen!.searchParams.has("cursor"), false);
+  });
+
+  test("subnet_hyperparameters_history forwards cursor for keyset pagination (#7882)", async () => {
+    let seen: URL | null = null;
+    const env = {
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req: Request) => {
+          seen = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: 2,
+            entry_count: 1,
+            limit: 5,
+            offset: 0,
+            next_cursor: "next-page-cursor",
+            entries: [
+              {
+                block_number: 5000100,
+                observed_at: "2026-07-02T00:00:00.000Z",
+                hyperparams_hash: "cafebabe",
+                hyperparameters: { tempo: 360 },
+              },
+            ],
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_hyperparameters_history(netuid: 2, limit: 5, cursor: "opaque-cursor-value") { schema_version netuid entry_count limit offset next_cursor entries { block_number hyperparams_hash } } }`,
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(seen!.pathname, "/api/v1/subnets/2/hyperparameters/history");
+    assert.equal(seen!.searchParams.get("limit"), "5");
+    assert.equal(seen!.searchParams.get("offset"), "0");
+    assert.equal(seen!.searchParams.get("cursor"), "opaque-cursor-value");
+    assert.deepEqual(body.data.subnet_hyperparameters_history, {
+      schema_version: 1,
+      netuid: 2,
+      entry_count: 1,
+      limit: 5,
+      offset: 0,
+      next_cursor: "next-page-cursor",
+      entries: [
+        {
+          block_number: 5000100,
+          hyperparams_hash: "cafebabe",
+        },
+      ],
+    });
+  });
+
+  test("introspection: subnet_hyperparameters_history exposes cursor as String (#7882)", async () => {
+    const { status, body } = await gql(
+      `{ __type(name: "Query") { fields {
+          name
+          args { name type { kind name ofType { kind name } } }
+        } } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const field = body.data.__type.fields.find(
+      (f: { name: string }) => f.name === "subnet_hyperparameters_history",
+    );
+    assert.ok(field, "expected subnet_hyperparameters_history on Query");
+    const cursor = field.args.find(
+      (a: { name: string }) => a.name === "cursor",
+    );
+    assert.ok(
+      cursor,
+      "expected a cursor arg on subnet_hyperparameters_history",
+    );
+    assert.deepEqual(cursor.type, {
+      kind: "SCALAR",
+      name: "String",
+      ofType: null,
+    });
   });
 
   test("both fields are priced at the relationship-field complexity weight", () => {
