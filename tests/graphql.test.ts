@@ -7494,6 +7494,147 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     assert.deepEqual(alias.args, canonical.args);
     assert.deepEqual(alias.type, canonical.type);
   });
+
+  test("filters by netuid and pages with limit/cursor (#7875)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi({
+        schema_version: 1,
+        window: "7d",
+        observed_at: "2026-07-01T00:00:00.000Z",
+        source: "postgres",
+        summary: { incident_count: 3, active_count: 2 },
+        surfaces: [
+          {
+            id: "inc-a",
+            endpoint_id: "ep-a",
+            state: "down",
+            severity: "high",
+            status: "down",
+            netuid: 5,
+            provider: "acme",
+            downtime_ms: 1000,
+            incident_count: 1,
+            surface_id: "a",
+          },
+          {
+            id: "inc-b",
+            endpoint_id: "ep-b",
+            state: "degraded",
+            severity: "medium",
+            status: "degraded",
+            netuid: 31,
+            provider: "beta",
+            downtime_ms: 5000,
+            incident_count: 2,
+            surface_id: "b",
+          },
+          {
+            id: "inc-c",
+            endpoint_id: "ep-c",
+            state: "down",
+            severity: "critical",
+            status: "down",
+            netuid: 5,
+            provider: "acme",
+            downtime_ms: 3000,
+            incident_count: 1,
+            surface_id: "c",
+          },
+        ],
+      }),
+    };
+
+    const byNetuid = await gql(
+      `{ global_incidents(netuid: 5) {
+          total returned
+          surfaces { id netuid }
+        } }`,
+      env as unknown as Env,
+    );
+    assert.equal(byNetuid.status, 200);
+    assert.equal(byNetuid.body.errors, undefined);
+    assert.equal(byNetuid.body.data.global_incidents.total, 2);
+    assert.equal(byNetuid.body.data.global_incidents.returned, 2);
+    assert.deepEqual(
+      byNetuid.body.data.global_incidents.surfaces.map((s: Row) => s.id).sort(),
+      ["inc-a", "inc-c"],
+    );
+
+    const page = await gql(
+      `{ global_incidents(sort: "downtime_ms", order: "desc", limit: 1) {
+          total returned limit cursor next_cursor sort order
+          surfaces { id }
+        } }`,
+      env as unknown as Env,
+    );
+    assert.equal(page.status, 200);
+    assert.equal(page.body.errors, undefined);
+    assert.equal(page.body.data.global_incidents.total, 3);
+    assert.equal(page.body.data.global_incidents.returned, 1);
+    assert.equal(page.body.data.global_incidents.limit, 1);
+    assert.equal(page.body.data.global_incidents.cursor, 0);
+    assert.equal(page.body.data.global_incidents.next_cursor, 1);
+    assert.equal(page.body.data.global_incidents.sort, "downtime_ms");
+    assert.equal(page.body.data.global_incidents.order, "desc");
+    assert.equal(page.body.data.global_incidents.surfaces[0].id, "inc-b");
+
+    const next = await gql(
+      `{ global_incidents(sort: "downtime_ms", order: "desc", limit: 1, cursor: 1) {
+          surfaces { id } next_cursor
+        } }`,
+      env as unknown as Env,
+    );
+    assert.equal(next.body.errors, undefined);
+    assert.equal(next.body.data.global_incidents.surfaces[0].id, "inc-c");
+    assert.equal(next.body.data.global_incidents.next_cursor, 2);
+  });
+
+  test("surfaces an invalid sort as BAD_USER_INPUT (#7875)", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: dataApi({
+        schema_version: 1,
+        window: "7d",
+        surfaces: [{ id: "inc-a", netuid: 5 }],
+      }),
+    };
+    const { body } = await gql(
+      '{ global_incidents(sort: "bogus") { total } }',
+      env as unknown as Env,
+    );
+    assert.ok(body.errors?.length);
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
+  });
+
+  test("rethrows unexpected loader failures from the list-query helper (#7875)", async () => {
+    const listQuery = await import("../workers/list-query.ts");
+    const spy = vi
+      .spyOn(listQuery, "applyQueryFilters")
+      .mockImplementation(() => {
+        throw new Error("boom");
+      });
+    try {
+      const env = {
+        METAGRAPH_HEALTH_SOURCE: "postgres",
+        DATA_API: dataApi({
+          schema_version: 1,
+          window: "7d",
+          surfaces: [{ id: "inc-a", netuid: 5 }],
+        }),
+      };
+      const { body } = await gql(
+        "{ global_incidents { total } }",
+        env as unknown as Env,
+      );
+      assert.ok(body.errors?.length);
+      assert.match(body.errors[0].message, /boom/);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card fallback)", () => {

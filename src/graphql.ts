@@ -174,6 +174,10 @@ import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
 } from "../workers/request-handlers/analytics.ts";
+// #7875: GraphQL parity for GET /api/v1/incidents list filters (netuid/limit/
+// cursor/sort/order), reusing applyGlobalIncidentsListQuery that MCP
+// get_global_incidents already calls -- not a reimplementation.
+import { applyGlobalIncidentsListQuery } from "./global-incidents-mcp.ts";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
@@ -705,10 +709,10 @@ export const SDL = `
     opportunity_boards(limit: Int): OpportunityBoards!
     "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
     compare(netuids: [Int!]!, dimensions: [String!]): Compare!
-    "Global endpoint-incident ledger over a 7d/30d window; degrades to a schema-stable empty ledger (never a GraphQL error) on a cold/retired health tier. Mirrors GET /api/v1/incidents."
-    incidents(window: String): GlobalIncidents!
-    "The get_global_incidents-aligned name for the same global downtime-incident ledger (#7643): identical 7d/30d window validation, tier fallback, and cold-tier degradation as incidents — a thin alias so MCP tool names and GraphQL fields line up. Distinct from endpoint_incidents (the active endpoint failure/degradation feed, GET /api/v1/endpoint-incidents): this is the historical incident ledger. Returns the typed GlobalIncidents envelope rather than the issue's literal JSON suggestion, matching incidents. Mirrors GET /api/v1/incidents."
-    global_incidents(window: String): GlobalIncidents!
+    "Global endpoint-incident ledger over a 7d/30d window. Filter by netuid, sort with sort/order, and page with limit (1-100)/cursor (integer offset, matching REST/MCP). An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default; degrades to a schema-stable empty ledger (never a GraphQL error) on a cold/retired health tier. Mirrors GET /api/v1/incidents."
+    incidents(window: String, netuid: Int, sort: String, order: String, limit: Int, cursor: Int): GlobalIncidents!
+    "The get_global_incidents-aligned name for the same global downtime-incident ledger (#7643 / #7875): identical window validation, list-query filters (netuid/sort/order/limit/cursor), tier fallback, and cold-tier degradation as incidents — a thin alias so MCP tool names and GraphQL fields line up. Distinct from endpoint_incidents (the active endpoint failure/degradation feed, GET /api/v1/endpoint-incidents): this is the historical incident ledger. Returns the typed GlobalIncidents envelope rather than the issue's literal JSON suggestion, matching incidents. Mirrors GET /api/v1/incidents."
+    global_incidents(window: String, netuid: Int, sort: String, order: String, limit: Int, cursor: Int): GlobalIncidents!
     "Recent-extrinsic feed (newest first), optionally filtered. Mirrors GET /api/v1/extrinsics."
     extrinsics(limit: Int, offset: Int, cursor: String, block: Int, signer: String, call_module: String, call_function: String, success: Boolean): ExtrinsicList!
     "Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events."
@@ -2854,7 +2858,7 @@ export const SDL = `
     points: [SubnetConcentrationHistoryPoint!]!
   }
 
-  "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope."
+  "Global endpoint-incident ledger (#5660 / #7875). Mirrors GET /api/v1/incidents' data envelope, including the list-query pagination meta REST/MCP return."
   type GlobalIncidents {
     schema_version: Int!
     window: String
@@ -2863,6 +2867,13 @@ export const SDL = `
     "Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape."
     summary: JSON
     surfaces: [EndpointIncident!]!
+    total: Int
+    returned: Int
+    limit: Int
+    cursor: Int
+    next_cursor: Int
+    sort: String
+    order: String
   }
 
   "One endpoint incident in the global ledger. Mirrors the REST EndpointIncident shape (enum-valued fields carried as their string values)."
@@ -6734,10 +6745,11 @@ const rootValue = {
     });
   },
 
-  async incidents({ window }: Row, context: GqlContext) {
+  async incidents(args: Row, context: GqlContext) {
     // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL BAD_USER_INPUT
     // error, not a silent empty result. analyticsWindow reads only the ?window param.
+    const { window, ...listArgs } = args;
     const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
@@ -6761,23 +6773,45 @@ const rootValue = {
         "METAGRAPH_HEALTH_SOURCE",
       )) as Row | null) ??
       (await loadGlobalIncidentsLedger(context.env, { label })).data;
-    return {
-      schema_version: data.schema_version ?? 1,
-      window: data.window ?? label,
-      observed_at: data.observed_at ?? null,
-      source: data.source ?? null,
-      summary: data.summary ?? null,
-      surfaces: data.surfaces ?? [],
-    };
+    // #7875: reuse applyGlobalIncidentsListQuery (same netuid/sort/order/limit/
+    // cursor transform MCP get_global_incidents / REST already apply) rather
+    // than re-deriving a GraphQL-only filterFn. invalid_params -> BAD_USER_INPUT.
+    try {
+      // Defaults first, then the tier/ledger payload — avoids `??` partials on
+      // fields the warm path always supplies (codecov/patch is branch-counted).
+      return applyGlobalIncidentsListQuery(
+        Object.assign(
+          {
+            schema_version: 1,
+            window: label,
+            observed_at: null,
+            source: null,
+            summary: null,
+            surfaces: [],
+          },
+          data,
+        ),
+        listArgs,
+      );
+    } catch (rawErr) {
+      const err = rawErr as Row;
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      throw err;
+    }
   },
 
-  // #7643: the get_global_incidents-aligned name for the same downtime-incident
-  // ledger -- a thin delegate so MCP tool names and GraphQL fields line up.
-  // Identical window validation (7d/30d -> BAD_USER_INPUT), Postgres-tier ->
-  // retired-D1 fallback, and schema-stable cold-tier degradation; nothing
-  // re-derived. Distinct from endpoint_incidents (the active endpoint feed).
-  async global_incidents({ window }: Row, context: GqlContext) {
-    return rootValue.incidents({ window }, context);
+  // #7643 / #7875: the get_global_incidents-aligned name for the same downtime-
+  // incident ledger -- a thin delegate so MCP tool names and GraphQL fields
+  // line up. Identical window validation (7d/30d -> BAD_USER_INPUT), list-query
+  // filters, Postgres-tier -> retired-D1 fallback, and schema-stable cold-tier
+  // degradation; nothing re-derived. Distinct from endpoint_incidents (the
+  // active endpoint feed).
+  async global_incidents(args: Row, context: GqlContext) {
+    return rootValue.incidents(args, context);
   },
 
   search({ limit, cursor }: Row, context: GqlContext) {
