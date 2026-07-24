@@ -140,6 +140,12 @@ import {
   loadSubnetEndpointsList,
 } from "./subnet-endpoints-mcp.ts";
 import {
+  LIST_SUBNET_SURFACES_INSTRUCTIONS,
+  LIST_SUBNET_SURFACES_MCP_TOOL,
+  LIST_SUBNET_SURFACES_OUTPUT_SCHEMA,
+  loadSubnetSurfacesList,
+} from "./subnet-surfaces-mcp.ts";
+import {
   LIST_SUBNET_EVIDENCE_INSTRUCTIONS,
   LIST_SUBNET_EVIDENCE_MCP_TOOL,
   LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
@@ -1064,6 +1070,7 @@ export const MCP_INSTRUCTIONS =
   LIST_PROVIDER_ENDPOINTS_INSTRUCTIONS +
   "get_subnet_endpoints one subnet\u0027s endpoint resources, " +
   LIST_SUBNET_ENDPOINTS_INSTRUCTIONS +
+  LIST_SUBNET_SURFACES_INSTRUCTIONS +
   "get_subnet_candidates its pending candidate surfaces, " +
   LIST_SUBNET_CANDIDATES_INSTRUCTIONS +
   "get_subnet_evidence " +
@@ -9908,6 +9915,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_SUBNET_SURFACES_MCP_TOOL,
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSubnetSurfacesList(asMcpLoaderCtx(ctx), args);
+    },
+  },
+  {
     name: "get_subnet_candidates",
     title: "Get one subnet's candidate surfaces",
     description:
@@ -15511,6 +15524,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     },
   },
   list_subnet_endpoints: LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA,
+  list_subnet_surfaces: LIST_SUBNET_SURFACES_OUTPUT_SCHEMA,
   list_rpc_pools: LIST_RPC_POOLS_OUTPUT_SCHEMA,
   list_profile_completeness: LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA,
   list_source_snapshots: LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
