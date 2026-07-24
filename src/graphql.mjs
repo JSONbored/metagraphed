@@ -689,7 +689,7 @@ export const SDL = `
     "One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}."
     validator(hotkey: String!): Validator
     "One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked). An unsupported window/sort is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators."
-    validator_nominators(hotkey: String!, window: String, sort: String): NominatorList!
+    validator_nominators(hotkey: String!, window: String, sort: String, coldkey: String): NominatorList!
     "One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history."
     validator_history(hotkey: String!, window: String): ValidatorHistory!
     "Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts."
@@ -7366,7 +7366,7 @@ const rootValue = {
     };
   },
 
-  async validator_nominators({ hotkey, window, sort }, context) {
+  async validator_nominators({ hotkey, window, sort, coldkey }, context) {
     // Same window/sort allow-lists handleValidatorNominators validates against --
     // an unsupported value is a GraphQL BAD_USER_INPUT error, not a silently
     // substituted default. `sort` is optional: omitted resolves to
@@ -7384,9 +7384,20 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
+    // #7884: narrow to one nominator, mirroring the REST route's `coldkey` query
+    // param + MCP get_validator_nominators. A supplied non-SS58 value is a
+    // BAD_USER_INPUT error (same guard MCP applies), not a silent no-op. The
+    // filter is applied at the Postgres tier's SQL WHERE, so it only needs to
+    // ride the request params; the empty-rows builder fallback is unaffected.
+    if (coldkey != null && !SS58_ADDRESS_PATTERN.test(coldkey)) {
+      throw new GraphQLError("coldkey must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     if (sort != null) params.set("sort", sort);
+    if (coldkey != null) params.set("coldkey", coldkey);
     // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> buildValidatorNominators
     // fallback contract REST uses. The Postgres tier's response is a REST-style
     // { data, generatedAt } envelope, so only its `.data` is taken; `generatedAt` is

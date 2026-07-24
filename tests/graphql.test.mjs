@@ -15883,6 +15883,61 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.match(body.errors[0].message, /net_staked/);
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
+
+  test("coldkey narrows to one nominator, forwarded to the Postgres tier as a query param (#7884)", async () => {
+    const COLDKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+    let capturedUrl;
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (r) => {
+          capturedUrl = new URL(r.url);
+          return Response.json({
+            data: {
+              schema_version: 1,
+              hotkey: HOTKEY,
+              window: "30d",
+              sort: "net_staked",
+              limit: 20,
+              offset: 0,
+              nominator_count: 1,
+              nominators: [
+                {
+                  coldkey: COLDKEY,
+                  staked_tao: 12.5,
+                  unstaked_tao: 2.5,
+                  net_staked_tao: 10,
+                  gross_staked_tao: 15,
+                  event_count: 3,
+                  last_observed_at: "2026-07-10T00:00:00.000Z",
+                },
+              ],
+            },
+            generatedAt: "2026-07-10T00:00:00.000Z",
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", coldkey: "${COLDKEY}")`),
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl.searchParams.get("coldkey"), COLDKEY);
+    assert.equal(body.data.validator_nominators.nominator_count, 1);
+    assert.equal(body.data.validator_nominators.nominators[0].coldkey, COLDKEY);
+  });
+
+  test("a malformed coldkey is a GraphQL error, not a silently ignored filter (#7884)", async () => {
+    const { status, body } = await gql(
+      nominatorsQuery(`(hotkey: "${HOTKEY}", coldkey: "not-an-ss58")`),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data, null);
+    assert.match(body.errors[0].message, /coldkey must be a valid SS58/);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
 });
 
 describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fallback)", () => {
