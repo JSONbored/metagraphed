@@ -148,9 +148,9 @@ describe("verifyUnkeyKey", () => {
       mockJsonResponse(200, { valid: false, code: "NOT_FOUND" }),
     );
     const result = await verifyUnkeyKey(ENV, "mg_bogus");
-    assert.equal((result as CapturedBody).ok, true);
-    assert.equal((result as CapturedBody).valid, false);
-    assert.equal((result as CapturedBody).code, "NOT_FOUND");
+    assert.equal((result as unknown as CapturedBody).ok, true);
+    assert.equal((result as unknown as CapturedBody).valid, false);
+    assert.equal((result as unknown as CapturedBody).code, "NOT_FOUND");
   });
 
   test("null tier/accountId when meta/identity are absent", async () => {
@@ -158,8 +158,8 @@ describe("verifyUnkeyKey", () => {
       mockJsonResponse(200, { valid: true, code: "VALID" }),
     );
     const result = await verifyUnkeyKey(ENV, "mg_secret123");
-    assert.equal((result as CapturedBody).tier, null);
-    assert.equal((result as CapturedBody).accountId, null);
+    assert.equal((result as unknown as CapturedBody).tier, null);
+    assert.equal((result as unknown as CapturedBody).accountId, null);
   });
 
   test("fails closed when Unkey is unreachable", async () => {

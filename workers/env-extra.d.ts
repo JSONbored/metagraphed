@@ -18,6 +18,10 @@
 // alphabetized; don't add a field speculatively for something not yet read
 // anywhere.
 interface Env {
+  ACCOUNT_BALANCES_SYNC_SECRET?: string;
+  ACCOUNT_IDENTITY_SYNC_SECRET?: string;
+  ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN?: string;
+  ALERT_TRIGGER_CREATE_TOKEN?: string;
   ALERT_TRIGGERS_INTERNAL_TOKEN?: string;
   API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
   CHAIN_FIREHOSE_SYNC_SECRET?: string;
@@ -31,6 +35,9 @@ interface Env {
   METAGRAPH_ICON_ALLOWED_HOSTS?: string;
   METAGRAPH_R2_TIMEOUT_MS?: string;
   METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN?: string;
+  NEURON_DAILY_BACKFILL_SECRET?: string;
+  NEURONS_SYNC_SECRET?: string;
+  NOMINATOR_POSITIONS_SYNC_SECRET?: string;
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;
   REGISTRY_SYNC_SECRET?: string;
@@ -41,8 +48,12 @@ interface Env {
   SENTRY_DSN?: string;
   SENTRY_ENVIRONMENT?: string;
   SENTRY_RELEASE?: string;
+  SUBNET_HYPERPARAMS_SYNC_SECRET?: string;
   SUBNET_IDENTITY_SYNC_SECRET?: string;
+  SUBNET_LOCKS_SYNC_SECRET?: string;
   SUBNET_SNAPSHOT_SYNC_SECRET?: string;
   TELEGRAM_BOT_TOKEN?: string;
   UNKEY_ROOT_KEY?: string;
+  VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET?: string;
+  WALLET_SESSION_SECRET?: string;
 }

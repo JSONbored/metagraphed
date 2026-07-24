@@ -65,7 +65,7 @@ vi.mock("postgres", () => ({
   },
 }));
 
-const { default: worker } = await import("../workers/data-api.mjs");
+const { default: worker } = await import("../workers/data-api.ts");
 
 const CREATE_TOKEN = "test-alert-trigger-create-token";
 const INTERNAL_TOKEN = "test-alert-triggers-internal-token";
@@ -97,7 +97,7 @@ function req(
 }
 
 async function fetch(request: Request, envOverride: Env = env) {
-  return worker.fetch(request, envOverride, {});
+  return worker.fetch(request, envOverride, {} as unknown as ExecutionContext);
 }
 
 function row(overrides: Row = {}) {
@@ -255,7 +255,7 @@ test("create: 201 on success, mints a fresh owner_token distinct from any stored
     }),
   );
   assert.equal(res.status, 201);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.match(body.owner_token, /^[0-9a-f]{64}$/);
   assert.notEqual(body.owner_token, "irrelevant-stored-value");
   assert.equal(body.id, "1");
@@ -282,7 +282,7 @@ test("create: 201 with a condition, inserts it as the JSONB value verbatim", asy
     }),
   );
   assert.equal(res.status, 201);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.deepEqual(body.condition, condition);
   assert.match(sqlCalls[0].text, /INSERT INTO chain_alert_triggers/);
   assert.ok(
@@ -398,7 +398,7 @@ test("get: 200 with the owner view (owner_token stripped) when the token matches
     }),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.netuid, 9);
   assert.equal("owner_token" in body, false);
 });
@@ -524,7 +524,7 @@ test("update: 200 on success, sends the new validated fields to the UPDATE", asy
     }),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.netuid, 42);
   assert.equal(body.event_kind, "Transfer");
   assert.equal(sqlCalls.length, 2);
@@ -621,7 +621,7 @@ test("update: a resent condition replaces the existing one", async () => {
     }),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.deepEqual(body.condition, newCondition);
 });
 
@@ -648,7 +648,7 @@ test("update: an explicit null on PATCH is a no-op, NOT a clear -- the existing 
     }),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.netuid, 7);
   assert.equal(sqlCalls.length, 2);
   assert.ok(sqlCalls[1].values.includes(7));
@@ -755,7 +755,7 @@ test("active list: 200 with every active trigger reshaped for the evaluator, own
     }),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.triggers.length, 2);
   assert.equal(body.triggers[0].netuid, 7);
   assert.equal(body.triggers[1].tableFilter[0], "account_events");
@@ -949,7 +949,7 @@ test("dereg-risk snapshot: 200, joins registered_at_block + immunity_period into
     }),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.current_block, 12345);
   assert.deepEqual(body.subnets, [
     { netuid: 7, alpha_price_tao: 1.5 },
@@ -974,7 +974,7 @@ test("dereg-risk snapshot: an immune neuron on a subnet with no immunity_period 
     }),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.deepEqual(body.immune_neurons, []);
 });
 
@@ -989,7 +989,7 @@ test("dereg-risk snapshot: current_block is null when the blocks table is empty"
     }),
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.current_block, null);
 });
 

@@ -25,7 +25,7 @@
 // same module graph as this file, which nothing does today (tests import
 // the raw file only; only wrangler's build ever loads this wrapper).
 import * as Sentry from "@sentry/cloudflare";
-import handler from "./data-api.mjs";
+import handler from "./data-api.ts";
 
 export default Sentry.withSentry<Env>(
   (env) => ({

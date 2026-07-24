@@ -29,7 +29,7 @@ vi.mock("postgres", () => ({
   },
 }));
 
-const { default: worker } = await import("../workers/data-api.mjs");
+const { default: worker } = await import("../workers/data-api.ts");
 
 function baseEnv(overrides = {}) {
   return {
@@ -52,7 +52,11 @@ function req(body: Row) {
 }
 
 async function fetchRoute(request: Request, env: Row) {
-  return worker.fetch(request, env, {});
+  return worker.fetch(
+    request,
+    env as unknown as Env,
+    {} as unknown as ExecutionContext,
+  );
 }
 
 test("rejects a malformed JSON body", async () => {

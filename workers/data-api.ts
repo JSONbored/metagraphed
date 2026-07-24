@@ -385,7 +385,7 @@ import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 // already-failing request, not silent event loss. recordExceptionEvent is
 // itself a safe no-op with no configured token, same guarantee as Sentry
 // above -- this can't newly break any of this file's existing tests.
-async function captureDataApiError(err, route, env) {
+async function captureDataApiError(err: unknown, route: string, env: Env) {
   Sentry.captureException(err, { tags: { route } });
   await recordExceptionEvent(env, {
     error: err,
@@ -422,7 +422,11 @@ const MAX_CONNECTION_RETRY_ATTEMPTS = 2;
 // map's default rather than erroring -- entities.mjs's own validation already
 // rejected genuinely bad values before tryPostgresTier ever forwards the
 // request here, so this only needs to mirror the happy path.
-function windowCutoff(url, windows, defaultLabel) {
+function windowCutoff(
+  url: URL,
+  windows: Record<string, number>,
+  defaultLabel: string,
+) {
   const label = url.searchParams.get("window") || defaultLabel;
   const days = Object.hasOwn(windows, label)
     ? windows[label]
@@ -433,7 +437,11 @@ function windowCutoff(url, windows, defaultLabel) {
 // The resolved window label to pass into a build* function's `{ window }` option,
 // matching what windowCutoff used to compute the cutoff (falls back to the
 // default for an unrecognized/absent label, same as windowCutoff).
-function windowLabelFor(url, windows, defaultLabel) {
+function windowLabelFor(
+  url: URL,
+  windows: Record<string, number | null>,
+  defaultLabel: string,
+) {
   const label = url.searchParams.get("window") || defaultLabel;
   return Object.hasOwn(windows, label) ? label : defaultLabel;
 }
@@ -444,14 +452,14 @@ function windowLabelFor(url, windows, defaultLabel) {
 // Worker must stay safe even if reached directly: every chain-wide analytics
 // leaderboard is capped at the public API's 1..100 range before the value is
 // bound into a SQL LIMIT clause.
-function chainLimit(url, defaultLimit) {
+function chainLimit(url: URL, defaultLimit: number) {
   return clampRequestLimit(url.searchParams.get("limit"), {
     defaultLimit,
     maxLimit: 100,
   });
 }
 
-function queryError(error) {
+function queryError(error: unknown) {
   return json({ error }, 400);
 }
 
@@ -459,7 +467,11 @@ function queryError(error) {
 // `snapshot_date` (a native DATE column, not an epoch-ms timestamp), matching
 // the D1 loaders' `new Date(Date.now() - days*DAY_MS).toISOString().slice(0,10)`
 // exactly. A `null` day value (e.g. HISTORY_WINDOWS.all) means no lower bound.
-function windowCutoffDate(url, windows, defaultLabel) {
+function windowCutoffDate(
+  url: URL,
+  windows: Record<string, number | null>,
+  defaultLabel: string,
+) {
   const label = url.searchParams.get("window") || defaultLabel;
   const days = Object.hasOwn(windows, label)
     ? windows[label]
@@ -477,7 +489,7 @@ function windowCutoffDate(url, windows, defaultLabel) {
 // entities.mjs destructures `generatedAt` straight off the tryPostgresTier body,
 // so this route MUST nest under `data` too, not return buildX(...)'s object flat
 // the way the subnet-level (single-object) routes do.
-function latestObservedIso(rows, field = "last_observed") {
+function latestObservedIso(rows: Row[], field: string = "last_observed") {
   let latest = null;
   for (const row of rows) {
     const n = Number(row?.[field]);
@@ -536,12 +548,15 @@ import {
   verifyWalletChallenge,
 } from "../src/wallet-auth.ts";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
 const FILTER_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
-function validEventFilter(value) {
-  return value == null || value === "" || FILTER_PATTERN.test(value);
+function validEventFilter(value: unknown) {
+  return value == null || value === "" || FILTER_PATTERN.test(value as string);
 }
 
 // --- POST /api/v1/internal/neurons-sync (#4771) -----------------------------
@@ -590,7 +605,11 @@ const NEURONS_SYNC_BOOLEAN_COLUMNS = new Set([
 // Separate from the read path's json() -- a write ack must never carry the
 // GET routes' `cache-control: public, max-age=10` (or the CORS wildcard,
 // meaningless for a service-binding-only route).
-function writeJson(data, status = 200, extraHeaders = {}) {
+function writeJson(
+  data: unknown,
+  status: number = 200,
+  extraHeaders: Row = {},
+) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -600,15 +619,15 @@ function writeJson(data, status = 200, extraHeaders = {}) {
   });
 }
 
-function utf8Bytes(value) {
-  return new TextEncoder().encode(value);
+function utf8Bytes(value: unknown) {
+  return new TextEncoder().encode(value as string);
 }
 
 // Bounds-check one incoming row against NEURON_INSERT_COLUMNS -- the exact
 // same trust posture as workers/request-handlers/staging.mjs's
 // validStagedNeuronRow (this payload arrives over a different transport, but
 // it's the same untrusted-until-checked shape from the same producer script).
-function validNeuronSyncRow(row) {
+function validNeuronSyncRow(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (
     !Number.isInteger(row.netuid) ||
@@ -643,7 +662,7 @@ function validNeuronSyncRow(row) {
 
 // captured_at is epoch ms; snapshot_date is the UTC day, matching D1's
 // rollupNeuronDaily (`date(captured_at / 1000, 'unixepoch')`).
-function neuronSyncSnapshotDate(capturedAtMs) {
+function neuronSyncSnapshotDate(capturedAtMs: number) {
   return new Date(capturedAtMs).toISOString().slice(0, 10);
 }
 
@@ -651,8 +670,8 @@ function neuronSyncSnapshotDate(capturedAtMs) {
 // expects: 0/1 -> boolean for the BOOLEAN columns (the fetch script emits
 // 0/1 integers, same convention D1's INTEGER columns use), everything else
 // passes through (postgres.js binds numbers/strings/nulls as-is).
-function coerceNeuronSyncRow(row) {
-  const out = {};
+function coerceNeuronSyncRow(row: Row) {
+  const out: Row = {};
   for (const col of NEURON_INSERT_COLUMNS) {
     const value = row[col] ?? null;
     out[col] = NEURONS_SYNC_BOOLEAN_COLUMNS.has(col)
@@ -662,13 +681,13 @@ function coerceNeuronSyncRow(row) {
   return out;
 }
 
-function stripClientSnapshotDate(row) {
+function stripClientSnapshotDate(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return row;
   const { snapshot_date: _snapshotDate, ...rest } = row;
   return rest;
 }
 
-async function handleNeuronsSync(request, env) {
+async function handleNeuronsSync(request: Request, env: Env) {
   if (!env.NEURONS_SYNC_SECRET) {
     return writeJson(
       { error: "neurons sync is not provisioned on this deployment" },
@@ -755,10 +774,10 @@ async function handleNeuronsSync(request, env) {
     // makes the whole snapshot atomic: a mid-batch failure must never leave
     // `neurons` upserted with stale UIDs left un-pruned, or `neuron_daily`
     // partially written for the day.
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
 
-      const dailyRows = rows.map((row) => ({
+      const dailyRows = rows.map((row: Row) => ({
         ...row,
         snapshot_date: neuronSyncSnapshotDate(row.captured_at),
         updated_at: Date.now(),
@@ -829,8 +848,8 @@ async function handleNeuronsSync(request, env) {
       // retired D1 rollup's own filter -- account is NOT NULL and part of the
       // primary key, but a neuron row's hotkey can itself be null.
       const positionRows = dailyRows
-        .filter((row) => row.hotkey != null)
-        .map((row) => ({
+        .filter((row: Row) => row.hotkey != null)
+        .map((row: Row) => ({
           account: row.hotkey,
           netuid: row.netuid,
           snapshot_date: row.snapshot_date,
@@ -956,7 +975,7 @@ async function handleNeuronsSync(request, env) {
 // fresher row -- it can only fill a genuinely missing past snapshot_date.
 const NEURON_DAILY_BACKFILL_TOKEN_HEADER = "x-neuron-daily-backfill-token";
 
-async function handleNeuronDailyBackfill(request, env) {
+async function handleNeuronDailyBackfill(request: Request, env: Env) {
   if (!env.NEURON_DAILY_BACKFILL_SECRET) {
     return writeJson(
       { error: "neuron-daily backfill is not provisioned on this deployment" },
@@ -1017,14 +1036,14 @@ async function handleNeuronDailyBackfill(request, env) {
   }
 
   const rows = validatedIncoming.map(coerceNeuronSyncRow);
-  const dailyRows = rows.map((row) => ({
+  const dailyRows = rows.map((row: Row) => ({
     ...row,
     snapshot_date: neuronSyncSnapshotDate(row.captured_at),
     updated_at: Date.now(),
   }));
   const positionRows = dailyRows
-    .filter((row) => row.hotkey != null)
-    .map((row) => ({
+    .filter((row: Row) => row.hotkey != null)
+    .map((row: Row) => ({
       account: row.hotkey,
       netuid: row.netuid,
       snapshot_date: row.snapshot_date,
@@ -1049,7 +1068,7 @@ async function handleNeuronDailyBackfill(request, env) {
   });
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
 
       for (
@@ -1147,7 +1166,7 @@ async function handleNeuronDailyBackfill(request, env) {
 // run (past days are already finalized), upsert idempotently. No request
 // body -- this is a trigger-only POST, not a data-carrying sync.
 
-function utcDayBounds(ms) {
+function utcDayBounds(ms: number) {
   const d = new Date(ms);
   const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   return {
@@ -1157,7 +1176,7 @@ function utcDayBounds(ms) {
   };
 }
 
-async function handleRollupAccountEventsDaily(request, env) {
+async function handleRollupAccountEventsDaily(request: Request, env: Env) {
   if (!env.ROLLUP_SYNC_SECRET) {
     return writeJson(
       {
@@ -1187,7 +1206,7 @@ async function handleRollupAccountEventsDaily(request, env) {
   });
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
       const rolled = [];
       for (const { date, start, end } of days) {
@@ -1294,7 +1313,7 @@ const SUBNET_HYPERPARAMS_HISTORY_FIELDS =
 // Bounds-check one incoming row against SUBNET_HYPERPARAMS_INSERT_COLUMNS --
 // every field but netuid is null-or-finite-number; the fetch script emits 0/1
 // for the boolean-flag columns, not JSON booleans.
-function validSubnetHyperparamsSyncRow(row) {
+function validSubnetHyperparamsSyncRow(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (
     !Number.isInteger(row.netuid) ||
@@ -1313,8 +1332,8 @@ function validSubnetHyperparamsSyncRow(row) {
 
 // 0/1 -> boolean for the BOOLEAN columns (see NEURONS_SYNC_BOOLEAN_COLUMNS'
 // identical reasoning above); everything else passes through unchanged.
-function coerceSubnetHyperparamsSyncRow(row) {
-  const out = {};
+function coerceSubnetHyperparamsSyncRow(row: Row) {
+  const out: Row = {};
   for (const col of SUBNET_HYPERPARAMS_INSERT_COLUMNS) {
     const value = row[col] ?? null;
     out[col] = SUBNET_HYPERPARAMS_BOOLEAN_COLUMNS.has(col)
@@ -1324,7 +1343,7 @@ function coerceSubnetHyperparamsSyncRow(row) {
   return out;
 }
 
-async function handleSubnetHyperparamsSync(request, env) {
+async function handleSubnetHyperparamsSync(request: Request, env: Env) {
   if (!env.SUBNET_HYPERPARAMS_SYNC_SECRET) {
     return writeJson(
       {
@@ -1391,7 +1410,7 @@ async function handleSubnetHyperparamsSync(request, env) {
   }
 
   const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
-  const netuids = incoming.map((row) => row.netuid);
+  const netuids = incoming.map((row: Row) => row.netuid);
 
   const sql = postgres(env.HYPERDRIVE.connectionString, {
     max: 5,
@@ -1400,7 +1419,7 @@ async function handleSubnetHyperparamsSync(request, env) {
   });
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
 
       await sql`
@@ -1448,7 +1467,9 @@ async function handleSubnetHyperparamsSync(request, env) {
       // the same fetch_types:false ANY()/array-bind landmine documented on
       // handleNeuronsSync's own prune above. `netuids` is never empty here
       // -- the earlier `!incoming.length` check guarantees at least one row.
-      const placeholders = netuids.map((_, i) => `$${i + 1}::int`).join(", ");
+      const placeholders = netuids
+        .map((_: unknown, i: number) => `$${i + 1}::int`)
+        .join(", ");
       const pruned = await sql.unsafe(
         `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${placeholders}) RETURNING netuid`,
         netuids,
@@ -1467,7 +1488,7 @@ async function handleSubnetHyperparamsSync(request, env) {
         latest.map((row) => [Number(row.netuid), row.hyperparams_hash]),
       );
       const now = Date.now();
-      const changedRows = [];
+      const changedRows: Row[] = [];
       for (const row of incoming) {
         const hyperparameters = formatSubnetHyperparams(row);
         const hash = await hyperparamsHash(hyperparameters);
@@ -1542,7 +1563,7 @@ const SUBNET_LOCKS_INSERT_COLUMNS = [
 // conviction_bits is the raw U64F64 (u128) value -- arrives as a decimal
 // digit string (u128 exceeds JS's safe-integer range and Postgres NUMERIC
 // accepts a string literal directly), never a JS number.
-function validSubnetLocksSyncRow(row) {
+function validSubnetLocksSyncRow(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (!Number.isInteger(row.netuid) || row.netuid < 0 || row.netuid > 65_535)
     return false;
@@ -1566,7 +1587,7 @@ function validSubnetLocksSyncRow(row) {
   return true;
 }
 
-async function handleSubnetLocksSync(request, env) {
+async function handleSubnetLocksSync(request: Request, env: Env) {
   if (!env.SUBNET_LOCKS_SYNC_SECRET) {
     return writeJson(
       { error: "subnet-locks sync is not provisioned on this deployment" },
@@ -1631,7 +1652,7 @@ async function handleSubnetLocksSync(request, env) {
   });
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
 
       if (incoming.length) {
@@ -1653,8 +1674,8 @@ async function handleSubnetLocksSync(request, env) {
       // unreliable on this connection).
       let prunedCount = 0;
       if (incoming.length) {
-        const values = [];
-        const tuples = incoming.map((row, i) => {
+        const values: (number | string | boolean)[] = [];
+        const tuples = incoming.map((row: Row, i: number) => {
           const base = i * 4;
           values.push(row.netuid, row.hotkey, row.is_owner, row.is_perpetual);
           return `($${base + 1}::int, $${base + 2}::text, $${base + 3}::bool, $${base + 4}::bool)`;
@@ -1704,7 +1725,7 @@ const ACCOUNT_IDENTITY_SYNC_MAX_STRING_BYTES = 1024;
 // same trust posture as staging.mjs's validStagedAccountIdentityRow. Unlike
 // validSubnetHyperparamsSyncRow, every column but account/captured_at is
 // TEXT-only, so a bare number must be actively REJECTED here, not tolerated.
-function validAccountIdentitySyncRow(row) {
+function validAccountIdentitySyncRow(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (typeof row.account !== "string" || row.account.length === 0) return false;
   if (!Number.isFinite(row.captured_at)) return false;
@@ -1727,27 +1748,27 @@ function validAccountIdentitySyncRow(row) {
 // concern: strip rather than reject, matching the "sanitize a chain-data
 // value the sink genuinely can't represent" precedent set by
 // weights_rate_limit's u64::MAX widening in subnet-hyperparams-sync.
-function stripNullBytes(value) {
+function stripNullBytes(value: unknown) {
   return typeof value === "string" ? value.replaceAll("\u0000", "") : value;
 }
 
-function sanitizeAccountIdentitySyncRow(row) {
-  const out = {};
+function sanitizeAccountIdentitySyncRow(row: Row) {
+  const out: Row = {};
   for (const [key, value] of Object.entries(row)) {
     out[key] = stripNullBytes(value);
   }
   return out;
 }
 
-function coerceAccountIdentitySyncRow(row) {
-  const out = {};
+function coerceAccountIdentitySyncRow(row: Row) {
+  const out: Row = {};
   for (const col of ACCOUNT_IDENTITY_INSERT_COLUMNS) {
     out[col] = row[col] ?? null;
   }
   return out;
 }
 
-async function handleAccountIdentitySync(request, env) {
+async function handleAccountIdentitySync(request: Request, env: Env) {
   if (!env.ACCOUNT_IDENTITY_SYNC_SECRET) {
     return writeJson(
       { error: "account-identity sync is not provisioned on this deployment" },
@@ -1823,7 +1844,7 @@ async function handleAccountIdentitySync(request, env) {
   });
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
 
       await sql`
@@ -1851,9 +1872,9 @@ async function handleAccountIdentitySync(request, env) {
         latest.map((row) => [row.account, row.identity_hash]),
       );
       const now = Date.now();
-      const changedRows = [];
+      const changedRows: Row[] = [];
       for (const row of sanitized) {
-        const snapshot = {};
+        const snapshot: Row = {};
         for (const field of IDENTITY_FIELDS)
           snapshot[field] = row[field] ?? null;
         const hash = await identityHash(snapshot);
@@ -1907,7 +1928,12 @@ async function handleAccountIdentitySync(request, env) {
 // mid-batch failure still rolls back the whole sync rather than leaving a
 // partial write, and both these tables are latest-only/REPLACE-on-conflict
 // so a subsequent retry is safe either way.
-async function batchedUpsert(sql, rows, insertFn, maxRowsPerBatch) {
+async function batchedUpsert(
+  sql: postgres.TransactionSql,
+  rows: Row[],
+  insertFn: (sql: postgres.TransactionSql, rows: Row[]) => unknown,
+  maxRowsPerBatch: number,
+) {
   for (let i = 0; i < rows.length; i += maxRowsPerBatch) {
     await insertFn(sql, rows.slice(i, i + maxRowsPerBatch));
   }
@@ -1937,7 +1963,7 @@ const VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH = 20_000;
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_BODY_BYTES = 100_000_000;
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS = 1_000_000;
 
-function validValidatorNominatorCountsSyncRow(row) {
+function validValidatorNominatorCountsSyncRow(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (typeof row.hotkey !== "string" || row.hotkey.length === 0) return false;
   if (!Number.isInteger(row.nominator_count) || row.nominator_count < 0)
@@ -1949,7 +1975,7 @@ function validValidatorNominatorCountsSyncRow(row) {
   return true;
 }
 
-async function handleValidatorNominatorCountsSync(request, env) {
+async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
   if (!env.VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET) {
     return writeJson(
       {
@@ -2030,7 +2056,7 @@ async function handleValidatorNominatorCountsSync(request, env) {
   });
 
   try {
-    await sql.begin(async (sql) => {
+    await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
       await batchedUpsert(
         sql,
@@ -2071,7 +2097,7 @@ const NOMINATOR_POSITIONS_MAX_ROWS_PER_BATCH = 10_000;
 const NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES = 200_000_000;
 const NOMINATOR_POSITIONS_SYNC_MAX_ROWS = 1_000_000;
 
-function validNominatorPositionSyncRow(row) {
+function validNominatorPositionSyncRow(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (typeof row.coldkey !== "string" || row.coldkey?.length === 0)
     return false;
@@ -2086,7 +2112,7 @@ function validNominatorPositionSyncRow(row) {
   return true;
 }
 
-async function handleNominatorPositionsSync(request, env) {
+async function handleNominatorPositionsSync(request: Request, env: Env) {
   if (!env.NOMINATOR_POSITIONS_SYNC_SECRET) {
     return writeJson(
       {
@@ -2163,7 +2189,7 @@ async function handleNominatorPositionsSync(request, env) {
   });
 
   try {
-    await sql.begin(async (sql) => {
+    await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
       await batchedUpsert(
         sql,
@@ -2215,7 +2241,7 @@ const ACCOUNT_BALANCES_MAX_ROWS_PER_BATCH = 10_000;
 const ACCOUNT_BALANCES_SYNC_MAX_BODY_BYTES = 200_000_000;
 const ACCOUNT_BALANCES_SYNC_MAX_ROWS = 1_000_000;
 
-function validAccountBalanceSyncRow(row) {
+function validAccountBalanceSyncRow(row: Row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) return false;
   if (typeof row.ss58 !== "string" || row.ss58.length === 0) return false;
   if (!Number.isFinite(row.free_tao) || row.free_tao < 0) return false;
@@ -2227,7 +2253,7 @@ function validAccountBalanceSyncRow(row) {
   return true;
 }
 
-async function handleAccountBalancesSync(request, env) {
+async function handleAccountBalancesSync(request: Request, env: Env) {
   if (!env.ACCOUNT_BALANCES_SYNC_SECRET) {
     return writeJson(
       { error: "account-balances sync is not provisioned on this deployment" },
@@ -2296,7 +2322,7 @@ async function handleAccountBalancesSync(request, env) {
   });
 
   try {
-    await sql.begin(async (sql) => {
+    await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
       await batchedUpsert(
         sql,
@@ -2343,16 +2369,16 @@ const SUBNET_IDENTITY_SYNC_TOKEN_HEADER = "x-subnet-identity-sync-token";
 const SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES = 5_000_000;
 const SUBNET_IDENTITY_SYNC_MAX_ROWS = 2_000;
 
-function sanitizeSubnetIdentitySyncSnapshot(snapshot) {
+function sanitizeSubnetIdentitySyncSnapshot(snapshot: Row | null) {
   if (!snapshot) return snapshot;
-  const out = {};
+  const out: Row = {};
   for (const [key, value] of Object.entries(snapshot)) {
     out[key] = stripNullBytes(value);
   }
   return out;
 }
 
-async function handleSubnetIdentitySync(request, env) {
+async function handleSubnetIdentitySync(request: Request, env: Env) {
   if (!env.SUBNET_IDENTITY_SYNC_SECRET) {
     return writeJson(
       { error: "subnet-identity sync is not provisioned on this deployment" },
@@ -2419,7 +2445,7 @@ async function handleSubnetIdentitySync(request, env) {
   });
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
 
       const latest = await sql`
@@ -2435,7 +2461,7 @@ async function handleSubnetIdentitySync(request, env) {
         blockRow?.block_number == null ? null : Number(blockRow.block_number);
 
       const now = Date.now();
-      const changedRows = [];
+      const changedRows: Row[] = [];
       for (const profile of profiles) {
         if (!Number.isInteger(profile?.netuid)) continue;
         const snapshot = sanitizeSubnetIdentitySyncSnapshot(
@@ -2505,7 +2531,7 @@ const HEALTH_CHECKS_SYNC_TOKEN_HEADER = "x-health-checks-sync-token";
 const HEALTH_CHECKS_SYNC_MAX_BODY_BYTES = 2_000_000;
 const HEALTH_CHECKS_SYNC_MAX_ROWS = 2_000;
 
-async function handleHealthChecksSync(request, env) {
+async function handleHealthChecksSync(request: Request, env: Env) {
   if (!env.HEALTH_CHECKS_SYNC_SECRET) {
     return writeJson(
       { error: "health-checks sync is not provisioned on this deployment" },
@@ -2559,7 +2585,7 @@ async function handleHealthChecksSync(request, env) {
   });
 
   const validRows = probed.filter(
-    (row) =>
+    (row: Row) =>
       row &&
       typeof row.surface_id === "string" &&
       row.surface_id.length > 0 &&
@@ -2572,7 +2598,7 @@ async function handleHealthChecksSync(request, env) {
     return writeJson({ ok: true, checks_written: 0, status_written: 0 });
   }
 
-  const checkRows = validRows.map((row) => ({
+  const checkRows = validRows.map((row: Row) => ({
     surface_id: row.surface_id,
     surface_key: row.surface_key ?? null,
     netuid: row.netuid,
@@ -2584,7 +2610,7 @@ async function handleHealthChecksSync(request, env) {
     ok: row.status === "ok",
     checked_at: row.checked_at_ms,
   }));
-  const statusRows = validRows.map((row) => ({
+  const statusRows = validRows.map((row: Row) => ({
     surface_id: row.surface_id,
     surface_key: row.surface_key ?? null,
     netuid: row.netuid,
@@ -2610,9 +2636,9 @@ async function handleHealthChecksSync(request, env) {
   // surface_checks insert -- on every probe run. Later row wins, matching the
   // upsert's own last-write semantics; keyless rows are all kept (the index
   // is partial on surface_key IS NOT NULL).
-  const lastRowWins = (rows, keyOf) => {
-    const byKey = new Map();
-    const keyless = [];
+  const lastRowWins = (rows: Row[], keyOf: (row: Row) => string): Row[] => {
+    const byKey = new Map<string, Row>();
+    const keyless: Row[] = [];
     for (const row of rows) {
       const key = keyOf(row);
       if (key === null) keyless.push(row);
@@ -2621,12 +2647,12 @@ async function handleHealthChecksSync(request, env) {
     return [...keyless, ...byKey.values()];
   };
   const dedupedStatusRows = lastRowWins(
-    lastRowWins(statusRows, (row) => row.surface_id),
-    (row) => row.surface_key,
+    lastRowWins(statusRows, (row: Row) => row.surface_id),
+    (row: Row) => row.surface_key,
   );
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '10000ms'`;
       await sql`
         INSERT INTO surface_checks ${sql(
@@ -2724,7 +2750,7 @@ async function handleHealthChecksSync(request, env) {
 // latencyStatColumns) column-for-column.
 const HEALTH_UPTIME_ROLLUP_SYNC_MAX_DAYS = 10;
 
-async function handleHealthUptimeRollupSync(request, env) {
+async function handleHealthUptimeRollupSync(request: Request, env: Env) {
   if (!env.HEALTH_CHECKS_SYNC_SECRET) {
     return writeJson(
       { error: "health-checks sync is not provisioned on this deployment" },
@@ -2765,7 +2791,7 @@ async function handleHealthUptimeRollupSync(request, env) {
     );
   }
   const validDays = days.filter(
-    (d) =>
+    (d: Row) =>
       d &&
       typeof d.date === "string" &&
       /^\d{4}-\d{2}-\d{2}$/.test(d.date) &&
@@ -2783,7 +2809,7 @@ async function handleHealthUptimeRollupSync(request, env) {
   });
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '20000ms'`;
       for (const { date, start, end } of validDays) {
         await sql`
@@ -2842,7 +2868,7 @@ async function handleHealthUptimeRollupSync(request, env) {
       }
       return writeJson({
         ok: true,
-        days_rolled: validDays.map((d) => d.date),
+        days_rolled: validDays.map((d: Row) => d.date),
       });
     });
   } catch (err) {
@@ -2870,7 +2896,7 @@ const SUBNET_SNAPSHOT_SYNC_TOKEN_HEADER = "x-subnet-snapshot-sync-token";
 const SUBNET_SNAPSHOT_SYNC_MAX_BODY_BYTES = 2_000_000;
 const SUBNET_SNAPSHOT_SYNC_MAX_ROWS = 2_000;
 
-async function handleSubnetSnapshotSync(request, env) {
+async function handleSubnetSnapshotSync(request: Request, env: Env) {
   if (!env.SUBNET_SNAPSHOT_SYNC_SECRET) {
     return writeJson(
       { error: "subnet-snapshot sync is not provisioned on this deployment" },
@@ -2985,7 +3011,7 @@ async function handleSubnetSnapshotSync(request, env) {
   }));
 
   try {
-    return await sql.begin(async (sql) => {
+    return await sql.begin(async (sql: postgres.TransactionSql) => {
       await sql`SET statement_timeout = '10000ms'`;
       await sql`
         INSERT INTO subnet_snapshots ${sql(
@@ -3041,7 +3067,7 @@ const RPC_USAGE_SYNC_TOKEN_HEADER = "x-rpc-usage-sync-token";
 // A single event object is a few hundred bytes; generous headroom.
 const RPC_USAGE_SYNC_MAX_BODY_BYTES = 4_000;
 
-async function handleRpcUsageEventSync(request, env) {
+async function handleRpcUsageEventSync(request: Request, env: Env) {
   if (!env.RPC_USAGE_SYNC_SECRET) {
     return writeJson(
       { error: "rpc-usage sync is not provisioned on this deployment" },
@@ -3121,7 +3147,7 @@ async function handleRpcUsageEventSync(request, env) {
 // (syncRpcProxyEventsPruneToPostgres), on the same cron, right after the D1
 // prune -- reuses the rpc-usage-sync token/secret (same trust boundary: both
 // routes write to the same table, no reason for a second secret).
-async function handleRpcUsageEventPrune(request, env) {
+async function handleRpcUsageEventPrune(request: Request, env: Env) {
   if (!env.RPC_USAGE_SYNC_SECRET) {
     return writeJson(
       { error: "rpc-usage sync is not provisioned on this deployment" },
@@ -3166,7 +3192,7 @@ async function handleRpcUsageEventPrune(request, env) {
   }
 }
 
-function json(data, status = 200) {
+function json(data: unknown, status: number = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -3200,10 +3226,11 @@ function json(data, status = 200) {
 // response. `sql.savepoint()` runs the read in its own nested scope so a
 // failure there rolls back to a savepoint instead of the whole transaction,
 // leaving the enclosing transaction (and its other queries) unaffected.
-async function loadFeaturedHotkeys(sql, env) {
+async function loadFeaturedHotkeys(sql: postgres.TransactionSql, env: Env) {
   try {
     const rows = await sql.savepoint(
-      (sql) => sql`SELECT hotkey FROM featured_validators`,
+      (sql: postgres.TransactionSql) =>
+        sql`SELECT hotkey FROM featured_validators`,
     );
     return new Set(rows.map((row) => row.hotkey));
   } catch (err) {
@@ -3222,11 +3249,15 @@ async function loadFeaturedHotkeys(sql, env) {
 // Hyperdrive fetch_types:false setting breaks postgres.js's automatic
 // ARRAY-literal serialization for a bound JS array (ANY($1)), so every IN
 // clause here builds its own scalar placeholder list instead.
-async function loadAccountIdentitiesByColdkey(sql, coldkeys, env) {
+async function loadAccountIdentitiesByColdkey(
+  sql: postgres.TransactionSql,
+  coldkeys: string[],
+  env: Env,
+) {
   if (coldkeys.length === 0) return new Map();
   try {
     const placeholders = coldkeys.map((_, i) => `$${i + 1}::text`).join(", ");
-    const rows = await sql.savepoint((sql) =>
+    const rows = await sql.savepoint((sql: postgres.TransactionSql) =>
       sql.unsafe(
         `SELECT ${ACCOUNT_IDENTITY_INSERT_COLUMNS.join(", ")}
          FROM account_identity WHERE account IN (${placeholders})`,
@@ -3243,8 +3274,8 @@ async function loadAccountIdentitiesByColdkey(sql, coldkeys, env) {
 
 // Distinct, order-stable, non-empty coldkeys from a validators/validator-detail
 // result set -- the input to loadAccountIdentitiesByColdkey above.
-function distinctColdkeys(rows) {
-  const seen = new Set();
+function distinctColdkeys(rows: Row[]) {
+  const seen = new Set<string>();
   for (const row of rows) {
     if (row?.coldkey?.length > 0) seen.add(row.coldkey);
   }
@@ -3256,10 +3287,13 @@ function distinctColdkeys(rows) {
 // /api/v1/validators response to nominator_count: null everywhere rather
 // than failing the request or rolling back the enclosing transaction's other
 // queries.
-async function loadValidatorNominatorCounts(sql, env) {
+async function loadValidatorNominatorCounts(
+  sql: postgres.TransactionSql,
+  env: Env,
+) {
   try {
     const rows = await sql.savepoint(
-      (sql) =>
+      (sql: postgres.TransactionSql) =>
         sql`SELECT hotkey, nominator_count FROM validator_nominator_counts`,
     );
     return nominatorCountsByHotkey(rows);
@@ -3275,10 +3309,11 @@ async function loadValidatorNominatorCounts(sql, env) {
 // null everywhere (accumulateApyRow's tempoByNetuid.get(...) == null branch)
 // rather than failing /api/v1/validators or /api/v1/validators/:hotkey, or
 // rolling back the enclosing transaction's other queries.
-async function loadSubnetTempos(sql, env) {
+async function loadSubnetTempos(sql: postgres.TransactionSql, env: Env) {
   try {
     const rows = await sql.savepoint(
-      (sql) => sql`SELECT netuid, tempo FROM subnet_hyperparams`,
+      (sql: postgres.TransactionSql) =>
+        sql`SELECT netuid, tempo FROM subnet_hyperparams`,
     );
     return buildTempoByNetuid(rows);
   } catch (err) {
@@ -3306,10 +3341,14 @@ const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
 // realized_return_* to null rather than failing /api/v1/validators or
 // /api/v1/validators/:hotkey, or rolling back the enclosing transaction's
 // other queries. `hotkey` scopes the scan to the single-validator detail route.
-async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}, env) {
+async function loadRealizedStakeBaselines(
+  sql: postgres.TransactionSql,
+  { hotkey = null }: { hotkey?: string | null },
+  env: Env,
+) {
   const windows = Object.entries(REALIZED_RETURN_WINDOWS);
   try {
-    const perWindow = await sql.savepoint((sql) =>
+    const perWindow = await sql.savepoint((sql: postgres.TransactionSql) =>
       Promise.all(
         windows.map(([, days]) => {
           const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
@@ -3368,10 +3407,14 @@ async function loadRealizedStakeBaselines(sql, { hotkey = null } = {}, env) {
 // subnet-hyperparams.ts's own nonNegativeInt -- Number(null) is 0, not
 // NaN -- written inline rather than imported since each domain file owns its
 // small D1/Postgres cell-coercion copies (see that file's own header).
-async function loadSubnetImmunityPeriod(sql, netuid, env) {
+async function loadSubnetImmunityPeriod(
+  sql: postgres.TransactionSql,
+  netuid: number,
+  env: Env,
+) {
   try {
     const rows = await sql.savepoint(
-      (sql) =>
+      (sql: postgres.TransactionSql) =>
         sql`SELECT immunity_period FROM subnet_hyperparams WHERE netuid = ${netuid} LIMIT 1`,
     );
     const value = rows[0]?.immunity_period;
@@ -3392,10 +3435,14 @@ async function loadSubnetImmunityPeriod(sql, netuid, env) {
 // Raw nominator_positions rows for one coldkey (#5233) -- savepoint-isolated
 // like the loaders above, so a cold/absent table degrades this specific
 // route to an empty positions card rather than failing the request.
-async function loadNominatorPositions(sql, ss58, env) {
+async function loadNominatorPositions(
+  sql: postgres.TransactionSql,
+  ss58: string,
+  env: Env,
+) {
   try {
     return await sql.savepoint(
-      (sql) => sql`
+      (sql: postgres.TransactionSql) => sql`
         SELECT coldkey, hotkey, netuid, share_fraction, captured_at
         FROM nominator_positions WHERE coldkey = ${ss58}`,
     );
@@ -3412,11 +3459,15 @@ async function loadNominatorPositions(sql, ss58, env) {
 // scalar-placeholder IN-list shape as loadAccountIdentitiesByColdkey above
 // (this Worker's Hyperdrive fetch_types:false setting breaks automatic
 // ARRAY-literal binding for a JS array).
-async function loadNeuronStakeByHotkeys(sql, hotkeys, env) {
+async function loadNeuronStakeByHotkeys(
+  sql: postgres.TransactionSql,
+  hotkeys: string[],
+  env: Env,
+) {
   if (hotkeys.length === 0) return new Map();
   try {
     const placeholders = hotkeys.map((_, i) => `$${i + 1}::text`).join(", ");
-    const rows = await sql.savepoint((sql) =>
+    const rows = await sql.savepoint((sql: postgres.TransactionSql) =>
       sql.unsafe(
         `SELECT hotkey, netuid, stake_tao FROM neurons WHERE hotkey IN (${placeholders})`,
         hotkeys,
@@ -3430,7 +3481,7 @@ async function loadNeuronStakeByHotkeys(sql, hotkeys, env) {
   }
 }
 
-function clampLimit(raw) {
+function clampLimit(raw: string | number | null | undefined) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
   // Floor to a minimum of 1 (mirrors clampStatsBlocks): a fractional 0<n<1 floors
@@ -3438,7 +3489,7 @@ function clampLimit(raw) {
   return Math.min(Math.max(Math.floor(n), 1), MAX_LIMIT);
 }
 
-function clampStatsBlocks(raw) {
+function clampStatsBlocks(raw: string | number | null | undefined) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return 1000;
   return Math.min(Math.max(Math.floor(n), 1), 5000);
@@ -3447,7 +3498,7 @@ function clampStatsBlocks(raw) {
 // postgres.js returns BIGINT columns as strings; the D1-backed routes return them
 // as numbers. block_number and observed_at are both < 2^53, so Number(...) is
 // lossless — coerce them per event row for a consistent numeric API shape.
-function numberOrNull(v) {
+function numberOrNull(v: unknown) {
   if (v == null) return null;
   // Blank Hyperdrive/Postgres cells coerce via Number("") → 0; trim rejects "" /
   // whitespace-only so absent indices/timestamps stay null (mirrors toBlockNumber
@@ -3457,7 +3508,7 @@ function numberOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-function nonNegativeIntegerParam(params, key) {
+function nonNegativeIntegerParam(params: URLSearchParams, key: string) {
   const value = params.get(key);
   if (value == null || value === "") return null;
   if (!/^\d+$/.test(value)) return null;
@@ -3465,7 +3516,7 @@ function nonNegativeIntegerParam(params, key) {
   return Number.isSafeInteger(n) ? n : null;
 }
 
-function clampBlockLimit(raw) {
+function clampBlockLimit(raw: string | number | null | undefined) {
   return clampRequestLimit(raw, BLOCK_PAGINATION);
 }
 
@@ -3474,11 +3525,11 @@ function clampBlockLimit(raw) {
 // too so the Postgres-tier path (which always wins in production, #4772/#4909)
 // doesn't silently re-cap them at the local clampLimit's 200 (#5474). The local
 // clampLimit still governs the non-events routes (extrinsics/transfers/chain-events).
-function clampEventsLimit(raw) {
+function clampEventsLimit(raw: string | number | null | undefined) {
   return clampRequestLimit(raw, FEED_PAGINATION);
 }
 
-function clampOffset(raw) {
+function clampOffset(raw: string | number | null | undefined) {
   return clampRequestOffset(raw);
 }
 
@@ -3491,7 +3542,7 @@ const MAX_EMBEDDED_EVENTS = 50;
 // resolveBlockNumber. Returns null for a malformed ref or an unknown block
 // (never throws) -- the two sub-resource routes below both need this ahead of
 // their own extrinsics/account_events query, same as the D1 path.
-async function resolveBlockNumberPg(sql, ref) {
+async function resolveBlockNumberPg(sql: postgres.TransactionSql, ref: string) {
   const isHash = HASH_RE.test(ref);
   if (!isHash && !/^\d+$/.test(ref)) return null;
   const blockNumber = isHash ? null : Number(ref);
@@ -3524,7 +3575,7 @@ async function resolveBlockNumberPg(sql, ref) {
 // resolves to `args: undefined`, which JSON.stringify drops from the
 // response the same as an absent key, so there's no schema-shape risk in
 // leaving this unconditional.
-function coerceEvent(row) {
+function coerceEvent(row: Row) {
   return {
     ...row,
     ...(row.block_number !== undefined
@@ -3554,7 +3605,10 @@ function coerceEvent(row) {
 // validation lives in src/alert-triggers.mjs; everything here is Postgres
 // plumbing + auth gates.
 
-async function withAlertTriggersSql(env, fn) {
+async function withAlertTriggersSql(
+  env: Env,
+  fn: (sql: postgres.Sql) => Promise<Response>,
+) {
   if (!env.HYPERDRIVE?.connectionString) {
     return writeJson({ error: "hyperdrive binding unavailable" }, 503);
   }
@@ -3575,7 +3629,7 @@ async function withAlertTriggersSql(env, fn) {
   // write route in this file.
 }
 
-async function readAlertTriggerBody(request) {
+async function readAlertTriggerBody(request: Request) {
   if (
     Number(request.headers.get("content-length") || 0) >
     ALERT_TRIGGER_MAX_BODY_BYTES
@@ -3598,7 +3652,10 @@ async function readAlertTriggerBody(request) {
 // "wrong token" from "no such trigger" purely from the status code,
 // building an existence oracle over sequential ids with zero credentials --
 // exactly the "no public view" property this route is designed to have).
-function requireAlertTriggerOwner(request, storedOwnerToken) {
+function requireAlertTriggerOwner(
+  request: Request,
+  storedOwnerToken: string | null,
+) {
   const provided = request.headers.get(ALERT_TRIGGER_OWNER_TOKEN_HEADER) || "";
   if (isValidAlertOwnerToken(provided, storedOwnerToken)) return null;
   return writeJson({ error: "no such trigger" }, 404);
@@ -3609,7 +3666,7 @@ function requireAlertTriggerOwner(request, storedOwnerToken) {
 // the advertised headers match the enforced limit. (#5475)
 const ALERT_TRIGGER_CREATE_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
-async function handleAlertTriggerCreate(request, env) {
+async function handleAlertTriggerCreate(request: Request, env: Env) {
   const configured = env.ALERT_TRIGGER_CREATE_TOKEN;
   if (!configured) {
     return writeJson(
@@ -3661,7 +3718,7 @@ async function handleAlertTriggerCreate(request, env) {
     return writeJson({ error: validated.error }, 400);
   }
 
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
     // Short local name (`ownerToken`, not `secret`) keeps the public-safety
     // scanner's hardcoded-credential heuristic from false-positiving here,
     // matching src/webhooks.ts's createWebhookSubscription convention.
@@ -3673,7 +3730,7 @@ async function handleAlertTriggerCreate(request, env) {
         (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, created_at, updated_at)
       VALUES (
         ${ownerToken}, ${v.name}, ${v.tableFilter}, ${v.netuid}, ${v.eventKind},
-        ${v.account}, ${v.minAmountTao}, ${v.condition ? sql.json(v.condition) : null},
+        ${v.account}, ${v.minAmountTao}, ${v.condition ? sql.json(v.condition as unknown as postgres.JSONValue) : null},
         ${v.channel}, ${v.destination}, ${now}, ${now}
       )
       RETURNING *`;
@@ -3689,11 +3746,11 @@ async function handleAlertTriggerCreate(request, env) {
   });
 }
 
-async function handleAlertTriggerGet(request, env, id) {
+async function handleAlertTriggerGet(request: Request, env: Env, id: string) {
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
     const [row] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!row) return writeJson({ error: "no such trigger" }, 404);
@@ -3721,15 +3778,19 @@ async function handleAlertTriggerGet(request, env, id) {
 // body, it means an explicit `null` degrades to a no-op rather than a 400.
 // There is currently no supported way to explicitly clear an optional
 // condition field back to unset via PATCH -- only DELETE + recreate.
-function omitNullValues(obj) {
-  const out = {};
+function omitNullValues(obj: Row) {
+  const out: Row = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value !== null) out[key] = value;
   }
   return out;
 }
 
-async function handleAlertTriggerUpdate(request, env, id) {
+async function handleAlertTriggerUpdate(
+  request: Request,
+  env: Env,
+  id: string,
+) {
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
@@ -3738,7 +3799,7 @@ async function handleAlertTriggerUpdate(request, env, id) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return writeJson({ error: "Request body must be a JSON object." }, 400);
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
     const [existing] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
@@ -3784,7 +3845,7 @@ async function handleAlertTriggerUpdate(request, env, id) {
         event_kind = ${v.eventKind},
         account = ${v.account},
         min_amount_tao = ${v.minAmountTao},
-        condition = ${v.condition ? sql.json(v.condition) : null},
+        condition = ${v.condition ? sql.json(v.condition as unknown as postgres.JSONValue) : null},
         channel = ${v.channel},
         destination = ${v.destination},
         updated_at = ${now}
@@ -3794,11 +3855,15 @@ async function handleAlertTriggerUpdate(request, env, id) {
   });
 }
 
-async function handleAlertTriggerDelete(request, env, id) {
+async function handleAlertTriggerDelete(
+  request: Request,
+  env: Env,
+  id: string,
+) {
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
     const [existing] =
       await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
@@ -3812,7 +3877,7 @@ async function handleAlertTriggerDelete(request, env, id) {
 // Internal-only: the #4984 Part 2 evaluator's cache-refresh scan. A
 // DIFFERENT secret from the create/owner tokens above -- it grants a wholly
 // different capability (read every trigger regardless of owner).
-async function handleAlertTriggersActiveList(request, env) {
+async function handleAlertTriggersActiveList(request: Request, env: Env) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -3833,7 +3898,7 @@ async function handleAlertTriggersActiveList(request, env) {
       401,
     );
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
     const rows = await sql`SELECT * FROM chain_alert_triggers WHERE active`;
     return writeJson({ triggers: rows.map(evaluatorAlertTriggerView) });
   });
@@ -3849,7 +3914,7 @@ async function handleAlertTriggersActiveList(request, env) {
 // create/owner tokens (write access to every trigger's own bookkeeping
 // columns, not just its own row), so it reuses that same
 // ALERT_TRIGGERS_INTERNAL_TOKEN secret rather than minting a third one.
-async function handleAlertTriggersMatchedWriteback(request, env) {
+async function handleAlertTriggersMatchedWriteback(request: Request, env: Env) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -3881,7 +3946,7 @@ async function handleAlertTriggersMatchedWriteback(request, env) {
       400,
     );
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
     const now = Date.now();
     // Plain scalar positional binds via sql.unsafe, NOT a bound JS array
     // (`id = ANY($1)`) -- see the neurons-sync prune query's own comment
@@ -3890,7 +3955,9 @@ async function handleAlertTriggersMatchedWriteback(request, env) {
     // ARRAY-literal serialization, while scalar binds are unaffected.
     // $1 is the shared `now` timestamp; $2.. are the (already
     // isValidAlertTriggerId-validated) ids.
-    const placeholders = ids.map((_, i) => `$${i + 2}::bigint`).join(", ");
+    const placeholders = ids
+      .map((_: unknown, i: number) => `$${i + 2}::bigint`)
+      .join(", ");
     const updated = await sql.unsafe(
       `UPDATE chain_alert_triggers
        SET match_count = match_count + 1,
@@ -3921,7 +3988,7 @@ async function handleAlertTriggersMatchedWriteback(request, env) {
 // DAILY cadence table, so alpha_price_tao here can lag up to ~24h behind
 // the live economics tier; acceptable for this protocol-health signal
 // (directional rank), not something a trading decision should lean on.
-async function handleDeregRiskSnapshot(request, env) {
+async function handleDeregRiskSnapshot(request: Request, env: Env) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -3942,7 +4009,7 @@ async function handleDeregRiskSnapshot(request, env) {
       401,
     );
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
     const [[block], hyperparamsRows, immuneNeurons, subnetRows] =
       await Promise.all([
         sql`SELECT MAX(block_number) AS block_number FROM blocks`,
@@ -3984,7 +4051,7 @@ async function handleDeregRiskSnapshot(request, env) {
   });
 }
 
-async function handleAlertTriggersRoute(request, env, url) {
+async function handleAlertTriggersRoute(request: Request, env: Env, url: URL) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "alerts", "triggers", <id?>]
   const id = segments[4];
@@ -4043,7 +4110,10 @@ const WALLET_AUTH_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 // gets to mint at all.
 const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
-async function withAccountsSql(env, fn) {
+async function withAccountsSql<T>(
+  env: Env,
+  fn: (sql: postgres.Sql) => Promise<T>,
+): Promise<T | Response> {
   if (!env.HYPERDRIVE?.connectionString) {
     return writeJson({ error: "hyperdrive binding unavailable" }, 503);
   }
@@ -4065,7 +4135,7 @@ async function withAccountsSql(env, fn) {
 
 const ACCOUNT_ROUTES_MAX_BODY_BYTES = 4096;
 
-async function readAccountRouteBody(request) {
+async function readAccountRouteBody(request: Request) {
   if (
     Number(request.headers.get("content-length") || 0) >
     ACCOUNT_ROUTES_MAX_BODY_BYTES
@@ -4089,7 +4159,7 @@ async function readAccountRouteBody(request) {
 // this codebase's own contract, so a catch-all here would be untestable
 // dead code rather than real robustness (matches this session's existing
 // "don't add validation for scenarios that can't happen" convention).
-function walletAuthErrorMessage(code) {
+function walletAuthErrorMessage(code: string) {
   switch (code) {
     case "invalid_ss58":
       return "ss58 must be a valid Bittensor (prefix 42) address";
@@ -4102,11 +4172,11 @@ function walletAuthErrorMessage(code) {
   }
 }
 
-function walletAuthErrorStatus(code) {
+function walletAuthErrorStatus(code: string) {
   return code === "challenge_store_unavailable" ? 503 : 400;
 }
 
-async function walletAuthRateLimited(request, env) {
+async function walletAuthRateLimited(request: Request, env: Env) {
   if (!env.WALLET_AUTH_RATE_LIMITER?.limit) return null;
   const { success } = await env.WALLET_AUTH_RATE_LIMITER.limit({
     key: resolveClientIp(request),
@@ -4120,7 +4190,7 @@ async function walletAuthRateLimited(request, env) {
   });
 }
 
-async function handleWalletChallenge(request, env) {
+async function handleWalletChallenge(request: Request, env: Env) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
   const { body, error } = await readAccountRouteBody(request);
@@ -4139,10 +4209,11 @@ async function handleWalletChallenge(request, env) {
   });
 }
 
-async function handleWalletVerify(request, env) {
+async function handleWalletVerify(request: Request, env: Env) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
-  if (!env.WALLET_SESSION_SECRET) {
+  const sessionSecret = env.WALLET_SESSION_SECRET;
+  if (!sessionSecret) {
     return writeJson(
       { error: "wallet login is not provisioned on this deployment" },
       503,
@@ -4166,14 +4237,14 @@ async function handleWalletVerify(request, env) {
       result.code === "challenge_store_unavailable" ? 503 : 401,
     );
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
     const now = Date.now();
     const [account] = await sql`
       INSERT INTO rpc_accounts (ss58, created_at, last_login_at)
       VALUES (${ss58}, ${now}, ${now})
       ON CONFLICT (ss58) DO UPDATE SET last_login_at = ${now}
       RETURNING id, ss58, tier`;
-    const sessionToken = await createSessionToken(env.WALLET_SESSION_SECRET, {
+    const sessionToken = await createSessionToken(sessionSecret, {
       accountId: account.id,
       ss58: account.ss58,
     });
@@ -4196,7 +4267,7 @@ async function handleWalletVerify(request, env) {
 // (upsert, return the account row) minus the session-token minting -- the
 // caller mints ITS OWN grant/token via OAuthHelpers.completeAuthorization,
 // which needs OAUTH_KV (a binding only the caller's Worker has).
-async function handleGithubAccountUpsert(request, env) {
+async function handleGithubAccountUpsert(request: Request, env: Env) {
   const { body, error } = await readAccountRouteBody(request);
   if (error) return error;
   const githubUserId = body?.github_user_id;
@@ -4214,7 +4285,7 @@ async function handleGithubAccountUpsert(request, env) {
       400,
     );
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
     const now = Date.now();
     const [account] = await sql`
       INSERT INTO github_accounts (github_user_id, github_login, created_at, last_login_at)
@@ -4234,7 +4305,7 @@ async function handleGithubAccountUpsert(request, env) {
 // { accountId, ss58 }, or a ready-to-return error response. A missing
 // WALLET_SESSION_SECRET is a deployment-config gap (503), distinct from a
 // missing/invalid/expired token (401).
-async function requireAccountSession(request, env) {
+async function requireAccountSession(request: Request, env: Env) {
   if (!env.WALLET_SESSION_SECRET) {
     return {
       error: writeJson(
@@ -4261,7 +4332,7 @@ async function requireAccountSession(request, env) {
   return { session };
 }
 
-async function handleAccountKeyCreate(request, env) {
+async function handleAccountKeyCreate(request: Request, env: Env) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
@@ -4293,7 +4364,7 @@ async function handleAccountKeyCreate(request, env) {
     }
   }
 
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
     // The session's signature already proved this account row exists at
     // verify time; a missing row here means it was removed since -- decline
     // rather than mint an orphaned key. Tier is the account's OWN tier
@@ -4336,13 +4407,13 @@ async function handleAccountKeyCreate(request, env) {
   });
 }
 
-async function handleAccountKeysList(request, env) {
+async function handleAccountKeysList(request: Request, env: Env) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
     const rows = await sql`
       SELECT unkey_key_id AS key_id, tier, created_at, revoked_at, last_used_at
       FROM api_keys
@@ -4354,7 +4425,11 @@ async function handleAccountKeysList(request, env) {
 
 const UNKEY_KEY_ID_PATTERN = /^key_[a-zA-Z0-9_]+$/;
 
-async function handleAccountKeyRevoke(request, env, keyId) {
+async function handleAccountKeyRevoke(
+  request: Request,
+  env: Env,
+  keyId: string,
+) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
@@ -4363,7 +4438,7 @@ async function handleAccountKeyRevoke(request, env, keyId) {
   if (!UNKEY_KEY_ID_PATTERN.test(keyId)) {
     return writeJson({ error: "malformed key id" }, 400);
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
     // Ownership check BEFORE ever calling Unkey -- a key_id that exists but
     // belongs to a different account gets the SAME 404 a nonexistent one
     // would (no existence oracle across accounts, same posture as
@@ -4405,7 +4480,7 @@ async function handleAccountKeyRevoke(request, env, keyId) {
 // own key list, not the source of truth for anything) -- cheap now that
 // this route is only hit once per unique key per KV-cache TTL window, not
 // once per RPC request.
-async function handleApiKeyVerify(request, env) {
+async function handleApiKeyVerify(request: Request, env: Env) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4434,7 +4509,7 @@ async function handleApiKeyVerify(request, env) {
     return writeJson({ valid: false, code: "NOT_FOUND" });
   }
   if (result.valid) {
-    void withAccountsSql(env, async (sql) => {
+    void withAccountsSql(env, async (sql: postgres.Sql) => {
       await sql`UPDATE api_keys SET last_used_at = ${Date.now()} WHERE unkey_key_id = ${result.keyId}`;
     });
   }
@@ -4457,7 +4532,7 @@ const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
 // needed, the caller's existing mg_... key keeps working at the new tier.
 // Gated by its own shared secret, matching the internal verify/alert-
 // trigger routes' "different capability, different secret" convention.
-async function handleAccountTierPromote(request, env) {
+async function handleAccountTierPromote(request: Request, env: Env) {
   const configured = env.ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4479,7 +4554,7 @@ async function handleAccountTierPromote(request, env) {
   if (!ss58 || !tier) {
     return writeJson({ error: "provide ss58 and tier" }, 400);
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, async (sql: postgres.Sql) => {
     const [account] = await sql`
       UPDATE rpc_accounts SET tier = ${tier} WHERE ss58 = ${ss58} RETURNING id`;
     if (!account) return writeJson({ error: "no such account" }, 404);
@@ -4506,7 +4581,7 @@ async function handleAccountTierPromote(request, env) {
   });
 }
 
-async function handleAccountKeysRoute(request, env, url) {
+async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "keys", <key_id?>]
   const keyId = segments[3];
@@ -4528,7 +4603,7 @@ async function handleAccountKeysRoute(request, env, url) {
 }
 
 export default {
-  async fetch(request, env, _ctx) {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
     const url = new URL(request.url);
     // The write routes (#4771, #4832) -- checked before the GET-only gate
     // below, same as how the main Worker's own POST-accepting routes
@@ -4749,7 +4824,7 @@ export default {
       // READ-ONLY invariant (top of file) at the database level too, and
       // repeatable read keeps multi-statement analytics responses on one
       // stable snapshot while preserving each route's bounded timeouts.
-      const dispatchReadRoutes = async (sql) => {
+      const dispatchReadRoutes = async (sql: postgres.TransactionSql) => {
         await sql`SET statement_timeout = '3000ms'`;
 
         // GET /api/v1/blocks (D1 serving-cutover, #4656 followup): the recent-block
@@ -5004,7 +5079,7 @@ export default {
         // entities.mjs) -- so neither accepts ?signer=/?call_module=/?call_hash=.
         // Ordered by observed_at for the same chunk-exclusion reason as
         // /api/v1/extrinsics above (identical hypertable, identical cursor shape).
-        const SUDO_GOVERNANCE_ROUTES = {
+        const SUDO_GOVERNANCE_ROUTES: Record<string, string> = {
           "/api/v1/sudo": "Sudo",
           "/api/v1/governance/config-changes": "AdminUtils",
         };
@@ -5109,7 +5184,7 @@ export default {
                 : [];
           }
           const resolved = rows[0];
-          let events = [];
+          let events: Row[] = [];
           const resolvedBlock = numberOrNull(resolved?.block_number);
           const resolvedIndex = numberOrNull(resolved?.extrinsic_index);
           if (resolvedBlock != null && resolvedIndex != null) {
@@ -5118,7 +5193,9 @@ export default {
             FROM account_events
             WHERE block_number = ${resolvedBlock} AND extrinsic_index = ${resolvedIndex}
             ORDER BY event_index ASC LIMIT ${MAX_EMBEDDED_EVENTS}`;
-            events = eventRows.map(formatAccountEvent).filter(Boolean);
+            events = eventRows
+              .map(formatAccountEvent)
+              .filter(Boolean) as unknown as Row[];
           }
           return json(buildExtrinsic(resolved, ref, events));
         }
@@ -5609,9 +5686,10 @@ export default {
             DEFAULT_NOMINATOR_WINDOW,
           );
           const sortParam = url.searchParams.get("sort");
-          const sort = NOMINATOR_SORTS.includes(sortParam)
-            ? sortParam
-            : "net_staked";
+          const sort =
+            sortParam !== null && NOMINATOR_SORTS.includes(sortParam)
+              ? sortParam
+              : "net_staked";
           const limit = Math.min(
             Math.max(
               Number(url.searchParams.get("limit")) ||
@@ -5975,7 +6053,7 @@ export default {
                  MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${WEIGHTS_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
-          let subnetRows = [];
+          let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
             subnetRows = await sql`
             SELECT netuid, COUNT(*) AS weight_sets,
@@ -6055,7 +6133,7 @@ export default {
           SELECT COUNT(DISTINCT hotkey) AS distinct_servers, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${SERVING_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
-          let subnetRows = [];
+          let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
             subnetRows = await sql`
             SELECT netuid, COUNT(*) AS announcements, COUNT(DISTINCT hotkey) AS distinct_servers
@@ -6091,7 +6169,7 @@ export default {
           SELECT COUNT(DISTINCT hotkey) AS distinct_exporters, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${PROMETHEUS_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
-          let subnetRows = [];
+          let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
             subnetRows = await sql`
             SELECT netuid, COUNT(*) AS announcements, COUNT(DISTINCT hotkey) AS distinct_exporters
@@ -6127,7 +6205,7 @@ export default {
           SELECT COUNT(DISTINCT hotkey) AS distinct_removers, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${AXON_REMOVAL_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
-          let subnetRows = [];
+          let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
             subnetRows = await sql`
             SELECT netuid, COUNT(*) AS removals, COUNT(DISTINCT hotkey) AS distinct_removers
@@ -6163,7 +6241,7 @@ export default {
           SELECT COUNT(DISTINCT hotkey) AS distinct_registrants, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${REGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
-          let subnetRows = [];
+          let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
             subnetRows = await sql`
             SELECT netuid, COUNT(*) AS registrations, COUNT(DISTINCT hotkey) AS distinct_registrants
@@ -6199,7 +6277,7 @@ export default {
           SELECT COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${DEREGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
-          let subnetRows = [];
+          let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
             subnetRows = await sql`
             SELECT netuid, COUNT(*) AS deregistrations, COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys
@@ -6236,7 +6314,7 @@ export default {
           SELECT COUNT(DISTINCT "coldkey") AS distinct_movers, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
-          let subnetRows = [];
+          let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
             subnetRows = await sql`
             SELECT netuid, COUNT(*) AS movements, COUNT(DISTINCT "coldkey") AS distinct_movers
@@ -6274,7 +6352,7 @@ export default {
           SELECT COUNT(DISTINCT "coldkey") AS distinct_senders, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
-          let subnetRows = [];
+          let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
             subnetRows = await sql`
             SELECT netuid, COUNT(*) AS transfers, COUNT(DISTINCT "coldkey") AS distinct_senders
@@ -6496,9 +6574,10 @@ export default {
           );
           const limit = chainLimit(url, 50);
           const sortParam = url.searchParams.get("sort");
-          const sort = CHAIN_SIGNERS_SORTS.includes(sortParam)
-            ? sortParam
-            : "tx_count";
+          const sort =
+            sortParam !== null && CHAIN_SIGNERS_SORTS.includes(sortParam)
+              ? sortParam
+              : "tx_count";
           const callModule = url.searchParams.get("call_module") || null;
           const moduleClause = callModule
             ? sql`AND call_module = ${callModule}`
@@ -6733,7 +6812,7 @@ export default {
           const freshRows = await sql`
           SELECT MAX(updated_at) AS newest_observed
           FROM surface_uptime_daily WHERE day >= ${cutoffDay}::date`;
-          const windows = {};
+          const windows: Record<string, Row[]> = {};
           for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
             const windowCutoff = new Date(now - days * ANALYTICS_DAY_MS)
               .toISOString()
@@ -6766,7 +6845,7 @@ export default {
         if (subnetHealthTrends) {
           const netuid = Number(subnetHealthTrends[1]);
           const now = Date.now();
-          const windows = {};
+          const windows: Record<string, Row[]> = {};
           for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
             const cutoff = now - days * ANALYTICS_DAY_MS;
             windows[label] = await sql`
@@ -6992,7 +7071,9 @@ export default {
           const minSamplesParsed =
             minSamplesRaw === null ? null : Number(minSamplesRaw);
           const minSamples =
-            Number.isInteger(minSamplesParsed) && minSamplesParsed >= 0
+            minSamplesParsed !== null &&
+            Number.isInteger(minSamplesParsed) &&
+            minSamplesParsed >= 0
               ? minSamplesParsed
               : null;
           const havingClause =
@@ -7235,8 +7316,9 @@ export default {
         if (url.pathname === "/api/v1/economics/trends") {
           const windowParam = url.searchParams.get("window");
           const parsedWindow = parseHistoryWindow(windowParam);
-          const windowDays = parsedWindow.error ? null : parsedWindow.days;
-          const windowLabel = parsedWindow.error ? "all" : parsedWindow.label;
+          const windowDays = "error" in parsedWindow ? null : parsedWindow.days;
+          const windowLabel =
+            "error" in parsedWindow ? "all" : parsedWindow.label;
           const cutoff =
             windowDays != null
               ? new Date(Date.now() - windowDays * ANALYTICS_DAY_MS)
@@ -7282,7 +7364,12 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const bucketConfig = RPC_USAGE_BUCKETS[windowLabel];
+          const bucketConfig = (
+            RPC_USAGE_BUCKETS as Record<
+              string,
+              { granularity: string; bucketMs: number; maxBuckets: number }
+            >
+          )[windowLabel];
           const [
             totalsRows,
             latencyRows,
@@ -8055,9 +8142,10 @@ export default {
         // handleGlobalValidators, validates them before forwarding here).
         if (url.pathname === "/api/v1/validators") {
           const sortParam = url.searchParams.get("sort");
-          const sort = GLOBAL_VALIDATOR_SORTS.includes(sortParam)
-            ? sortParam
-            : DEFAULT_GLOBAL_VALIDATOR_SORT;
+          const sort =
+            sortParam !== null && GLOBAL_VALIDATOR_SORTS.includes(sortParam)
+              ? sortParam
+              : DEFAULT_GLOBAL_VALIDATOR_SORT;
           const limitParam = Number(url.searchParams.get("limit"));
           const limit =
             Number.isInteger(limitParam) &&
@@ -8335,11 +8423,13 @@ export default {
           /^\/api\/v1\/chain\/identity-history$/,
         );
         if (chainIdentityHistory) {
-          const { limit, error } = parseLimitParam(url, {
+          const limitResult = parseLimitParam(url, {
             defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
             maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
           });
-          if (error) return queryError(error);
+          if ("error" in limitResult) return queryError(limitResult.error);
+          const limit =
+            limitResult.limit ?? CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT;
           const rows = await sql`
           SELECT id, netuid, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash
           FROM subnet_identity_history
@@ -8693,7 +8783,7 @@ export default {
           WHERE snapshot_date >= (SELECT MAX(snapshot_date) - ${days}::int FROM neuron_daily)`;
           const startDate = bounds[0]?.start_date ?? null;
           const endDate = bounds[0]?.end_date ?? null;
-          let rows = [];
+          let rows: Row[] = [];
           if (startDate != null && endDate != null && startDate !== endDate) {
             rows = await sql`
             SELECT snapshot_date::text AS snapshot_date, netuid, hotkey, validator_permit
@@ -8781,8 +8871,8 @@ export default {
           WHERE snapshot_date >= (SELECT MAX(snapshot_date) - ${days}::int FROM neuron_daily)`;
           const startDate = bounds[0]?.start_date ?? null;
           const endDate = bounds[0]?.end_date ?? null;
-          let startRows = [];
-          let endRows = [];
+          let startRows: Row[] = [];
+          let endRows: Row[] = [];
           if (startDate != null && endDate != null && startDate !== endDate) {
             const rows = await sql`
             SELECT netuid, snapshot_date::text AS snapshot_date, COUNT(*) AS neuron_count,
@@ -8873,7 +8963,7 @@ export default {
             ${netuid != null ? sql`AND netuid = ${netuid}` : sql``}
             ${from ? sql`AND day >= ${from}` : sql``}
             ${to ? sql`AND day <= ${to}` : sql``}
-            ${useCursor ? sql`AND (day, netuid) < (${cursorDay}::date, ${cur[1]})` : sql``}
+            ${useCursor && cur ? sql`AND (day, netuid) < (${cursorDay}::date, ${cur[1]})` : sql``}
           ORDER BY day DESC, netuid DESC
           LIMIT ${limit}
           ${!useCursor ? sql`OFFSET ${offset}` : sql``}`;
@@ -8912,7 +9002,7 @@ export default {
         } catch (err) {
           if (
             attempt >= MAX_CONNECTION_RETRY_ATTEMPTS ||
-            !RETRYABLE_CONNECTION_ERROR_CODES.has(err?.code)
+            !RETRYABLE_CONNECTION_ERROR_CODES.has((err as Row | null)?.code)
           )
             throw err;
           activeSql = postgres(
