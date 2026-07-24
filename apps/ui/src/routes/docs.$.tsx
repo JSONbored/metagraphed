@@ -1,24 +1,9 @@
-import { Suspense } from "react";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useFumadocsLoader } from "fumadocs-core/source/client";
-import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-  ViewOptionsPopover,
-} from "fumadocs-ui/layouts/docs/page";
-import { RootProvider } from "fumadocs-ui/provider/tanstack";
-import { TimeAgo } from "@jsonbored/ui-kit";
-import browserCollections from "collections/browser";
-import { AppShell } from "@/components/metagraphed/app-shell";
-import { getMDXComponents } from "@/components/metagraphed/mdx";
-import { baseOptions } from "@/lib/docs-layout-shared";
 import { docsSource } from "@/lib/docs-source";
 import { openapi } from "@/lib/openapi-source";
-import { OpenAPIPreloadProvider, type OpenAPIPreloaded } from "@/lib/openapi-preload-context";
+import type { OpenAPIPreloaded } from "@/lib/openapi-preload-context";
+import { DocsSplatPage } from "./-docs-splat-page";
 
 // RootProvider is scoped locally to this route rather than __root.tsx. The
 // app has no single shared provider tree -- __root.tsx's RootComponent only
@@ -31,7 +16,7 @@ import { OpenAPIPreloadProvider, type OpenAPIPreloaded } from "@/lib/openapi-pre
 // as every other route) so docs pages keep the real site header/footer;
 // only the content area between them is Fumadocs' sidebar+TOC shell.
 export const Route = createFileRoute("/docs/$")({
-  component: Page,
+  component: DocsSplatPage,
   // Deliberately does NOT call clientLoader.preload() here. TanStack
   // Router's automatic code-splitting only extracts the `component` field
   // into its own lazy chunk (?tsr-split=component) -- any OTHER route-config
@@ -43,7 +28,10 @@ export const Route = createFileRoute("/docs/$")({
   // callback; referencing it from loader was pulling all of fumadocs-ui into
   // every page's initial load. Suspense inside the (already-lazy) component
   // still covers the loading state without it -- this only forgoes starting
-  // the content fetch a beat earlier during route transition.
+  // the content fetch a beat earlier during route transition. clientLoader
+  // itself now lives in -docs-splat-page.tsx alongside DocsSplatPage (its
+  // only consumer, #7850) -- same split chunk either way, since what matters
+  // is the `component:` field boundary, not which physical file defines it.
   loader: async ({ params }) => {
     const slugs = params._splat?.split("/") ?? [];
     return serverLoader({ data: slugs });
@@ -98,80 +86,3 @@ const serverLoader = createServerFn({ method: "GET" })
       preloaded,
     };
   });
-
-const clientLoader = browserCollections.docs.createClientLoader<{ markdownUrl: string }>({
-  component({ toc, frontmatter, default: MDX, lastModified }, { markdownUrl }) {
-    return (
-      <DocsPage toc={toc}>
-        <DocsTitle>{frontmatter.title}</DocsTitle>
-        <DocsDescription>{frontmatter.description}</DocsDescription>
-        {/* Anchored to "Last updated," not the title -- floating this next
-            to a (potentially multi-line, especially on mobile) H1 read as
-            misplaced. Metadata + page actions belong in the same row. */}
-        <div className="flex items-center justify-between gap-4">
-          {/* lastModified comes from local `git log` at build/dev-compile
-              time (source.config.ts's docs.lastModified: true), not a live
-              GitHub API call -- this app deploys to a Cloudflare Worker with
-              no .git directory at runtime, so a runtime call would need its
-              own caching/token and could rate-limit. Baked in at compile
-              time instead, same as frontmatter/toc already are. */}
-          {lastModified ? (
-            <p className="mg-type-caption text-ink-muted">
-              Last updated <TimeAgo at={lastModified.toISOString()} />
-            </p>
-          ) : (
-            <span />
-          )}
-          {/* Fumadocs' own page-actions component (fumadocs.dev/docs/integrations/llms#page-actions)
-              -- Copy Page / View as Markdown / Open in ChatGPT, Claude, Cursor,
-              Scira AI. markdownUrl points at docs.raw.$.ts, a real per-page
-              route -- a client-built data: URI doesn't work here: Chrome
-              silently blocks target="_blank" navigation to data: URLs, which
-              breaks the popover's "View as Markdown" link (a plain <a href>)
-              even though its "Copy" action (fetch-based) would've been fine
-              with one. The "Open in ChatGPT/Claude/..." items don't use
-              markdownUrl at all -- they send the *page's own* URL for that
-              service to fetch itself. */}
-          <ViewOptionsPopover markdownUrl={markdownUrl} />
-        </div>
-        <DocsBody>
-          {/* getMDXComponents, not the useMDXComponents alias -- this
-              `component` callback is a plain object method (fumadocs'
-              createClientLoader API contract fixes that name), so
-              eslint-plugin-react-hooks doesn't recognize it as a component
-              and flags a `use*`-prefixed call inside it as a hooks-rules
-              violation. Same function underneath; this alias just doesn't
-              trip the naming heuristic. */}
-          <MDX components={getMDXComponents()} />
-        </DocsBody>
-      </DocsPage>
-    );
-  },
-});
-
-function Page() {
-  const data = useFumadocsLoader(Route.useLoaderData());
-  // Same splat docsSource.getPage() already resolved this page from --
-  // docs.raw.$.ts re-resolves it the same way, so this always points at a
-  // real page.
-  const { _splat } = Route.useParams();
-  const markdownUrl = `/docs/raw/${_splat ?? ""}`;
-
-  return (
-    // theme.enabled: false -- the app already manages the .dark class itself
-    // (a pre-hydration bootstrap script in lib/theme.ts, synced to the
-    // SettingsPopover toggle). Fumadocs' CSS reads that same ambient .dark
-    // class regardless of who set it; running next-themes here too would
-    // just be a second, independent theme manager that could drift out of
-    // sync with the app's real state instead of following it.
-    <RootProvider theme={{ enabled: false }}>
-      <AppShell fullBleedMain>
-        <DocsLayout {...baseOptions()} tree={data.pageTree}>
-          <OpenAPIPreloadProvider value={data.preloaded}>
-            <Suspense>{clientLoader.useContent(data.path, { markdownUrl })}</Suspense>
-          </OpenAPIPreloadProvider>
-        </DocsLayout>
-      </AppShell>
-    </RootProvider>
-  );
-}
