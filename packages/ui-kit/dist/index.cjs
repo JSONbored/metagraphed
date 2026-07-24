@@ -4407,12 +4407,13 @@ function SectionLabel({
     }
   );
 }
-var TONE_CLASSES3 = {
-  default: "border-border bg-card",
-  accent: "border-accent/40 bg-primary-soft",
-  warn: "border-health-warn/40 bg-health-warn/5",
-  down: "border-health-down/40 bg-health-down/5",
-  muted: "border-border bg-surface-2"
+var TONE_STYLES = {
+  default: { border: "border-border", bg: "bg-card" },
+  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
+  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
+  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
+  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
+  muted: { border: "border-border", bg: "bg-surface-2" }
 };
 function Panel({
   title,
@@ -4422,21 +4423,28 @@ function Panel({
   flush,
   interactive,
   tone = "default",
+  tintBorderOnly,
+  glow,
   as,
   className,
   bodyClassName,
-  children
+  children,
+  ...rest
 }) {
   const Cmp = as ?? "section";
   const hasHeader = title != null || action != null || caption != null;
   const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
+  const toneStyle = TONE_STYLES[tone];
   return /* @__PURE__ */ jsxRuntime.jsxs(
     Cmp,
     {
+      ...rest,
       className: classNames(
         "rounded border",
-        TONE_CLASSES3[tone],
+        toneStyle.border,
+        tintBorderOnly ? "bg-card" : toneStyle.bg,
         interactive ? "mg-hover-lift" : null,
+        glow ? tone === "accent" ? "mg-card-glow-accent" : "mg-card-glow" : null,
         className
       ),
       children: [

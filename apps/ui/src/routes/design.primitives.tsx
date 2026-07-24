@@ -187,6 +187,30 @@ function PrimitivesPreview() {
               evidenceHref="https://github.com/JSONbored/metagraphed"
             />
           </Panel>
+          {/* #7848: ok tone + tintBorderOnly + glow + rest-prop forwarding. */}
+          <Panel
+            title="Ok tone"
+            tone="ok"
+            id="design-primitives-ok-tone-panel"
+            aria-label="Healthy status summary"
+          >
+            <StatusBadge status="ok" live />
+            <p className="mt-2 mg-type-caption text-ink-muted">
+              tone="ok" — tinted border + background. id/aria-label above land on the outer element
+              via rest-prop forwarding.
+            </p>
+          </Panel>
+          <Panel title="Border-only tint" tone="warn" tintBorderOnly>
+            <p className="mg-type-caption text-ink-muted">
+              tintBorderOnly keeps the warn border but skips the tinted fill — bg-card instead.
+            </p>
+          </Panel>
+          <Panel title="Glow" glow>
+            <p className="mg-type-caption text-ink-muted">
+              glow appends the existing --mg-card-glow soft-elevation shadow (accent tone picks
+              --mg-card-glow-accent automatically).
+            </p>
+          </Panel>
         </div>
       </Section>
 
