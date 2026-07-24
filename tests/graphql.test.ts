@@ -8182,7 +8182,48 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.equal(body.data.search_index.documents.length, 1);
     // The slim index drops the per-document token blob the full index keeps.
     assert.equal(body.data.search_index.documents[0].tokens, undefined);
-    assert.ok(body.data.search_index.next_cursor);
+    // next_cursor is an integer offset (1) from loadSearchIndexList (#7877)
+    assert.equal(body.data.search_index.next_cursor, 1);
+  });
+
+  test("search_index q filter narrows documents by keyword (#7877)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/search-index.json": {
+        documents: [
+          { id: "subnet:1", type: "subnet", title: "Alpha network" },
+          { id: "subnet:2", type: "subnet", title: "Beta protocol" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ search_index(q: "Alpha") { documents total returned } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.search_index.total, 1);
+    assert.equal(body.data.search_index.returned, 1);
+    assert.equal(body.data.search_index.documents[0].id, "subnet:1");
+  });
+
+  test("search_index type and netuid filters combine with AND semantics (#7877)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/search-index.json": {
+        documents: [
+          { id: "subnet:1", type: "subnet", netuid: 1, title: "Alpha" },
+          { id: "subnet:2", type: "subnet", netuid: 2, title: "Beta" },
+          { id: "provider:datura", type: "provider", title: "Datura" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ search_index(type: "subnet", netuid: 1) { documents total returned } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.search_index.total, 1);
+    assert.equal(body.data.search_index.documents[0].id, "subnet:1");
   });
 
   test("search degrades to an empty page on a cold artifact", async () => {
