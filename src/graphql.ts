@@ -3587,17 +3587,68 @@ const rootValue = {
     };
   },
 
-  async subnet_gaps({ netuid }: Row, context: GqlContext) {
+  async subnet_gaps(args: Row, context: GqlContext) {
+    const { netuid } = args;
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
     // Same baked review-gaps artifact the REST route + get_subnet_gaps MCP tool
-    // read. The MCP tool raises not_found for a netuid with no report; GraphQL
-    // degrades to null instead, matching how every other artifact-backed
-    // resolver here treats a cold/absent artifact.
-    return loadArtifact(context, `/metagraph/review/gaps/${netuid}.json`);
+    // read; null when no report has been baked, matching how every other
+    // artifact-backed resolver here treats a cold/absent artifact.
+    const report = (await loadArtifact(
+      context,
+      `/metagraph/review/gaps/${netuid}.json`,
+    )) as Row | null;
+    if (!report) return null;
+    // #7880: apply the same list query GET /api/v1/subnets/{netuid}/gaps runs
+    // over the report's priorities (csvListQuery("review-gap-priorities", {
+    // exclude: ["netuid"] })) -- curation_level/missing_kinds/review_state
+    // filters plus sort/order, fields projection, and limit/cursor paging.
+    // applyQueryFilters is the same helper the REST pipeline and
+    // list_subnet_gaps (#7900) run on, so the allowlists cannot drift.
+    //
+    // The whole report is returned, with only `priorities` filtered -- the
+    // envelope also carries `enrichment_queue`, which list_subnet_gaps' own
+    // narrower result drops, and existing consumers still read it.
+    const queryUrl = new URL("https://graphql.internal/subnets/gaps");
+    for (const [name, value] of [
+      ["curation_level", args?.curation_level],
+      ["missing_kinds", args?.missing_kinds],
+      ["review_state", args?.review_state],
+      ["sort", args?.sort],
+      ["order", args?.order],
+      ["fields", args?.fields],
+      ["limit", args?.limit],
+      ["cursor", args?.cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
+    }
+    const transformed = applyQueryFilters(
+      report,
+      queryUrl,
+      "review-gap-priorities",
+      ["curation_level", "missing_kinds", "review_state"],
+    );
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const data = transformed.data as Row;
+    const page = ((transformed.meta as Row)?.pagination ?? {}) as Row;
+    const priorities = Array.isArray(data.priorities) ? data.priorities : [];
+    return {
+      ...data,
+      total: page.total ?? priorities.length,
+      returned: page.returned ?? priorities.length,
+      limit: page.limit ?? priorities.length,
+      cursor: page.cursor ?? 0,
+      next_cursor: page.next_cursor ?? null,
+      sort: page.sort ?? null,
+      order: page.order ?? null,
+    };
   },
 
   async subnet_evidence(args: Row, context: GqlContext) {

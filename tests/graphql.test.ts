@@ -9873,6 +9873,102 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
     assert.equal(body.data.subnet_gaps.gaps[0].kind, "api");
   });
 
+  test("subnet_gaps filters, sorts and pages priorities like the REST route (#7880)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/review/gaps/7.json": {
+        netuid: 7,
+        enrichment_queue: [{ netuid: 7, reason: "no-verified-api" }],
+        priorities: [
+          {
+            netuid: 7,
+            name: "beta",
+            curation_level: "native",
+            missing_kinds: "docs",
+            review_state: "open",
+            priority_score: 9,
+          },
+          {
+            netuid: 7,
+            name: "alpha",
+            curation_level: "community-seeded",
+            missing_kinds: "docs",
+            review_state: "open",
+            priority_score: 4,
+          },
+          {
+            netuid: 7,
+            name: "gamma",
+            curation_level: "community-seeded",
+            missing_kinds: "sdk",
+            review_state: "closed",
+            priority_score: 1,
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ subnet_gaps(netuid: 7, curation_level: "community-seeded", missing_kinds: "docs", review_state: "open", sort: "priority_score", order: "desc", fields: "name,priority_score", limit: 1, cursor: 0) }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const report = body.data.subnet_gaps;
+    assert.deepEqual(report.priorities, [{ name: "alpha", priority_score: 4 }]);
+    assert.equal(report.total, 1);
+    assert.equal(report.returned, 1);
+    assert.equal(report.limit, 1);
+    assert.equal(report.cursor, 0);
+    assert.equal(report.next_cursor, null);
+    assert.equal(report.sort, "priority_score");
+    assert.equal(report.order, "desc");
+    // The rest of the envelope survives the list pass -- enrichment_queue is
+    // part of this artifact and existing consumers still read it.
+    assert.equal(report.netuid, 7);
+    assert.equal(report.enrichment_queue[0].reason, "no-verified-api");
+  });
+
+  test("subnet_gaps rejects an unsupported filter value with BAD_USER_INPUT (#7880)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/review/gaps/7.json": {
+        netuid: 7,
+        priorities: [{ netuid: 7, curation_level: "native" }],
+      },
+    });
+    const { status, body } = await gql(
+      '{ subnet_gaps(netuid: 7, curation_level: "not-a-level") }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnet_gaps, null);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("subnet_gaps paging reports the next cursor when a page is truncated (#7880)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/review/gaps/7.json": {
+        netuid: 7,
+        priorities: [
+          { netuid: 7, name: "a", priority_score: 3 },
+          { netuid: 7, name: "b", priority_score: 2 },
+          { netuid: 7, name: "c", priority_score: 1 },
+        ],
+      },
+    });
+    const { body } = await gql(
+      '{ subnet_gaps(netuid: 7, sort: "name", order: "asc", limit: 2) }',
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    const report = body.data.subnet_gaps;
+    assert.deepEqual(
+      report.priorities.map((row: Row) => row.name),
+      ["a", "b"],
+    );
+    assert.equal(report.total, 3);
+    assert.equal(report.returned, 2);
+    assert.equal(report.next_cursor, 2);
+  });
+
   test("subnet_gaps degrades to null when no report is baked, never an error", async () => {
     const { status, body } = await gql("{ subnet_gaps(netuid: 999) }");
     assert.equal(status, 200);

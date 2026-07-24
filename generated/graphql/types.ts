@@ -2624,7 +2624,7 @@ export type Query = {
   subnet_events: SubnetEvents;
   /** One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Search with q across subject, claim, source_url, and support_summary; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does — an unsupported sort/limit/cursor is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the claims rows. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/evidence. */
   subnet_evidence?: Maybe<Scalars['JSON']['output']>;
-  /** One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_gaps MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/gaps. */
+  /** One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Filter with curation_level, missing_kinds, and review_state; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does -- an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the priorities rows. Mirrors GET /api/v1/subnets/{netuid}/gaps. */
   subnet_gaps?: Maybe<Scalars['JSON']['output']>;
   /** One subnet's current live operational-health card: the per-surface status/latency/last-ok rows from the latest ~15-minute cron probe (summarized into ok/degraded/failed/unknown counts) plus the cross-window reliability score. The at-a-glance base card completing the health family whose windowed views are subnet_health_trends/subnet_health_incidents/subnet_health_percentiles. A subnet with no live health data resolves to the same schema-stable unknown card (summary.status of unknown, empty surfaces), never null. Filter with kind, provider, status, and classification; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does -- an unsupported value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST reports (total, returned, limit, cursor, next_cursor, sort, order) alongside the surfaces. Opaque JSON otherwise matching the get_subnet_health MCP/REST shape (the existing typed SubnetHealth is the flat health-list item, a different shape, so this base card is JSON like the sibling surfaces payloads). Mirrors GET /api/v1/subnets/{netuid}/health. */
   subnet_health?: Maybe<Scalars['JSON']['output']>;
@@ -3581,7 +3581,15 @@ export type QuerySubnet_EvidenceArgs = {
 
 
 export type QuerySubnet_GapsArgs = {
+  curation_level?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  missing_kinds?: InputMaybe<Scalars['String']['input']>;
   netuid: Scalars['Int']['input'];
+  order?: InputMaybe<Scalars['String']['input']>;
+  review_state?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
