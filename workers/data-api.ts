@@ -540,9 +540,75 @@ import {
   verifySessionToken,
   verifyWalletChallenge,
 } from "../src/wallet-auth.ts";
+import type Neurons from "../generated/db/public/Neurons.ts";
+import type NeuronDaily from "../generated/db/public/NeuronDaily.ts";
+import type AccountEvents from "../generated/db/public/AccountEvents.ts";
+import type Extrinsics from "../generated/db/public/Extrinsics.ts";
+import type Blocks from "../generated/db/public/Blocks.ts";
+import type SubnetSnapshots from "../generated/db/public/SubnetSnapshots.ts";
+import type SurfaceStatus from "../generated/db/public/SurfaceStatus.ts";
+import type SurfaceChecks from "../generated/db/public/SurfaceChecks.ts";
+import type SubnetLocks from "../generated/db/public/SubnetLocks.ts";
+import type SubnetHyperparams from "../generated/db/public/SubnetHyperparams.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
+
+// Matches EXTRINSIC_READ_COLUMNS (src/extrinsics.ts) -- the exact column
+// list repeated across every extrinsics read below. call_args is JSONB in
+// the generated type but every one of these queries casts it `::text` for
+// formatExtrinsic's JSON.parse convention (see this file's own header), so
+// the shared type overrides it rather than each call site repeating that.
+type ExtrinsicReadRow = Pick<
+  Extrinsics,
+  | "block_number"
+  | "extrinsic_index"
+  | "extrinsic_hash"
+  | "signer"
+  | "call_module"
+  | "call_function"
+  | "success"
+  | "fee_tao"
+  | "tip_tao"
+  | "observed_at"
+> & { call_args: string | null };
+
+// MIN/MAX(snapshot_date)::text bounds -- repeated across the turnover/movers
+// window-boundary queries below.
+type SnapshotBoundsRow = { start_date: string | null; end_date: string | null };
+
+// Matches NEURON_COLUMNS (src/metagraph-neurons.ts) -- the per-UID metagraph
+// column list, repeated across the metagraph/neuron-detail/validators routes.
+// netuid is already known from the route's own WHERE clause in most of
+// these, so it's omitted from the SELECT list (and this type).
+type NeuronMetagraphRow = Omit<Neurons, "netuid">;
+
+// The full account_events row shape (all 11 columns), repeated across the
+// event-feed/detail routes below. `Pick<T, keyof T>` (not `T` directly)
+// because a plain interface reference isn't assignable to the
+// Record<string, unknown>-typed formatter params these results flow into --
+// see this file's other generated-type Pick<T, keyof T> uses for why.
+type AccountEventReadRow = Pick<AccountEvents, keyof AccountEvents>;
+
+// COUNT(*) weight_sets + COUNT(DISTINCT ...) distinct_setters + MAX(observed_at)
+// newest_observed -- the weight-setters totals shape repeated across the
+// subnet/chain weights routes below.
+type WeightSettersTotalsRow = {
+  weight_sets: string;
+  distinct_setters: string;
+  newest_observed: AccountEvents["observed_at"] | null;
+};
+
+// The per-setter leaderboard row shape (subnet + chain weight-setters routes
+// share it verbatim).
+type WeightSetterRow = {
+  hotkey: string | null;
+  netuid: AccountEvents["netuid"];
+  uid: AccountEvents["uid"];
+  weight_sets: string;
+  first_set: AccountEvents["observed_at"] | null;
+  last_set: AccountEvents["observed_at"] | null;
+};
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -2418,7 +2484,7 @@ async function handleSubnetIdentitySync(request: Request, env: Env) {
         const latestByNetuid = new Map(
           latest.map((row) => [Number(row.netuid), row.identity_hash]),
         );
-        const [blockRow] = await sql`
+        const [blockRow] = await sql<{ block_number: string | null }[]>`
         SELECT MAX(block_number) AS block_number FROM blocks`;
         const blockNumber =
           blockRow?.block_number == null ? null : Number(blockRow.block_number);
@@ -3271,7 +3337,9 @@ async function loadSubnetTempos(sql: postgres.TransactionSql, env: Env) {
   try {
     const rows = await sql.savepoint(
       (sql: postgres.TransactionSql) =>
-        sql`SELECT netuid, tempo FROM subnet_hyperparams`,
+        sql<
+          Pick<SubnetHyperparams, "netuid" | "tempo">[]
+        >`SELECT netuid, tempo FROM subnet_hyperparams`,
     );
     return buildTempoByNetuid(rows);
   } catch (err) {
@@ -3312,8 +3380,12 @@ async function loadRealizedStakeBaselines(
           const cutoff = new Date(Date.now() - days * ANALYTICS_DAY_MS)
             .toISOString()
             .slice(0, 10);
+          type BaselineRow = {
+            hotkey: NeuronDaily["hotkey"];
+            baseline_stake_tao: string | null;
+          };
           return hotkey
-            ? sql`
+            ? sql<BaselineRow[]>`
             WITH daily AS (
               SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
               FROM neuron_daily
@@ -3323,7 +3395,7 @@ async function loadRealizedStakeBaselines(
             )
             SELECT DISTINCT ON (hotkey) hotkey, stake_tao AS baseline_stake_tao
             FROM daily ORDER BY hotkey, snapshot_date DESC`
-            : sql`
+            : sql<BaselineRow[]>`
             WITH daily AS (
               SELECT hotkey, snapshot_date, SUM(stake_tao) AS stake_tao
               FROM neuron_daily
@@ -3373,7 +3445,9 @@ async function loadSubnetImmunityPeriod(
   try {
     const rows = await sql.savepoint(
       (sql: postgres.TransactionSql) =>
-        sql`SELECT immunity_period FROM subnet_hyperparams WHERE netuid = ${netuid} LIMIT 1`,
+        sql<
+          Pick<SubnetHyperparams, "immunity_period">[]
+        >`SELECT immunity_period FROM subnet_hyperparams WHERE netuid = ${netuid} LIMIT 1`,
     );
     const value = rows[0]?.immunity_period;
     if (value == null) return null;
@@ -3506,8 +3580,12 @@ async function resolveBlockNumberPg(sql: postgres.TransactionSql, ref: string) {
   const blockNumber = isHash ? null : Number(ref);
   if (!isHash && !Number.isSafeInteger(blockNumber)) return null;
   const rows = isHash
-    ? await sql`SELECT block_number FROM blocks WHERE block_hash = ${ref.toLowerCase()} LIMIT 1`
-    : await sql`SELECT block_number FROM blocks WHERE block_number = ${blockNumber} LIMIT 1`;
+    ? await sql<
+        Pick<Blocks, "block_number">[]
+      >`SELECT block_number FROM blocks WHERE block_hash = ${ref.toLowerCase()} LIMIT 1`
+    : await sql<
+        Pick<Blocks, "block_number">[]
+      >`SELECT block_number FROM blocks WHERE block_number = ${blockNumber} LIMIT 1`;
   return numberOrNull(rows[0]?.block_number);
 }
 
@@ -3970,35 +4048,59 @@ async function handleDeregRiskSnapshot(request: Request, env: Env) {
   return withAlertTriggersSql(env, async (sql: postgres.Sql) => {
     const [[block], hyperparamsRows, immuneNeurons, subnetRows] =
       await Promise.all([
-        sql`SELECT MAX(block_number) AS block_number FROM blocks`,
-        sql`SELECT netuid, immunity_period FROM subnet_hyperparams`,
-        sql`SELECT netuid, hotkey, registered_at_block FROM neurons
+        sql<
+          { block_number: Blocks["block_number"] | null }[]
+        >`SELECT MAX(block_number) AS block_number FROM blocks`,
+        sql<
+          Pick<SubnetHyperparams, "netuid" | "immunity_period">[]
+        >`SELECT netuid, immunity_period FROM subnet_hyperparams`,
+        sql<
+          Pick<Neurons, "netuid" | "hotkey" | "registered_at_block">[]
+        >`SELECT netuid, hotkey, registered_at_block FROM neurons
             WHERE is_immunity_period = TRUE AND hotkey IS NOT NULL
               AND registered_at_block IS NOT NULL`,
-        sql`SELECT DISTINCT ON (netuid) netuid, alpha_price_tao
+        sql<
+          Pick<SubnetSnapshots, "netuid" | "alpha_price_tao">[]
+        >`SELECT DISTINCT ON (netuid) netuid, alpha_price_tao
             FROM subnet_snapshots
             ORDER BY netuid, snapshot_date DESC`,
       ]);
-    const immunityPeriodByNetuid = new Map(
+    // Keyed on a plain number, not the branded SubnetHyperparamsNetuid --
+    // immuneNeurons rows carry the (structurally identical, nominally
+    // distinct) NeuronsNetuid brand, so the lookup below strips both to
+    // plain numbers rather than fighting Kanel's per-table branding across
+    // this cross-table join.
+    const immunityPeriodByNetuid = new Map<number, number>(
       hyperparamsRows
         .filter((row) => Number.isInteger(row.immunity_period))
-        .map((row) => [row.netuid, row.immunity_period]),
+        .map((row) => [Number(row.netuid), row.immunity_period as number]),
     );
     const immuneNeuronsWithExpiry = immuneNeurons
       .map((row) => {
-        const immunityPeriod = immunityPeriodByNetuid.get(row.netuid);
-        if (!Number.isInteger(immunityPeriod)) return null;
+        const immunityPeriod = immunityPeriodByNetuid.get(Number(row.netuid));
+        if (immunityPeriod == null || !Number.isInteger(immunityPeriod)) {
+          return null;
+        }
+        // registered_at_block is BIGINT -> postgres.js returns it as a
+        // string; the WHERE clause above already excludes NULLs, but the
+        // generated type is schema-wide (doesn't know that), so this still
+        // narrows explicitly rather than trusting the query's own filter.
+        if (row.registered_at_block == null) return null;
         return {
           netuid: row.netuid,
           hotkey: row.hotkey,
-          immunity_expires_at_block: row.registered_at_block + immunityPeriod,
+          immunity_expires_at_block:
+            Number(row.registered_at_block) + immunityPeriod,
         };
       })
       .filter(Boolean);
     return writeJson({
-      current_block: Number.isInteger(block?.block_number)
-        ? block.block_number
-        : null,
+      // block_number is BIGINT (string over the wire) -- Number.isInteger()
+      // on a string is always false, which silently made current_block
+      // always null in production despite Number(x) coercing correctly
+      // when there's a real value.
+      current_block:
+        block?.block_number != null ? Number(block.block_number) : null,
       subnets: subnetRows.map((row) => ({
         netuid: row.netuid,
         alpha_price_tao:
@@ -4823,7 +4925,7 @@ export default {
             url.searchParams,
             "min_events",
           );
-          const rows = await sql`
+          const rows = await sql<Pick<Blocks, keyof Blocks>[]>`
           SELECT block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at
           FROM blocks
           WHERE TRUE
@@ -4856,7 +4958,17 @@ export default {
         // with observed_at (the hypertable's partition column) for the same
         // chunk-exclusion reason as the /api/v1/extrinsics list route above.
         if (url.pathname === "/api/v1/blocks/summary") {
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Blocks,
+              | "block_number"
+              | "author"
+              | "extrinsic_count"
+              | "event_count"
+              | "spec_version"
+              | "observed_at"
+            >[]
+          >`
           SELECT block_number, author, extrinsic_count, event_count, spec_version, observed_at
           FROM blocks ORDER BY observed_at DESC, block_number DESC LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`;
           return json(buildBlocksSummary(rows));
@@ -4878,17 +4990,19 @@ export default {
             return json(buildBlock(undefined, ref));
           }
           const rows = isHash
-            ? await sql`
+            ? await sql<Pick<Blocks, keyof Blocks>[]>`
               SELECT block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at
               FROM blocks WHERE block_hash = ${ref.toLowerCase()} LIMIT 1`
-            : await sql`
+            : await sql<Pick<Blocks, keyof Blocks>[]>`
               SELECT block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at
               FROM blocks WHERE block_number = ${blockNumber} LIMIT 1`;
           let prev = null;
           let next = null;
           const resolvedNumber = numberOrNull(rows[0]?.block_number);
           if (resolvedNumber != null) {
-            const nbr = await sql`
+            const nbr = await sql<
+              { prev: string | null; next: string | null }[]
+            >`
             SELECT
               (SELECT MAX(block_number) FROM blocks WHERE block_number < ${resolvedNumber}) AS prev,
               (SELECT MIN(block_number) FROM blocks WHERE block_number > ${resolvedNumber}) AS next`;
@@ -4913,7 +5027,7 @@ export default {
           const rows =
             blockNumber == null
               ? []
-              : await sql`
+              : await sql<ExtrinsicReadRow[]>`
               SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
               FROM extrinsics WHERE block_number = ${blockNumber}
               ORDER BY extrinsic_index ASC LIMIT ${limit} OFFSET ${offset}`;
@@ -4939,7 +5053,7 @@ export default {
           const rows =
             blockNumber == null
               ? []
-              : await sql`
+              : await sql<AccountEventReadRow[]>`
               SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
               FROM account_events WHERE block_number = ${blockNumber}
               ORDER BY event_index ASC LIMIT ${limit} OFFSET ${offset}`;
@@ -5001,7 +5115,7 @@ export default {
           );
           const from = nonNegativeIntegerParam(url.searchParams, "from");
           const to = nonNegativeIntegerParam(url.searchParams, "to");
-          const rows = await sql`
+          const rows = await sql<ExtrinsicReadRow[]>`
           SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
           FROM extrinsics
           WHERE TRUE
@@ -5065,7 +5179,7 @@ export default {
           );
           const from = nonNegativeIntegerParam(url.searchParams, "from");
           const to = nonNegativeIntegerParam(url.searchParams, "to");
-          const rows = await sql`
+          const rows = await sql<ExtrinsicReadRow[]>`
           SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
           FROM extrinsics
           WHERE call_module = ${callModule}
@@ -5096,11 +5210,16 @@ export default {
         // aggregate reads (GROUP BY's earliest-block-per-version, then the
         // truly-latest reading), no filters/pagination.
         if (url.pathname === "/api/v1/runtime") {
-          const rows = await sql`
+          const rows = await sql<
+            (Pick<Blocks, "spec_version"> & {
+              block_number: string;
+              observed_at: string;
+            })[]
+          >`
           SELECT spec_version, MIN(block_number) AS block_number, MIN(observed_at) AS observed_at
           FROM blocks WHERE spec_version IS NOT NULL
           GROUP BY spec_version ORDER BY block_number ASC`;
-          const latestRows = await sql`
+          const latestRows = await sql<Pick<Blocks, "spec_version">[]>`
           SELECT spec_version FROM blocks WHERE spec_version IS NOT NULL
           ORDER BY block_number DESC LIMIT 1`;
           return json(buildRuntimeVersionHistory(rows, latestRows[0] ?? null));
@@ -5124,7 +5243,7 @@ export default {
             // Parallel Append + Sort across every chunk (no chunk
             // exclusion), which measured well past this route's 3000ms
             // statement_timeout in production.
-            rows = await sql`
+            rows = await sql<ExtrinsicReadRow[]>`
             SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
             FROM extrinsics WHERE extrinsic_hash = ${ref.toLowerCase()}
             ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT 1`;
@@ -5136,7 +5255,7 @@ export default {
               composite &&
               Number.isSafeInteger(blockNumber) &&
               Number.isSafeInteger(extrinsicIndex)
-                ? await sql`
+                ? await sql<ExtrinsicReadRow[]>`
                   SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
                   FROM extrinsics WHERE block_number = ${blockNumber} AND extrinsic_index = ${extrinsicIndex} LIMIT 1`
                 : [];
@@ -5146,7 +5265,7 @@ export default {
           const resolvedBlock = numberOrNull(resolved?.block_number);
           const resolvedIndex = numberOrNull(resolved?.extrinsic_index);
           if (resolvedBlock != null && resolvedIndex != null) {
-            const eventRows = await sql`
+            const eventRows = await sql<AccountEventReadRow[]>`
             SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
             FROM account_events
             WHERE block_number = ${resolvedBlock} AND extrinsic_index = ${resolvedIndex}
@@ -5178,7 +5297,17 @@ export default {
             limitRaw == null || limitRaw === ""
               ? TOP_HOLDERS_LIMIT_DEFAULT
               : Number(limitRaw);
-          const rows = await sql`
+          const rows = await sql<
+            {
+              ss58: string;
+              free_tao: string;
+              delegated_tao: string;
+              net_flow_7d: string;
+              net_flow_30d: string;
+              net_flow_90d: string;
+              captured_at: string | null;
+            }[]
+          >`
           SELECT
             COALESCE(b.ss58, d.coldkey) AS ss58,
             COALESCE(b.free_tao, 0) AS free_tao,
@@ -5239,11 +5368,11 @@ export default {
           // already re-derives the true block_number/event_index order
           // afterward, so which order SQL fetches the top CAP+1 rows in
           // doesn't change the final output (METAGRAPHED-6-class fix).
-          const hotkeyScanRows = await sql`
+          const hotkeyScanRows = await sql<AccountEventReadRow[]>`
           SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
           FROM account_events WHERE hotkey = ${ss58}
           ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
-          const coldkeyScanRows = await sql`
+          const coldkeyScanRows = await sql<AccountEventReadRow[]>`
           SELECT block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index
           FROM account_events WHERE coldkey = ${ss58} AND (hotkey IS NULL OR hotkey <> ${ss58})
           ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
@@ -5263,7 +5392,12 @@ export default {
               return Number(b.event_index) - Number(a.event_index);
             })
             .slice(0, ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1);
-          const regRows = await sql`
+          const regRows = await sql<
+            Pick<
+              Neurons,
+              "netuid" | "uid" | "stake_tao" | "validator_permit" | "active"
+            >[]
+          >`
           SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
           WHERE hotkey = ${ss58} ORDER BY stake_tao DESC, netuid ASC`;
           // Both subqueries lead ORDER BY with observed_at (same chunk-
@@ -5271,10 +5405,19 @@ export default {
           // extrinsics before aggregating, so which 1000 rows SQL fetches
           // is what matters, not their fetch order (the outer aggregates
           // don't care about row order at all).
-          const activityRows = await sql`
+          const activityRows = await sql<
+            {
+              tx_count: string;
+              last_tx_block: string | null;
+              last_tx_at: string | null;
+              total_fee_tao: string | null;
+            }[]
+          >`
           SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao
           FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ${ss58} ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT 1000) sub`;
-          const moduleRows = await sql`
+          const moduleRows = await sql<
+            (Pick<Extrinsics, "call_module"> & { count: string })[]
+          >`
           SELECT call_module, COUNT(*) AS count FROM (
             SELECT call_module FROM extrinsics WHERE signer = ${ss58}
             ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC LIMIT 1000
@@ -5327,7 +5470,12 @@ export default {
         );
         if (acctSubnets) {
           const ss58 = decodeURIComponent(acctSubnets[1]);
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              "netuid" | "uid" | "stake_tao" | "validator_permit" | "active"
+            >[]
+          >`
           SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
           WHERE hotkey = ${ss58} ORDER BY netuid`;
           return json(buildAccountSubnets(rows, ss58));
@@ -5401,7 +5549,7 @@ export default {
           // nothing more to find, rather than raising the global 3s default
           // for every other (much lighter) route in this dispatcher.
           await sql`SET LOCAL statement_timeout = '10000ms'`;
-          const hotkeyRows = await sql`
+          const hotkeyRows = await sql<AccountEventReadRow[]>`
           SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
           FROM account_events
           WHERE hotkey = ${ss58}
@@ -5412,7 +5560,7 @@ export default {
             ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
           ORDER BY observed_at DESC, block_number DESC, event_index DESC
           LIMIT ${perBranchLimit}`;
-          const coldkeyRows = await sql`
+          const coldkeyRows = await sql<AccountEventReadRow[]>`
           SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
           FROM account_events
           WHERE coldkey = ${ss58} AND (hotkey IS NULL OR hotkey <> ${ss58})
@@ -5476,7 +5624,7 @@ export default {
             url.searchParams,
             "block_end",
           );
-          const rows = await sql`
+          const rows = await sql<AccountEventReadRow[]>`
           SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
           FROM account_events
           WHERE netuid = ${netuid}
@@ -5531,7 +5679,19 @@ export default {
             ),
             SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
           );
-          const kindRows = await sql`
+          const kindRows = await sql<
+            {
+              event_kind: AccountEvents["event_kind"];
+              event_count: string;
+              hotkey_count: string;
+              amount_tao: string;
+              alpha_amount: string;
+              first_block: AccountEvents["block_number"] | null;
+              last_block: AccountEvents["block_number"] | null;
+              first_observed_at: AccountEvents["observed_at"] | null;
+              last_observed_at: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT event_kind, COUNT(*) AS event_count,
             COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
                                  WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS hotkey_count,
@@ -5544,7 +5704,9 @@ export default {
           // account's column named once, comma-adjacent) rather than
           // COUNT(DISTINCT <col>) in the aggregate above -- same pattern as the
           // subnet stake-moves/stake-transfers routes' distinct-mover count.
-          const coldkeyRows = await sql`
+          const coldkeyRows = await sql<
+            { event_kind: AccountEvents["event_kind"]; coldkey_count: string }[]
+          >`
           SELECT event_kind, COUNT(*) AS coldkey_count FROM (
             SELECT coldkey, event_kind FROM account_events
             WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
@@ -5558,7 +5720,7 @@ export default {
             ...row,
             coldkey_count: coldkeyCountByKind.get(row.event_kind) ?? 0,
           }));
-          const recentRows = await sql`
+          const recentRows = await sql<AccountEventReadRow[]>`
           SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
           FROM account_events WHERE netuid = ${netuid} AND observed_at >= ${cutoff}
           ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`;
@@ -5600,7 +5762,7 @@ export default {
           const rows =
             blockStart != null && blockEnd != null && blockStart > blockEnd
               ? []
-              : await sql`
+              : await sql<ExtrinsicReadRow[]>`
               SELECT block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args::text AS call_args, success, fee_tao, tip_tao, observed_at
               FROM extrinsics
               WHERE signer = ${ss58}
@@ -5671,7 +5833,17 @@ export default {
               : sort === "last_activity"
                 ? sql`last_observed DESC, 1 ASC`
                 : sql`net_staked_tao DESC, 1 ASC`;
-          const rows = await sql`
+          const rows = await sql<
+            {
+              coldkey: AccountEvents["coldkey"];
+              staked_tao: string;
+              unstaked_tao: string;
+              event_count: string;
+              last_observed: AccountEvents["observed_at"] | null;
+              net_staked_tao: string;
+              gross_staked_tao: string;
+            }[]
+          >`
           SELECT coldkey,
             COALESCE(SUM(CASE WHEN event_kind = ${STAKE_ADDED_KIND} THEN amount_tao ELSE 0 END), 0) AS staked_tao,
             COALESCE(SUM(CASE WHEN event_kind = ${STAKE_REMOVED_KIND} THEN amount_tao ELSE 0 END), 0) AS unstaked_tao,
@@ -5710,7 +5882,14 @@ export default {
             ACCOUNT_WEIGHT_SETTERS_WINDOWS,
             DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<
+            {
+              netuid: AccountEvents["netuid"];
+              weight_sets: string;
+              first_observed: AccountEvents["observed_at"] | null;
+              last_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed,
                  MAX(observed_at) AS last_observed
           FROM (
@@ -5750,7 +5929,7 @@ export default {
             SUBNET_WEIGHTS_WINDOWS,
             DEFAULT_SUBNET_WEIGHTS_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<WeightSettersTotalsRow[]>`
           SELECT COUNT(*) AS weight_sets,
                  COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
                                       WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters,
@@ -5781,7 +5960,15 @@ export default {
         if (subnetVolume) {
           const netuid = Number(subnetVolume[1]);
           const cutoff = Date.now() - ANALYTICS_DAY_MS;
-          const rows = await sql`
+          const rows = await sql<
+            {
+              event_kind: AccountEvents["event_kind"];
+              alpha_volume: string;
+              tao_volume: string;
+              event_count: string;
+              last_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT event_kind, COALESCE(SUM(alpha_amount), 0) AS alpha_volume,
                  COALESCE(SUM(amount_tao), 0) AS tao_volume, COUNT(*) AS event_count,
                  MAX(observed_at) AS last_observed
@@ -5824,7 +6011,12 @@ export default {
             }
           }
           const cutoff = Date.now() - days * ANALYTICS_DAY_MS;
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              AccountEvents,
+              "event_kind" | "alpha_amount" | "amount_tao" | "observed_at"
+            >[]
+          >`
           SELECT event_kind, alpha_amount, amount_tao, observed_at
           FROM account_events
           WHERE netuid = ${netuid} AND event_kind IN (${STAKE_ADDED_KIND}, ${STAKE_REMOVED_KIND}) AND observed_at >= ${cutoff}
@@ -5904,7 +6096,12 @@ export default {
         );
         if (subnetLeaseHistory) {
           const netuid = Number(subnetLeaseHistory[1]);
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              AccountEvents,
+              "block_number" | "event_kind" | "coldkey" | "observed_at"
+            >[]
+          >`
           SELECT block_number, event_kind, coldkey, observed_at
           FROM account_events
           WHERE netuid = ${netuid} AND event_kind IN (${SUBNET_LEASE_CREATED_KIND}, ${SUBNET_LEASE_TERMINATED_KIND})
@@ -5932,7 +6129,17 @@ export default {
         if (subnetConviction) {
           const netuid = Number(subnetConviction[1]);
           const [rows, rates] = await Promise.all([
-            sql`
+            sql<
+              Pick<
+                SubnetLocks,
+                | "hotkey"
+                | "is_owner"
+                | "is_perpetual"
+                | "locked_mass"
+                | "conviction_bits"
+                | "last_update"
+              >[]
+            >`
           SELECT hotkey, is_owner, is_perpetual, locked_mass, conviction_bits, last_update
           FROM subnet_locks
           WHERE netuid = ${netuid}`,
@@ -5958,7 +6165,7 @@ export default {
             SUBNET_WEIGHT_SETTERS_WINDOWS,
             DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<WeightSetterRow[]>`
           SELECT MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END) AS hotkey,
                  CASE WHEN MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END)
                       IS NULL THEN MAX(netuid) ELSE NULL END AS netuid,
@@ -5971,7 +6178,7 @@ export default {
           GROUP BY CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
                         WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END
           ORDER BY weight_sets DESC, last_set DESC LIMIT ${SUBNET_WEIGHT_SETTERS_LIMIT}`;
-          const totalsRows = await sql`
+          const totalsRows = await sql<WeightSettersTotalsRow[]>`
           SELECT COUNT(*) AS weight_sets,
                  COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
                                       WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters,
@@ -6004,7 +6211,7 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const networkRows = await sql`
+          const networkRows = await sql<WeightSettersTotalsRow[]>`
           SELECT COUNT(*) AS weight_sets,
                  COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
                                       WHEN uid IS NOT NULL AND netuid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters,
@@ -6013,7 +6220,12 @@ export default {
           const networkDistinct = networkRows[0] ?? null;
           let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
-            subnetRows = await sql`
+            subnetRows = await sql<
+              (Pick<AccountEvents, "netuid"> & {
+                weight_sets: string;
+                distinct_setters: string;
+              })[]
+            >`
             SELECT netuid, COUNT(*) AS weight_sets,
                    COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
                                         WHEN uid IS NOT NULL AND netuid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters
@@ -6047,7 +6259,7 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<WeightSetterRow[]>`
           SELECT MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END) AS hotkey,
                  CASE WHEN MAX(CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN hotkey ELSE NULL END)
                       IS NULL THEN MAX(netuid) ELSE NULL END AS netuid,
@@ -6059,7 +6271,7 @@ export default {
           GROUP BY CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
                         WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END
           ORDER BY weight_sets DESC, last_set DESC LIMIT ${CHAIN_WEIGHT_SETTERS_LIMIT_MAX}`;
-          const totalsRows = await sql`
+          const totalsRows = await sql<WeightSettersTotalsRow[]>`
           SELECT COUNT(*) AS weight_sets,
                  COUNT(DISTINCT CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey
                                       WHEN uid IS NOT NULL THEN 'uid:' || netuid || ':' || uid END) AS distinct_setters,
@@ -6087,13 +6299,23 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const networkRows = await sql`
+          const networkRows = await sql<
+            {
+              distinct_servers: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(DISTINCT hotkey) AS distinct_servers, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${SERVING_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
           let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
-            subnetRows = await sql`
+            subnetRows = await sql<
+              (Pick<AccountEvents, "netuid"> & {
+                announcements: string;
+                distinct_servers: string;
+              })[]
+            >`
             SELECT netuid, COUNT(*) AS announcements, COUNT(DISTINCT hotkey) AS distinct_servers
             FROM account_events WHERE event_kind = ${SERVING_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
             ORDER BY announcements DESC, netuid ASC`;
@@ -6123,13 +6345,23 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const networkRows = await sql`
+          const networkRows = await sql<
+            {
+              distinct_exporters: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(DISTINCT hotkey) AS distinct_exporters, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${PROMETHEUS_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
           let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
-            subnetRows = await sql`
+            subnetRows = await sql<
+              (Pick<AccountEvents, "netuid"> & {
+                announcements: string;
+                distinct_exporters: string;
+              })[]
+            >`
             SELECT netuid, COUNT(*) AS announcements, COUNT(DISTINCT hotkey) AS distinct_exporters
             FROM account_events WHERE event_kind = ${PROMETHEUS_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
             ORDER BY announcements DESC, netuid ASC`;
@@ -6159,13 +6391,23 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const networkRows = await sql`
+          const networkRows = await sql<
+            {
+              distinct_removers: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(DISTINCT hotkey) AS distinct_removers, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${AXON_REMOVAL_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
           let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
-            subnetRows = await sql`
+            subnetRows = await sql<
+              (Pick<AccountEvents, "netuid"> & {
+                removals: string;
+                distinct_removers: string;
+              })[]
+            >`
             SELECT netuid, COUNT(*) AS removals, COUNT(DISTINCT hotkey) AS distinct_removers
             FROM account_events WHERE event_kind = ${AXON_REMOVAL_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
             ORDER BY removals DESC, netuid ASC`;
@@ -6195,13 +6437,23 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const networkRows = await sql`
+          const networkRows = await sql<
+            {
+              distinct_registrants: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(DISTINCT hotkey) AS distinct_registrants, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${REGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
           let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
-            subnetRows = await sql`
+            subnetRows = await sql<
+              (Pick<AccountEvents, "netuid"> & {
+                registrations: string;
+                distinct_registrants: string;
+              })[]
+            >`
             SELECT netuid, COUNT(*) AS registrations, COUNT(DISTINCT hotkey) AS distinct_registrants
             FROM account_events WHERE event_kind = ${REGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
             ORDER BY registrations DESC, netuid ASC`;
@@ -6231,13 +6483,23 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const networkRows = await sql`
+          const networkRows = await sql<
+            {
+              distinct_deregistered_hotkeys: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${DEREGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
           let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
-            subnetRows = await sql`
+            subnetRows = await sql<
+              (Pick<AccountEvents, "netuid"> & {
+                deregistrations: string;
+                distinct_deregistered_hotkeys: string;
+              })[]
+            >`
             SELECT netuid, COUNT(*) AS deregistrations, COUNT(DISTINCT hotkey) AS distinct_deregistered_hotkeys
             FROM account_events WHERE event_kind = ${DEREGISTRATION_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
             ORDER BY deregistrations DESC, netuid ASC`;
@@ -6268,13 +6530,23 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const networkRows = await sql`
+          const networkRows = await sql<
+            {
+              distinct_movers: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(DISTINCT "coldkey") AS distinct_movers, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
           let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
-            subnetRows = await sql`
+            subnetRows = await sql<
+              (Pick<AccountEvents, "netuid"> & {
+                movements: string;
+                distinct_movers: string;
+              })[]
+            >`
             SELECT netuid, COUNT(*) AS movements, COUNT(DISTINCT "coldkey") AS distinct_movers
             FROM account_events WHERE event_kind = ${STAKE_MOVED_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
             ORDER BY movements DESC, netuid ASC`;
@@ -6306,13 +6578,23 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const networkRows = await sql`
+          const networkRows = await sql<
+            {
+              distinct_senders: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(DISTINCT "coldkey") AS distinct_senders, MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff}`;
           const networkDistinct = networkRows[0] ?? null;
           let subnetRows: Row[] = [];
           if (networkDistinct?.newest_observed != null) {
-            subnetRows = await sql`
+            subnetRows = await sql<
+              (Pick<AccountEvents, "netuid"> & {
+                transfers: string;
+                distinct_senders: string;
+              })[]
+            >`
             SELECT netuid, COUNT(*) AS transfers, COUNT(DISTINCT "coldkey") AS distinct_senders
             FROM account_events WHERE event_kind = ${STAKE_TRANSFERRED_EVENT_KIND} AND observed_at >= ${cutoff} GROUP BY netuid
             ORDER BY transfers DESC, netuid ASC`;
@@ -6344,7 +6626,15 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<
+            {
+              netuid: AccountEvents["netuid"];
+              event_kind: AccountEvents["event_kind"];
+              total_tao: string;
+              event_count: string;
+              last_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao,
                  COUNT(*) AS event_count, MAX(observed_at) AS last_observed
           FROM account_events
@@ -6372,7 +6662,16 @@ export default {
         );
         if (chainAlphaVolume) {
           const cutoff = Date.now() - ANALYTICS_DAY_MS;
-          const rows = await sql`
+          const rows = await sql<
+            {
+              netuid: AccountEvents["netuid"];
+              event_kind: AccountEvents["event_kind"];
+              alpha_volume: string;
+              tao_volume: string;
+              event_count: string;
+              last_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT netuid, event_kind, COALESCE(SUM(alpha_amount), 0) AS alpha_volume,
                  COALESCE(SUM(amount_tao), 0) AS tao_volume, COUNT(*) AS event_count,
                  MAX(observed_at) AS last_observed
@@ -6418,21 +6717,32 @@ export default {
           // so this route alone widens its budget rather than raising the
           // global 3s default for every other (much lighter) route.
           await sql`SET LOCAL statement_timeout = '10000ms'`;
-          const totalsRows = await sql`
+          const totalsRows = await sql<
+            {
+              transfer_count: string;
+              total_volume_tao: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(*) AS transfer_count, COALESCE(SUM(amount_tao), 0) AS total_volume_tao,
                  MAX(observed_at) AS newest_observed
           FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff}`;
-          const distinctSenders = await sql`
+          const distinctSenders = await sql<{ unique_senders: string }[]>`
           SELECT COUNT(DISTINCT hotkey) AS unique_senders
           FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff}`;
-          const distinctReceivers = await sql`
+          const distinctReceivers = await sql<{ unique_receivers: string }[]>`
           SELECT COUNT(DISTINCT "coldkey") AS unique_receivers
           FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff}`;
-          const senders = await sql`
+          type TransferPartyRow = {
+            address: string;
+            volume_tao: string | null;
+            transfer_count: string;
+          };
+          const senders = await sql<TransferPartyRow[]>`
           SELECT hotkey AS address, SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count
           FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff} AND hotkey IS NOT NULL
           GROUP BY hotkey ORDER BY volume_tao DESC, hotkey ASC LIMIT ${limit}`;
-          const receivers = await sql`
+          const receivers = await sql<TransferPartyRow[]>`
           SELECT "coldkey" AS address, SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count
           FROM account_events WHERE event_kind = 'Transfer' AND observed_at >= ${cutoff} AND "coldkey" IS NOT NULL
           GROUP BY "coldkey" ORDER BY volume_tao DESC, "coldkey" ASC LIMIT ${limit}`;
@@ -6473,7 +6783,15 @@ export default {
           );
           const limit = chainLimit(url, 25);
           const sort = url.searchParams.get("sort") || "volume";
-          const totalsRows = await sql`
+          const totalsRows = await sql<
+            {
+              transfer_count: string;
+              total_volume_tao: string;
+              unique_pairs: string;
+              top_pair_volume_tao: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           WITH pair_totals AS (
             SELECT hotkey, coldkey, SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count,
                    MAX(observed_at) AS last_observed
@@ -6492,7 +6810,16 @@ export default {
             sort === "count"
               ? sql`transfer_count DESC, volume_tao DESC, hotkey ASC, "coldkey" ASC`
               : sql`volume_tao DESC, transfer_count DESC, hotkey ASC, "coldkey" ASC`;
-          const pairRows = await sql`
+          const pairRows = await sql<
+            {
+              from_address: string;
+              to_address: string;
+              volume_tao: string | null;
+              transfer_count: string;
+              last_block: AccountEvents["block_number"] | null;
+              last_observed_at: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT hotkey AS from_address, "coldkey" AS to_address, SUM(amount_tao) AS volume_tao,
                  COUNT(*) AS transfer_count, MAX(block_number) AS last_block, MAX(observed_at) AS last_observed_at
           FROM account_events
@@ -6542,10 +6869,18 @@ export default {
             : sql``;
           const orderBy =
             sort === "total_fee_tao" ? sql`total_fee_tao` : sql`tx_count`;
-          const freshRows = await sql`
+          const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(observed_at) AS newest_observed
           FROM extrinsics WHERE observed_at >= ${cutoff}`;
-          const rows = await sql`
+          const rows = await sql<
+            {
+              signer: Extrinsics["signer"];
+              tx_count: string;
+              total_fee_tao: string;
+              total_tip_tao: string;
+              last_tx_block: string;
+            }[]
+          >`
           SELECT signer, COUNT(*) AS tx_count, SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
                  SUM(COALESCE(tip_tao, 0)) AS total_tip_tao, MAX(block_number) AS last_tx_block
           FROM extrinsics WHERE observed_at >= ${cutoff} AND signer IS NOT NULL
@@ -6589,22 +6924,28 @@ export default {
             groupBy === "module_function"
               ? sql`count DESC, call_module ASC, call_function ASC`
               : sql`count DESC, call_module ASC`;
-          const freshRows = await sql`
+          const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(observed_at) AS newest_observed
           FROM extrinsics WHERE observed_at >= ${cutoff}`;
           const rows =
             groupBy === "module_function"
-              ? await sql`
+              ? await sql<
+                  (Pick<Extrinsics, "call_module" | "call_function"> & {
+                    count: string;
+                  })[]
+                >`
                 SELECT call_module, call_function, COUNT(*) AS count
                 FROM extrinsics WHERE observed_at >= ${cutoff} AND call_module IS NOT NULL
                   ${moduleClause}
                 GROUP BY call_module, call_function ORDER BY ${orderBy} LIMIT ${limit}`
-              : await sql`
+              : await sql<
+                  (Pick<Extrinsics, "call_module"> & { count: string })[]
+                >`
                 SELECT call_module, COUNT(*) AS count
                 FROM extrinsics WHERE observed_at >= ${cutoff} AND call_module IS NOT NULL
                   ${moduleClause}
                 GROUP BY call_module ORDER BY ${orderBy} LIMIT ${limit}`;
-          const totalRows = await sql`
+          const totalRows = await sql<{ total: string }[]>`
           SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ${cutoff}
             ${moduleClause}`;
           return json(
@@ -6616,7 +6957,7 @@ export default {
               ),
               groupBy,
               observedAt: latestObservedIso(freshRows, "newest_observed"),
-              total: totalRows[0]?.total ?? 0,
+              total: Number(totalRows[0]?.total) || 0,
               rows,
             }),
           );
@@ -6644,12 +6985,20 @@ export default {
             DEFAULT_ANALYTICS_WINDOW,
           );
           await sql`SET LOCAL statement_timeout = '8000ms'`;
-          const extrinsicBase = await sql`
+          const extrinsicBase = await sql<
+            {
+              day: string;
+              extrinsic_count: string;
+              successful_extrinsics: string;
+            }[]
+          >`
           SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
                  COUNT(*) AS extrinsic_count,
                  SUM(CASE WHEN success THEN 1 ELSE 0 END) AS successful_extrinsics
           FROM extrinsics WHERE observed_at >= ${cutoff} GROUP BY day`;
-          const extrinsicSigners = await sql`
+          const extrinsicSigners = await sql<
+            { day: string; unique_signers: string }[]
+          >`
           SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
                  COUNT(DISTINCT signer) AS unique_signers
           FROM extrinsics WHERE observed_at >= ${cutoff} GROUP BY day`;
@@ -6660,11 +7009,13 @@ export default {
             ...r,
             unique_signers: signersByDay.get(r.day) ?? 0,
           }));
-          const blockRows = await sql`
+          const blockRows = await sql<
+            { day: string; block_count: string; event_count: string | null }[]
+          >`
           SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
                  COUNT(*) AS block_count, SUM(event_count) AS event_count
           FROM blocks WHERE observed_at >= ${cutoff} GROUP BY day`;
-          const freshRows = await sql`
+          const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(observed_at) AS newest_observed
           FROM blocks WHERE observed_at >= ${cutoff}`;
           return json(
@@ -6702,7 +7053,14 @@ export default {
             ? sql`AND call_module = ${callModule}`
             : sql``;
           await sql`SET LOCAL statement_timeout = '8000ms'`;
-          const dailyRows = await sql`
+          const dailyRows = await sql<
+            {
+              day: string;
+              extrinsic_count: string;
+              total_fee_tao: string;
+              total_tip_tao: string;
+            }[]
+          >`
           SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
                  COUNT(*) AS extrinsic_count,
                  SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
@@ -6710,20 +7068,29 @@ export default {
           FROM extrinsics WHERE observed_at >= ${cutoff}
             ${moduleClause}
           GROUP BY day`;
-          const payerRows = await sql`
+          const payerRows = await sql<
+            {
+              signer: Extrinsics["signer"];
+              total_fee_tao: string;
+              total_tip_tao: string;
+              extrinsic_count: string;
+            }[]
+          >`
           SELECT signer, SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
                  SUM(COALESCE(tip_tao, 0)) AS total_tip_tao, COUNT(*) AS extrinsic_count
           FROM extrinsics WHERE observed_at >= ${cutoff} AND signer IS NOT NULL
             ${moduleClause}
           GROUP BY signer ORDER BY total_fee_tao DESC, signer ASC LIMIT ${limit}`;
-          const medianRows = await sql`
+          const medianRows = await sql<
+            { day: string; median_fee_tao: number; median_tip_tao: number }[]
+          >`
           SELECT to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD') AS day,
                  PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY COALESCE(fee_tao, 0)) AS median_fee_tao,
                  PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY COALESCE(tip_tao, 0)) AS median_tip_tao
           FROM extrinsics WHERE observed_at >= ${cutoff}
             ${moduleClause}
           GROUP BY day`;
-          const freshRows = await sql`
+          const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(observed_at) AS newest_observed
           FROM extrinsics WHERE observed_at >= ${cutoff}`;
           return json(
@@ -6806,7 +7173,23 @@ export default {
           const windows: Record<string, Row[]> = {};
           for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
             const cutoff = now - days * ANALYTICS_DAY_MS;
-            windows[label] = await sql`
+            windows[label] = await sql<
+              {
+                surface_id: string;
+                // COUNT/SUM without an explicit ::int cast return Postgres
+                // bigint, which postgres.js returns as a string (same
+                // convention as the BIGINT id columns elsewhere in this
+                // file) -- verified empirically against a live scratch
+                // Postgres instance, not assumed.
+                total: string;
+                ok_count: string;
+                latency_samples: string;
+                avg_latency_ms: string | null;
+                p50: number | null;
+                p95: number | null;
+                p99: number | null;
+              }[]
+            >`
             SELECT MAX(surface_id) AS surface_id,
                    COUNT(*) AS total,
                    SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count,
@@ -6818,7 +7201,7 @@ export default {
             FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${cutoff}
             GROUP BY COALESCE(surface_key, surface_id)`;
           }
-          const freshRows = await sql`
+          const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(checked_at) AS newest_observed
           FROM surface_checks WHERE netuid = ${netuid}`;
           return json(
@@ -6843,7 +7226,18 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<
+            {
+              surface_id: string;
+              latency_samples: string;
+              avg_latency_ms: string | null;
+              min_latency_ms: number | null;
+              max_latency_ms: number | null;
+              p50: number | null;
+              p95: number | null;
+              p99: number | null;
+            }[]
+          >`
           SELECT MAX(surface_id) AS surface_id,
                  COUNT(*) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS latency_samples,
                  AVG(latency_ms) FILTER (WHERE ok AND latency_ms IS NOT NULL) AS avg_latency_ms,
@@ -6855,7 +7249,7 @@ export default {
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${cutoff}
           GROUP BY COALESCE(surface_key, surface_id)
           HAVING COUNT(*) FILTER (WHERE ok AND latency_ms IS NOT NULL) > 0`;
-          const freshRows = await sql`
+          const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(checked_at) AS newest_observed
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${cutoff}`;
           return json(
@@ -6889,14 +7283,31 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const slaRows = await sql`
+          const slaRows = await sql<
+            {
+              surface_id: string;
+              surface_key: string;
+              total: string;
+              ok_count: string;
+            }[]
+          >`
           SELECT MAX(surface_id) AS surface_id,
                  COALESCE(surface_key, surface_id) AS surface_key,
                  COUNT(*) AS total,
                  SUM(CASE WHEN ok THEN 1 ELSE 0 END) AS ok_count
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}
           GROUP BY COALESCE(surface_key, surface_id)`;
-          const incidentRows = await sql`
+          const incidentRows = await sql<
+            {
+              surface_id: string;
+              surface_key: string;
+              // MIN/MAX of checked_at (BIGINT) stay bigint -> string, same
+              // as the other checked_at aggregates in this file.
+              started_at: string;
+              ended_at: string;
+              failed_samples: string;
+            }[]
+          >`
           WITH checks AS (
             SELECT COALESCE(surface_key, surface_id) AS surface_key,
                    surface_id, checked_at, ok,
@@ -6926,7 +7337,7 @@ export default {
           ) ranked
           WHERE rn <= ${MAX_INCIDENT_ROWS}
           ORDER BY surface_id, started_at`;
-          const freshRows = await sql`
+          const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(checked_at) AS newest_observed
           FROM surface_checks WHERE netuid = ${netuid} AND checked_at >= ${since}`;
           return json(
@@ -6958,7 +7369,16 @@ export default {
             ANALYTICS_WINDOWS,
             DEFAULT_ANALYTICS_WINDOW,
           );
-          const incidentRows = await sql`
+          const incidentRows = await sql<
+            {
+              netuid: SurfaceChecks["netuid"];
+              surface_id: string;
+              surface_key: string;
+              started_at: string;
+              ended_at: string;
+              failed_samples: string;
+            }[]
+          >`
           WITH recent_checks AS (
             SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key,
                    surface_id, checked_at, ok
@@ -6985,7 +7405,7 @@ export default {
           HAVING COUNT(*) >= ${MIN_INCIDENT_SAMPLES}
           ORDER BY started_at DESC
           LIMIT ${MAX_INCIDENT_ROWS}`;
-          const freshRows = await sql`
+          const freshRows = await sql<{ newest_observed: string | null }[]>`
           SELECT MAX(checked_at) AS newest_observed
           FROM surface_checks WHERE checked_at >= ${since}`;
           return json(
@@ -7108,7 +7528,13 @@ export default {
           const placeholders = netuids
             .map((_, i) => `$${i + 1}::int`)
             .join(", ");
-          const rows = await sql.unsafe(
+          const rows = await sql.unsafe<
+            (Pick<SurfaceStatus, "netuid"> & {
+              surface_count: number;
+              ok_count: number;
+              avg_latency_ms: number | null;
+            })[]
+          >(
             `SELECT netuid,
                     COUNT(*)::int AS surface_count,
                     SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END)::int AS ok_count,
@@ -7146,7 +7572,23 @@ export default {
           if (!Number.isFinite(since)) {
             return json({ rows: [] });
           }
-          const rawRows = await sql`
+          const rawRows = await sql<
+            Pick<
+              SurfaceStatus,
+              | "surface_id"
+              | "surface_key"
+              | "netuid"
+              | "kind"
+              | "provider"
+              | "url"
+              | "status"
+              | "classification"
+              | "latency_ms"
+              | "status_code"
+              | "last_checked"
+              | "last_ok"
+            >[]
+          >`
             SELECT surface_id, surface_key, netuid, kind, provider, url,
                    status, classification, latency_ms, status_code,
                    last_checked, last_ok
@@ -7175,7 +7617,7 @@ export default {
         // handleSubnetIdentitySync already runs inline above for its own
         // block_number stamp.
         if (url.pathname === "/api/v1/internal/latest-block-number") {
-          const [row] = await sql`
+          const [row] = await sql<{ block_number: string | null }[]>`
             SELECT MAX(block_number) AS block_number FROM blocks`;
           const blockNumber =
             row?.block_number == null ? null : Number(row.block_number);
@@ -7251,7 +7693,23 @@ export default {
         );
         if (subnetTrajectory) {
           const netuid = Number(subnetTrajectory[1]);
-          const rows = await sql`
+          const rows = await sql<
+            (Pick<
+              SubnetSnapshots,
+              | "completeness_score"
+              | "surface_count"
+              | "endpoint_count"
+              | "validator_count"
+              | "miner_count"
+              | "total_stake_tao"
+              | "alpha_price_tao"
+              | "emission_share"
+              | "tao_in_pool_tao"
+              | "alpha_in_pool"
+              | "alpha_out_pool"
+              | "subnet_volume_tao"
+            > & { snapshot_date: string })[]
+          >`
           SELECT snapshot_date::text AS snapshot_date, completeness_score,
                  surface_count, endpoint_count, validator_count, miner_count,
                  total_stake_tao, alpha_price_tao, emission_share,
@@ -7283,7 +7741,16 @@ export default {
                   .toISOString()
                   .slice(0, 10)
               : null;
-          const rows = await sql`
+          const rows = await sql<
+            (Pick<
+              SubnetSnapshots,
+              | "total_stake_tao"
+              | "alpha_price_tao"
+              | "validator_count"
+              | "miner_count"
+              | "emission_share"
+            > & { snapshot_date: string })[]
+          >`
           SELECT snapshot_date::text AS snapshot_date, total_stake_tao,
                  alpha_price_tao, validator_count, miner_count, emission_share
           FROM subnet_snapshots
@@ -7414,7 +7881,14 @@ export default {
           // fetch_types:false breaks postgres.js's ANY($1)/array serialization,
           // see the neurons-sync prune query's comment above for the confirmed
           // live repro. Explicit IN (...)/= branches per direction instead.
-          const rows = await sql`
+          type StakeFlowRow = {
+            netuid: AccountEvents["netuid"];
+            event_kind: AccountEvents["event_kind"];
+            total_tao: string;
+            event_count: string;
+            last_observed: AccountEvents["observed_at"] | null;
+          };
+          const rows = await sql<StakeFlowRow[]>`
           SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao,
             COUNT(*) AS event_count, MAX(observed_at) AS last_observed
           FROM account_events
@@ -7448,7 +7922,14 @@ export default {
           const directionParam = url.searchParams.get("direction");
           // Scalar binds only -- see the account-level stake-flow route above
           // for why a bound JS array (ANY($1)) is unsafe here.
-          const rows = await sql`
+          const rows = await sql<
+            {
+              event_kind: AccountEvents["event_kind"];
+              total_tao: string;
+              event_count: string;
+              last_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, COUNT(*) AS event_count,
                  MAX(observed_at) AS last_observed
           FROM account_events
@@ -7479,7 +7960,14 @@ export default {
             ACCOUNT_STAKE_MOVES_WINDOWS,
             DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<
+            {
+              netuid: AccountEvents["netuid"];
+              movements: string;
+              first_observed: AccountEvents["observed_at"] | null;
+              last_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT netuid, COUNT(*) AS movements, MIN(observed_at) AS first_observed,
                  MAX(observed_at) AS last_observed
           FROM account_events
@@ -7517,7 +8005,13 @@ export default {
           // also selected `observed_at`, which Postgres rejects (neither in
           // GROUP BY 1 nor aggregated) and which was unused here anyway, the
           // outer query computing its own MAX(observed_at) (#6877).
-          const rows = await sql`
+          const rows = await sql<
+            {
+              movements: string;
+              distinct_movers: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(*) AS movements,
             (SELECT COUNT(*) FROM (
               SELECT coldkey AS mover FROM account_events
@@ -7551,7 +8045,13 @@ export default {
           );
           // See the sibling stake-moves route above for why this is a
           // grouped-subquery COUNT(*) rather than COUNT(DISTINCT <col>).
-          const rows = await sql`
+          const rows = await sql<
+            {
+              transfers: string;
+              distinct_senders: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(*) AS transfers,
             (SELECT COUNT(*) FROM (
               SELECT coldkey AS sender FROM account_events
@@ -7622,7 +8122,14 @@ export default {
           if (!m) continue;
           const address = decodeURIComponent(m[1]);
           const cutoff = windowCutoff(url, fp.windows, fp.def);
-          const rows = await sql`
+          const rows = await sql<
+            {
+              netuid: AccountEvents["netuid"];
+              metric: string;
+              first_observed: AccountEvents["observed_at"] | null;
+              last_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT netuid, COUNT(*) AS metric, MIN(observed_at) AS first_observed, MAX(observed_at) AS last_observed
           FROM account_events
           WHERE hotkey = ${address} AND event_kind = ${fp.kind} AND observed_at >= ${cutoff}
@@ -7692,7 +8199,13 @@ export default {
           if (!m) continue;
           const netuid = Number(m[1]);
           const cutoff = windowCutoff(url, fp.windows, fp.def);
-          const rows = await sql`
+          const rows = await sql<
+            {
+              metric: string;
+              distinctx: string;
+              newest_observed: AccountEvents["observed_at"] | null;
+            }[]
+          >`
           SELECT COUNT(*) AS metric, COUNT(DISTINCT hotkey) AS distinctx, MAX(observed_at) AS newest_observed
           FROM account_events
           WHERE netuid = ${netuid} AND event_kind = ${fp.kind} AND observed_at >= ${cutoff}`;
@@ -7736,7 +8249,7 @@ export default {
             // handle this efficiently, same as before; only the "all
             // directions" case below hits METAGRAPHED-6's OR-defeats-index
             // problem.
-            rows = await sql`
+            rows = await sql<AccountEventReadRow[]>`
             SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
             FROM account_events
             WHERE event_kind = 'Transfer'
@@ -7755,7 +8268,7 @@ export default {
             // so split into two indexed branches and merge client-side.
             const perBranchLimit = limit + (cursor ? 0 : offset);
             await sql`SET LOCAL statement_timeout = '10000ms'`;
-            const hotkeyRows = await sql`
+            const hotkeyRows = await sql<AccountEventReadRow[]>`
             SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
             FROM account_events
             WHERE event_kind = 'Transfer' AND hotkey = ${ss58}
@@ -7764,7 +8277,7 @@ export default {
               ${cursor ? sql`AND (observed_at, block_number, event_index) < (${cursor[0]}, ${cursor[1]}, ${cursor[2]})` : sql``}
             ORDER BY observed_at DESC, block_number DESC, event_index DESC
             LIMIT ${perBranchLimit}`;
-            const coldkeyRows = await sql`
+            const coldkeyRows = await sql<AccountEventReadRow[]>`
             SELECT block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at
             FROM account_events
             WHERE event_kind = 'Transfer' AND coldkey = ${ss58} AND (hotkey IS NULL OR hotkey <> ${ss58})
@@ -7838,7 +8351,16 @@ export default {
             // unlike !=) skips leg 2 entirely when querying an account's relationship
             // with itself, where both legs would otherwise resolve to the identical
             // predicate and UNION ALL would double-count every matching row.
-            const rows = await sql`
+            const rows = await sql<
+              Pick<
+                AccountEvents,
+                | "hotkey"
+                | "coldkey"
+                | "amount_tao"
+                | "block_number"
+                | "event_index"
+              >[]
+            >`
             SELECT hotkey, coldkey, amount_tao, block_number, event_index FROM (
               (SELECT hotkey, coldkey, amount_tao, block_number, event_index, observed_at
                FROM account_events
@@ -7892,7 +8414,16 @@ export default {
           // excludes the one row shape (a genuine self-transfer, hotkey = coldkey =
           // ss58) the hotkey = ss58 leg already caught, so UNION ALL can never
           // double-count it.
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              AccountEvents,
+              | "hotkey"
+              | "coldkey"
+              | "amount_tao"
+              | "block_number"
+              | "event_index"
+            >[]
+          >`
           SELECT hotkey, coldkey, amount_tao, block_number, event_index FROM (
             (SELECT hotkey, coldkey, amount_tao, block_number, event_index, observed_at
              FROM account_events
@@ -8046,10 +8577,10 @@ export default {
             url.searchParams.get("validator_permit") === "true";
           const [rows, immunityPeriod] = await Promise.all([
             validatorsOnly
-              ? sql`
+              ? sql<NeuronMetagraphRow[]>`
               SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
               FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE ORDER BY uid`
-              : sql`
+              : sql<NeuronMetagraphRow[]>`
               SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
               FROM neurons WHERE netuid = ${netuid} ORDER BY uid`,
             loadSubnetImmunityPeriod(sql, netuid, env),
@@ -8067,7 +8598,7 @@ export default {
           const netuid = Number(neuronDetail[1]);
           const uid = Number(neuronDetail[2]);
           const [rows, immunityPeriod] = await Promise.all([
-            sql`
+            sql<NeuronMetagraphRow[]>`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
           FROM neurons WHERE netuid = ${netuid} AND uid = ${uid} LIMIT 1`,
             loadSubnetImmunityPeriod(sql, netuid, env),
@@ -8085,7 +8616,7 @@ export default {
         if (subnetValidators) {
           const netuid = Number(subnetValidators[1]);
           const [rows, featuredHotkeys] = await Promise.all([
-            sql`
+            sql<NeuronMetagraphRow[]>`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take
           FROM neurons WHERE netuid = ${netuid} AND validator_permit = TRUE
           ORDER BY stake_tao DESC, uid ASC`,
@@ -8118,7 +8649,21 @@ export default {
             tempoByNetuid,
             realizedStakeByHotkey,
           ] = await Promise.all([
-            sql`
+            sql<
+              Pick<
+                Neurons,
+                | "netuid"
+                | "uid"
+                | "hotkey"
+                | "coldkey"
+                | "validator_trust"
+                | "emission_tao"
+                | "stake_tao"
+                | "block_number"
+                | "captured_at"
+                | "take"
+              >[]
+            >`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
@@ -8156,7 +8701,7 @@ export default {
           const hotkey = decodeURIComponent(validatorDetail[1]);
           const [rows, nominatorCounts, tempoByNetuid, realizedByHotkey] =
             await Promise.all([
-              sql`
+              sql<Pick<Neurons, keyof Neurons>[]>`
           SELECT uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at, take, netuid
           FROM neurons WHERE hotkey = ${hotkey} AND validator_permit = TRUE
           ORDER BY netuid ASC, uid ASC`,
@@ -8190,7 +8735,16 @@ export default {
         );
         if (subnetConcentration) {
           const netuid = Number(subnetConcentration[1]);
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              | "stake_tao"
+              | "emission_tao"
+              | "coldkey"
+              | "validator_permit"
+              | "captured_at"
+            >[]
+          >`
           SELECT stake_tao, emission_tao, coldkey, validator_permit, captured_at
           FROM neurons WHERE netuid = ${netuid}`;
           return json(buildConcentration(rows, netuid));
@@ -8203,7 +8757,19 @@ export default {
         );
         if (subnetPerformance) {
           const netuid = Number(subnetPerformance[1]);
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              | "incentive"
+              | "dividends"
+              | "trust"
+              | "consensus"
+              | "validator_trust"
+              | "active"
+              | "validator_permit"
+              | "captured_at"
+            >[]
+          >`
           SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, captured_at
           FROM neurons WHERE netuid = ${netuid}`;
           return json(buildSubnetPerformance(rows, netuid));
@@ -8213,7 +8779,17 @@ export default {
         // emission decentralization across every subnet's neurons, mirroring
         // src/concentration.ts's loadChainConcentration.
         if (url.pathname === "/api/v1/chain/concentration") {
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              | "stake_tao"
+              | "emission_tao"
+              | "coldkey"
+              | "validator_permit"
+              | "netuid"
+              | "captured_at"
+            >[]
+          >`
           SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
           FROM neurons`;
           return json(buildChainConcentration(rows));
@@ -8222,7 +8798,20 @@ export default {
         // GET /api/v1/chain/performance (#4832 Tier 2): network-wide reward-flow
         // & trust-spread, mirroring src/chain-performance.ts's loadChainPerformance.
         if (url.pathname === "/api/v1/chain/performance") {
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              | "incentive"
+              | "dividends"
+              | "trust"
+              | "consensus"
+              | "validator_trust"
+              | "active"
+              | "validator_permit"
+              | "netuid"
+              | "captured_at"
+            >[]
+          >`
           SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, netuid, captured_at
           FROM neurons`;
           return json(buildChainPerformance(rows));
@@ -8237,7 +8826,9 @@ export default {
         );
         if (subnetIdleStake) {
           const netuid = Number(subnetIdleStake[1]);
-          const rows = await sql`
+          const rows = await sql<
+            Pick<Neurons, "stake_tao" | "dividends" | "captured_at">[]
+          >`
           SELECT stake_tao, dividends, captured_at FROM neurons WHERE netuid = ${netuid}`;
           return json(buildSubnetIdleStake(rows, netuid));
         }
@@ -8246,7 +8837,12 @@ export default {
         // rollup, mirroring src/chain-alpha-volume.ts's own per-subnet-
         // groupby-then-rollup shape over the per-subnet scorecard above.
         if (url.pathname === "/api/v1/chain/idle-stake") {
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              "stake_tao" | "dividends" | "netuid" | "captured_at"
+            >[]
+          >`
           SELECT stake_tao, dividends, netuid, captured_at FROM neurons`;
           return json(buildChainIdleStake(rows));
         }
@@ -8254,7 +8850,16 @@ export default {
         // GET /api/v1/chain/yield (#4832 Tier 2): network-wide emission-yield
         // distribution, mirroring src/chain-yield.ts's loadChainYield.
         if (url.pathname === "/api/v1/chain/yield") {
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              | "validator_permit"
+              | "stake_tao"
+              | "emission_tao"
+              | "netuid"
+              | "captured_at"
+            >[]
+          >`
           SELECT validator_permit, stake_tao, emission_tao, netuid, captured_at
           FROM neurons`;
           return json(buildChainYield(rows));
@@ -8268,7 +8873,18 @@ export default {
         );
         if (subnetYield) {
           const netuid = Number(subnetYield[1]);
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              | "uid"
+              | "hotkey"
+              | "validator_permit"
+              | "stake_tao"
+              | "emission_tao"
+              | "captured_at"
+              | "block_number"
+            >[]
+          >`
           SELECT uid, hotkey, validator_permit, stake_tao, emission_tao, captured_at, block_number
           FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
           return json(buildSubnetYield(rows, netuid));
@@ -8285,7 +8901,7 @@ export default {
         );
         if (subnetHyperparams) {
           const netuid = Number(subnetHyperparams[1]);
-          const rows = await sql`
+          const rows = await sql<Omit<SubnetHyperparams, "netuid">[]>`
           SELECT kappa_ratio, immunity_period, min_allowed_weights, max_weight_limit_ratio, tempo, weights_version, weights_rate_limit, activity_cutoff, activity_cutoff_factor, registration_allowed, target_regs_per_interval, min_burn_tao, max_burn_tao, burn_half_life, burn_increase_mult, bonds_moving_avg_raw, max_regs_per_block, serving_rate_limit, max_validators, commit_reveal_period, commit_reveal_enabled, alpha_high_ratio, alpha_low_ratio, liquid_alpha_enabled, alpha_sigmoid_steepness, yuma_version, subnet_is_active, transfers_enabled, bonds_reset_enabled, user_liquidity_enabled, owner_cut_enabled, owner_cut_auto_lock_enabled, min_childkey_take_ratio, block_number, captured_at
           FROM subnet_hyperparams WHERE netuid = ${netuid} LIMIT 1`;
           return json(buildSubnetHyperparams(rows[0] ?? null, netuid));
@@ -8404,7 +9020,22 @@ export default {
         );
         if (acctPortfolio) {
           const ss58 = decodeURIComponent(acctPortfolio[1]);
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              | "netuid"
+              | "uid"
+              | "stake_tao"
+              | "emission_tao"
+              | "rank"
+              | "trust"
+              | "incentive"
+              | "dividends"
+              | "validator_permit"
+              | "active"
+              | "captured_at"
+            >[]
+          >`
           SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
           FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
           return json(buildAccountPortfolio(rows, ss58));
@@ -8500,7 +9131,20 @@ export default {
             limitRaw == null || limitRaw === ""
               ? ACCOUNTS_LIST_LIMIT_DEFAULT
               : Number(limitRaw);
-          const rows = await sql`
+          const rows = await sql<
+            Pick<
+              Neurons,
+              | "netuid"
+              | "uid"
+              | "hotkey"
+              | "coldkey"
+              | "validator_permit"
+              | "emission_tao"
+              | "stake_tao"
+              | "block_number"
+              | "captured_at"
+            >[]
+          >`
           SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
           FROM neurons WHERE hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`;
@@ -8525,14 +9169,20 @@ export default {
             HISTORY_WINDOWS,
             DEFAULT_HISTORY_WINDOW,
           );
+          type ValidatorHistoryRow = {
+            snapshot_date: string;
+            subnet_count: string;
+            total_stake_tao: string | null;
+            total_emission_tao: string | null;
+          };
           const rows = cutoff
-            ? await sql`
+            ? await sql<ValidatorHistoryRow[]>`
             SELECT snapshot_date::text AS snapshot_date, COUNT(DISTINCT netuid) AS subnet_count,
               SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
             FROM neuron_daily
             WHERE hotkey = ${hotkey} AND validator_permit = TRUE AND snapshot_date >= ${cutoff}
             GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-            : await sql`
+            : await sql<ValidatorHistoryRow[]>`
             SELECT snapshot_date::text AS snapshot_date, COUNT(DISTINCT netuid) AS subnet_count,
               SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
             FROM neuron_daily
@@ -8563,13 +9213,17 @@ export default {
             HISTORY_WINDOWS,
             DEFAULT_HISTORY_WINDOW,
           );
+          type NeuronHistoryRow = Omit<
+            NeuronDaily,
+            "netuid" | "snapshot_date" | "updated_at"
+          > & { snapshot_date: string };
           const rows = cutoff
-            ? await sql`
+            ? await sql<NeuronHistoryRow[]>`
             SELECT snapshot_date::text AS snapshot_date, uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
             FROM neuron_daily
             WHERE netuid = ${netuid} AND uid = ${uid} AND snapshot_date >= ${cutoff}
             ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-            : await sql`
+            : await sql<NeuronHistoryRow[]>`
             SELECT snapshot_date::text AS snapshot_date, uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
             FROM neuron_daily
             WHERE netuid = ${netuid} AND uid = ${uid}
@@ -8600,15 +9254,22 @@ export default {
           );
           // validator_permit is BOOLEAN in Postgres (INTEGER 0/1 in D1/SQLite) --
           // SUM() over a boolean is a Postgres type error, so cast to int first.
+          type SubnetHistoryRow = {
+            snapshot_date: string;
+            neuron_count: string;
+            validator_count: string | null;
+            total_stake_tao: string | null;
+            total_emission_tao: string | null;
+          };
           const rows = cutoff
-            ? await sql`
+            ? await sql<SubnetHistoryRow[]>`
             SELECT snapshot_date::text AS snapshot_date, COUNT(*) AS neuron_count,
               SUM(validator_permit::int) AS validator_count,
               SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
             FROM neuron_daily
             WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
             GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-            : await sql`
+            : await sql<SubnetHistoryRow[]>`
             SELECT snapshot_date::text AS snapshot_date, COUNT(*) AS neuron_count,
               SUM(validator_permit::int) AS validator_count,
               SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
@@ -8639,7 +9300,11 @@ export default {
             CONCENTRATION_HISTORY_WINDOWS,
             DEFAULT_CONCENTRATION_HISTORY_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<
+            (Pick<NeuronDaily, "stake_tao" | "emission_tao"> & {
+              snapshot_date: string;
+            })[]
+          >`
           SELECT snapshot_date::text AS snapshot_date, stake_tao, emission_tao
           FROM neuron_daily
           WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
@@ -8669,7 +9334,17 @@ export default {
             PERFORMANCE_HISTORY_WINDOWS,
             DEFAULT_PERFORMANCE_HISTORY_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<
+            (Pick<
+              NeuronDaily,
+              | "incentive"
+              | "dividends"
+              | "trust"
+              | "consensus"
+              | "validator_permit"
+              | "active"
+            > & { snapshot_date: string })[]
+          >`
           SELECT snapshot_date::text AS snapshot_date, incentive, dividends, trust, consensus, validator_permit, active
           FROM neuron_daily
           WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
@@ -8699,7 +9374,14 @@ export default {
             YIELD_HISTORY_WINDOWS,
             DEFAULT_YIELD_HISTORY_WINDOW,
           );
-          const rows = await sql`
+          const rows = await sql<
+            (Pick<
+              NeuronDaily,
+              "validator_permit" | "stake_tao" | "emission_tao"
+            > & {
+              snapshot_date: string;
+            })[]
+          >`
           SELECT snapshot_date::text AS snapshot_date, validator_permit, stake_tao, emission_tao
           FROM neuron_daily
           WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
@@ -8735,7 +9417,7 @@ export default {
           // Anchor the window to the newest STORED snapshot (not the Worker's
           // wall clock) -- native DATE minus an integer day count is Postgres's
           // direct equivalent of SQLite's date(MAX(snapshot_date), '-N days').
-          const bounds = await sql`
+          const bounds = await sql<SnapshotBoundsRow[]>`
           SELECT MIN(snapshot_date)::text AS start_date, MAX(snapshot_date)::text AS end_date
           FROM neuron_daily
           WHERE snapshot_date >= (SELECT MAX(snapshot_date) - ${days}::int FROM neuron_daily)`;
@@ -8743,7 +9425,11 @@ export default {
           const endDate = bounds[0]?.end_date ?? null;
           let rows: Row[] = [];
           if (startDate != null && endDate != null && startDate !== endDate) {
-            rows = await sql`
+            rows = await sql<
+              (Pick<NeuronDaily, "netuid" | "hotkey" | "validator_permit"> & {
+                snapshot_date: string;
+              })[]
+            >`
             SELECT snapshot_date::text AS snapshot_date, netuid, hotkey, validator_permit
             FROM neuron_daily
             WHERE validator_permit = TRUE AND snapshot_date IN (${startDate}, ${endDate})`;
@@ -8775,10 +9461,10 @@ export default {
           const includeChanges = url.searchParams.get("changes") === "true";
           const bounds =
             windowDays == null
-              ? await sql`
+              ? await sql<SnapshotBoundsRow[]>`
               SELECT MIN(snapshot_date)::text AS start_date, MAX(snapshot_date)::text AS end_date
               FROM neuron_daily WHERE netuid = ${netuid}`
-              : await sql`
+              : await sql<SnapshotBoundsRow[]>`
               SELECT MIN(snapshot_date)::text AS start_date, MAX(snapshot_date)::text AS end_date
               FROM neuron_daily
               WHERE netuid = ${netuid}
@@ -8788,7 +9474,11 @@ export default {
           const rows =
             startDate == null || endDate == null
               ? []
-              : await sql`
+              : await sql<
+                  (Pick<NeuronDaily, "uid" | "hotkey" | "validator_permit"> & {
+                    snapshot_date: string;
+                  })[]
+                >`
               SELECT snapshot_date::text AS snapshot_date, uid, hotkey, validator_permit
               FROM neuron_daily
               WHERE netuid = ${netuid} AND snapshot_date IN (${startDate}, ${endDate})
@@ -8823,7 +9513,7 @@ export default {
             limitRaw == null || limitRaw === ""
               ? MOVERS_LIMIT_DEFAULT
               : Number(limitRaw);
-          const bounds = await sql`
+          const bounds = await sql<SnapshotBoundsRow[]>`
           SELECT MIN(snapshot_date)::text AS start_date, MAX(snapshot_date)::text AS end_date
           FROM neuron_daily
           WHERE snapshot_date >= (SELECT MAX(snapshot_date) - ${days}::int FROM neuron_daily)`;
@@ -8832,7 +9522,15 @@ export default {
           let startRows: Row[] = [];
           let endRows: Row[] = [];
           if (startDate != null && endDate != null && startDate !== endDate) {
-            const rows = await sql`
+            const rows = await sql<
+              (Pick<NeuronDaily, "netuid"> & {
+                snapshot_date: string;
+                neuron_count: string;
+                validator_count: string | null;
+                total_stake_tao: string | null;
+                total_emission_tao: string | null;
+              })[]
+            >`
             SELECT netuid, snapshot_date::text AS snapshot_date, COUNT(*) AS neuron_count,
               SUM(validator_permit::int) AS validator_count,
               SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao

@@ -115,6 +115,7 @@ jobs:
       docs_only: ${{ steps.filter.outputs.docs_only }}
       run_workflows_validation: ${{ steps.filter.outputs.run_workflows_validation }}
       run_migrations_validation: ${{ steps.filter.outputs.run_migrations_validation }}
+      run_db_types_validation: ${{ steps.filter.outputs.run_db_types_validation }}
       run_ui_validation: ${{ steps.filter.outputs.run_ui_validation }}
       run_python_validation: ${{ steps.filter.outputs.run_python_validation }}
     steps:
@@ -137,6 +138,7 @@ jobs:
               echo "docs_only=false"
               echo "run_workflows_validation=true"
               echo "run_migrations_validation=true"
+              echo "run_db_types_validation=true"
               echo "run_ui_validation=true"
               echo "run_python_validation=true"
             } >> "$GITHUB_OUTPUT"
@@ -157,6 +159,7 @@ jobs:
               echo "docs_only=false"
               echo "run_workflows_validation=true"
               echo "run_migrations_validation=true"
+              echo "run_db_types_validation=true"
               echo "run_ui_validation=true"
               echo "run_python_validation=true"
             } >> "$GITHUB_OUTPUT"
@@ -179,6 +182,19 @@ jobs:
             echo "run_migrations_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
+          fi
+          # Same-shape flag for the Postgres row-type drift gate (types-epic
+          # C, #7861): the whole check's footprint is deploy/postgres/
+          # schema.sql (what Kanel introspects), generated/db/ (its committed
+          # output), and its own validator/generator scripts -- nothing
+          # outside those three needs it re-run, and it's the one gate in
+          # this job that spins up Docker + a scratch Postgres container, so
+          # skipping it on an unrelated PR is a real, not cosmetic, cost
+          # saving.
+          if grep -qE '^deploy/postgres/schema\.sql$|^generated/db/|^scripts/(generate|validate)-db-types.*\.ts$|^scripts/db-types-scratch-container\.ts$' changed-files.txt; then
+            echo "run_db_types_validation=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_db_types_validation=false" >> "$GITHUB_OUTPUT"
           fi
           if grep -qE '^apps/ui/|^packages/client/|^packages/contract/|^packages/ui-kit/' changed-files.txt; then
             echo "run_ui_validation=true" >> "$GITHUB_OUTPUT"
@@ -233,6 +249,7 @@ jobs:
       DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
       RUN_WORKFLOWS_VALIDATION: ${{ needs.changes.outputs.run_workflows_validation }}
       RUN_MIGRATIONS_VALIDATION: ${{ needs.changes.outputs.run_migrations_validation }}
+      RUN_DB_TYPES_VALIDATION: ${{ needs.changes.outputs.run_db_types_validation }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -339,6 +356,18 @@ jobs:
           npm run validate:generated-client
           npm run validate:graphql-types-drift
           npm run validate:committed-seed
+
+      # A separate step (not folded into the block above) because its skip
+      # condition is narrower than DOCS_ONLY: it only needs to run when the
+      # diff actually touches deploy/postgres/schema.sql, generated/db/, or
+      # its own scripts (types-epic C, #7861) -- see the `changes` job's
+      # run_db_types_validation comment for the full path list and why this
+      # is the one gate here that spins up Docker + a scratch Postgres
+      # container, worth skipping on an unrelated PR. Same ordering rule as
+      # the block above: MUST run before "Build artifacts".
+      - name: Validate DB types drift
+        if: env.RUN_DB_TYPES_VALIDATION == 'true'
+        run: npm run validate:db-types-drift
 
       # Stage artifacts for BOTH halves: the suite's reader tests serve R2-only artifacts with NO
       # committed fallback (dist/metagraph-r2/metagraph/*), and every post-build validator below reads

@@ -69,6 +69,11 @@ export default tseslint.config(
       // own code, not this repo's, and never hand-edited (types-epic D,
       // #7862; regenerate via `npm run build:graphql-types`).
       "generated/graphql/**",
+      // Kanel-generated Postgres row types (npm run build:db-types, types-epic
+      // C, #7861) -- regenerated wholesale from the live schema, never hand-
+      // edited; Kanel's own boilerplate (e.g. an empty marker interface for a
+      // function with no return columns) trips rules meant for hand-written code.
+      "generated/db/**",
       "registry/candidates/generated/**",
       "registry/subnets/generated/**",
       "registry/verification/**",

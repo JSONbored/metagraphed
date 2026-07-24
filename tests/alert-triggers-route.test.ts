@@ -931,13 +931,18 @@ test("dereg-risk snapshot: 401 when the internal token is present but wrong", as
 });
 
 test("dereg-risk snapshot: 200, joins registered_at_block + immunity_period into immunity_expires_at_block, and returns the latest subnet_snapshots row per netuid", async () => {
-  mockQueue.current.push([{ block_number: 12345 }]); // MAX(block_number)
+  // block_number/registered_at_block are BIGINT columns -- postgres.js
+  // returns those as strings over the wire, not JS numbers (#7861 caught a
+  // real bug here: the handler used to do string concatenation / an
+  // always-false Number.isInteger(string) check because these mocks used
+  // raw numbers, masking the mismatch).
+  mockQueue.current.push([{ block_number: "12345" }]); // MAX(block_number)
   mockQueue.current.push([
     { netuid: 7, immunity_period: 500 },
     { netuid: 8, immunity_period: 1000 },
   ]);
   mockQueue.current.push([
-    { netuid: 7, hotkey: "5Fhot", registered_at_block: 12000 },
+    { netuid: 7, hotkey: "5Fhot", registered_at_block: "12000" },
   ]);
   mockQueue.current.push([
     { netuid: 7, alpha_price_tao: "1.5" },
@@ -962,10 +967,10 @@ test("dereg-risk snapshot: 200, joins registered_at_block + immunity_period into
 });
 
 test("dereg-risk snapshot: an immune neuron on a subnet with no immunity_period hyperparameter row is dropped, not defaulted", async () => {
-  mockQueue.current.push([{ block_number: 100 }]);
+  mockQueue.current.push([{ block_number: "100" }]);
   mockQueue.current.push([]); // no subnet_hyperparams rows at all
   mockQueue.current.push([
-    { netuid: 7, hotkey: "5Fhot", registered_at_block: 50 },
+    { netuid: 7, hotkey: "5Fhot", registered_at_block: "50" },
   ]);
   mockQueue.current.push([]);
   const res = await fetch(

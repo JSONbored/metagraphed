@@ -83,6 +83,8 @@
     "types:generate": "node scripts/generate-types.ts",
     "build:graphql-types": "node scripts/generate-graphql-types.ts",
     "validate:graphql-types-drift": "node scripts/validate-graphql-types-drift.ts",
+    "build:db-types": "node scripts/generate-db-types.ts",
+    "validate:db-types-drift": "node scripts/validate-db-types-drift.ts",
     "surface:add": "node scripts/surface-add.ts",
     "subnet:new": "node scripts/subnet-new.ts",
     "enrich:issues": "node scripts/enrichment-issues.ts --write",
@@ -148,6 +150,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@eslint/js": "^10.0.1",
     "@graphql-codegen/cli": "^7.2.0",
     "@graphql-codegen/typescript": "^6.1.0",
@@ -157,7 +160,9 @@
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "eslint": "^10.7.0",
+    "kanel": "^4.0.3",
     "openapi-typescript": "^7.13.0",
+    "pg": "^8.22.0",
     "prettier": "^3.9.5",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.65.0",

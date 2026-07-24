@@ -172,7 +172,13 @@ diff-scoped — reads `tsconfig.json`'s own `include`/`exclude`) · `validate:co
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
 `validate:graphql-types-drift` (types-epic D, metagraphed#7862 — `generated/graphql/types.ts` from
 `codegen.ts` against `src/graphql-sdl.ts`; run `npm run build:graphql-types` and commit on drift) ·
-`validate:committed-seed` · `npm run build` · committed-derived-artifact freshness (working tree clean
+`validate:db-types-drift` (types-epic C, metagraphed#7861 — `generated/db/` from Kanel against a
+disposable scratch Postgres running `deploy/postgres/schema.sql`; run `npm run build:db-types` and
+commit on drift. **CI-narrow-gated**, not part of the unconditional block above: only runs when the
+diff touches `deploy/postgres/schema.sql`, `generated/db/`, or its own scripts — the one gate in this
+job that spins up Docker, so most PRs never pay for it. Still unconditional in local `npm run check`,
+same as `validate:migrations`/`validate:workflows`) · `validate:committed-seed` · `npm run build` ·
+committed-derived-artifact freshness (working tree clean
 under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA/CONTENT-derived artifacts
 are NOT: `public/datasets/` + the llms.txt catalogs are gitignored, the README catalog is refreshed
 out-of-band by `readme-catalog-refresh.yml`, and `operational-surfaces.json` is committed-but-excluded —
