@@ -152,6 +152,12 @@ import {
   loadSubnetCandidatesList,
 } from "./subnet-candidates-mcp.ts";
 import {
+  LIST_SUBNET_GAPS_INSTRUCTIONS,
+  LIST_SUBNET_GAPS_MCP_TOOL,
+  LIST_SUBNET_GAPS_OUTPUT_SCHEMA,
+  loadSubnetGapsList,
+} from "./subnet-gaps-mcp.ts";
+import {
   LIST_EVIDENCE_INSTRUCTIONS,
   LIST_EVIDENCE_MCP_TOOL,
   LIST_EVIDENCE_OUTPUT_SCHEMA,
@@ -861,7 +867,9 @@ export const MCP_INSTRUCTIONS =
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
   "get_subnet_gaps for one subnet's interface gap priorities and contributor " +
-  "enrichment queue. " +
+  "enrichment queue, " +
+  LIST_SUBNET_GAPS_INSTRUCTIONS +
+  "and more. " +
   "For goal-shaped flows, find_subnet_for_task turns a plain-language task into " +
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
@@ -10587,6 +10595,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_SUBNET_GAPS_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadSubnetGapsList(ctx, args);
+    },
+  },
+  {
     name: "find_subnet_opportunities",
     title: "Rank subnets by economic opportunity",
     description:
@@ -15526,6 +15540,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       enrichment_queue: { type: "array", items: { type: "object" } },
     },
   },
+  list_subnet_gaps: LIST_SUBNET_GAPS_OUTPUT_SCHEMA,
   find_subnet_for_task: {
     type: "object",
     additionalProperties: true,
