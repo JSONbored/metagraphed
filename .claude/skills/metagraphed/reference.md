@@ -336,6 +336,30 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   actually advances the number, entirely after the fact. A contributor hand-bumping either file is pure
   unrewarded toil (and setup for a merge conflict with the auto-opened `chore/sync-mcp-version` PR) —
   flag it in review the same way as a manual client-SDK bump.
+- **Zod-owned MCP tool schemas (types-epic E, #7863) live in `schemas-src/mcp-tools/`, one file per
+  tool.** For the tools this covers (currently the pilot batch: `search_subnets`, `list_subnets`,
+  `get_subnet`, `get_network_health`, `get_subnet_stake_quote`, `get_economics`), the hand-written
+  `inputSchema`/`TOOL_OUTPUT_SCHEMAS` object literals in `src/mcp-server.ts` (or, for a couple of
+  tools, `src/global-operational-health.ts` / `src/network-economics.ts`, wherever that tool's
+  `..._MCP_TOOL`/`..._OUTPUT_SCHEMA` const actually lives) are replaced with
+  `z.toJSONSchema(FooSchema, { target: "draft-2020-12" })`, computed once at module load — never a
+  build step, unlike types-epic B's OpenAPI components: MCP tool schemas are served live by the
+  running Worker, there's no committed artifact to regenerate. Where a tool mirrors a REST route
+  already covered by `schemas-src/routes/`, reuse that module's schema for the OUTPUT shape ONLY if
+  the hand-written MCP schema was ALSO that deep/strict (verify field-for-field — several "mirrors"
+  tools deliberately shipped a shallower contract than their REST counterpart, e.g. `subnets:
+{type:"array", items:{type:"object"}}` with no per-row property constraints; reusing the REST
+  route's own `.strict()` schema there would be a real tightening, not a wire-compatible relocation).
+  `MCP_TOOLS`'s array needs an explicit `McpToolDefinition` interface annotation (already added) for
+  this to typecheck at all — without it, TypeScript infers the array's element type by intersecting
+  every entry's `handler` parameter (contravariant), which collapses into an unsatisfiable type the
+  moment more than one entry declares a specific (non-`Row`) `args` type; the explicit interface uses
+  bivariant parameter checking for the method-shorthand syntax every tool already uses instead. Run
+  `npm run diff:mcp-tool-schemas` (an equivalence-diff audit against hand-transcribed pre-conversion
+  literals, normalizing known cosmetic differences — see its own file header) until it reports PASS
+  for a newly-converted tool; per #7863's own "hard wire-compatibility constraint," description-string
+  loss is the ONLY issue-sanctioned cosmetic difference — any other diff is a real regression to fix
+  in the Zod schema, not normalize away.
 - **`packages/client` is an npm workspace (#3066), with no lockfile of its own.** `apps/ui` consumes it
   as a live workspace link (`"@jsonbored/metagraphed": "*"` in `apps/ui/package.json`, resolved from
   `packages/client` directly) instead of round-tripping through the published npm package. Verified

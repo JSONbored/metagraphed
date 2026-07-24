@@ -102,7 +102,7 @@ describe("global-operational-health", () => {
     assert.equal(GET_NETWORK_HEALTH_MCP_TOOL.name, "get_network_health");
     assert.match(GET_NETWORK_HEALTH_INSTRUCTIONS, /get_network_health/);
     assert.deepEqual(
-      Object.keys(GET_NETWORK_HEALTH_MCP_TOOL.inputSchema.properties),
+      Object.keys(GET_NETWORK_HEALTH_MCP_TOOL.inputSchema.properties ?? {}),
       [],
     );
     assert.ok(

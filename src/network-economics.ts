@@ -2,14 +2,17 @@
 // Pure orchestration over resolveLiveEconomics + applyQueryFilters; MCP/REST
 // handlers keep tier precedence and envelope wiring.
 
+import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 import { resolveLiveEconomics } from "./health-serving.ts";
+import {
+  GetEconomicsInputSchema,
+  GetEconomicsOutputSchema,
+} from "../schemas-src/mcp-tools/get-economics.ts";
 
 const ECONOMICS_SORT_FIELDS = API_QUERY_COLLECTIONS.economics.sort_fields;
-const NULLABLE_STRING = { type: ["string", "null"] };
-const NULLABLE_INT = { type: ["integer", "null"] };
 
 export interface NetworkEconomicsError extends Error {
   networkEconomics: true;
@@ -207,72 +210,12 @@ export const GET_ECONOMICS_MCP_TOOL = {
     "snapshot. Filter by netuid or registration_allowed, search by name/slug " +
     "(q), sort with sort + order, and page with limit (1-1000) / cursor. " +
     "Mirrors GET /api/v1/economics.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      netuid: {
-        type: "integer",
-        description: "Filter to one subnet netuid.",
-        minimum: 0,
-      },
-      registration_allowed: {
-        type: "string",
-        enum: ["true", "false"],
-        description:
-          "Filter to subnets where registration is open (true) or closed (false).",
-      },
-      q: {
-        type: "string",
-        description: "Search subnet name or slug (case-insensitive).",
-      },
-      sort: {
-        type: "string",
-        enum: ECONOMICS_SORT_FIELDS,
-        description:
-          "Field to sort by (bare name only). Pair with order for direction.",
-      },
-      order: {
-        type: "string",
-        enum: ["asc", "desc"],
-        description: "Sort direction for sort (default asc).",
-      },
-      fields: {
-        type: "string",
-        description:
-          "Comma-separated projection of subnet row fields to return.",
-      },
-      limit: {
-        type: "integer",
-        description: "Max subnet rows to return (1-1000). Enables pagination.",
-        minimum: 1,
-        maximum: 1000,
-      },
-      cursor: {
-        type: "integer",
-        description: "Pagination cursor from a prior response's next_cursor.",
-        minimum: 0,
-      },
-    },
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetEconomicsInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-export const GET_ECONOMICS_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["source", "subnets"],
-  properties: {
-    source: NULLABLE_STRING,
-    captured_at: NULLABLE_STRING,
-    network: NULLABLE_STRING,
-    summary: { type: ["object", "null"] },
-    subnets: { type: "array", items: { type: "object" } },
-    total: { type: "integer" },
-    returned: { type: "integer" },
-    limit: { type: "integer" },
-    cursor: { type: "integer" },
-    next_cursor: NULLABLE_INT,
-    sort: NULLABLE_STRING,
-    order: NULLABLE_STRING,
-  },
-};
+export const GET_ECONOMICS_OUTPUT_SCHEMA = z.toJSONSchema(
+  GetEconomicsOutputSchema,
+  { target: "draft-2020-12" },
+);

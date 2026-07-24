@@ -3,7 +3,12 @@
 // 2026-07-17), with an explicit unknown payload when the live store is cold
 // (never a stale baked fallback).
 
+import { z } from "zod";
 import { buildGlobalHealth, resolveLiveHealth } from "./health-serving.ts";
+import {
+  GetNetworkHealthInputSchema,
+  GetNetworkHealthOutputSchema,
+} from "../schemas-src/mcp-tools/get-network-health.ts";
 
 export interface UnknownGlobalHealth {
   schema_version: 1;
@@ -80,28 +85,12 @@ export const GET_NETWORK_HEALTH_MCP_TOOL = {
     "from the ~15-minute health prober (KV health:current → D1 surface_status). " +
     "Use it for a network-wide health snapshot before drilling into " +
     "get_subnet_health or get_health_trends. Mirrors GET /api/v1/health.",
-  inputSchema: {
-    type: "object",
-    properties: {},
-    additionalProperties: false,
-  },
+  inputSchema: z.toJSONSchema(GetNetworkHealthInputSchema, {
+    target: "draft-2020-12",
+  }),
 };
 
-const NULLABLE_STRING = { type: ["string", "null"] };
-
-export const GET_NETWORK_HEALTH_OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: true,
-  required: ["schema_version", "scope", "global", "subnets"],
-  properties: {
-    schema_version: { type: "integer" },
-    contract_version: { type: ["integer", "string", "null"] },
-    generated_at: NULLABLE_STRING,
-    source: NULLABLE_STRING,
-    health_source: NULLABLE_STRING,
-    scope: { type: "string" },
-    operational_observed_at: NULLABLE_STRING,
-    global: { type: "object" },
-    subnets: { type: "array", items: { type: "object" } },
-  },
-};
+export const GET_NETWORK_HEALTH_OUTPUT_SCHEMA = z.toJSONSchema(
+  GetNetworkHealthOutputSchema,
+  { target: "draft-2020-12" },
+);

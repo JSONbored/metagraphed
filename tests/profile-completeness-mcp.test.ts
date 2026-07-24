@@ -353,6 +353,6 @@ describe("profile-completeness-mcp", () => {
     );
     assert.ok(tool);
     assert.equal(tool.title, "List subnet profile-completeness gaps");
-    assert.ok(tool.inputSchema.properties.netuid);
+    assert.ok(tool.inputSchema.properties?.netuid);
   });
 });

@@ -36,6 +36,25 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import * as Sentry from "@sentry/cloudflare";
+import { z } from "zod";
+import {
+  SearchSubnetsInputSchema,
+  SearchSubnetsOutputSchema,
+} from "../schemas-src/mcp-tools/search-subnets.ts";
+import {
+  ListSubnetsInputSchema,
+  ListSubnetsOutputSchema,
+} from "../schemas-src/mcp-tools/list-subnets.ts";
+import {
+  GetSubnetInputSchema,
+  GetSubnetOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet.ts";
+import { GetNetworkHealthInputSchema } from "../schemas-src/mcp-tools/get-network-health.ts";
+import {
+  GetSubnetStakeQuoteInputSchema,
+  GetSubnetStakeQuoteOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-stake-quote.ts";
+import { GetEconomicsInputSchema } from "../schemas-src/mcp-tools/get-economics.ts";
 import {
   isUsageTelemetryConfigured,
   recordExceptionEvent,
@@ -750,6 +769,41 @@ interface McpCtx {
   recordMcpToolCallEvent?: AnyFn;
   recordMcpInitializeEvent?: AnyFn;
   recordExceptionEvent?: AnyFn;
+}
+
+// Explicit element type for MCP_TOOLS (types-epic E, #7863): without this,
+// TypeScript infers the array's element type by intersecting every entry's
+// `handler` signature (contravariant in its parameter), which collapses into
+// an unsatisfiable type the moment more than one entry declares a specific
+// (non-Row) `args` parameter -- exactly what the Zod-derived pilot tools
+// below now do. Declaring the array against this interface instead uses
+// TypeScript's bivariant parameter checking for method-shorthand syntax
+// (`async handler(args, ctx) {}`, which every one of the 204 entries uses),
+// so each tool's own, more specific `args` type independently typechecks
+// against its own Zod schema without constraining -- or being constrained
+// by -- any other tool's handler.
+// Loose JSON Schema object shape -- covers both hand-written literals and
+// z.toJSONSchema() output (Zod's own emitted type is more precise than any
+// single tool needs here, and would reintroduce the same collapsing
+// behavior as `handler` above if used directly across 204 heterogeneous
+// entries). `properties`/`required` stay accessible for tests that inspect
+// a specific tool's wire schema.
+interface JsonSchemaLike {
+  type?: string | string[];
+  properties?: Record<string, unknown>;
+  required?: string[];
+  enum?: unknown[];
+  additionalProperties?: boolean | Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface McpToolDefinition {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema: JsonSchemaLike;
+  outputSchema?: JsonSchemaLike;
+  handler(args: Row, ctx: McpCtx): Promise<unknown>;
 }
 
 // Protocol versions we understand, newest first. We echo the client's requested
@@ -2418,7 +2472,7 @@ const ENDPOINTS_QUERY_FILTER_NAMES = [
 // Tool registry. Each tool is a thin wrapper over artifact/KV reads.
 // ---------------------------------------------------------------------------
 
-export const MCP_TOOLS = [
+export const MCP_TOOLS: McpToolDefinition[] = [
   {
     name: "search_subnets",
     title: "Search Bittensor subnets",
@@ -2429,30 +2483,10 @@ export const MCP_TOOLS = [
       "Paginated like list_subnets: pass `cursor` to page past the first " +
       "results; the response carries `total` and a `next_cursor` (null at the " +
       "end) so the whole ranked match set is reachable.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "Search terms, e.g. 'image generation' or 'scraping'.",
-        },
-        cursor: {
-          type: "integer",
-          description:
-            "Pagination cursor from a prior response's next_cursor. Default 0.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max results per page (1-50, default 10).",
-          minimum: 1,
-          maximum: 50,
-        },
-      },
-      required: ["query"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(SearchSubnetsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof SearchSubnetsInputSchema>, ctx: McpCtx) {
       const query = requireString(args, "query");
       const index = await loadArtifactData(ctx, "/metagraph/search.json");
       const terms = queryTerms(query);
@@ -2482,183 +2516,10 @@ export const MCP_TOOLS = [
       "(0-100), and callable-surface count. Use this to walk or page through the " +
       "whole registry; for keyword or capability discovery use search_subnets / " +
       "find_subnets_by_capability instead.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cursor: {
-          type: "integer",
-          description:
-            "Pagination cursor from a prior response's next_cursor. Default 0.",
-          minimum: 0,
-        },
-        limit: {
-          type: "integer",
-          description: "Max rows to return (1-100, default 50).",
-          minimum: 1,
-          maximum: 100,
-        },
-        status: {
-          type: "string",
-          description: "Filter by lifecycle status, e.g. 'active'.",
-        },
-        subnet_type: {
-          type: "string",
-          description: "Filter by subnet type, e.g. 'application' or 'root'.",
-        },
-        domain: {
-          type: "string",
-          description:
-            "Filter to subnets tagged with this domain/category, e.g. 'inference'.",
-        },
-        not_status: {
-          type: "string",
-          description: "Exclude subnets with this lifecycle status.",
-        },
-        not_subnet_type: {
-          type: "string",
-          description: "Exclude subnets of this type (e.g. 'root').",
-        },
-        not_domain: {
-          type: "string",
-          description: "Exclude subnets tagged with this domain/category.",
-        },
-        coverage_level: {
-          type: "string",
-          enum: QUERY_ENUMS.coverageLevel,
-          description: "Filter by how the registry sourced this subnet's data.",
-        },
-        not_coverage_level: {
-          type: "string",
-          enum: QUERY_ENUMS.coverageLevel,
-          description: "Exclude subnets with this coverage_level.",
-        },
-        curation_level: {
-          type: "string",
-          enum: QUERY_ENUMS.curationLevel,
-          description:
-            "Filter by how this subnet's listing was curated/trusted.",
-        },
-        not_curation_level: {
-          type: "string",
-          enum: QUERY_ENUMS.curationLevel,
-          description: "Exclude subnets with this curation_level.",
-        },
-        min_readiness: {
-          type: "integer",
-          description:
-            "Only subnets whose integration_readiness is >= this (0-100).",
-          minimum: 0,
-          maximum: 100,
-        },
-        max_readiness: {
-          type: "integer",
-          description:
-            "Only subnets whose integration_readiness is <= this (0-100).",
-          minimum: 0,
-          maximum: 100,
-        },
-        min_surface_count: {
-          type: "integer",
-          description:
-            "Only subnets with at least this many callable surfaces.",
-          minimum: 0,
-        },
-        max_surface_count: {
-          type: "integer",
-          description: "Only subnets with at most this many callable surfaces.",
-          minimum: 0,
-        },
-        min_block: {
-          type: "number",
-          description: "Only subnets whose current block is >= this.",
-        },
-        max_block: {
-          type: "number",
-          description: "Only subnets whose current block is <= this.",
-        },
-        min_candidate_count: {
-          type: "integer",
-          description:
-            "Only subnets with at least this many surface candidates.",
-          minimum: 0,
-        },
-        max_candidate_count: {
-          type: "integer",
-          description:
-            "Only subnets with at most this many surface candidates.",
-          minimum: 0,
-        },
-        min_mechanism_count: {
-          type: "integer",
-          description:
-            "Only subnets with at least this many registered mechanisms.",
-          minimum: 0,
-        },
-        max_mechanism_count: {
-          type: "integer",
-          description:
-            "Only subnets with at most this many registered mechanisms.",
-          minimum: 0,
-        },
-        min_participant_count: {
-          type: "integer",
-          description: "Only subnets with at least this many participants.",
-          minimum: 0,
-        },
-        max_participant_count: {
-          type: "integer",
-          description: "Only subnets with at most this many participants.",
-          minimum: 0,
-        },
-        min_probed_surface_count: {
-          type: "integer",
-          description:
-            "Only subnets with at least this many probed (health-checked) surfaces.",
-          minimum: 0,
-        },
-        max_probed_surface_count: {
-          type: "integer",
-          description:
-            "Only subnets with at most this many probed (health-checked) surfaces.",
-          minimum: 0,
-        },
-        min_tempo: {
-          type: "integer",
-          description: "Only subnets whose tempo is >= this.",
-          minimum: 0,
-        },
-        max_tempo: {
-          type: "integer",
-          description: "Only subnets whose tempo is <= this.",
-          minimum: 0,
-        },
-        min_netuid: {
-          type: "integer",
-          description: "Only subnets whose netuid is >= this.",
-          minimum: 0,
-        },
-        max_netuid: {
-          type: "integer",
-          description: "Only subnets whose netuid is <= this.",
-          minimum: 0,
-        },
-        sort: {
-          type: "string",
-          enum: LIST_SUBNETS_SORT_FIELDS,
-          description:
-            "Order the (filtered) list by this field before paging — e.g. " +
-            "sort by integration_readiness for the most integration-ready " +
-            "subnets. Default: registry source order. Unscored subnets sort last.",
-        },
-        order: {
-          type: "string",
-          enum: LIST_SUBNETS_ORDERS,
-          description: "Sort direction when `sort` is set (default 'asc').",
-        },
-      },
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(ListSubnetsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof ListSubnetsInputSchema>, ctx: McpCtx) {
       const index = await loadArtifactData(ctx, "/metagraph/subnets.json");
       const all = Array.isArray(index.subnets) ? index.subnets : [];
       // Categorical inclusion (status/subnet_type/domain) and exclusion
@@ -2795,15 +2656,10 @@ export const MCP_TOOLS = [
     description:
       "Fetch the composed overview for one subnet by netuid: identity, " +
       "completeness, curated surfaces, health summary, gaps, and counts.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetSubnetInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const overview = await loadArtifactData(
         ctx,
@@ -2948,7 +2804,10 @@ export const MCP_TOOLS = [
   },
   {
     ...GET_NETWORK_HEALTH_MCP_TOOL,
-    async handler(_args: unknown, ctx: McpCtx) {
+    async handler(
+      _args: z.infer<typeof GetNetworkHealthInputSchema>,
+      ctx: McpCtx,
+    ) {
       return loadGlobalOperationalHealth(
         { env: ctx.env, readHealthKv: ctx.readHealthKv },
         { contractVersion: () => mcpContractVersion(ctx) },
@@ -3195,27 +3054,13 @@ export const MCP_TOOLS = [
       "quotes 1:1 with zero price impact. Read-only, pure math -- it builds no " +
       "transaction, signs nothing, and never touches a key. Mirrors " +
       "GET /api/v1/subnets/{netuid}/stake-quote.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        amount: {
-          type: "number",
-          description:
-            "Amount to quote, in TAO for direction=stake or alpha for " +
-            "direction=unstake. Must be a finite number greater than 0.",
-          exclusiveMinimum: 0,
-        },
-        direction: {
-          type: "string",
-          enum: STAKE_QUOTE_DIRECTIONS,
-          description: 'Swap direction: stake or unstake (default "stake").',
-        },
-      },
-      required: ["netuid", "amount"],
-      additionalProperties: false,
-    },
-    async handler(args: Row, ctx: McpCtx) {
+    inputSchema: z.toJSONSchema(GetSubnetStakeQuoteInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetStakeQuoteInputSchema>,
+      ctx: McpCtx,
+    ) {
       const netuid = requireNetuid(args);
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
@@ -3365,7 +3210,7 @@ export const MCP_TOOLS = [
   },
   {
     ...GET_ECONOMICS_MCP_TOOL,
-    async handler(args: Row, ctx: McpCtx) {
+    async handler(args: z.infer<typeof GetEconomicsInputSchema>, ctx: McpCtx) {
       try {
         return await loadNetworkEconomics(asMcpLoaderCtx(ctx), args, {
           contractVersion: mcpContractVersion,
@@ -11977,65 +11822,12 @@ const RPC_USAGE_BUCKETS = {
   },
 };
 const TOOL_OUTPUT_SCHEMAS = {
-  search_subnets: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "query",
-      "total",
-      "count",
-      "cursor",
-      "limit",
-      "next_cursor",
-      "results",
-    ],
-    properties: {
-      query: { type: "string" },
-      total: { type: "integer" },
-      count: { type: "integer" },
-      cursor: { type: "integer" },
-      limit: { type: "integer" },
-      next_cursor: { type: ["integer", "null"] },
-      results: objectItems({
-        netuid: { type: "integer" },
-        slug: { type: "string" },
-        title: NULLABLE_STRING,
-        description: NULLABLE_STRING,
-        url: NULLABLE_STRING,
-      }),
-    },
-  },
-  list_subnets: {
-    type: "object",
-    additionalProperties: true,
-    required: [
-      "total",
-      "returned",
-      "cursor",
-      "limit",
-      "next_cursor",
-      "subnets",
-    ],
-    properties: {
-      total: { type: "integer" },
-      returned: { type: "integer" },
-      cursor: { type: "integer" },
-      limit: { type: "integer" },
-      // Applied ordering, echoed back; null when paging in registry source order.
-      sort: NULLABLE_STRING,
-      order: NULLABLE_STRING,
-      next_cursor: { type: ["integer", "null"] },
-      subnets: objectItems({
-        netuid: { type: "integer" },
-        slug: NULLABLE_STRING,
-        title: NULLABLE_STRING,
-        subnet_type: NULLABLE_STRING,
-        status: NULLABLE_STRING,
-        integration_readiness: { type: ["number", "null"] },
-        surface_count: { type: ["integer", "null"] },
-      }),
-    },
-  },
+  search_subnets: z.toJSONSchema(SearchSubnetsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_subnets: z.toJSONSchema(ListSubnetsOutputSchema, {
+    target: "draft-2020-12",
+  }),
   find_subnets_by_capability: {
     type: "object",
     additionalProperties: true,
@@ -12066,25 +11858,9 @@ const TOOL_OUTPUT_SCHEMAS = {
       }),
     },
   },
-  get_subnet: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid"],
-    properties: {
-      netuid: { type: "integer" },
-      name: NULLABLE_STRING,
-      slug: NULLABLE_STRING,
-      status: NULLABLE_STRING,
-      health: { type: ["object", "null"] },
-      profile: { type: ["object", "null"] },
-      counts: { type: "object" },
-      curation: { type: ["object", "null"] },
-      gaps: { type: ["object", "null"] },
-      gap_priorities: { type: "array" },
-      operational_observed_at: NULLABLE_STRING,
-      health_source: NULLABLE_STRING,
-    },
-  },
+  get_subnet: z.toJSONSchema(GetSubnetOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_subnet_detail: {
     type: "object",
     additionalProperties: true,
@@ -12229,38 +12005,9 @@ const TOOL_OUTPUT_SCHEMAS = {
       economics: { type: ["object", "null"] },
     },
   },
-  get_subnet_stake_quote: {
-    type: "object",
-    additionalProperties: false,
-    required: [
-      "schema_version",
-      "netuid",
-      "direction",
-      "amount",
-      "expected_out",
-      "expected_out_unit",
-      "spot_price_tao",
-      "effective_price_tao",
-      "price_impact_pct",
-      "tao_in_pool_tao",
-      "alpha_in_pool",
-      "is_root",
-    ],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      direction: { type: "string", enum: STAKE_QUOTE_DIRECTIONS },
-      amount: { type: "number" },
-      expected_out: { type: "number" },
-      expected_out_unit: { type: "string", enum: ["alpha", "tao"] },
-      spot_price_tao: { type: "number" },
-      effective_price_tao: { type: "number" },
-      price_impact_pct: { type: "number" },
-      tao_in_pool_tao: { type: ["number", "null"] },
-      alpha_in_pool: { type: ["number", "null"] },
-      is_root: { type: "boolean" },
-    },
-  },
+  get_subnet_stake_quote: z.toJSONSchema(GetSubnetStakeQuoteOutputSchema, {
+    target: "draft-2020-12",
+  }),
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   list_profiles: LIST_PROFILES_OUTPUT_SCHEMA,
@@ -16529,7 +16276,14 @@ function scheduleExceptionEvent(ctx: McpCtx, event: Row) {
   }
 }
 
-async function dispatchTool(params: Row, ctx: McpCtx) {
+async function dispatchTool(
+  params: Row,
+  ctx: McpCtx,
+): Promise<{
+  content: { type: string; text: string }[];
+  structuredContent: Row;
+  isError: boolean;
+}> {
   const name = params?.name;
   const tool = typeof name === "string" ? TOOLS_BY_NAME.get(name) : undefined;
   if (!tool) {
@@ -16556,7 +16310,7 @@ async function dispatchTool(params: Row, ctx: McpCtx) {
     );
     return {
       content: [{ type: "text", text: JSON.stringify(data) }],
-      structuredContent: data,
+      structuredContent: data as Row,
       isError: false,
     };
   } catch (rawError) {
