@@ -8908,6 +8908,116 @@ describe("graphql — subnet_candidates (#7641, baked per-subnet candidate artif
   test("is weighted as a fan-out field", () => {
     assert.equal(FIELD_COMPLEXITY.subnet_candidates, 5);
   });
+
+  // #7878: full REST filter/sort/page parity, reusing the same loader
+  // list_subnet_candidates calls.
+  const FILTER_ENV = () =>
+    fixtureEnv({
+      "/metagraph/candidates/5.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        netuid: 5,
+        candidates: [
+          {
+            id: "alpha-api",
+            netuid: 5,
+            kind: "subnet-api",
+            provider: "alpha",
+            state: "maintainer-review",
+            confidence: "high",
+          },
+          {
+            id: "alpha-openapi",
+            netuid: 5,
+            kind: "openapi",
+            provider: "alpha",
+            state: "schema-valid",
+            confidence: "low",
+          },
+          {
+            id: "beta-api",
+            netuid: 5,
+            kind: "subnet-api",
+            provider: "beta",
+            state: "schema-valid",
+            confidence: "low",
+          },
+        ],
+      },
+    });
+
+  test("combines two filters (kind + state) (#7878)", async () => {
+    const { status, body } = await gql(
+      '{ subnet_candidates(netuid: 5, kind: "subnet-api", state: "schema-valid") }',
+      FILTER_ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const out = body.data.subnet_candidates;
+    assert.equal(out.returned, 1);
+    assert.equal(out.candidates[0].id, "beta-api");
+  });
+
+  test("filters by provider, confidence, and id (#7878)", async () => {
+    const { body } = await gql(
+      '{ subnet_candidates(netuid: 5, provider: "alpha", confidence: "low") }',
+      FILTER_ENV(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_candidates.returned, 1);
+    assert.equal(body.data.subnet_candidates.candidates[0].id, "alpha-openapi");
+
+    const byId = await gql(
+      '{ subnet_candidates(netuid: 5, id: "beta-api") }',
+      FILTER_ENV(),
+    );
+    assert.equal(byId.body.errors, undefined);
+    assert.equal(byId.body.data.subnet_candidates.returned, 1);
+    assert.equal(byId.body.data.subnet_candidates.candidates[0].id, "beta-api");
+  });
+
+  test("sorts, pages, and round-trips next_cursor (#7878)", async () => {
+    const first = await gql(
+      '{ subnet_candidates(netuid: 5, confidence: "low", sort: "id", order: "asc", limit: 1) }',
+      FILTER_ENV(),
+    );
+    assert.equal(first.body.errors, undefined);
+    const page1 = first.body.data.subnet_candidates;
+    assert.equal(page1.total, 2);
+    assert.equal(page1.returned, 1);
+    assert.equal(page1.candidates[0].id, "alpha-openapi");
+    assert.equal(page1.next_cursor, 1);
+
+    const second = await gql(
+      '{ subnet_candidates(netuid: 5, confidence: "low", sort: "id", order: "asc", limit: 1, cursor: 1) }',
+      FILTER_ENV(),
+    );
+    const page2 = second.body.data.subnet_candidates;
+    assert.equal(page2.candidates[0].id, "beta-api");
+    assert.equal(page2.next_cursor, null);
+  });
+
+  test("an unsupported filter or sort value is a GraphQL error (#7878)", async () => {
+    const badState = await gql(
+      '{ subnet_candidates(netuid: 5, state: "bogus") }',
+      FILTER_ENV(),
+    );
+    assert.ok(badState.body.errors, "expected a GraphQL error for state");
+
+    const badConfidence = await gql(
+      '{ subnet_candidates(netuid: 5, confidence: "extreme") }',
+      FILTER_ENV(),
+    );
+    assert.ok(
+      badConfidence.body.errors,
+      "expected a GraphQL error for confidence",
+    );
+
+    const badSort = await gql(
+      '{ subnet_candidates(netuid: 5, sort: "not_a_column") }',
+      FILTER_ENV(),
+    );
+    assert.ok(badSort.body.errors, "expected a GraphQL error for sort");
+  });
 });
 
 describe("graphql — subnet_performance_history (#6981, neuron_daily reward-distribution trend)", () => {
