@@ -444,11 +444,12 @@ describe("handleGraphQLRequest — resolvers (cold store)", () => {
     assert.equal(body.data.subnet, null);
   });
 
-  test("providers returns empty list when artifact not found", async () => {
+  test("providers returns empty list when artifact not found (pre-#7888 contract)", async () => {
     const { status, body } = await gql(
       "{ providers { items { id name } total } }",
     );
     assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.providers, { items: [], total: 0 });
   });
 
@@ -2714,12 +2715,12 @@ describe("graphql — resolver branch coverage", () => {
     assert.deepEqual(body.data.provider.subnets, []);
   });
 
-  test("providers paginate with an id cursor", async () => {
+  test("providers paginate with an opaque string id cursor (pre-#7888 contract)", async () => {
     const env = fixtureEnv({
       "/metagraph/providers.json": {
         providers: [
-          { id: "a", name: "A" },
-          { id: "b", name: "B" },
+          { id: "a", name: "A", kind: "data-provider", authority: "official" },
+          { id: "b", name: "B", kind: "data-provider", authority: "community" },
         ],
       },
     });
@@ -2728,8 +2729,176 @@ describe("graphql — resolver branch coverage", () => {
       env as unknown as Env,
     );
     assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
     assert.equal(body.data.providers.total, 2);
+    assert.equal(body.data.providers.items.length, 1);
     assert.equal(body.data.providers.next_cursor, "a");
+  });
+
+  test("providers filters by id and by kind (#7888)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        schema_version: 1,
+        providers: [
+          {
+            id: "datura",
+            name: "Datura",
+            kind: "data-provider",
+            authority: "official",
+          },
+          {
+            id: "chutes",
+            name: "Chutes",
+            kind: "infrastructure-provider",
+            authority: "official",
+          },
+          {
+            id: "community-x",
+            name: "Community X",
+            kind: "data-provider",
+            authority: "community",
+          },
+        ],
+      },
+    });
+
+    const byId = await gql(
+      '{ providers(id: "chutes") { items { id kind } total } }',
+      env,
+    );
+    assert.equal(byId.status, 200);
+    assert.equal(byId.body.errors, undefined);
+    assert.equal(byId.body.data.providers.total, 1);
+    assert.equal(byId.body.data.providers.items[0].id, "chutes");
+    assert.equal(
+      byId.body.data.providers.items[0].kind,
+      "infrastructure-provider",
+    );
+
+    const byKind = await gql(
+      '{ providers(kind: "data-provider") { items { id } total } }',
+      env,
+    );
+    assert.equal(byKind.status, 200);
+    assert.equal(byKind.body.errors, undefined);
+    assert.equal(byKind.body.data.providers.total, 2);
+    assert.deepEqual(byKind.body.data.providers.items.map((p) => p.id).sort(), [
+      "community-x",
+      "datura",
+    ]);
+  });
+
+  test("providers surfaces an invalid kind as a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers.json": {
+        providers: [
+          { id: "datura", kind: "data-provider", authority: "official" },
+        ],
+      },
+    });
+    const { body } = await gql('{ providers(kind: "bogus") { total } }', env);
+    assert.ok(body.errors?.length > 0);
+    assert.match(body.errors[0].message, /kind/i);
+  });
+
+  test("providers forwards authority/sort/order/fields through the shared loader (#7888)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers.json": {
+        providers: [
+          {
+            id: "datura",
+            name: "Datura",
+            kind: "data-provider",
+            authority: "official",
+            surface_count: 3,
+          },
+          {
+            id: "community-x",
+            name: "Community X",
+            kind: "data-provider",
+            authority: "community",
+            surface_count: 1,
+          },
+        ],
+      },
+    });
+    // fields without id → resolver prefixes id for keyset stability.
+    const withoutId = await gql(
+      `{ providers(
+          authority: "official",
+          sort: "id",
+          order: "asc",
+          fields: "kind,authority",
+          limit: 10
+        ) { items { id kind authority } total next_cursor } }`,
+      env,
+    );
+    assert.equal(withoutId.status, 200);
+    assert.equal(withoutId.body.errors, undefined);
+    assert.equal(withoutId.body.data.providers.total, 1);
+    assert.equal(withoutId.body.data.providers.items[0].id, "datura");
+    assert.equal(withoutId.body.data.providers.items[0].authority, "official");
+    assert.equal(withoutId.body.data.providers.next_cursor, null);
+
+    // fields already listing id → keep the projection as-is (other branch).
+    const withId = await gql(
+      `{ providers(fields: "id,kind", limit: 1) { items { id kind } total next_cursor } }`,
+      env,
+    );
+    assert.equal(withId.status, 200);
+    assert.equal(withId.body.errors, undefined);
+    assert.equal(withId.body.data.providers.items.length, 1);
+    assert.equal(withId.body.data.providers.next_cursor, "datura");
+  });
+
+  test("providers maps invalid_params to BAD_USER_INPUT (#7888)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers.json": {
+        providers: [
+          { id: "datura", kind: "data-provider", authority: "official" },
+        ],
+      },
+    });
+    const badAuthority = await gql(
+      '{ providers(authority: "not-real") { total } }',
+      env,
+    );
+    assert.ok(
+      badAuthority.body.errors?.find(
+        (e) => e.extensions?.code === "BAD_USER_INPUT",
+      ),
+    );
+    const badFields = await gql('{ providers(fields: "   ") { total } }', env);
+    assert.ok(
+      badFields.body.errors?.find(
+        (e) => e.extensions?.code === "BAD_USER_INPUT",
+      ),
+    );
+  });
+
+  test("providers follows a string next_cursor to the next page (#7888)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/providers.json": {
+        providers: [
+          { id: "a", name: "A", kind: "data-provider", authority: "official" },
+          { id: "b", name: "B", kind: "registry", authority: "community" },
+        ],
+      },
+    });
+    const first = await gql(
+      "{ providers(limit: 1) { items { id } next_cursor } }",
+      env,
+    );
+    assert.equal(first.body.data.providers.items[0].id, "a");
+    assert.equal(first.body.data.providers.next_cursor, "a");
+    const second = await gql(
+      `{ providers(limit: 1, cursor: "a") { items { id } next_cursor } }`,
+      env,
+    );
+    assert.equal(second.body.errors, undefined);
+    assert.equal(second.body.data.providers.items[0].id, "b");
+    assert.equal(second.body.data.providers.next_cursor, null);
   });
 
   test("surfaces paginate, falling back to key for the cursor when id is absent", async () => {
