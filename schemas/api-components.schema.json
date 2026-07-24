@@ -3367,22 +3367,6 @@
         ],
         "type": "object"
       },
-      "Authority": {
-        "enum": [
-          "official",
-          "provider-claimed",
-          "community",
-          "registry-observed"
-        ]
-      },
-      "BittensorNetwork": {
-        "description": "Bittensor chain network this record belongs to. Values are the chain-accurate SDK network names; the public API + UI address them with the friendly aliases mainnet (finney), testnet (test), and local. 'finney' is the default for back-compatibility.",
-        "enum": [
-          "finney",
-          "test",
-          "local"
-        ]
-      },
       "Block": {
         "additionalProperties": false,
         "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time.",
@@ -7214,22 +7198,6 @@
         ],
         "type": "object"
       },
-      "Classification": {
-        "enum": [
-          "live",
-          "redirected",
-          "auth-required",
-          "dead",
-          "unsafe",
-          "unsupported",
-          "rate-limited",
-          "transient",
-          "timeout",
-          "content-mismatch",
-          "wrong-chain",
-          "unknown"
-        ]
-      },
       "ColdkeyIdentity": {
         "additionalProperties": false,
         "description": "Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data.",
@@ -8432,17 +8400,6 @@
         ],
         "type": "object"
       },
-      "CurationLevel": {
-        "description": "Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · community-seeded (contributor seeded) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).",
-        "enum": [
-          "native",
-          "candidate-discovered",
-          "community-seeded",
-          "machine-verified",
-          "maintainer-reviewed",
-          "adapter-backed"
-        ]
-      },
       "DomainsArtifact": {
         "additionalProperties": false,
         "description": "Per-domain rollup overview (#6749): every domain/capability tag in the existing 14-tag taxonomy, each with its member subnet count, total stake, total emission share, and within-domain emission concentration -- computed live from the subnets index + economics tier at GET /api/v1/domains (buildDomainOverview, no static file).",
@@ -8799,51 +8756,6 @@
         ],
         "type": "object"
       },
-      "EndpointLayer": {
-        "enum": [
-          "bittensor-base",
-          "subnet-app",
-          "data-provider",
-          "docs-provider"
-        ]
-      },
-      "EndpointMonitoringPolicy": {
-        "additionalProperties": false,
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "expect": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "method": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "source": {
-            "type": "string"
-          },
-          "timeout_ms": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "enabled",
-          "method",
-          "expect",
-          "source"
-        ],
-        "type": "object"
-      },
       "EndpointPoolsArtifact": {
         "$ref": "#/components/schemas/RpcPoolsArtifact"
       },
@@ -8932,22 +8844,6 @@
             "type": "object"
           }
         ]
-      },
-      "EndpointScoreReason": {
-        "additionalProperties": false,
-        "properties": {
-          "points": {
-            "type": "integer"
-          },
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason",
-          "points"
-        ],
-        "type": "object"
       },
       "EndpointSummary": {
         "additionalProperties": false,
@@ -10639,15 +10535,6 @@
         ],
         "type": "object"
       },
-      "HealthStatus": {
-        "description": "Live probe verdict for a surface: ok (responding) · degraded (responding but slow/partial) · failed (down) · unknown (not yet probed / no data).",
-        "enum": [
-          "ok",
-          "degraded",
-          "failed",
-          "unknown"
-        ]
-      },
       "HealthSubnetArtifact": {
         "additionalProperties": true,
         "description": "Live-computed per-subnet operational health (served from KV/D1; `unknown` when the live store is cold). Identity fields (slug/name/generated_at) are optional because health is no longer sourced from a static artifact.",
@@ -11810,41 +11697,6 @@
           "incentive",
           "dividends",
           "yield"
-        ],
-        "type": "object"
-      },
-      "ProbeConfig": {
-        "additionalProperties": false,
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "expect": {
-            "enum": [
-              "json",
-              "html",
-              "sse",
-              "any"
-            ]
-          },
-          "method": {
-            "enum": [
-              "GET",
-              "HEAD",
-              "JSON-RPC",
-              "WSS-RPC"
-            ]
-          },
-          "timeout_ms": {
-            "maximum": 30000,
-            "minimum": 1000,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "enabled",
-          "method",
-          "expect"
         ],
         "type": "object"
       },
@@ -14104,15 +13956,6 @@
       "ReviewQueueArtifact": {
         "$ref": "#/components/schemas/CandidatesArtifact"
       },
-      "ReviewState": {
-        "enum": [
-          "unreviewed",
-          "machine-generated",
-          "maintainer-reviewed",
-          "needs-review",
-          "stale"
-        ]
-      },
       "RootClaimEntry": {
         "additionalProperties": false,
         "description": "One netuid's root-claim accounting for a (hotkey, account) pair (#7229). claimable_rate is RootClaimable's I96F32 rate; claimed is RootClaimed's u128 watermark (string); threshold is RootClaimableThreshold.",
@@ -15625,14 +15468,6 @@
             ],
             "type": "object"
           }
-        ]
-      },
-      "SourceTier": {
-        "enum": [
-          "native-chain",
-          "provider-claimed",
-          "third-party-index",
-          "community-docs"
         ]
       },
       "SubnetAlphaVolumeArtifact": {
@@ -20706,24 +20541,6 @@
         ],
         "type": "object"
       },
-      "SurfaceKind": {
-        "enum": [
-          "archive",
-          "subtensor-rpc",
-          "subtensor-wss",
-          "subnet-api",
-          "openapi",
-          "sse",
-          "sdk",
-          "example",
-          "website",
-          "source-repo",
-          "dashboard",
-          "repo-registry",
-          "docs",
-          "data-artifact"
-        ]
-      },
       "SurfacesArtifact": {
         "allOf": [
           {
@@ -21464,185 +21281,6 @@
             "type": "object"
           }
         ]
-      },
-      "VerificationResult": {
-        "additionalProperties": false,
-        "properties": {
-          "archived": {
-            "type": "boolean"
-          },
-          "candidate_id": {
-            "type": "string"
-          },
-          "classification": {
-            "$ref": "#/components/schemas/Classification"
-          },
-          "confidence_score": {
-            "maximum": 100,
-            "minimum": 0,
-            "type": "integer"
-          },
-          "content_type": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "default_branch": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "github_api_status": {
-            "type": "integer"
-          },
-          "github_api_url": {
-            "format": "uri",
-            "type": "string"
-          },
-          "homepage": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "html_url": {
-            "format": "uri",
-            "type": "string"
-          },
-          "kind": {
-            "$ref": "#/components/schemas/SurfaceKind"
-          },
-          "last_push_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "latency_ms": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "method_tested": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "private_redirect_blocked": {
-            "type": "boolean"
-          },
-          "provider": {
-            "type": "string"
-          },
-          "quality_signals": {
-            "additionalProperties": false,
-            "properties": {
-              "archived": {
-                "type": "boolean"
-              },
-              "content_type_matches_kind": {
-                "type": "boolean"
-              },
-              "has_default_branch": {
-                "type": "boolean"
-              },
-              "has_recent_push_metadata": {
-                "type": "boolean"
-              },
-              "public_safe": {
-                "type": "boolean"
-              },
-              "rate_limited": {
-                "type": "boolean"
-              },
-              "redirected": {
-                "type": "boolean"
-              },
-              "source_tier": {
-                "$ref": "#/components/schemas/SourceTier"
-              },
-              "transient_failure": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
-          },
-          "redirect_target": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "source_tier": {
-            "$ref": "#/components/schemas/SourceTier"
-          },
-          "source_type": {
-            "type": "string"
-          },
-          "source_url": {
-            "format": "uri",
-            "type": "string"
-          },
-          "source_urls": {
-            "items": {
-              "format": "uri",
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "status": {
-            "$ref": "#/components/schemas/HealthStatus"
-          },
-          "status_code": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "topics": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "url": {
-            "format": "uri",
-            "type": "string"
-          },
-          "verified_at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "candidate_id",
-          "classification",
-          "status",
-          "url",
-          "verified_at"
-        ],
-        "type": "object"
       },
       "YieldDistribution": {
         "additionalProperties": true,

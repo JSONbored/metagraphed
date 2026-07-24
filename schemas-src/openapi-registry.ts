@@ -29,14 +29,35 @@
 //     for free) instead of either duplicating the shape inline or leaving a
 //     dangling $ref. This is why the issue's "5 pilot routes" scope expands
 //     to this specific set of names, not further.
+//   - SurfaceKind / Authority / Classification / BittensorNetwork /
+//     HealthStatus / EndpointLayer / ProbeConfig / EndpointMonitoringPolicy /
+//     EndpointScoreReason / VerificationResult / SourceTier / CurationLevel /
+//     ReviewState -- enum and sub-object leaves used BY the pilot shapes
+//     above. Registering them is REQUIRED, not optional: z.toJSONSchema()
+//     with reused:"inline" only keeps a schema as its own named component
+//     when it's a separately registered root; leaving these unregistered
+//     silently inlined them everywhere they're used and deleted their
+//     standalone `components.schemas.*` entries from the public contract --
+//     a real regression caught in PR #8054 review (anyone importing
+//     `components["schemas"]["SurfaceKind"]` etc. from the generated client
+//     types would have lost that export). Registering them restores the
+//     named refs exactly as the hand-edited schemas had them.
 //
 // Deliberately NOT registered (left to inline where used, verified safe by
 // the types-epic B research pass): SubnetEconomics -- referenced only by the
 // two now-replaced components (EconomicsArtifact, SubnetDetailArtifact), so
 // inlining it into both costs nothing but a little document size, and it was
 // the SAME safe-to-drop component recommended for deletion at the JSON layer.
+// This is the ONLY intentionally-dropped component name in this file; every
+// other component the hand-edited schemas named standalone is registered
+// above, name for name.
 import { z } from "zod";
-import { PartnershipMetadataSchema } from "./shared.ts";
+import {
+  BittensorNetworkSchema,
+  CurationLevelSchema,
+  HealthStatusSchema,
+  PartnershipMetadataSchema,
+} from "./shared.ts";
 import {
   SubnetsArtifactSchema,
   SubnetIndexEntrySchema,
@@ -48,6 +69,16 @@ import {
   EndpointResourceSchema,
   GapsSchema,
   CurationMetadataSchema,
+  SurfaceKindSchema,
+  SourceTierSchema,
+  ClassificationSchema,
+  AuthoritySchema,
+  EndpointLayerSchema,
+  ProbeConfigSchema,
+  EndpointMonitoringPolicySchema,
+  EndpointScoreReasonSchema,
+  VerificationResultSchema,
+  ReviewStateSchema,
 } from "./routes/subnet-detail.ts";
 import { EconomicsArtifactSchema } from "./routes/economics.ts";
 import {
@@ -75,6 +106,19 @@ register(EconomicsArtifactSchema, "EconomicsArtifact");
 register(HealthSummaryArtifactSchema, "HealthSummaryArtifact");
 register(HealthSubnetSummarySchema, "HealthSubnetSummary");
 register(SubnetStakeQuoteArtifactSchema, "SubnetStakeQuoteArtifact");
+register(SurfaceKindSchema, "SurfaceKind");
+register(SourceTierSchema, "SourceTier");
+register(ClassificationSchema, "Classification");
+register(AuthoritySchema, "Authority");
+register(EndpointLayerSchema, "EndpointLayer");
+register(ProbeConfigSchema, "ProbeConfig");
+register(EndpointMonitoringPolicySchema, "EndpointMonitoringPolicy");
+register(EndpointScoreReasonSchema, "EndpointScoreReason");
+register(VerificationResultSchema, "VerificationResult");
+register(ReviewStateSchema, "ReviewState");
+register(BittensorNetworkSchema, "BittensorNetwork");
+register(HealthStatusSchema, "HealthStatus");
+register(CurationLevelSchema, "CurationLevel");
 
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd
@@ -94,6 +138,19 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "HealthSummaryArtifact",
   "HealthSubnetSummary",
   "SubnetStakeQuoteArtifact",
+  "SurfaceKind",
+  "SourceTier",
+  "Classification",
+  "Authority",
+  "EndpointLayer",
+  "ProbeConfig",
+  "EndpointMonitoringPolicy",
+  "EndpointScoreReason",
+  "VerificationResult",
+  "ReviewState",
+  "BittensorNetwork",
+  "HealthStatus",
+  "CurationLevel",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited

@@ -264,42 +264,6 @@
         },
         "additionalProperties": false
       },
-      "EndpointMonitoringPolicy": {
-        "type": "object",
-        "required": ["enabled", "method", "expect", "source"],
-        "properties": {
-          "enabled": {
-            "type": "boolean"
-          },
-          "method": {
-            "type": ["string", "null"]
-          },
-          "expect": {
-            "type": ["string", "null"]
-          },
-          "timeout_ms": {
-            "type": ["integer", "null"],
-            "minimum": 0
-          },
-          "source": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "EndpointScoreReason": {
-        "type": "object",
-        "required": ["reason", "points"],
-        "properties": {
-          "reason": {
-            "type": "string"
-          },
-          "points": {
-            "type": "integer"
-          }
-        },
-        "additionalProperties": false
-      },
       "EndpointProviderScore": {
         "type": "object",
         "required": [

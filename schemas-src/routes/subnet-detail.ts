@@ -97,7 +97,7 @@ const QualitySignalsSchema = z
   })
   .strict();
 
-const VerificationResultSchema = z
+export const VerificationResultSchema = z
   .object({
     archived: z.boolean().optional(),
     candidate_id: z.string(),
@@ -238,7 +238,7 @@ export type EndpointPublicationState = z.infer<
   typeof EndpointPublicationStateSchema
 >;
 
-const EndpointMonitoringPolicySchema = z
+export const EndpointMonitoringPolicySchema = z
   .object({
     enabled: z.boolean(),
     expect: z.string().nullable(),
@@ -248,7 +248,7 @@ const EndpointMonitoringPolicySchema = z
   })
   .strict();
 
-const EndpointScoreReasonSchema = z
+export const EndpointScoreReasonSchema = z
   .object({
     points: z.int(),
     reason: z.string(),
@@ -317,7 +317,7 @@ export const GapsSchema = z
   .strict();
 export type Gaps = z.infer<typeof GapsSchema>;
 
-const ReviewStateSchema = z.enum([
+export const ReviewStateSchema = z.enum([
   "unreviewed",
   "machine-generated",
   "maintainer-reviewed",
@@ -403,7 +403,7 @@ export const SubnetDetailSchema = z
   .strict();
 export type SubnetDetail = z.infer<typeof SubnetDetailSchema>;
 
-const ProbeConfigSchema = z
+export const ProbeConfigSchema = z
   .object({
     enabled: z.boolean(),
     expect: z.enum(["json", "html", "sse", "any"]),

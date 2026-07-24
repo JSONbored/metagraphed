@@ -3851,12 +3851,9 @@ export interface components {
             status: "ok" | "warn" | "fail";
             warn_bytes: number;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         Authority: "official" | "provider-claimed" | "community" | "registry-observed";
-        /**
-         * @description Bittensor chain network this record belongs to. Values are the chain-accurate SDK network names; the public API + UI address them with the friendly aliases mainnet (finney), testnet (test), and local. 'finney' is the default for back-compatibility.
-         * @enum {unknown}
-         */
+        /** @enum {string} */
         BittensorNetwork: "finney" | "test" | "local";
         /** @description One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time. */
         Block: {
@@ -4033,8 +4030,7 @@ export interface components {
             confidence?: "low" | "medium" | "high";
             confirmed_by?: string[];
             id: string;
-            /** @enum {string} */
-            kind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
+            kind: components["schemas"]["SurfaceKind"];
             name: string;
             netuid: number;
             provider: string;
@@ -4051,8 +4047,7 @@ export interface components {
             review_notes?: string;
             /** @constant */
             schema_version: 1;
-            /** @enum {string} */
-            source_tier?: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
+            source_tier?: components["schemas"]["SourceTier"];
             source_type?: string;
             /** Format: uri */
             source_url: string;
@@ -4063,58 +4058,7 @@ export interface components {
             superseded_by?: string | null;
             /** Format: uri */
             url: string;
-            verification?: {
-                archived?: boolean;
-                candidate_id: string;
-                /** @enum {string} */
-                classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
-                confidence_score?: number;
-                content_type?: string | null;
-                default_branch?: string | null;
-                description?: string | null;
-                error?: string | null;
-                github_api_status?: number;
-                /** Format: uri */
-                github_api_url?: string;
-                homepage?: string | null;
-                /** Format: uri */
-                html_url?: string;
-                /** @enum {string} */
-                kind?: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
-                last_push_at?: string | null;
-                latency_ms?: number | null;
-                method_tested?: string;
-                name?: string;
-                netuid?: number;
-                private_redirect_blocked?: boolean;
-                provider?: string;
-                quality_signals?: {
-                    archived?: boolean;
-                    content_type_matches_kind?: boolean;
-                    has_default_branch?: boolean;
-                    has_recent_push_metadata?: boolean;
-                    public_safe?: boolean;
-                    rate_limited?: boolean;
-                    redirected?: boolean;
-                    /** @enum {string} */
-                    source_tier?: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
-                    transient_failure?: boolean;
-                };
-                redirect_target?: string | null;
-                /** @enum {string} */
-                source_tier?: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
-                source_type?: string;
-                /** Format: uri */
-                source_url?: string;
-                source_urls?: string[];
-                /** @enum {string} */
-                status: "ok" | "degraded" | "failed" | "unknown";
-                status_code?: number | null;
-                topics?: string[];
-                /** Format: uri */
-                url: string;
-                verified_at: string;
-            } | null;
+            verification?: components["schemas"]["VerificationResult"] | null;
         };
         /** @description Daily network-activity aggregates over the first-party chain D1 tiers (#1987): per-UTC-day extrinsic/event/block counts, success rate, and unique signers, newest day first. Served live at /api/v1/chain/activity over a 7d or 30d window (no static file); day_count is 0 and days is empty when the store is cold. */
         ChainActivityArtifact: {
@@ -4821,7 +4765,7 @@ export interface components {
             entries: components["schemas"]["ChildDelegationEntry"][];
             netuid: number;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
         /** @description Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data. */
         ColdkeyIdentity: {
@@ -5107,17 +5051,12 @@ export interface components {
             slug: string;
             surface_count: number;
         };
-        /**
-         * @description Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · community-seeded (contributor seeded) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).
-         * @enum {unknown}
-         */
+        /** @enum {string} */
         CurationLevel: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
         CurationMetadata: {
             gap_notes?: string[];
-            /** @enum {string} */
-            level: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
-            /** @enum {string} */
-            review_state: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
+            level: components["schemas"]["CurationLevel"];
+            review_state: components["schemas"]["ReviewState"];
             reviewed_at?: string | null;
             source_count?: number;
             verified_at?: string | null;
@@ -5260,7 +5199,7 @@ export interface components {
             by_status?: components["schemas"]["CountMap"];
             incident_count: number;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         EndpointLayer: "bittensor-base" | "subnet-app" | "data-provider" | "docs-provider";
         EndpointMonitoringPolicy: {
             enabled: boolean;
@@ -5286,36 +5225,26 @@ export interface components {
         EndpointResource: {
             archive_support?: boolean | null;
             auth_required: boolean;
-            /** @enum {string} */
-            authority?: "official" | "provider-claimed" | "community" | "registry-observed";
+            authority?: components["schemas"]["Authority"];
             /** @constant */
             chain?: "bittensor";
-            /** @enum {string} */
-            classification?: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
+            classification?: components["schemas"]["Classification"];
             error?: string | null;
             /** @enum {string} */
             health_source: "probe-derived" | "missing-probe" | "not-monitored" | "live-cron-prober" | "unavailable";
             health_stale: boolean;
             id: string;
-            /** @enum {string} */
-            kind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
+            kind: components["schemas"]["SurfaceKind"];
             last_checked?: string | null;
             last_ok: string | null;
             latency_ms?: number | null;
             latest_block?: number | null;
-            /** @enum {string} */
-            layer: "bittensor-base" | "subnet-app" | "data-provider" | "docs-provider";
+            layer: components["schemas"]["EndpointLayer"];
             method_support?: {
                 [key: string]: boolean;
             } | string[] | null;
             method_tested?: string | null;
-            monitoring_policy: {
-                enabled: boolean;
-                expect: string | null;
-                method: string | null;
-                source: string;
-                timeout_ms?: number | null;
-            };
+            monitoring_policy: components["schemas"]["EndpointMonitoringPolicy"];
             /** @enum {string} */
             monitoring_status: "monitored" | "not_monitored";
             netuid: number;
@@ -5332,13 +5261,9 @@ export interface components {
             rate_limit_notes?: string | null;
             rpc_method_count?: number | null;
             score: number;
-            score_reasons?: {
-                points: number;
-                reason: string;
-            }[];
+            score_reasons?: components["schemas"]["EndpointScoreReason"][];
             source_urls?: string[];
-            /** @enum {string} */
-            status: "ok" | "degraded" | "failed" | "unknown";
+            status: components["schemas"]["HealthStatus"];
             subnet_name?: string;
             subnet_slug?: string;
             surface_id: string;
@@ -5554,8 +5479,8 @@ export interface components {
         };
         Gaps: {
             gap_notes: string[];
-            missing_kinds: ("archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact")[];
-            supported_kinds: ("archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact")[];
+            missing_kinds: components["schemas"]["SurfaceKind"][];
+            supported_kinds: components["schemas"]["SurfaceKind"][];
         };
         GapsArtifact: components["schemas"]["ArtifactBase"] & ({
             gaps: components["schemas"]["GapsEntry"][];
@@ -5779,10 +5704,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /**
-         * @description Live probe verdict for a surface: ok (responding) · degraded (responding but slow/partial) · failed (down) · unknown (not yet probed / no data).
-         * @enum {unknown}
-         */
+        /** @enum {string} */
         HealthStatus: "ok" | "degraded" | "failed" | "unknown";
         /** @description Live-computed per-subnet operational health (served from KV/D1; `unknown` when the live store is cold). Identity fields (slug/name/generated_at) are optional because health is no longer sourced from a static artifact. */
         HealthSubnetArtifact: {
@@ -5810,8 +5732,7 @@ export interface components {
             netuid?: number;
             ok_count: number;
             slug?: string;
-            /** @enum {string} */
-            status: "ok" | "degraded" | "failed" | "unknown";
+            status: components["schemas"]["HealthStatus"];
             surface_count: number;
             unknown_count: number;
         };
@@ -6138,9 +6059,9 @@ export interface components {
         };
         ProbeConfig: {
             enabled: boolean;
-            /** @enum {unknown} */
+            /** @enum {string} */
             expect: "json" | "html" | "sse" | "any";
-            /** @enum {unknown} */
+            /** @enum {string} */
             method: "GET" | "HEAD" | "JSON-RPC" | "WSS-RPC";
             timeout_ms?: number;
         };
@@ -6689,7 +6610,7 @@ export interface components {
             supported_interface_kinds: components["schemas"]["SurfaceKind"][];
         };
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
-        /** @enum {unknown} */
+        /** @enum {string} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
         /** @description One netuid's root-claim accounting for a (hotkey, account) pair (#7229). claimable_rate is RootClaimable's I96F32 rate; claimed is RootClaimed's u128 watermark (string); threshold is RootClaimableThreshold. */
         RootClaimEntry: {
@@ -7064,7 +6985,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @enum {unknown} */
+        /** @enum {string} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
         /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label — plus a vol/mcap turnover ratio (#4339/8.3): total_volume_tao over the live economics tier's alpha_market_cap_tao, null when that external input is unavailable. Fixed 24h window, not OHLC/price data. */
         SubnetAlphaVolumeArtifact: {
@@ -7376,8 +7297,7 @@ export interface components {
                 /** @enum {string} */
                 coverage_level: "native-only" | "manifested" | "probed";
                 curation: components["schemas"]["CurationMetadata"];
-                /** @enum {string} */
-                curation_level: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                curation_level: components["schemas"]["CurationLevel"];
                 dashboard_url?: string | null;
                 derived_categories?: string[];
                 description?: string | null;
@@ -7645,8 +7565,7 @@ export interface components {
             contact_present?: boolean;
             /** @enum {string} */
             coverage_level: "native-only" | "manifested" | "probed";
-            /** @enum {string} */
-            curation_level: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+            curation_level: components["schemas"]["CurationLevel"];
             dashboard_url?: string | null;
             derived_categories?: string[];
             derived_description?: string | null;
@@ -8131,8 +8050,7 @@ export interface components {
         SubnetsArtifact: {
             contract_version?: string;
             generated_at: string;
-            /** @enum {string} */
-            network: "finney" | "test" | "local";
+            network: components["schemas"]["BittensorNetwork"];
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -8429,28 +8347,17 @@ export interface components {
                 value_format?: string;
             } | null;
             auth_required: boolean;
-            /** @enum {string} */
-            authority: "official" | "provider-claimed" | "community" | "registry-observed";
-            /** @enum {string} */
-            classification?: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
-            /** @enum {string} */
-            curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+            authority: components["schemas"]["Authority"];
+            classification?: components["schemas"]["Classification"];
+            curation_level?: components["schemas"]["CurationLevel"];
             id: string;
             key?: string;
-            /** @enum {string} */
-            kind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
+            kind: components["schemas"]["SurfaceKind"];
             last_verified_at?: string | null;
             name?: string;
             netuid: number;
             notes?: string;
-            probe?: {
-                enabled: boolean;
-                /** @enum {string} */
-                expect: "json" | "html" | "sse" | "any";
-                /** @enum {string} */
-                method: "GET" | "HEAD" | "JSON-RPC" | "WSS-RPC";
-                timeout_ms?: number;
-            };
+            probe?: components["schemas"]["ProbeConfig"];
             provider: string;
             public_safe: boolean;
             quality_signals?: {
@@ -8461,8 +8368,7 @@ export interface components {
                 public_safe?: boolean;
                 rate_limited?: boolean;
                 redirected?: boolean;
-                /** @enum {string} */
-                source_tier?: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
+                source_tier?: components["schemas"]["SourceTier"];
                 transient_failure?: boolean;
             };
             rate_limit?: {
@@ -8488,15 +8394,13 @@ export interface components {
             schema_url?: string;
             source_urls?: string[];
             stale?: boolean;
-            /** @enum {string} */
-            status?: "ok" | "degraded" | "failed" | "unknown";
+            status?: components["schemas"]["HealthStatus"];
             subnet_name?: string;
             subnet_slug?: string;
             url: string;
             verification?: {
                 archived?: boolean;
-                /** @enum {string} */
-                classification?: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
+                classification?: components["schemas"]["Classification"];
                 confidence_score?: number;
                 content_type?: string | null;
                 default_branch?: string | null;
@@ -8552,7 +8456,7 @@ export interface components {
                 status: number | null;
             };
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
         SurfacesArtifact: components["schemas"]["ArtifactBase"] & ({
             surfaces: components["schemas"]["Surface"][];
@@ -8765,7 +8669,6 @@ export interface components {
                 source_tier?: components["schemas"]["SourceTier"];
                 transient_failure?: boolean;
             };
-            /** Format: uri */
             redirect_target?: string | null;
             source_tier?: components["schemas"]["SourceTier"];
             source_type?: string;

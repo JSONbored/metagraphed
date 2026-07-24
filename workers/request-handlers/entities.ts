@@ -39,6 +39,7 @@ import {
 } from "../responses.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
+import { validateResponseTripwire } from "../../src/response-validation-tripwire.ts";
 import {
   analyticsQueryError,
   markD1FallbackResponse,
@@ -2988,6 +2989,7 @@ export async function handleSubnetStakeQuote(
   env: Env,
   netuid: number,
   url: URL,
+  ctx: { waitUntil?: (promise: Promise<unknown>) => void } = {},
 ) {
   const validationError = validateEntityQuery(url, ["amount", "direction"]);
   if (validationError) return analyticsQueryError(validationError);
@@ -3006,18 +3008,30 @@ export async function handleSubnetStakeQuote(
   if (!result.ok) {
     return errorResponse(result.code, result.error, result.status);
   }
-  return envelopeResponse(
-    request,
-    {
-      data: { schema_version: 1, ...result.quote },
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/stake-quote.json`,
-        generatedAt,
-      ),
-    },
-    "short",
-  );
+  const envelopePayload = {
+    data: { schema_version: 1, ...result.quote },
+    meta: await metagraphMeta(
+      env,
+      `/metagraph/subnets/${netuid}/stake-quote.json`,
+      generatedAt,
+    ),
+  };
+  // Same opt-in staging tripwire as handleApiRequest's generic path (types-
+  // epic B, #7860 requirement 6) -- this route bypasses that generic path
+  // entirely (it's matched and returned early in workers/api.ts, before
+  // handleApiRequest's envelope assembly), so without this call
+  // "subnet-stake-quote" would never actually fire despite being one of the
+  // 5 declared-covered pilot routes. See src/response-validation-tripwire.ts.
+  if ((env.METAGRAPH_VALIDATE_RESPONSES as string) === "true") {
+    ctx?.waitUntil?.(
+      validateResponseTripwire("subnet-stake-quote", {
+        ok: true,
+        schema_version: 1,
+        ...envelopePayload,
+      }),
+    );
+  }
+  return envelopeResponse(request, envelopePayload, "short");
 }
 
 // GET /api/v1/subnets/{netuid}/volume (#4339/8.1): rolling 24h buy (StakeAdded)

@@ -114,10 +114,33 @@ describe("sampleFromSchema", () => {
     }
   });
 
-  test("string format awareness (uri, date-time)", () => {
+  test("string format awareness (uri, date-time, date)", () => {
     assert.match(s({ type: "string", format: "uri" }), /^https:\/\//);
     assert.equal(
       s({ type: "string", format: "date-time" }),
+      "2026-06-01T00:00:00.000Z",
+    );
+    // z.iso.date() (e.g. PartnershipMetadata.since) emits format:"date" with
+    // no time component -- must resolve via the DATE_ONLY branch, not fall
+    // through to date-time's full timestamp.
+    assert.equal(s({ type: "string", format: "date" }), "2026-06-01");
+  });
+
+  test("format is checked before a redundant pattern (z.iso.date/.datetime pairing)", () => {
+    // Zod's z.iso.date()/.datetime() emit BOTH format and a strict
+    // verification pattern for the same constraint; format must win so the
+    // sample stays a valid, correctly-shaped date/date-time rather than
+    // falling into valueForPattern's generic regex fallback.
+    assert.equal(
+      s({ type: "string", format: "date", pattern: "^\\d{4}-\\d{2}-\\d{2}$" }),
+      "2026-06-01",
+    );
+    assert.equal(
+      s({
+        type: "string",
+        format: "date-time",
+        pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}",
+      }),
       "2026-06-01T00:00:00.000Z",
     );
   });
@@ -152,6 +175,14 @@ describe("sampleFromSchema", () => {
       /^\/metagraph\//,
     );
     assert.match(s({ type: "string", pattern: "^/api/v1" }), /^\/api\/v1/);
+    // A JS RegExp's .source always backslash-escapes a literal `/` -- a
+    // schemas-src/*.ts `.regex(/.../)` schema emits this escaped form in its
+    // JSON Schema `pattern`, unlike a hand-typed bare `/`. Both must resolve
+    // to the same switch case (normalizedPattern strips the escaping first).
+    assert.equal(
+      s({ type: "string", pattern: "^\\/metagraph\\/" }),
+      s({ type: "string", pattern: "^/metagraph/" }),
+    );
     assert.match(
       s({ type: "string", pattern: "^#/components/schemas/[A-Za-z0-9]+$" }),
       /^#\/components\/schemas\//,

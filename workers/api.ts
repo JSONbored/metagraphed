@@ -2347,6 +2347,7 @@ export async function handleRequest(
         env,
         Number(stakeQuoteMatch[1]),
         resolved.url,
+        ctx,
       );
     }
     const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(

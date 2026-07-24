@@ -3387,15 +3387,16 @@
           "provider-claimed",
           "community",
           "registry-observed"
-        ]
+        ],
+        "type": "string"
       },
       "BittensorNetwork": {
-        "description": "Bittensor chain network this record belongs to. Values are the chain-accurate SDK network names; the public API + UI address them with the friendly aliases mainnet (finney), testnet (test), and local. 'finney' is the default for back-compatibility.",
         "enum": [
           "finney",
           "test",
           "local"
-        ]
+        ],
+        "type": "string"
       },
       "Block": {
         "additionalProperties": false,
@@ -4142,23 +4143,7 @@
             "type": "string"
           },
           "kind": {
-            "enum": [
-              "archive",
-              "subtensor-rpc",
-              "subtensor-wss",
-              "subnet-api",
-              "openapi",
-              "sse",
-              "sdk",
-              "example",
-              "website",
-              "source-repo",
-              "dashboard",
-              "repo-registry",
-              "docs",
-              "data-artifact"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SurfaceKind"
           },
           "name": {
             "type": "string"
@@ -4221,13 +4206,7 @@
             "type": "number"
           },
           "source_tier": {
-            "enum": [
-              "native-chain",
-              "provider-claimed",
-              "third-party-index",
-              "community-docs"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SourceTier"
           },
           "source_type": {
             "type": "string"
@@ -4281,273 +4260,7 @@
           "verification": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "properties": {
-                  "archived": {
-                    "type": "boolean"
-                  },
-                  "candidate_id": {
-                    "type": "string"
-                  },
-                  "classification": {
-                    "enum": [
-                      "live",
-                      "redirected",
-                      "auth-required",
-                      "dead",
-                      "unsafe",
-                      "unsupported",
-                      "rate-limited",
-                      "transient",
-                      "timeout",
-                      "content-mismatch",
-                      "wrong-chain",
-                      "unknown"
-                    ],
-                    "type": "string"
-                  },
-                  "confidence_score": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "content_type": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "default_branch": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "description": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "error": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "github_api_status": {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
-                  },
-                  "github_api_url": {
-                    "format": "uri",
-                    "type": "string"
-                  },
-                  "homepage": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "html_url": {
-                    "format": "uri",
-                    "type": "string"
-                  },
-                  "kind": {
-                    "enum": [
-                      "archive",
-                      "subtensor-rpc",
-                      "subtensor-wss",
-                      "subnet-api",
-                      "openapi",
-                      "sse",
-                      "sdk",
-                      "example",
-                      "website",
-                      "source-repo",
-                      "dashboard",
-                      "repo-registry",
-                      "docs",
-                      "data-artifact"
-                    ],
-                    "type": "string"
-                  },
-                  "last_push_at": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "latency_ms": {
-                    "anyOf": [
-                      {
-                        "maximum": 9007199254740991,
-                        "minimum": 0,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "method_tested": {
-                    "type": "string"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "netuid": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "private_redirect_blocked": {
-                    "type": "boolean"
-                  },
-                  "provider": {
-                    "type": "string"
-                  },
-                  "quality_signals": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "archived": {
-                        "type": "boolean"
-                      },
-                      "content_type_matches_kind": {
-                        "type": "boolean"
-                      },
-                      "has_default_branch": {
-                        "type": "boolean"
-                      },
-                      "has_recent_push_metadata": {
-                        "type": "boolean"
-                      },
-                      "public_safe": {
-                        "type": "boolean"
-                      },
-                      "rate_limited": {
-                        "type": "boolean"
-                      },
-                      "redirected": {
-                        "type": "boolean"
-                      },
-                      "source_tier": {
-                        "enum": [
-                          "native-chain",
-                          "provider-claimed",
-                          "third-party-index",
-                          "community-docs"
-                        ],
-                        "type": "string"
-                      },
-                      "transient_failure": {
-                        "type": "boolean"
-                      }
-                    },
-                    "type": "object"
-                  },
-                  "redirect_target": {
-                    "anyOf": [
-                      {
-                        "format": "uri",
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "source_tier": {
-                    "enum": [
-                      "native-chain",
-                      "provider-claimed",
-                      "third-party-index",
-                      "community-docs"
-                    ],
-                    "type": "string"
-                  },
-                  "source_type": {
-                    "type": "string"
-                  },
-                  "source_url": {
-                    "format": "uri",
-                    "type": "string"
-                  },
-                  "source_urls": {
-                    "items": {
-                      "format": "uri",
-                      "type": "string"
-                    },
-                    "type": "array"
-                  },
-                  "status": {
-                    "enum": [
-                      "ok",
-                      "degraded",
-                      "failed",
-                      "unknown"
-                    ],
-                    "type": "string"
-                  },
-                  "status_code": {
-                    "anyOf": [
-                      {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "topics": {
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  },
-                  "url": {
-                    "format": "uri",
-                    "type": "string"
-                  },
-                  "verified_at": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "candidate_id",
-                  "classification",
-                  "status",
-                  "url",
-                  "verified_at"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/VerificationResult"
               },
               {
                 "type": "null"
@@ -7769,7 +7482,8 @@
           "content-mismatch",
           "wrong-chain",
           "unknown"
-        ]
+        ],
+        "type": "string"
       },
       "ColdkeyIdentity": {
         "additionalProperties": false,
@@ -8974,7 +8688,6 @@
         "type": "object"
       },
       "CurationLevel": {
-        "description": "Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · community-seeded (contributor seeded) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).",
         "enum": [
           "native",
           "candidate-discovered",
@@ -8982,7 +8695,8 @@
           "machine-verified",
           "maintainer-reviewed",
           "adapter-backed"
-        ]
+        ],
+        "type": "string"
       },
       "CurationMetadata": {
         "additionalProperties": false,
@@ -8994,25 +8708,10 @@
             "type": "array"
           },
           "level": {
-            "enum": [
-              "native",
-              "candidate-discovered",
-              "community-seeded",
-              "machine-verified",
-              "maintainer-reviewed",
-              "adapter-backed"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/CurationLevel"
           },
           "review_state": {
-            "enum": [
-              "unreviewed",
-              "machine-generated",
-              "maintainer-reviewed",
-              "needs-review",
-              "stale"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/ReviewState"
           },
           "reviewed_at": {
             "anyOf": [
@@ -9797,7 +9496,8 @@
           "subnet-app",
           "data-provider",
           "docs-provider"
-        ]
+        ],
+        "type": "string"
       },
       "EndpointMonitoringPolicy": {
         "additionalProperties": false,
@@ -9806,32 +9506,45 @@
             "type": "boolean"
           },
           "expect": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "method": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "source": {
             "type": "string"
           },
           "timeout_ms": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
         "required": [
           "enabled",
-          "method",
           "expect",
+          "method",
           "source"
         ],
         "type": "object"
@@ -9916,34 +9629,14 @@
             "type": "boolean"
           },
           "authority": {
-            "enum": [
-              "official",
-              "provider-claimed",
-              "community",
-              "registry-observed"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/Authority"
           },
           "chain": {
             "const": "bittensor",
             "type": "string"
           },
           "classification": {
-            "enum": [
-              "live",
-              "redirected",
-              "auth-required",
-              "dead",
-              "unsafe",
-              "unsupported",
-              "rate-limited",
-              "transient",
-              "timeout",
-              "content-mismatch",
-              "wrong-chain",
-              "unknown"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/Classification"
           },
           "error": {
             "anyOf": [
@@ -9972,23 +9665,7 @@
             "type": "string"
           },
           "kind": {
-            "enum": [
-              "archive",
-              "subtensor-rpc",
-              "subtensor-wss",
-              "subnet-api",
-              "openapi",
-              "sse",
-              "sdk",
-              "example",
-              "website",
-              "source-repo",
-              "dashboard",
-              "repo-registry",
-              "docs",
-              "data-artifact"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_checked": {
             "anyOf": [
@@ -10035,13 +9712,7 @@
             ]
           },
           "layer": {
-            "enum": [
-              "bittensor-base",
-              "subnet-app",
-              "data-provider",
-              "docs-provider"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/EndpointLayer"
           },
           "method_support": {
             "anyOf": [
@@ -10076,54 +9747,7 @@
             ]
           },
           "monitoring_policy": {
-            "additionalProperties": false,
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "expect": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "method": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "source": {
-                "type": "string"
-              },
-              "timeout_ms": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "enabled",
-              "expect",
-              "method",
-              "source"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/EndpointMonitoringPolicy"
           },
           "monitoring_status": {
             "enum": [
@@ -10213,22 +9837,7 @@
           },
           "score_reasons": {
             "items": {
-              "additionalProperties": false,
-              "properties": {
-                "points": {
-                  "maximum": 9007199254740991,
-                  "minimum": -9007199254740991,
-                  "type": "integer"
-                },
-                "reason": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "points",
-                "reason"
-              ],
-              "type": "object"
+              "$ref": "#/components/schemas/EndpointScoreReason"
             },
             "type": "array"
           },
@@ -10240,13 +9849,7 @@
             "type": "array"
           },
           "status": {
-            "enum": [
-              "ok",
-              "degraded",
-              "failed",
-              "unknown"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/HealthStatus"
           },
           "subnet_name": {
             "type": "string"
@@ -10320,6 +9923,8 @@
         "additionalProperties": false,
         "properties": {
           "points": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "reason": {
@@ -10327,8 +9932,8 @@
           }
         },
         "required": [
-          "reason",
-          "points"
+          "points",
+          "reason"
         ],
         "type": "object"
       },
@@ -11171,45 +10776,13 @@
           },
           "missing_kinds": {
             "items": {
-              "enum": [
-                "archive",
-                "subtensor-rpc",
-                "subtensor-wss",
-                "subnet-api",
-                "openapi",
-                "sse",
-                "sdk",
-                "example",
-                "website",
-                "source-repo",
-                "dashboard",
-                "repo-registry",
-                "docs",
-                "data-artifact"
-              ],
-              "type": "string"
+              "$ref": "#/components/schemas/SurfaceKind"
             },
             "type": "array"
           },
           "supported_kinds": {
             "items": {
-              "enum": [
-                "archive",
-                "subtensor-rpc",
-                "subtensor-wss",
-                "subnet-api",
-                "openapi",
-                "sse",
-                "sdk",
-                "example",
-                "website",
-                "source-repo",
-                "dashboard",
-                "repo-registry",
-                "docs",
-                "data-artifact"
-              ],
-              "type": "string"
+              "$ref": "#/components/schemas/SurfaceKind"
             },
             "type": "array"
           }
@@ -12092,13 +11665,13 @@
         "type": "object"
       },
       "HealthStatus": {
-        "description": "Live probe verdict for a surface: ok (responding) · degraded (responding but slow/partial) · failed (down) · unknown (not yet probed / no data).",
         "enum": [
           "ok",
           "degraded",
           "failed",
           "unknown"
-        ]
+        ],
+        "type": "string"
       },
       "HealthSubnetArtifact": {
         "additionalProperties": true,
@@ -12220,13 +11793,7 @@
             "type": "string"
           },
           "status": {
-            "enum": [
-              "ok",
-              "degraded",
-              "failed",
-              "unknown"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/HealthStatus"
           },
           "surface_count": {
             "maximum": 9007199254740991,
@@ -13458,7 +13025,8 @@
               "html",
               "sse",
               "any"
-            ]
+            ],
+            "type": "string"
           },
           "method": {
             "enum": [
@@ -13466,7 +13034,8 @@
               "HEAD",
               "JSON-RPC",
               "WSS-RPC"
-            ]
+            ],
+            "type": "string"
           },
           "timeout_ms": {
             "maximum": 30000,
@@ -13476,8 +13045,8 @@
         },
         "required": [
           "enabled",
-          "method",
-          "expect"
+          "expect",
+          "method"
         ],
         "type": "object"
       },
@@ -15744,7 +15313,8 @@
           "maintainer-reviewed",
           "needs-review",
           "stale"
-        ]
+        ],
+        "type": "string"
       },
       "RootClaimEntry": {
         "additionalProperties": false,
@@ -17266,7 +16836,8 @@
           "provider-claimed",
           "third-party-index",
           "community-docs"
-        ]
+        ],
+        "type": "string"
       },
       "SubnetAlphaVolumeArtifact": {
         "additionalProperties": false,
@@ -18720,15 +18291,7 @@
                 "$ref": "#/components/schemas/CurationMetadata"
               },
               "curation_level": {
-                "enum": [
-                  "native",
-                  "candidate-discovered",
-                  "community-seeded",
-                  "machine-verified",
-                  "maintainer-reviewed",
-                  "adapter-backed"
-                ],
-                "type": "string"
+                "$ref": "#/components/schemas/CurationLevel"
               },
               "dashboard_url": {
                 "anyOf": [
@@ -20007,15 +19570,7 @@
             "type": "string"
           },
           "curation_level": {
-            "enum": [
-              "native",
-              "candidate-discovered",
-              "community-seeded",
-              "machine-verified",
-              "maintainer-reviewed",
-              "adapter-backed"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/CurationLevel"
           },
           "dashboard_url": {
             "anyOf": [
@@ -22192,12 +21747,7 @@
             "type": "string"
           },
           "network": {
-            "enum": [
-              "finney",
-              "test",
-              "local"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/BittensorNetwork"
           },
           "notes": {
             "anyOf": [
@@ -23485,41 +23035,13 @@
             "type": "boolean"
           },
           "authority": {
-            "enum": [
-              "official",
-              "provider-claimed",
-              "community",
-              "registry-observed"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/Authority"
           },
           "classification": {
-            "enum": [
-              "live",
-              "redirected",
-              "auth-required",
-              "dead",
-              "unsafe",
-              "unsupported",
-              "rate-limited",
-              "transient",
-              "timeout",
-              "content-mismatch",
-              "wrong-chain",
-              "unknown"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/Classification"
           },
           "curation_level": {
-            "enum": [
-              "native",
-              "candidate-discovered",
-              "community-seeded",
-              "machine-verified",
-              "maintainer-reviewed",
-              "adapter-backed"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/CurationLevel"
           },
           "id": {
             "type": "string"
@@ -23528,23 +23050,7 @@
             "type": "string"
           },
           "kind": {
-            "enum": [
-              "archive",
-              "subtensor-rpc",
-              "subtensor-wss",
-              "subnet-api",
-              "openapi",
-              "sse",
-              "sdk",
-              "example",
-              "website",
-              "source-repo",
-              "dashboard",
-              "repo-registry",
-              "docs",
-              "data-artifact"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_verified_at": {
             "anyOf": [
@@ -23568,41 +23074,7 @@
             "type": "string"
           },
           "probe": {
-            "additionalProperties": false,
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "expect": {
-                "enum": [
-                  "json",
-                  "html",
-                  "sse",
-                  "any"
-                ],
-                "type": "string"
-              },
-              "method": {
-                "enum": [
-                  "GET",
-                  "HEAD",
-                  "JSON-RPC",
-                  "WSS-RPC"
-                ],
-                "type": "string"
-              },
-              "timeout_ms": {
-                "maximum": 30000,
-                "minimum": 1000,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "enabled",
-              "expect",
-              "method"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/ProbeConfig"
           },
           "provider": {
             "type": "string"
@@ -23635,13 +23107,7 @@
                 "type": "boolean"
               },
               "source_tier": {
-                "enum": [
-                  "native-chain",
-                  "provider-claimed",
-                  "third-party-index",
-                  "community-docs"
-                ],
-                "type": "string"
+                "$ref": "#/components/schemas/SourceTier"
               },
               "transient_failure": {
                 "type": "boolean"
@@ -23745,13 +23211,7 @@
             "type": "boolean"
           },
           "status": {
-            "enum": [
-              "ok",
-              "degraded",
-              "failed",
-              "unknown"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/HealthStatus"
           },
           "subnet_name": {
             "type": "string"
@@ -23770,21 +23230,7 @@
                 "type": "boolean"
               },
               "classification": {
-                "enum": [
-                  "live",
-                  "redirected",
-                  "auth-required",
-                  "dead",
-                  "unsafe",
-                  "unsupported",
-                  "rate-limited",
-                  "transient",
-                  "timeout",
-                  "content-mismatch",
-                  "wrong-chain",
-                  "unknown"
-                ],
-                "type": "string"
+                "$ref": "#/components/schemas/Classification"
               },
               "confidence_score": {
                 "maximum": 100,
@@ -24084,7 +23530,8 @@
           "repo-registry",
           "docs",
           "data-artifact"
-        ]
+        ],
+        "type": "string"
       },
       "SurfacesArtifact": {
         "allOf": [
@@ -24845,30 +24292,48 @@
             "type": "integer"
           },
           "content_type": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "default_branch": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "description": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "error": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "github_api_status": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "github_api_url": {
@@ -24876,9 +24341,13 @@
             "type": "string"
           },
           "homepage": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "html_url": {
@@ -24889,16 +24358,25 @@
             "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_push_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "latency_ms": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "method_tested": {
@@ -24908,6 +24386,7 @@
             "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -24951,10 +24430,14 @@
             "type": "object"
           },
           "redirect_target": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "source_tier": {
@@ -24978,9 +24461,15 @@
             "$ref": "#/components/schemas/HealthStatus"
           },
           "status_code": {
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "topics": {
