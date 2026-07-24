@@ -1,9 +1,9 @@
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import * as React3 from 'react';
 import { forwardRef, createContext, useId, useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, useContext } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { ChevronDown, X, Search, Check, ArrowUp, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Columns3, RotateCcw, AlertTriangle, Filter, Loader2, MoreHorizontal, Lock } from 'lucide-react';
-import clsx from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
 import { Command as Command$1 } from 'cmdk';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -13,7 +13,71 @@ import { cva } from 'class-variance-authority';
 import { Toaster as Toaster$1, toast } from 'sonner';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 
-// src/components/ui/accordion.tsx
+// src/lib/format.ts
+function classNames(...parts) {
+  return parts.filter(Boolean).join(" ");
+}
+function isUsableTimestamp(iso) {
+  if (!iso) return false;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return false;
+  return t > 9466848e5;
+}
+function formatRelative(iso) {
+  if (!isUsableTimestamp(iso)) return "\u2014";
+  const t = Date.parse(iso);
+  const diff = Date.now() - t;
+  const abs = Math.abs(diff);
+  const past = diff >= 0;
+  let value;
+  let unit;
+  if (abs < 6e4) {
+    value = Math.max(1, Math.round(abs / 1e3));
+    unit = "s";
+  } else if (abs < 36e5) {
+    value = Math.round(abs / 6e4);
+    unit = "m";
+  } else if (abs < 864e5) {
+    value = Math.round(abs / 36e5);
+    unit = "h";
+  } else {
+    value = Math.round(abs / 864e5);
+    unit = "d";
+  }
+  return past ? `${value}${unit} ago` : `in ${value}${unit}`;
+}
+function isStaleFreshness(iso, thresholdMs = 12 * 60 * 6e4) {
+  if (!isUsableTimestamp(iso)) return true;
+  return Date.now() - Date.parse(iso) > thresholdMs;
+}
+function formatFreshness(updatedAt, windowLabel) {
+  const parts = [];
+  if (updatedAt) {
+    const t = new Date(updatedAt);
+    if (!Number.isNaN(t.getTime())) {
+      const diffMs = Date.now() - t.getTime();
+      parts.push(`updated ${relative(diffMs)}`);
+    }
+  }
+  if (windowLabel) parts.push(`${windowLabel} window`);
+  return parts.length ? parts.join(" \xB7 ") : null;
+}
+function formatFreshnessAbsolute(updatedAt) {
+  if (!updatedAt) return null;
+  const t = new Date(updatedAt);
+  if (Number.isNaN(t.getTime())) return null;
+  return t.toLocaleString();
+}
+function relative(diffMs) {
+  const sec = Math.max(0, Math.round(diffMs / 1e3));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 48) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  return `${day}d ago`;
+}
 function cn(...inputs) {
   return twMerge(clsx(...inputs));
 }
@@ -367,72 +431,6 @@ var SheetDescription = React3.forwardRef(({ className, ...props }, ref) => /* @_
   }
 ));
 SheetDescription.displayName = DialogPrimitive.Description.displayName;
-
-// src/lib/format.ts
-function classNames(...parts) {
-  return parts.filter(Boolean).join(" ");
-}
-function isUsableTimestamp(iso) {
-  if (!iso) return false;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return false;
-  return t > 9466848e5;
-}
-function formatRelative(iso) {
-  if (!isUsableTimestamp(iso)) return "\u2014";
-  const t = Date.parse(iso);
-  const diff = Date.now() - t;
-  const abs = Math.abs(diff);
-  const past = diff >= 0;
-  let value;
-  let unit;
-  if (abs < 6e4) {
-    value = Math.max(1, Math.round(abs / 1e3));
-    unit = "s";
-  } else if (abs < 36e5) {
-    value = Math.round(abs / 6e4);
-    unit = "m";
-  } else if (abs < 864e5) {
-    value = Math.round(abs / 36e5);
-    unit = "h";
-  } else {
-    value = Math.round(abs / 864e5);
-    unit = "d";
-  }
-  return past ? `${value}${unit} ago` : `in ${value}${unit}`;
-}
-function isStaleFreshness(iso, thresholdMs = 12 * 60 * 6e4) {
-  if (!isUsableTimestamp(iso)) return true;
-  return Date.now() - Date.parse(iso) > thresholdMs;
-}
-function formatFreshness(updatedAt, windowLabel) {
-  const parts = [];
-  if (updatedAt) {
-    const t = new Date(updatedAt);
-    if (!Number.isNaN(t.getTime())) {
-      const diffMs = Date.now() - t.getTime();
-      parts.push(`updated ${relative(diffMs)}`);
-    }
-  }
-  if (windowLabel) parts.push(`${windowLabel} window`);
-  return parts.length ? parts.join(" \xB7 ") : null;
-}
-function formatFreshnessAbsolute(updatedAt) {
-  if (!updatedAt) return null;
-  const t = new Date(updatedAt);
-  if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleString();
-}
-function relative(diffMs) {
-  const sec = Math.max(0, Math.round(diffMs / 1e3));
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 48) return `${hr}h ago`;
-  const day = Math.round(hr / 24);
-  return `${day}d ago`;
-}
 function SegmentedToggle({
   options,
   value,
@@ -6047,4 +6045,4 @@ function RoutePending({
   );
 }
 
-export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, defaultVisible, fmtYield, isScrolledPast, isTablistNavKey, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useQueryBarContext, useRovingTablist, useScrolled };
+export { AccentBand, Accordion, AccordionContent, AccordionItem, AccordionTrigger, ActionBar, AnimatedNumber, BackToTop, BarMini, BrandIcon, CandidateChip, CandlestickMini, ChartSkeleton, Chip, ColumnCustomizer, Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut, CopyButton, CopyIconToggle, CopyableCode, CurationChip, DailyRollupFreshness, DefinitionList, DensityToggle, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger, DiscordIcon, Divider, Donut, DonutLegend, DotRow, DownloadCsvButton, EligibilityChip, EmptyState, EntityHero, ExternalLink, FilterChipRow, FilterField, FilterInput, FilterSelect, FilterSheet, FilterToolbar, FreshnessIndicator, GhostButton, HealthDot, HealthPill, HoverCard, HoverCardContent, HoverCardTrigger, HoverPreview, Indicator, InfoTooltip, Kbd, KeyChip, ListShell, LoadMore, LoadingPill, McpToolsList, MetaStrip, MethodologyCallout, MetricGrid, MiniRadial, MiniStack, MobileCollapse, NoDataSpark, PageActions, PageHero, PageSection, PagerBar, PagerFooter, Panel, PanelError, PanelHeader, PanelSkeleton, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, PrimaryLinksRail, ProvenanceChip, QueryBar, QueryProgress, ReadinessGauge, RealtimeFreshness, ResponsiveTable, ReviewChip, RoutePending, SCOPES, ScrollReveal, ScrollShadow, SectionAnchor, SectionHeading, SectionLabel, SegmentedToggle, ShareButton, Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger, Skeleton, SparkLegend, Sparkline, StatTile, StatWithSpark, StatusBadge, StickyToolbar, TabStrip, TableSkeleton, TableState, TimeAgo, Toaster, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TreemapMini, ViewModeToggle, Wordmark, YieldPercentileStrip, buildCsvDownloadUrl, classNames, cn, defaultVisible, fmtYield, isScrolledPast, isTablistNavKey, nextTabIndex, prefetchBrandIcon, rovingTabIndex, safeExternalUrl, tierFreshnessLabel, useColumnVisibility, useQueryBarContext, useRovingTablist, useScrolled };

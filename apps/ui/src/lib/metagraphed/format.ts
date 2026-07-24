@@ -107,9 +107,9 @@ export function isStaleFreshness(iso?: string | null, thresholdMs = 12 * 60 * 60
   return Date.now() - Date.parse(iso) > thresholdMs;
 }
 
-export function classNames(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(" ");
-}
+// Canonical implementation lives in packages/ui-kit (#7847) -- re-exported
+// here so every existing "@/lib/metagraphed/format" import site is unaffected.
+export { classNames } from "@jsonbored/ui-kit";
 
 /**
  * Humanise a duration in seconds into a compact label like "42s", "5m",

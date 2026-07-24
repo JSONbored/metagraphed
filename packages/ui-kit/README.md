@@ -20,9 +20,22 @@ imports something app-specific, the extraction has silently regressed back into 
 this package exists to fix. `eslint.config.ts`'s `no-restricted-imports` rule enforces this in CI:
 importing `@tanstack/react-router`, `@tanstack/react-query`, or anything resolving into
 `apps/ui/**` fails the build. If a component genuinely needs routing/data, accept it as a prop
-from the caller instead. If it needs a small pure helper that also lives in `apps/ui` (date
-formatting, a `cn()`-style className joiner, etc.), duplicate the specific pieces needed rather
-than importing across the package boundary — see `src/lib/format.ts` for the established pattern.
+from the caller instead. If it needs a small pure helper that's genuinely app-specific (a date
+formatter tied to apps/ui's own conventions, a hook that reads apps/ui's config, etc.), duplicate
+the specific piece needed rather than importing across the package boundary — see
+`src/lib/format.ts` for the established pattern. Generic, app-agnostic helpers (a `cn()`-style
+className joiner, etc.) should instead be authored here and exported from the public barrel, with
+apps/ui re-exporting them (see `classNames`/`cn` below, #7847) — don't duplicate those.
+
+### `classNames` vs `cn`
+
+Both are exported from the package root. They have different semantics — pick deliberately:
+
+- **`classNames`** — cheap `Boolean`-filter-and-join, no Tailwind conflict resolution. Use for
+  static class assembly where nothing can collide.
+- **`cn`** — `clsx` + `tailwind-merge`; resolves conflicting Tailwind utilities (e.g. two
+  different `px-*` values collapse to the last one). Use where callers may pass a `className` prop
+  that could conflict with the component's own classes.
 
 ## Build
 

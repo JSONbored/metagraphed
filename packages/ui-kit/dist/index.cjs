@@ -1,10 +1,10 @@
 'use strict';
 
+var clsx = require('clsx');
+var tailwindMerge = require('tailwind-merge');
 var React3 = require('react');
 var AccordionPrimitive = require('@radix-ui/react-accordion');
 var lucideReact = require('lucide-react');
-var clsx = require('clsx');
-var tailwindMerge = require('tailwind-merge');
 var jsxRuntime = require('react/jsx-runtime');
 var cmdk = require('cmdk');
 var DialogPrimitive = require('@radix-ui/react-dialog');
@@ -34,15 +34,79 @@ function _interopNamespace(e) {
   return Object.freeze(n);
 }
 
+var clsx__default = /*#__PURE__*/_interopDefault(clsx);
 var React3__namespace = /*#__PURE__*/_interopNamespace(React3);
 var AccordionPrimitive__namespace = /*#__PURE__*/_interopNamespace(AccordionPrimitive);
-var clsx__default = /*#__PURE__*/_interopDefault(clsx);
 var DialogPrimitive__namespace = /*#__PURE__*/_interopNamespace(DialogPrimitive);
 var HoverCardPrimitive__namespace = /*#__PURE__*/_interopNamespace(HoverCardPrimitive);
 var PopoverPrimitive__namespace = /*#__PURE__*/_interopNamespace(PopoverPrimitive);
 var TooltipPrimitive__namespace = /*#__PURE__*/_interopNamespace(TooltipPrimitive);
 
-// src/components/ui/accordion.tsx
+// src/lib/format.ts
+function classNames(...parts) {
+  return parts.filter(Boolean).join(" ");
+}
+function isUsableTimestamp(iso) {
+  if (!iso) return false;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return false;
+  return t > 9466848e5;
+}
+function formatRelative(iso) {
+  if (!isUsableTimestamp(iso)) return "\u2014";
+  const t = Date.parse(iso);
+  const diff = Date.now() - t;
+  const abs = Math.abs(diff);
+  const past = diff >= 0;
+  let value;
+  let unit;
+  if (abs < 6e4) {
+    value = Math.max(1, Math.round(abs / 1e3));
+    unit = "s";
+  } else if (abs < 36e5) {
+    value = Math.round(abs / 6e4);
+    unit = "m";
+  } else if (abs < 864e5) {
+    value = Math.round(abs / 36e5);
+    unit = "h";
+  } else {
+    value = Math.round(abs / 864e5);
+    unit = "d";
+  }
+  return past ? `${value}${unit} ago` : `in ${value}${unit}`;
+}
+function isStaleFreshness(iso, thresholdMs = 12 * 60 * 6e4) {
+  if (!isUsableTimestamp(iso)) return true;
+  return Date.now() - Date.parse(iso) > thresholdMs;
+}
+function formatFreshness(updatedAt, windowLabel) {
+  const parts = [];
+  if (updatedAt) {
+    const t = new Date(updatedAt);
+    if (!Number.isNaN(t.getTime())) {
+      const diffMs = Date.now() - t.getTime();
+      parts.push(`updated ${relative(diffMs)}`);
+    }
+  }
+  if (windowLabel) parts.push(`${windowLabel} window`);
+  return parts.length ? parts.join(" \xB7 ") : null;
+}
+function formatFreshnessAbsolute(updatedAt) {
+  if (!updatedAt) return null;
+  const t = new Date(updatedAt);
+  if (Number.isNaN(t.getTime())) return null;
+  return t.toLocaleString();
+}
+function relative(diffMs) {
+  const sec = Math.max(0, Math.round(diffMs / 1e3));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 48) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  return `${day}d ago`;
+}
 function cn(...inputs) {
   return tailwindMerge.twMerge(clsx__default.default(...inputs));
 }
@@ -396,72 +460,6 @@ var SheetDescription = React3__namespace.forwardRef(({ className, ...props }, re
   }
 ));
 SheetDescription.displayName = DialogPrimitive__namespace.Description.displayName;
-
-// src/lib/format.ts
-function classNames(...parts) {
-  return parts.filter(Boolean).join(" ");
-}
-function isUsableTimestamp(iso) {
-  if (!iso) return false;
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return false;
-  return t > 9466848e5;
-}
-function formatRelative(iso) {
-  if (!isUsableTimestamp(iso)) return "\u2014";
-  const t = Date.parse(iso);
-  const diff = Date.now() - t;
-  const abs = Math.abs(diff);
-  const past = diff >= 0;
-  let value;
-  let unit;
-  if (abs < 6e4) {
-    value = Math.max(1, Math.round(abs / 1e3));
-    unit = "s";
-  } else if (abs < 36e5) {
-    value = Math.round(abs / 6e4);
-    unit = "m";
-  } else if (abs < 864e5) {
-    value = Math.round(abs / 36e5);
-    unit = "h";
-  } else {
-    value = Math.round(abs / 864e5);
-    unit = "d";
-  }
-  return past ? `${value}${unit} ago` : `in ${value}${unit}`;
-}
-function isStaleFreshness(iso, thresholdMs = 12 * 60 * 6e4) {
-  if (!isUsableTimestamp(iso)) return true;
-  return Date.now() - Date.parse(iso) > thresholdMs;
-}
-function formatFreshness(updatedAt, windowLabel) {
-  const parts = [];
-  if (updatedAt) {
-    const t = new Date(updatedAt);
-    if (!Number.isNaN(t.getTime())) {
-      const diffMs = Date.now() - t.getTime();
-      parts.push(`updated ${relative(diffMs)}`);
-    }
-  }
-  if (windowLabel) parts.push(`${windowLabel} window`);
-  return parts.length ? parts.join(" \xB7 ") : null;
-}
-function formatFreshnessAbsolute(updatedAt) {
-  if (!updatedAt) return null;
-  const t = new Date(updatedAt);
-  if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleString();
-}
-function relative(diffMs) {
-  const sec = Math.max(0, Math.round(diffMs / 1e3));
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 48) return `${hr}h ago`;
-  const day = Math.round(hr / 24);
-  return `${day}d ago`;
-}
 function SegmentedToggle({
   options,
   value,
@@ -6217,6 +6215,8 @@ exports.ViewModeToggle = ViewModeToggle;
 exports.Wordmark = Wordmark;
 exports.YieldPercentileStrip = YieldPercentileStrip;
 exports.buildCsvDownloadUrl = buildCsvDownloadUrl;
+exports.classNames = classNames;
+exports.cn = cn;
 exports.defaultVisible = defaultVisible;
 exports.fmtYield = fmtYield;
 exports.isScrolledPast = isScrolledPast;

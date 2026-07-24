@@ -1,5 +1,17 @@
 import "./styles.css";
 
+// Class-assembly helpers (#7847). Two distinct semantics, both canonical
+// here -- apps/ui's own copies re-export these rather than redefining them:
+//   - classNames: cheap Boolean-filter-and-join, no Tailwind conflict
+//     resolution. Use for static class assembly.
+//   - cn: clsx + tailwind-merge, resolves conflicting Tailwind utilities
+//     (e.g. two different `px-*` values collapse to the last one). Use only
+//     where callers may pass conflicting utilities that must merge --
+//     typically prop-accepting components forwarding a caller `className`
+//     alongside the component's own classes.
+export { classNames } from "@/lib/format";
+export { cn } from "@/lib/utils";
+
 export {
   Accordion,
   AccordionItem,
