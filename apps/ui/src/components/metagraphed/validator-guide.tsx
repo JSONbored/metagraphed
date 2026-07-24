@@ -77,9 +77,7 @@ export function ValidatorGuide() {
           <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
           <span className="min-w-0 flex-1">
             <span className="block mg-type-micro text-ink-muted">{HEADING}</span>
-            <span className="mt-0.5 block font-mono text-[10px] text-ink-muted/80">
-              {SUBHEADING}
-            </span>
+            <span className="mt-0.5 block mg-type-data-sm text-ink-muted/80">{SUBHEADING}</span>
           </span>
           <ChevronDown
             className={classNames(
@@ -111,15 +109,13 @@ export function ValidatorGuide() {
           <Info className="mt-0.5 size-3.5 shrink-0 text-accent" />
           <span className="min-w-0 flex-1">
             <span className="block mg-type-micro text-ink-muted">{HEADING}</span>
-            <span className="mt-0.5 block font-mono text-[10px] text-ink-muted/80">
-              {SUBHEADING}
-            </span>
+            <span className="mt-0.5 block mg-type-data-sm text-ink-muted/80">{SUBHEADING}</span>
           </span>
         </div>
         <div className="divide-y divide-border border-t border-border">
           {METRICS.map((m) => (
             <details key={m.term} className="group px-3">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2.5 text-[12px] font-medium text-ink-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2.5 mg-type-caption font-medium text-ink-strong focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
                 <span>{m.term}</span>
                 <ChevronDown className="size-3.5 shrink-0 text-ink-muted transition-transform group-open:rotate-180" />
               </summary>

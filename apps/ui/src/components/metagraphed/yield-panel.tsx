@@ -117,7 +117,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
           {splitBars.length ? (
             <BarMini data={splitBars} />
           ) : (
-            <p className="font-mono text-[11px] text-ink-muted">Not enough data yet.</p>
+            <p className="mg-type-data text-ink-muted">Not enough data yet.</p>
           )}
         </Panel>
 
@@ -141,7 +141,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
             <div key={n.uid} className="p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                  <span className="shrink-0 mg-type-data tabular-nums text-ink-muted">
                     #{n.uid}
                   </span>
                   {n.hotkey ? (
@@ -149,7 +149,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                       <Link
                         to="/accounts/$ss58"
                         params={{ ss58: n.hotkey }}
-                        className="truncate font-mono text-[12px] text-ink-strong hover:text-accent hover:underline"
+                        className="truncate font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
                         title={n.hotkey}
                       >
                         {shortHash(n.hotkey) ?? n.hotkey}
@@ -157,7 +157,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                       <CopyButton value={n.hotkey} label="hotkey" compact />
                     </>
                   ) : (
-                    <span className="font-mono text-[12px] text-ink-muted">—</span>
+                    <span className="font-mono mg-type-caption text-ink-muted">—</span>
                   )}
                 </div>
                 {n.role === "validator" ? (
@@ -168,7 +168,7 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                   <span className="shrink-0 mg-type-micro text-ink-muted">Miner</span>
                 )}
               </div>
-              <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[11px] tabular-nums">
+              <div className="mt-2 flex items-center justify-between gap-2 mg-type-data tabular-nums">
                 <span className="text-ink-muted">{taoCompact(n.stake_tao)} τ stake</span>
                 <span className="text-ink-muted">{taoCompact(n.emission_tao)} τ emission</span>
                 <span className="flex items-center gap-1 text-ink-strong">
@@ -195,10 +195,10 @@ export function YieldLoader({ netuid }: { netuid: number }) {
             <tbody>
               {ranked.map((n) => (
                 <tr key={n.uid} className="mg-row-hover border-t border-border/60">
-                  <td className="px-3 py-2.5 font-mono text-[12px] tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-strong">
                     {n.uid}
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-[11px]">
+                  <td className="px-3 py-2.5 mg-type-data">
                     {n.hotkey ? (
                       <div className="flex items-center gap-1.5">
                         <Link
@@ -224,13 +224,13 @@ export function YieldLoader({ netuid }: { netuid: number }) {
                       <span className="mg-type-micro text-ink-muted">Miner</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
                     {taoCompact(n.stake_tao)}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
                     {taoCompact(n.emission_tao)}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
                     {fmtYield(n.yield)}
                   </td>
                   <td className="px-3 py-2.5 text-center">

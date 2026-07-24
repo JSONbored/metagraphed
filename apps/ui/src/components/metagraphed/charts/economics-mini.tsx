@@ -103,7 +103,7 @@ export function EconomicsMini({ netuid }: Props) {
               </span>
             </div>
             {ratio != null ? (
-              <span className="inline-flex items-center gap-2 font-mono text-[10px] text-ink-muted">
+              <span className="inline-flex items-center gap-2 mg-type-data-sm text-ink-muted">
                 Pool {ratio.toFixed(0)}% in · {(100 - ratio).toFixed(0)}% out
                 <Maximize2 className="size-3 opacity-60 transition-opacity group-hover:opacity-100" />
               </span>
@@ -134,7 +134,7 @@ export function EconomicsMini({ netuid }: Props) {
               </div>
             </div>
           ) : (
-            <div className="p-4 font-mono text-[11px] text-ink-muted">
+            <div className="p-4 mg-type-data text-ink-muted">
               No AMM pool reserves recorded — price shown from the latest snapshot.
             </div>
           )}
@@ -213,7 +213,7 @@ function EconomicsDrilldown({
             <DonutLegend segments={poolSegments} />
           </div>
         ) : (
-          <p className="font-mono text-[11px] text-ink-muted">
+          <p className="mg-type-data text-ink-muted">
             No AMM pool reserves recorded for this subnet.
           </p>
         )}
@@ -254,7 +254,7 @@ function EconomicsFallback({ netuid, surfaces }: { netuid: number; surfaces?: Su
             SN{netuid}
           </span>
         </div>
-        <span className="font-mono text-[10px] text-ink-muted">showing probe trend instead</span>
+        <span className="mg-type-data-sm text-ink-muted">showing probe trend instead</span>
       </div>
       {uptime.length > 1 ? (
         <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] divide-x divide-border">
@@ -283,7 +283,7 @@ function EconomicsFallback({ netuid, surfaces }: { netuid: number; surfaces?: Su
           </div>
         </div>
       ) : (
-        <div className="p-6 text-center font-mono text-[11px] text-ink-muted">
+        <div className="p-6 text-center mg-type-data text-ink-muted">
           No probe samples yet — economics + health series will populate as the registry runs more
           probes.
         </div>

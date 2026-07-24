@@ -162,7 +162,7 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
       <section className="space-y-2">
         <div className="mg-type-micro text-ink-muted">Request</div>
         <Panel as="div" flush>
-          <div className="p-3 font-mono text-[12px] text-ink-strong break-all flex items-start gap-2">
+          <div className="p-3 font-mono mg-type-caption text-ink-strong break-all flex items-start gap-2">
             <span className="shrink-0 rounded bg-curation-verified/15 text-curation-verified px-1.5 py-0.5 mg-type-micro">
               GET
             </span>
@@ -204,23 +204,23 @@ function ApiSourceBody({ source }: { source: ApiSource }) {
           <Panel
             as="div"
             dense
-            bodyClassName="text-[12px] text-ink-muted inline-flex items-center gap-2"
+            bodyClassName="mg-type-caption text-ink-muted inline-flex items-center gap-2"
           >
             <Loader2 className="size-3.5 animate-spin" /> Loading…
           </Panel>
         ) : error ? (
-          <div className="rounded border border-health-down/40 bg-health-down/5 p-3 text-[12px] text-health-down">
+          <div className="rounded border border-health-down/40 bg-health-down/5 p-3 mg-type-caption text-health-down">
             <div className="font-medium">Request failed</div>
-            <div className="mt-1 font-mono text-[11px] opacity-80">{(error as Error).message}</div>
+            <div className="mt-1 mg-type-data opacity-80">{(error as Error).message}</div>
           </div>
         ) : (
-          <pre className="max-h-[60vh] overflow-auto rounded border border-border bg-card p-3 font-mono text-[11px] leading-relaxed text-ink-strong whitespace-pre">
+          <pre className="max-h-[60vh] overflow-auto rounded border border-border bg-card p-3 font-mono mg-type-data leading-relaxed text-ink-strong whitespace-pre">
             {json}
           </pre>
         )}
       </section>
 
-      <div className="text-[10px] font-mono text-ink-muted">
+      <div className="mg-type-data-sm text-ink-muted">
         Press <Kbd>Esc</Kbd> to close · <Kbd>⌘</Kbd>
         <Kbd>J</Kbd> to reopen
       </div>

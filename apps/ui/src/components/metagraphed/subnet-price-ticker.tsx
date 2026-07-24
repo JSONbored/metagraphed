@@ -139,7 +139,7 @@ export function SubnetPriceTicker({ limit = 12 }: { limit?: number }) {
                   </span>
                 ) : null}
                 {t.changePct != null ? (
-                  <span className="font-mono tabular-nums text-[10px]" style={{ color: t.color }}>
+                  <span className="tabular-nums mg-type-data-sm" style={{ color: t.color }}>
                     {arrow} {t.changePct >= 0 ? "+" : ""}
                     {t.changePct.toFixed(1)}%
                   </span>

@@ -50,10 +50,12 @@ export function PanelError({
         <AlertTriangle className="size-4" aria-hidden />
       </div>
       <div className="max-w-sm space-y-1">
-        <div className="font-display text-[13px] font-semibold text-ink-strong">
+        <div className="font-display mg-type-caption-lg font-semibold text-ink-strong">
           {title}
         </div>
-        <p className="text-[12px] leading-relaxed text-ink-muted">{message}</p>
+        <p className="mg-type-caption leading-relaxed text-ink-muted">
+          {message}
+        </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
         {onRetry ? (

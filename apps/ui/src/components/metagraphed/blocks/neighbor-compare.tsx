@@ -44,9 +44,7 @@ function NeighborCard({
             <Icon className="size-3.5" />
             <span className="mg-type-micro">{label}</span>
           </span>
-          <span className="font-mono text-[11px]">
-            {direction === "prev" ? "genesis" : "chain tip"}
-          </span>
+          <span className="mg-type-data">{direction === "prev" ? "genesis" : "chain tip"}</span>
         </div>
       </Panel>
     );
@@ -70,11 +68,11 @@ function NeighborCard({
             {label}
             {direction === "next" ? <Icon className="size-3.5" /> : null}
           </span>
-          <span className="font-mono text-[12px] font-semibold tabular-nums text-ink-strong">
+          <span className="font-mono mg-type-caption font-semibold tabular-nums text-ink-strong">
             #{formatNumber(Number(ref))}
           </span>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-[11px] tabular-nums">
+        <div className="mt-2 grid grid-cols-2 gap-2 mg-type-data tabular-nums">
           <DeltaChip label="ext" value={ext} delta={extDelta} loading={q.isPending} />
           <DeltaChip label="evt" value={evt} delta={evtDelta} loading={q.isPending} />
         </div>

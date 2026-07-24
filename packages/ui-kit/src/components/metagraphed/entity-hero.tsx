@@ -106,7 +106,7 @@ export function EntityHero({
             {eyebrow ? (
               <div
                 className={classNames(
-                  "mg-fade-in font-mono text-[10px] uppercase text-ink-muted inline-flex items-center gap-2",
+                  "mg-fade-in mg-type-data-sm uppercase text-ink-muted inline-flex items-center gap-2",
                   display ? "tracking-[0.22em]" : "tracking-[0.2em] mb-2",
                 )}
               >
@@ -185,9 +185,7 @@ export function EntityHero({
                   {s.value}
                 </span>
                 {s.hint ? (
-                  <span className="font-mono text-[11px] text-ink-muted">
-                    {s.hint}
-                  </span>
+                  <span className="mg-type-data text-ink-muted">{s.hint}</span>
                 ) : null}
               </div>
               {s.chart ? <div className="mt-2.5 -ml-0.5">{s.chart}</div> : null}

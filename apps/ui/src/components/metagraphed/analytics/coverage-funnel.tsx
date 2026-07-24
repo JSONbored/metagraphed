@@ -94,13 +94,13 @@ export function CoverageFunnel({ className }: { className?: string }) {
                     <span className="font-display font-medium text-ink-strong truncate">
                       {s.label}
                     </span>
-                    <span className="font-mono text-[10px] text-ink-muted truncate">{s.hint}</span>
+                    <span className="mg-type-data-sm text-ink-muted truncate">{s.hint}</span>
                   </div>
                   <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
                     {conv != null ? (
                       <span
                         className={classNames(
-                          "font-mono text-[10px]",
+                          "mg-type-data-sm",
                           conv >= 90
                             ? "text-health-ok"
                             : conv >= 50

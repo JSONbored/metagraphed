@@ -89,7 +89,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     className="flex h-full flex-col items-center gap-1 rounded border border-accent/60 bg-accent/10 px-2 py-2"
                   >
                     <span className="mg-type-micro text-accent-text">This</span>
-                    <span className="font-mono text-[12px] font-semibold tabular-nums text-ink-strong truncate w-full text-center">
+                    <span className="font-mono mg-type-caption font-semibold tabular-nums text-ink-strong truncate w-full text-center">
                       #{formatNumber(slot.n)}
                     </span>
                     <DensityBar level={density} accent />
@@ -108,7 +108,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     <span className="mg-type-micro text-ink-muted">
                       {slot.n < current.block_number ? "prev" : "next"}
                     </span>
-                    <span className="font-mono text-[12px] tabular-nums text-ink-strong truncate w-full text-center">
+                    <span className="font-mono mg-type-caption tabular-nums text-ink-strong truncate w-full text-center">
                       #{formatNumber(slot.n)}
                     </span>
                     <DensityBar level={density} />
@@ -119,7 +119,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                     className="flex h-full flex-col items-center gap-1 rounded border border-dashed border-border/60 px-2 py-2 opacity-40"
                   >
                     <span className="mg-type-micro text-ink-muted">—</span>
-                    <span className="font-mono text-[12px] tabular-nums text-ink-muted truncate w-full text-center">
+                    <span className="font-mono mg-type-caption tabular-nums text-ink-muted truncate w-full text-center">
                       #{formatNumber(slot.n)}
                     </span>
                     <DensityBar level={0} />
@@ -158,7 +158,7 @@ export function ChainWalkRibbon({ current, radius = 3 }: Props) {
                 formatValue={(v) => humaniseSeconds(v / 1000)}
               />
             ) : (
-              <span className="font-mono text-[11px] text-ink-muted">—</span>
+              <span className="mg-type-data text-ink-muted">—</span>
             )}
           </div>
           <div className="flex items-center gap-1.5 mg-type-micro text-ink-muted shrink-0">

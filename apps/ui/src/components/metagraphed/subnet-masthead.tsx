@@ -446,7 +446,7 @@ export function SubnetMasthead({
                         </span>
                       )}
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-mono text-[11px]">
+                    <TooltipContent side="bottom" className="mg-type-data">
                       {safeHref ? host(safeHref) : "Blocked unsafe external URL"}
                     </TooltipContent>
                   </Tooltip>

@@ -16,7 +16,7 @@ export function CopyMarkdownButton({ markdown }: { markdown: string | undefined 
       onClick={() => markdown && copy(markdown)}
       disabled={!markdown}
       className={classNames(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded border border-border bg-card px-2.5 py-1.5 text-[12px] text-ink-muted",
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded border border-border bg-card px-2.5 py-1.5 mg-type-caption text-ink-muted",
         "hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-50 disabled:pointer-events-none",
       )}
     >

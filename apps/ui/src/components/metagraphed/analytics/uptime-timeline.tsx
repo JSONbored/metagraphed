@@ -150,7 +150,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
           <span className="font-mono text-[9.5px] text-ink-muted/70">· {freshLine}</span>
         ) : null}
         {/* Aggregate window stats. */}
-        <div className="ml-auto flex items-center gap-3 font-mono text-[10px] text-ink-muted">
+        <div className="ml-auto flex items-center gap-3 mg-type-data-sm text-ink-muted">
           <span className="inline-flex items-center gap-1">
             <span
               className="inline-block size-2 rounded-full"
@@ -179,16 +179,10 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
           return (
             <li key={s.surface_id} className="px-4 py-2">
               <div className="flex items-baseline justify-between gap-3">
-                <span
-                  className="truncate font-mono text-[11px] text-ink-strong"
-                  title={s.surface_id}
-                >
+                <span className="truncate mg-type-data text-ink-strong" title={s.surface_id}>
                   {shortSurfaceId(s.surface_id)}
                 </span>
-                <span
-                  className="shrink-0 font-mono text-[10px] tabular-nums"
-                  style={{ color: tint }}
-                >
+                <span className="shrink-0 mg-type-data-sm tabular-nums" style={{ color: tint }}>
                   {pct(ratio)}
                 </span>
               </div>
@@ -291,7 +285,7 @@ export function UptimeTimeline({ netuid, className }: { netuid: number; classNam
                       {sev} · {dur}
                     </div>
                     <div className="mt-1 break-all">{i.surface_id}</div>
-                    <div className="mt-1 font-mono text-[10px] text-primary-foreground/70">
+                    <div className="mt-1 mg-type-data-sm text-primary-foreground/70">
                       started <TimeAgo at={i.started_at} />
                       <br />
                       {i.ended_at ? (

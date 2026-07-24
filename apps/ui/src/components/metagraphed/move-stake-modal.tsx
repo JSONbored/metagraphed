@@ -175,7 +175,7 @@ function MoveStakeFlowBody({
               type="button"
               onClick={flow.confirm}
               disabled={!flow.canConfirm}
-              className="w-full rounded border border-ink-strong/40 bg-surface px-3 py-2 text-[12px] font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-50"
+              className="w-full rounded border border-ink-strong/40 bg-surface px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-50"
             >
               Review move
             </button>
@@ -225,11 +225,13 @@ function MoveStakeFlowBody({
       return (
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <AlertTriangle className="size-6 text-health-down" aria-hidden />
-          <p className="text-[13px] text-ink-strong">{describeTxError(flow.txStatus.error)}</p>
+          <p className="mg-type-caption-lg text-ink-strong">
+            {describeTxError(flow.txStatus.error)}
+          </p>
           <button
             type="button"
             onClick={flow.editAmount}
-            className="rounded border border-border bg-card px-3 py-2 text-[12px] font-medium text-ink-strong transition-colors hover:border-ink/30"
+            className="rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink/30"
           >
             Edit and try again
           </button>
@@ -262,13 +264,13 @@ function StatusView({
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
       {icon}
-      <p className="text-[13px] text-ink-strong">{message}</p>
+      <p className="mg-type-caption-lg text-ink-strong">{message}</p>
       {txHash ? (
         <div className="space-y-1">
           <Link
             to="/extrinsics/$hash"
             params={{ hash: txHash }}
-            className="font-mono text-[11px] text-accent hover:underline"
+            className="mg-type-data text-accent hover:underline"
           >
             {shortHash(txHash, 8)}
           </Link>
@@ -281,7 +283,7 @@ function StatusView({
         <button
           type="button"
           onClick={onClose}
-          className="rounded border border-border bg-card px-3 py-2 text-[12px] font-medium text-ink-strong transition-colors hover:border-ink/30"
+          className="rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink/30"
         >
           Done
         </button>

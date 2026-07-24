@@ -104,14 +104,14 @@ function ValidatorPreviewRow({
         <Link
           to="/validators/$hotkey"
           params={{ hotkey: validator.hotkey }}
-          className="truncate font-mono text-[12px] text-ink-strong hover:text-accent hover:underline"
+          className="truncate font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
           title={validator.hotkey}
         >
           {shortHash(validator.hotkey, 6) ?? validator.hotkey}
         </Link>
         <CopyButton value={validator.hotkey} label="hotkey" compact />
       </div>
-      <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] text-ink-muted">
+      <div className="flex flex-wrap items-center gap-3 mg-type-data text-ink-muted">
         <span>
           <span className="text-ink-strong tabular-nums">{taoCompact(validator.stake_tao)}</span> τ
         </span>

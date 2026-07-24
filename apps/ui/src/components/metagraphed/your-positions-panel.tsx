@@ -190,7 +190,7 @@ export function YourPositionsPanel({ address }: { address: string }) {
           <tbody>
             {positions.map((p, i) => (
               <tr key={p.key} className="mg-row-hover border-t border-border/60">
-                <td className="px-3 py-2.5 font-mono text-[12px]">
+                <td className="px-3 py-2.5 font-mono mg-type-caption">
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: p.netuid }}
@@ -202,16 +202,16 @@ export function YourPositionsPanel({ address }: { address: string }) {
                 <td className="px-3 py-2.5">
                   <SourceBadge source={p.source} />
                 </td>
-                <td className="px-3 py-2.5 font-mono text-[11px] text-ink-muted">
+                <td className="px-3 py-2.5 mg-type-data text-ink-muted">
                   {p.hotkey ? <HotkeyCell hotkey={p.hotkey} /> : "—"}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-strong">
+                <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
                   {taoCompact(p.spotTao)}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
                   {taoCompact(exitTaoFor(i, p))}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-muted">
+                <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
                   {pct(p.yield)}
                 </td>
                 <td className="px-3 py-2.5 text-right">
@@ -239,14 +239,14 @@ export function YourPositionsPanel({ address }: { address: string }) {
               <Link
                 to="/subnets/$netuid"
                 params={{ netuid: p.netuid }}
-                className="font-mono text-[12px] text-ink-strong hover:text-accent hover:underline"
+                className="font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
               >
                 {p.isRoot ? "Root" : `SN${p.netuid}`}
               </Link>
               <SourceBadge source={p.source} />
             </div>
             {p.hotkey ? (
-              <div className="font-mono text-[11px] text-ink-muted">
+              <div className="mg-type-data text-ink-muted">
                 <HotkeyCell hotkey={p.hotkey} />
               </div>
             ) : null}
@@ -303,7 +303,7 @@ function HotkeyCell({ hotkey }: { hotkey: string }) {
 }
 
 function ManageButton({ hotkey, netuid }: { hotkey: string | null; netuid: number }) {
-  if (!hotkey) return <span className="font-mono text-[10px] text-ink-subtle-text">—</span>;
+  if (!hotkey) return <span className="mg-type-data-sm text-ink-subtle-text">—</span>;
   return (
     <StakeUnstakeModal
       hotkey={hotkey}

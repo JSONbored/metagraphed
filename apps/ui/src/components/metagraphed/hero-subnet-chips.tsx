@@ -94,7 +94,7 @@ export function HeroSubnetChips({ limit = 14 }: { limit?: number }) {
               url={s.website}
               netuid={s.netuid}
             />
-            <span className="font-medium text-[12px] text-ink-strong truncate max-w-[120px]">
+            <span className="font-medium mg-type-caption text-ink-strong truncate max-w-[120px]">
               {s.name ?? `Subnet ${s.netuid}`}
             </span>
             <span className="mg-type-micro text-ink-muted">SN{s.netuid}</span>

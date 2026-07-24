@@ -50,7 +50,7 @@ export function Indicator({
         {Icon ? <Icon className="size-3" aria-hidden /> : null}
         {label}
       </span>
-      <span className="font-mono text-[11px] tabular-nums text-ink-strong truncate">
+      <span className="mg-type-data tabular-nums text-ink-strong truncate">
         {value}
         {hint ? (
           <span className="ml-1 text-ink-muted normal-case">{hint}</span>

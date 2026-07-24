@@ -131,12 +131,12 @@ function AgentsBody() {
         />
         <div className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent-surface px-4 py-3.5">
           <Terminal className="size-4 shrink-0 text-accent" aria-hidden />
-          <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-[13px] text-ink-strong">
+          <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono mg-type-caption-lg text-ink-strong">
             {mcp.install}
           </code>
           <CopyButton value={mcp.install} label="MCP install command" />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 mg-type-data">
           <ExternalLink href={mcp.endpoint} className="text-ink-muted hover:text-ink-strong">
             {mcp.endpoint.replace("https://", "")}
           </ExternalLink>
@@ -178,10 +178,10 @@ function AgentsBody() {
                 <div className="flex items-center gap-3 px-4 py-3">
                   <Package className="size-4 shrink-0 text-ink-muted" aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <code className="block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-ink-strong">
+                    <code className="block overflow-x-auto whitespace-nowrap font-mono mg-type-caption text-ink-strong">
                       {sdk.install}
                     </code>
-                    <ExternalLink href={sdk.url} className="font-mono text-[10px] text-ink-muted">
+                    <ExternalLink href={sdk.url} className="mg-type-data-sm text-ink-muted">
                       {sdk.lang} · {sdk.pkg}
                     </ExternalLink>
                   </div>
@@ -199,7 +199,7 @@ function AgentsBody() {
               href={CLAUDE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-3.5 py-2 text-[13px] font-medium text-accent hover:bg-accent/15"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-3.5 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15"
             >
               Open in Claude <ArrowUpRight className="size-3.5" />
             </a>
@@ -207,12 +207,12 @@ function AgentsBody() {
               href={CHATGPT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-[13px] font-medium text-ink-strong hover:border-ink/30"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 mg-type-caption-lg font-medium text-ink-strong hover:border-ink/30"
             >
               Open in ChatGPT <ArrowUpRight className="size-3.5" />
             </a>
           </div>
-          <p className="mt-3 font-mono text-[11px] text-ink-muted">
+          <p className="mt-3 mg-type-data text-ink-muted">
             system prompt{" "}
             <ExternalLink href={res.copyable_agent.url} className="text-ink-strong">
               {res.copyable_agent.url.replace("https://", "")}
@@ -238,7 +238,7 @@ function AgentsBody() {
                 <span className="flex-1 truncate text-[14px] text-ink-strong">{r.title}</span>
                 <ExternalLink
                   href={r.url}
-                  className="hidden shrink-0 font-mono text-[11px] text-ink-muted hover:text-ink-strong sm:inline-flex"
+                  className="hidden shrink-0 mg-type-data text-ink-muted hover:text-ink-strong sm:inline-flex"
                 >
                   {r.url.replace("https://api.metagraph.sh", "")}
                 </ExternalLink>
@@ -259,7 +259,7 @@ function AgentsBody() {
                 <span className="mg-label">{q.label}</span>
                 <CopyButton value={q.cmd} label={q.label} compact />
               </div>
-              <pre className="overflow-x-auto px-4 py-3 font-mono text-[11px] leading-relaxed text-ink">
+              <pre className="overflow-x-auto px-4 py-3 mg-type-data leading-relaxed text-ink">
                 {q.cmd}
               </pre>
             </Panel>

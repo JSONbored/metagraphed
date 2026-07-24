@@ -57,7 +57,7 @@ export function EndpointCardList({
                 <HealthPill state={e.health} />
               </SparkLegend>
             </div>
-            <div className="font-mono text-[11px] min-w-0">
+            <div className="mg-type-data min-w-0">
               {e.url ? (
                 <div className="flex items-center gap-1.5 min-w-0">
                   <ExternalLink href={e.url} className="min-w-0 text-[11px]">
@@ -127,7 +127,7 @@ export function EndpointCardList({
               updatedAt={e.last_probed_at}
               staleness="Rows older than the probe cycle are dimmed in tooltips elsewhere."
             >
-              <span className="font-mono text-[10px] text-ink-muted">
+              <span className="mg-type-data-sm text-ink-muted">
                 probed <TimeAgo at={e.last_probed_at} />
               </span>
             </SparkLegend>

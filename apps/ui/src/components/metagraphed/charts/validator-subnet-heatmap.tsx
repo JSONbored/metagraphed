@@ -66,7 +66,7 @@ export function ValidatorSubnetHeatmap() {
       </div>
       <div className="w-full overflow-x-auto [scrollbar-gutter:stable]">
         <TooltipProvider delayDuration={150}>
-          <table className="w-full min-w-[640px] text-[11px] font-mono">
+          <table className="w-full min-w-[640px] mg-type-data">
             <thead>
               <tr>
                 <th className="sticky left-0 z-[var(--mg-z-sticky)] border-b border-border bg-card px-3 py-2 text-left mg-type-micro text-ink-muted">

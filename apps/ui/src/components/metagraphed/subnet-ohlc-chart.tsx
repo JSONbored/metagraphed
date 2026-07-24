@@ -104,7 +104,7 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
             formatValue={fmtOhlcPrice}
             ariaLabel={`Subnet ${netuid} alpha price, ${candles.length} ${interval} candles`}
           />
-          <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-ink-muted">
+          <div className="mt-2 flex items-center justify-between mg-type-data-sm text-ink-muted">
             <span>{candles.length} candles</span>
             <span>
               latest close {fmtOhlcPrice(candles[candles.length - 1]!.close)} τ/α · vol{" "}

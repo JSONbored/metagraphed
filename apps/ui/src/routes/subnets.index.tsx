@@ -979,7 +979,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                   size={32}
                 />
                 <div className="min-w-0">
-                  <div className="font-mono text-[11px] text-ink-muted">
+                  <div className="mg-type-data text-ink-muted">
                     #{String(s.netuid).padStart(3, "0")}
                     {s.symbol ? ` · ${s.symbol}` : ""}
                     {" · "}
@@ -992,7 +992,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
               </div>
               <HealthPill state={s.health} />
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
+            <div className="mt-2 flex items-center justify-between mg-type-data text-ink-muted">
               <span>{formatNumber(s.participants)} participants</span>
               <span>{s.surfaces_count ?? 0} surfaces</span>
               <span>
@@ -1017,7 +1017,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           const compact = density === "compact";
           const cellPad = compact ? "px-3 py-1.5" : "px-4 py-2.5";
           const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
-          const monoSize = compact ? "text-[11px]" : "text-[12px]";
+          const monoSize = compact ? "text-[11px]" : "mg-type-caption";
           return (
             <table className="w-full text-left text-sm">
               <thead>
@@ -1272,7 +1272,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       </EntityHoverCard>
                     </td>
                     {columns.isVisible("symbol") ? (
-                      <td className={classNames(cellPad, "font-mono text-[11px] text-ink-muted")}>
+                      <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>
                         {s.symbol ?? "—"}
                       </td>
                     ) : null}
@@ -1309,7 +1309,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       <td
                         className={classNames(
                           cellPad,
-                          "text-right font-mono text-[11px] tabular-nums",
+                          "text-right mg-type-data tabular-nums",
                           // #3364: dim the cost only when registration is explicitly
                           // closed. `registration_allowed === undefined` (economics
                           // entry present but flag absent, or no entry at all) keeps
@@ -1333,12 +1333,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       </td>
                     ) : null}
                     {columns.isVisible("emission") ? (
-                      <td
-                        className={classNames(
-                          cellPad,
-                          "text-right font-mono text-[11px] tabular-nums",
-                        )}
-                      >
+                      <td className={classNames(cellPad, "text-right mg-type-data tabular-nums")}>
                         <EmissionCell share={s.emission_share} />
                       </td>
                     ) : null}
@@ -1374,12 +1369,7 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       />
                     ) : null}
                     {columns.isVisible("updated") ? (
-                      <td
-                        className={classNames(
-                          cellPad,
-                          "text-right font-mono text-[11px] text-ink-muted",
-                        )}
-                      >
+                      <td className={classNames(cellPad, "text-right mg-type-data text-ink-muted")}>
                         <TimeAgo at={s.updated_at ?? s.freshness} />
                       </td>
                     ) : null}
@@ -1434,7 +1424,7 @@ function SubnetGrid({ rows }: { rows: Subnet[] }) {
           </div>
 
           {(s as { description?: string }).description ? (
-            <p className="text-[12px] text-ink-muted leading-relaxed line-clamp-2">
+            <p className="mg-type-caption text-ink-muted leading-relaxed line-clamp-2">
               {(s as { description?: string }).description}
             </p>
           ) : null}
@@ -1513,7 +1503,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
         <div className="mg-type-micro text-[10px] text-ink-muted">
           Health matrix · {rows.length} subnets
         </div>
-        <div className="flex items-center gap-3 text-[10px] font-mono text-ink-muted">
+        <div className="flex items-center gap-3 mg-type-data-sm text-ink-muted">
           <Legend color="bg-health-ok" label="ok" />
           <Legend color="bg-health-warn" label="warn" />
           <Legend color="bg-health-down" label="down" />
@@ -1532,7 +1522,7 @@ function SubnetMatrix({ rows }: { rows: Subnet[] }) {
               aria-label={`Subnet ${s.netuid}${s.name ? ` — ${s.name}` : ""}`}
               title={`#${s.netuid}${s.name ? ` · ${s.name}` : ""} · ${s.health ?? "unknown"}`}
               className={classNames(
-                "mg-pulse-cell flex aspect-square items-center justify-center rounded-sm font-mono text-[10px] font-medium transition-transform",
+                "mg-pulse-cell flex aspect-square items-center justify-center rounded-sm mg-type-data-sm font-medium transition-transform",
                 HEALTH_BG[s.health ?? "unknown"] ?? HEALTH_BG.unknown,
                 HEALTH_TEXT[s.health ?? "unknown"] ?? HEALTH_TEXT.unknown,
               )}
@@ -1595,7 +1585,7 @@ function ParticipantsCell({
         <span
           className={classNames(
             "font-mono tabular-nums text-ink",
-            compact ? "text-[11px]" : "text-[12px]",
+            compact ? "text-[11px]" : "mg-type-caption",
           )}
         >
           {formatNumber(value)}
@@ -1636,7 +1626,7 @@ function FinancialCell({
     <td
       className={classNames(
         compact ? "px-3 py-1.5" : "px-4 py-2.5",
-        "text-right font-mono text-[11px] tabular-nums text-ink",
+        "text-right mg-type-data tabular-nums text-ink",
       )}
     >
       <div>
@@ -1750,7 +1740,7 @@ function FinancialTrendCell({
       ref={cellRef}
       className={classNames(
         compact ? "px-3 py-1.5" : "px-4 py-2.5",
-        "text-right font-mono text-[11px] tabular-nums",
+        "text-right mg-type-data tabular-nums",
       )}
     >
       <div className="flex items-center justify-end gap-2">
@@ -1845,7 +1835,7 @@ function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; den
         <span
           className={classNames(
             "font-mono tabular-nums text-ink w-6 text-right",
-            compact ? "text-[11px]" : "text-[12px]",
+            compact ? "text-[11px]" : "mg-type-caption",
           )}
         >
           {count || "—"}

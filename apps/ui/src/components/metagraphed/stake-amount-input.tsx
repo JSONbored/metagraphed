@@ -210,27 +210,25 @@ export function StakeAmountInput({
       </div>
 
       {action === "unstake" ? (
-        <p className="font-mono text-[10px] text-ink-muted">
+        <p className="mg-type-data-sm text-ink-muted">
           {unstakeMax.note ?? (positionAge ? `Recorded position ${positionAge}.` : null)}
         </p>
       ) : null}
 
       {!hasValidAmount ? (
-        <p className="font-mono text-[11px] text-ink-muted">
-          Enter an amount to see the expected outcome.
-        </p>
+        <p className="mg-type-data text-ink-muted">Enter an amount to see the expected outcome.</p>
       ) : quoteError ? (
-        <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down">
+        <p className="inline-flex items-center gap-1.5 mg-type-data text-health-down">
           <AlertCircle className="size-3.5 shrink-0" aria-hidden />
           {quoteError}
         </p>
       ) : quoteIsPending ? (
-        <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted">
+        <p className="inline-flex items-center gap-1.5 mg-type-data text-ink-muted">
           <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
           Calculating…
         </p>
       ) : quote ? (
-        <p className="font-mono text-[11px] text-ink-strong">{formatQuoteHint(quote)}</p>
+        <p className="mg-type-data text-ink-strong">{formatQuoteHint(quote)}</p>
       ) : null}
 
       {validationMessages.length > 0 ? (
@@ -238,7 +236,7 @@ export function StakeAmountInput({
           {validationMessages.map((message) => (
             <li
               key={message}
-              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down"
+              className="inline-flex items-center gap-1.5 mg-type-data text-health-down"
             >
               <AlertCircle className="size-3.5 shrink-0" aria-hidden />
               {message}

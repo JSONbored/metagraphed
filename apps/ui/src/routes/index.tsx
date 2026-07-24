@@ -294,7 +294,7 @@ function OverviewPage() {
               <div className="mg-type-micro text-ink-muted mb-2">Try it</div>
               <CopyableCode
                 value={`curl ${API_BASE}/api/v1/subnets`}
-                className="w-full text-[12px]"
+                className="w-full mg-type-caption"
                 truncate={false}
               />
               <div className="mt-3 flex gap-4 text-xs">
@@ -363,7 +363,7 @@ function ChainHeadTip() {
     <Link
       to="/blocks/$ref"
       params={{ ref: String(head.block_number) }}
-      className="mg-fade-in mg-fade-in-delay-3 mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted hover:text-accent transition-colors"
+      className="mg-fade-in mg-fade-in-delay-3 mt-4 inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-accent transition-colors"
     >
       <span className="mg-live-dot" />
       head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
@@ -452,7 +452,7 @@ function HomeHero() {
           </div>
         </div>
 
-        <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 text-[13px]">
+        <div className="mg-fade-in mg-fade-in-delay-3 mt-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 mg-type-caption-lg">
           <Link
             to="/subnets"
             className="mg-focus-ring inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 font-medium text-accent-foreground transition-opacity hover:opacity-90"
@@ -658,7 +658,7 @@ function PerfCard({
       <div className="p-4">
         <div className="flex items-baseline justify-between mb-3">
           <div className="mg-type-micro text-ink-muted">{label}</div>
-          <div className="font-mono text-[10px] text-ink-muted">{hint}</div>
+          <div className="mg-type-data-sm text-ink-muted">{hint}</div>
         </div>
         <div
           className={`font-display text-3xl md:text-4xl font-semibold leading-none tabular-nums ${accent ? "text-accent" : "text-ink-strong"}`}
@@ -814,7 +814,7 @@ function PilotCard({
           {metricEntries.map(([k, v]) => (
             <div key={k} className="rounded-md border border-border bg-surface/40 px-3 py-2">
               <dt className="mg-type-micro text-ink-muted truncate">{k}</dt>
-              <dd className="font-mono text-[12px] text-ink-strong truncate">
+              <dd className="font-mono mg-type-caption text-ink-strong truncate">
                 {typeof v === "object" ? JSON.stringify(v) : String(v)}
               </dd>
             </div>
@@ -824,7 +824,7 @@ function PilotCard({
         <p className="text-xs text-ink-muted">Adapter connected. Open subnet for detail.</p>
       )}
       {generated ? (
-        <div className="mt-3 font-mono text-[10px] text-ink-muted">
+        <div className="mt-3 mg-type-data-sm text-ink-muted">
           updated <TimeAgo at={generated} />
         </div>
       ) : null}
@@ -895,7 +895,7 @@ function SubnetPreviewTable() {
           <tbody className="divide-y divide-border">
             {subnets.slice(0, 12).map((s) => (
               <tr key={s.netuid} className="mg-row-hover">
-                <td className="px-4 py-3 font-mono text-[12px] text-ink-muted">
+                <td className="px-4 py-3 font-mono mg-type-caption text-ink-muted">
                   <EntityHoverCard kind="subnet" netuid={s.netuid}>
                     <Link
                       to="/subnets/$netuid"
@@ -924,22 +924,20 @@ function SubnetPreviewTable() {
                     </Link>
                   </EntityHoverCard>
                 </td>
-                <td className="px-4 py-3 font-mono text-[11px] text-ink-muted">
-                  {s.symbol ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-[12px] text-ink">
+                <td className="px-4 py-3 mg-type-data text-ink-muted">{s.symbol ?? "—"}</td>
+                <td className="px-4 py-3 text-right font-mono mg-type-caption text-ink">
                   {formatNumber(s.participants)}
                 </td>
                 <td className="px-4 py-3">
                   <CurationChip level={s.curation_level} />
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-[12px]">
+                <td className="px-4 py-3 text-right font-mono mg-type-caption">
                   {s.surfaces_count ?? "—"}
                 </td>
                 <td className="px-4 py-3">
                   <HealthPill state={healthBySubnet.get(s.netuid) ?? s.health ?? "unknown"} />
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-3 text-right mg-type-data text-ink-muted">
                   <TimeAgo at={s.updated_at ?? s.freshness} />
                 </td>
               </tr>
@@ -947,7 +945,7 @@ function SubnetPreviewTable() {
           </tbody>
         </table>
       </div>
-      <div className="border-t border-border bg-surface/30 px-4 py-2.5 flex justify-between text-[11px] font-mono text-ink-muted">
+      <div className="border-t border-border bg-surface/30 px-4 py-2.5 flex justify-between mg-type-data text-ink-muted">
         <span>
           Showing {Math.min(12, subnets.length)}
           {total ? ` of ${formatNumber(total)}` : ""} ·{" "}

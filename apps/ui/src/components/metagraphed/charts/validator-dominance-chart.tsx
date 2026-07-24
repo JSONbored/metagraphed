@@ -51,7 +51,7 @@ export function ValidatorDominanceChart() {
     <Panel as="div" dense>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="mg-type-micro text-ink-muted">Stake dominance · top {rows.length}</span>
-        <span className="font-mono text-[10px] text-ink-muted">
+        <span className="mg-type-data-sm text-ink-muted">
           {coveredPct.toFixed(1)}% of network stake
         </span>
       </div>

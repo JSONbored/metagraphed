@@ -60,11 +60,11 @@ export function LiveBlockRail() {
             >
               #{formatNumber(latest.block_number)}
             </Link>
-            <span className="font-mono text-[10px] text-ink-muted">
+            <span className="mg-type-data-sm text-ink-muted">
               <TimeAgo at={latest.observed_at} />
             </span>
           </div>
-          <div className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-ink-muted">
+          <div className="mt-0.5 flex items-center gap-2 mg-type-data text-ink-muted">
             <span className="truncate" title={latest.block_hash}>
               {shortHash(latest.block_hash) ?? "—"}
             </span>
@@ -73,7 +73,7 @@ export function LiveBlockRail() {
               <AccountAddress ss58={latest.author} compact fallback="no author" />
             </span>
           </div>
-          <div className="mt-0.5 font-mono text-[10px] text-ink-muted">
+          <div className="mt-0.5 mg-type-data-sm text-ink-muted">
             {formatNumber(latest.extrinsic_count ?? 0)} ext ·{" "}
             {formatNumber(latest.event_count ?? 0)} evt
           </div>

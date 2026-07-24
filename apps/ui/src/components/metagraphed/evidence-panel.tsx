@@ -149,7 +149,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
         <Panel as="div" dense key={source}>
           <div className="flex items-center justify-between mb-2 gap-3">
             <span className="mg-label">{source}</span>
-            <span className="flex items-center gap-2 font-mono text-[10px] text-ink-muted">
+            <span className="flex items-center gap-2 mg-type-data-sm text-ink-muted">
               <span>
                 latest <TimeAgo at={items[0]?.recorded_at} />
               </span>
@@ -171,12 +171,12 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
                         {item.netuid != null ? <> · SN{item.netuid}</> : null}
                       </div>
                       {item.note ? (
-                        <div className="text-[12px] text-ink-strong">{item.note}</div>
+                        <div className="mg-type-caption text-ink-strong">{item.note}</div>
                       ) : null}
                       {item.url ? (
-                        <div className="font-mono text-[10px] text-ink break-all">{item.url}</div>
+                        <div className="mg-type-data-sm text-ink break-all">{item.url}</div>
                       ) : null}
-                      <div className="font-mono text-[10px] text-ink-muted">
+                      <div className="mg-type-data-sm text-ink-muted">
                         recorded <TimeAgo at={item.recorded_at} />
                       </div>
                     </div>
@@ -202,7 +202,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
       ))}
 
       <div className="flex items-center justify-between gap-3 pt-1">
-        <span className="font-mono text-[10px] text-ink-muted">
+        <span className="mg-type-data-sm text-ink-muted">
           loaded {allRows.length}
           {totalKnown != null ? ` of ${totalKnown}` : ""}
         </span>
@@ -216,7 +216,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
             {query.isFetchingNextPage ? "Loading…" : `Load ${pageSize} more`}
           </button>
         ) : (
-          <span className="font-mono text-[10px] text-ink-muted">end of evidence</span>
+          <span className="mg-type-data-sm text-ink-muted">end of evidence</span>
         )}
       </div>
     </div>

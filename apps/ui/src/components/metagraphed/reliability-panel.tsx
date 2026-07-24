@@ -103,7 +103,7 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
               aria-selected={w === window}
               onClick={() => setWindow(w)}
               className={classNames(
-                "rounded px-2 py-0.5 font-mono text-[11px] transition-colors",
+                "rounded px-2 py-0.5 mg-type-data transition-colors",
                 w === window ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink-strong",
               )}
             >
@@ -131,7 +131,7 @@ export function ReliabilityPanel({ netuid }: { netuid: number }) {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full font-mono text-[11px]">
+          <table className="w-full mg-type-data">
             <thead>
               <tr className="mg-type-micro text-ink-muted">
                 <th className="border-b border-border px-3 py-2 text-left">Surface</th>

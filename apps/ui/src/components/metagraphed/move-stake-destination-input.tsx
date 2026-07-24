@@ -89,7 +89,7 @@ export function MoveStakeDestinationInput({
         <select
           value={destinationNetuidInput}
           onChange={(e) => onDestinationNetuidChange(e.target.value)}
-          className="h-9 rounded border border-border bg-card px-2 font-mono text-[12px] text-ink-strong"
+          className="h-9 rounded border border-border bg-card px-2 font-mono mg-type-caption text-ink-strong"
         >
           {knownSubnets.map((s) => (
             <option key={s.netuid} value={s.netuid}>
@@ -122,7 +122,7 @@ export function MoveStakeDestinationInput({
       </div>
 
       {axisIssueMessage ? (
-        <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down">
+        <p className="inline-flex items-center gap-1.5 mg-type-data text-health-down">
           <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
           {axisIssueMessage}
         </p>
@@ -130,22 +130,22 @@ export function MoveStakeDestinationInput({
 
       {axis === "subnet" && hasValidAmount ? (
         quoteError ? (
-          <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down">
+          <p className="inline-flex items-center gap-1.5 mg-type-data text-health-down">
             <AlertCircle className="size-3.5 shrink-0" aria-hidden />
             {quoteError}
           </p>
         ) : quoteIsPending ? (
-          <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted">
+          <p className="inline-flex items-center gap-1.5 mg-type-data text-ink-muted">
             <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
             Calculating…
           </p>
         ) : quote ? (
-          <p className="font-mono text-[11px] text-ink-strong">{formatQuoteHint(quote)}</p>
+          <p className="mg-type-data text-ink-strong">{formatQuoteHint(quote)}</p>
         ) : null
       ) : null}
 
       {axis === "hotkey" ? (
-        <p className="font-mono text-[10px] text-ink-muted">
+        <p className="mg-type-data-sm text-ink-muted">
           Same-subnet hotkey moves are a pure reassignment — no AMM, no slippage.
         </p>
       ) : null}
@@ -155,7 +155,7 @@ export function MoveStakeDestinationInput({
           {validationMessages.map((message) => (
             <li
               key={message}
-              className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down"
+              className="inline-flex items-center gap-1.5 mg-type-data text-health-down"
             >
               <AlertCircle className="size-3.5 shrink-0" aria-hidden />
               {message}

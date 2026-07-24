@@ -441,7 +441,7 @@ export function MegaPanelBody({
           Open {panel.label}
           <ArrowUpRight className="size-3.5" />
         </Link>
-        <div className="flex items-center gap-2 text-[11px] font-mono text-ink-muted">
+        <div className="flex items-center gap-2 mg-type-data text-ink-muted">
           <span>{panel.apiPath}</span>
           <CopyButton value={`${API_BASE}${panel.apiPath}`} label={`${panel.apiPath} URL`} />
           <a

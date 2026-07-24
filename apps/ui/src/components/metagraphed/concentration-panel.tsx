@@ -133,7 +133,7 @@ function SharePanel({
     <Panel as="div" dense>
       <div className="mb-3 mg-type-micro text-ink-muted">{title}</div>
       {allEmpty ? (
-        <p className="font-mono text-[11px] text-ink-muted">Not enough data yet.</p>
+        <p className="mg-type-data text-ink-muted">Not enough data yet.</p>
       ) : (
         <BarMini data={bars} max={100} />
       )}

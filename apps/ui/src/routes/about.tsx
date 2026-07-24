@@ -273,13 +273,13 @@ function AtAGlance() {
       <div className="mt-4 border-t border-border pt-3 grid gap-1.5">
         <Link
           to="/schemas"
-          className="font-mono text-[11px] text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+          className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
         >
           → API & schemas
         </Link>
         <Link
           to="/gaps"
-          className="font-mono text-[11px] text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
+          className="mg-type-data text-ink-muted hover:text-ink-strong inline-flex items-center gap-1"
         >
           → Registry gaps
         </Link>

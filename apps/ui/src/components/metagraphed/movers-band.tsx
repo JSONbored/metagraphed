@@ -76,7 +76,7 @@ export function MoversBand() {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-display text-lg font-semibold text-ink-strong">Biggest movers</h2>
-          <p className="font-mono text-[11px] text-ink-muted">
+          <p className="mg-type-data text-ink-muted">
             Subnets by {sortLabel.toLowerCase()} change · {res.data.window} window
             {network ? ` · ${network.gainers} up · ${network.losers} down` : ""}
           </p>
@@ -109,13 +109,13 @@ export function MoversBand() {
                 params={{ netuid: m.netuid }}
                 className="grid grid-cols-[2rem_1fr_auto] items-center gap-2 rounded border border-border bg-card px-3 py-2 hover:bg-surface/40"
               >
-                <span className="font-mono text-[10px] text-ink-muted">#{i + 1}</span>
-                <span className="font-mono text-[12px] text-ink-strong">SN{m.netuid}</span>
+                <span className="mg-type-data-sm text-ink-muted">#{i + 1}</span>
+                <span className="font-mono mg-type-caption text-ink-strong">SN{m.netuid}</span>
                 <span
                   className={
                     up
-                      ? "font-mono text-[11px] tabular-nums text-health-ok"
-                      : "font-mono text-[11px] tabular-nums text-health-down"
+                      ? "mg-type-data tabular-nums text-health-ok"
+                      : "mg-type-data tabular-nums text-health-down"
                   }
                 >
                   {formatted}

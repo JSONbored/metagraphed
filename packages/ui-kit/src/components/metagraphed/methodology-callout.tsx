@@ -44,7 +44,7 @@ export function MethodologyCallout({
           </span>
           {freshLine ? (
             <span
-              className="mt-0.5 block font-mono text-[10px] text-ink-muted/80"
+              className="mt-0.5 block mg-type-data-sm text-ink-muted/80"
               title={freshAbs ?? undefined}
             >
               {freshLine}

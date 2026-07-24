@@ -105,13 +105,13 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
         // override regardless of prop order (classNames() is a plain string-join,
         // not tailwind-merge-aware -- see #6904); the trailing `!` forces this
         // narrower floor to actually apply for these compact pallet/method filters.
-        className="min-w-[140px]! flex-none font-mono text-[11px]"
+        className="min-w-[140px]! flex-none mg-type-data"
       />
       <SearchInput
         value={method}
         onChange={(v) => onFilter({ method: v })}
         placeholder={pallet.trim() ? "Filter by method" : "Method (requires pallet)"}
-        className="min-w-[140px]! flex-none font-mono text-[11px]"
+        className="min-w-[140px]! flex-none mg-type-data"
       />
       {/* #6387: a filtered /events?pallet=X or /explorer?pallet=X link is
           URL-persisted and otherwise stuck until manually cleared, unlike every
@@ -181,10 +181,10 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
       <tbody className="divide-y divide-border">
         {events.map((event) => (
           <tr key={`${event.block_number}-${event.event_index}`} className="hover:bg-surface/40">
-            <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+            <td className="px-4 py-2.5 mg-type-data text-ink-strong">
               {extrinsicCall(event.pallet, event.method)}
             </td>
-            <td className="px-4 py-2.5 font-mono text-[11px]">
+            <td className="px-4 py-2.5 mg-type-data">
               {event.block_number != null ? (
                 <Link
                   to="/blocks/$ref"
@@ -197,7 +197,7 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
                 "—"
               )}
             </td>
-            <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+            <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
               <TimeAgo at={event.observed_at} />
             </td>
           </tr>
@@ -213,10 +213,10 @@ export function ChainEventsFeed({ pallet, method, cursor, onFilter }: Props) {
       key={`${event.block_number}-${event.event_index}-card`}
       className="min-h-11"
     >
-      <div className="font-mono text-[11px] text-ink-strong">
+      <div className="mg-type-data text-ink-strong">
         {extrinsicCall(event.pallet, event.method)}
       </div>
-      <div className="mt-1 flex items-center justify-between gap-2 font-mono text-[10px] text-ink-muted">
+      <div className="mt-1 flex items-center justify-between gap-2 mg-type-data-sm text-ink-muted">
         {event.block_number != null ? (
           <Link
             to="/blocks/$ref"

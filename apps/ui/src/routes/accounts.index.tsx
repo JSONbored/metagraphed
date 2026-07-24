@@ -85,7 +85,7 @@ function AccountsPage() {
             Look up
           </button>
         </div>
-        <p className="mt-2 font-mono text-[11px] text-ink-muted">
+        <p className="mt-2 mg-type-data text-ink-muted">
           {touched && !valid
             ? "That doesn't look like a valid ss58 address."
             : "Paste a hotkey or coldkey ss58 address to view its activity."}
@@ -96,7 +96,7 @@ function AccountsPage() {
         data-testid="top-active-accounts-section"
       >
         <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Most active accounts</h2>
-        <p className="mb-4 font-mono text-[11px] text-ink-muted">
+        <p className="mb-4 mg-type-data text-ink-muted">
           Ranked by extrinsics signed on-chain in the last {TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS} days —
           jump straight to an account below.
         </p>

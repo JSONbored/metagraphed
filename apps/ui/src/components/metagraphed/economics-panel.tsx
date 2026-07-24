@@ -61,7 +61,7 @@ function StakeMovesTile({ netuid }: { netuid: number }) {
           staleness="Counts settle as the chain-events indexer catches up; the bar hides when no re-delegations occurred in the window."
         >
           <span className="flex w-[72px] items-center gap-1.5">
-            <span className="w-6 text-right font-mono text-[11px] tabular-nums text-ink">
+            <span className="w-6 text-right mg-type-data tabular-nums text-ink">
               {m.perMover != null ? `${m.perMover.toFixed(1)}×` : "—"}
             </span>
             <span className="max-w-[56px] flex-1">
@@ -100,7 +100,7 @@ function StakeTransfersTile({ netuid }: { netuid: number }) {
           staleness="Counts settle as the chain-events indexer catches up; the bar hides when no transfers occurred in the window."
         >
           <span className="flex w-[72px] items-center gap-1.5">
-            <span className="w-6 text-right font-mono text-[11px] tabular-nums text-ink">
+            <span className="w-6 text-right mg-type-data tabular-nums text-ink">
               {m.perSender != null ? `${m.perSender.toFixed(1)}×` : "—"}
             </span>
             <span className="max-w-[56px] flex-1">

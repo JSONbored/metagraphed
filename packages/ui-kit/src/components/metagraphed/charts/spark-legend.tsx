@@ -70,7 +70,7 @@ export function SparkLegend({
             </div>
           ) : null}
           {fresh || freshAbs ? (
-            <div className="mt-1 font-mono text-[10px] opacity-80">
+            <div className="mt-1 mg-type-data-sm opacity-80">
               {fresh ?? ""}
               {freshAbs ? `${fresh ? " · " : ""}last checked ${freshAbs}` : ""}
             </div>

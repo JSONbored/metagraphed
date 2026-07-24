@@ -204,7 +204,7 @@ function PaletteRow({
           ))}
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[12px] font-medium text-ink-strong">{label}</span>
+          <span className="block mg-type-caption font-medium text-ink-strong">{label}</span>
           <span className="block text-[10px] text-ink-muted truncate">{description}</span>
         </span>
       </button>

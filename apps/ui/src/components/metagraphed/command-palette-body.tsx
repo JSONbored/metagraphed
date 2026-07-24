@@ -638,7 +638,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           );
         })}
         {(isFetching || isSemanticFetching) && debounced ? (
-          <span className="ml-auto font-mono text-[10px] text-ink-muted">searching…</span>
+          <span className="ml-auto mg-type-data-sm text-ink-muted">searching…</span>
         ) : null}
       </div>
 
@@ -655,7 +655,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
 
         {showNoMatches ? (
           <div className="px-3 py-3 space-y-3 border-b border-border">
-            <p className="font-mono text-[11px] text-ink-muted">
+            <p className="mg-type-data text-ink-muted">
               Try a suggested query or filter a list by your search.
             </p>
             <div>
@@ -767,7 +767,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                   <Icon className="size-4 text-ink-muted shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-ink-strong truncate">{n.label}</div>
-                    <div className="font-mono text-[10px] text-ink-muted truncate">{n.hint}</div>
+                    <div className="mg-type-data-sm text-ink-muted truncate">{n.hint}</div>
                   </div>
                   <ItemActions
                     onCopy={() => copyLink(n.target, n.label)}
@@ -796,14 +796,14 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-ink-strong truncate">{r.label}</div>
                     {r.hint ? (
-                      <div className="font-mono text-[10px] text-ink-muted truncate">{r.hint}</div>
+                      <div className="mg-type-data-sm text-ink-muted truncate">{r.hint}</div>
                     ) : null}
                   </div>
                   <ItemActions
                     onCopy={() => copyLink(target, r.label)}
                     onNewTab={() => openInNewTab(target, "route")}
                   />
-                  <CommandShortcut className="font-mono text-[10px]">page</CommandShortcut>
+                  <CommandShortcut className="mg-type-data-sm">page</CommandShortcut>
                 </CommandItem>
               );
             })}
@@ -835,9 +835,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-ink-strong truncate">{title}</div>
                       {subtitle ? (
-                        <div className="font-mono text-[10px] text-ink-muted truncate">
-                          {subtitle}
-                        </div>
+                        <div className="mg-type-data-sm text-ink-muted truncate">{subtitle}</div>
                       ) : null}
                     </div>
                     <ItemActions
@@ -887,9 +885,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-ink-strong truncate">{title}</div>
                     {subtitle ? (
-                      <div className="font-mono text-[10px] text-ink-muted truncate">
-                        {subtitle}
-                      </div>
+                      <div className="mg-type-data-sm text-ink-muted truncate">{subtitle}</div>
                     ) : null}
                   </div>
                   <ItemActions
@@ -929,7 +925,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           </>
         ) : null}
       </CommandList>
-      <div className="border-t border-border px-3 py-2 flex items-center justify-between text-[10px] font-mono text-ink-muted">
+      <div className="border-t border-border px-3 py-2 flex items-center justify-between mg-type-data-sm text-ink-muted">
         <span className="inline-flex items-center gap-2 flex-wrap">
           <Kbd>↑</Kbd>
           <Kbd>↓</Kbd> move <Kbd>⏎</Kbd> open <Kbd>⌘</Kbd>

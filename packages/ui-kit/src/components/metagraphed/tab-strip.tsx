@@ -43,7 +43,7 @@ export function TabStrip<T extends string = string>({
     if (it && !it.disabled) onChange(it.id);
   });
   const pad = size === "sm" ? "px-2 py-1.5" : "px-3 py-2";
-  const text = size === "sm" ? "text-[12px]" : "text-[13px]";
+  const text = size === "sm" ? "mg-type-caption" : "mg-type-caption-lg";
   return (
     <div
       role="tablist"

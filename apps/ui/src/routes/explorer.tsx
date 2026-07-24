@@ -73,7 +73,7 @@ function ChainHeadTip() {
     <Link
       to="/blocks/$ref"
       params={{ ref: String(head.block_number) }}
-      className="mg-fade-in mg-fade-in-delay-3 inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted hover:text-accent transition-colors"
+      className="mg-fade-in mg-fade-in-delay-3 inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-accent transition-colors"
     >
       <span className="mg-live-dot" />
       head #{formatNumber(head.block_number)} · <TimeAgo at={head.observed_at} />
@@ -189,7 +189,7 @@ function MiniSeries({
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
         <span className="mg-type-micro text-ink-muted">{label}</span>
-        <span className="font-mono text-[11px] tabular-nums text-ink-strong">
+        <span className="mg-type-data tabular-nums text-ink-strong">
           {latest == null ? "—" : formatValue(latest)}
         </span>
       </div>
@@ -239,7 +239,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="mg-type-label uppercase text-ink-muted">Call mix</h2>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(calls.total_extrinsics)} calls
         </span>
       </div>
@@ -279,7 +279,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
                       >
                         {c.call_module}
                       </span>
-                      <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums text-ink-strong">
+                      <span className="ml-auto shrink-0 mg-type-data-sm tabular-nums text-ink-strong">
                         {formatNumber(c.count)}
                       </span>
                     </button>
@@ -302,7 +302,7 @@ function CallMixSection({ calls }: { calls: ChainCalls }) {
               />
             </div>
           ) : (
-            <p className="border-t border-border pt-3 font-mono text-[11px] text-ink-muted">
+            <p className="border-t border-border pt-3 mg-type-data text-ink-muted">
               {selected
                 ? "No per-function breakdown for this module at the current grouping."
                 : "Tap a module to drill into its functions (function rows appear when the chain-calls aggregate is grouped by function)."}
@@ -329,7 +329,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="mg-type-label uppercase text-ink-muted">Pallet event mix</h2>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(stats.groups)} groups · {formatNumber(stats.window_blocks)} blocks
         </span>
       </div>
@@ -349,7 +349,7 @@ function PalletEventMixSection({ stats }: { stats: ChainEventsStats }) {
                     style={{ width: `${pct}%`, background: "var(--chart-1)" }}
                   />
                 </span>
-                <span className="font-mono text-[10px] tabular-nums text-ink-strong">
+                <span className="mg-type-data-sm tabular-nums text-ink-strong">
                   {formatNumber(r.count)}
                 </span>
               </li>
@@ -404,7 +404,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="mg-type-label uppercase text-ink-muted">Stake flow</h2>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(flow.subnet_count)} subnets
         </span>
       </div>
@@ -459,7 +459,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
                       />
                     </span>
                     <span
-                      className={`text-right font-mono text-[10px] tabular-nums ${
+                      className={`text-right mg-type-data-sm tabular-nums ${
                         inflow ? "text-health-ok" : "text-health-down"
                       }`}
                     >
@@ -476,7 +476,7 @@ function StakeFlowSection({ flow }: { flow: ChainStakeFlow }) {
       )}
 
       {dist ? (
-        <p className="mt-4 border-t border-border pt-3 font-mono text-[10px] text-ink-muted">
+        <p className="mt-4 border-t border-border pt-3 mg-type-data-sm text-ink-muted">
           Median net flow {fmtTaoSigned(dist.median ?? 0)}, largest single outflow{" "}
           {fmtTaoSigned(dist.min ?? 0)} across {formatNumber(dist.count)} subnets.
         </p>
@@ -502,7 +502,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="mg-type-label uppercase text-ink-muted">Stake moves</h2>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(moves.subnet_count)} subnets
         </span>
       </div>
@@ -537,7 +537,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
                         style={{ width: `${pct}%`, background: "var(--accent)" }}
                       />
                     </span>
-                    <span className="text-right font-mono text-[10px] tabular-nums text-ink-strong">
+                    <span className="text-right mg-type-data-sm tabular-nums text-ink-strong">
                       {formatNumber(s.movements)}
                     </span>
                   </Link>
@@ -551,7 +551,7 @@ function StakeMovesSection({ moves }: { moves: ChainStakeMoves }) {
       )}
 
       {dist ? (
-        <p className="mt-4 border-t border-border pt-3 font-mono text-[10px] text-ink-muted">
+        <p className="mt-4 border-t border-border pt-3 mg-type-data-sm text-ink-muted">
           Median {(dist.median ?? 0).toFixed(1)} moves per mover, up to {(dist.max ?? 0).toFixed(1)}{" "}
           in the busiest subnet, across {formatNumber(dist.count)} subnets.
         </p>
@@ -590,7 +590,7 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h3 className="mg-type-label uppercase text-ink-muted">Axon serving</h3>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(board.subnet_count)} subnets
         </span>
       </div>
@@ -620,7 +620,7 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
             <tbody className="divide-y divide-border">
               {board.subnets.map((s) => (
                 <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                  <td className="px-4 py-2 mg-type-data">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: s.netuid }}
@@ -629,13 +629,13 @@ function ChainServingLeaderboard({ board }: { board: ChainServing }) {
                       SN{s.netuid}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatNumber(s.announcements)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {formatNumber(s.distinct_servers)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {s.announcements_per_server != null
                       ? s.announcements_per_server.toFixed(2)
                       : "—"}
@@ -659,7 +659,7 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h3 className="mg-type-label uppercase text-ink-muted">Prometheus telemetry</h3>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(board.subnet_count)} subnets
         </span>
       </div>
@@ -689,7 +689,7 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
             <tbody className="divide-y divide-border">
               {board.subnets.map((s) => (
                 <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                  <td className="px-4 py-2 mg-type-data">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: s.netuid }}
@@ -698,13 +698,13 @@ function ChainPrometheusLeaderboard({ board }: { board: ChainPrometheus }) {
                       SN{s.netuid}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatNumber(s.announcements)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {formatNumber(s.distinct_exporters)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {s.announcements_per_exporter != null
                       ? s.announcements_per_exporter.toFixed(2)
                       : "—"}
@@ -733,12 +733,12 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <div>
           <h2 className="mg-type-label uppercase text-ink-muted">Axon churn leaderboard</h2>
-          <p className="mt-1 font-mono text-[11px] text-ink-muted">
+          <p className="mt-1 mg-type-data text-ink-muted">
             {formatNumber(churn.network.removals)} axon teardowns across{" "}
             {formatNumber(churn.network.distinct_removers)} removers network-wide
           </p>
         </div>
-        <span className="font-mono text-[11px] text-ink-muted">{churn.subnets.length} subnets</span>
+        <span className="mg-type-data text-ink-muted">{churn.subnets.length} subnets</span>
       </div>
       {churn.subnets.length > 0 ? (
         <div className="overflow-x-auto">
@@ -754,7 +754,7 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
             <tbody className="divide-y divide-border">
               {churn.subnets.map((s) => (
                 <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                  <td className="px-4 py-2 mg-type-data">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: s.netuid }}
@@ -763,13 +763,13 @@ function AxonChurnSection({ churn }: { churn: ChainAxonRemovals }) {
                       SN{s.netuid}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatNumber(s.removals)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {formatNumber(s.distinct_removers)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {s.removals_per_remover != null ? s.removals_per_remover.toFixed(2) : "—"}
                   </td>
                 </tr>
@@ -799,11 +799,11 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <div>
           <h2 className="mg-type-label uppercase text-ink-muted">Idle stake</h2>
-          <p className="mt-1 font-mono text-[11px] text-ink-muted">
+          <p className="mt-1 mg-type-data text-ink-muted">
             Stake delegated to hotkeys currently earning zero dividends
           </p>
         </div>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(idleStake.subnet_count)} subnets
         </span>
       </div>
@@ -844,7 +844,7 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
             <tbody className="divide-y divide-border">
               {idleStake.subnets.map((s) => (
                 <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                  <td className="px-4 py-2 mg-type-data">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: s.netuid }}
@@ -853,13 +853,13 @@ function NetworkIdleStakeSection({ idleStake }: { idleStake: ChainIdleStake }) {
                       SN{s.netuid}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatTao(s.idle_stake_tao)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatNumber(s.idle_neuron_count)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {formatNumber(s.neuron_count)}
                   </td>
                 </tr>
@@ -885,7 +885,7 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="mg-type-label uppercase text-ink-muted">Network registrations</h2>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(registrations.subnet_count)} subnets
         </span>
       </div>
@@ -930,7 +930,7 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
             <tbody className="divide-y divide-border">
               {registrations.subnets.map((s) => (
                 <tr key={s.netuid} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                  <td className="px-4 py-2 mg-type-data">
                     <Link
                       to="/subnets/$netuid"
                       params={{ netuid: s.netuid }}
@@ -939,13 +939,13 @@ function NetworkRegistrationsSection({ registrations }: { registrations: ChainRe
                       SN{s.netuid}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatNumber(s.registrations)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {formatNumber(s.distinct_registrants)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {s.registrations_per_registrant != null
                       ? s.registrations_per_registrant.toFixed(2)
                       : "—"}
@@ -980,7 +980,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="mg-type-label uppercase text-ink-muted">Validator turnover</h2>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(turnover.subnet_count)} subnets
         </span>
       </div>
@@ -1030,7 +1030,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
                         style={{ width: `${pct}%`, background: "var(--health-warn)" }}
                       />
                     </span>
-                    <span className="text-right font-mono text-[10px] tabular-nums text-ink-strong">
+                    <span className="text-right mg-type-data-sm tabular-nums text-ink-strong">
                       {s.validator_retention != null
                         ? `${Math.round(s.validator_retention * 100)}% kept`
                         : "—"}
@@ -1046,7 +1046,7 @@ function ValidatorTurnoverSection({ turnover }: { turnover: ChainTurnover }) {
       )}
 
       {net ? (
-        <p className="mt-4 border-t border-border pt-3 font-mono text-[10px] text-ink-muted">
+        <p className="mt-4 border-t border-border pt-3 mg-type-data-sm text-ink-muted">
           Validator set {formatNumber(net.validators_start)} to {formatNumber(net.validators_end)}{" "}
           over {turnover.window}, across {formatNumber(turnover.subnet_count)} subnets.
         </p>
@@ -1067,7 +1067,7 @@ function EconomicsTrendsSection({ trends }: { trends: EconomicsTrends }) {
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="mg-type-label uppercase text-ink-muted">Network economics trend</h2>
-        <span className="font-mono text-[11px] text-ink-muted">{trends.day_count} days</span>
+        <span className="mg-type-data text-ink-muted">{trends.day_count} days</span>
       </div>
       {chrono.length > 0 ? (
         <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -1142,7 +1142,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
     <Panel className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
         <h2 className="mg-type-label uppercase text-ink-muted">Transfers leaderboard</h2>
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(transfers.transfer_count)} transfers
         </span>
       </div>
@@ -1173,7 +1173,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                 <tbody className="divide-y divide-border">
                   {transfers.top_senders.map((s) => (
                     <tr key={s.address} className="hover:bg-surface/40">
-                      <td className="px-4 py-2 font-mono text-[11px]">
+                      <td className="px-4 py-2 mg-type-data">
                         <div className="flex items-center gap-1.5">
                           <Link
                             to="/accounts/$ss58"
@@ -1186,10 +1186,10 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                           <CopyButton value={s.address} label="address" compact />
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                         {formatTao(s.volume_tao)}
                       </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                         {formatNumber(s.transfer_count)}
                       </td>
                     </tr>
@@ -1198,7 +1198,9 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
               </table>
             </div>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">No senders in this window yet.</p>
+            <p className="font-mono mg-type-caption text-ink-muted">
+              No senders in this window yet.
+            </p>
           )}
         </div>
 
@@ -1217,7 +1219,7 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                 <tbody className="divide-y divide-border">
                   {transfers.top_receivers.map((r) => (
                     <tr key={r.address} className="hover:bg-surface/40">
-                      <td className="px-4 py-2 font-mono text-[11px]">
+                      <td className="px-4 py-2 mg-type-data">
                         <div className="flex items-center gap-1.5">
                           <Link
                             to="/accounts/$ss58"
@@ -1230,10 +1232,10 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
                           <CopyButton value={r.address} label="address" compact />
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                         {formatTao(r.volume_tao)}
                       </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                         {formatNumber(r.transfer_count)}
                       </td>
                     </tr>
@@ -1242,7 +1244,9 @@ function TransfersLeaderboardSection({ transfers }: { transfers: ChainTransfers 
               </table>
             </div>
           ) : (
-            <p className="font-mono text-[12px] text-ink-muted">No receivers in this window yet.</p>
+            <p className="font-mono mg-type-caption text-ink-muted">
+              No receivers in this window yet.
+            </p>
           )}
         </div>
       </div>
@@ -1443,9 +1447,7 @@ function ExplorerDashboard() {
           <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <h2 className="mg-type-label uppercase text-ink-muted">Daily activity</h2>
-              <span className="font-mono text-[11px] text-ink-muted">
-                {activity.day_count} days
-              </span>
+              <span className="mg-type-data text-ink-muted">{activity.day_count} days</span>
             </div>
             {chrono.length > 0 ? (
               <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -1512,7 +1514,7 @@ function ExplorerDashboard() {
                   <tbody className="divide-y divide-border">
                     {signers.signers.slice(0, 12).map((s) => (
                       <tr key={s.signer} className="hover:bg-surface/40">
-                        <td className="px-4 py-2 font-mono text-[11px]">
+                        <td className="px-4 py-2 mg-type-data">
                           <div className="flex items-center gap-1.5">
                             <Link
                               to="/accounts/$ss58"
@@ -1525,16 +1527,16 @@ function ExplorerDashboard() {
                             <CopyButton value={s.signer} label="signer" compact />
                           </div>
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                           {formatNumber(s.tx_count)}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                           {formatTao(s.total_fee_tao)}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                           {formatTao(s.total_tip_tao)}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                           {s.last_tx_block != null ? (
                             <Link
                               to="/blocks/$ref"
@@ -1567,7 +1569,7 @@ function ExplorerDashboard() {
           <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <h2 className="mg-type-label uppercase text-ink-muted">Daily fees &amp; tips</h2>
-              <span className="font-mono text-[11px] text-ink-muted">{fees.day_count} days</span>
+              <span className="mg-type-data text-ink-muted">{fees.day_count} days</span>
             </div>
             {feeChrono.length > 0 ? (
               <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
@@ -1607,7 +1609,7 @@ function ExplorerDashboard() {
           <Panel className="min-w-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <h2 className="mg-type-label uppercase text-ink-muted">Top fee payers</h2>
-              <span className="font-mono text-[11px] text-ink-muted">
+              <span className="mg-type-data text-ink-muted">
                 {fees.top_fee_payers.length} accounts
               </span>
             </div>
@@ -1626,7 +1628,7 @@ function ExplorerDashboard() {
                 <tbody className="divide-y divide-border">
                   {fees.top_fee_payers.map((p) => (
                     <tr key={p.signer} className="hover:bg-surface/40">
-                      <td className="px-4 py-2 font-mono text-[11px]">
+                      <td className="px-4 py-2 mg-type-data">
                         <div className="flex items-center gap-1.5">
                           <Link
                             to="/accounts/$ss58"
@@ -1639,13 +1641,13 @@ function ExplorerDashboard() {
                           <CopyButton value={p.signer} label="signer" compact />
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                         {formatTao(p.total_fee_tao)}
                       </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                         {formatTao(p.total_tip_tao)}
                       </td>
-                      <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                         {formatNumber(p.extrinsic_count)}
                       </td>
                     </tr>
@@ -1677,12 +1679,12 @@ function ExplorerDashboard() {
                 <h2 className="mg-type-label uppercase text-ink-muted">
                   Stake-transfer leaderboard
                 </h2>
-                <p className="mt-1 font-mono text-[11px] text-ink-muted">
+                <p className="mt-1 mg-type-data text-ink-muted">
                   {formatNumber(stakeTransfers.network.transfers)} transfers across{" "}
                   {formatNumber(stakeTransfers.network.distinct_senders)} senders network-wide
                 </p>
               </div>
-              <span className="font-mono text-[11px] text-ink-muted">
+              <span className="mg-type-data text-ink-muted">
                 {stakeTransfers.subnets.length} subnets
               </span>
             </div>
@@ -1699,17 +1701,17 @@ function ExplorerDashboard() {
                         <Link
                           to="/subnets/$netuid"
                           params={{ netuid: s.netuid }}
-                          className="font-mono text-[12px] font-medium text-ink-strong hover:text-accent hover:underline"
+                          className="font-mono mg-type-caption font-medium text-ink-strong hover:text-accent hover:underline"
                         >
                           SN{s.netuid}
                         </Link>
-                        <span className="font-mono text-[11px] tabular-nums text-ink-muted">
+                        <span className="mg-type-data tabular-nums text-ink-muted">
                           {s.transfers_per_sender != null
                             ? `${s.transfers_per_sender.toFixed(2)} / sender`
                             : "—"}
                         </span>
                       </div>
-                      <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                      <div className="mt-2 flex items-center justify-between mg-type-data tabular-nums text-ink-muted">
                         <span>{formatNumber(s.transfers)} transfers</span>
                         <span>{formatNumber(s.distinct_senders)} senders</span>
                       </div>
@@ -1731,7 +1733,7 @@ function ExplorerDashboard() {
                   <tbody className="divide-y divide-border">
                     {stakeTransfers.subnets.map((s) => (
                       <tr key={s.netuid} className="hover:bg-surface/40">
-                        <td className="px-4 py-2 font-mono text-[11px]">
+                        <td className="px-4 py-2 mg-type-data">
                           <Link
                             to="/subnets/$netuid"
                             params={{ netuid: s.netuid }}
@@ -1740,13 +1742,13 @@ function ExplorerDashboard() {
                             SN{s.netuid}
                           </Link>
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                           {formatNumber(s.transfers)}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                           {formatNumber(s.distinct_senders)}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                           {s.transfers_per_sender != null ? s.transfers_per_sender.toFixed(2) : "—"}
                         </td>
                       </tr>
@@ -1766,7 +1768,7 @@ function ExplorerDashboard() {
           <Panel className="min-w-0 lg:col-span-2">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-y-1">
               <h2 className="mg-type-label uppercase text-ink-muted">Network weight-setters</h2>
-              <span className="font-mono text-[11px] text-ink-muted">
+              <span className="mg-type-data text-ink-muted">
                 {formatNumber(weightSetters.distinct_setters)} validators
               </span>
             </div>
@@ -1784,7 +1786,7 @@ function ExplorerDashboard() {
                   <tbody className="divide-y divide-border">
                     {weightSetters.setters.map((setter) => (
                       <tr key={weightSetterKey(setter)} className="hover:bg-surface/40">
-                        <td className="px-4 py-2 font-mono text-[11px]">
+                        <td className="px-4 py-2 mg-type-data">
                           {setter.hotkey ? (
                             <div className="flex items-center gap-1.5">
                               <Link
@@ -1806,13 +1808,13 @@ function ExplorerDashboard() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                           {formatNumber(setter.weight_sets)}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                           {fmtShare(setter.share)}
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                        <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                           {setter.last_set_at ? <TimeAgo at={setter.last_set_at} /> : "—"}
                         </td>
                       </tr>
@@ -1847,7 +1849,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
         <div>
           <h2 className="mg-type-label uppercase text-ink-muted">Transfer pairs</h2>
           {pairs ? (
-            <p className="mt-1 font-mono text-[11px] text-ink-muted">
+            <p className="mt-1 mg-type-data text-ink-muted">
               {formatNumber(pairs.unique_pairs)} sender→receiver corridors ·{" "}
               {formatTao(pairs.total_volume_tao)} moved
             </p>
@@ -1896,10 +1898,10 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
             <tbody className="divide-y divide-border">
               {rows.map((p, i) => (
                 <tr key={`${p.from}-${p.to}`} className="hover:bg-surface/40">
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {i + 1}
                   </td>
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                  <td className="px-4 py-2 mg-type-data">
                     <div className="flex items-center gap-1.5">
                       <Link
                         to="/accounts/$ss58"
@@ -1912,7 +1914,7 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
                       <CopyButton value={p.from} label="address" compact />
                     </div>
                   </td>
-                  <td className="px-4 py-2 font-mono text-[11px]">
+                  <td className="px-4 py-2 mg-type-data">
                     <div className="flex items-center gap-1.5">
                       <Link
                         to="/accounts/$ss58"
@@ -1925,13 +1927,13 @@ function TransferPairsSection({ win }: { win: "7d" | "30d" }) {
                       <CopyButton value={p.to} label="address" compact />
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink">
                     {formatTao(p.volume_tao)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {formatNumber(p.transfer_count)}
                   </td>
-                  <td className="px-4 py-2 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                  <td className="px-4 py-2 text-right mg-type-data tabular-nums text-ink-muted">
                     {p.last_block != null ? (
                       <Link
                         to="/blocks/$ref"
@@ -1971,7 +1973,7 @@ function ChainEventsFeedSection() {
     <Panel className="mt-10">
       <div className="mb-4">
         <h2 className="mg-type-label uppercase text-ink-muted">Chain events</h2>
-        <p className="mt-1 font-mono text-[11px] text-ink-muted">
+        <p className="mt-1 mg-type-data text-ink-muted">
           Browse individual pallet events newest-first — distinct from aggregate activity stats.
         </p>
       </div>

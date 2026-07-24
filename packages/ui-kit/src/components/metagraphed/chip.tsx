@@ -50,7 +50,7 @@ export function Chip({
       onClick={onClick}
       className={classNames(
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5",
-        "font-mono text-[10px] leading-none whitespace-nowrap transition-colors",
+        "mg-type-data-sm leading-none whitespace-nowrap transition-colors",
         onClick ? "mg-focus-ring hover:border-ink/30 cursor-pointer" : null,
         TONE_CLASSES[tone],
         className,

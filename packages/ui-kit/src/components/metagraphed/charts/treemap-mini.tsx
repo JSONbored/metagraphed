@@ -173,7 +173,7 @@ export function TreemapMini({
           >
             {t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? (
               <>
-                <span className="truncate font-mono text-[10px] font-medium leading-none text-accent-foreground">
+                <span className="truncate mg-type-data-sm font-medium leading-none text-accent-foreground">
                   {t.label}
                 </span>
                 {t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? (

@@ -112,7 +112,7 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
           <span className="mg-type-micro text-ink-muted">Registry activity</span>
           <InfoTooltip label="Daily probe samples and recorded incidents — not GitHub commits. Drives the registry's freshness signal." />
         </div>
-        <span className="font-mono text-[10px] text-ink-muted">
+        <span className="mg-type-data-sm text-ink-muted">
           {activeDays}/{cells.length} active · streak {streak}d
         </span>
       </div>
@@ -136,7 +136,7 @@ export function ActivityHeatmap({ netuid, weeks = 12 }: Props) {
                       aria-label={`${c.key}: ${c.probes} probes, ${c.incidents} incidents`}
                     />
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="font-mono text-[10px]">
+                  <TooltipContent side="top" className="mg-type-data-sm">
                     <div className="text-[11px] text-ink-strong">{c.key}</div>
                     <div>
                       {c.probes} probe{c.probes === 1 ? "" : "s"}

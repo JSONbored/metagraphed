@@ -68,13 +68,13 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
             <span className="font-display text-xs font-semibold uppercase tracking-wider text-ink-strong">
               Schema drift
             </span>
-            <span className="font-mono text-[10px] text-ink-muted">{schemas.length} tracked</span>
+            <span className="mg-type-data-sm text-ink-muted">{schemas.length} tracked</span>
           </div>
           <Link
             to="/subnets/$netuid"
             params={{ netuid: netuid }}
             search={(prev: Record<string, unknown>) => ({ ...prev, tab: "schemas" })}
-            className="font-mono text-[10px] text-ink-muted hover:text-ink-strong"
+            className="mg-type-data-sm text-ink-muted hover:text-ink-strong"
           >
             view all →
           </Link>
@@ -83,10 +83,7 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
           {Object.entries(counts).map(([k, v]) => (
             <span
               key={k}
-              className={classNames(
-                "rounded border px-1.5 py-0.5 font-mono text-[10px]",
-                driftTone(k),
-              )}
+              className={classNames("rounded border px-1.5 py-0.5 mg-type-data-sm", driftTone(k))}
             >
               {k} · {v}
             </span>
@@ -120,14 +117,14 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
               </span>
               <span
                 className={classNames(
-                  "rounded border px-1.5 py-0.5 font-mono text-[10px]",
+                  "rounded border px-1.5 py-0.5 mg-type-data-sm",
                   driftTone(s.drift_status),
                 )}
               >
                 {s.drift_status ?? "unknown"}
               </span>
             </div>
-            <span className="font-mono text-[10px] text-ink-muted shrink-0">
+            <span className="mg-type-data-sm text-ink-muted shrink-0">
               <TimeAgo at={s.updated_at} />
             </span>
           </div>
@@ -145,7 +142,7 @@ export function SchemaDriftSummary({ netuid, compact }: { netuid: number; compac
             ) : null}
           </div>
           {s.hash && s.previous_hash && s.hash !== s.previous_hash ? (
-            <div className="mt-1.5 font-mono text-[10px] text-ink-muted truncate">
+            <div className="mt-1.5 mg-type-data-sm text-ink-muted truncate">
               hash {s.previous_hash.slice(0, 8)} → {s.hash.slice(0, 8)}
             </div>
           ) : null}

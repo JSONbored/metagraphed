@@ -189,7 +189,7 @@ function Row({
   return (
     <tr className="mg-row-hover border-t border-border/60">
       {showNetuid ? (
-        <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted tabular-nums">
+        <td className="px-4 py-2.5 mg-type-data text-ink-muted tabular-nums">
           {e.netuid != null ? (
             <Link
               to="/subnets/$netuid"
@@ -205,12 +205,10 @@ function Row({
       ) : null}
       <td className="px-4 py-2.5">
         <div className="font-mono text-[11.5px] text-ink truncate max-w-[42ch]">{e.url ?? "—"}</div>
-        {e.region ? (
-          <div className="font-mono text-[10px] text-ink-muted mt-0.5">{e.region}</div>
-        ) : null}
+        {e.region ? <div className="mg-type-data-sm text-ink-muted mt-0.5">{e.region}</div> : null}
       </td>
       {showProvider ? (
-        <td className="px-4 py-2.5 text-[12px]">
+        <td className="px-4 py-2.5 mg-type-caption">
           {e.provider ? (
             <Link
               to="/providers/$slug"
@@ -248,14 +246,14 @@ function Row({
               ariaLabel="Recent probe trend"
             />
           ) : (
-            <span className="font-mono text-[10px] text-ink-muted">—</span>
+            <span className="mg-type-data-sm text-ink-muted">—</span>
           )}
         </div>
       </td>
-      <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted tabular-nums">
+      <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted tabular-nums">
         {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
       </td>
-      <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+      <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
         <TimeAgo at={e.last_probed_at} />
       </td>
       <td className="px-4 py-2.5 text-right">
@@ -322,14 +320,14 @@ function MobileCard({
               <Link
                 to="/subnets/$netuid"
                 params={{ netuid: e.netuid }}
-                className="font-mono text-[10px] text-ink-muted hover:text-ink-strong"
+                className="mg-type-data-sm text-ink-muted hover:text-ink-strong"
               >
                 sn{String(e.netuid).padStart(3, "0")}
               </Link>
             ) : null}
             <EligibilityChip eligibility={endpointEligibility(e, poolsById)} size="xs" />
           </div>
-          <div className="font-mono text-[11px] text-ink break-all">{e.url ?? "—"}</div>
+          <div className="mg-type-data text-ink break-all">{e.url ?? "—"}</div>
         </div>
         <HealthDot state={e.health} />
       </div>

@@ -421,7 +421,7 @@ function PoolsTable() {
                   className="mg-row-hover scroll-mt-24 target:bg-accent/10"
                 >
                   <td className="px-3 py-2 font-medium text-ink-strong">{p.name ?? p.id}</td>
-                  <td className="px-3 py-2 text-[12px]">{p.region ?? "—"}</td>
+                  <td className="px-3 py-2 mg-type-caption">{p.region ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{p.members_count ?? "—"}</td>
                   <td className="px-3 py-2 text-center text-[11px] text-ink-muted">
                     {p.archive_capable ? "yes" : "—"}
@@ -442,7 +442,7 @@ function PoolsTable() {
           </tbody>
         </table>
       </ResponsiveTable>
-      <p className="px-1 font-mono text-[10px] text-ink-muted">
+      <p className="px-1 mg-type-data-sm text-ink-muted">
         Proxy-eligible members serve live traffic through the reverse proxy above; the proxy prefers
         in-sync, healthy nodes and fails over automatically.
       </p>
@@ -503,24 +503,22 @@ function EndpointPoolsTable() {
                   className="mg-row-hover scroll-mt-24 target:bg-accent/10"
                 >
                   <td className="px-3 py-2 font-medium text-ink-strong">{p.id}</td>
-                  <td className="px-3 py-2 font-mono text-[11px]">{String(p.kind ?? "—")}</td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px]">
+                  <td className="px-3 py-2 mg-type-data">{String(p.kind ?? "—")}</td>
+                  <td className="px-3 py-2 text-right mg-type-data">
                     {eligible != null && total != null
                       ? `${eligible}/${total} eligible`
                       : total != null
                         ? String(total)
                         : "—"}
                   </td>
-                  <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                    {bestId ?? "—"}
-                  </td>
+                  <td className="px-3 py-2 mg-type-data text-ink-muted">{bestId ?? "—"}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </ResponsiveTable>
-      <p className="px-1 font-mono text-[10px] text-ink-muted">
+      <p className="px-1 mg-type-data-sm text-ink-muted">
         Covers all pool kinds (subtensor-rpc, subtensor-wss, archive) from the generalized
         endpoint-pools artifact — distinct from the Bittensor RPC proxy pools above.
       </p>
@@ -575,7 +573,7 @@ function RpcEndpointsTable() {
             {rows.map((e: RpcEndpoint) => (
               <tr key={e.id} className="mg-row-hover">
                 <td className="px-3 py-2 font-medium text-ink-strong">{e.provider ?? "—"}</td>
-                <td className="px-3 py-2 font-mono text-[11px]">{e.kind ?? "—"}</td>
+                <td className="px-3 py-2 mg-type-data">{e.kind ?? "—"}</td>
                 <td className="px-3 py-2">
                   <span
                     className={classNames(
@@ -593,7 +591,7 @@ function RpcEndpointsTable() {
                 <td className="px-3 py-2 text-center text-[11px] text-ink-muted">
                   {e.archive_support == null ? "—" : e.archive_support ? "yes" : "no"}
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-[11px]">
+                <td className="px-3 py-2 text-right mg-type-data">
                   {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
                 </td>
               </tr>
@@ -601,9 +599,7 @@ function RpcEndpointsTable() {
           </tbody>
         </table>
       </ResponsiveTable>
-      {summaryLine ? (
-        <p className="px-1 font-mono text-[10px] text-ink-muted">{summaryLine}</p>
-      ) : null}
+      {summaryLine ? <p className="px-1 mg-type-data-sm text-ink-muted">{summaryLine}</p> : null}
     </div>
   );
 }
@@ -997,7 +993,7 @@ function EndpointsTable() {
                   }
                   inputMode="numeric"
                   placeholder="Any subnet"
-                  className="h-9 rounded border border-border bg-paper px-2 font-mono text-[12px] text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-9 rounded border border-border bg-paper px-2 font-mono mg-type-caption text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </label>
               <QueryBar.FilterTrigger

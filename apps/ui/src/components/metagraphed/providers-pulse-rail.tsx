@@ -49,7 +49,7 @@ function Tile({ label, value, hint }: { label: string; value: number; hint?: str
       <div className="mt-1 font-display text-xl tabular-nums text-ink-strong">
         {formatNumber(value)}
       </div>
-      {hint ? <div className="mt-0.5 font-mono text-[10px] text-ink-muted">{hint}</div> : null}
+      {hint ? <div className="mt-0.5 mg-type-data-sm text-ink-muted">{hint}</div> : null}
     </div>
   );
 }

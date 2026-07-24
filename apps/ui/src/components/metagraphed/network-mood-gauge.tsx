@@ -64,7 +64,7 @@ export function NetworkMoodGauge() {
       </div>
       <span
         className={classNames(
-          "shrink-0 font-mono text-[11px] tabular-nums",
+          "shrink-0 mg-type-data tabular-nums",
           sentiment === "neutral" ? "text-ink-muted" : "",
         )}
         style={sentiment !== "neutral" ? { color: meta.color } : undefined}

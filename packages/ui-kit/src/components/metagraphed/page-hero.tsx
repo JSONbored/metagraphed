@@ -91,9 +91,7 @@ export function PageHero({
                   {k.value}
                 </span>
                 {k.hint ? (
-                  <span className="font-mono text-[11px] text-ink-muted">
-                    {k.hint}
-                  </span>
+                  <span className="mg-type-data text-ink-muted">{k.hint}</span>
                 ) : null}
               </div>
               {k.chart ? <div className="mt-2.5 -ml-0.5">{k.chart}</div> : null}

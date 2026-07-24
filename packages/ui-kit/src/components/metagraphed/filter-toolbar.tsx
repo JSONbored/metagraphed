@@ -47,7 +47,7 @@ export function FilterField({
 }
 
 const CONTROL_CLASSES =
-  "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 text-[12px] " +
+  "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 mg-type-caption " +
   "text-ink-strong placeholder:text-ink-subtle-text mg-focus-ring " +
   "hover:border-ink/25 transition-colors";
 

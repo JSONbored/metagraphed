@@ -92,7 +92,7 @@ export function StatTile({
           {hint ? (
             <span
               className={classNames(
-                "min-w-0 font-mono text-[10px] text-ink-muted",
+                "min-w-0 mg-type-data-sm text-ink-muted",
                 truncate ? "truncate" : "",
               )}
             >

@@ -51,7 +51,7 @@ export function DelegateCTA({ netuid, variant = "inline", className }: Props) {
               Delegate & Earn
               <ArrowUpRight className="ml-1 inline size-3.5 text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </span>
-            <span className="mt-0.5 block text-[12px] text-ink-muted">
+            <span className="mt-0.5 block mg-type-caption text-ink-muted">
               Stake τ to a validator across supported subnets
             </span>
           </span>
@@ -61,7 +61,7 @@ export function DelegateCTA({ netuid, variant = "inline", className }: Props) {
     return (
       <Link
         to="/delegate"
-        className={`inline-flex items-center gap-1.5 rounded-full border border-border mg-glass-soft text-sm font-medium text-ink hover:border-ink/30 hover:text-ink-strong transition-colors ${className ?? "px-3.5 py-1.5 text-[12px]"}`}
+        className={`inline-flex items-center gap-1.5 rounded-full border border-border mg-glass-soft text-sm font-medium text-ink hover:border-ink/30 hover:text-ink-strong transition-colors ${className ?? "px-3.5 py-1.5 mg-type-caption"}`}
       >
         <Coins aria-hidden className="size-3.5" />
         Delegate & Earn
@@ -97,7 +97,7 @@ export function DelegateCTA({ netuid, variant = "inline", className }: Props) {
             {label}
             <ArrowUpRight className="ml-1 inline size-3.5 text-accent transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
-          <span className="mt-0.5 block text-[12px] text-ink-muted">{sub}</span>
+          <span className="mt-0.5 block mg-type-caption text-ink-muted">{sub}</span>
         </span>
       </Link>
     );
@@ -106,7 +106,7 @@ export function DelegateCTA({ netuid, variant = "inline", className }: Props) {
   return (
     <Link
       {...href}
-      className={`inline-flex items-center gap-1.5 rounded-full border border-accent/60 bg-primary-soft/60 px-3.5 py-1.5 text-[12px] font-medium text-ink-strong transition-colors hover:border-accent hover:bg-primary-soft ${className ?? ""}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-accent/60 bg-primary-soft/60 px-3.5 py-1.5 mg-type-caption font-medium text-ink-strong transition-colors hover:border-accent hover:bg-primary-soft ${className ?? ""}`}
     >
       <Sparkles aria-hidden className="size-3 text-accent" />
       {label}

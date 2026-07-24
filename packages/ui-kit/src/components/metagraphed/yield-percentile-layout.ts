@@ -25,7 +25,7 @@ export const YIELD_PERCENTILE_STRIP_GRID_CLASS =
 
 /** Label row — mirrors Concentration panel `Fact` labels. */
 export const YIELD_PERCENTILE_LABEL_CLASS =
-  "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+  "mg-type-data-sm uppercase tracking-[0.18em] text-ink-muted";
 
 /**
  * Value row — slightly smaller below the four-column threshold, then steps up

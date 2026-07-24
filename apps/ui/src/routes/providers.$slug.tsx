@@ -155,7 +155,7 @@ function ProviderShell({ slug }: { slug: string }) {
         }
       />
       {shouldShowProviderSlugSubtitle(p?.name, slug) ? (
-        <div className="-mt-2 mb-3 font-mono text-[11px] text-ink-muted">{slug}</div>
+        <div className="-mt-2 mb-3 mg-type-data text-ink-muted">{slug}</div>
       ) : null}
 
       <div className="mg-kpi-strip">
@@ -391,11 +391,11 @@ function SubnetsServedGrid({ slug, compact }: { slug: string; compact?: boolean 
                     <span className="truncate font-display text-sm font-semibold text-ink-strong">
                       {sn?.name ?? "Subnet"}
                     </span>
-                    <span className="shrink-0 font-mono text-[11px] text-ink-muted tabular-nums">
+                    <span className="shrink-0 mg-type-data text-ink-muted tabular-nums">
                       {String(netuid).padStart(3, "0")}
                     </span>
                   </div>
-                  <div className="mt-0.5 font-mono text-[10px] text-ink-muted">
+                  <div className="mt-0.5 mg-type-data-sm text-ink-muted">
                     {items.length} endpoint{items.length === 1 ? "" : "s"}
                   </div>
                 </div>
@@ -426,8 +426,8 @@ function BreakdownCard({ title, data }: { title: string; data: Record<string, nu
         {entries.map(([kk, v]) => (
           <li key={kk}>
             <div className="flex items-baseline justify-between gap-2 mb-0.5">
-              <span className="font-mono text-[11px] text-ink truncate">{kk}</span>
-              <span className="font-mono text-[11px] text-ink-muted tabular-nums">{v}</span>
+              <span className="mg-type-data text-ink truncate">{kk}</span>
+              <span className="mg-type-data text-ink-muted tabular-nums">{v}</span>
             </div>
             <div className="h-1 w-full overflow-hidden rounded bg-surface">
               <div

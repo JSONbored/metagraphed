@@ -30,7 +30,7 @@ export function McpToolsList({
           <span
             key={t.name}
             title={t.title}
-            className="inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
+            className="inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
           >
             {t.name}
           </span>
@@ -42,7 +42,7 @@ export function McpToolsList({
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           className={classNames(
-            "mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted",
+            "mt-2 inline-flex items-center gap-1 mg-type-data-sm text-ink-muted",
             "hover:text-accent transition-colors",
           )}
         >

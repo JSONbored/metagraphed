@@ -61,7 +61,7 @@ export function BarMini({
               />
             </span>
             {showValue ? (
-              <span className="font-mono text-[10px] tabular-nums text-ink-strong">
+              <span className="mg-type-data-sm tabular-nums text-ink-strong">
                 {formatValue ? formatValue(d.value) : d.value}
               </span>
             ) : null}

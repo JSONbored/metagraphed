@@ -26,7 +26,7 @@ export function CopyableCode({
         title={value}
         aria-label={copied ? "Copied" : `Copy ${label ?? "value"}`}
         className={classNames(
-          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left font-mono text-[11px] text-ink hover:border-ink/30 transition-colors",
+          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left mg-type-data text-ink hover:border-ink/30 transition-colors",
           // Matches KeyChip's ring treatment -- this one is a bordered chip like
           // KeyChip (not an icon-only hit area), so the offset ring reads cleanly
           // against the card behind it (#6371).

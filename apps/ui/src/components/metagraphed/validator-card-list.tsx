@@ -34,7 +34,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
                 to="/validators/$hotkey"
                 params={{ hotkey: v.hotkey }}
                 title={v.hotkey}
-                className="truncate font-mono text-[12px] text-ink-strong hover:text-accent hover:underline"
+                className="truncate font-mono mg-type-caption text-ink-strong hover:text-accent hover:underline"
               >
                 {f.hotkeyShort}
               </Link>
@@ -47,7 +47,7 @@ export function ValidatorCardList({ validators, className }: ValidatorCardListPr
             {/* Mirrors the hotkey row above: a flex row so the copy button's 44px
                 touch target centers against the value. `compact` folds that height
                 back into the row so it does not add vertical spacing. */}
-            <div className="flex min-w-0 items-center gap-1.5 font-mono text-[11px] text-ink-muted">
+            <div className="flex min-w-0 items-center gap-1.5 mg-type-data text-ink-muted">
               <span className="mg-type-micro">coldkey</span>
               {/* Same AccountAddress hover-card treatment as the desktop column (#6338). */}
               <AccountAddress ss58={v.coldkey} compact fallback="—" />

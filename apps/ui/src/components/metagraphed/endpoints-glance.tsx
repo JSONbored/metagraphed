@@ -122,7 +122,7 @@ export function EndpointsGlance({
                     {items.length}
                   </span>
                 </div>
-                <div className="mt-0.5 truncate font-mono text-[11px] text-ink-muted">
+                <div className="mt-0.5 truncate mg-type-data text-ink-muted">
                   {top ? maskHost(top.url) : "—"}
                 </div>
               </div>

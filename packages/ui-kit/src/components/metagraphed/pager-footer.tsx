@@ -31,7 +31,7 @@ export function PagerFooter({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 text-[12px] text-ink-muted",
+        "flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 mg-type-caption text-ink-muted",
         className,
       )}
     >

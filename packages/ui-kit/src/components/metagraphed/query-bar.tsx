@@ -166,7 +166,7 @@ function QueryBarSearch({
         aria-label={placeholder}
         className={classNames(
           "peer flex-1 min-w-0 bg-transparent border-0 outline-none",
-          "py-1.5 text-[13px] text-ink-strong placeholder:text-ink-subtle-text",
+          "py-1.5 mg-type-caption-lg text-ink-strong placeholder:text-ink-subtle-text",
           "focus:outline-none focus:ring-0",
           className,
         )}
@@ -187,7 +187,7 @@ function QueryBarSearch({
       ) : shortcut ? (
         <kbd
           aria-hidden
-          className="pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
+          className="pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
         >
           /
         </kbd>
@@ -324,7 +324,7 @@ function QueryBarFilterTrigger(props: QueryBarFilterTriggerProps) {
           aria-label={`${label} filter${active ? `, ${selected.length} selected` : ""}`}
           className={classNames(
             "mg-ghost-trigger group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2",
-            "text-[12px] transition-colors",
+            "mg-type-caption transition-colors",
             "hover:bg-surface-2",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             active ? "text-ink-strong" : "text-ink-muted",

@@ -99,7 +99,7 @@ export function StatWithSpark({
         >
           <div>{full ?? hint ?? label}</div>
           {freshAbs || windowLabel ? (
-            <div className="mt-1 font-mono text-[10px] text-primary-foreground/70">
+            <div className="mt-1 mg-type-data-sm text-primary-foreground/70">
               {freshAbs ? `Last checked ${freshAbs}` : null}
               {freshAbs && windowLabel ? " · " : ""}
               {windowLabel ? `${windowLabel} window` : null}
@@ -224,7 +224,7 @@ export function DotRow({
                 )}
               />
             </TooltipTrigger>
-            <TooltipContent side="top" className="font-mono text-[10px]">
+            <TooltipContent side="top" className="mg-type-data-sm">
               {d.label} {d.on ? "✓" : "—"}
             </TooltipContent>
           </Tooltip>

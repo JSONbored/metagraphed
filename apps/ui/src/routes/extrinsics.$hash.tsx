@@ -293,7 +293,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             </span>
           </FieldRow>
           <FieldRow label="Observed at">
-            <span className="font-mono text-[12px] text-ink-muted">
+            <span className="font-mono mg-type-caption text-ink-muted">
               <TimeAgo at={extrinsic.observed_at} />
             </span>
           </FieldRow>
@@ -307,7 +307,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       >
         {renderCallArgs(callArgs, extrinsic.call_module, extrinsic.call_function)}
         {callArgsOmitted > 0 ? (
-          <p className="mt-2 font-mono text-[11px] text-ink-muted">
+          <p className="mt-2 mg-type-data text-ink-muted">
             Showing 64 of {formatNumber(callArgsTotal)} call args — {formatNumber(callArgsOmitted)}{" "}
             more omitted.
           </p>
@@ -349,7 +349,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                       {extrinsicCall(e.call_module, e.call_function)}
                     </span>
                     <span className="text-ink-muted">·</span>
-                    <span className="font-mono text-[11px] text-ink-muted">
+                    <span className="mg-type-data text-ink-muted">
                       #{formatNumber(e.block_number ?? 0)}
                     </span>
                     <TimeAgo at={e.observed_at} className="ml-auto text-[11px] text-ink-muted" />
@@ -384,7 +384,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                     key={`${ev.block_number}-${ev.event_index}-${i}`}
                     className="hover:bg-surface/40"
                   >
-                    <td className="px-4 py-2.5 font-mono text-[12px]">
+                    <td className="px-4 py-2.5 font-mono mg-type-caption">
                       {ev.block_number != null ? (
                         <Link
                           to="/blocks/$ref"
@@ -398,18 +398,18 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
                       )}
                     </td>
                     <td
-                      className="px-4 py-2.5 font-mono text-[11px] text-ink-strong"
+                      className="px-4 py-2.5 mg-type-data text-ink-strong"
                       title={ev.event_kind ?? undefined}
                     >
                       {eventKindLabel(ev.event_kind)}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                    <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                       <AccountAddress ss58={ev.hotkey} compact fallback="—" />
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
+                    <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
                       {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                    <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
                       <TimeAgo at={ev.observed_at} />
                     </td>
                   </tr>
@@ -424,7 +424,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           />
         )}
         {eventsOmitted > 0 ? (
-          <p className="mt-2 font-mono text-[11px] text-ink-muted">
+          <p className="mt-2 mg-type-data text-ink-muted">
             Showing 100 of {formatNumber(eventsTotal)} events — {formatNumber(eventsOmitted)} more
             omitted.
           </p>
@@ -493,10 +493,10 @@ function renderCallArgs(
           <tbody className="divide-y divide-border">
             {args.map((arg, i) => (
               <tr key={`${arg.name ?? i}`} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong align-top">
+                <td className="px-4 py-2.5 mg-type-data text-ink-strong align-top">
                   {arg.name ?? `arg_${i + 1}`}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                   {renderCallArgValue(arg.value, arg.name, callModule, callFunction, depth)}
                 </td>
               </tr>
@@ -524,10 +524,8 @@ function renderCallArgs(
           <tbody className="divide-y divide-border">
             {entries.map(([key, value]) => (
               <tr key={key} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong align-top">
-                  {key}
-                </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-2.5 mg-type-data text-ink-strong align-top">{key}</td>
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                   {renderCallArgValue(value, key, callModule, callFunction, depth)}
                 </td>
               </tr>
@@ -601,7 +599,7 @@ function NestedCallCard({ call, depth }: { call: DecodedCall; depth: number }) {
   return (
     <div className="rounded border border-border/70 bg-surface/30 p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="font-mono text-[11px] font-semibold text-ink-strong">
+        <span className="mg-type-data font-semibold text-ink-strong">
           {extrinsicCall(call.call_module, call.call_function)}
         </span>
         {typeof call.call_hash === "string" && call.call_hash ? (

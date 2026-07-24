@@ -168,11 +168,13 @@ function TakeFlowBody({
       return (
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <AlertTriangle className="size-6 text-health-down" aria-hidden />
-          <p className="text-[13px] text-ink-strong">{describeTxError(flow.txStatus.error)}</p>
+          <p className="mg-type-caption-lg text-ink-strong">
+            {describeTxError(flow.txStatus.error)}
+          </p>
           <button
             type="button"
             onClick={flow.editAmount}
-            className="rounded border border-border bg-card px-3 py-2 text-[12px] font-medium text-ink-strong transition-colors hover:border-ink/30"
+            className="rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink/30"
           >
             Edit and try again
           </button>
@@ -252,7 +254,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
         </dl>
 
         {flow.direction === "increase" && flow.cooldownDurationLabel ? (
-          <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down">
+          <p className="inline-flex items-center gap-1.5 mg-type-data text-health-down">
             <AlertCircle className="size-3.5 shrink-0" aria-hidden />
             Take was changed too recently — try again in {flow.cooldownDurationLabel}. (Decreasing
             take has no cooldown.)
@@ -260,9 +262,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
         ) : null}
 
         {!hasValidPercentInput ? (
-          <p className="font-mono text-[11px] text-ink-muted">
-            Enter a new take percentage to continue.
-          </p>
+          <p className="mg-type-data text-ink-muted">Enter a new take percentage to continue.</p>
         ) : null}
 
         {flow.validationMessages.length > 0 ? (
@@ -270,7 +270,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
             {flow.validationMessages.map((message) => (
               <li
                 key={message}
-                className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down"
+                className="inline-flex items-center gap-1.5 mg-type-data text-health-down"
               >
                 <AlertCircle className="size-3.5 shrink-0" aria-hidden />
                 {message}
@@ -285,7 +285,7 @@ function TakeAmountStep({ flow }: { flow: UseTakeFlowResult }) {
           type="button"
           onClick={flow.confirm}
           disabled={!flow.canConfirm}
-          className="w-full rounded border border-ink-strong/40 bg-surface px-3 py-2 text-[12px] font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-50"
+          className="w-full rounded border border-ink-strong/40 bg-surface px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-50"
         >
           Review {DIRECTION_VERB[flow.direction].toLowerCase()}
         </button>
@@ -340,7 +340,7 @@ function TakeConfirmationStep({
           type="button"
           onClick={flow.editAmount}
           disabled={confirming}
-          className="flex-1 rounded border border-border bg-card px-3 py-2 text-[12px] font-medium text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong disabled:opacity-60"
+          className="flex-1 rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted transition-colors hover:border-ink/30 hover:text-ink-strong disabled:opacity-60"
         >
           Cancel
         </button>
@@ -348,7 +348,7 @@ function TakeConfirmationStep({
           type="button"
           onClick={onConfirm}
           disabled={confirming || flow.feeTao === null}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 text-[12px] font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-60"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink-strong/60 disabled:opacity-60"
         >
           {confirming ? (
             <>
@@ -381,7 +381,7 @@ function SummaryRow({
       <span className="text-[11px] text-ink-muted">{label}</span>
       <span
         className={classNames(
-          "block text-[12px] font-medium text-ink-strong",
+          "block mg-type-caption font-medium text-ink-strong",
           loading && "animate-pulse text-ink-muted",
         )}
       >
@@ -405,13 +405,13 @@ function StatusView({
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
       {icon}
-      <p className="text-[13px] text-ink-strong">{message}</p>
+      <p className="mg-type-caption-lg text-ink-strong">{message}</p>
       {txHash ? (
         <div className="space-y-1">
           <Link
             to="/extrinsics/$hash"
             params={{ hash: txHash }}
-            className="font-mono text-[11px] text-accent hover:underline"
+            className="mg-type-data text-accent hover:underline"
           >
             {shortHash(txHash, 8)}
           </Link>
@@ -424,7 +424,7 @@ function StatusView({
         <button
           type="button"
           onClick={onClose}
-          className="rounded border border-border bg-card px-3 py-2 text-[12px] font-medium text-ink-strong transition-colors hover:border-ink/30"
+          className="rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong transition-colors hover:border-ink/30"
         >
           Done
         </button>

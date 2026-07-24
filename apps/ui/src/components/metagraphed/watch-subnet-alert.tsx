@@ -76,7 +76,7 @@ export function WatchSubnetAlert({ netuid }: { netuid: number }) {
 
   return (
     <div className="space-y-3">
-      <p className="max-w-2xl text-[13px] text-ink-muted">
+      <p className="max-w-2xl mg-type-caption-lg text-ink-muted">
         Get a webhook or Discord notification for on-chain activity on SN{netuid}. Creation requires
         a trigger token issued by a metagraphed operator — this app never bundles one.
       </p>
@@ -117,7 +117,7 @@ export function WatchSubnetAlert({ netuid }: { netuid: number }) {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-[12px] font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
         >
           {mutation.isPending ? "Creating…" : "Watch this subnet"}
         </button>

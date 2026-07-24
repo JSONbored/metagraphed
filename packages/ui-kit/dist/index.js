@@ -1440,7 +1440,7 @@ function CopyableCode({
         title: value,
         "aria-label": copied ? "Copied" : `Copy ${label ?? "value"}`,
         className: classNames(
-          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left font-mono text-[11px] text-ink hover:border-ink/30 transition-colors",
+          "group inline-flex min-w-0 items-center gap-1.5 rounded border border-border bg-card px-2 py-1 text-left mg-type-data text-ink hover:border-ink/30 transition-colors",
           // Matches KeyChip's ring treatment -- this one is a bordered chip like
           // KeyChip (not an icon-only hit area), so the offset ring reads cleanly
           // against the card behind it (#6371).
@@ -1749,7 +1749,7 @@ function FreshnessIndicator({
         !dotOnly ? /* @__PURE__ */ jsx(
           "span",
           {
-            className: "font-mono text-[10px] text-ink-muted",
+            className: "mg-type-data-sm text-ink-muted",
             suppressHydrationWarning: true,
             children: rel
           }
@@ -1819,7 +1819,7 @@ function Kbd({
     "kbd",
     {
       className: classNames(
-        "inline-flex items-center justify-center rounded border border-border bg-paper px-1.5 min-w-[1.25rem] h-5 font-mono text-[10px] text-ink-muted shadow-[var(--mg-shadow-hairline-inset)]",
+        "inline-flex items-center justify-center rounded border border-border bg-paper px-1.5 min-w-[1.25rem] h-5 mg-type-data-sm text-ink-muted shadow-[var(--mg-shadow-hairline-inset)]",
         className
       ),
       children
@@ -1846,7 +1846,7 @@ function KeyChip({
             onClick: () => copy(value),
             "aria-label": copied ? `${label} copied` : `Copy ${label}: ${value}`,
             className: classNames(
-              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left font-mono text-[11px] text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
+              "group inline-flex min-w-0 max-w-full items-center gap-1.5 rounded border border-border bg-paper px-2 py-1 text-left mg-type-data text-ink-strong hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card transition-colors",
               className
             ),
             children: [
@@ -1865,7 +1865,7 @@ function KeyChip({
           TooltipContent,
           {
             side: "top",
-            className: "max-w-[90vw] break-all font-mono text-[11px]",
+            className: "max-w-[90vw] break-all mg-type-data",
             children: [
               /* @__PURE__ */ jsx("span", { className: "mr-1 mg-type-micro opacity-70", children: label }),
               value
@@ -2001,7 +2001,7 @@ function LoadMore({
       ] })
     ] });
   }
-  return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 text-[11px] font-mono text-ink-muted", children: [
+  return /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 mg-type-data text-ink-muted", children: [
     /* @__PURE__ */ jsxs("span", { children: [
       shown,
       total != null ? ` of ${total}` : ""
@@ -2053,7 +2053,7 @@ function PageHero({
           /* @__PURE__ */ jsx("div", { className: "mg-type-micro text-ink-muted", children: k.label }),
           /* @__PURE__ */ jsxs("div", { className: "mt-1.5 flex items-baseline gap-2", children: [
             /* @__PURE__ */ jsx("span", { className: "font-display text-2xl md:text-[1.75rem] font-semibold tabular-nums text-ink-strong leading-none tracking-[-0.01em]", children: k.value }),
-            k.hint ? /* @__PURE__ */ jsx("span", { className: "font-mono text-[11px] text-ink-muted", children: k.hint }) : null
+            k.hint ? /* @__PURE__ */ jsx("span", { className: "mg-type-data text-ink-muted", children: k.hint }) : null
           ] }),
           k.chart ? /* @__PURE__ */ jsx("div", { className: "mt-2.5 -ml-0.5", children: k.chart }) : null
         ] }, k.label)) }) : null
@@ -2108,7 +2108,7 @@ function EntityHero({
                     "div",
                     {
                       className: classNames(
-                        "mg-fade-in font-mono text-[10px] uppercase text-ink-muted inline-flex items-center gap-2",
+                        "mg-fade-in mg-type-data-sm uppercase text-ink-muted inline-flex items-center gap-2",
                         display ? "tracking-[0.22em]" : "tracking-[0.2em] mb-2"
                       ),
                       children: [
@@ -2169,7 +2169,7 @@ function EntityHero({
                     children: s.value
                   }
                 ),
-                s.hint ? /* @__PURE__ */ jsx("span", { className: "font-mono text-[11px] text-ink-muted", children: s.hint }) : null
+                s.hint ? /* @__PURE__ */ jsx("span", { className: "mg-type-data text-ink-muted", children: s.hint }) : null
               ] }),
               s.chart ? /* @__PURE__ */ jsx("div", { className: "mt-2.5 -ml-0.5", children: s.chart }) : null
             ] }, s.label))
@@ -2545,11 +2545,11 @@ function TableState({
         /* @__PURE__ */ jsx("div", { className: "mx-auto inline-flex size-10 items-center justify-center rounded-full border border-border bg-paper", children: /* @__PURE__ */ jsx(Icon, { className: classNames("size-4", iconCls) }) }),
         /* @__PURE__ */ jsx("h3", { className: "mt-4 font-display text-base font-semibold text-ink-strong tracking-tight", children: title }),
         description ? /* @__PURE__ */ jsx("p", { className: "mx-auto mt-1.5 max-w-md text-sm text-ink-muted leading-relaxed", children: description }) : null,
-        variant === "stale" && generatedAt ? /* @__PURE__ */ jsxs("p", { className: "mt-3 font-mono text-[11px] text-ink-muted", children: [
+        variant === "stale" && generatedAt ? /* @__PURE__ */ jsxs("p", { className: "mt-3 mg-type-data text-ink-muted", children: [
           "Last verified ",
           /* @__PURE__ */ jsx(TimeAgo, { at: generatedAt })
         ] }) : null,
-        message ? /* @__PURE__ */ jsxs("p", { className: "mx-auto mt-3 max-w-md font-mono text-[11px] text-ink-muted", children: [
+        message ? /* @__PURE__ */ jsxs("p", { className: "mx-auto mt-3 max-w-md mg-type-data text-ink-muted", children: [
           status ? /* @__PURE__ */ jsxs("span", { className: "text-health-down", children: [
             "HTTP ",
             status,
@@ -2563,7 +2563,7 @@ function TableState({
             {
               type: "button",
               onClick: onRetry,
-              className: "inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3.5 py-1.5 text-[12px] font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors",
+              className: "inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3.5 py-1.5 mg-type-caption font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors",
               children: [
                 /* @__PURE__ */ jsx(RefreshCw, { className: "size-3" }),
                 " Retry"
@@ -2575,7 +2575,7 @@ function TableState({
             {
               href: cta.href,
               ...cta.external ? { target: "_blank", rel: "noopener noreferrer" } : {},
-              className: "inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-3.5 py-1.5 text-[12px] font-medium text-paper hover:opacity-90 transition-opacity",
+              className: "inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-3.5 py-1.5 mg-type-caption font-medium text-paper hover:opacity-90 transition-opacity",
               children: [
                 cta.label,
                 cta.external ? /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3" }) : null
@@ -2588,7 +2588,7 @@ function TableState({
               href: url,
               target: "_blank",
               rel: "noopener noreferrer",
-              className: "inline-flex items-center gap-1.5 text-[11px] font-mono text-ink-muted hover:text-ink-strong",
+              className: "inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-ink-strong",
               children: [
                 "View API URL ",
                 /* @__PURE__ */ jsx(ExternalLink$1, { className: "size-3" })
@@ -2777,7 +2777,7 @@ function McpToolsList({
       "span",
       {
         title: t.title,
-        className: "inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-ink-muted",
+        className: "inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted",
         children: t.name
       },
       t.name
@@ -2789,7 +2789,7 @@ function McpToolsList({
         onClick: () => setOpen((v) => !v),
         "aria-expanded": open,
         className: classNames(
-          "mt-2 inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted",
+          "mt-2 inline-flex items-center gap-1 mg-type-data-sm text-ink-muted",
           "hover:text-accent transition-colors"
         ),
         children: open ? /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -2819,7 +2819,7 @@ function fmtYield(v) {
 // src/components/metagraphed/yield-percentile-layout.ts
 var YIELD_PERCENTILE_STRIP_CONTAINER_CLASS = "@container rounded-xl border border-border bg-card p-4";
 var YIELD_PERCENTILE_STRIP_GRID_CLASS = "grid grid-cols-2 gap-3 @min-[28rem]:grid-cols-4";
-var YIELD_PERCENTILE_LABEL_CLASS = "font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+var YIELD_PERCENTILE_LABEL_CLASS = "mg-type-data-sm uppercase tracking-[0.18em] text-ink-muted";
 var YIELD_PERCENTILE_VALUE_CLASS = "mt-1 min-w-0 truncate font-display text-sm font-semibold tabular-nums text-ink-strong leading-none @min-[20rem]:text-base @min-[28rem]:text-lg";
 var PERCENTILE_LABELS = {
   p25: "p25",
@@ -2941,7 +2941,7 @@ function MethodologyCallout({
                 freshLine ? /* @__PURE__ */ jsx(
                   "span",
                   {
-                    className: "mt-0.5 block font-mono text-[10px] text-ink-muted/80",
+                    className: "mt-0.5 block mg-type-data-sm text-ink-muted/80",
                     title: freshAbs ?? void 0,
                     children: freshLine
                   }
@@ -3044,7 +3044,7 @@ function BarMini({
                   }
                 }
               ) }),
-              showValue ? /* @__PURE__ */ jsx("span", { className: "font-mono text-[10px] tabular-nums text-ink-strong", children: formatValue ? formatValue(d.value) : d.value }) : null
+              showValue ? /* @__PURE__ */ jsx("span", { className: "mg-type-data-sm tabular-nums text-ink-strong", children: formatValue ? formatValue(d.value) : d.value }) : null
             ]
           },
           d.label
@@ -3222,7 +3222,7 @@ function CandlestickMini({
         hoverBar && tooltipText ? /* @__PURE__ */ jsx(
           "div",
           {
-            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap",
             style: {
               left: Math.max(60, Math.min(width - 60, hoverBar.cx)),
               top: Math.max(0, hoverBar.wickTop - 4)
@@ -3390,7 +3390,7 @@ function SparkLegend({
               /* @__PURE__ */ jsx("span", { className: "mg-type-micro opacity-70", children: "staleness \xB7 " }),
               staleness
             ] }) : null,
-            fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] opacity-80", children: [
+            fresh || freshAbs ? /* @__PURE__ */ jsxs("div", { className: "mt-1 mg-type-data-sm opacity-80", children: [
               fresh ?? "",
               freshAbs ? `${fresh ? " \xB7 " : ""}last checked ${freshAbs}` : ""
             ] }) : null
@@ -3549,7 +3549,7 @@ function Sparkline({
         hoverPoint && tooltipText ? /* @__PURE__ */ jsx(
           "div",
           {
-            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 mg-type-data-sm leading-tight text-ink-strong shadow-sm whitespace-nowrap",
             style: {
               left: Math.max(24, Math.min(width - 24, hoverPoint[0])),
               top: hoverPoint[1] - 4
@@ -3615,7 +3615,7 @@ function StatTile({
                   "span",
                   {
                     className: classNames(
-                      "min-w-0 font-mono text-[10px] text-ink-muted",
+                      "min-w-0 mg-type-data-sm text-ink-muted",
                       truncate ? "truncate" : ""
                     ),
                     children: hint
@@ -3688,7 +3688,7 @@ function StatWithSpark({
           className: "max-w-xs text-[11px] leading-relaxed",
           children: [
             /* @__PURE__ */ jsx("div", { children: full ?? hint ?? label }),
-            freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 font-mono text-[10px] text-primary-foreground/70", children: [
+            freshAbs || windowLabel ? /* @__PURE__ */ jsxs("div", { className: "mt-1 mg-type-data-sm text-primary-foreground/70", children: [
               freshAbs ? `Last checked ${freshAbs}` : null,
               freshAbs && windowLabel ? " \xB7 " : "",
               windowLabel ? `${windowLabel} window` : null
@@ -3807,7 +3807,7 @@ function DotRow({
               )
             }
           ) }),
-          /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "font-mono text-[10px]", children: [
+          /* @__PURE__ */ jsxs(TooltipContent, { side: "top", className: "mg-type-data-sm", children: [
             d.label,
             " ",
             d.on ? "\u2713" : "\u2014"
@@ -3962,7 +3962,7 @@ function TreemapMini({
               className: "flex h-full w-full flex-col justify-between rounded-sm border border-background/40 p-1.5",
               style: { background: t.color ?? "var(--accent)" },
               children: t.w > MIN_TILE_W_FOR_LABEL && t.h > MIN_TILE_H_FOR_LABEL ? /* @__PURE__ */ jsxs(Fragment, { children: [
-                /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[10px] font-medium leading-none text-accent-foreground", children: t.label }),
+                /* @__PURE__ */ jsx("span", { className: "truncate mg-type-data-sm font-medium leading-none text-accent-foreground", children: t.label }),
                 t.w > MIN_TILE_W_FOR_VALUE && t.h > MIN_TILE_H_FOR_VALUE ? /* @__PURE__ */ jsx("span", { className: "truncate font-mono text-[9px] leading-none text-accent-foreground/80", children: formatValue(t.value) }) : null
               ] }) : null
             }
@@ -4000,7 +4000,7 @@ function Chip({
       onClick,
       className: classNames(
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5",
-        "font-mono text-[10px] leading-none whitespace-nowrap transition-colors",
+        "mg-type-data-sm leading-none whitespace-nowrap transition-colors",
         onClick ? "mg-focus-ring hover:border-ink/30 cursor-pointer" : null,
         TONE_CLASSES[tone],
         className
@@ -4090,7 +4090,7 @@ function Indicator({
             ]
           }
         ),
-        /* @__PURE__ */ jsxs("span", { className: "font-mono text-[11px] tabular-nums text-ink-strong truncate", children: [
+        /* @__PURE__ */ jsxs("span", { className: "mg-type-data tabular-nums text-ink-strong truncate", children: [
           value,
           hint ? /* @__PURE__ */ jsx("span", { className: "ml-1 text-ink-muted normal-case", children: hint }) : null
         ] })
@@ -4125,7 +4125,7 @@ function FilterField({
     }
   );
 }
-var CONTROL_CLASSES = "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 text-[12px] text-ink-strong placeholder:text-ink-subtle-text mg-focus-ring hover:border-ink/25 transition-colors";
+var CONTROL_CLASSES = "h-9 min-w-0 w-full rounded border border-border bg-card px-2.5 mg-type-caption text-ink-strong placeholder:text-ink-subtle-text mg-focus-ring hover:border-ink/25 transition-colors";
 function FilterInput({
   className,
   leadingIcon = true,
@@ -4237,7 +4237,7 @@ function ColumnCustomizer({
                 {
                   type: "button",
                   onClick: onReset,
-                  className: "mg-focus-ring inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted hover:text-ink-strong",
+                  className: "mg-focus-ring inline-flex items-center gap-1 mg-type-data-sm text-ink-muted hover:text-ink-strong",
                   title: "Reset to defaults",
                   children: [
                     /* @__PURE__ */ jsx(RotateCcw, { className: "size-3", "aria-hidden": true }),
@@ -4252,7 +4252,7 @@ function ColumnCustomizer({
                 "label",
                 {
                   className: classNames(
-                    "flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-ink hover:bg-surface-2 cursor-pointer",
+                    "flex items-center gap-2 rounded px-2 py-1.5 mg-type-caption text-ink hover:bg-surface-2 cursor-pointer",
                     c.required ? "opacity-60 cursor-not-allowed" : null
                   ),
                   children: [
@@ -4425,7 +4425,7 @@ function Panel({
             children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
                 title != null ? /* @__PURE__ */ jsx(SectionLabel, { children: title }) : null,
-                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 text-[13px] text-ink-muted", children: caption }) : null
+                caption != null ? /* @__PURE__ */ jsx("p", { className: "mt-1 mg-type-caption-lg text-ink-muted", children: caption }) : null
               ] }),
               action != null ? /* @__PURE__ */ jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
             ]
@@ -4484,7 +4484,7 @@ function EmptyState({
         ),
         /* @__PURE__ */ jsxs("div", { className: "max-w-sm space-y-1", children: [
           /* @__PURE__ */ jsx("p", { className: "font-display text-[15px] font-medium text-ink-strong", children: title }),
-          hint != null ? /* @__PURE__ */ jsx("p", { className: "text-[13px] leading-relaxed text-ink-muted", children: hint }) : null
+          hint != null ? /* @__PURE__ */ jsx("p", { className: "mg-type-caption-lg leading-relaxed text-ink-muted", children: hint }) : null
         ] }),
         action != null || evidenceHref ? /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center justify-center gap-2 pt-1", children: [
           action,
@@ -4712,7 +4712,7 @@ function TabStrip({
     if (it && !it.disabled) onChange(it.id);
   });
   const pad = size === "sm" ? "px-2 py-1.5" : "px-3 py-2";
-  const text = size === "sm" ? "text-[12px]" : "text-[13px]";
+  const text = size === "sm" ? "mg-type-caption" : "mg-type-caption-lg";
   return /* @__PURE__ */ jsx(
     "div",
     {
@@ -4906,7 +4906,7 @@ function PagerFooter({
     "div",
     {
       className: cn(
-        "flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 text-[12px] text-ink-muted",
+        "flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3 mg-type-caption text-ink-muted",
         className
       ),
       children: [
@@ -4947,7 +4947,7 @@ function MetaStrip({
     "div",
     {
       className: cn(
-        "flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-ink-muted",
+        "flex flex-wrap items-center gap-x-2 gap-y-1 mg-type-caption text-ink-muted",
         className
       ),
       children: items.map((it, i) => /* @__PURE__ */ jsxs(
@@ -5294,7 +5294,7 @@ function MobileCollapse({
         children: [
           /* @__PURE__ */ jsxs("span", { className: "flex min-w-0 flex-1 flex-col", children: [
             /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-strong", children: label }),
-            hint ? /* @__PURE__ */ jsx("span", { className: "mt-0.5 truncate font-mono text-[11px] text-ink-muted", children: hint }) : null
+            hint ? /* @__PURE__ */ jsx("span", { className: "mt-0.5 truncate mg-type-data text-ink-muted", children: hint }) : null
           ] }),
           /* @__PURE__ */ jsxs("span", { className: "flex shrink-0 items-center gap-2", children: [
             trailing,
@@ -5338,7 +5338,7 @@ function ReadinessGauge({
   className
 }) {
   if (score == null && !tier) {
-    return /* @__PURE__ */ jsx("span", { className: "font-mono text-[11px] text-ink-muted", children: "\u2014" });
+    return /* @__PURE__ */ jsx("span", { className: "mg-type-data text-ink-muted", children: "\u2014" });
   }
   const value = Math.max(0, Math.min(100, score ?? 0));
   const label = tierLabels[tier ?? ""] ?? tier ?? "Not classified";
@@ -5371,7 +5371,7 @@ function ReadinessGauge({
             )
           }
         ),
-        /* @__PURE__ */ jsx("span", { className: "text-right font-mono text-[11px] tabular-nums text-ink-strong", children: value })
+        /* @__PURE__ */ jsx("span", { className: "text-right mg-type-data tabular-nums text-ink-strong", children: value })
       ]
     }
   );
@@ -5518,7 +5518,7 @@ function QueryBarSearch({
         "aria-label": placeholder,
         className: classNames(
           "peer flex-1 min-w-0 bg-transparent border-0 outline-none",
-          "py-1.5 text-[13px] text-ink-strong placeholder:text-ink-subtle-text",
+          "py-1.5 mg-type-caption-lg text-ink-strong placeholder:text-ink-subtle-text",
           "focus:outline-none focus:ring-0",
           className
         )
@@ -5541,7 +5541,7 @@ function QueryBarSearch({
       "kbd",
       {
         "aria-hidden": true,
-        className: "pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 font-mono text-[10px] text-ink-muted",
+        className: "pointer-events-none hidden sm:inline-flex items-center rounded border border-border/70 bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted",
         children: "/"
       }
     ) : null
@@ -5620,7 +5620,7 @@ function QueryBarFilterTrigger(props) {
         "aria-label": `${label} filter${active ? `, ${selected.length} selected` : ""}`,
         className: classNames(
           "mg-ghost-trigger group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2",
-          "text-[12px] transition-colors",
+          "mg-type-caption transition-colors",
           "hover:bg-surface-2",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           active ? "text-ink-strong" : "text-ink-muted",
@@ -5862,8 +5862,8 @@ function PanelError({
       children: [
         /* @__PURE__ */ jsx("div", { className: "grid size-9 place-items-center rounded-full bg-surface-2 text-health-warn", children: /* @__PURE__ */ jsx(AlertTriangle, { className: "size-4", "aria-hidden": true }) }),
         /* @__PURE__ */ jsxs("div", { className: "max-w-sm space-y-1", children: [
-          /* @__PURE__ */ jsx("div", { className: "font-display text-[13px] font-semibold text-ink-strong", children: title }),
-          /* @__PURE__ */ jsx("p", { className: "text-[12px] leading-relaxed text-ink-muted", children: message })
+          /* @__PURE__ */ jsx("div", { className: "font-display mg-type-caption-lg font-semibold text-ink-strong", children: title }),
+          /* @__PURE__ */ jsx("p", { className: "mg-type-caption leading-relaxed text-ink-muted", children: message })
         ] }),
         /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center justify-center gap-2 pt-1", children: [
           onRetry ? /* @__PURE__ */ jsx(

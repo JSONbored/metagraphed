@@ -69,7 +69,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
             <GitCompare className="size-3 text-ink-muted" />
             Compare
             {peer != null ? (
-              <span className="font-mono text-[10px] text-ink-muted">
+              <span className="mg-type-data-sm text-ink-muted">
                 · SN{String(peer).padStart(3, "0")}
               </span>
             ) : null}
@@ -126,7 +126,7 @@ export function SubnetCompareDrawer({ netuid }: { netuid: number }) {
 
           <div className="mt-4">
             {peer == null ? (
-              <p className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center text-[12px] text-ink-muted">
+              <p className="rounded border border-dashed border-border bg-paper/40 px-3 py-6 text-center mg-type-caption text-ink-muted">
                 Enter a netuid above to load a side-by-side comparison.
               </p>
             ) : (
@@ -262,7 +262,7 @@ function Header({ label, name, netuid }: { label: string; name?: string; netuid:
         <div className="mt-0.5 truncate font-display text-sm font-semibold text-ink-strong">
           {name ?? `Subnet ${netuid}`}
         </div>
-        <div className="font-mono text-[10px] text-ink-muted">
+        <div className="mg-type-data-sm text-ink-muted">
           netuid {String(netuid).padStart(3, "0")}
         </div>
       </div>
@@ -295,7 +295,7 @@ function DiffRow({
         <span className="font-display text-sm font-semibold tabular-nums text-ink-strong">
           {baseValue}
         </span>
-        <span className="font-mono text-[10px] text-ink-muted">{delta ?? "vs"}</span>
+        <span className="mg-type-data-sm text-ink-muted">{delta ?? "vs"}</span>
         <span className="text-right font-display text-sm font-semibold tabular-nums text-ink-strong">
           {peerValue}
         </span>
@@ -313,7 +313,7 @@ function ProviderColumn({
 }) {
   const otherSet = new Set(other.map((r) => r.slug));
   if (rows.length === 0)
-    return <div className="px-3 py-3 font-mono text-[10px] text-ink-muted">no providers</div>;
+    return <div className="px-3 py-3 mg-type-data-sm text-ink-muted">no providers</div>;
   return (
     <ul className="divide-y divide-border">
       {rows.slice(0, 5).map((r) => {
@@ -322,12 +322,12 @@ function ProviderColumn({
           <li
             key={r.slug}
             className={classNames(
-              "flex items-center justify-between gap-2 px-3 py-1.5 text-[12px]",
+              "flex items-center justify-between gap-2 px-3 py-1.5 mg-type-caption",
               unique && "bg-accent/5",
             )}
           >
             <span className="truncate text-ink-strong">{r.name}</span>
-            <span className="font-mono text-[10px] tabular-nums text-ink-muted">
+            <span className="mg-type-data-sm tabular-nums text-ink-muted">
               {r.count}
               {unique ? (
                 <span className="ml-1 rounded border border-accent/40 px-1 mg-type-micro text-accent">

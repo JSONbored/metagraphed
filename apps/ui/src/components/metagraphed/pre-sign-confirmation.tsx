@@ -113,7 +113,7 @@ export function PreSignConfirmation({
           type="button"
           onClick={onCancel}
           disabled={confirming}
-          className="flex-1 rounded border border-border bg-card px-3 py-2 text-[12px] font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-60"
+          className="flex-1 rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-60"
         >
           Cancel
         </button>
@@ -121,7 +121,7 @@ export function PreSignConfirmation({
           type="button"
           onClick={onConfirm}
           disabled={confirming || feeTao === null}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 text-[12px] font-medium text-ink-strong hover:border-ink-strong/60 transition-colors disabled:opacity-60"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-ink-strong/40 bg-surface px-3 py-2 mg-type-caption font-medium text-ink-strong hover:border-ink-strong/60 transition-colors disabled:opacity-60"
         >
           {confirming ? (
             <>
@@ -157,7 +157,7 @@ function SummaryRow({
       <span className="text-right">
         <span
           className={classNames(
-            "block text-[12px] font-medium text-ink-strong",
+            "block mg-type-caption font-medium text-ink-strong",
             loading && "animate-pulse text-ink-muted",
           )}
         >

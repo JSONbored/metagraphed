@@ -188,14 +188,14 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
       </header>
 
       {grouped.length === 0 ? (
-        <div className="p-8 text-center font-mono text-[11px] text-ink-muted">
+        <div className="p-8 text-center mg-type-data text-ink-muted">
           No schemas match this filter.
         </div>
       ) : (
         <div className="divide-y divide-border">
           {grouped.map((g) => (
             <div key={g.label} className="grid grid-cols-[88px_1fr] gap-3 px-4 py-3 items-start">
-              <div className="font-mono text-[11px] text-ink-muted pt-1">
+              <div className="mg-type-data text-ink-muted pt-1">
                 {g.netuid != null ? (
                   <Link
                     to="/subnets/$netuid"
@@ -229,7 +229,7 @@ export function SchemaDriftMatrix({ setOpenSchema }: Props) {
         </div>
       )}
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-paper/30 px-4 py-2 font-mono text-[10px] text-ink-muted">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-paper/30 px-4 py-2 mg-type-data-sm text-ink-muted">
         <div className="flex items-center gap-3">
           <KindLegend kind="breaking" />
           <KindLegend kind="additive" />
@@ -291,9 +291,7 @@ function DriftTile({
           )}
           aria-hidden
         />
-        <span className="font-mono text-[11px] text-ink-strong truncate max-w-[180px]">
-          {label}
-        </span>
+        <span className="mg-type-data text-ink-strong truncate max-w-[180px]">{label}</span>
         {schema.updated_at ? (
           <span className="font-mono text-[9px] text-ink-muted shrink-0">
             <TimeAgo at={schema.updated_at} />

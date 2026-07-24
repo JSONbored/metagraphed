@@ -121,7 +121,7 @@ function PriorityCard({ item }: { item: Item }) {
               <HealthDot state={r.health ?? "unknown"} />
               <span className="truncate font-mono">{r.provider ?? r.provider_slug ?? r.id}</span>
               {r.latency_ms != null ? (
-                <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums">
+                <span className="ml-auto shrink-0 mg-type-data-sm tabular-nums">
                   {r.latency_ms}ms
                 </span>
               ) : null}

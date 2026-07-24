@@ -98,7 +98,7 @@ export function CallModuleExtrinsicsTable({
   );
 
   const footerNode = (
-    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 text-[11px] font-mono text-ink-muted">
+    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 mg-type-data text-ink-muted">
       <span>
         {rows.length
           ? `${formatNumber(search.offset + 1)}–${formatNumber(search.offset + rows.length)}`
@@ -131,7 +131,7 @@ export function CallModuleExtrinsicsTable({
           <tbody className="divide-y divide-border">
             {rows.map((x) => (
               <tr key={rowKey(x)} className="mg-row-accent hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                   {x.extrinsic_hash ? (
                     <span className="inline-flex items-center gap-1 min-w-0">
                       <Link
@@ -148,7 +148,7 @@ export function CallModuleExtrinsicsTable({
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[12px]">
+                <td className="px-4 py-2.5 font-mono mg-type-caption">
                   {x.block_number != null ? (
                     <Link
                       to="/blocks/$ref"
@@ -164,16 +164,16 @@ export function CallModuleExtrinsicsTable({
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink">
+                <td className="px-4 py-2.5 mg-type-data text-ink">
                   {extrinsicCall(x.call_module, x.call_function)}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                   {x.signer ? <CopyableCode value={x.signer} className="max-w-full" /> : "—"}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px]">
+                <td className="px-4 py-2.5 mg-type-data">
                   <SuccessBadge success={x.success} />
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
                   <TimeAgo at={x.observed_at} />
                 </td>
               </tr>
@@ -194,7 +194,7 @@ function RowCard({ x }: { x: Extrinsic }) {
         <div className="flex items-center gap-1 min-w-0 flex-1">
           {x.extrinsic_hash ? (
             <>
-              <span className="font-mono text-[12px] font-medium text-ink-strong truncate">
+              <span className="font-mono mg-type-caption font-medium text-ink-strong truncate">
                 {shortHash(x.extrinsic_hash)}
               </span>
               <span
@@ -208,17 +208,17 @@ function RowCard({ x }: { x: Extrinsic }) {
               </span>
             </>
           ) : (
-            <span className="font-mono text-[12px] font-medium text-ink-strong">(no hash)</span>
+            <span className="font-mono mg-type-caption font-medium text-ink-strong">(no hash)</span>
           )}
         </div>
-        <span className="font-mono text-[11px] text-ink-muted shrink-0">
+        <span className="mg-type-data text-ink-muted shrink-0">
           <TimeAgo at={x.observed_at} />
         </span>
       </div>
-      <div className="mt-1 font-mono text-[11px] text-ink truncate">
+      <div className="mt-1 mg-type-data text-ink truncate">
         {extrinsicCall(x.call_module, x.call_function)}
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
+      <div className="mt-2 flex items-center justify-between gap-2 mg-type-data text-ink-muted">
         <span className="shrink-0">
           {x.block_number != null ? `#${formatNumber(x.block_number)}` : "—"}
         </span>

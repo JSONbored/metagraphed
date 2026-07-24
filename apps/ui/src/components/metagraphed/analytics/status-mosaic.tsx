@@ -121,7 +121,7 @@ export function StatusMosaic({ className, limit = 240 }: { className?: string; l
             );
           })}
           {rows.length === 0 ? (
-            <div className="col-span-full py-6 text-center font-mono text-[10px] text-ink-muted">
+            <div className="col-span-full py-6 text-center mg-type-data-sm text-ink-muted">
               No endpoints match this filter.
             </div>
           ) : null}

@@ -54,7 +54,7 @@ function PortfolioPage() {
           <h2 className="text-sm font-medium text-ink-strong">
             Connect a wallet to see your positions
           </h2>
-          <p className="mx-auto mt-1 mb-4 max-w-md text-[13px] text-ink-muted">
+          <p className="mx-auto mt-1 mb-4 max-w-md mg-type-caption-lg text-ink-muted">
             This app is read-only — it never constructs or signs a transaction. Connecting only
             reads your public on-chain positions from a browser wallet extension.
           </p>
