@@ -7,6 +7,7 @@ import {
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
   isUsageTelemetryConfigured,
+  recordAiGenerationEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
   recordMcpToolCallEvent,
@@ -16,6 +17,7 @@ import {
 } from "../src/usage-telemetry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 import type {
+  AiGenerationEvent,
   ExceptionEvent,
   McpToolCallEvent,
   UsageEvent,
@@ -1073,6 +1075,256 @@ describe("recordExceptionEvent", () => {
         error: thrownError(Error, "boom"),
         route: "x",
       });
+      assert.equal(recorded, true);
+      assert.equal(calls.length, 1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+describe("recordAiGenerationEvent", () => {
+  const CONFIGURED = {
+    [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+  } as unknown as Env;
+
+  function thrownError(ErrorClass: ErrorConstructor, message: string) {
+    try {
+      throw new ErrorClass(message);
+    } catch (e) {
+      return e;
+    }
+  }
+
+  const BASE: AiGenerationEvent = {
+    provider: "cloudflare_workers_ai",
+    model: "@cf/meta/llama-4-scout-17b-16e-instruct",
+    latencyMs: 1500,
+    isError: false,
+  };
+
+  test("posts a well-formed $ai_generation event for a successful call", async () => {
+    const calls: Row[] = [];
+    const recorded = await recordAiGenerationEvent(
+      CONFIGURED,
+      {
+        ...BASE,
+        traceId: "11111111-1111-1111-1111-111111111111",
+        inputTokens: 200,
+        outputTokens: 50,
+        inputCostUsd: 0.000054,
+        outputCostUsd: 0.0000425,
+        modelParameters: { max_tokens: 512 },
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    const { body } = calls[0];
+    assert.equal(body.event, "$ai_generation");
+    assert.equal(body.api_key, "phc_token");
+    assert.equal(body.distinct_id, USAGE_EVENT_DISTINCT_ID);
+
+    const { properties } = body;
+    assert.equal(
+      properties.$ai_trace_id,
+      "11111111-1111-1111-1111-111111111111",
+    );
+    assert.equal(properties.$ai_model, BASE.model);
+    assert.equal(properties.$ai_provider, "cloudflare_workers_ai");
+    assert.equal(properties.$ai_latency, 1.5);
+    assert.equal(properties.$ai_http_status, 200);
+    assert.equal(properties.$ai_input_tokens, 200);
+    assert.equal(properties.$ai_output_tokens, 50);
+    assert.equal(properties.$ai_is_error, false);
+    assert.deepEqual(properties.$ai_model_parameters, { max_tokens: 512 });
+    assert.equal(properties.$ai_input_cost_usd, 0.000054);
+    assert.equal(properties.$ai_output_cost_usd, 0.0000425);
+    assert.equal(properties.$ai_total_cost_usd, 0.0000965);
+    assert.equal("$ai_error" in properties, false);
+  });
+
+  test("never captures prompt/completion content -- no field carries free text beyond the model id", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(CONFIGURED, BASE, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    });
+    const keys = Object.keys(calls[0].body.properties);
+    assert.equal(keys.includes("$ai_input"), false);
+    assert.equal(keys.includes("$ai_output_choices"), false);
+  });
+
+  test("mints a fresh trace id when none is supplied", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(CONFIGURED, BASE, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    });
+    const traceId = calls[0].body.properties.$ai_trace_id;
+    assert.equal(typeof traceId, "string");
+    // A real crypto.randomUUID() shape (v4 UUID), not a placeholder.
+    assert.match(
+      traceId,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
+  test("defaults input/output tokens to 0 when omitted", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(CONFIGURED, BASE, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    });
+    assert.equal(calls[0].body.properties.$ai_input_tokens, 0);
+    assert.equal(calls[0].body.properties.$ai_output_tokens, 0);
+  });
+
+  test("defaults tokens to 0 when the supplied values are non-finite", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(
+      CONFIGURED,
+      { ...BASE, inputTokens: NaN, outputTokens: Infinity },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.properties.$ai_input_tokens, 0);
+    assert.equal(calls[0].body.properties.$ai_output_tokens, 0);
+  });
+
+  test("omits cost fields entirely when cost is not supplied", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(CONFIGURED, BASE, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    });
+    const { properties } = calls[0].body;
+    assert.equal("$ai_input_cost_usd" in properties, false);
+    assert.equal("$ai_output_cost_usd" in properties, false);
+    assert.equal("$ai_total_cost_usd" in properties, false);
+  });
+
+  test("omits cost fields when only one side of input/output cost is supplied", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(
+      CONFIGURED,
+      { ...BASE, inputCostUsd: 0.01 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal("$ai_input_cost_usd" in calls[0].body.properties, false);
+  });
+
+  test("omits $ai_model_parameters when not supplied", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(CONFIGURED, BASE, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    });
+    assert.equal("$ai_model_parameters" in calls[0].body.properties, false);
+  });
+
+  test("falls back to 'unknown' for a blank model/provider", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(
+      CONFIGURED,
+      { ...BASE, model: "", provider: "   " },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.properties.$ai_model, "unknown");
+    assert.equal(calls[0].body.properties.$ai_provider, "unknown");
+  });
+
+  test("marks a failed generation with $ai_is_error/$ai_http_status/$ai_error", async () => {
+    const calls: Row[] = [];
+    const recorded = await recordAiGenerationEvent(
+      CONFIGURED,
+      { ...BASE, isError: true, error: thrownError(Error, "AI.run failed") },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, true);
+    const { properties } = calls[0].body;
+    assert.equal(properties.$ai_is_error, true);
+    assert.equal(properties.$ai_http_status, 500);
+    assert.equal(properties.$ai_error, "Error: AI.run failed");
+  });
+
+  test("handles a thrown non-Error value on the error path without crashing", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(
+      CONFIGURED,
+      { ...BASE, isError: true, error: "just a string" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.properties.$ai_error, "Error: just a string");
+  });
+
+  test("never posts when the deployment is unconfigured", async () => {
+    let calls = 0;
+    const recorded = await recordAiGenerationEvent(mockEnv(), BASE, {
+      fetch: fakeFetch({
+        onCall: () => {
+          calls += 1;
+        },
+      }),
+    });
+    assert.equal(recorded, false);
+    assert.equal(calls, 0);
+  });
+
+  test("returns false without posting when isError is not a boolean", async () => {
+    let calls = 0;
+    const recorded = await recordAiGenerationEvent(
+      CONFIGURED,
+      { ...BASE, isError: undefined as unknown as boolean },
+      {
+        fetch: fakeFetch({
+          onCall: () => {
+            calls += 1;
+          },
+        }),
+      },
+    );
+    assert.equal(recorded, false);
+    assert.equal(calls, 0);
+  });
+
+  test("returns false without posting when latencyMs is negative/non-finite", async () => {
+    let calls = 0;
+    const onCall = () => {
+      calls += 1;
+    };
+    assert.equal(
+      await recordAiGenerationEvent(
+        CONFIGURED,
+        { ...BASE, latencyMs: -1 },
+        { fetch: fakeFetch({ onCall }) },
+      ),
+      false,
+    );
+    assert.equal(
+      await recordAiGenerationEvent(
+        CONFIGURED,
+        { ...BASE, latencyMs: NaN },
+        { fetch: fakeFetch({ onCall }) },
+      ),
+      false,
+    );
+    assert.equal(calls, 0);
+  });
+
+  test("reports a rejected capture as not recorded", async () => {
+    const recorded = await recordAiGenerationEvent(CONFIGURED, BASE, {
+      fetch: fakeFetch({ ok: false }),
+    });
+    assert.equal(recorded, false);
+  });
+
+  test("swallows a transport failure", async () => {
+    const recorded = await recordAiGenerationEvent(CONFIGURED, BASE, {
+      fetch: fakeFetch({ throws: true }),
+    });
+    assert.equal(recorded, false);
+  });
+
+  test("defaults to the platform fetch when none is injected", async () => {
+    const original = globalThis.fetch;
+    const calls: Row[] = [];
+    globalThis.fetch = fakeFetch({ onCall: (call) => calls.push(call) });
+    try {
+      const recorded = await recordAiGenerationEvent(CONFIGURED, BASE);
       assert.equal(recorded, true);
       assert.equal(calls.length, 1);
     } finally {

@@ -11,6 +11,7 @@
 // and question length.
 
 import type { StorageReadResult } from "../workers/storage.ts";
+import { recordAiGenerationEvent } from "./usage-telemetry.ts";
 
 // Best free Workers AI models (verified available on the account):
 // - Embedding: Qwen3-Embedding-0.6B (1024-dim) — tops MTEB English; the
@@ -20,6 +21,14 @@ import type { StorageReadResult } from "../workers/storage.ts";
 export const EMBED_MODEL = "@cf/qwen/qwen3-embedding-0.6b"; // 1024-dim
 export const EMBED_DIMENSIONS = 1024;
 export const ASK_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
+// PostHog's $ai_generation cost auto-computation only recognizes well-known
+// hosted-provider model names, not Workers AI catalog ids, so recordAiGeneration
+// below supplies cost itself. Confirmed unit pricing per
+// https://developers.cloudflare.com/workers-ai/models/llama-4-scout-17b-16e-instruct/
+// (checked 2026-07-24) -- update alongside ASK_MODEL if the model ever changes.
+const ASK_PROVIDER = "cloudflare_workers_ai";
+const ASK_MODEL_INPUT_USD_PER_MILLION = 0.27;
+const ASK_MODEL_OUTPUT_USD_PER_MILLION = 0.85;
 export const VECTORIZE_INDEX_NAME = "metagraphed-registry-v2";
 export const EMBED_MANIFEST_KEY = [
   "ai:embed-manifest",
@@ -85,6 +94,15 @@ export async function withinRateLimit(env: Env, key: string): Promise<boolean> {
   } catch {
     return true;
   }
+}
+
+// Dollar cost for a token count at the given per-million rate, or undefined
+// when the count is missing/invalid -- recordAiGenerationEvent only sends
+// $ai_*_cost_usd when both input and output resolve to a finite number.
+function costUsd(tokens: unknown, ratePerMillion: number): number | undefined {
+  return typeof tokens === "number" && Number.isFinite(tokens) && tokens >= 0
+    ? (tokens / 1_000_000) * ratePerMillion
+    : undefined;
 }
 
 function clampLimit(value: unknown, fallback: number, max: number): number {
@@ -627,9 +645,34 @@ export async function askQuestion(
         "Answer using only the registry data above and cite sources as [n].",
     },
   ];
+  const modelParameters = { max_tokens: ASK_MAX_TOKENS };
+  const generationStart = Date.now();
   const completion = await env.AI.run(ASK_MODEL, {
     messages,
     max_tokens: ASK_MAX_TOKENS,
+  }).catch(async (error) => {
+    await recordAiGenerationEvent(env, {
+      provider: ASK_PROVIDER,
+      model: ASK_MODEL,
+      latencyMs: Date.now() - generationStart,
+      isError: true,
+      error,
+      modelParameters,
+    });
+    throw error;
+  });
+  const inputTokens = completion?.usage?.prompt_tokens;
+  const outputTokens = completion?.usage?.completion_tokens;
+  await recordAiGenerationEvent(env, {
+    provider: ASK_PROVIDER,
+    model: ASK_MODEL,
+    latencyMs: Date.now() - generationStart,
+    isError: false,
+    inputTokens,
+    outputTokens,
+    inputCostUsd: costUsd(inputTokens, ASK_MODEL_INPUT_USD_PER_MILLION),
+    outputCostUsd: costUsd(outputTokens, ASK_MODEL_OUTPUT_USD_PER_MILLION),
+    modelParameters,
   });
   const answer = (completion?.response || "").trim();
   return {

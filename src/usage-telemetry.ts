@@ -533,3 +533,120 @@ export async function recordExceptionEvent(
     return false;
   }
 }
+
+// AI generation observability via PostHog's raw `$ai_generation` event (#7763).
+// Same raw-fetch, no-throw, no-op-when-unconfigured contract as the other
+// recordX helpers above -- no SDK (posthog-ai pulls in an LLM-provider client
+// layer neither needed nor affordable inside the Worker bundle budget; see the
+// header comment). The exact property names/units below are NOT from PostHog's
+// docs pages (posthog.com/docs/ai-engineering/observability/manual-capture and
+// .../python both 404 as of this writing) -- they're read off PostHog's own
+// posthog-js-lite SDK source (posthog-ai/src/utils.ts), the same
+// verify-against-source approach #7758's $exception shape used.
+//
+// Content-free by design (#7763's explicit redaction posture): only
+// cost/token/latency/model metadata is ever sent, never the prompt or
+// completion text -- the same minimal-capture philosophy `usage_event` (top of
+// this file) already applies, extended to the one field class an LLM call
+// uniquely adds (tokens/cost).
+
+/** Inputs for one AI generation call. `error` mirrors ExceptionEvent's own
+ * `error` (raw caught value, this module extracts type/message itself) --
+ * never a caller-preformatted string. */
+export interface AiGenerationEvent {
+  provider: string;
+  model: string;
+  /** Groups an event to its call; PostHog requires one per generation even
+   * outside a multi-step chain, so a fresh UUID is minted when omitted --
+   * mirrors posthog-ai's own `uuidv4()` fallback. */
+  traceId?: string;
+  latencyMs: number;
+  isError: boolean;
+  inputTokens?: number;
+  outputTokens?: number;
+  /** Only included when BOTH are finite -- see costUsd() in ai-search.ts,
+   * which returns undefined for missing/invalid token counts. */
+  inputCostUsd?: number;
+  outputCostUsd?: number;
+  /** Generation config (e.g. `{ max_tokens }`), never prompt/completion text. */
+  modelParameters?: Record<string, string | number | boolean>;
+  error?: unknown;
+}
+
+/**
+ * Capture one LLM call as a PostHog `$ai_generation` event. Same no-throw,
+ * no-op-when-unconfigured contract as recordUsageEvent/recordExceptionEvent.
+ */
+export async function recordAiGenerationEvent(
+  env: Env | null | undefined,
+  event: AiGenerationEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+    if (typeof event.isError !== "boolean") return false;
+    if (
+      typeof event.latencyMs !== "number" ||
+      !Number.isFinite(event.latencyMs) ||
+      event.latencyMs < 0
+    ) {
+      return false;
+    }
+
+    const properties: Record<string, unknown> = {
+      $ai_trace_id: event.traceId ?? crypto.randomUUID(),
+      $ai_model: sanitizeLabel(event.model) ?? "unknown",
+      $ai_provider: sanitizeLabel(event.provider) ?? "unknown",
+      // PostHog's $ai_generation schema reports latency in SECONDS, not ms.
+      $ai_latency: event.latencyMs / 1000,
+      // env.AI.run() is a Workers RPC binding, not raw HTTP -- there is no
+      // real transport status to report, so this is derived from isError.
+      $ai_http_status: event.isError ? 500 : 200,
+      $ai_input_tokens: Number.isFinite(event.inputTokens)
+        ? event.inputTokens
+        : 0,
+      $ai_output_tokens: Number.isFinite(event.outputTokens)
+        ? event.outputTokens
+        : 0,
+      $ai_is_error: event.isError,
+    };
+
+    if (event.modelParameters) {
+      properties.$ai_model_parameters = event.modelParameters;
+    }
+
+    if (
+      Number.isFinite(event.inputCostUsd) &&
+      Number.isFinite(event.outputCostUsd)
+    ) {
+      properties.$ai_input_cost_usd = event.inputCostUsd;
+      properties.$ai_output_cost_usd = event.outputCostUsd;
+      properties.$ai_total_cost_usd =
+        (event.inputCostUsd as number) + (event.outputCostUsd as number);
+    }
+
+    if (event.isError) {
+      const { type, entry } = exceptionListEntry(event.error);
+      properties.$ai_error = `${type}: ${entry.value}`;
+    }
+
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: "$ai_generation",
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
+}

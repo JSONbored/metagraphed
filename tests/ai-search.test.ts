@@ -20,6 +20,7 @@ import {
 import { handleRequest, handleScheduled } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { overlayCatalogIndex } from "../src/health-serving.ts";
+import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
 
@@ -58,7 +59,10 @@ function stubAi() {
           data: Array.from({ length: n }, () => new Array(1024).fill(0.02)),
         });
       }
-      return Promise.resolve({ response: "Subnet 1 does images [1]." });
+      return Promise.resolve({
+        response: "Subnet 1 does images [1].",
+        usage: { prompt_tokens: 120, completion_tokens: 40, total_tokens: 160 },
+      });
     },
   };
 }
@@ -888,6 +892,122 @@ describe("askQuestion", () => {
       () => askQuestion(mockEnv(env), "q", { type: "bogus" }),
       /Unknown type/,
     );
+  });
+});
+
+describe("askQuestion AI observability ($ai_generation, #7763)", () => {
+  // A capture is one POST to PostHog's capture endpoint -- record what it was
+  // handed, same shape as usage-telemetry.test.ts's fakeFetch.
+  function fetchSpy(calls: Row[]) {
+    return (async (_url: unknown, init: Row) => {
+      calls.push(JSON.parse(init.body));
+      return { ok: true };
+    }) as unknown as typeof fetch;
+  }
+
+  async function withGlobalFetch(fn: typeof fetch, run: () => Promise<void>) {
+    const original = globalThis.fetch;
+    globalThis.fetch = fn;
+    try {
+      await run();
+    } finally {
+      globalThis.fetch = original;
+    }
+  }
+
+  test("records a well-formed $ai_generation event with token/cost metadata on success", async () => {
+    const calls: Row[] = [];
+    await withGlobalFetch(fetchSpy(calls), async () => {
+      const env = {
+        AI: stubAi(),
+        VECTORIZE: stubVectorize(),
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test",
+      };
+      await askQuestion(mockEnv(env), "Which subnet does images?");
+    });
+    assert.equal(calls.length, 1);
+    const { event, properties } = calls[0];
+    assert.equal(event, "$ai_generation");
+    assert.equal(properties.$ai_model, ASK_MODEL);
+    assert.equal(properties.$ai_provider, "cloudflare_workers_ai");
+    assert.equal(properties.$ai_is_error, false);
+    assert.equal(properties.$ai_http_status, 200);
+    assert.equal(properties.$ai_input_tokens, 120);
+    assert.equal(properties.$ai_output_tokens, 40);
+    assert.ok(properties.$ai_input_cost_usd > 0);
+    assert.ok(properties.$ai_output_cost_usd > 0);
+    assert.equal(
+      properties.$ai_total_cost_usd,
+      properties.$ai_input_cost_usd + properties.$ai_output_cost_usd,
+    );
+    assert.deepEqual(properties.$ai_model_parameters, { max_tokens: 512 });
+    // Content-free: never the question, the retrieved context, or the answer.
+    assert.equal("$ai_input" in properties, false);
+    assert.equal("$ai_output_choices" in properties, false);
+  });
+
+  test("omits cost fields when the model response carries no usage object", async () => {
+    const calls: Row[] = [];
+    const aiNoUsage = {
+      run(model: string) {
+        if (model === EMBED_MODEL) {
+          return Promise.resolve({ data: [new Array(1024).fill(0.02)] });
+        }
+        return Promise.resolve({ response: "no usage here" });
+      },
+    };
+    await withGlobalFetch(fetchSpy(calls), async () => {
+      const env = {
+        AI: aiNoUsage,
+        VECTORIZE: stubVectorize(),
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test",
+      };
+      await askQuestion(mockEnv(env), "Which subnet does images?");
+    });
+    const { properties } = calls[0];
+    assert.equal(properties.$ai_input_tokens, 0);
+    assert.equal(properties.$ai_output_tokens, 0);
+    assert.equal("$ai_input_cost_usd" in properties, false);
+  });
+
+  test("records a failed $ai_generation event and still rethrows the original error", async () => {
+    const calls: Row[] = [];
+    const failingAi = {
+      run(model: string, input: Row) {
+        if (model === EMBED_MODEL) {
+          const n = Array.isArray(input.text) ? input.text.length : 1;
+          return Promise.resolve({
+            data: Array.from({ length: n }, () => new Array(1024).fill(0.02)),
+          });
+        }
+        return Promise.reject(new Error("Workers AI unavailable"));
+      },
+    };
+    await withGlobalFetch(fetchSpy(calls), async () => {
+      const env = {
+        AI: failingAi,
+        VECTORIZE: stubVectorize(),
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test",
+      };
+      await assert.rejects(
+        () => askQuestion(mockEnv(env), "Which subnet does images?"),
+        /Workers AI unavailable/,
+      );
+    });
+    assert.equal(calls.length, 1);
+    const { properties } = calls[0];
+    assert.equal(properties.$ai_is_error, true);
+    assert.equal(properties.$ai_http_status, 500);
+    assert.equal(properties.$ai_error, "Error: Workers AI unavailable");
+  });
+
+  test("never calls fetch when PostHog is unconfigured", async () => {
+    const calls: Row[] = [];
+    await withGlobalFetch(fetchSpy(calls), async () => {
+      const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+      await askQuestion(mockEnv(env), "Which subnet does images?");
+    });
+    assert.equal(calls.length, 0);
   });
 });
 
