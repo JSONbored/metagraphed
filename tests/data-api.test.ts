@@ -13,9 +13,10 @@ import {
   identitySnapshotFromProfile,
 } from "../src/subnet-identity-history.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
+import type { AnyFn, Row } from "./row-type.ts";
 
-const sqlCalls = vi.hoisted(() => []);
-const sqlBeginOptions = vi.hoisted(() => []);
+const sqlCalls = vi.hoisted((): Row[] => []);
+const sqlBeginOptions = vi.hoisted((): unknown[] => []);
 const mockRows = vi.hoisted(() => ({
   current: [
     {
@@ -28,7 +29,7 @@ const mockRows = vi.hoisted(() => ({
       extrinsic_index: 2,
       observed_at: "100",
     },
-  ],
+  ] as Row[],
 }));
 // A per-test queue of results for handlers that issue more than one query per
 // request (the new blocks/extrinsics detail routes: main row + a prev/next
@@ -36,40 +37,52 @@ const mockRows = vi.hoisted(() => ({
 // sql`` call shifts the next queued result; once empty, falls back to the
 // single shared `mockRows.current` (preserving every existing chain-events
 // test's simpler one-shape-fits-all behavior unchanged).
-const mockQueue = vi.hoisted(() => ({ current: [] }));
+const mockQueue = vi.hoisted(() => ({ current: [] as Row[] }));
 // State for the neurons-sync write route's tests only (#4771) -- unused by
 // every GET-route test above.
-const neuronsSyncFailure = vi.hoisted(() => ({ error: null }));
+const neuronsSyncFailure = vi.hoisted(() => ({ error: null as Error | null }));
 // State for the backfill-neuron-daily write route's tests only -- separate
 // from neuronsSyncFailure above so injecting one never affects the other's
 // tests (both match on an INSERT INTO neuron_daily-adjacent pattern).
-const neuronDailyBackfillFailure = vi.hoisted(() => ({ error: null }));
-const neuronsSyncPruneRows = vi.hoisted(() => ({ current: [] }));
+const neuronDailyBackfillFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
+const neuronsSyncPruneRows = vi.hoisted(() => ({ current: [] as Row[] }));
 // State for the account-events-daily rollup write route's tests only (#4832).
-const rollupFailure = vi.hoisted(() => ({ error: null }));
+const rollupFailure = vi.hoisted(() => ({ error: null as Error | null }));
 // State for the subnet-hyperparams-sync write route's tests only (#4832
 // gap-closure): a failure hook mirroring neuronsSyncFailure/rollupFailure, a
 // prune-rows hook mirroring neuronsSyncPruneRows, and the "latest hash per
 // netuid" SELECT DISTINCT ON result the history diff reads before deciding
 // which rows changed.
-const subnetHyperparamsSyncFailure = vi.hoisted(() => ({ error: null }));
-const subnetHyperparamsPruneRows = vi.hoisted(() => ({ current: [] }));
-const subnetHyperparamsLatestHashes = vi.hoisted(() => ({ current: [] }));
+const subnetHyperparamsSyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
+const subnetHyperparamsPruneRows = vi.hoisted(() => ({ current: [] as Row[] }));
+const subnetHyperparamsLatestHashes = vi.hoisted(() => ({
+  current: [] as Row[],
+}));
 // State for the subnet-locks-sync write route's tests only (metagraphed#7758
 // -- this route had zero existing coverage; added the minimal failure-path
 // test needed to cover captureDataApiError's new PostHog wiring at this
 // site, mirroring the fixture shape every sibling sync route above uses).
-const subnetLocksSyncFailure = vi.hoisted(() => ({ error: null }));
+const subnetLocksSyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for the account-identity-sync write route's tests only (#4832
 // gap-closure). No prune-rows hook -- unlike subnet_hyperparams, this table
 // has no purge step (see handleAccountIdentitySync's own header comment).
-const accountIdentitySyncFailure = vi.hoisted(() => ({ error: null }));
-const accountIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
+const accountIdentitySyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
+const accountIdentityLatestHashes = vi.hoisted(() => ({
+  current: [] as Row[],
+}));
 // State for the validator-nominator-counts-sync write route's tests only
 // (#2549). No prune/history hooks -- a single latest-only upsert, like
 // health-checks-sync below, not a diff-and-append table.
 const validatorNominatorCountsSyncFailure = vi.hoisted(() => ({
-  error: null,
+  error: null as Error | null,
 }));
 // State for the subnet-identity-sync write route's tests only (#4832
 // gap-closure). No prune-rows hook -- like account_identity, this table has
@@ -77,70 +90,99 @@ const validatorNominatorCountsSyncFailure = vi.hoisted(() => ({
 // `SELECT DISTINCT ON (netuid)` shape, so the mock below disambiguates on the
 // hash column name (hyperparams_hash vs identity_hash) rather than the netuid
 // grouping alone.
-const subnetIdentitySyncFailure = vi.hoisted(() => ({ error: null }));
-const subnetIdentityLatestHashes = vi.hoisted(() => ({ current: [] }));
+const subnetIdentitySyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
+const subnetIdentityLatestHashes = vi.hoisted(() => ({ current: [] as Row[] }));
 // State for the health-checks-sync write route's tests only (#4832
 // gap-closure). No hash-diff / latest-lookup query -- unlike the identity
 // sync routes, this one just bulk-inserts + upserts the same probed batch
 // D1/KV already received, so there's nothing to prime beyond the failure hook.
-const healthChecksSyncFailure = vi.hoisted(() => ({ error: null }));
-const healthUptimeRollupSyncFailure = vi.hoisted(() => ({ error: null }));
-const subnetSnapshotSyncFailure = vi.hoisted(() => ({ error: null }));
-const rpcUsageSyncFailure = vi.hoisted(() => ({ error: null }));
+const healthChecksSyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
+const healthUptimeRollupSyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
+const subnetSnapshotSyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
+const rpcUsageSyncFailure = vi.hoisted(() => ({ error: null as Error | null }));
 // State for the rpc-usage-prune write route's tests only (#5497
 // gap-closure) -- a failure hook mirroring rpcUsageSyncFailure above, plus
 // a controllable row count since this route's DELETE has no RETURNING
 // clause (a plain array's mockRows.current wouldn't simulate `.count`).
-const rpcUsagePruneFailure = vi.hoisted(() => ({ error: null }));
+const rpcUsagePruneFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 const rpcUsagePruneCount = vi.hoisted(() => ({ current: 0 }));
 // State for the featured_validators read (#5166) tests only -- lets a test
 // simulate the table not existing yet (pre-migration) without touching any
 // other query's mock plumbing.
-const featuredValidatorsQueryFailure = vi.hoisted(() => ({ error: null }));
+const featuredValidatorsQueryFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for the /api/v1/validators + /api/v1/validators/:hotkey
 // account_identity join (#5234) tests only. Dispatched by its own text match
 // (like the DELETE FROM neurons / DELETE FROM subnet_hyperparams sql.unsafe
 // branches below) rather than the shared mockQueue, so priming it never
 // shifts any existing validators test's mockQueue-ordering assumptions.
-const accountIdentityJoinRows = vi.hoisted(() => ({ current: [] }));
-const accountIdentityJoinQueryFailure = vi.hoisted(() => ({ error: null }));
+const accountIdentityJoinRows = vi.hoisted(() => ({ current: [] as Row[] }));
+const accountIdentityJoinQueryFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for the validator_nominator_counts READ (#2549) tests only -- same
 // isolation purpose as featuredValidatorsQueryFailure above, but for the
 // SELECT loadValidatorNominatorCounts issues (distinct from
 // validatorNominatorCountsSyncFailure, which only matches the sync route's
 // own INSERT).
 const validatorNominatorCountsQueryFailure = vi.hoisted(() => ({
-  error: null,
+  error: null as Error | null,
 }));
 // State for the subnet_hyperparams tempo READ (#2551) tests only -- same
 // isolation purpose as validatorNominatorCountsQueryFailure above, but for
 // loadSubnetTempos' own SELECT.
-const subnetTemposQueryFailure = vi.hoisted(() => ({ error: null }));
+const subnetTemposQueryFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for the neuron_daily realized-return baseline READs (#7228) only --
 // same isolation as subnetTemposQueryFailure above. `queue` feeds the three
 // per-window baseline queries in issue order (1d, 1w, 1m); `error`, when set,
 // rejects every baseline query so the savepoint-isolated failure path degrades
 // realized_return_* to null.
-const realizedBaselineState = vi.hoisted(() => ({ queue: [], error: null }));
+const realizedBaselineState = vi.hoisted(() => ({
+  queue: [] as Row[][],
+  error: null as Error | null,
+}));
 // State for the nominator-positions-sync WRITE (#5233) tests only.
-const nominatorPositionsSyncFailure = vi.hoisted(() => ({ error: null }));
+const nominatorPositionsSyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for the account-balances-sync WRITE (#6742) tests only.
-const accountBalancesSyncFailure = vi.hoisted(() => ({ error: null }));
+const accountBalancesSyncFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for the nominator_positions READ (#5233) tests only -- same
 // isolation purpose as subnetTemposQueryFailure above, but for
 // loadNominatorPositions' own SELECT.
-const nominatorPositionsQueryFailure = vi.hoisted(() => ({ error: null }));
+const nominatorPositionsQueryFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for the /positions route's second query (#6769 gap-closure) --
 // loadNeuronStakeByHotkeys' own sql.unsafe IN-list SELECT, isolated from
 // nominatorPositionsQueryFailure above so a test can fail just this one
 // without also failing the read it depends on.
-const neuronStakeByHotkeyQueryFailure = vi.hoisted(() => ({ error: null }));
+const neuronStakeByHotkeyQueryFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for GET /api/v1/accounts/:ss58/history's own SELECT (#6769
 // gap-closure) -- this route has no per-query try/catch of its own, so a
 // failure here is the one that reaches the router's OUTERMOST generic
 // catch (captureDataApiError(err, url.pathname)), unlike every other flag
 // above which targets a route with its own dedicated fallback.
-const accountHistoryQueryFailure = vi.hoisted(() => ({ error: null }));
+const accountHistoryQueryFailure = vi.hoisted(() => ({
+  error: null as Error | null,
+}));
 // State for the GET /api/v1/blocks/:ref retry test (METAGRAPHED-7) only. Unlike every failure
 // hook above (which rejects every matching call for the test's duration), remainingFailures
 // counts DOWN so a test can simulate "fails once, then the retry with a fresh client succeeds"
@@ -159,7 +201,8 @@ vi.mock("postgres", () => ({
     // `.raw`), unlike a tagged-template call's strings array below -- returns
     // a marker the tagged-template branch expands when it appears as a `${}`
     // interpolation, mirroring postgres.js's real "insert multiple rows" helper.
-    function sql(first, ...rest) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function sql(first: any, ...rest: any[]) {
       if (
         Array.isArray(first) &&
         !Object.prototype.hasOwnProperty.call(first, "raw")
@@ -174,7 +217,7 @@ vi.mock("postgres", () => ({
       const strings = first;
       const values = rest;
       let text = strings[0];
-      const boundValues = [];
+      const boundValues: unknown[] = [];
       for (let i = 0; i < values.length; i += 1) {
         const v = values[i];
         if (v && v.__bulkInsert) {
@@ -356,7 +399,7 @@ vi.mock("postgres", () => ({
     // placeholder text instead of relying on tagged-template array binding).
     // Recorded into the SAME sqlCalls list so existing assertions work
     // unchanged regardless of which call form produced them.
-    sql.unsafe = (text, params = []) => {
+    sql.unsafe = (text: string, params = []) => {
       sqlCalls.push({ text, values: params });
       if (/DELETE FROM neurons/.test(text)) {
         return Promise.resolve(neuronsSyncPruneRows.current);
@@ -393,19 +436,22 @@ vi.mock("postgres", () => ({
     // `sql.savepoint(fn)` is the only way to isolate a query's failure from
     // the enclosing transaction, so it runs `fn` against the unwrapped sql
     // (no poisoning) instead.
-    sql.begin = (optionsOrCb, maybeCb) => {
-      const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+    sql.begin = (optionsOrCb: unknown, maybeCb?: unknown) => {
+      const cb = (
+        typeof optionsOrCb === "function" ? optionsOrCb : maybeCb
+      ) as AnyFn;
       sqlBeginOptions.push(typeof optionsOrCb === "string" ? optionsOrCb : "");
-      let uncaughtError;
-      function scopedSql(...args) {
-        const result = sql(...args);
-        Promise.resolve(result).catch((e) => {
+      let uncaughtError: unknown;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function scopedSql(...args: any[]) {
+        const result = sql(...(args as [unknown, ...unknown[]]));
+        Promise.resolve(result).catch((e: unknown) => {
           if (!uncaughtError) uncaughtError = e;
         });
         return result;
       }
       Object.assign(scopedSql, sql);
-      scopedSql.savepoint = (fn) => fn(sql);
+      scopedSql.savepoint = (fn: AnyFn) => fn(sql);
       return Promise.resolve(cb(scopedSql)).then((result) => {
         if (uncaughtError) throw uncaughtError;
         return result;
@@ -415,7 +461,7 @@ vi.mock("postgres", () => ({
   },
 }));
 
-const { default: worker } = await import("../workers/data-api.mjs");
+const { default: worker } = await import("../workers/data-api.ts");
 const NEURONS_SYNC_SECRET = "test-neurons-sync-secret";
 const NEURON_DAILY_BACKFILL_SECRET = "test-neuron-daily-backfill-secret";
 const ROLLUP_SYNC_SECRET = "test-rollup-sync-secret";
@@ -446,9 +492,13 @@ const env = {
   NOMINATOR_POSITIONS_SYNC_SECRET,
   ACCOUNT_BALANCES_SYNC_SECRET,
 };
-const ctx = { waitUntil() {} };
-const req = (path, init) =>
-  worker.fetch(new Request(`https://d${path}`, init), env, ctx);
+const ctx = { waitUntil() {} } as unknown as ExecutionContext;
+const req = (path: string, init?: RequestInit) =>
+  worker.fetch(
+    new Request(`https://d${path}`, init),
+    env as unknown as Env,
+    ctx as unknown as ExecutionContext,
+  );
 const queryText = () => sqlCalls.map((call) => call.text).join("\n");
 
 beforeEach(() => {
@@ -517,7 +567,7 @@ test("chain-events coerces blank bigint cells to null, not zero", async () => {
   ];
   const res = await req("/api/v1/chain-events?limit=1");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.events[0].block_number).toBeNull();
   expect(body.events[0].observed_at).toBeNull();
   // Blank seek keys must not produce a lossless cursor token.
@@ -539,7 +589,7 @@ test("chain-events coerces null and non-numeric bigint cells to null", async () 
   ];
   const res = await req("/api/v1/blocks/123/chain-events");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.events[0].block_number).toBeNull();
   expect(body.events[0].observed_at).toBeNull();
 });
@@ -547,7 +597,7 @@ test("chain-events coerces null and non-numeric bigint cells to null", async () 
 test("GET /api/v1/blocks/:n/chain-events returns the block's events", async () => {
   const res = await req("/api/v1/blocks/123/chain-events");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.block_number).toBe(123);
   expect(body.count).toBe(1);
   expect(body.events[0].pallet).toBe("System");
@@ -586,7 +636,7 @@ test("chain-events decodes an account-keyed field (TransactionFeePaid.who) to SS
   ];
   const res = await req("/api/v1/chain-events?limit=1");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.events[0].args.who).toBe(
     "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
   );
@@ -623,7 +673,7 @@ test("chain-events decodes both account-keyed fields of a Balances.Transfer (to 
   ];
   const res = await req("/api/v1/blocks/123/chain-events");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.events[0].args.to).toBe(
     "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
   );
@@ -666,7 +716,7 @@ test("chain-events decodes a positional SubtensorModule.TimelockedWeightsReveale
   ];
   const res = await req("/api/v1/blocks/123/chain-events");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.events[0].args).toEqual([
     78,
     "5Fk765B4CRBekwErwE5VxvveWhHztHSfsnsLt8cbDayDWsuk",
@@ -678,7 +728,7 @@ test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)
     "/api/v1/chain-events?limit=1&pallet=System&method=ExtrinsicSuccess&before=500",
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.count).toBe(1);
   expect(body.next_before).toBe(123); // rows.length === limit → cursor is the last row
   expect(body.next_cursor).toBe("100.123.0"); // lossless observed_at.block_number.event_index cursor
@@ -701,7 +751,7 @@ test("chain-events cursor seeks by observed_at, block_number and event_index", a
   const cursorCall = sqlCalls.find((call) =>
     call.text.includes("(observed_at, block_number, event_index) <"),
   );
-  expect(cursorCall.values).toEqual([50, 123, 4]);
+  expect(cursorCall!.values).toEqual([50, 123, 4]);
 });
 
 test("limit is clamped and defaults safely", async () => {
@@ -714,14 +764,14 @@ test("chain-events preserves a minimum limit after flooring a fractional value",
   // rows[-1] for the cursor (TypeError → 502); it must clamp up to 1 instead.
   const res = await req("/api/v1/chain-events?limit=0.5");
   expect(res.status).toBe(200);
-  expect(sqlCalls.at(-1).values).toContain(1);
-  expect(sqlCalls.at(-1).values).not.toContain(0);
+  expect(sqlCalls.at(-1)!.values).toContain(1);
+  expect(sqlCalls.at(-1)!.values).not.toContain(0);
 });
 
 test("chain-events accepts block + extrinsic filters (extrinsic-detail view)", async () => {
   const res = await req("/api/v1/chain-events?block=5870000&extrinsic=3");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.count).toBe(1);
   expect(queryText()).toContain("AND block_number =");
   expect(queryText()).toContain("AND extrinsic_index =");
@@ -767,22 +817,27 @@ test("chain-events ignores extrinsic without block to avoid global scans", async
 test("chain-events rejects method-only feed filters without a block scope", async () => {
   const res = await req("/api/v1/chain-events?method=ExtrinsicSuccess");
   expect(res.status).toBe(400);
-  expect((await res.json()).error).toMatch(/method filter requires pallet/);
+  expect(((await res.json()) as Row).error).toMatch(
+    /method filter requires pallet/,
+  );
 });
 
 test("chain-events/stats returns the activity aggregate with a clamped window", async () => {
   const res = await req("/api/v1/chain-events/stats?blocks=500");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window_blocks).toBe(500);
   expect(Array.isArray(body.activity)).toBe(true);
   // window clamps: oversized → 5000, non-numeric → default 1000
   expect(
-    (await (await req("/api/v1/chain-events/stats?blocks=99999")).json())
-      .window_blocks,
+    (
+      (await (
+        await req("/api/v1/chain-events/stats?blocks=99999")
+      ).json()) as Row
+    ).window_blocks,
   ).toBe(5000);
   expect(
-    (await (await req("/api/v1/chain-events/stats?blocks=abc")).json())
+    ((await (await req("/api/v1/chain-events/stats?blocks=abc")).json()) as Row)
       .window_blocks,
   ).toBe(1000);
 });
@@ -793,7 +848,7 @@ test("chain-events/stats ranks with a deterministic tie-break on the group key",
   // count is non-unique; the ranking must tie-break on the GROUP BY key so the
   // order and the LIMIT 100 boundary membership are stable across identical
   // requests rather than left to Postgres' unordered equal-count grouping.
-  const stats = sqlCalls.at(-1).text;
+  const stats = sqlCalls.at(-1)!.text;
   expect(stats).toContain("ORDER BY count DESC, pallet ASC, method ASC");
   expect(stats).not.toMatch(/ORDER BY count DESC\s+LIMIT/);
 });
@@ -801,19 +856,19 @@ test("chain-events/stats ranks with a deterministic tie-break on the group key",
 test("chain-events/stats floors fractional blocks before binding", async () => {
   const res = await req("/api/v1/chain-events/stats?blocks=1.5");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window_blocks).toBe(1);
-  expect(sqlCalls.at(-1).values).toContain(1);
-  expect(sqlCalls.at(-1).values).not.toContain(1.5);
+  expect(sqlCalls.at(-1)!.values).toContain(1);
+  expect(sqlCalls.at(-1)!.values).not.toContain(1.5);
 });
 
 test("chain-events/stats preserves minimum block window after flooring", async () => {
   const res = await req("/api/v1/chain-events/stats?blocks=0.5");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window_blocks).toBe(1);
-  expect(sqlCalls.at(-1).values).toContain(1);
-  expect(sqlCalls.at(-1).values).not.toContain(0);
+  expect(sqlCalls.at(-1)!.values).toContain(1);
+  expect(sqlCalls.at(-1)!.values).not.toContain(0);
 });
 
 test("chain-events rejects overlong or non-enumerable pallet/method filters", async () => {
@@ -871,7 +926,7 @@ test("GET /api/v1/blocks returns a block feed shaped like the D1 route", async (
   mockRows.current = [BLOCK_ROW];
   const res = await req("/api/v1/blocks?limit=1");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.schema_version).toBe(1);
   expect(body.block_count).toBe(1);
   expect(body.blocks[0].block_number).toBe(8586300);
@@ -931,7 +986,7 @@ test("GET /api/v1/blocks/:ref resolves a numeric ref + neighbors", async () => {
   mockQueue.current = [[], [BLOCK_ROW], [{ prev: 8586299, next: 8586301 }]];
   const res = await req("/api/v1/blocks/8586300");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.block.block_number).toBe(8586300);
   expect(body.prev_block_number).toBe(8586299);
   expect(body.next_block_number).toBe(8586301);
@@ -950,7 +1005,7 @@ test("GET /api/v1/blocks/:ref resolves a lowercased hash ref", async () => {
 test("GET /api/v1/blocks/:ref on a malformed ref skips the query entirely (block:null)", async () => {
   const res = await req("/api/v1/blocks/not-a-real-ref");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.block).toBeNull();
   expect(sqlCalls.length).toBe(1); // only the unconditional SET call
 });
@@ -959,7 +1014,7 @@ test("GET /api/v1/blocks/:ref on an unknown block skips the neighbor query", asy
   mockRows.current = [];
   const res = await req("/api/v1/blocks/999999999");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.block).toBeNull();
   expect(body.prev_block_number).toBeNull();
   expect(body.next_block_number).toBeNull();
@@ -973,7 +1028,7 @@ test("GET /api/v1/blocks/:ref retries once with a fresh client after a Hyperdriv
   mockQueue.current = [[], [], [BLOCK_ROW], [{ prev: 8586299, next: 8586301 }]];
   const res = await req("/api/v1/blocks/8586300");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.block.block_number).toBe(8586300);
   expect(body.prev_block_number).toBe(8586299);
   expect(body.next_block_number).toBe(8586301);
@@ -994,7 +1049,7 @@ test("GET /api/v1/blocks/:ref retries a SECOND time when the first retry's fresh
   ];
   const res = await req("/api/v1/blocks/8586300");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.block.block_number).toBe(8586300);
   expect(body.prev_block_number).toBe(8586299);
   expect(body.next_block_number).toBe(8586301);
@@ -1006,7 +1061,7 @@ test("GET /api/v1/blocks/:ref falls through to the generic 502 once every retry 
   blockDetailConnectionFailure.remainingFailures = 3;
   const res = await req("/api/v1/blocks/8586300");
   expect(res.status).toBe(502);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.error).toBe("data query failed");
 });
 
@@ -1024,7 +1079,7 @@ test("GET /api/v1/blocks/summary is matched before /blocks/:ref (never treats 's
   mockRows.current = [BLOCK_ROW];
   const res = await req("/api/v1/blocks/summary");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.block_count).toBe(1);
   expect(body.last_block).toBe(8586300);
   expect(queryText()).toContain(
@@ -1036,7 +1091,7 @@ test("GET /api/v1/blocks/summary with no rows returns the zeroed card, not a thr
   mockRows.current = [];
   const res = await req("/api/v1/blocks/summary");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.block_count).toBe(0);
 });
 
@@ -1048,7 +1103,7 @@ test("GET /api/v1/blocks/:ref/extrinsics resolves the ref then reads the block's
   ];
   const res = await req("/api/v1/blocks/8586300/extrinsics");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.block_number).toBe(8586300);
   expect(body.data.extrinsics[0].signer).toBe("5Signer");
   expect(queryText()).toContain("ORDER BY extrinsic_index ASC");
@@ -1058,7 +1113,7 @@ test("GET /api/v1/blocks/:ref/extrinsics on an unresolved ref returns block_numb
   mockQueue.current = [[], []]; // SET, resolveBlockNumberPg finds nothing
   const res = await req("/api/v1/blocks/999999999/extrinsics");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.block_number).toBeNull();
   expect(body.data.extrinsics).toEqual([]);
   expect(sqlCalls.length).toBe(2); // SET + the resolve query, no extrinsics query
@@ -1072,7 +1127,7 @@ test("GET /api/v1/blocks/:ref/events resolves the ref then reads the block's acc
   ];
   const res = await req("/api/v1/blocks/8586300/events");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.block_number).toBe(8586300);
   expect(body.data.events[0].event_kind).toBe("StakeAdded");
   expect(queryText()).toContain("FROM account_events WHERE block_number");
@@ -1083,7 +1138,7 @@ test("GET /api/v1/blocks/:ref/events on an unresolved ref returns block_number:n
   mockQueue.current = [[], []]; // SET, resolveBlockNumberPg finds nothing
   const res = await req("/api/v1/blocks/999999999/events");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.block_number).toBeNull();
   expect(body.data.events).toEqual([]);
   expect(sqlCalls.length).toBe(2); // SET + the resolve query, no events query
@@ -1098,7 +1153,7 @@ test("GET /api/v1/blocks/:ref/extrinsics resolves a 0x block_hash ref", async ()
   ];
   const res = await req(`/api/v1/blocks/${upperHash}/extrinsics`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.block_number).toBe(8586300);
   expect(sqlCalls.some((c) => c.values.includes(upperHash.toLowerCase()))).toBe(
     true,
@@ -1108,7 +1163,7 @@ test("GET /api/v1/blocks/:ref/extrinsics resolves a 0x block_hash ref", async ()
 test("GET /api/v1/blocks/:ref/extrinsics on a malformed ref skips every query but SET", async () => {
   const res = await req("/api/v1/blocks/not-a-real-ref/extrinsics");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.block_number).toBeNull();
   expect(body.data.extrinsics).toEqual([]);
   expect(sqlCalls.length).toBe(1); // only the unconditional SET call
@@ -1117,7 +1172,7 @@ test("GET /api/v1/blocks/:ref/extrinsics on a malformed ref skips every query bu
 test("GET /api/v1/blocks/:ref/extrinsics on a numeric ref past MAX_SAFE_INTEGER skips every query but SET", async () => {
   const res = await req("/api/v1/blocks/99999999999999999999/extrinsics");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.block_number).toBeNull();
   expect(sqlCalls.length).toBe(1); // only the unconditional SET call
 });
@@ -1126,7 +1181,7 @@ test("GET /api/v1/extrinsics returns a feed with call_args parsed from the ::tex
   mockRows.current = [EXTRINSIC_ROW];
   const res = await req("/api/v1/extrinsics?limit=1");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsic_count).toBe(1);
   const ex = body.extrinsics[0];
   expect(ex.block_number).toBe(8586300);
@@ -1155,7 +1210,7 @@ test("GET /api/v1/extrinsics applies the same filter set as loadExtrinsics", asy
 test("GET /api/v1/extrinsics with success=false filters correctly, distinct from absent", async () => {
   mockRows.current = [{ ...EXTRINSIC_ROW, success: false }];
   const res = await req("/api/v1/extrinsics?success=false");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsics[0].success).toBe(false);
   expect(queryText()).toContain("AND success =");
   sqlCalls.length = 0;
@@ -1169,7 +1224,7 @@ test("GET /api/v1/extrinsics matches call_hash against the cast call_args text",
   await req(`/api/v1/extrinsics?call_hash=${hash}`);
   expect(queryText()).toContain("AND call_args::text LIKE");
   const call = sqlCalls.find((c) => c.text.includes("call_args::text LIKE"));
-  expect(call.values).toContain(`%"${hash}"%`);
+  expect(call!.values).toContain(`%"${hash}"%`);
 });
 
 test("GET /api/v1/extrinsics ignores a malformed call_hash instead of erroring", async () => {
@@ -1216,7 +1271,7 @@ test("GET /api/v1/extrinsics/:ref resolves a hash ref with embedded account_even
   mockQueue.current = [[], [EXTRINSIC_ROW], [eventRow]];
   const res = await req(`/api/v1/extrinsics/${EXTRINSIC_HASH}`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsic.extrinsic_hash).toBe(EXTRINSIC_HASH);
   expect(body.events).toHaveLength(1);
   expect(body.events[0].event_kind).toBe("WeightsSet");
@@ -1226,7 +1281,7 @@ test("GET /api/v1/extrinsics/:ref resolves a composite block-index ref", async (
   mockQueue.current = [[], [EXTRINSIC_ROW], []];
   const res = await req("/api/v1/extrinsics/8586300-2");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsic.extrinsic_index).toBe(2);
   expect(body.events).toEqual([]);
 });
@@ -1234,7 +1289,7 @@ test("GET /api/v1/extrinsics/:ref resolves a composite block-index ref", async (
 test("GET /api/v1/extrinsics/:ref on a malformed ref skips the query (extrinsic:null)", async () => {
   const res = await req("/api/v1/extrinsics/not-a-real-ref");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsic).toBeNull();
   expect(body.events).toEqual([]);
   expect(sqlCalls.length).toBe(1); // only the unconditional SET call
@@ -1244,7 +1299,7 @@ test("GET /api/v1/extrinsics/:ref skips the embedded-events query on an unresolv
   mockRows.current = [];
   const res = await req(`/api/v1/extrinsics/0x${"a".repeat(64)}`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsic).toBeNull();
   expect(body.events).toEqual([]);
   expect(sqlCalls.length).toBe(2); // SET + the main lookup, no events query
@@ -1268,7 +1323,7 @@ test("GET /api/v1/accounts/:ss58 shapes the cross-subnet summary from two merged
   ];
   const res = await req(`/api/v1/accounts/${SS58}`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.event_count).toBe(2);
   expect(body.subnet_count).toBe(2);
   expect(body.event_kinds[0].kind).toBe("StakeAdded");
@@ -1295,10 +1350,13 @@ test("GET /api/v1/accounts/:ss58 ignores null netuid events in subnet_count", as
   ];
   const res = await req(`/api/v1/accounts/${SS58}`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.event_count).toBe(2);
   expect(body.subnet_count).toBe(1);
-  expect(body.recent_events.map((event) => event.netuid)).toEqual([4, null]);
+  expect(body.recent_events.map((event: Row) => event.netuid)).toEqual([
+    4,
+    null,
+  ]);
 });
 
 test("GET /api/v1/accounts/:ss58 merges, re-sorts, and re-caps events from BOTH the hotkey and coldkey branches", async () => {
@@ -1340,13 +1398,15 @@ test("GET /api/v1/accounts/:ss58 merges, re-sorts, and re-caps events from BOTH 
   ];
   const res = await req(`/api/v1/accounts/${SS58}`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   // 3 distinct rows across both branches, correctly re-sorted newest-first
   // by (block_number DESC, event_index DESC) regardless of which branch
   // each row came from.
   expect(body.event_count).toBe(3);
-  expect(body.recent_events.map((e) => e.block_number)).toEqual([200, 100, 50]);
-  expect(body.recent_events.map((e) => e.event_kind)).toEqual([
+  expect(body.recent_events.map((e: Row) => e.block_number)).toEqual([
+    200, 100, 50,
+  ]);
+  expect(body.recent_events.map((e: Row) => e.event_kind)).toEqual([
     "StakeRemoved",
     "StakeAdded",
     "WeightsSet",
@@ -1383,9 +1443,9 @@ test("GET /api/v1/accounts/:ss58 breaks a same-block tie between branches by eve
   ];
   const res = await req(`/api/v1/accounts/${SS58}`);
   expect(res.status).toBe(200);
-  const body = await res.json();
-  expect(body.recent_events.map((e) => e.event_index)).toEqual([4, 1]);
-  expect(body.recent_events.map((e) => e.event_kind)).toEqual([
+  const body = (await res.json()) as Row;
+  expect(body.recent_events.map((e: Row) => e.event_index)).toEqual([4, 1]);
+  expect(body.recent_events.map((e: Row) => e.event_kind)).toEqual([
     "StakeRemoved",
     "StakeAdded",
   ]);
@@ -1402,15 +1462,15 @@ test("GET /api/v1/accounts/:ss58's coldkey scan excludes rows the hotkey scan al
   const coldkeyQuery = sqlCalls.find((call) =>
     call.text.includes("FROM account_events WHERE coldkey ="),
   );
-  expect(coldkeyQuery.text).toContain("(hotkey IS NULL OR hotkey <>");
-  expect(coldkeyQuery.values).toContain(SS58);
+  expect(coldkeyQuery!.text).toContain("(hotkey IS NULL OR hotkey <>");
+  expect(coldkeyQuery!.values).toContain(SS58);
 });
 
 test("GET /api/v1/accounts/:ss58 with no matching rows returns a schema-stable empty summary", async () => {
   mockRows.current = [];
   const res = await req(`/api/v1/accounts/${SS58}`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.event_count).toBe(0);
   expect(body.registrations).toEqual([]);
   expect(body.recent_events).toEqual([]);
@@ -1422,7 +1482,7 @@ test("GET /api/v1/accounts/:ss58/subnets returns the current registrations from 
   ];
   const res = await req(`/api/v1/accounts/${SS58}/subnets`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnets[0].netuid).toBe(4);
   expect(body.subnet_count).toBe(1);
   expect(queryText()).toContain("FROM neurons");
@@ -1432,7 +1492,7 @@ test("GET /api/v1/accounts/:ss58/events returns a feed shaped like the D1 route"
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/events?limit=1`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ss58).toBe(SS58);
   expect(body.event_count).toBe(1);
   const ev = body.events[0];
@@ -1518,12 +1578,12 @@ test("GET /api/v1/accounts/:ss58/events merges, re-sorts, and re-caps rows from 
   ];
   const res = await req(`/api/v1/accounts/${SS58}/events?limit=10`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   // 3 distinct rows, not 4 -- selfRow only ever counted once even though it
   // would satisfy both branches' raw predicates.
   expect(body.event_count).toBe(3);
-  expect(body.events.map((e) => e.block_number)).toEqual([200, 150, 100]);
-  expect(body.events.map((e) => e.event_kind)).toEqual([
+  expect(body.events.map((e: Row) => e.block_number)).toEqual([200, 150, 100]);
+  expect(body.events.map((e: Row) => e.event_kind)).toEqual([
     "WeightsSet",
     "StakeRemoved",
     "StakeAdded",
@@ -1582,7 +1642,7 @@ test("GET /api/v1/accounts/:ss58/events with no matching rows returns a schema-s
   mockRows.current = [];
   const res = await req(`/api/v1/accounts/${SS58}/events`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ss58).toBe(SS58);
   expect(body.event_count).toBe(0);
   expect(body.events).toEqual([]);
@@ -1598,35 +1658,35 @@ test("GET /api/v1/accounts/:ss58/events honors the documented 1000 feed cap, not
   mockRows.current = [];
   const res = await req(`/api/v1/accounts/${SS58}/events?limit=1000`);
   expect(res.status).toBe(200);
-  expect((await res.json()).limit).toBe(1000);
+  expect(((await res.json()) as Row).limit).toBe(1000);
 });
 
 test("GET /api/v1/subnets/:netuid/events honors the documented 1000 feed cap (#5474)", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/subnets/4/events?limit=1000");
   expect(res.status).toBe(200);
-  expect((await res.json()).limit).toBe(1000);
+  expect(((await res.json()) as Row).limit).toBe(1000);
 });
 
 test("GET /api/v1/blocks/:ref/events honors the documented 1000 feed cap (#5474)", async () => {
   mockQueue.current = [[], [{ block_number: 8586300 }], []];
   const res = await req("/api/v1/blocks/8586300/events?limit=1000");
   expect(res.status).toBe(200);
-  expect((await res.json()).data.limit).toBe(1000);
+  expect(((await res.json()) as Row).data.limit).toBe(1000);
 });
 
 test("events feeds fall back to the documented default of 100, not the local 50 (#5474)", async () => {
   mockRows.current = [];
   const res = await req(`/api/v1/accounts/${SS58}/events`);
   expect(res.status).toBe(200);
-  expect((await res.json()).limit).toBe(100);
+  expect(((await res.json()) as Row).limit).toBe(100);
 });
 
 test("GET /api/v1/accounts/:ss58/extrinsics matches the signer column only, not hotkey/coldkey", async () => {
   mockRows.current = [EXTRINSIC_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/extrinsics`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsic_count).toBe(1);
   expect(body.extrinsics[0].signer).toBe("5Signer");
   expect(queryText()).toContain("WHERE signer =");
@@ -1645,7 +1705,7 @@ test("GET /api/v1/accounts/:ss58/extrinsics with an inverted block range short-c
     `/api/v1/accounts/${SS58}/extrinsics?block_start=5&block_end=1`,
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsics).toEqual([]);
   expect(sqlCalls.length).toBe(1); // only the unconditional SET call
 });
@@ -1673,7 +1733,7 @@ test("GET /api/v1/accounts/:ss58/extrinsics ignores an old 2-part cursor (pre-ME
 test("GET /api/v1/accounts/:ss58/extrinsics returns a next_cursor when the page is full", async () => {
   mockRows.current = [EXTRINSIC_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/extrinsics?limit=1`);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.next_cursor).toBe("1783600000000.8586300.2");
 });
 
@@ -1681,24 +1741,24 @@ test("GET /api/v1/sudo filters to call_module='Sudo' and never exposes signer/ca
   mockRows.current = [{ ...EXTRINSIC_ROW, call_module: "Sudo" }];
   const res = await req("/api/v1/sudo?call_function=sudo&success=true");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsics[0].call_module).toBe("Sudo");
   const text = queryText();
   expect(text).toContain("WHERE call_module =");
   expect(text).toContain("AND call_function =");
   expect(text).toContain("AND success =");
   const call = sqlCalls.find((c) => c.text.includes("WHERE call_module ="));
-  expect(call.values).toContain("Sudo");
+  expect(call!.values).toContain("Sudo");
 });
 
 test("GET /api/v1/governance/config-changes filters to call_module='AdminUtils'", async () => {
   mockRows.current = [{ ...EXTRINSIC_ROW, call_module: "AdminUtils" }];
   const res = await req("/api/v1/governance/config-changes");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsics[0].call_module).toBe("AdminUtils");
   const call = sqlCalls.find((c) => c.text.includes("WHERE call_module ="));
-  expect(call.values).toContain("AdminUtils");
+  expect(call!.values).toContain("AdminUtils");
 });
 
 test("GET /api/v1/sudo applies block/block_start/block_end/from/to filters and a cursor seek", async () => {
@@ -1721,7 +1781,7 @@ test("GET /api/v1/sudo with success=false filters correctly, distinct from absen
     { ...EXTRINSIC_ROW, call_module: "Sudo", success: false },
   ];
   const res = await req("/api/v1/sudo?success=false");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.extrinsics[0].success).toBe(false);
   expect(queryText()).toContain("AND success =");
 });
@@ -1729,7 +1789,7 @@ test("GET /api/v1/sudo with success=false filters correctly, distinct from absen
 test("GET /api/v1/sudo returns a next_cursor when the page is full", async () => {
   mockRows.current = [{ ...EXTRINSIC_ROW, call_module: "Sudo" }];
   const res = await req("/api/v1/sudo?limit=1");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.next_cursor).toBe("1783600000000.8586300.2");
 });
 
@@ -1747,7 +1807,7 @@ test("GET /api/v1/runtime returns the spec-version transition timeline", async (
   ];
   const res = await req("/api/v1/runtime");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.transitions[0].spec_version).toBe(423);
   expect(body.current_spec_version).toBe(424);
   expect(queryText()).toContain("GROUP BY spec_version");
@@ -1757,7 +1817,7 @@ test("GET /api/v1/runtime with no readings returns the schema-stable empty timel
   mockRows.current = [];
   const res = await req("/api/v1/runtime");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.transitions).toEqual([]);
   expect(body.current_spec_version).toBeNull();
 });
@@ -1791,7 +1851,7 @@ test("GET /api/v1/subnets/:netuid/metagraph returns a subnet metagraph shaped li
   mockRows.current = [NEURON_ROW];
   const res = await req("/api/v1/subnets/7/metagraph");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.neuron_count).toBe(1);
   expect(body.neurons[0].uid).toBe(3);
@@ -1812,7 +1872,7 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid resolves a neuron detail", async 
   mockRows.current = [NEURON_ROW];
   const res = await req("/api/v1/subnets/7/neurons/3");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.neuron.uid).toBe(3);
   expect(body.neuron.hotkey).toBe("5Hot");
@@ -1822,7 +1882,7 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid on an unknown uid returns neuron:
   mockRows.current = [];
   const res = await req("/api/v1/subnets/7/neurons/999");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.neuron).toBeNull();
 });
 
@@ -1846,7 +1906,7 @@ test("GET /api/v1/subnets/:netuid/metagraph computes immunity_expires_at* from a
   ];
   const res = await req("/api/v1/subnets/7/metagraph");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(queryText()).toMatch(/SELECT immunity_period FROM subnet_hyperparams/);
   expect(body.neurons[0].immunity_expires_at_block).toBe(5007200);
   expect(typeof body.neurons[0].immunity_expires_at).toBe("string");
@@ -1860,7 +1920,7 @@ test("GET /api/v1/subnets/:netuid/metagraph omits immunity_expires_at* when subn
   ];
   const res = await req("/api/v1/subnets/7/metagraph");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect("immunity_expires_at_block" in body.neurons[0]).toBe(false);
 });
 
@@ -1872,7 +1932,7 @@ test("GET /api/v1/subnets/:netuid/metagraph omits immunity_expires_at* for a neg
   ];
   const res = await req("/api/v1/subnets/7/metagraph");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect("immunity_expires_at_block" in body.neurons[0]).toBe(false);
 });
 
@@ -1886,7 +1946,7 @@ test("GET /api/v1/subnets/:netuid/metagraph still serves neurons when the immuni
   ];
   const res = await req("/api/v1/subnets/7/metagraph");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.neurons[0].uid).toBe(3);
   expect("immunity_expires_at_block" in body.neurons[0]).toBe(false);
 });
@@ -1899,7 +1959,7 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid computes immunity_expires_at* fro
   ];
   const res = await req("/api/v1/subnets/7/neurons/3");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.neuron.immunity_expires_at_block).toBe(5007200);
   expect(typeof body.neuron.immunity_expires_at).toBe("string");
 });
@@ -1908,7 +1968,7 @@ test("GET /api/v1/subnets/:netuid/validators ranks validator_permit rows by stak
   mockRows.current = [NEURON_ROW];
   const res = await req("/api/v1/subnets/7/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.validator_count).toBe(1);
   expect(body.validators[0].uid).toBe(3);
@@ -1923,7 +1983,7 @@ test("GET /api/v1/subnets/:netuid/validators sets featured=true for a hotkey in 
   mockQueue.current = [[], [NEURON_ROW], [{ hotkey: "5Hot" }]];
   const res = await req("/api/v1/subnets/7/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(queryText()).toMatch(/FROM featured_validators/);
   // The reorder overlay (workers/request-handlers/entities.mjs) has already
   // run by the time this route responds -- a single-row list just confirms
@@ -1934,7 +1994,7 @@ test("GET /api/v1/subnets/:netuid/validators sets featured=true for a hotkey in 
 test("GET /api/v1/subnets/:netuid/validators sets featured=false when the hotkey isn't in featured_validators", async () => {
   mockQueue.current = [[], [NEURON_ROW], []];
   const res = await req("/api/v1/subnets/7/validators");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validators[0].featured).toBe(false);
 });
 
@@ -1947,7 +2007,7 @@ test("GET /api/v1/subnets/:netuid/validators still serves the primary rows when 
   mockQueue.current = [[], [NEURON_ROW]];
   const res = await req("/api/v1/subnets/7/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validator_count).toBe(1);
   expect(body.validators[0].featured).toBe(false);
 });
@@ -1983,7 +2043,7 @@ test("GET /api/v1/validators still serves the primary rows when the featured_val
   ];
   const res = await req("/api/v1/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validator_count).toBe(1);
   expect(body.validators[0].hotkey).toBe("5Hot");
   expect(body.validators[0].featured).toBe(false);
@@ -2005,7 +2065,7 @@ test("GET /api/v1/validators returns the network-wide validator leaderboard with
   ];
   const res = await req("/api/v1/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("subnet_count");
   expect(body.limit).toBe(20);
   expect(body.validators[0].hotkey).toBe("5Hot");
@@ -2046,10 +2106,10 @@ test("GET /api/v1/validators sets featured per hotkey, matched against featured_
     [{ hotkey: "hk-a" }],
   ];
   const res = await req("/api/v1/validators");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(queryText()).toMatch(/FROM featured_validators/);
   const byHotkey = Object.fromEntries(
-    body.validators.map((v) => [v.hotkey, v.featured]),
+    body.validators.map((v: Row) => [v.hotkey, v.featured]),
   );
   expect(byHotkey["hk-a"]).toBe(true);
   expect(byHotkey["hk-b"]).toBe(false);
@@ -2058,7 +2118,7 @@ test("GET /api/v1/validators sets featured per hotkey, matched against featured_
 test("GET /api/v1/validators respects an explicit valid sort + limit", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/validators?sort=total_stake&limit=5");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("total_stake");
   expect(body.limit).toBe(5);
 });
@@ -2066,7 +2126,7 @@ test("GET /api/v1/validators respects an explicit valid sort + limit", async () 
 test("GET /api/v1/validators falls back to the default sort/limit on invalid values", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/validators?sort=not-a-sort&limit=9999");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("subnet_count");
   expect(body.limit).toBe(20);
 });
@@ -2099,8 +2159,8 @@ test("GET /api/v1/validators carries realized_return_* from the neuron_daily bas
   ];
   const res = await req("/api/v1/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
-  const v = body.validators.find((x) => x.hotkey === "5Hot");
+  const body = (await res.json()) as Row;
+  const v = body.validators.find((x: Row) => x.hotkey === "5Hot");
   expect(v.realized_return_1d).toBe(0.25); // (1000-800)/800
   expect(v.realized_return_1w).toBe(1); // (1000-500)/500
   expect(v.realized_return_1m).toBeNull();
@@ -2128,9 +2188,9 @@ test("GET /api/v1/validators degrades realized_return_* to null when the neuron_
   // Same savepoint-isolated degradation as the featured/tempo reads: the
   // primary leaderboard still serves, every realized_return_* just goes null.
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validator_count).toBe(1);
-  const v = body.validators.find((x) => x.hotkey === "5Hot");
+  const v = body.validators.find((x: Row) => x.hotkey === "5Hot");
   expect(v.realized_return_1d).toBeNull();
   expect(v.realized_return_1w).toBeNull();
   expect(v.realized_return_1m).toBeNull();
@@ -2158,7 +2218,7 @@ test("GET /api/v1/validators/:hotkey carries realized_return_* scoped to that ho
   ];
   const res = await req("/api/v1/validators/5Hot");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.realized_return_1d).toBe(0.25); // (1500-1200)/1200
   expect(body.realized_return_1w).toBeNull();
   expect(body.realized_return_1m).toBe(0); // (1500-1500)/1500 -- confirmed zero
@@ -2183,7 +2243,7 @@ test("GET /api/v1/validators joins coldkey_identity from account_identity by col
   accountIdentityJoinRows.current = [IDENTITY_ROW];
   const res = await req("/api/v1/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validators[0].coldkey).toBe("5Cold");
   expect(body.validators[0].coldkey_identity.has_identity).toBe(true);
   expect(body.validators[0].coldkey_identity.name).toBe("Acme Validators");
@@ -2193,14 +2253,14 @@ test("GET /api/v1/validators joins coldkey_identity from account_identity by col
   const joinCall = sqlCalls.find((call) =>
     /FROM account_identity WHERE account IN/.test(call.text),
   );
-  expect(joinCall.values).toEqual(["5Cold"]);
+  expect(joinCall!.values).toEqual(["5Cold"]);
 });
 
 test("GET /api/v1/validators reports has_identity:false when no account_identity row matches the coldkey (#5234)", async () => {
   mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
   accountIdentityJoinRows.current = [];
   const res = await req("/api/v1/validators");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validators[0].coldkey_identity.has_identity).toBe(false);
   expect(body.validators[0].coldkey_identity.name).toBe(null);
 });
@@ -2216,7 +2276,7 @@ test("GET /api/v1/validators skips a row with no coldkey when collecting join ke
   mockRows.current = [{ ...NEURON_ROW, netuid: 7, coldkey: null }];
   const res = await req("/api/v1/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validators[0].coldkey_identity).toBe(null);
   expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
 });
@@ -2228,7 +2288,7 @@ test("GET /api/v1/validators still serves validators (has_identity:false) when t
   );
   const res = await req("/api/v1/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validators[0].hotkey).toBe("5Hot");
   expect(body.validators[0].coldkey_identity.has_identity).toBe(false);
 });
@@ -2237,7 +2297,7 @@ test("GET /api/v1/validators/:hotkey resolves cross-subnet validator detail", as
   mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
   const res = await req("/api/v1/validators/5Hot");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.hotkey).toBe("5Hot");
   expect(body.subnet_count).toBe(1);
   expect(body.subnets[0].netuid).toBe(7);
@@ -2249,7 +2309,7 @@ test("GET /api/v1/validators/:hotkey joins coldkey_identity for its primary cold
   mockRows.current = [{ ...NEURON_ROW, netuid: 7 }];
   accountIdentityJoinRows.current = [IDENTITY_ROW];
   const res = await req("/api/v1/validators/5Hot");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.coldkey).toBe("5Cold");
   expect(body.coldkey_identity.has_identity).toBe(true);
   expect(body.coldkey_identity.description).toBe(
@@ -2264,7 +2324,7 @@ test("GET /api/v1/validators/:hotkey sends one deduped identity lookup when ever
   ];
   accountIdentityJoinRows.current = [IDENTITY_ROW];
   const res = await req("/api/v1/validators/5Hot");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(2);
   expect(body.coldkey_identity.has_identity).toBe(true);
   const joinCalls = sqlCalls.filter((call) =>
@@ -2277,7 +2337,7 @@ test("GET /api/v1/validators/:hotkey sends one deduped identity lookup when ever
 test("GET /api/v1/validators/:hotkey for an absent hotkey has coldkey_identity:null (no coldkey to look up) and skips the join query (#5234)", async () => {
   mockRows.current = [];
   const res = await req(`/api/v1/validators/${SS58}`);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.coldkey).toBe(null);
   expect(body.coldkey_identity).toBe(null);
   expect(queryText()).not.toMatch(/FROM account_identity WHERE account IN/);
@@ -2314,10 +2374,10 @@ test("GET /api/v1/validators joins nominator_count by hotkey from validator_nomi
     [{ hotkey: "hk-a", nominator_count: 17 }],
   ];
   const res = await req("/api/v1/validators");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(queryText()).toMatch(/FROM validator_nominator_counts/);
   const byHotkey = Object.fromEntries(
-    body.validators.map((v) => [v.hotkey, v.nominator_count]),
+    body.validators.map((v: Row) => [v.hotkey, v.nominator_count]),
   );
   expect(byHotkey["hk-a"]).toBe(17);
   expect(byHotkey["hk-b"]).toBe(null);
@@ -2334,7 +2394,7 @@ test("GET /api/v1/validators still serves the primary rows when the validator_no
   ];
   const res = await req("/api/v1/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validators[0].hotkey).toBe("5Hot");
   expect(body.validators[0].nominator_count).toBe(null);
 });
@@ -2346,7 +2406,7 @@ test("GET /api/v1/validators/:hotkey joins nominator_count from validator_nomina
     [{ hotkey: "5Hot", nominator_count: 9 }],
   ];
   const res = await req("/api/v1/validators/5Hot");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.nominator_count).toBe(9);
 });
 
@@ -2367,7 +2427,7 @@ test("GET /api/v1/validators computes apy_estimate from a subnet_hyperparams tem
     [{ netuid: 3, tempo: 360 }],
   ];
   const res = await req("/api/v1/validators");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(queryText()).toMatch(/FROM subnet_hyperparams/);
   // epochsPerYear = 31,536,000/(360*12) = 7,300; annualized = 0.85*7,300 =
   // 6,205; apy = 6,205/1,000 = 6.205 -- same worked example as the builder
@@ -2388,7 +2448,7 @@ test("GET /api/v1/validators still serves the primary rows when the subnet_hyper
   ];
   const res = await req("/api/v1/validators");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validators[0].hotkey).toBe("5Hot");
   expect(body.validators[0].apy_estimate).toBe(null);
   expect(body.validators[0].apy_estimate_eligible_subnet_count).toBe(0);
@@ -2410,7 +2470,7 @@ test("GET /api/v1/validators/:hotkey computes apy_estimate from a subnet_hyperpa
     [{ netuid: 3, tempo: 360 }],
   ];
   const res = await req("/api/v1/validators/5Hot");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.apy_estimate).toBe(6.205);
   expect(body.apy_estimate_eligible_subnet_count).toBe(1);
 });
@@ -2423,7 +2483,7 @@ test("GET /api/v1/subnets/:netuid/concentration shapes the live stake/emission d
   mockRows.current = [NEURON_ROW];
   const res = await req("/api/v1/subnets/4/concentration");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(4);
   expect(body.stake).not.toBeNull();
   expect(queryText()).toContain("FROM neurons WHERE netuid =");
@@ -2433,7 +2493,7 @@ test("GET /api/v1/subnets/:netuid/performance shapes the live reward-flow distri
   mockRows.current = [NEURON_ROW];
   const res = await req("/api/v1/subnets/4/performance");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(4);
   expect(queryText()).toContain("FROM neurons WHERE netuid =");
 });
@@ -2442,7 +2502,7 @@ test("GET /api/v1/chain/concentration shapes the network-wide distribution acros
   mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
   const res = await req("/api/v1/chain/concentration");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
   expect(queryText()).toContain("FROM neurons");
   expect(queryText()).not.toContain("WHERE netuid");
@@ -2452,7 +2512,7 @@ test("GET /api/v1/chain/performance shapes the network-wide reward-flow distribu
   mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
   const res = await req("/api/v1/chain/performance");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -2463,7 +2523,7 @@ test("GET /api/v1/subnets/:netuid/idle-stake shapes the live idle-stake scorecar
   ];
   const res = await req("/api/v1/subnets/4/idle-stake");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(4);
   expect(body.neuron_count).toBe(2);
   expect(body.idle_neuron_count).toBe(1);
@@ -2475,7 +2535,7 @@ test("GET /api/v1/chain/idle-stake shapes the network-wide idle-stake rollup", a
   mockRows.current = [{ ...NEURON_ROW, netuid: 4, dividends: "0" }];
   const res = await req("/api/v1/chain/idle-stake");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
   expect(body.total_idle_stake_tao).toBe(456.7);
   expect(queryText()).toContain("FROM neurons");
@@ -2486,7 +2546,7 @@ test("GET /api/v1/chain/yield shapes the network-wide emission-yield distributio
   mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
   const res = await req("/api/v1/chain/yield");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -2494,7 +2554,7 @@ test("GET /api/v1/subnets/:netuid/yield shapes one subnet's emission-yield distr
   mockRows.current = [NEURON_ROW];
   const res = await req("/api/v1/subnets/4/yield");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(4);
   expect(body.neurons[0].hotkey).toBe("5Hot");
   expect(queryText()).toContain("FROM neurons WHERE netuid =");
@@ -2504,7 +2564,7 @@ test("GET /api/v1/accounts/:ss58/portfolio shapes one wallet's cross-subnet neur
   mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
   const res = await req(`/api/v1/accounts/${SS58}/portfolio`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ss58).toBe(SS58);
   expect(body.positions[0].netuid).toBe(4);
   expect(queryText()).toContain("FROM neurons WHERE hotkey =");
@@ -2514,7 +2574,7 @@ test("GET /api/v1/accounts returns the global accounts leaderboard", async () =>
   mockRows.current = [{ ...NEURON_ROW, netuid: 4 }];
   const res = await req("/api/v1/accounts");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.accounts[0].hotkey).toBe("5Hot");
   expect(queryText()).toContain("WHERE hotkey IS NOT NULL");
 });
@@ -2522,7 +2582,7 @@ test("GET /api/v1/accounts returns the global accounts leaderboard", async () =>
 test("GET /api/v1/accounts respects an explicit sort/limit", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/accounts?sort=total_stake&limit=5");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("total_stake");
   expect(body.limit).toBe(5);
 });
@@ -2538,7 +2598,7 @@ test("GET /api/v1/accounts/top-holders shapes the balance-based leaderboard from
   ];
   const res = await req("/api/v1/accounts/top-holders");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.accounts[0].ss58).toBe("5Whale1");
   expect(body.accounts[0].total_tao).toBe(1250.75);
   expect(queryText()).toContain("FULL OUTER JOIN");
@@ -2559,7 +2619,7 @@ test("GET /api/v1/accounts/top-holders joins wallet_flow_daily and shapes the ne
   ];
   const res = await req("/api/v1/accounts/top-holders?sort=net_flow_30d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.accounts[0].net_flow_7d).toBe(-50);
   expect(body.accounts[0].net_flow_30d).toBe(200);
   expect(body.accounts[0].net_flow_90d).toBe(900);
@@ -2570,7 +2630,7 @@ test("GET /api/v1/accounts/top-holders joins wallet_flow_daily and shapes the ne
 test("GET /api/v1/accounts/top-holders respects an explicit sort/limit", async () => {
   mockRows.current = [];
   const res = await req("/api/v1/accounts/top-holders?sort=free_tao&limit=5");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("free_tao");
   expect(body.limit).toBe(5);
 });
@@ -2591,7 +2651,7 @@ test("GET /api/v1/validators/:hotkey/history shapes the validator's cross-subnet
   ];
   const res = await req(`/api/v1/validators/${SS58}/history`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.hotkey).toBe(SS58);
   expect(body.points[0].snapshot_date).toBe("2026-07-01");
   expect(queryText()).toContain("FROM neuron_daily");
@@ -2602,7 +2662,7 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid/history shapes the per-UID daily 
   mockRows.current = [{ ...NEURON_ROW, snapshot_date: "2026-07-01" }];
   const res = await req("/api/v1/subnets/7/neurons/3/history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.uid).toBe(3);
   expect(body.points[0].snapshot_date).toBe("2026-07-01");
@@ -2622,7 +2682,7 @@ test("GET /api/v1/subnets/:netuid/history shapes the daily neuron/validator/stak
   ];
   const res = await req("/api/v1/subnets/7/history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.points[0].neuron_count).toBe(5);
   expect(queryText()).toContain("SUM(validator_permit::int)");
@@ -2634,7 +2694,7 @@ test("GET /api/v1/subnets/:netuid/concentration/history shapes the per-day conce
   ];
   const res = await req("/api/v1/subnets/7/concentration/history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.points[0].snapshot_date).toBe("2026-07-01");
   expect(queryText()).toContain("FROM neuron_daily");
@@ -2654,7 +2714,7 @@ test("GET /api/v1/subnets/:netuid/performance/history shapes the per-day reward-
   ];
   const res = await req("/api/v1/subnets/7/performance/history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.points[0].snapshot_date).toBe("2026-07-01");
 });
@@ -2670,7 +2730,7 @@ test("GET /api/v1/subnets/:netuid/yield/history shapes the per-day yield trend",
   ];
   const res = await req("/api/v1/subnets/7/yield/history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.points[0].snapshot_date).toBe("2026-07-01");
 });
@@ -2698,7 +2758,7 @@ test("GET /api/v1/chain/turnover shapes network-wide validator-set churn between
   ];
   const res = await req("/api/v1/chain/turnover");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.comparable).toBe(true);
   expect(body.start_date).toBe("2026-06-01");
   expect(body.end_date).toBe("2026-07-01");
@@ -2726,7 +2786,7 @@ test("GET /api/v1/subnets/:netuid/turnover shapes one subnet's validator-set chu
   ];
   const res = await req("/api/v1/subnets/7/turnover");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.comparable).toBe(true);
 });
@@ -2752,7 +2812,7 @@ test("GET /api/v1/subnets/:netuid/turnover?changes=true includes the entered/exi
   ];
   const res = await req("/api/v1/subnets/7/turnover?changes=true");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.changes).toBeDefined();
   expect(Array.isArray(body.changes.validators_entered)).toBe(true);
 });
@@ -2782,7 +2842,7 @@ test("GET /api/v1/subnets/movers shapes every subnet ranked by its stake/emissio
   ];
   const res = await req("/api/v1/subnets/movers");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
   expect(body.movers[0].netuid).toBe(7);
   expect(queryText()).toContain("SUM(validator_permit::int)");
@@ -2799,7 +2859,7 @@ test("GET /api/v1/validators/:hotkey/history falls back to the default window on
   ];
   const res = await req(`/api/v1/validators/${SS58}/history?window=bogus`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("30d");
   expect(queryText()).toContain("snapshot_date >=");
 });
@@ -2815,7 +2875,7 @@ test("GET /api/v1/validators/:hotkey/history?window=all skips the snapshot_date 
   ];
   const res = await req(`/api/v1/validators/${SS58}/history?window=all`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("all");
   expect(queryText()).not.toContain("snapshot_date >=");
 });
@@ -2824,7 +2884,7 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid/history?window=all skips the snap
   mockRows.current = [{ ...NEURON_ROW, snapshot_date: "2026-01-01" }];
   const res = await req("/api/v1/subnets/7/neurons/3/history?window=all");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("all");
   expect(queryText()).not.toContain("snapshot_date >=");
 });
@@ -2841,7 +2901,7 @@ test("GET /api/v1/subnets/:netuid/history?window=all skips the snapshot_date cut
   ];
   const res = await req("/api/v1/subnets/7/history?window=all");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("all");
   expect(queryText()).not.toContain("snapshot_date >=");
 });
@@ -2867,7 +2927,7 @@ test("GET /api/v1/chain/turnover falls back on an unrecognized window and respec
   ];
   const res = await req("/api/v1/chain/turnover?window=bogus&limit=5");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("30d");
 });
 
@@ -2875,7 +2935,7 @@ test("GET /api/v1/chain/turnover reports comparable:false on a cold store (no bo
   mockQueue.current = [[], []];
   const res = await req("/api/v1/chain/turnover");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.comparable).toBe(false);
   expect(body.start_date).toBeNull();
 });
@@ -2901,7 +2961,7 @@ test("GET /api/v1/subnets/:netuid/turnover falls back on an unrecognized window"
   ];
   const res = await req("/api/v1/subnets/7/turnover?window=bogus");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("30d");
 });
 
@@ -2926,7 +2986,7 @@ test("GET /api/v1/subnets/:netuid/turnover?window=all skips the newest-snapshot 
   ];
   const res = await req("/api/v1/subnets/7/turnover?window=all");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("all");
   expect(queryText()).not.toContain("MAX(snapshot_date) -");
 });
@@ -2935,7 +2995,7 @@ test("GET /api/v1/subnets/:netuid/turnover reports comparable:false on a cold st
   mockQueue.current = [[], []];
   const res = await req("/api/v1/subnets/7/turnover");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.comparable).toBe(false);
 });
 
@@ -2964,7 +3024,7 @@ test("GET /api/v1/subnets/movers falls back on an unrecognized window and respec
   ];
   const res = await req("/api/v1/subnets/movers?window=bogus&limit=5");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("30d");
 });
 
@@ -2972,7 +3032,7 @@ test("GET /api/v1/subnets/movers reports subnet_count:0 on a cold store (no boun
   mockQueue.current = [[], []];
   const res = await req("/api/v1/subnets/movers");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -2998,7 +3058,7 @@ test("GET /api/v1/accounts/:ss58/subnets/:netuid/history shapes one wallet's per
   ];
   const res = await req(`/api/v1/accounts/${SS58}/subnets/7/history`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ss58).toBe(SS58);
   expect(body.netuid).toBe(7);
   expect(body.points[0].snapshot_date).toBe("2026-07-01");
@@ -3027,7 +3087,7 @@ test("GET /api/v1/accounts/:ss58/subnets/:netuid/history?window=all skips the sn
     `/api/v1/accounts/${SS58}/subnets/7/history?window=all`,
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("all");
   expect(queryText()).not.toContain("snapshot_date >=");
 });
@@ -3059,8 +3119,13 @@ function neuronSyncRow(overrides = {}) {
   };
 }
 
-function postNeurons(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postNeurons(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-neurons-sync-token"] = secret;
   return req("/api/v1/internal/neurons-sync", {
     method: "POST",
@@ -3086,7 +3151,7 @@ test("neurons-sync is disabled (503) when NEURONS_SYNC_SECRET is not configured"
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -3102,7 +3167,7 @@ test("neurons-sync returns 503 when the HYPERDRIVE binding is unavailable", asyn
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    { NEURONS_SYNC_SECRET },
+    { NEURONS_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -3138,7 +3203,7 @@ test("neurons-sync accepts the {rows:[...]} wrapped form, not just a bare array"
     { secret: NEURONS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.neurons_written).toBe(1);
 });
 
@@ -3187,13 +3252,13 @@ test("neurons-sync ignores a client-provided snapshot_date instead of rejecting 
     { secret: NEURONS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.neurons_written).toBe(1);
   const neuronDailyInsert = sqlCalls.find((call) =>
     /INSERT INTO neuron_daily\b/.test(call.text),
   );
-  expect(neuronDailyInsert.values).toContain("2026-05-29");
-  expect(neuronDailyInsert.values).not.toContain("1999-01-01");
+  expect(neuronDailyInsert!.values).toContain("2026-05-29");
+  expect(neuronDailyInsert!.values).not.toContain("1999-01-01");
 });
 
 test.each([
@@ -3254,7 +3319,7 @@ test("neurons-sync upserts neurons + neuron_daily + account_position_daily and r
     { secret: NEURONS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toMatchObject({
     ok: true,
     neurons_written: 2,
@@ -3274,7 +3339,7 @@ test("neurons-sync skips account_position_daily for a row with a null hotkey", a
     secret: NEURONS_SYNC_SECRET,
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.account_position_daily_written).toBe(0);
   expect(queryText()).not.toMatch(/INSERT INTO account_position_daily/);
 });
@@ -3294,7 +3359,7 @@ test("neurons-sync computes one max captured_at per netuid across its many UID r
   const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
   // One (netuid, captured_at) pair, not three -- the repeat rows for netuid 8
   // collapse to a single threshold entry.
-  expect(pruneCall.values).toEqual([8, 1000]);
+  expect(pruneCall!.values).toEqual([8, 1000]);
 });
 
 test("neurons-sync coerces 0/1 active/validator_permit/is_immunity_period to real booleans", async () => {
@@ -3311,8 +3376,8 @@ test("neurons-sync coerces 0/1 active/validator_permit/is_immunity_period to rea
   const neuronsInsert = sqlCalls.find((c) =>
     /INSERT INTO neurons\b/.test(c.text),
   );
-  expect(neuronsInsert.values).toContain(true); // active / is_immunity_period
-  expect(neuronsInsert.values).toContain(false); // validator_permit
+  expect(neuronsInsert!.values).toContain(true); // active / is_immunity_period
+  expect(neuronsInsert!.values).toContain(false); // validator_permit
 });
 
 test("neurons-sync defaults a missing optional column (e.g. axon) to null rather than undefined", async () => {
@@ -3324,7 +3389,7 @@ test("neurons-sync defaults a missing optional column (e.g. axon) to null rather
   const neuronsInsert = sqlCalls.find((c) =>
     /INSERT INTO neurons\b/.test(c.text),
   );
-  expect(neuronsInsert.values).toContain(null);
+  expect(neuronsInsert!.values).toContain(null);
 });
 
 test("neurons-sync derives snapshot_date from captured_at for the neuron_daily row", async () => {
@@ -3335,7 +3400,7 @@ test("neurons-sync derives snapshot_date from captured_at for the neuron_daily r
   const dailyInsert = sqlCalls.find((c) =>
     /INSERT INTO neuron_daily/.test(c.text),
   );
-  expect(dailyInsert.values).toContain("2026-06-20");
+  expect(dailyInsert!.values).toContain("2026-06-20");
 });
 
 test("neurons-sync scopes the deregistered-UID prune to only the netuids present in this batch", async () => {
@@ -3346,9 +3411,9 @@ test("neurons-sync scopes the deregistered-UID prune to only the netuids present
   const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
   // Flat (netuid, captured_at) pairs -- sql.unsafe positional params, not a
   // bound array (see the #4771 hotfix comment in handleNeuronsSync).
-  expect(pruneCall.values).toEqual(expect.arrayContaining([8, 9]));
-  expect(pruneCall.values).toHaveLength(4);
-  expect(pruneCall.text).toMatch(/\$1::int, \$2::bigint/);
+  expect(pruneCall!.values).toEqual(expect.arrayContaining([8, 9]));
+  expect(pruneCall!.values).toHaveLength(4);
+  expect(pruneCall!.text).toMatch(/\$1::int, \$2::bigint/);
 });
 
 // REGRESSION (Gittensory Gate finding, 2026-07-10): the prune threshold must
@@ -3367,9 +3432,9 @@ test("neurons-sync prunes each netuid against its OWN max captured_at, not the b
   );
   const pruneCall = sqlCalls.find((c) => /DELETE FROM neurons/.test(c.text));
   // Flat (netuid, captured_at) pairs, in netuid-first-seen order.
-  const pairs = [];
-  for (let i = 0; i < pruneCall.values.length; i += 2) {
-    pairs.push([pruneCall.values[i], pruneCall.values[i + 1]]);
+  const pairs: [unknown, unknown][] = [];
+  for (let i = 0; i < pruneCall!.values.length; i += 2) {
+    pairs.push([pruneCall!.values[i], pruneCall!.values[i + 1]]);
   }
   const byNetuid = new Map(pairs);
   // Each netuid's threshold must equal ITS OWN captured_at from this batch --
@@ -3383,7 +3448,7 @@ test("neurons-sync reports deregistered_pruned from the DELETE's returned row co
   const res = await postNeurons([neuronSyncRow()], {
     secret: NEURONS_SYNC_SECRET,
   });
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.deregistered_pruned).toBe(2);
 });
 
@@ -3393,7 +3458,7 @@ test("neurons-sync maps a DB failure to a clean 502 instead of throwing", async 
     secret: NEURONS_SYNC_SECRET,
   });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 // metagraphed#7758: captureDataApiError now also posts a PostHog $exception
@@ -3405,12 +3470,12 @@ test("neurons-sync maps a DB failure to a clean 502 instead of throwing", async 
 // ~500 tests in this file stay on the unconfigured, PostHog-silent path.
 test("neurons-sync's DB failure also reaches PostHog as $exception, tagged with the route", async () => {
   neuronsSyncFailure.error = new Error("connection reset");
-  const posted = [];
+  const posted: Row[] = [];
   const original = globalThis.fetch;
-  globalThis.fetch = async (url, init) => {
-    posted.push({ url, body: JSON.parse(init.body) });
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    posted.push({ url, body: JSON.parse(init.body as string) });
     return { ok: true };
-  };
+  }) as unknown as typeof globalThis.fetch;
   try {
     const res = await worker.fetch(
       new Request("https://d/api/v1/internal/neurons-sync", {
@@ -3421,7 +3486,10 @@ test("neurons-sync's DB failure also reaches PostHog as $exception, tagged with 
         },
         body: JSON.stringify([neuronSyncRow()]),
       }),
-      { ...env, [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" },
+      {
+        ...env,
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
+      } as unknown as Env,
       ctx,
     );
     expect(res.status).toBe(502);
@@ -3442,8 +3510,13 @@ test("neurons-sync's DB failure also reaches PostHog as $exception, tagged with 
 // (workers/data-api.mjs's handleNeuronDailyBackfill). Same row shape as
 // neurons-sync (reuses neuronSyncRow), different route/secret, and critically
 // must NEVER touch the latest-only `neurons` table.
-function postNeuronDailyBackfill(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postNeuronDailyBackfill(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-neuron-daily-backfill-token"] = secret;
   return req("/api/v1/internal/backfill-neuron-daily", {
     method: "POST",
@@ -3471,7 +3544,7 @@ test("backfill-neuron-daily is disabled (503) when NEURON_DAILY_BACKFILL_SECRET 
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -3487,7 +3560,7 @@ test("backfill-neuron-daily returns 503 when the HYPERDRIVE binding is unavailab
       },
       body: JSON.stringify([neuronSyncRow()]),
     }),
-    { NEURON_DAILY_BACKFILL_SECRET },
+    { NEURON_DAILY_BACKFILL_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -3525,7 +3598,7 @@ test("backfill-neuron-daily accepts a null stake_tao (backfill-neuron-history.py
     { secret: NEURON_DAILY_BACKFILL_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ok).toBe(true);
   expect(body.neuron_daily_written).toBe(1);
 });
@@ -3542,12 +3615,12 @@ test("backfill-neuron-daily ignores client snapshot_date and derives it from cap
     { secret: NEURON_DAILY_BACKFILL_SECRET },
   );
   expect(res.status).toBe(200);
-  expect((await res.json()).neuron_daily_written).toBe(1);
+  expect(((await res.json()) as Row).neuron_daily_written).toBe(1);
   const neuronDailyInsert = sqlCalls.find((call) =>
     /INSERT INTO neuron_daily\b/.test(call.text),
   );
-  expect(neuronDailyInsert.values).toContain("2026-05-29");
-  expect(neuronDailyInsert.values).not.toContain("1999-01-01");
+  expect(neuronDailyInsert!.values).toContain("2026-05-29");
+  expect(neuronDailyInsert!.values).not.toContain("1999-01-01");
 });
 
 // stripClientSnapshotDate's own null/non-object/array guard (mirrors
@@ -3572,7 +3645,7 @@ test("backfill-neuron-daily writes neuron_daily + account_position_daily but NEV
     secret: NEURON_DAILY_BACKFILL_SECRET,
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({
     ok: true,
     neuron_daily_written: 1,
@@ -3594,7 +3667,7 @@ test("backfill-neuron-daily accepts the {rows:[...]} wrapped form, not just a ba
     { secret: NEURON_DAILY_BACKFILL_SECRET },
   );
   expect(res.status).toBe(200);
-  expect((await res.json()).neuron_daily_written).toBe(1);
+  expect(((await res.json()) as Row).neuron_daily_written).toBe(1);
 });
 
 test("backfill-neuron-daily rejects a body over the byte cap (413)", async () => {
@@ -3618,7 +3691,7 @@ test("backfill-neuron-daily excludes a null-hotkey row from account_position_dai
     secret: NEURON_DAILY_BACKFILL_SECRET,
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.neuron_daily_written).toBe(1);
   expect(body.account_position_daily_written).toBe(0);
 });
@@ -3629,7 +3702,7 @@ test("backfill-neuron-daily maps a DB failure to a clean 502 instead of throwing
     secret: NEURON_DAILY_BACKFILL_SECRET,
   });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 test("POST to a different path is rejected with 405 (neurons-sync route only accepts its own path)", async () => {
@@ -3645,7 +3718,7 @@ test("unknown path is 404", async () => {
 test("missing Hyperdrive binding is 503", async () => {
   const res = await worker.fetch(
     new Request("https://d/api/v1/chain-events"),
-    {},
+    {} as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -3671,7 +3744,7 @@ test("GET /api/v1/validators/:hotkey/nominators returns a nominators card shaped
   ];
   const res = await req(`/api/v1/validators/${SS58}/nominators?window=30d`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.nominator_count).toBe(1);
   expect(body.data.nominators[0].coldkey).toBe("5Cold");
   expect(body.data.nominators[0].net_staked_tao).toBeCloseTo(8);
@@ -3698,7 +3771,7 @@ test("GET /api/v1/validators/:hotkey/nominators sorts by last_activity", async (
 test("GET /api/v1/validators/:hotkey/nominators falls back to the default window for an unrecognized label", async () => {
   mockRows.current = [];
   const res = await req(`/api/v1/validators/${SS58}/nominators?window=bogus`);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.window).toBe("30d");
 });
 
@@ -3733,7 +3806,7 @@ test("GET /api/v1/validators/:hotkey/nominators computes generatedAt as the newe
     },
   ];
   const res = await req(`/api/v1/validators/${SS58}/nominators`);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.generatedAt).toBe(new Date(1783700000000).toISOString());
 });
 
@@ -3748,7 +3821,7 @@ test("GET /api/v1/accounts/:ss58/weight-setters unions the direct-hotkey and neu
   ];
   const res = await req(`/api/v1/accounts/${SS58}/weight-setters?window=7d`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.subnets[0].netuid).toBe(4);
   expect(body.data.dominant_netuid).toBe(4);
   const text = queryText();
@@ -3766,7 +3839,7 @@ test("GET /api/v1/subnets/:netuid/weights returns the aggregate WeightsSet card"
   ];
   const res = await req("/api/v1/subnets/4/weights?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.weight_sets).toBe(5);
   expect(body.distinct_setters).toBe(3);
   expect(queryText()).toContain("event_kind = ");
@@ -3776,7 +3849,7 @@ test("GET /api/v1/subnets/:netuid/weights with no rows returns the zeroed card, 
   mockRows.current = [];
   const res = await req("/api/v1/subnets/4/weights");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.weight_sets).toBe(0);
 });
 
@@ -3799,7 +3872,7 @@ test("GET /api/v1/subnets/:netuid/volume shapes a buy/sell alpha rollup", async 
   ];
   const res = await req("/api/v1/subnets/4/volume");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.buy_volume_alpha).toBe(10);
   expect(body.data.sell_volume_alpha).toBe(4);
   expect(body.data.vol_mcap_ratio).toBeNull(); // no KV/R2 access from this Worker
@@ -3823,7 +3896,7 @@ test("GET /api/v1/subnets/:netuid/ohlc shapes raw account_events rows into candl
   ];
   const res = await req("/api/v1/subnets/4/ohlc");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.netuid).toBe(4);
   expect(body.data.interval).toBe("1h");
   expect(body.data.candles.length).toBe(1);
@@ -3849,7 +3922,7 @@ test("GET /api/v1/subnets/:netuid/ohlc honors ?interval=1d", async () => {
   ];
   const res = await req("/api/v1/subnets/4/ohlc?interval=1d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.interval).toBe("1d");
 });
 
@@ -3857,7 +3930,7 @@ test("GET /api/v1/subnets/:netuid/ohlc with no rows returns an empty candle arra
   mockRows.current = [];
   const res = await req("/api/v1/subnets/4/ohlc");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.candles).toEqual([]);
 });
 
@@ -3865,7 +3938,7 @@ test("GET /api/v1/subnets/0/ohlc (root) is schema-stable with root_excluded:true
   mockRows.current = [];
   const res = await req("/api/v1/subnets/0/ohlc");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.root_excluded).toBe(true);
   expect(body.data.candles).toEqual([]);
 });
@@ -3903,7 +3976,7 @@ test("GET /api/v1/subnets/:netuid/ownership-history shapes raw chain_events rows
   ];
   const res = await req("/api/v1/subnets/7/ownership-history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.count).toBe(1);
   expect(body.ownership_changes[0].old_coldkey).toBe(
@@ -3922,7 +3995,7 @@ test("GET /api/v1/subnets/:netuid/ownership-history with no rows returns an empt
   mockRows.current = [];
   const res = await req("/api/v1/subnets/7/ownership-history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.count).toBe(0);
   expect(body.ownership_changes).toEqual([]);
 });
@@ -3956,7 +4029,7 @@ test("GET /api/v1/accounts/:coldkey/entities shapes a network-wide (unfiltered) 
     "/api/v1/accounts/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F/entities",
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ss58).toBe("5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F");
   expect(body.ownership_tie_count).toBe(1);
   expect(body.ownership_ties[0].role).toBe("gained_ownership");
@@ -3973,7 +4046,7 @@ test("GET /api/v1/accounts/:coldkey/entities with no matching rows returns an em
     "/api/v1/accounts/5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F/entities",
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ownership_tie_count).toBe(0);
   expect(body.ownership_ties).toEqual([]);
 });
@@ -3989,7 +4062,7 @@ test("GET /api/v1/subnets/:netuid/lease/history shapes raw account_events rows i
   ];
   const res = await req("/api/v1/subnets/7/lease/history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.count).toBe(1);
   expect(body.lease_events[0].event_kind).toBe("SubnetLeaseCreated");
@@ -4006,7 +4079,7 @@ test("GET /api/v1/subnets/:netuid/lease/history with no rows returns an empty li
   mockRows.current = [];
   const res = await req("/api/v1/subnets/7/lease/history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.count).toBe(0);
   expect(body.lease_events).toEqual([]);
 });
@@ -4016,10 +4089,10 @@ test("GET /api/v1/subnets/:netuid/lease/history with no rows returns an empty li
 // UnlockRate/MaturityRate/chain-tip RPC lookup -- stub globalThis.fetch for
 // just that part, mirroring tests/subnet-burn.test.mjs's own save/restore
 // pattern.
-function stubConvictionRpc({ unlockRateHex, maturityRateHex, blockHex }) {
+function stubConvictionRpc({ unlockRateHex, maturityRateHex, blockHex }: Row) {
   const orig = globalThis.fetch;
-  globalThis.fetch = async (_url, init) => {
-    const body = JSON.parse(init.body);
+  const stub = async (_url: unknown, init: RequestInit) => {
+    const body = JSON.parse(init.body as string);
     if (body.method === "state_getStorage") {
       const key = body.params[0];
       // Last few hex chars distinguish the two hardcoded storage keys --
@@ -4038,6 +4111,7 @@ function stubConvictionRpc({ unlockRateHex, maturityRateHex, blockHex }) {
       JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }),
     );
   };
+  globalThis.fetch = stub as unknown as typeof globalThis.fetch;
   return () => {
     globalThis.fetch = orig;
   };
@@ -4065,7 +4139,7 @@ test("GET /api/v1/subnets/:netuid/conviction rolls a real subnet_locks row forwa
     ];
     const res = await req("/api/v1/subnets/1/conviction");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     expect(body.netuid).toBe(1);
     expect(body.unlock_rate).toBe(934866);
     expect(body.maturity_rate).toBe(311622);
@@ -4091,7 +4165,7 @@ test("GET /api/v1/subnets/:netuid/conviction with no rows returns an empty leade
     mockRows.current = [];
     const res = await req("/api/v1/subnets/999/conviction");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     expect(body.count).toBe(0);
     expect(body.leaderboard).toEqual([]);
     expect(body.king).toBe(null);
@@ -4106,7 +4180,7 @@ test("GET /api/v1/subnets/:netuid/events returns the per-subnet feed and applies
     "/api/v1/subnets/4/events?kind=StakeAdded&block_start=1&block_end=2",
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.events[0].event_kind).toBe("StakeAdded");
   const text = queryText();
   expect(text).toContain("WHERE netuid =");
@@ -4134,7 +4208,7 @@ test("GET /api/v1/subnets/:netuid/events ignores an old 2-part cursor (pre-METAG
 test("GET /api/v1/subnets/:netuid/events returns a next_cursor when the page is full", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req("/api/v1/subnets/4/events?limit=1");
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.next_cursor).toBe("1783600000000.8586300.0");
 });
 
@@ -4172,10 +4246,12 @@ test("GET /api/v1/subnets/:netuid/event-summary shapes kind/category aggregates 
   ];
   const res = await req("/api/v1/subnets/4/event-summary?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.event_kinds[0].event_kind).toBe("StakeAdded");
   expect(body.event_kinds[0].coldkey_count).toBe(2);
-  const removed = body.event_kinds.find((k) => k.event_kind === "StakeRemoved");
+  const removed = body.event_kinds.find(
+    (k: Row) => k.event_kind === "StakeRemoved",
+  );
   expect(removed.coldkey_count).toBe(0);
   expect(body.recent_events[0].event_kind).toBe("StakeAdded");
   expect(queryText()).toContain(
@@ -4188,7 +4264,7 @@ test("GET /api/v1/subnets/:netuid/event-summary defaults the window when absent"
   mockQueue.current = [[], [], [], []];
   const res = await req("/api/v1/subnets/4/event-summary");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("30d");
 });
 
@@ -4196,7 +4272,7 @@ test("GET /api/v1/subnets/:netuid/event-summary falls back to the default window
   mockQueue.current = [[], [], [], []];
   const res = await req("/api/v1/subnets/4/event-summary?window=bogus");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("30d");
 });
 
@@ -4222,7 +4298,7 @@ test("GET /api/v1/subnets/:netuid/weights/setters returns a leaderboard + totals
   ];
   const res = await req("/api/v1/subnets/4/weights/setters");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.setters[0].weight_sets).toBe(5);
   expect(body.distinct_setters).toBe(1);
   expect(body.schema_version).toBe(1);
@@ -4244,7 +4320,7 @@ test("GET /api/v1/subnets/:netuid/weights/setters falls back to a null totals ro
   ];
   const res = await req("/api/v1/subnets/4/weights/setters");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.setters[0].weight_sets).toBe(5);
   expect(body.distinct_setters).toBe(0);
 });
@@ -4337,7 +4413,7 @@ test("GET /api/v1/accounts/:ss58/stake-moves groups movements per subnet", async
   ];
   const res = await req(`/api/v1/accounts/${SS58}/stake-moves`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.data.subnets[0].movements).toBe(2);
 });
 
@@ -4347,7 +4423,7 @@ test("GET /api/v1/subnets/:netuid/stake-moves returns the single-row aggregate",
   ];
   const res = await req("/api/v1/subnets/4/stake-moves");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.movements).toBe(4);
   expect(body.distinct_movers).toBe(3);
   // #6877: the distinct-movers subquery groups by coldkey only (GROUP BY 1), so it
@@ -4367,7 +4443,7 @@ test("GET /api/v1/subnets/:netuid/stake-moves with no aggregate row returns the 
   mockRows.current = [];
   const res = await req("/api/v1/subnets/4/stake-moves");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.movements).toBe(0);
 });
 
@@ -4377,7 +4453,7 @@ test("GET /api/v1/subnets/:netuid/stake-transfers returns the single-row aggrega
   ];
   const res = await req("/api/v1/subnets/4/stake-transfers");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.transfers).toBe(6);
   expect(body.distinct_senders).toBe(2);
   // #6877: identical grouped-subquery fix for the distinct-senders count — the
@@ -4396,7 +4472,7 @@ test("GET /api/v1/subnets/:netuid/stake-transfers with no aggregate row returns 
   mockRows.current = [];
   const res = await req("/api/v1/subnets/4/stake-transfers");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.transfers).toBe(0);
 });
 
@@ -4420,7 +4496,7 @@ for (const [path, metric] of ACCOUNT_FOOTPRINT_ROUTES) {
     ];
     const res = await req(`/api/v1/accounts/${SS58}/${path}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     expect(body.data.subnets[0][metric]).toBe(3);
     expect(body.data.subnets[0].netuid).toBe(4);
   });
@@ -4441,7 +4517,7 @@ for (const [path, metric, distinct] of SUBNET_FOOTPRINT_ROUTES) {
     ];
     const res = await req(`/api/v1/subnets/4/${path}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     expect(body[metric]).toBe(7);
     expect(body[distinct]).toBe(5);
   });
@@ -4450,7 +4526,7 @@ for (const [path, metric, distinct] of SUBNET_FOOTPRINT_ROUTES) {
     mockRows.current = [];
     const res = await req(`/api/v1/subnets/4/${path}`);
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     expect(body[metric]).toBe(0);
   });
 }
@@ -4459,7 +4535,7 @@ test("GET /api/v1/accounts/:ss58/transfers reuses buildAccountTransfers unchange
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/transfers`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.transfers[0].amount_tao).toBe(1.5);
   expect(queryText()).toContain("event_kind = 'Transfer'");
 });
@@ -4552,8 +4628,10 @@ test("GET /api/v1/accounts/:ss58/transfers (no direction) merges both branches w
   ];
   const res = await req(`/api/v1/accounts/${SS58}/transfers?limit=10`);
   expect(res.status).toBe(200);
-  const body = await res.json();
-  expect(body.transfers.map((e) => e.block_number)).toEqual([200, 150, 100]);
+  const body = (await res.json()) as Row;
+  expect(body.transfers.map((e: Row) => e.block_number)).toEqual([
+    200, 150, 100,
+  ]);
 });
 
 test("GET /api/v1/accounts/:ss58/transfers applies block_start/block_end bounds", async () => {
@@ -4590,7 +4668,7 @@ test("GET /api/v1/accounts/:ss58/transfers ignores an old 2-part cursor (pre-MET
 test("GET /api/v1/accounts/:ss58/transfers returns a next_cursor when the page is full", async () => {
   mockRows.current = [ACCOUNT_EVENT_ROW];
   const res = await req(`/api/v1/accounts/${SS58}/transfers?limit=1`);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.next_cursor).toBe("1783600000000.8586300.0");
 });
 
@@ -4606,7 +4684,7 @@ test("GET /api/v1/accounts/:ss58/counterparties returns a counterparty leaderboa
   ];
   const res = await req(`/api/v1/accounts/${SS58}/counterparties`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.counterparties[0].address).toBe("5Cold");
 });
 
@@ -4624,7 +4702,7 @@ test("GET /api/v1/accounts/:ss58/counterparties?counterparty= returns the relati
     `/api/v1/accounts/${SS58}/counterparties?counterparty=5Cold`,
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.counterparty_count).toBe(1);
   expect(body.counterparties[0]).toMatchObject({
     address: "5Cold",
@@ -4651,7 +4729,7 @@ test("GET /api/v1/accounts/:ss58/counterparties?counterparty= with no matching t
     `/api/v1/accounts/${SS58}/counterparties?counterparty=5Cold`,
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.counterparty_count).toBe(0);
   expect(body.counterparties).toEqual([]);
   expect(body.relationship.transfer_count).toBe(0);
@@ -4662,8 +4740,8 @@ test("GET /api/v1/accounts/:ss58/counterparties?counterparty= with no matching t
 // writes account_events continuously, but nothing rolled it into the daily
 // summary table in Postgres), plus its read path,
 // GET /api/v1/accounts/:ss58/history.
-function postRollup({ secret } = {}) {
-  const headers = {};
+function postRollup({ secret }: { secret?: string } = {}) {
+  const headers: Record<string, string> = {};
   if (secret !== undefined) headers["x-rollup-sync-token"] = secret;
   return req("/api/v1/internal/rollup-account-events-daily", {
     method: "POST",
@@ -4684,7 +4762,7 @@ test("rollup-account-events-daily is disabled (503) when ROLLUP_SYNC_SECRET is n
       method: "POST",
       headers: { "x-rollup-sync-token": ROLLUP_SYNC_SECRET },
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -4696,7 +4774,7 @@ test("rollup-account-events-daily returns 503 when the HYPERDRIVE binding is una
       method: "POST",
       headers: { "x-rollup-sync-token": ROLLUP_SYNC_SECRET },
     }),
-    { ROLLUP_SYNC_SECRET },
+    { ROLLUP_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -4705,7 +4783,7 @@ test("rollup-account-events-daily returns 503 when the HYPERDRIVE binding is una
 test("rollup-account-events-daily rolls up the two active UTC days and reports them", async () => {
   const res = await postRollup({ secret: ROLLUP_SYNC_SECRET });
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ok).toBe(true);
   expect(body.rolled).toHaveLength(2);
   expect(queryText()).toMatch(/INSERT INTO account_events_daily/);
@@ -4725,7 +4803,7 @@ test("rollup-account-events-daily maps a DB failure to a clean 502 instead of th
   rollupFailure.error = new Error("connection reset");
   const res = await postRollup({ secret: ROLLUP_SYNC_SECRET });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("rollup failed");
+  expect(((await res.json()) as Row).error).toBe("rollup failed");
 });
 
 test("GET /api/v1/accounts/:ss58/history shapes the durable per-day activity series", async () => {
@@ -4741,7 +4819,7 @@ test("GET /api/v1/accounts/:ss58/history shapes the durable per-day activity ser
   ];
   const res = await req(`/api/v1/accounts/${SS58}/history`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.ss58).toBe(SS58);
   expect(body.days[0].day).toBe("2026-07-01");
   expect(queryText()).toContain("FROM account_events_daily");
@@ -4796,7 +4874,7 @@ test("GET /api/v1/accounts/:ss58/history?limit=1 emits a next_cursor when the pa
   ];
   const res = await req(`/api/v1/accounts/${SS58}/history?limit=1`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.next_cursor).not.toBeNull();
 });
 
@@ -4808,7 +4886,7 @@ test("GET /api/v1/accounts/:ss58/history maps a DB failure to a clean 502 via th
   accountHistoryQueryFailure.error = new Error("connection reset");
   const res = await req(`/api/v1/accounts/${SS58}/history`);
   expect(res.status).toBe(502);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.error).toBe("data query failed");
 });
 
@@ -4858,8 +4936,13 @@ function hyperparamsSyncRow(overrides = {}) {
   };
 }
 
-function postSubnetHyperparams(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postSubnetHyperparams(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-subnet-hyperparams-sync-token"] = secret;
   return req("/api/v1/internal/subnet-hyperparams-sync", {
     method: "POST",
@@ -4887,7 +4970,7 @@ test("subnet-hyperparams-sync is disabled (503) when SUBNET_HYPERPARAMS_SYNC_SEC
       },
       body: JSON.stringify([hyperparamsSyncRow()]),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -4903,7 +4986,7 @@ test("subnet-hyperparams-sync returns 503 when the HYPERDRIVE binding is unavail
       },
       body: JSON.stringify([hyperparamsSyncRow()]),
     }),
-    { SUBNET_HYPERPARAMS_SYNC_SECRET },
+    { SUBNET_HYPERPARAMS_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -4939,7 +5022,7 @@ test("subnet-hyperparams-sync accepts the {rows:[...]} wrapped form, not just a 
     { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_hyperparams_written).toBe(1);
 });
 
@@ -5015,7 +5098,7 @@ test("subnet-hyperparams-sync upserts subnet_hyperparams and reports written/pru
     { secret: SUBNET_HYPERPARAMS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toMatchObject({ ok: true, subnet_hyperparams_written: 2 });
   expect(queryText()).toMatch(/INSERT INTO subnet_hyperparams\b/);
   expect(queryText()).toMatch(/DELETE FROM subnet_hyperparams\b/);
@@ -5029,8 +5112,8 @@ test("subnet-hyperparams-sync prunes with scalar positional binds, not a bound a
   const pruneCall = sqlCalls.find((c) =>
     /DELETE FROM subnet_hyperparams\b/.test(c.text),
   );
-  expect(pruneCall.values).toEqual([8, 9]);
-  expect(pruneCall.text).toMatch(/\$1::int, \$2::int/);
+  expect(pruneCall!.values).toEqual([8, 9]);
+  expect(pruneCall!.text).toMatch(/\$1::int, \$2::int/);
 });
 
 test("subnet-hyperparams-sync coerces 0/1 boolean-flag columns to real booleans", async () => {
@@ -5046,8 +5129,8 @@ test("subnet-hyperparams-sync coerces 0/1 boolean-flag columns to real booleans"
   const insert = sqlCalls.find((c) =>
     /INSERT INTO subnet_hyperparams\b/.test(c.text),
   );
-  expect(insert.values).toContain(true);
-  expect(insert.values).toContain(false);
+  expect(insert!.values).toContain(true);
+  expect(insert!.values).toContain(false);
 });
 
 test("subnet-hyperparams-sync defaults a missing optional column to null rather than undefined", async () => {
@@ -5060,7 +5143,7 @@ test("subnet-hyperparams-sync defaults a missing optional column to null rather 
   const insert = sqlCalls.find((c) =>
     /INSERT INTO subnet_hyperparams\b/.test(c.text),
   );
-  expect(insert.values).toContain(null);
+  expect(insert!.values).toContain(null);
 });
 
 test("subnet-hyperparams-sync reports deregistered_pruned from the DELETE's returned row count", async () => {
@@ -5068,7 +5151,7 @@ test("subnet-hyperparams-sync reports deregistered_pruned from the DELETE's retu
   const res = await postSubnetHyperparams([hyperparamsSyncRow()], {
     secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
   });
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.deregistered_pruned).toBe(1);
 });
 
@@ -5077,7 +5160,7 @@ test("subnet-hyperparams-sync appends to subnet_hyperparams_history when the has
   const res = await postSubnetHyperparams([hyperparamsSyncRow()], {
     secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
   });
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.history_appended).toBe(1);
   expect(queryText()).toMatch(/INSERT INTO subnet_hyperparams_history/);
 });
@@ -5091,7 +5174,7 @@ test("subnet-hyperparams-sync skips the history append when the hash is unchange
   const res = await postSubnetHyperparams([row], {
     secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
   });
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.history_appended).toBe(0);
   expect(queryText()).not.toMatch(/INSERT INTO subnet_hyperparams_history/);
 });
@@ -5102,7 +5185,7 @@ test("subnet-hyperparams-sync maps a DB failure to a clean 502 instead of throwi
     secret: SUBNET_HYPERPARAMS_SYNC_SECRET,
   });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 // metagraphed#7758: subnet-locks-sync had no coverage at all before this --
@@ -5131,7 +5214,7 @@ test("subnet-locks-sync maps a DB failure to a clean 502 instead of throwing", a
     ]),
   });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 test("GET /api/v1/subnets/:netuid/hyperparameters returns the latest row", async () => {
@@ -5154,7 +5237,7 @@ test("GET /api/v1/subnets/:netuid/hyperparameters returns the latest row", async
   ];
   const res = await req("/api/v1/subnets/8/hyperparameters");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(8);
   expect(body.hyperparameters.tempo).toBe(360);
   expect(body.hyperparameters.registration_allowed).toBe(true);
@@ -5164,7 +5247,7 @@ test("GET /api/v1/subnets/:netuid/hyperparameters on a cold store returns hyperp
   mockRows.current = [];
   const res = await req("/api/v1/subnets/8/hyperparameters");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.hyperparameters).toBeNull();
 });
 
@@ -5190,7 +5273,7 @@ test("GET /api/v1/subnets/:netuid/hyperparameters/history returns the change tim
   ];
   const res = await req("/api/v1/subnets/8/hyperparameters/history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.entry_count).toBe(1);
   expect(body.entries[0].hyperparams_hash).toBe("abc123");
   expect(body.entries[0].hyperparameters.tempo).toBe(360);
@@ -5218,7 +5301,7 @@ test("GET /api/v1/subnets/:netuid/hyperparameters/history?limit=1 emits a next_c
   ];
   const res = await req("/api/v1/subnets/8/hyperparameters/history?limit=1");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.next_cursor).not.toBeNull();
 });
 
@@ -5244,8 +5327,13 @@ function accountIdentitySyncRow(overrides = {}) {
   };
 }
 
-function postAccountIdentity(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postAccountIdentity(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-account-identity-sync-token"] = secret;
   return req("/api/v1/internal/account-identity-sync", {
     method: "POST",
@@ -5273,7 +5361,7 @@ test("account-identity-sync is disabled (503) when ACCOUNT_IDENTITY_SYNC_SECRET 
       },
       body: JSON.stringify([accountIdentitySyncRow()]),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -5289,7 +5377,7 @@ test("account-identity-sync returns 503 when the HYPERDRIVE binding is unavailab
       },
       body: JSON.stringify([accountIdentitySyncRow()]),
     }),
-    { ACCOUNT_IDENTITY_SYNC_SECRET },
+    { ACCOUNT_IDENTITY_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -5325,7 +5413,7 @@ test("account-identity-sync accepts the {rows:[...]} wrapped form, not just a ba
     { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.account_identity_written).toBe(1);
 });
 
@@ -5409,7 +5497,7 @@ test("account-identity-sync upserts account_identity and reports written counts,
     { secret: ACCOUNT_IDENTITY_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toMatchObject({ ok: true, account_identity_written: 2 });
   expect(queryText()).toMatch(/INSERT INTO account_identity\b/);
   expect(queryText()).not.toMatch(/DELETE FROM account_identity/);
@@ -5425,7 +5513,7 @@ test("account-identity-sync defaults a missing optional column (e.g. additional)
   const insert = sqlCalls.find((c) =>
     /INSERT INTO account_identity\b/.test(c.text),
   );
-  expect(insert.values).toContain(null);
+  expect(insert!.values).toContain(null);
 });
 
 // REGRESSION (live-verified 2026-07-11): a real staged row's discord/
@@ -5449,10 +5537,12 @@ test("account-identity-sync strips embedded NUL bytes from string fields (Postgr
     /INSERT INTO account_identity\b/.test(c.text),
   );
   expect(
-    insert.values.some((v) => typeof v === "string" && v.includes("\u0000")),
+    insert!.values.some(
+      (v: unknown) => typeof v === "string" && v.includes("\u0000"),
+    ),
   ).toBe(false);
-  expect(insert.values).toContain("");
-  expect(insert.values).toContain("beforeafter");
+  expect(insert!.values).toContain("");
+  expect(insert!.values).toContain("beforeafter");
 });
 
 test("account-identity-sync appends to account_identity_history when the hash changed (cold history)", async () => {
@@ -5460,14 +5550,14 @@ test("account-identity-sync appends to account_identity_history when the hash ch
   const res = await postAccountIdentity([accountIdentitySyncRow()], {
     secret: ACCOUNT_IDENTITY_SYNC_SECRET,
   });
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.history_appended).toBe(1);
   expect(queryText()).toMatch(/INSERT INTO account_identity_history/);
 });
 
 test("account-identity-sync skips the history append when the hash is unchanged", async () => {
-  const row = accountIdentitySyncRow();
-  const snapshot = {};
+  const row: Row = accountIdentitySyncRow();
+  const snapshot: Row = {};
   for (const field of IDENTITY_FIELDS) snapshot[field] = row[field] ?? null;
   const hash = await identityHash(snapshot);
   accountIdentityLatestHashes.current = [
@@ -5476,7 +5566,7 @@ test("account-identity-sync skips the history append when the hash is unchanged"
   const res = await postAccountIdentity([row], {
     secret: ACCOUNT_IDENTITY_SYNC_SECRET,
   });
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.history_appended).toBe(0);
   expect(queryText()).not.toMatch(/INSERT INTO account_identity_history/);
 });
@@ -5487,7 +5577,7 @@ test("account-identity-sync maps a DB failure to a clean 502 instead of throwing
     secret: ACCOUNT_IDENTITY_SYNC_SECRET,
   });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 // #2549: POST /api/v1/internal/validator-nominator-counts-sync -- the write
@@ -5503,8 +5593,13 @@ function validatorNominatorCountRow(overrides = {}) {
   };
 }
 
-function postValidatorNominatorCounts(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postValidatorNominatorCounts(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined)
     headers["x-validator-nominator-counts-sync-token"] = secret;
   return req("/api/v1/internal/validator-nominator-counts-sync", {
@@ -5537,7 +5632,7 @@ test("validator-nominator-counts-sync is disabled (503) when VALIDATOR_NOMINATOR
       },
       body: JSON.stringify([validatorNominatorCountRow()]),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -5554,7 +5649,7 @@ test("validator-nominator-counts-sync returns 503 when the HYPERDRIVE binding is
       },
       body: JSON.stringify([validatorNominatorCountRow()]),
     }),
-    { VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
+    { VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -5590,7 +5685,7 @@ test("validator-nominator-counts-sync accepts the {rows:[...]} wrapped form, not
     { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.validator_nominator_counts_written).toBe(1);
 });
 
@@ -5671,7 +5766,7 @@ test("validator-nominator-counts-sync writes a batch and reports the count writt
     secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, validator_nominator_counts_written: 2 });
   expect(queryText()).toMatch(/INSERT INTO validator_nominator_counts/);
   expect(queryText()).toMatch(/ON CONFLICT \(hotkey\) DO UPDATE SET/);
@@ -5684,7 +5779,7 @@ test("validator-nominator-counts-sync maps a DB failure to a clean 502 instead o
     { secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET },
   );
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 // #5352 live incident: a real 112,550-row sync (762,577-row Alpha scan
@@ -5705,7 +5800,7 @@ test("validator-nominator-counts-sync splits a payload over the per-statement pa
     secret: VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET,
   });
   expect(res.status).toBe(200);
-  expect((await res.json()).validator_nominator_counts_written).toBe(
+  expect(((await res.json()) as Row).validator_nominator_counts_written).toBe(
     rows.length,
   );
   const insertCalls = sqlCalls.filter((call) =>
@@ -5744,8 +5839,13 @@ function nominatorPositionRow(overrides = {}) {
   };
 }
 
-function postNominatorPositions(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postNominatorPositions(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined)
     headers["x-nominator-positions-sync-token"] = secret;
   return req("/api/v1/internal/nominator-positions-sync", {
@@ -5774,7 +5874,7 @@ test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_S
       },
       body: JSON.stringify([nominatorPositionRow()]),
     }),
-    { ...env, NOMINATOR_POSITIONS_SYNC_SECRET: undefined },
+    { ...env, NOMINATOR_POSITIONS_SYNC_SECRET: undefined } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -5790,7 +5890,7 @@ test("nominator-positions-sync returns 503 when the HYPERDRIVE binding is unavai
       },
       body: JSON.stringify([nominatorPositionRow()]),
     }),
-    { ...env, HYPERDRIVE: undefined },
+    { ...env, HYPERDRIVE: undefined } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -5845,7 +5945,7 @@ test("nominator-positions-sync accepts the wrapped {rows:[...]} form and upserts
     { secret: NOMINATOR_POSITIONS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, nominator_positions_written: 1 });
   expect(queryText()).toMatch(/INSERT INTO nominator_positions/);
   expect(queryText()).toMatch(/ON CONFLICT \(coldkey, hotkey, netuid\)/);
@@ -5857,7 +5957,7 @@ test("nominator-positions-sync maps a DB failure to a clean 502 instead of throw
     secret: NOMINATOR_POSITIONS_SYNC_SECRET,
   });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 // #5352 live incident (same root cause as validator-nominator-counts-sync's
@@ -5875,7 +5975,9 @@ test("nominator-positions-sync splits a payload over the per-statement param cap
     secret: NOMINATOR_POSITIONS_SYNC_SECRET,
   });
   expect(res.status).toBe(200);
-  expect((await res.json()).nominator_positions_written).toBe(rows.length);
+  expect(((await res.json()) as Row).nominator_positions_written).toBe(
+    rows.length,
+  );
   const insertCalls = sqlCalls.filter((call) =>
     call.text.includes("INSERT INTO nominator_positions"),
   );
@@ -5911,8 +6013,13 @@ function accountBalanceRow(overrides = {}) {
   };
 }
 
-function postAccountBalances(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postAccountBalances(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-account-balances-sync-token"] = secret;
   return req("/api/v1/internal/account-balances-sync", {
     method: "POST",
@@ -5940,7 +6047,7 @@ test("account-balances-sync is disabled (503) when ACCOUNT_BALANCES_SYNC_SECRET 
       },
       body: JSON.stringify([accountBalanceRow()]),
     }),
-    { ...env, ACCOUNT_BALANCES_SYNC_SECRET: undefined },
+    { ...env, ACCOUNT_BALANCES_SYNC_SECRET: undefined } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -5956,7 +6063,7 @@ test("account-balances-sync returns 503 when the HYPERDRIVE binding is unavailab
       },
       body: JSON.stringify([accountBalanceRow()]),
     }),
-    { ...env, HYPERDRIVE: undefined },
+    { ...env, HYPERDRIVE: undefined } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -6059,7 +6166,7 @@ test("account-balances-sync accepts the wrapped {rows:[...]} form and upserts on
     { secret: ACCOUNT_BALANCES_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, account_balances_written: 1 });
   expect(queryText()).toMatch(/INSERT INTO account_balances/);
   expect(queryText()).toMatch(/ON CONFLICT \(ss58\)/);
@@ -6071,7 +6178,7 @@ test("account-balances-sync maps a DB failure to a clean 502 instead of throwing
     secret: ACCOUNT_BALANCES_SYNC_SECRET,
   });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 test("account-balances-sync splits a payload over the per-statement param cap into multiple INSERT statements", async () => {
@@ -6083,7 +6190,9 @@ test("account-balances-sync splits a payload over the per-statement param cap in
     secret: ACCOUNT_BALANCES_SYNC_SECRET,
   });
   expect(res.status).toBe(200);
-  expect((await res.json()).account_balances_written).toBe(rows.length);
+  expect(((await res.json()) as Row).account_balances_written).toBe(
+    rows.length,
+  );
   const insertCalls = sqlCalls.filter((call) =>
     call.text.includes("INSERT INTO account_balances"),
   );
@@ -6126,7 +6235,7 @@ test("GET /api/v1/accounts/:ss58/positions joins share_fraction against live neu
   mockRows.current = [{ hotkey: "5Hk1", netuid: 3, stake_tao: "1000" }]; // loadNeuronStakeByHotkeys
   const res = await req("/api/v1/accounts/5Cold1/positions");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(queryText()).toMatch(/FROM nominator_positions WHERE coldkey/);
   expect(queryText()).toMatch(/FROM neurons WHERE hotkey IN/);
   expect(body.ss58).toBe("5Cold1");
@@ -6142,7 +6251,7 @@ test("GET /api/v1/accounts/:ss58/positions returns an empty card for a coldkey w
   ];
   const res = await req("/api/v1/accounts/5NoPositions/positions");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.position_count).toBe(0);
   expect(body.total_stake_tao).toBe(0);
   expect(body.positions).toEqual([]);
@@ -6154,7 +6263,7 @@ test("GET /api/v1/accounts/:ss58/positions still serves an empty card when the n
   );
   const res = await req("/api/v1/accounts/5Cold1/positions");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.position_count).toBe(0);
   expect(body.positions).toEqual([]);
 });
@@ -6178,7 +6287,7 @@ test("GET /api/v1/accounts/:ss58/positions still serves a card (with zeroed stak
   neuronStakeByHotkeyQueryFailure.error = new Error("connection reset");
   const res = await req("/api/v1/accounts/5Cold1/positions");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   // buildAccountPositions drops any position it can't resolve a stake_tao
   // for (src/account-nominator-positions.mjs: `if (hotkeyStake == null)
   // continue;`) rather than fabricating a zero -- the join failing for
@@ -6206,7 +6315,7 @@ test("GET /api/v1/accounts/:ss58/identity returns the latest row", async () => {
   ];
   const res = await req(`/api/v1/accounts/${IDENTITY_SS58}/identity`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.has_identity).toBe(true);
   expect(body.name).toBe("Example Team");
 });
@@ -6215,7 +6324,7 @@ test("GET /api/v1/accounts/:ss58/identity on a cold store returns has_identity:f
   mockRows.current = [];
   const res = await req(`/api/v1/accounts/${IDENTITY_SS58}/identity`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.has_identity).toBe(false);
 });
 
@@ -6236,7 +6345,7 @@ test("GET /api/v1/accounts/:ss58/identity-history returns the change timeline", 
   ];
   const res = await req(`/api/v1/accounts/${IDENTITY_SS58}/identity-history`);
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.entry_count).toBe(1);
   expect(body.entries[0].identity_hash).toBe("abc123");
   expect(body.entries[0].name).toBe("Example Team");
@@ -6265,7 +6374,7 @@ test("GET /api/v1/accounts/:ss58/identity-history?limit=1 emits a next_cursor wh
     `/api/v1/accounts/${IDENTITY_SS58}/identity-history?limit=1`,
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.next_cursor).not.toBeNull();
 });
 
@@ -6287,8 +6396,13 @@ function subnetIdentityProfile(overrides = {}) {
   };
 }
 
-function postSubnetIdentity(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postSubnetIdentity(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-subnet-identity-sync-token"] = secret;
   return req("/api/v1/internal/subnet-identity-sync", {
     method: "POST",
@@ -6316,7 +6430,7 @@ test("subnet-identity-sync is disabled (503) when SUBNET_IDENTITY_SYNC_SECRET is
       },
       body: JSON.stringify([subnetIdentityProfile()]),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -6332,7 +6446,7 @@ test("subnet-identity-sync returns 503 when the HYPERDRIVE binding is unavailabl
       },
       body: JSON.stringify([subnetIdentityProfile()]),
     }),
-    { SUBNET_IDENTITY_SYNC_SECRET },
+    { SUBNET_IDENTITY_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -6368,7 +6482,7 @@ test("subnet-identity-sync accepts the {profiles:[...]} wrapped form, not just a
     { secret: SUBNET_IDENTITY_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.history_appended).toBe(1);
 });
 
@@ -6393,7 +6507,7 @@ test("subnet-identity-sync silently skips a profile with a non-integer netuid, n
     { secret: SUBNET_IDENTITY_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.history_appended).toBe(0);
 });
 
@@ -6408,7 +6522,7 @@ test("subnet-identity-sync silently skips a profile with no native_identity, no 
     { secret: SUBNET_IDENTITY_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.history_appended).toBe(0);
 });
 
@@ -6418,7 +6532,7 @@ test("subnet-identity-sync appends to subnet_identity_history when the hash chan
     secret: SUBNET_IDENTITY_SYNC_SECRET,
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toMatchObject({ ok: true, history_appended: 1 });
   expect(queryText()).toMatch(/INSERT INTO subnet_identity_history\b/);
 });
@@ -6442,11 +6556,13 @@ test("subnet-identity-sync strips embedded NUL bytes before inserting Postgres T
     /INSERT INTO subnet_identity_history\b/.test(c.text),
   );
   expect(
-    insert.values.some((v) => typeof v === "string" && v.includes("\u0000")),
+    insert!.values.some(
+      (v: unknown) => typeof v === "string" && v.includes("\u0000"),
+    ),
   ).toBe(false);
-  expect(insert.values).toContain("MIAO");
-  expect(insert.values).toContain("Miao Subnet");
-  expect(insert.values).toContain("An example subnet operator.");
+  expect(insert!.values).toContain("MIAO");
+  expect(insert!.values).toContain("Miao Subnet");
+  expect(insert!.values).toContain("An example subnet operator.");
 });
 
 test("subnet-identity-sync skips the history append when the hash is unchanged", async () => {
@@ -6459,7 +6575,7 @@ test("subnet-identity-sync skips the history append when the hash is unchanged",
   const res = await postSubnetIdentity([profile], {
     secret: SUBNET_IDENTITY_SYNC_SECRET,
   });
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.history_appended).toBe(0);
   expect(queryText()).not.toMatch(/INSERT INTO subnet_identity_history\b/);
 });
@@ -6474,7 +6590,7 @@ test("subnet-identity-sync resolves block_number from MAX(block_number), null wh
   const insert = sqlCalls.find((c) =>
     /INSERT INTO subnet_identity_history\b/.test(c.text),
   );
-  expect(insert.values).toContain(null);
+  expect(insert!.values).toContain(null);
 });
 
 test("subnet-identity-sync maps a DB failure to a clean 502 instead of throwing", async () => {
@@ -6483,7 +6599,7 @@ test("subnet-identity-sync maps a DB failure to a clean 502 instead of throwing"
     secret: SUBNET_IDENTITY_SYNC_SECRET,
   });
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 // #4832 gap-closure: health-checks-sync -- best-effort Postgres mirror of
@@ -6508,8 +6624,13 @@ function probedRow(overrides = {}) {
   };
 }
 
-function postHealthChecks(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postHealthChecks(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-health-checks-sync-token"] = secret;
   return req("/api/v1/internal/health-checks-sync", {
     method: "POST",
@@ -6538,7 +6659,7 @@ test("health-checks-sync is disabled (503) when HEALTH_CHECKS_SYNC_SECRET is not
       },
       body: JSON.stringify({ probed: [probedRow()] }),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -6554,7 +6675,7 @@ test("health-checks-sync returns 503 when the HYPERDRIVE binding is unavailable"
       },
       body: JSON.stringify({ probed: [probedRow()] }),
     }),
-    { HEALTH_CHECKS_SYNC_SECRET },
+    { HEALTH_CHECKS_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -6599,7 +6720,7 @@ test("health-checks-sync on an empty probed array is a clean no-op (200)", async
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, checks_written: 0, status_written: 0 });
 });
 
@@ -6609,7 +6730,7 @@ test("health-checks-sync silently skips a row missing a required field, no error
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, checks_written: 0, status_written: 0 });
 });
 
@@ -6626,7 +6747,7 @@ test("health-checks-sync bulk-inserts surface_checks and upserts surface_status"
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({
     ok: true,
     checks_written: 2,
@@ -6653,12 +6774,12 @@ test("health-checks-sync defaults every optional field to null/0 when absent", a
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, checks_written: 1, status_written: 1 });
   const statusInsert = sqlCalls.find((c) =>
     /INSERT INTO surface_status\b/.test(c.text),
   );
-  expect(statusInsert.values).toContain(0); // consecutive_failures default
+  expect(statusInsert!.values).toContain(0); // consecutive_failures default
 });
 
 // METAGRAPHED-B regression block: a stale surface_status row holding one of
@@ -6703,15 +6824,15 @@ test("REGRESSION (METAGRAPHED-B): two batch rows sharing a surface_key collapse 
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   // surface_checks keeps BOTH probes (no key constraint there); the status
   // upsert keeps only the later row.
   expect(body).toEqual({ ok: true, checks_written: 2, status_written: 1 });
   const statusInsert = sqlCalls.find((c) =>
     /INSERT INTO surface_status\b/.test(c.text),
   );
-  expect(statusInsert.values).toContain("sn-1-new-id");
-  expect(statusInsert.values).not.toContain("sn-1-old-id");
+  expect(statusInsert!.values).toContain("sn-1-new-id");
+  expect(statusInsert!.values).not.toContain("sn-1-old-id");
 });
 
 test("REGRESSION (METAGRAPHED-B): a duplicate surface_id within one batch collapses to the later row", async () => {
@@ -6725,13 +6846,13 @@ test("REGRESSION (METAGRAPHED-B): a duplicate surface_id within one batch collap
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, checks_written: 2, status_written: 1 });
   const statusInsert = sqlCalls.find((c) =>
     /INSERT INTO surface_status\b/.test(c.text),
   );
-  expect(statusInsert.values).toContain("ok");
-  expect(statusInsert.values).not.toContain("failed");
+  expect(statusInsert!.values).toContain("ok");
+  expect(statusInsert!.values).not.toContain("failed");
 });
 
 test("METAGRAPHED-B: keyless rows skip the eviction query and are all kept", async () => {
@@ -6747,7 +6868,7 @@ test("METAGRAPHED-B: keyless rows skip the eviction query and are all kept", asy
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, checks_written: 2, status_written: 2 });
   expect(queryText()).not.toMatch(/DELETE FROM surface_status/);
 });
@@ -6759,7 +6880,7 @@ test("health-checks-sync maps a DB failure to a clean 502 instead of throwing", 
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 // #4832 gap-closure: health-uptime-rollup-sync -- best-effort Postgres
@@ -6767,12 +6888,17 @@ test("health-checks-sync maps a DB failure to a clean 502 instead of throwing", 
 // conceptual sync boundary, not a separate secret). Unlike health-checks-
 // sync, the body carries only UTC day boundaries; Postgres computes its own
 // rollup from its own surface_checks via PERCENTILE_CONT.
-function dayBounds(date, start, end) {
+function dayBounds(date: string, start: number, end: number) {
   return { date, start, end };
 }
 
-function postHealthUptimeRollup(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postHealthUptimeRollup(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-health-checks-sync-token"] = secret;
   return req("/api/v1/internal/health-uptime-rollup-sync", {
     method: "POST",
@@ -6810,7 +6936,7 @@ test("health-uptime-rollup-sync is disabled (503) when HEALTH_CHECKS_SYNC_SECRET
         updated_at: 1,
       }),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -6829,7 +6955,7 @@ test("health-uptime-rollup-sync returns 503 when the HYPERDRIVE binding is unava
         updated_at: 1,
       }),
     }),
-    { HEALTH_CHECKS_SYNC_SECRET },
+    { HEALTH_CHECKS_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -6873,7 +6999,7 @@ test("health-uptime-rollup-sync silently skips a malformed day entry, no error",
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, days_rolled: [] });
 });
 
@@ -6889,7 +7015,7 @@ test("health-uptime-rollup-sync rolls up each valid day via PERCENTILE_CONT", as
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, days_rolled: ["2026-07-11", "2026-07-10"] });
   expect(queryText()).toMatch(/INSERT INTO surface_uptime_daily\b/);
   expect(queryText()).toMatch(/PERCENTILE_CONT\(0\.5\)/);
@@ -6903,7 +7029,7 @@ test("health-uptime-rollup-sync maps a DB failure to a clean 502 instead of thro
     { secret: HEALTH_CHECKS_SYNC_SECRET },
   );
   expect(res.status).toBe(502);
-  expect((await res.json()).error).toBe("write failed");
+  expect(((await res.json()) as Row).error).toBe("write failed");
 });
 
 test("GET /api/v1/subnets/:netuid/identity-history returns the change timeline", async () => {
@@ -6926,7 +7052,7 @@ test("GET /api/v1/subnets/:netuid/identity-history returns the change timeline",
     `/api/v1/subnets/${SUBNET_IDENTITY_NETUID}/identity-history`,
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.entry_count).toBe(1);
   expect(body.entries[0].identity_hash).toBe("abc123");
   expect(body.entries[0].subnet_name).toBe("Miao Subnet");
@@ -6955,7 +7081,7 @@ test("GET /api/v1/subnets/:netuid/identity-history?limit=1 emits a next_cursor w
     `/api/v1/subnets/${SUBNET_IDENTITY_NETUID}/identity-history?limit=1`,
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.next_cursor).not.toBeNull();
 });
 
@@ -6975,7 +7101,7 @@ test("GET /api/v1/chain/weights: warm store runs both the network + subnet queri
   ];
   const res = await req("/api/v1/chain/weights?window=7d&limit=5");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -6986,7 +7112,7 @@ test("GET /api/v1/chain/weights: cold store skips the subnet query", async () =>
   ];
   const res = await req("/api/v1/chain/weights");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -7006,7 +7132,7 @@ test("GET /api/v1/chain/weights/setters: runs the leaderboard + totals queries",
   ];
   const res = await req("/api/v1/chain/weights/setters?window=30d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.setter_count).toBe(1);
 });
 
@@ -7018,7 +7144,7 @@ test("GET /api/v1/chain/weights/setters: an empty totals row falls back to null"
   ];
   const res = await req("/api/v1/chain/weights/setters");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.setter_count).toBe(0);
 });
 
@@ -7030,7 +7156,7 @@ test("GET /api/v1/chain/serving: warm store runs both queries", async () => {
   ];
   const res = await req("/api/v1/chain/serving");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -7041,7 +7167,7 @@ test("GET /api/v1/chain/serving: cold store skips the subnet query", async () =>
   ];
   const res = await req("/api/v1/chain/serving");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -7053,7 +7179,7 @@ test("GET /api/v1/chain/prometheus: warm store runs both queries", async () => {
   ];
   const res = await req("/api/v1/chain/prometheus");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -7064,7 +7190,7 @@ test("GET /api/v1/chain/prometheus: cold store skips the subnet query", async ()
   ];
   const res = await req("/api/v1/chain/prometheus");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -7076,7 +7202,7 @@ test("GET /api/v1/chain/axon-removals: warm store runs both queries", async () =
   ];
   const res = await req("/api/v1/chain/axon-removals");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -7087,7 +7213,7 @@ test("GET /api/v1/chain/axon-removals: cold store skips the subnet query", async
   ];
   const res = await req("/api/v1/chain/axon-removals");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -7099,7 +7225,7 @@ test("GET /api/v1/chain/registrations: warm store runs both queries", async () =
   ];
   const res = await req("/api/v1/chain/registrations");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -7110,7 +7236,7 @@ test("GET /api/v1/chain/registrations: cold store skips the subnet query", async
   ];
   const res = await req("/api/v1/chain/registrations");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -7122,7 +7248,7 @@ test("GET /api/v1/chain/deregistrations: warm store runs both queries", async ()
   ];
   const res = await req("/api/v1/chain/deregistrations");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -7133,7 +7259,7 @@ test("GET /api/v1/chain/deregistrations: cold store skips the subnet query", asy
   ];
   const res = await req("/api/v1/chain/deregistrations");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -7145,7 +7271,7 @@ test("GET /api/v1/chain/stake-moves: warm store runs both queries", async () => 
   ];
   const res = await req("/api/v1/chain/stake-moves");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -7156,7 +7282,7 @@ test("GET /api/v1/chain/stake-moves: cold store skips the subnet query", async (
   ];
   const res = await req("/api/v1/chain/stake-moves");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -7168,7 +7294,7 @@ test("GET /api/v1/chain/stake-transfers: warm store runs both queries", async ()
   ];
   const res = await req("/api/v1/chain/stake-transfers");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -7179,7 +7305,7 @@ test("GET /api/v1/chain/stake-transfers: cold store skips the subnet query", asy
   ];
   const res = await req("/api/v1/chain/stake-transfers");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
 });
 
@@ -7205,7 +7331,7 @@ test("GET /api/v1/chain/stake-flow: a single GROUP BY netuid, event_kind query",
   ];
   const res = await req("/api/v1/chain/stake-flow?window=30d&limit=10");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(1);
 });
 
@@ -7233,7 +7359,7 @@ test("GET /api/v1/chain/alpha-volume: a single GROUP BY netuid, event_kind query
   ];
   const res = await req("/api/v1/chain/alpha-volume?limit=10");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("24h");
   expect(body.subnet_count).toBe(1);
   expect(body.subnets[0].buy_volume_alpha).toBe(10);
@@ -7249,7 +7375,7 @@ test("GET /api/v1/chain/alpha-volume: cold store returns the zeroed leaderboard"
   ];
   const res = await req("/api/v1/chain/alpha-volume");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.subnet_count).toBe(0);
   expect(body.subnets).toEqual([]);
   expect(body.volume_distribution).toBeNull();
@@ -7280,7 +7406,7 @@ test("GET /api/v1/chain/transfers: totals + distinct counts + senders + receiver
   expect(sqlBeginOptions).toContain(
     "isolation level repeatable read read only",
   );
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.total_volume_tao).toBe(100);
   expect(body.unique_senders).toBe(2);
   expect(body.unique_receivers).toBe(2);
@@ -7318,7 +7444,7 @@ test("GET /api/v1/chain/transfers: a cold store's empty totals row falls back to
   ];
   const res = await req("/api/v1/chain/transfers");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.total_volume_tao).toBe(0);
 });
 
@@ -7352,7 +7478,7 @@ test("GET /api/v1/chain/transfer-pairs: default (volume) sort", async () => {
   ];
   const res = await req("/api/v1/chain/transfer-pairs?window=7d&limit=5");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("volume");
   expect(body.pairs[0].from).toBe("5Sa");
   expect(queryText()).toContain("volume_tao DESC, transfer_count DESC");
@@ -7398,7 +7524,7 @@ test("GET /api/v1/chain/transfer-pairs?sort=count uses the count ordering", asyn
   ];
   const res = await req("/api/v1/chain/transfer-pairs?sort=count");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("count");
   expect(queryText()).toContain("transfer_count DESC, volume_tao DESC");
 });
@@ -7412,7 +7538,7 @@ test("GET /api/v1/chain/transfer-pairs: an empty totals row falls back to null",
   ];
   const res = await req("/api/v1/chain/transfer-pairs");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.total_volume_tao).toBe(0);
 });
 
@@ -7439,7 +7565,7 @@ test("GET /api/v1/chain/identity-history returns the network-wide feed", async (
   ];
   const res = await req("/api/v1/chain/identity-history?limit=10");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.count).toBe(1);
   expect(body.changes[0].netuid).toBe(7);
 });
@@ -7447,7 +7573,7 @@ test("GET /api/v1/chain/identity-history returns the network-wide feed", async (
 test("GET /api/v1/chain/identity-history rejects oversized direct data-worker limits", async () => {
   const res = await req("/api/v1/chain/identity-history?limit=1000000000");
   expect(res.status).toBe(400);
-  expect(await res.json()).toEqual({
+  expect((await res.json()) as Row).toEqual({
     error: {
       parameter: "limit",
       message: "limit must be an integer between 1 and 200.",
@@ -7460,7 +7586,7 @@ test("GET /api/v1/chain/identity-history on a cold store returns a schema-stable
   mockRows.current = [];
   const res = await req("/api/v1/chain/identity-history");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.count).toBe(0);
   expect(body.subnet_count).toBe(0);
   expect(body.changes).toEqual([]);
@@ -7495,7 +7621,7 @@ test("GET /api/v1/chain/signers: default sort + no call_module filter", async ()
   ];
   const res = await req("/api/v1/chain/signers?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("tx_count");
   expect(body.signers[0].signer).toBe("5Signer");
 });
@@ -7520,7 +7646,7 @@ test("GET /api/v1/chain/signers: sort=total_fee_tao + call_module scopes the que
     "/api/v1/chain/signers?window=7d&sort=total_fee_tao&call_module=SubtensorModule",
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.sort).toBe("total_fee_tao");
   expect(queryText()).toContain("call_module = ");
 });
@@ -7536,7 +7662,7 @@ test("GET /api/v1/chain/calls: default group_by=module, no call_module", async (
   ];
   const res = await req("/api/v1/chain/calls?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.group_by).toBe("module");
   expect(body.total_extrinsics).toBe(12);
   expect(body.calls[0].call_module).toBe("SubtensorModule");
@@ -7561,7 +7687,7 @@ test("GET /api/v1/chain/calls: group_by=module_function + call_module filter", a
     "/api/v1/chain/calls?window=7d&group_by=module_function&call_module=SubtensorModule",
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.group_by).toBe("module_function");
   expect(body.calls[0].call_function).toBe("set_weights");
 });
@@ -7577,7 +7703,7 @@ test("GET /api/v1/chain/calls: an empty totals row falls back to 0", async () =>
   ];
   const res = await req("/api/v1/chain/calls?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.total_extrinsics).toBe(0);
 });
 
@@ -7597,9 +7723,9 @@ test("GET /api/v1/chain/activity: merges the extrinsics + blocks day series, def
   ];
   const res = await req("/api/v1/chain/activity?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
-  const day10 = body.days.find((d) => d.day === "2026-07-10");
-  const day09 = body.days.find((d) => d.day === "2026-07-09");
+  const body = (await res.json()) as Row;
+  const day10 = body.days.find((d: Row) => d.day === "2026-07-10");
+  const day09 = body.days.find((d: Row) => d.day === "2026-07-09");
   expect(day10.unique_signers).toBe(3);
   expect(day09.unique_signers).toBe(0);
   expect(day10.block_count).toBe(2);
@@ -7631,7 +7757,7 @@ test("GET /api/v1/chain/fees: default window, no call_module", async () => {
   ];
   const res = await req("/api/v1/chain/fees?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.daily[0].median_fee_tao).toBe(0.1);
   expect(body.top_fee_payers[0].signer).toBe("5Payer");
 });
@@ -7700,7 +7826,7 @@ test("GET /api/v1/health/trends: aggregates surface_uptime_daily into 7d/30d win
   ];
   const res = await req("/api/v1/health/trends");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.windows["7d"].subnets[0].netuid).toBe(7);
 });
 
@@ -7708,7 +7834,7 @@ test("GET /api/v1/health/trends on a cold store returns a schema-stable empty ma
   mockQueue.current = [[], [], []];
   const res = await req("/api/v1/health/trends");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.windows["7d"].subnet_count).toBe(0);
 });
 
@@ -7743,7 +7869,7 @@ test("GET /api/v1/subnets/:netuid/health/trends: merges the 7d+30d PERCENTILE_CO
   ];
   const res = await req("/api/v1/subnets/7/health/trends");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.windows["7d"].surfaces[0].surface_id).toBe("sn-7-api");
   expect(body.windows["30d"].surfaces[0].samples).toBe(40);
@@ -7768,7 +7894,7 @@ test("GET /api/v1/subnets/:netuid/health/percentiles: p50/p95/p99 via PERCENTILE
   ];
   const res = await req("/api/v1/subnets/7/health/percentiles?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.surfaces[0].latency_ms.p99).toBe(280);
 });
 
@@ -7776,7 +7902,7 @@ test("GET /api/v1/subnets/:netuid/health/percentiles on a cold store returns sur
   mockQueue.current = [[], [], []];
   const res = await req("/api/v1/subnets/7/health/percentiles");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.surfaces).toEqual([]);
 });
 
@@ -7804,7 +7930,7 @@ test("GET /api/v1/subnets/:netuid/health/incidents: SLA rollup + gap-island inci
   ];
   const res = await req("/api/v1/subnets/7/health/incidents?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.surfaces[0].incident_count).toBe(1);
   expect(body.surfaces[0].incidents[0].failed_samples).toBe(3);
 });
@@ -7813,7 +7939,7 @@ test("GET /api/v1/subnets/:netuid/health/incidents on a cold store returns surfa
   mockQueue.current = [[], [], [], []];
   const res = await req("/api/v1/subnets/7/health/incidents");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.surfaces).toEqual([]);
 });
 
@@ -7834,7 +7960,7 @@ test("GET /api/v1/incidents: global gap-island ledger across every subnet", asyn
   ];
   const res = await req("/api/v1/incidents?window=7d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.surfaces[0].netuid).toBe(7);
   expect(body.summary.incident_count).toBe(1);
 });
@@ -7843,7 +7969,7 @@ test("GET /api/v1/incidents on a cold store returns a schema-stable empty ledger
   mockQueue.current = [[], [], []];
   const res = await req("/api/v1/incidents");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.summary.incident_count).toBe(0);
   expect(body.surfaces).toEqual([]);
 });
@@ -7872,7 +7998,7 @@ test("GET /api/v1/subnets/:netuid/uptime: aggregates surface_uptime_daily by day
   ];
   const res = await req("/api/v1/subnets/7/uptime?window=1y");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("1y");
   expect(body.surfaces[0].surface_id).toBe("sn-7-api");
   expect(body.surfaces[0].days[0].uptime_ratio).toBe(0.9);
@@ -7887,7 +8013,7 @@ test("GET /api/v1/subnets/:netuid/uptime: min_samples adds a HAVING clause", asy
   ];
   const res = await req("/api/v1/subnets/7/uptime?min_samples=5");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.surfaces).toEqual([]);
 });
 
@@ -7910,7 +8036,7 @@ test("GET /api/v1/subnets/:netuid/uptime on a cold store returns surfaces:[]", a
   mockQueue.current = [[], [], [], []];
   const res = await req("/api/v1/subnets/7/uptime");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.surfaces).toEqual([]);
 });
 
@@ -7918,7 +8044,7 @@ test("GET /api/v1/subnets/:netuid/uptime: unrecognized window falls back to 90d"
   mockQueue.current = [[], [], [], []];
   const res = await req("/api/v1/subnets/7/uptime?window=bogus");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("90d");
 });
 
@@ -7928,14 +8054,14 @@ test("GET /api/v1/internal/compare-health: aggregates surface_status by netuid",
   ];
   const res = await req("/api/v1/internal/compare-health?netuids=7,64");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.rows).toEqual(mockRows.current);
 });
 
 test("GET /api/v1/internal/compare-health: no netuids returns rows:[] without querying", async () => {
   const res = await req("/api/v1/internal/compare-health");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.rows).toEqual([]);
 });
 
@@ -7947,14 +8073,14 @@ test("GET /api/v1/internal/subnet-identity-aliases: aggregates subnet_name by ne
     "/api/v1/internal/subnet-identity-aliases?netuids=7,64",
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.rows).toEqual(mockRows.current);
 });
 
 test("GET /api/v1/internal/subnet-identity-aliases: no netuids returns rows:[] without querying", async () => {
   const res = await req("/api/v1/internal/subnet-identity-aliases");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.rows).toEqual([]);
 });
 
@@ -7985,7 +8111,7 @@ test("GET /api/v1/internal/health-status-live: coerces BIGINT epoch-ms columns t
     "/api/v1/internal/health-status-live?since=1699999999999",
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.rows).toEqual([
     {
       surface_id: "7:subnet-api:x",
@@ -8007,7 +8133,7 @@ test("GET /api/v1/internal/health-status-live: coerces BIGINT epoch-ms columns t
 test("GET /api/v1/internal/health-status-live: a missing/non-finite since returns rows:[] without querying", async () => {
   const res = await req("/api/v1/internal/health-status-live");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.rows).toEqual([]);
 });
 
@@ -8017,7 +8143,7 @@ test("GET /api/v1/internal/latest-block-number: returns the coerced MAX(block_nu
   mockRows.current = [{ block_number: "8404076" }];
   const res = await req("/api/v1/internal/latest-block-number");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ block_number: 8404076 });
 });
 
@@ -8025,7 +8151,7 @@ test("GET /api/v1/internal/latest-block-number: returns block_number:null on an 
   mockRows.current = [{ block_number: null }];
   const res = await req("/api/v1/internal/latest-block-number");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ block_number: null });
 });
 
@@ -8049,7 +8175,7 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
   ];
   const res = await req("/api/v1/subnets/7/trajectory");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.netuid).toBe(7);
   expect(body.points[0].date).toBe("2026-06-01");
   expect(body.points[0].completeness_score).toBe(90);
@@ -8073,7 +8199,7 @@ test("GET /api/v1/economics/trends: aggregates daily rows network-wide", async (
   ];
   const res = await req("/api/v1/economics/trends?window=30d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("30d");
   expect(body.day_count).toBe(1);
   expect(body.days[0].snapshot_date).toBe("2026-06-01");
@@ -8083,7 +8209,7 @@ test("GET /api/v1/economics/trends: unrecognized window degrades to all", async 
   mockRows.current = [];
   const res = await req("/api/v1/economics/trends?window=bogus");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("all");
 });
 
@@ -8110,8 +8236,13 @@ function snapshotRow(overrides = {}) {
   };
 }
 
-function postSubnetSnapshot(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postSubnetSnapshot(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-subnet-snapshot-sync-token"] = secret;
   return req("/api/v1/internal/subnet-snapshot-sync", {
     method: "POST",
@@ -8137,7 +8268,7 @@ test("subnet-snapshot-sync is disabled (503) when SUBNET_SNAPSHOT_SYNC_SECRET is
       },
       body: JSON.stringify([snapshotRow()]),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -8153,7 +8284,7 @@ test("subnet-snapshot-sync returns 503 when the HYPERDRIVE binding is unavailabl
       },
       body: JSON.stringify([snapshotRow()]),
     }),
-    { SUBNET_SNAPSHOT_SYNC_SECRET },
+    { SUBNET_SNAPSHOT_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -8198,7 +8329,7 @@ test("subnet-snapshot-sync on an empty array is a clean no-op (200)", async () =
     secret: SUBNET_SNAPSHOT_SYNC_SECRET,
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, rows_written: 0 });
 });
 
@@ -8210,7 +8341,7 @@ test("subnet-snapshot-sync silently skips a row missing a required field, no err
     },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, rows_written: 0 });
 });
 
@@ -8220,7 +8351,7 @@ test("subnet-snapshot-sync upserts subnet_snapshots with the COALESCE-on-economi
     { secret: SUBNET_SNAPSHOT_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, rows_written: 2 });
   expect(queryText()).toMatch(/INSERT INTO subnet_snapshots\b/);
   expect(queryText()).toMatch(
@@ -8256,7 +8387,7 @@ test("subnet-snapshot-sync defaults every optional field to null when absent", a
     secret: SUBNET_SNAPSHOT_SYNC_SECRET,
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, rows_written: 1 });
 });
 
@@ -8301,7 +8432,7 @@ test("GET /api/v1/rpc/usage: formats the 6 parallel queries via formatRpcUsage",
   ];
   const res = await req("/api/v1/rpc/usage?window=30d");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("30d");
   expect(body.source).toBe("rpc-proxy");
   expect(body.summary.total_requests).toBe(100);
@@ -8317,7 +8448,7 @@ test("GET /api/v1/rpc/usage: unrecognized window falls back to the 7d default", 
   mockQueue.current = [[], [], [], [], [], [], []]; // SET + 6 route queries
   const res = await req("/api/v1/rpc/usage?window=bogus");
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body.window).toBe("7d");
   expect(body.summary.total_requests).toBe(0);
 });
@@ -8337,8 +8468,13 @@ function rpcUsageEvent(overrides = {}) {
   };
 }
 
-function postRpcUsageEvent(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postRpcUsageEvent(
+  body: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-rpc-usage-sync-token"] = secret;
   return req("/api/v1/internal/rpc-usage-sync", {
     method: "POST",
@@ -8364,7 +8500,7 @@ test("rpc-usage-sync is disabled (503) when RPC_USAGE_SYNC_SECRET is not configu
       },
       body: JSON.stringify(rpcUsageEvent()),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -8380,7 +8516,7 @@ test("rpc-usage-sync returns 503 when the HYPERDRIVE binding is unavailable", as
       },
       body: JSON.stringify(rpcUsageEvent()),
     }),
-    { RPC_USAGE_SYNC_SECRET },
+    { RPC_USAGE_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -8423,11 +8559,11 @@ test("rpc-usage-sync inserts a single row and defaults optional fields to null",
     { secret: RPC_USAGE_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true });
   expect(queryText()).toMatch(/INSERT INTO rpc_proxy_events\b/);
   const call = sqlCalls.at(-1);
-  expect(call.values).toEqual([
+  expect(call!.values).toEqual([
     1_718_323_200_000,
     "finney",
     null,
@@ -8446,7 +8582,7 @@ test("rpc-usage-sync inserts a fully-populated row", async () => {
   });
   expect(res.status).toBe(200);
   const call = sqlCalls.at(-1);
-  expect(call.values).toEqual([
+  expect(call!.values).toEqual([
     1_718_323_200_000,
     "finney",
     "fx",
@@ -8467,8 +8603,13 @@ test("rpc-usage-sync maps a DB failure to a clean 502 instead of throwing", asyn
   expect(res.status).toBe(502);
 });
 
-function postRpcUsagePrune(body, { secret, raw } = {}) {
-  const headers = { "content-type": "application/json" };
+function postRpcUsagePrune(
+  body?: unknown,
+  { secret, raw }: { secret?: string; raw?: string } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (secret !== undefined) headers["x-rpc-usage-sync-token"] = secret;
   return req("/api/v1/internal/rpc-usage-prune", {
     method: "POST",
@@ -8497,7 +8638,7 @@ test("rpc-usage-prune is disabled (503) when RPC_USAGE_SYNC_SECRET is not config
       },
       body: JSON.stringify({ cutoff: 1_718_000_000_000 }),
     }),
-    { HYPERDRIVE: { connectionString: "postgres://mock" } },
+    { HYPERDRIVE: { connectionString: "postgres://mock" } } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -8513,7 +8654,7 @@ test("rpc-usage-prune returns 503 when the HYPERDRIVE binding is unavailable", a
       },
       body: JSON.stringify({ cutoff: 1_718_000_000_000 }),
     }),
-    { RPC_USAGE_SYNC_SECRET },
+    { RPC_USAGE_SYNC_SECRET } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(503);
@@ -8551,13 +8692,13 @@ test("rpc-usage-prune deletes rows older than cutoff and reports rows_deleted", 
     { secret: RPC_USAGE_SYNC_SECRET },
   );
   expect(res.status).toBe(200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   expect(body).toEqual({ ok: true, rows_deleted: 5 });
   expect(queryText()).toMatch(
     /DELETE FROM rpc_proxy_events WHERE observed_at < /,
   );
   const call = sqlCalls.at(-1);
-  expect(call.values).toEqual([1_718_000_000_000]);
+  expect(call!.values).toEqual([1_718_000_000_000]);
 });
 
 test("rpc-usage-prune maps a DB failure to a clean 502 instead of throwing", async () => {

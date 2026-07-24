@@ -46,6 +46,21 @@ interface UnkeyFetchSuccess {
 
 type UnkeyFetchResult = UnkeyFetchSuccess | UnkeyFetchFailure;
 
+interface UnkeyMintSuccess {
+  ok: true;
+  keyId: string;
+  key: string;
+}
+
+interface UnkeyVerifySuccess {
+  ok: true;
+  valid: boolean;
+  code: string | null;
+  keyId: string | null;
+  tier: unknown;
+  accountId: string | null;
+}
+
 // Never throws on a network failure, a non-2xx response, or a malformed
 // response body -- a key-management/verification call must fail closed with
 // a discriminated result, not crash the caller's request.
@@ -92,14 +107,18 @@ async function unkeyFetch(
 export async function createUnkeyKey(
   env: Env,
   { externalId, tier }: { externalId: string; tier: unknown },
-): Promise<Row | UnkeyFetchFailure> {
+): Promise<UnkeyMintSuccess | UnkeyFetchFailure> {
   const result = await unkeyFetch(env, "/v2/keys.createKey", {
     apiId: env.UNKEY_API_ID,
     externalId,
     meta: { tier },
   });
   if (!result.ok) return result;
-  return { ok: true, keyId: result.data.keyId, key: result.data.key };
+  return {
+    ok: true,
+    keyId: result.data.keyId as string,
+    key: result.data.key as string,
+  };
 }
 
 /** Verifies a caller-supplied raw key against Unkey: identity, revocation,
@@ -112,17 +131,18 @@ export async function createUnkeyKey(
 export async function verifyUnkeyKey(
   env: Env,
   rawKey: string,
-): Promise<Row | UnkeyFetchFailure> {
+): Promise<UnkeyVerifySuccess | UnkeyFetchFailure> {
   const result = await unkeyFetch(env, "/v2/keys.verifyKey", { key: rawKey });
   if (!result.ok) return result;
   const { valid, code, keyId, meta, identity } = result.data as Row;
   return {
     ok: true,
     valid: !!valid,
-    code,
-    keyId,
+    code: (code as string | undefined) ?? null,
+    keyId: (keyId as string | undefined) ?? null,
     tier: (meta as Row | null)?.tier ?? null,
-    accountId: (identity as Row | null)?.externalId ?? null,
+    accountId:
+      ((identity as Row | null)?.externalId as string | undefined) ?? null,
   };
 }
 

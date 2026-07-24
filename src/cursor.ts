@@ -14,7 +14,7 @@
 
 // Normalize one cursor part: non-negative safe integers, or D1-style numeric
 // strings (decodeCursor accepts `/^\d+$/` segments; encode must be symmetric).
-function cursorPart(value: number | string): number | null {
+function cursorPart(value: number | string | null): number | null {
   if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0)
     return value;
   if (typeof value === "string" && /^\d+$/.test(value)) {
@@ -26,10 +26,13 @@ function cursorPart(value: number | string): number | null {
 
 // Encode cursor parts into a dot-joined token. Each part may be a non-negative
 // safe integer or a digit string that normalizes to one (D1 INTEGER columns often
-// arrive as strings). Returns null for empty/invalid input (no next_cursor).
-// Values above Number.MAX_SAFE_INTEGER are rejected — they cannot survive the
-// Number() round-trip the decoder performs.
-export function encodeCursor(parts: Array<number | string>): string | null {
+// arrive as strings); a null part (e.g. a numberOrNull()-coerced absent column)
+// yields null overall (no next_cursor), same as any other invalid part. Returns
+// null for empty/invalid input. Values above Number.MAX_SAFE_INTEGER are
+// rejected — they cannot survive the Number() round-trip the decoder performs.
+export function encodeCursor(
+  parts: Array<number | string | null>,
+): string | null {
   if (!Array.isArray(parts) || parts.length === 0) return null;
   const normalized: number[] = [];
   for (const part of parts) {

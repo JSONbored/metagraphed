@@ -46,7 +46,7 @@ vi.mock("postgres", () => ({
   },
 }));
 
-const { default: worker } = await import("../workers/data-api.mjs");
+const { default: worker } = await import("../workers/data-api.ts");
 
 function createFakeKv() {
   const store = new Map();
@@ -133,7 +133,7 @@ function req(
 }
 
 async function fetchRoute(request: Request, env: Env) {
-  return worker.fetch(request, env, {});
+  return worker.fetch(request, env, {} as unknown as ExecutionContext);
 }
 
 // --- POST /api/v1/auth/wallet/challenge -------------------------------------
@@ -146,7 +146,7 @@ test("challenge: rejects a missing body (no ss58 field at all)", async () => {
       headers: { "content-type": "application/json" },
     }),
     env,
-    {},
+    {} as unknown as ExecutionContext,
   );
   assert.equal(res.status, 400);
 });
@@ -198,7 +198,7 @@ test("challenge: 400 on unparsable JSON body", async () => {
       body: "{not json",
     }),
     env,
-    {},
+    {} as unknown as ExecutionContext,
   );
   assert.equal(res.status, 400);
 });
@@ -257,7 +257,7 @@ test("challenge: 200 with a signable message for a valid ss58", async () => {
     env,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.match(body.message, new RegExp(wallet.ss58));
   assert.ok(body.expires_in_seconds > 0);
 });
@@ -325,7 +325,7 @@ test("verify: rejects a missing body (no ss58/signature fields at all)", async (
       headers: { "content-type": "application/json" },
     }),
     env,
-    {},
+    {} as unknown as ExecutionContext,
   );
   assert.equal(res.status, 401);
 });
@@ -354,7 +354,7 @@ test("verify: 401 on a signature from the wrong keypair", async () => {
     }),
     env,
   );
-  const { message } = await challengeRes.json();
+  const { message } = (await challengeRes.json()) as Row;
   const signature = bytesToHex(
     sr25519Sign(impostor.secretKey, new TextEncoder().encode(message)),
   );
@@ -379,7 +379,7 @@ test("verify: 200 issues a session + upserts the account on a valid signature", 
     }),
     env,
   );
-  const { message } = await challengeRes.json();
+  const { message } = (await challengeRes.json()) as Row;
   const signature = bytesToHex(
     sr25519Sign(wallet.secretKey, new TextEncoder().encode(message)),
   );
@@ -391,7 +391,7 @@ test("verify: 200 issues a session + upserts the account on a valid signature", 
     env,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.ok(body.session_token);
   assert.deepEqual(body.account, { ss58: wallet.ss58, tier: "free" });
   assert.ok(sqlCalls.some((c) => /INSERT INTO rpc_accounts/.test(c.text)));
@@ -407,7 +407,7 @@ test("verify: 502 when the Postgres upsert fails", async () => {
     }),
     env,
   );
-  const { message } = await challengeRes.json();
+  const { message } = (await challengeRes.json()) as Row;
   const signature = bytesToHex(
     sr25519Sign(wallet.secretKey, new TextEncoder().encode(message)),
   );
@@ -483,7 +483,7 @@ test("keys list: 200 returns this account's keys, keyed by unkey key_id", async 
     env,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.keys.length, 1);
   assert.equal(body.keys[0].key_id, "key_aaaa");
   assert.ok(sqlCalls.some((c) => /account_id = /.test(c.text)));
@@ -587,7 +587,7 @@ test("keys create: 201 mints a key at the account's own tier, no invite code nee
     env,
   );
   assert.equal(res.status, 201);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.key, "mg_opaqueSecretValue");
   assert.equal(body.key_id, "key_abc123");
   assert.equal(body.tier, "free");
@@ -619,7 +619,7 @@ test("keys create: mints at whatever tier the account is already on (e.g. a prom
     env,
   );
   assert.equal(res.status, 201);
-  assert.equal((await res.json()).tier, "gittensor-partner");
+  assert.equal(((await res.json()) as Row).tier, "gittensor-partner");
   assert.deepEqual(capturedBody!.meta, { tier: "gittensor-partner" });
 });
 
@@ -695,7 +695,7 @@ test("keys revoke: 200 on a key owned by this account, disables via Unkey then m
     env,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.deepEqual(body, { key_id: "key_bbbb", revoked: true });
   assert.deepEqual(capturedBody, { keyId: "key_bbbb", enabled: false });
   const updateCall = sqlCalls.find((c) =>
@@ -795,7 +795,7 @@ test("internal key verify: returns Unkey's not-found result untouched", async ()
     env,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.deepEqual(body, {
     valid: false,
     code: "NOT_FOUND",
@@ -832,7 +832,7 @@ test("internal key verify: 200 on a valid key, and bumps last_used_at", async ()
     env,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.deepEqual(body, {
     valid: true,
     code: "VALID",
@@ -875,7 +875,7 @@ test("internal key verify: fails closed as NOT_FOUND when Unkey itself is unreac
     env,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.deepEqual(body, { valid: false, code: "NOT_FOUND" });
 });
 
@@ -989,7 +989,7 @@ test("tier promote: 200 updates the account row and every active Unkey key in pl
     env,
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.deepEqual(body, {
     ss58: "5Promote",
     tier: "unlimited",
@@ -1017,7 +1017,7 @@ test("tier promote: reports keys_failed when an Unkey update call fails", async 
     }),
     env,
   );
-  const body = await res.json();
+  const body = (await res.json()) as Row;
   assert.equal(body.keys_updated, 0);
   assert.equal(body.keys_failed, 1);
 });

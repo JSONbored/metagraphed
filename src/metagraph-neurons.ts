@@ -229,7 +229,7 @@ export function computeImmunityWindow(
 export function formatNeuron(
   row: Row | null | undefined,
   featuredHotkeys?: Set<string>,
-  immunityPeriod?: number,
+  immunityPeriod?: number | null,
 ): Row | null {
   if (!row || typeof row !== "object") return null;
   const hotkey = row.hotkey ?? null;
@@ -294,7 +294,7 @@ function snapshotStamp(rows: Row[]): {
 export function buildSubnetMetagraph(
   rows: Row[],
   netuid: unknown,
-  { immunityPeriod }: { immunityPeriod?: number } = {},
+  { immunityPeriod }: { immunityPeriod?: number | null } = {},
 ): Row {
   const { captured_at, block_number } = snapshotStamp(rows);
   // Drop any malformed row (formatNeuron → null) so the array only holds real
@@ -343,7 +343,7 @@ export function buildSubnetValidators(
 export function buildNeuronDetail(
   row: Row | null | undefined,
   netuid: unknown,
-  { immunityPeriod }: { immunityPeriod?: number } = {},
+  { immunityPeriod }: { immunityPeriod?: number | null } = {},
 ): Row {
   return {
     schema_version: 1,

@@ -199,7 +199,11 @@ export function buildSubnetConviction(
     now,
     unlockRate,
     maturityRate,
-  }: { now?: number; unlockRate?: number; maturityRate?: number } = {},
+  }: {
+    now?: number | null;
+    unlockRate?: number | null;
+    maturityRate?: number | null;
+  } = {},
 ): Row {
   const combined = combineSubAggregates(
     rows ?? [],
