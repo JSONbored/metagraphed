@@ -25,7 +25,7 @@ interface WalletVerifyResponse {
   account: { ss58: string; tier: string };
 }
 
-function readStoredSession(ss58: string): StoredSession | null {
+export function readStoredSession(ss58: string): StoredSession | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -38,7 +38,7 @@ function readStoredSession(ss58: string): StoredSession | null {
   }
 }
 
-function writeStoredSession(session: StoredSession | null) {
+export function writeStoredSession(session: StoredSession | null) {
   if (typeof window === "undefined") return;
   try {
     if (session) window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
@@ -46,6 +46,49 @@ function writeStoredSession(session: StoredSession | null) {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * The pure challenge -> sign -> verify -> session-shape half of signIn, split
+ * out so it's testable without a DOM/renderHook (this suite is plain-node): POST
+ * the wallet-signature challenge, sign it with the injected signer, verify the
+ * signature, and shape the resulting short-lived session. Deps default to the
+ * real apiFetch/signMessage/Date.now; tests inject fakes. Throws (ApiError or
+ * otherwise) on any step's failure, exactly as the hook's catch expects.
+ */
+export async function performWalletSignIn(
+  wallet: ConnectedWallet,
+  {
+    apiFetch: fetchImpl = apiFetch,
+    signMessage: signImpl = signMessage,
+    now = Date.now,
+  }: {
+    apiFetch?: typeof apiFetch;
+    signMessage?: typeof signMessage;
+    now?: () => number;
+  } = {},
+): Promise<StoredSession> {
+  const challenge = await fetchImpl<WalletChallengeResponse>("/api/v1/auth/wallet/challenge", {
+    init: {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ss58: wallet.address }),
+    },
+  });
+  const signature = await signImpl(wallet.source, wallet.address, challenge.data.message);
+  const verify = await fetchImpl<WalletVerifyResponse>("/api/v1/auth/wallet/verify", {
+    init: {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ss58: wallet.address, signature }),
+    },
+  });
+  return {
+    token: verify.data.session_token,
+    ss58: wallet.address,
+    tier: verify.data.account.tier,
+    expiresAtMs: now() + verify.data.expires_in_seconds * 1000,
+  };
 }
 
 /**
@@ -78,27 +121,7 @@ export function useApiSession(wallet: ConnectedWallet | null) {
     setStatus("signing-in");
     setError(null);
     try {
-      const challenge = await apiFetch<WalletChallengeResponse>("/api/v1/auth/wallet/challenge", {
-        init: {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ss58: wallet.address }),
-        },
-      });
-      const signature = await signMessage(wallet.source, wallet.address, challenge.data.message);
-      const verify = await apiFetch<WalletVerifyResponse>("/api/v1/auth/wallet/verify", {
-        init: {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ss58: wallet.address, signature }),
-        },
-      });
-      const next: StoredSession = {
-        token: verify.data.session_token,
-        ss58: wallet.address,
-        tier: verify.data.account.tier,
-        expiresAtMs: Date.now() + verify.data.expires_in_seconds * 1000,
-      };
+      const next = await performWalletSignIn(wallet);
       writeStoredSession(next);
       setSession(next);
       setStatus("active");
