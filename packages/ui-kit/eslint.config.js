@@ -8,7 +8,8 @@ import tseslint from "typescript-eslint";
 // <Panel>/<SectionLabel>/etc. relocated here — see CONTRIBUTING.md. Kept in
 // sync with apps/ui's copy; if one changes, check the other.
 const ALLOWED_SPACE = "0|px|0\\.5|1|1\\.5|2|2\\.5|3|4|6|8|10|12|16|20|24";
-const SPACE_UTILS = "p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|gap-x|gap-y|space-x|space-y";
+const SPACE_UTILS =
+  "p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|gap-x|gap-y|space-x|space-y";
 const RAW_SPACING_REGEX = new RegExp(
   `\\b(?:${SPACE_UTILS})-(?!(?:${ALLOWED_SPACE})\\b)(?:\\[[^\\]]+\\]|[0-9]+(?:\\.[0-9]+)?)\\b`,
 );
@@ -44,7 +45,8 @@ const DESIGN_RULES = [
   },
   {
     selector: `Literal[value=/${RAW_TEXT_ARBITRARY.source}/]`,
-    message: "Bare arbitrary text sizes are drift. Use <SectionLabel> or the .mg-type-* utilities.",
+    message:
+      "Bare arbitrary text sizes are drift. Use <SectionLabel> or the .mg-type-* utilities.",
   },
   {
     // Scoped to plain <div>/<section> className literals only -- see
@@ -53,7 +55,8 @@ const DESIGN_RULES = [
     // Excludes mg-card-glow (a distinct soft-elevation variant, not drift).
     selector:
       "JSXOpeningElement[name.name=/^(?:div|section)$/] JSXAttribute[name.name='className'] Literal[value=/\\brounded\\b.*\\bborder\\b.*\\bbg-card\\b|\\bborder\\b.*\\bbg-card\\b.*\\brounded\\b/][value!=/mg-card-glow/]",
-    message: "Wrap card shells in <Panel> (./panel) instead of re-authoring rounded/border/bg-card by hand.",
+    message:
+      "Wrap card shells in <Panel> (./panel) instead of re-authoring rounded/border/bg-card by hand.",
   },
   {
     selector:
