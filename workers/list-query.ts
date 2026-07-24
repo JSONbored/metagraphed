@@ -401,7 +401,13 @@ function searchRows(
   });
 }
 
-function sortRows(rows: Row[], params: URLSearchParams): Row[] {
+// Exported for graphql.ts's hand-rolled candidates() resolver (#7871), which
+// filters/paginates outside applyQueryFilters (a plain object array, not an
+// artifact keyed by a query-collection config) but still needs the identical
+// sort/order/missing-value semantics REST and every applyQueryFilters-backed
+// field already share -- reusing this avoids a second, potentially-diverging
+// sort implementation.
+export function sortRows(rows: Row[], params: URLSearchParams): Row[] {
   const key = params.get("sort");
   if (!key) {
     return rows;

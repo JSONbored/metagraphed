@@ -8398,8 +8398,22 @@ describe("graphql — agent_resources (#6987, baked AI-resources index)", () => 
 describe("graphql — candidates / fixtures / agent_catalog / freshness / top_holders (#6991)", () => {
   const CANDIDATES = {
     candidates: [
-      { id: "c1", netuid: 1, kind: "docs", provider: "acme", state: "new" },
-      { id: "c2", netuid: 2, kind: "api", provider: "beta", state: "verified" },
+      {
+        id: "c1",
+        netuid: 1,
+        kind: "docs",
+        provider: "acme",
+        state: "new",
+        confidence: "low",
+      },
+      {
+        id: "c2",
+        netuid: 2,
+        kind: "api",
+        provider: "beta",
+        state: "verified",
+        confidence: "high",
+      },
     ],
   };
 
@@ -8450,6 +8464,65 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
     assert.equal(body.data.candidates.items.length, 1);
     assert.equal(body.data.candidates.total, 2);
     assert.equal(body.data.candidates.next_cursor, "c1");
+  });
+
+  // #7871: full REST filter parity -- id/confidence/sort/order.
+  test("candidates filters by id", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(id: "c2") }', env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.total, 1);
+    assert.equal(body.data.candidates.items[0].id, "c2");
+  });
+
+  test("candidates filters by id case-insensitively", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(id: "C2") }', env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.total, 1);
+    assert.equal(body.data.candidates.items[0].id, "c2");
+  });
+
+  test("candidates filters by confidence", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(confidence: "high") }', env);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.total, 1);
+    assert.equal(body.data.candidates.items[0].id, "c2");
+  });
+
+  test("candidates rejects an invalid confidence with a GraphQL error", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(confidence: "extreme") }', env);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("candidates sorts ascending and descending", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const asc = await gql(
+      '{ candidates(sort: "confidence", order: "asc") }',
+      env,
+    );
+    assert.equal(asc.body.errors, undefined);
+    assert.equal(asc.body.data.candidates.items[0].id, "c2");
+    const desc = await gql(
+      '{ candidates(sort: "confidence", order: "desc") }',
+      env,
+    );
+    assert.equal(desc.body.errors, undefined);
+    assert.equal(desc.body.data.candidates.items[0].id, "c1");
+  });
+
+  test("candidates rejects an invalid sort field with a GraphQL error", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(sort: "bogus") }', env);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("candidates rejects an invalid order with a GraphQL error", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql('{ candidates(order: "sideways") }', env);
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
 
   test("candidates resolves an empty ledger when the artifact is cold", async () => {

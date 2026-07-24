@@ -8,6 +8,8 @@ import {
 } from "graphql";
 import * as Sentry from "@sentry/cloudflare";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
+import { sortRows } from "../workers/list-query.ts";
+import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
@@ -555,8 +557,8 @@ export const SDL = `
     agent_resources: JSON
     "Curation states by subnet — each subnet's registry curation level and review state. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the list_curation MCP/REST shape. Mirrors GET /api/v1/curation."
     curation: JSON
-    "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state and page with limit/cursor, exactly like the REST route. Resolves to {items,total,next_cursor} as opaque JSON. Mirrors GET /api/v1/candidates."
-    candidates(netuid: Int, kind: String, provider: String, state: String, limit: Int, cursor: String): JSON
+    "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state/id/confidence, sort with sort/order, and page with limit/cursor, exactly like the REST route. An invalid confidence/sort/order is a GraphQL error, not a silently substituted default. Resolves to {items,total,next_cursor} as opaque JSON. Mirrors GET /api/v1/candidates."
+    candidates(netuid: Int, kind: String, provider: String, state: String, id: String, confidence: String, sort: String, order: String, limit: Int, cursor: String): JSON
     "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}."
     saved_query(id: String!, params: JSON): JSON
     "The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
@@ -4658,6 +4660,12 @@ export function maxComplexityRule(max: number) {
 export const DEFAULT_PAGE_LIMIT = 20;
 export const MAX_PAGE_LIMIT = 100;
 
+// #7871: candidates()'s confidence/sort validation. Same literal enum
+// candidates-mcp.ts's own CONFIDENCE_LEVELS uses (not a shared QUERY_ENUMS
+// entry -- src/contracts.ts inlines it the same way for the REST filter).
+const CANDIDATE_CONFIDENCE_LEVELS = ["low", "medium", "high"];
+const CANDIDATES_SORT_FIELDS = API_QUERY_COLLECTIONS.candidates.sort_fields;
+
 function paginate(
   items: Row[],
   limit: unknown,
@@ -5322,9 +5330,46 @@ const rootValue = {
   // field. Each reads the same baked artifact (and applies the same overlay /
   // builder) its MCP tool does, so REST, MCP, and GraphQL can't drift.
   async candidates(
-    { netuid, kind, provider, state, limit, cursor }: Row,
+    {
+      netuid,
+      kind,
+      provider,
+      state,
+      id,
+      confidence,
+      sort,
+      order,
+      limit,
+      cursor,
+    }: Row,
     context: GqlContext,
   ) {
+    // #7871: id/confidence/sort/order full REST filter parity. id/confidence
+    // join the existing loose netuid/kind/provider/state equality filter
+    // (matching this field's own established convention -- an unmatched
+    // filter value here has always meant "zero rows", not a GraphQL error).
+    // confidence is enum-backed on the REST side (src/contracts.ts), so an
+    // invalid value IS a GraphQL error here, same as sort/order below.
+    if (
+      confidence != null &&
+      !CANDIDATE_CONFIDENCE_LEVELS.includes(confidence as string)
+    ) {
+      throw new GraphQLError(
+        `confidence must be one of: ${CANDIDATE_CONFIDENCE_LEVELS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (sort != null && !CANDIDATES_SORT_FIELDS.includes(sort as string)) {
+      throw new GraphQLError(
+        `sort must be one of: ${CANDIDATES_SORT_FIELDS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (order != null && order !== "asc" && order !== "desc") {
+      throw new GraphQLError("order must be 'asc' or 'desc'.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
     const data = await loadArtifact(context, "/metagraph/candidates.json");
     const all = Array.isArray(data?.candidates) ? data.candidates : [];
     const filtered = all.filter(
@@ -5332,10 +5377,20 @@ const rootValue = {
         (netuid == null || c.netuid === netuid) &&
         (kind == null || c.kind === kind) &&
         (provider == null || c.provider === provider) &&
-        (state == null || c.state === state),
+        (state == null || c.state === state) &&
+        (id == null ||
+          String(c.id ?? "").toLowerCase() === String(id).toLowerCase()) &&
+        (confidence == null || c.confidence === confidence),
     );
+    // Same sort/order semantics (missing values sink to the end regardless of
+    // direction) every applyQueryFilters-backed field already applies --
+    // reused via the exported sortRows rather than re-derived here.
+    const sortParams = new URLSearchParams();
+    if (sort != null) sortParams.set("sort", String(sort));
+    if (order != null) sortParams.set("order", String(order));
+    const sorted = sortRows(filtered, sortParams);
     const { page, total, nextCursor } = paginate(
-      filtered,
+      sorted,
       limit,
       cursor,
       (c: Row) => c.id ?? c.key,
