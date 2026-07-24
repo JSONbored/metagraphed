@@ -7785,6 +7785,55 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
   });
 });
 
+describe("graphql — provider_endpoints (#7868, per-provider filtered endpoint list)", () => {
+  const ENV = () =>
+    fixtureEnv({
+      "/metagraph/providers/acme/endpoints.json": {
+        endpoints: [
+          { id: "acme-e1", kind: "subtensor-rpc", status: "ok", netuid: 1 },
+          { id: "acme-e2", kind: "subnet-api", status: "degraded", netuid: 2 },
+        ],
+      },
+    });
+
+  test("returns the provider's full endpoint list unfiltered", async () => {
+    const { status, body } = await gql(
+      '{ provider_endpoints(slug: "acme") }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.provider_endpoints.endpoints.length, 2);
+    assert.equal(body.data.provider_endpoints.endpoints[0].id, "acme-e1");
+  });
+
+  test("applies a kind filter via the shared loader", async () => {
+    const { status, body } = await gql(
+      '{ provider_endpoints(slug: "acme", kind: "subtensor-rpc") }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.provider_endpoints.endpoints.length, 1);
+    assert.equal(
+      body.data.provider_endpoints.endpoints[0].kind,
+      "subtensor-rpc",
+    );
+  });
+
+  test("an unsupported sort is a GraphQL error, not a silent default", async () => {
+    const { body } = await gql(
+      '{ provider_endpoints(slug: "acme", sort: "bogus") }',
+      ENV(),
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+  });
+
+  test("provider_endpoints is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.provider_endpoints, 5);
+  });
+});
+
 describe("graphql — agent_resources (#6987, baked AI-resources index)", () => {
   test("resolves the baked AI-resources index", async () => {
     const env = fixtureEnv({
