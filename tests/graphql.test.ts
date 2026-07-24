@@ -4342,6 +4342,132 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
       body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
     );
   });
+
+  const CHANGES_SELECTION = `changes {
+    validators_entered_count validators_exited_count uid_reassignment_count
+    validators_entered { hotkey uid }
+    validators_exited { hotkey uid }
+    uid_reassignments { uid from_hotkey to_hotkey }
+  }`;
+
+  test("changes: true forwards ?changes=true and resolves the typed churn detail (#7883)", async () => {
+    let capturedUrl: URL | undefined;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req: Request) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            netuid: 5,
+            window: "30d",
+            comparable: true,
+            changes: {
+              validators_entered_count: 2,
+              validators_exited_count: 1,
+              uid_reassignment_count: 1,
+              validators_entered: [
+                { hotkey: "5Hentered1", uid: 3 },
+                { hotkey: "5Hentered2", uid: null },
+              ],
+              validators_exited: [{ hotkey: "5Hexited1", uid: 9 }],
+              uid_reassignments: [
+                { uid: 12, from_hotkey: "5Hold", to_hotkey: "5Hnew" },
+              ],
+            },
+          });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5, changes: true) { comparable ${CHANGES_SELECTION} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl?.searchParams.get("changes"), "true");
+    const detail = body.data.subnet_turnover.changes;
+    assert.equal(detail.validators_entered_count, 2);
+    assert.equal(detail.uid_reassignment_count, 1);
+    assert.deepEqual(detail.validators_entered, [
+      { hotkey: "5Hentered1", uid: 3 },
+      { hotkey: "5Hentered2", uid: null },
+    ]);
+    assert.deepEqual(detail.validators_exited, [
+      { hotkey: "5Hexited1", uid: 9 },
+    ]);
+    assert.deepEqual(detail.uid_reassignments, [
+      { uid: 12, from_hotkey: "5Hold", to_hotkey: "5Hnew" },
+    ]);
+  });
+
+  test("without the changes toggle the param is omitted and changes is null (#7883)", async () => {
+    let capturedUrl: URL | undefined;
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req: Request) => {
+          capturedUrl = new URL(req.url);
+          return Response.json({ schema_version: 1, netuid: 5, window: "30d" });
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5) { changes { uid_reassignment_count } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(capturedUrl?.searchParams.has("changes"), false);
+    assert.equal(body.data.subnet_turnover.changes, null);
+  });
+
+  test("a cold store resolves changes to null even when the toggle is set (#7883)", async () => {
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 1, changes: true) { comparable changes { uid_reassignment_count } } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_turnover.comparable, false);
+    assert.equal(body.data.subnet_turnover.changes, null);
+  });
+
+  test("changes counts fall back to list lengths and malformed entries are dropped (#7883)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            netuid: 5,
+            changes: {
+              // No *_count keys, and entries missing hotkey/uid must not surface
+              // as nulls inside the non-nullable list items.
+              validators_entered: [{ hotkey: "5Hkept", uid: 1 }, { uid: 2 }],
+              validators_exited: [],
+              uid_reassignments: [
+                { uid: 4, from_hotkey: "5Ha", to_hotkey: "5Hb" },
+                { uid: 5, from_hotkey: "5Hc" },
+              ],
+            },
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5, changes: true) { ${CHANGES_SELECTION} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const detail = body.data.subnet_turnover.changes;
+    assert.equal(detail.validators_entered_count, 1);
+    assert.equal(detail.validators_exited_count, 0);
+    assert.equal(detail.uid_reassignment_count, 1);
+    assert.deepEqual(detail.validators_entered, [{ hotkey: "5Hkept", uid: 1 }]);
+    assert.deepEqual(detail.uid_reassignments, [
+      { uid: 4, from_hotkey: "5Ha", to_hotkey: "5Hb" },
+    ]);
+  });
 });
 
 // #6978: GraphQL parity for the conviction/ownership-contest (#4302) and
