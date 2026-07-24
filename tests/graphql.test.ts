@@ -20262,3 +20262,72 @@ describe("graphql — coverage + coverage_depth", () => {
     );
   });
 });
+
+// #7882: subnet_hyperparameters_history gained the keyset `cursor` the REST
+// route already accepts, alongside the existing offset paging.
+describe("graphql — subnet_hyperparameters_history cursor (#7882)", () => {
+  const PAGE = {
+    schema_version: 1,
+    netuid: 1,
+    entry_count: 1,
+    limit: 50,
+    offset: 0,
+    next_cursor: "eyJhIjoxfQ",
+    entries: [
+      {
+        block_number: 42,
+        observed_at: "2026-07-01T00:00:00.000Z",
+        hyperparams_hash: "abc",
+        hyperparameters: { tempo: 360 },
+      },
+    ],
+  };
+
+  /** Captures the URL the resolver forwards to the Postgres tier. */
+  function capturingEnv(seen: { url?: string }) {
+    return {
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (input: Request | string) => {
+          seen.url = typeof input === "string" ? input : input.url;
+          return Response.json(PAGE);
+        },
+      },
+    };
+  }
+
+  test("forwards the cursor to the route and returns the page", async () => {
+    const seen: { url?: string } = {};
+    const { status, body } = await gql(
+      `{ subnet_hyperparameters_history(netuid: 1, cursor: "eyJhIjoxfQ") { netuid entry_count next_cursor entries { block_number } } }`,
+      capturingEnv(seen) as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const params = new URL(seen.url!).searchParams;
+    assert.equal(params.get("cursor"), "eyJhIjoxfQ");
+    const result = body.data.subnet_hyperparameters_history;
+    assert.equal(result.netuid, 1);
+    assert.equal(result.next_cursor, "eyJhIjoxfQ");
+    assert.equal(result.entries[0].block_number, 42);
+  });
+
+  test("omits the cursor param entirely when not supplied, staying offset-paged", async () => {
+    const seen: { url?: string } = {};
+    await gql(
+      `{ subnet_hyperparameters_history(netuid: 1, offset: 10) { netuid } }`,
+      capturingEnv(seen) as unknown as Env,
+    );
+    const params = new URL(seen.url!).searchParams;
+    assert.equal(params.has("cursor"), false);
+    assert.equal(params.get("offset"), "10");
+  });
+
+  test("treats an empty cursor as absent rather than forwarding a blank token", async () => {
+    const seen: { url?: string } = {};
+    await gql(
+      `{ subnet_hyperparameters_history(netuid: 1, cursor: "") { netuid } }`,
+      capturingEnv(seen) as unknown as Env,
+    );
+    assert.equal(new URL(seen.url!).searchParams.has("cursor"), false);
+  });
+});
