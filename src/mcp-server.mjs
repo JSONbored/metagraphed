@@ -8783,9 +8783,10 @@ export const MCP_TOOLS = [
       "all-events tier: each event's block, event index, pallet, method, decoded " +
       "args, phase, and emitting extrinsic index. Optionally filter by pallet, " +
       "method (needs pallet unless block is set), block, or one extrinsic's events " +
-      "(extrinsic needs block); page with limit (1-200, default 50) and the opaque " +
-      "cursor. The event-level companion to list_extrinsics and get_chain_activity " +
-      "(the pallet.method distribution). Mirrors GET /api/v1/chain-events.",
+      "(extrinsic needs block); page with limit (1-200, default 50), the opaque " +
+      "keyset cursor, or the legacy before=block_number cursor. The event-level " +
+      "companion to list_extrinsics and get_chain_activity (the pallet.method " +
+      "distribution). Mirrors GET /api/v1/chain-events.",
     inputSchema: {
       type: "object",
       properties: {
@@ -8817,7 +8818,15 @@ export const MCP_TOOLS = [
           type: "string",
           description:
             "Opaque keyset cursor from a previous response's next_cursor, for stable " +
-            "deep pagination over (block_number, event_index).",
+            "deep pagination over (block_number, event_index). Preferred over before " +
+            "when both are set.",
+        },
+        before: {
+          type: "integer",
+          description:
+            "Legacy block_number-only cursor: return events strictly before this " +
+            "block. Prefer cursor for deep pagination; ignored when cursor is set.",
+          minimum: 0,
         },
         limit: {
           type: "integer",
@@ -8836,6 +8845,7 @@ export const MCP_TOOLS = [
         block: args?.block,
         extrinsic: args?.extrinsic,
         cursor: optionalString(args, "cursor"),
+        before: args?.before,
         limit: args?.limit,
       });
     },

@@ -3377,6 +3377,51 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     assert.equal(q.get("limit"), "25");
   });
 
+  test("list_chain_events forwards the legacy before cursor (#7895)", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        count: 1,
+        next_before: 4199990,
+        next_cursor: "4199990.0",
+        events: [
+          {
+            block_number: 4199995,
+            event_index: 0,
+            pallet: "System",
+            method: "ExtrinsicSuccess",
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_chain_events",
+      { before: 4200000, limit: 10 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 1);
+    assert.equal(out.next_before, 4199990);
+    assert.equal(out.events[0].block_number, 4199995);
+    const q = dataApi.calls[0].searchParams;
+    assert.equal(q.get("before"), "4200000");
+    assert.equal(q.get("limit"), "10");
+    assert.equal(q.get("cursor"), null);
+  });
+
+  test("list_chain_events prefers cursor over before when both are set (#7895)", async () => {
+    const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
+    await callTool(
+      "list_chain_events",
+      { cursor: "1.2.3", before: 99, limit: 5 },
+      { env: { DATA_API: dataApi } },
+    );
+    const q = dataApi.calls[0].searchParams;
+    assert.equal(q.get("cursor"), "1.2.3");
+    assert.equal(q.get("before"), null);
+    assert.equal(q.get("limit"), "5");
+  });
+
   test("list_chain_events surfaces a non-400 data-Worker error as tier_unavailable", async () => {
     const dataApi = makeDataApi({ status: 503 });
     const res = await callTool(
