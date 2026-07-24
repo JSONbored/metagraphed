@@ -429,6 +429,7 @@ describe("subnet-candidates-mcp", () => {
     const tool = MCP_TOOLS.find(
       (t: Row) => t.name === "list_subnet_candidates",
     );
+    assert.ok(tool);
     const out = await tool.handler(
       { netuid: NETUID, kind: "subnet-api", state: "schema-valid" },
       { env: {}, readArtifact } as unknown as LoadCtx,
