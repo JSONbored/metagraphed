@@ -4862,8 +4862,10 @@ const SUBNET_SURFACE_FILTER_ARGS = [
   "cursor",
 ];
 
-function hasSubnetSurfaceFilters(args: Row | undefined | null): boolean {
-  if (!args) return false;
+// graphql-js always supplies an args object (empty when the caller passed
+// nothing), so this takes Row directly rather than carrying an unreachable
+// null-guard branch.
+function hasSubnetSurfaceFilters(args: Row): boolean {
   return SUBNET_SURFACE_FILTER_ARGS.some((key) => args[key] !== undefined);
 }
 
