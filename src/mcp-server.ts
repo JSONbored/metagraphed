@@ -205,6 +205,12 @@ import {
   loadProviderEndpointsList,
 } from "./provider-endpoints-mcp.ts";
 import {
+  LIST_ENDPOINTS_INSTRUCTIONS,
+  LIST_ENDPOINTS_MCP_TOOL,
+  LIST_ENDPOINTS_OUTPUT_SCHEMA,
+  loadEndpointsList,
+} from "./endpoints-mcp.ts";
+import {
   LIST_PROVIDERS_INSTRUCTIONS,
   LIST_PROVIDERS_MCP_TOOL,
   LIST_PROVIDERS_OUTPUT_SCHEMA,
@@ -1039,8 +1045,7 @@ export const MCP_INSTRUCTIONS =
   LIST_PROVIDERS_INSTRUCTIONS +
   LIST_SURFACES_INSTRUCTIONS +
   LIST_CANDIDATES_INSTRUCTIONS +
-  "list_endpoints the " +
-  "network-wide monitored endpoint-resource catalog, " +
+  LIST_ENDPOINTS_INSTRUCTIONS +
   LIST_EVIDENCE_INSTRUCTIONS +
   "list_rpc_endpoints the monitored " +
   "Bittensor RPC endpoint catalog, " +
@@ -1870,19 +1875,6 @@ function requireNetuid(args: Row) {
 function optionalBoolean(args: Row, key: string) {
   const value = args?.[key];
   if (value === undefined || value === null) return false;
-  if (typeof value !== "boolean") {
-    throw toolError("invalid_params", `Argument \`${key}\` must be a boolean.`);
-  }
-  return value;
-}
-
-// Unlike optionalBoolean (which defaults an absent flag to false), a tri-state
-// filter arg must distinguish "not provided, don't filter" (null) from an
-// explicit true/false, or an absent filter would wrongly narrow to only the
-// false-valued rows.
-function optionalNullableBoolean(args: Row, key: string) {
-  const value = args?.[key];
-  if (value === undefined || value === null) return null;
   if (typeof value !== "boolean") {
     throw toolError("invalid_params", `Argument \`${key}\` must be a boolean.`);
   }
@@ -9608,154 +9600,9 @@ export const MCP_TOOLS = [
     },
   },
   {
-    name: "list_endpoints",
-    title: "List monitored endpoint resources",
-    description:
-      "Fetch the network-wide catalog of generalized endpoint resources: every " +
-      "monitored public endpoint/surface across providers and subnets, each " +
-      "with its kind, layer, provider, subnet (netuid), publication state, and " +
-      "probe-derived status/latency/score. Use it to discover live endpoints " +
-      "network-wide. Optionally filter by kind/layer/netuid/provider/" +
-      "publication_state/status/pool_eligible, bound by min_/max_latency_ms " +
-      "and min_/max_score, and page with limit/cursor — the full catalog can " +
-      "be large. Mirrors GET /api/v1/endpoints.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        kind: {
-          type: "string",
-          enum: QUERY_ENUMS.surfaceKind,
-          description: "Surface kind, e.g. 'subnet-api' or 'openapi'.",
-        },
-        layer: {
-          type: "string",
-          enum: QUERY_ENUMS.endpointLayer,
-          description: "Endpoint layer, e.g. 'subnet-app' or 'bittensor-base'.",
-        },
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        provider: {
-          type: "string",
-          description: "Provider slug, e.g. 'datura'.",
-        },
-        publication_state: {
-          type: "string",
-          enum: QUERY_ENUMS.endpointPublicationState,
-          description:
-            "Publication state, e.g. 'monitored' or 'pool-eligible'.",
-        },
-        status: {
-          type: "string",
-          enum: QUERY_ENUMS.healthStatus,
-          description: "Probe-derived health status, e.g. 'ok' or 'degraded'.",
-        },
-        pool_eligible: {
-          type: "boolean",
-          description: "Only endpoints eligible (or not) for RPC pooling.",
-        },
-        min_latency_ms: {
-          type: "number",
-          description: "Only endpoints with probe-derived latency_ms >= this.",
-        },
-        max_latency_ms: {
-          type: "number",
-          description: "Only endpoints with probe-derived latency_ms <= this.",
-        },
-        min_score: {
-          type: "number",
-          description: "Only endpoints with probe-derived score >= this.",
-        },
-        max_score: {
-          type: "number",
-          description: "Only endpoints with probe-derived score <= this.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max endpoints to return. Omit for the full list.",
-          minimum: 1,
-        },
-        cursor: {
-          type: "integer",
-          description:
-            "Pagination cursor from a prior response's next_cursor. Default 0.",
-          minimum: 0,
-        },
-      },
-      additionalProperties: false,
-    },
+    ...LIST_ENDPOINTS_MCP_TOOL,
     async handler(args: Row, ctx: McpCtx) {
-      const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
-      const layer = optionalEnum(args, "layer", QUERY_ENUMS.endpointLayer);
-      const netuid = optionalNonNegativeInt(args, "netuid");
-      const provider = optionalString(args, "provider");
-      const publicationState = optionalEnum(
-        args,
-        "publication_state",
-        QUERY_ENUMS.endpointPublicationState,
-      );
-      const status = optionalEnum(args, "status", QUERY_ENUMS.healthStatus);
-      const poolEligible = optionalNullableBoolean(args, "pool_eligible");
-      // Inclusive numeric range bounds, the MCP mirror of REST's
-      // rangeFilters: ["latency_ms", "score"] on the endpoints collection
-      // (contracts.mjs) — same shape as LIST_SUBNETS_RANGE_BOUNDS.
-      const rangeBounds = [
-        { arg: "min_latency_ms", field: "latency_ms", op: "min" },
-        { arg: "max_latency_ms", field: "latency_ms", op: "max" },
-        { arg: "min_score", field: "score", op: "min" },
-        { arg: "max_score", field: "score", op: "max" },
-      ]
-        .filter(({ arg }) => Number.isFinite(args?.[arg]))
-        .map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
-      const limit = optionalPositiveInt(args, "limit");
-      const cursor = optionalNonNegativeInt(args, "cursor") ?? 0;
-      let data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
-      // Live per-endpoint health overlay (mirrors workers/api.mjs's raw-
-      // artifact serving path): the build-time endpoints.json bakes stale
-      // operational health, so replace it from the 15-minute cron snapshot
-      // before filtering/pagination -- status/pool_eligible filters below
-      // (and the latency_ms/score bounds, which come from this same overlay)
-      // must see live values, not the baked ones.
-      if (
-        Array.isArray(data?.endpoints) &&
-        data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
-      ) {
-        const overlaid = overlayArtifactEndpoints(
-          data,
-          await mcpLiveHealth(ctx),
-        );
-        if (overlaid) data = overlaid;
-      }
-      const all = Array.isArray(data.endpoints) ? data.endpoints : [];
-      const filtered = all.filter(
-        (e: Row) =>
-          (kind === null || e.kind === kind) &&
-          (layer === null || e.layer === layer) &&
-          (netuid === null || e.netuid === netuid) &&
-          (provider === null || e.provider === provider) &&
-          (publicationState === null ||
-            e.publication_state === publicationState) &&
-          (status === null || e.status === status) &&
-          (poolEligible === null || e.pool_eligible === poolEligible) &&
-          rangeBounds.every(({ field, op, limit: bound }) => {
-            const value = e[field];
-            if (typeof value !== "number") return false;
-            return op === "min" ? value >= bound : value <= bound;
-          }),
-      );
-      const window = cursorWindow(filtered, {
-        collection: "endpoints",
-        dataKey: "endpoints",
-        limit,
-        cursor,
-      });
-      return {
-        ...data,
-        endpoints: window.page,
-        total: window.total,
-        returned: window.returned,
-        cursor: window.cursor,
-        limit: window.limit,
-        next_cursor: window.next_cursor,
-      };
+      return loadEndpointsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -15363,21 +15210,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_providers: LIST_PROVIDERS_OUTPUT_SCHEMA,
   list_surfaces: LIST_SURFACES_OUTPUT_SCHEMA,
   list_candidates: LIST_CANDIDATES_OUTPUT_SCHEMA,
-  list_endpoints: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      endpoints: { type: "array", items: { type: "object" } },
-      total: { type: "integer" },
-      returned: { type: "integer" },
-      cursor: { type: "integer" },
-      limit: { type: "integer" },
-      next_cursor: { type: ["integer", "null"] },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  list_endpoints: LIST_ENDPOINTS_OUTPUT_SCHEMA,
   get_subnet_surfaces: {
     type: "object",
     additionalProperties: true,
