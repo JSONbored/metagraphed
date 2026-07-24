@@ -7834,6 +7834,65 @@ describe("graphql — provider_endpoints (#7868, per-provider filtered endpoint 
   });
 });
 
+describe("graphql — subnet_endpoints (#7869, root + nested filtered endpoint list)", () => {
+  const ENV = () =>
+    fixtureEnv({
+      "/metagraph/subnets/7.json": {
+        subnet: { netuid: 7, name: "S7", slug: "s7" },
+      },
+      "/metagraph/endpoints/7.json": {
+        endpoints: [
+          { id: "sn7-e1", kind: "subtensor-rpc", status: "ok", netuid: 7 },
+          { id: "sn7-e2", kind: "subnet-api", status: "ok", netuid: 7 },
+        ],
+      },
+    });
+
+  test("root subnet_endpoints returns the full list unfiltered", async () => {
+    const { status, body } = await gql(
+      "{ subnet_endpoints(netuid: 7) }",
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_endpoints.endpoints.length, 2);
+  });
+
+  test("root subnet_endpoints applies a kind filter via the loader", async () => {
+    const { status, body } = await gql(
+      '{ subnet_endpoints(netuid: 7, kind: "subtensor-rpc") }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_endpoints.endpoints.length, 1);
+    assert.equal(body.data.subnet_endpoints.endpoints[0].kind, "subtensor-rpc");
+  });
+
+  test("root subnet_endpoints surfaces an unsupported sort as a GraphQL error", async () => {
+    const { body } = await gql(
+      '{ subnet_endpoints(netuid: 7, sort: "bogus") }',
+      ENV(),
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+  });
+
+  test("nested Subnet.endpoints accepts the same filter args", async () => {
+    const { status, body } = await gql(
+      '{ subnet(netuid: 7) { endpoints(kind: "subtensor-rpc") { id kind } } }',
+      ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet.endpoints.length, 1);
+    assert.equal(body.data.subnet.endpoints[0].kind, "subtensor-rpc");
+  });
+
+  test("subnet_endpoints is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_endpoints, 5);
+  });
+});
+
 describe("graphql — agent_resources (#6987, baked AI-resources index)", () => {
   test("resolves the baked AI-resources index", async () => {
     const env = fixtureEnv({

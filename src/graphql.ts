@@ -45,6 +45,7 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.ts";
 // same loadProviderEndpointsList that MCP list_provider_endpoints already calls
 // (#3289) -- not a reimplementation.
 import { loadProviderEndpointsList } from "./provider-endpoints-mcp.ts";
+import { loadSubnetEndpointsList } from "./subnet-endpoints-mcp.ts";
 // #7167: GraphQL parity for the /api/v1/review/* contributor-review family,
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
 // and page logic REST and MCP already use) -- not a reimplementation.
@@ -638,6 +639,8 @@ export const SDL = `
     surfaces(netuid: Int, limit: Int, cursor: String): SurfaceList!
     "Endpoint/resource registry, optionally scoped to one subnet."
     endpoints(netuid: Int, limit: Int, cursor: String): EndpointList!
+    "One subnet's endpoint/resource registry rows with full REST filter parity: filter by kind/layer/publication_state/status, latency and score ranges, sort + order, and page with limit/cursor. Reuses list_subnet_endpoints' loader over the baked per-subnet artifact. An unsupported filter/sort or a cold/absent subnet is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_subnet_endpoints MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/endpoints."
+    subnet_endpoints(netuid: Int!, kind: String, layer: String, publication_state: String, status: String, min_latency_ms: Int, max_latency_ms: Int, min_score: Float, max_score: Float, sort: String, order: String, limit: Int, cursor: String): JSON
     "One provider's endpoint rows with full REST filter parity: filter by kind/layer/publication_state/status, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints."
     provider_endpoints(slug: String!, kind: String, layer: String, publication_state: String, status: String, min_latency_ms: Int, max_latency_ms: Int, min_score: Float, max_score: Float, sort: String, order: String, limit: Int, cursor: String): JSON
     "Generalized endpoint pool scores -- each pool's kind, eligible/total endpoint count, and probe-derived routing score. Filter by id/kind, threshold with min_/max_eligible_count and min_/max_endpoint_count, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-pools."
@@ -897,8 +900,8 @@ export const SDL = `
     economics: SubnetEconomics
     "Curated public interface surfaces of this subnet."
     surfaces: [Surface!]!
-    "Endpoint/resource registry rows for this subnet."
-    endpoints: [Endpoint!]!
+    "Endpoint/resource registry rows for this subnet, accepting the same optional filter/sort/page arguments as the root subnet_endpoints field. With no arguments it returns the subnet's full endpoint list; with any filter/sort/page argument it routes through the list_subnet_endpoints loader for full REST parity."
+    endpoints(kind: String, layer: String, publication_state: String, status: String, min_latency_ms: Int, max_latency_ms: Int, min_score: Float, max_score: Float, sort: String, order: String, limit: Int, cursor: String): [Endpoint!]!
   }
 
   type ProviderList {
@@ -4239,6 +4242,7 @@ export const FIELD_COMPLEXITY = {
   economics: RELATIONSHIP_FIELD_COMPLEXITY,
   surfaces: RELATIONSHIP_FIELD_COMPLEXITY,
   endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   provider_endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   endpoint_pools: RELATIONSHIP_FIELD_COMPLEXITY,
   rpc_pools: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4822,7 +4826,22 @@ function subnetNode(identity: Row, prefetch: Row = {}) {
     economics: (_args: unknown, context: GqlContext) =>
       loadSubnetEconomics(context, netuid),
     surfaces: bundledOr(prefetch.surfaces, loadSubnetSurfaces),
-    endpoints: bundledOr(prefetch.endpoints, loadSubnetEndpoints),
+    endpoints: async (args: Row, context: GqlContext) => {
+      // #7869: with any filter/sort/page argument, route through the same
+      // list_subnet_endpoints loader the root subnet_endpoints field uses so
+      // the nested field filters identically to REST/MCP; with no arguments,
+      // keep the existing prefetch fast-path unchanged.
+      const filtered = Object.keys(args).length > 0;
+      if (filtered) {
+        const result = await loadSubnetEndpointsList(
+          mcpCtx(context),
+          { netuid, ...args },
+          { readArtifact },
+        );
+        return result.endpoints;
+      }
+      return prefetch.endpoints ?? loadSubnetEndpoints(context, netuid);
+    },
   };
 }
 
@@ -6328,6 +6347,15 @@ const rootValue = {
       netuid,
       keyFn: (e: Row) => e.id ?? e.surface_id,
     });
+  },
+
+  subnet_endpoints(args: Row, context: GqlContext) {
+    // #7869: reuse list_subnet_endpoints' own loader (subnet-endpoints-mcp.ts)
+    // -- the same read + filter/sort/page the REST route and MCP tool run over
+    // the baked per-subnet endpoints artifact. Wired like endpoint_pools/gaps;
+    // the loader validates its own args and throws (invalid filter/sort or a
+    // cold/absent subnet) as a GraphQL error.
+    return loadSubnetEndpointsList(mcpCtx(context), args, { readArtifact });
   },
 
   // #7868: reuse list_provider_endpoints' own loader unchanged (provider-
