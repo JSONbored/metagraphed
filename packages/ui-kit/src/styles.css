@@ -266,12 +266,15 @@
 }
 
 /* ============================================================
- * Bone & Ink rhythm + type tokens, relocated (2026-07-23) from
- * apps/ui/src/styles.css alongside <Panel>/<SectionLabel> and the
- * other dependency-free primitives that moved into this package so
- * ui-kit's own components can use them too. Kept in sync with
- * apps/ui/src/styles.css's copy of the same block — see that file if
- * either drifts.
+ * Bone & Ink rhythm + type tokens. Relocated (2026-07-23) from
+ * apps/ui/src/styles.css alongside <Panel>/<SectionLabel> and the other
+ * dependency-free primitives that moved into this package so ui-kit's own
+ * components can use them too; briefly duplicated in both files to keep
+ * that move shippable, then consolidated here as the sole source of truth
+ * (#7846) -- apps/ui/src/styles.css now only keeps the page-shell-specific
+ * rhythm tokens (--mg-section-gap*, --mg-stack-gap*, --mg-hero-pad-y*,
+ * --mg-toolbar-pad-y, --mg-gutter-x) that describe its own layout, not a
+ * reusable component concern.
  * ============================================================ */
 :root {
   --mg-space-3xs: 0.125rem; /* 2  */
@@ -287,6 +290,7 @@
   --mg-panel-pad: var(--mg-space-lg);
   --mg-panel-pad-dense: var(--mg-space-md);
 
+  /* Type scale — locks the micro/label/caption/data idiom into named tokens. */
   --mg-type-micro: 9.5px;
   --mg-type-label: 11px;
   --mg-tracking-label: 0.14em;
@@ -297,6 +301,18 @@
      utility class existed to reach for), unlike mg-type-micro/label above. */
   --mg-type-caption: 12px;
   --mg-type-caption-lg: 13px;
+
+  /* #7846: moved from apps/ui/src/styles.css -- part of the same type scale
+     as micro/label/caption above, so it belongs alongside them here rather
+     than in apps/ui's page-shell-only rhythm block. Not yet consumed by any
+     utility class in either package (no .mg-type-body/-h1..-h4 exists) --
+     kept as the reserved next step up the scale above mg-type-caption-lg. */
+  --mg-type-body: 14px;
+  --mg-type-body-lg: 15px;
+  --mg-type-h4: 16px;
+  --mg-type-h3: 18px;
+  --mg-type-h2: 22px;
+  --mg-type-h1: 28px;
 }
 
 .mg-panel-pad {
