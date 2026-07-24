@@ -8185,11 +8185,84 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.ok(body.data.search_index.next_cursor);
   });
 
-  test("search degrades to an empty page on a cold artifact", async () => {
-    const { status, body } = await gql("{ search { documents total } }");
+  test("search errors on a cold artifact, matching REST/MCP (#7876)", async () => {
+    // Now backed by loadSearchList -- the same loader REST GET /api/v1/search and
+    // MCP list_search use -- so a cold/absent artifact is a GraphQL error exactly
+    // as REST returns not_found, not the empty-page degradation the old listPage
+    // path uniquely produced. Matches the source_snapshots/evidence convention.
+    const { body } = await gql("{ search { documents total } }");
+    assert.ok(
+      body.errors,
+      "expected a GraphQL error when the search artifact is cold",
+    );
+    assert.equal(body.data?.search ?? null, null);
+  });
+
+  test("search filters by a keyword q (#7876)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/search.json": {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "Alpha",
+            tokens: "alpha vision",
+          },
+          {
+            id: "surface:2",
+            type: "surface",
+            netuid: 2,
+            title: "Beta",
+            tokens: "beta audio",
+          },
+          {
+            id: "provider:3",
+            type: "provider",
+            netuid: 3,
+            title: "Gamma",
+            tokens: "gamma data",
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ search(q: "beta") { documents total } }',
+      env as unknown as Env,
+    );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.deepEqual(body.data.search, { documents: [], total: 0 });
+    const s = body.data.search;
+    assert.equal(s.total, 1);
+    assert.equal(s.documents.length, 1);
+    assert.equal(s.documents[0].id, "surface:2");
+  });
+
+  test("search filters by a type + netuid combination (#7876)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/search.json": {
+        documents: [
+          { id: "subnet:1", type: "subnet", netuid: 1, title: "Alpha" },
+          {
+            id: "surface:1",
+            type: "surface",
+            netuid: 1,
+            title: "Alpha surface",
+          },
+          { id: "subnet:2", type: "subnet", netuid: 2, title: "Beta" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ search(type: "subnet", netuid: 1) { documents total } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const s = body.data.search;
+    assert.equal(s.total, 1);
+    assert.equal(s.documents.length, 1);
+    assert.equal(s.documents[0].id, "subnet:1");
   });
 
   test("domains rolls up every tag in the fixed taxonomy", async () => {

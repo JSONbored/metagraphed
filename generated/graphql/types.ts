@@ -2578,7 +2578,7 @@ export type Query = {
   saved_query?: Maybe<Scalars['JSON']['output']>;
   /** The registry's captured API-schema index: which subnet surfaces publish a machine-readable OpenAPI/Swagger schema, each schema's hash, and its drift status (new/unchanged/changed). Null when the schema index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the list_schemas MCP/REST shape. Mirrors GET /api/v1/schemas. */
   schemas?: Maybe<Scalars['JSON']['output']>;
-  /** The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search. */
+  /** The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Filter by type/netuid, keyword-search with q, sort with sort/order, and page with limit (1-100)/cursor -- the same list-query transforms REST and MCP apply. An invalid type/sort/order/limit/cursor is a GraphQL error, not a silently substituted default. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search. */
   search: SearchDocumentList;
   /** The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Mirrors GET /api/v1/search-index. */
   search_index: SearchDocumentList;
@@ -3442,8 +3442,13 @@ export type QuerySaved_QueryArgs = {
 
 
 export type QuerySearchArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<Scalars['String']['input']>;
 };
 
 

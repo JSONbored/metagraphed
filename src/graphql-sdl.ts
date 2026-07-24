@@ -87,8 +87,16 @@ export const SDL = /* GraphQL */ `
     freshness: JSON
     "The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when the holders tier is cold, never null. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders."
     top_holders(sort: String, limit: Int): JSON
-    "The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search."
-    search(limit: Int, cursor: String): SearchDocumentList!
+    "The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Filter by type/netuid, keyword-search with q, sort with sort/order, and page with limit (1-100)/cursor -- the same list-query transforms REST and MCP apply. An invalid type/sort/order/limit/cursor is a GraphQL error, not a silently substituted default. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search."
+    search(
+      type: String
+      netuid: Int
+      q: String
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+    ): SearchDocumentList!
     "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Mirrors GET /api/v1/search-index."
     search_index(limit: Int, cursor: String): SearchDocumentList!
     "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains."

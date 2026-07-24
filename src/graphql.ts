@@ -18,6 +18,11 @@ import { loadSourceSnapshotsList } from "./source-snapshots-mcp.ts";
 // transforms REST and MCP already use) -- not a reimplementation.
 import { loadGapsList } from "./gaps-mcp.ts";
 import { loadEvidenceList } from "./evidence-mcp.ts";
+// #7876: GraphQL parity for the search field's type/netuid/q/sort/order
+// filters, reusing list_search's own loadSearchList loader unchanged (same
+// baked /metagraph/search.json read + list-query transforms REST and MCP
+// already apply) -- not a reimplementation.
+import { loadSearchList } from "./search-mcp.ts";
 // #7171: GraphQL parity for GET /api/v1/chain-events (paginated Query feed),
 // reusing loadChainEventsFeed that MCP list_chain_events already calls.
 // Distinct from Subscription.chainEvents (live WebSocket firehose).
@@ -3129,15 +3134,14 @@ const rootValue = {
     return rootValue.incidents({ window }, context);
   },
 
-  search({ limit, cursor }: Row, context: GqlContext) {
-    // Same baked search artifact + list-window the REST route serves, paged
-    // through the shared listPage helper the other artifact lists use.
-    return listPage(context, ARTIFACT.search, "documents", {
-      limit,
-      cursor,
-      resultKey: "documents",
-      keyFn: (d: Row) => d.id,
-    });
+  // #7876: GraphQL parity for the search field's REST/MCP filters. Reuse
+  // list_search's own loadSearchList loader unchanged -- the same baked
+  // /metagraph/search.json read plus the q/type/netuid/sort/order/limit/cursor
+  // list-query transforms REST and MCP already apply -- so the GraphQL search
+  // field cannot drift from them. An unsupported filter/sort or a cold artifact
+  // is a GraphQL error, matching source_snapshots/evidence/profiles.
+  search(args: Row, context: GqlContext) {
+    return loadSearchList(mcpCtx(context), args, { readArtifact });
   },
 
   search_index({ limit, cursor }: Row, context: GqlContext) {
