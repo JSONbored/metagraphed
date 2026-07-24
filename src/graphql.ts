@@ -78,6 +78,10 @@ import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp
 // loadSubnetCandidatesList that MCP list_subnet_candidates already calls
 // (#7899) -- not a reimplementation.
 import { loadSubnetCandidatesList } from "./subnet-candidates-mcp.ts";
+// #7869: GraphQL parity for GET /api/v1/subnets/{netuid}/endpoints, reusing
+// loadSubnetEndpointsList that MCP list_subnet_endpoints already calls -- not
+// a reimplementation.
+import { loadSubnetEndpointsList } from "./subnet-endpoints-mcp.ts";
 // #7879: GraphQL parity for GET /api/v1/subnets/{netuid}/evidence, reusing
 // loadSubnetEvidenceList that MCP list_subnet_evidence already calls -- not a
 // reimplementation.
@@ -622,6 +626,64 @@ const SUBNET_SURFACES_FILTER_NAMES = ["kind", "provider", "id"];
     return (transformed.data as Row).surfaces;
   };
 
+// #7869: the nested Subnet.endpoints field takes the same filter/sort/page
+// arguments as GET /api/v1/subnets/{netuid}/endpoints, mirroring the nested
+// Subnet.surfaces field above. A nested field needs an explicit resolve to see
+// its own args (the default field resolver ignores them and just reads the
+// parent property). Filtering runs through applyQueryFilters against the same
+// "endpoints" query-collection config the root endpoints(...) field (#7887) and
+// the REST route use, so the allowlists cannot drift and an unsupported
+// filter/sort value is a BAD_USER_INPUT GraphQL error rather than a silently
+// substituted default. With no arguments the parent's endpoints pass through
+// untouched. cursor is Int, matching the list query's offset cursor and the
+// sibling nested Subnet.surfaces field.
+(schema.getType("Subnet") as GraphQLObjectType).getFields().endpoints.resolve =
+  async function subnetEndpoints(
+    parent: Row,
+    args: Row,
+    context: GqlContext,
+    info: unknown,
+  ) {
+    // subnetNode -- the only producer of Subnet objects -- always exposes
+    // `endpoints` as a thunk (bundled rows via `() => rows ?? []`, or a lazy
+    // per-netuid artifact load), which the default field resolver would have
+    // invoked. Do the same here so adding arguments does not turn the lazy path
+    // into an empty list.
+    const endpoints = (await parent.endpoints(args, context, info)) as Row[];
+    const queryUrl = new URL("https://graphql.internal/subnets/endpoints");
+    for (const [name, value] of [
+      ["kind", args?.kind],
+      ["layer", args?.layer],
+      ["provider", args?.provider],
+      ["publication_state", args?.publication_state],
+      ["status", args?.status],
+      ["pool_eligible", args?.pool_eligible],
+      ["min_latency_ms", args?.min_latency_ms],
+      ["max_latency_ms", args?.max_latency_ms],
+      ["min_score", args?.min_score],
+      ["max_score", args?.max_score],
+      ["sort", args?.sort],
+      ["order", args?.order],
+      ["limit", args?.limit],
+      ["cursor", args?.cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
+    }
+    if ([...queryUrl.searchParams].length === 0) return endpoints;
+    const transformed = applyQueryFilters(
+      { endpoints },
+      queryUrl,
+      "endpoints",
+      [],
+    );
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return (transformed.data as Row).endpoints;
+  };
+
 export const GRAPHQL_SUBSCRIPTION_CONTEXT_KEY = "chainFirehose";
 schema.getSubscriptionType()!.getFields().chainEvents.subscribe =
   async function* chainEventsSubscribe(
@@ -779,6 +841,7 @@ export const FIELD_COMPLEXITY = {
   subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_evidence: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_candidates: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_axon_removals: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_weights: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_moves: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -3764,6 +3827,38 @@ const rootValue = {
       // preserving this field's documented cold-artifact contract --
       // loadArtifact, which this resolver used before, swallowed those the
       // same way.
+      if (err?.toolError) return null;
+      throw err;
+    }
+  },
+
+  // #7869: reuse loadSubnetEndpointsList -- the same loader the
+  // list_subnet_endpoints MCP tool calls -- rather than reimplementing the
+  // filter/sort/page pass here, so this field cannot drift from
+  // GET /api/v1/subnets/{netuid}/endpoints. It reads the same baked per-subnet
+  // artifact (distinct from the network-wide endpoints(...) registry) and
+  // validates netuid and every filter/sort value against the REST allowlists,
+  // throwing on an unsupported one; that throw surfaces as a BAD_USER_INPUT
+  // GraphQL error, matching the subnet_candidates sibling's convention. A cold/
+  // absent per-subnet artifact stays null (the documented per-subnet contract),
+  // never a silently substituted empty list.
+  async subnet_endpoints(args: Row, context: GqlContext) {
+    try {
+      return await loadSubnetEndpointsList(mcpCtx(context), args, {
+        readArtifact,
+      });
+    } catch (rawErr) {
+      const err = rawErr as Row;
+      // An invalid netuid or unsupported filter/sort value is BAD_USER_INPUT,
+      // matching every other field's "not a silently substituted default"
+      // convention.
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      // Any other loader miss (not baked / cold R2 / unavailable) stays null,
+      // preserving this field's documented cold-artifact contract.
       if (err?.toolError) return null;
       throw err;
     }

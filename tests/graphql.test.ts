@@ -10,6 +10,7 @@ import {
 import { describe, test, vi } from "vitest";
 import * as listQuery from "../workers/list-query.ts";
 import * as subnetCandidatesMcp from "../src/subnet-candidates-mcp.ts";
+import * as subnetEndpointsMcp from "../src/subnet-endpoints-mcp.ts";
 import * as subnetEvidenceMcp from "../src/subnet-evidence-mcp.ts";
 import {
   FIELD_COMPLEXITY,
@@ -10528,6 +10529,295 @@ describe("graphql — subnet_candidates (#7641, baked per-subnet candidate artif
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe("graphql — subnet_endpoints (#7869, baked per-subnet endpoint artifact)", () => {
+  // #7869: full REST filter/sort/page parity, reusing the same loader
+  // list_subnet_endpoints calls.
+  const FILTER_ENV = () =>
+    fixtureEnv({
+      "/metagraph/endpoints/5.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        netuid: 5,
+        endpoints: [
+          {
+            id: "alpha-api",
+            netuid: 5,
+            kind: "subnet-api",
+            layer: "bittensor-base",
+            provider: "alpha",
+            status: "ok",
+            latency_ms: 120,
+            score: 92,
+            pool_eligible: true,
+          },
+          {
+            id: "alpha-openapi",
+            netuid: 5,
+            kind: "openapi",
+            layer: "bittensor-base",
+            provider: "alpha",
+            status: "degraded",
+            latency_ms: 450,
+            score: 70,
+            pool_eligible: false,
+          },
+          {
+            id: "beta-api",
+            netuid: 5,
+            kind: "subnet-api",
+            layer: "bittensor-base",
+            provider: "beta",
+            status: "ok",
+            latency_ms: 200,
+            score: 85,
+            pool_eligible: true,
+          },
+        ],
+      },
+    });
+
+  test("resolves the baked per-subnet endpoints artifact", async () => {
+    const { status, body } = await gql(
+      "{ subnet_endpoints(netuid: 5) }",
+      FILTER_ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_endpoints.netuid, 5);
+    assert.equal(body.data.subnet_endpoints.returned, 3);
+    assert.equal(body.data.subnet_endpoints.endpoints[0].kind, "subnet-api");
+  });
+
+  test("degrades to null when no endpoint artifact is baked, never an error", async () => {
+    const { status, body } = await gql("{ subnet_endpoints(netuid: 999) }");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_endpoints, null);
+  });
+
+  test("a negative netuid is a BAD_USER_INPUT GraphQL error", async () => {
+    const { body } = await gql("{ subnet_endpoints(netuid: -1) }");
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
+  test("is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.subnet_endpoints, 5);
+  });
+
+  test("combines two filters (kind + status) (#7869)", async () => {
+    const { status, body } = await gql(
+      '{ subnet_endpoints(netuid: 5, kind: "subnet-api", status: "ok") }',
+      FILTER_ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const out = body.data.subnet_endpoints;
+    assert.equal(out.returned, 2);
+    assert.deepEqual(
+      out.endpoints.map((e: Row) => e.id),
+      ["alpha-api", "beta-api"],
+    );
+  });
+
+  test("filters by provider, pool_eligible, and score range (#7869)", async () => {
+    const { body } = await gql(
+      '{ subnet_endpoints(netuid: 5, provider: "alpha", pool_eligible: "true") }',
+      FILTER_ENV(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_endpoints.returned, 1);
+    assert.equal(body.data.subnet_endpoints.endpoints[0].id, "alpha-api");
+
+    const byScore = await gql(
+      "{ subnet_endpoints(netuid: 5, min_score: 85) }",
+      FILTER_ENV(),
+    );
+    assert.equal(byScore.body.errors, undefined);
+    assert.deepEqual(
+      byScore.body.data.subnet_endpoints.endpoints.map((e: Row) => e.id).sort(),
+      ["alpha-api", "beta-api"],
+    );
+  });
+
+  test("sorts, pages, and round-trips next_cursor (#7869)", async () => {
+    const first = await gql(
+      '{ subnet_endpoints(netuid: 5, kind: "subnet-api", sort: "provider", order: "asc", limit: 1) }',
+      FILTER_ENV(),
+    );
+    assert.equal(first.body.errors, undefined);
+    const page1 = first.body.data.subnet_endpoints;
+    assert.equal(page1.total, 2);
+    assert.equal(page1.returned, 1);
+    assert.equal(page1.endpoints[0].id, "alpha-api");
+    assert.equal(page1.next_cursor, 1);
+
+    const second = await gql(
+      '{ subnet_endpoints(netuid: 5, kind: "subnet-api", sort: "provider", order: "asc", limit: 1, cursor: 1) }',
+      FILTER_ENV(),
+    );
+    const page2 = second.body.data.subnet_endpoints;
+    assert.equal(page2.endpoints[0].id, "beta-api");
+    assert.equal(page2.next_cursor, null);
+  });
+
+  test("an unsupported filter or sort value is a GraphQL error (#7869)", async () => {
+    const badKind = await gql(
+      '{ subnet_endpoints(netuid: 5, kind: "bogus") }',
+      FILTER_ENV(),
+    );
+    assert.ok(badKind.body.errors, "expected a GraphQL error for kind");
+    assert.equal(badKind.body.errors[0].extensions.code, "BAD_USER_INPUT");
+
+    const badSort = await gql(
+      '{ subnet_endpoints(netuid: 5, sort: "not_a_column") }',
+      FILTER_ENV(),
+    );
+    assert.ok(badSort.body.errors, "expected a GraphQL error for sort");
+    assert.equal(badSort.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("an unexpected loader failure propagates (#7869)", async () => {
+    // Only the loader's own toolErrors map to null/BAD_USER_INPUT; anything
+    // else is a real fault and must surface rather than being masked as
+    // "no endpoints baked".
+    const spy = vi
+      .spyOn(subnetEndpointsMcp, "loadSubnetEndpointsList")
+      .mockRejectedValue(new Error("loader exploded"));
+    try {
+      const { body } = await gql(
+        "{ subnet_endpoints(netuid: 5) }",
+        FILTER_ENV(),
+      );
+      assert.ok(body.errors, "expected the raw failure to surface");
+      assert.match(body.errors[0].message, /loader exploded/);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("graphql — nested Subnet.endpoints filter/sort/page (#7869)", () => {
+  function nestedEndpointsEnv(reads?: Map<string, number>) {
+    return fixtureEnv(
+      {
+        "/metagraph/subnets/7.json": {
+          subnet: { netuid: 7, name: "Allways", slug: "allways" },
+          surfaces: [],
+          endpoints: [
+            {
+              id: "e-a",
+              netuid: 7,
+              kind: "subnet-api",
+              provider: "alpha",
+              status: "ok",
+            },
+            {
+              id: "e-b",
+              netuid: 7,
+              kind: "openapi",
+              provider: "alpha",
+              status: "degraded",
+            },
+            {
+              id: "e-c",
+              netuid: 7,
+              kind: "subnet-api",
+              provider: "beta",
+              status: "ok",
+            },
+          ],
+        },
+      },
+      reads ? { reads } : {},
+    ) as unknown as Env;
+  }
+
+  test("filters the bundled list by kind (#7869)", async () => {
+    const { status, body } = await gql(
+      `{ subnet(netuid: 7) { endpoints(kind: "subnet-api") { id kind } } }`,
+      nestedEndpointsEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(
+      body.data.subnet.endpoints.map((e: Row) => e.id),
+      ["e-a", "e-c"],
+    );
+  });
+
+  test("combines a filter with sort + order + limit + cursor (#7869)", async () => {
+    const first = await gql(
+      `{ subnet(netuid: 7) { endpoints(kind: "subnet-api", sort: "provider", order: "asc", limit: 1) { id } } }`,
+      nestedEndpointsEnv(),
+    );
+    assert.equal(first.body.errors, undefined);
+    assert.deepEqual(
+      first.body.data.subnet.endpoints.map((e: Row) => e.id),
+      ["e-a"],
+    );
+
+    const second = await gql(
+      `{ subnet(netuid: 7) { endpoints(kind: "subnet-api", sort: "provider", order: "asc", limit: 1, cursor: 1) { id } } }`,
+      nestedEndpointsEnv(),
+    );
+    assert.deepEqual(
+      second.body.data.subnet.endpoints.map((e: Row) => e.id),
+      ["e-c"],
+    );
+  });
+
+  test("returns the full list unchanged with no arguments (#7869)", async () => {
+    const { body } = await gql(
+      "{ subnet(netuid: 7) { endpoints { id } } }",
+      nestedEndpointsEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(
+      body.data.subnet.endpoints.map((e: Row) => e.id),
+      ["e-a", "e-b", "e-c"],
+    );
+  });
+
+  test("rejects an unsupported filter or sort (#7869)", async () => {
+    for (const arg of ['kind: "bogus"', 'sort: "not_a_column"']) {
+      const { body } = await gql(
+        `{ subnet(netuid: 7) { endpoints(${arg}) { id } } }`,
+        nestedEndpointsEnv(),
+      );
+      assert.ok(body.errors, `expected a GraphQL error for ${arg}`);
+      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    }
+  });
+
+  test("still filters the lazily-loaded list (#7869)", async () => {
+    // A subnet reached through the list has no bundled endpoints -- the thunk
+    // loads them per-netuid. Filtering must apply to that path too, not
+    // collapse it to an empty list.
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 7, name: "Allways", slug: "allways" }],
+      },
+      "/metagraph/endpoints.json": {
+        endpoints: [
+          { id: "e-a", netuid: 7, kind: "subnet-api", provider: "alpha" },
+          { id: "e-b", netuid: 7, kind: "openapi", provider: "alpha" },
+        ],
+      },
+    });
+    const { body } = await gql(
+      `{ subnets { items { netuid endpoints(kind: "openapi") { id kind } } } }`,
+      env as unknown as Env,
+    );
+    assert.equal(body.errors, undefined);
+    const item = body.data.subnets.items[0];
+    assert.deepEqual(
+      item.endpoints.map((e: Row) => e.id),
+      ["e-b"],
+    );
   });
 });
 

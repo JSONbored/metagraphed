@@ -168,6 +168,25 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: Int
     ): JSON
+    "One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible (a true/false string); threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints."
+    subnet_endpoints(
+      netuid: Int!
+      kind: String
+      layer: String
+      provider: String
+      publication_state: String
+      status: String
+      pool_eligible: String
+      min_latency_ms: Int
+      max_latency_ms: Int
+      min_score: Float
+      max_score: Float
+      sort: String
+      order: String
+      fields: String
+      limit: Int
+      cursor: Int
+    ): JSON
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
     subnet_axon_removals(netuid: Int!, window: String): SubnetAxonRemovals!
     "Per-subnet validator weight-setting activity over a 7d/30d window (distinct weight-setters, WeightsSet count, and sets per setter); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/weights."
@@ -885,8 +904,23 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: Int
     ): [Surface!]!
-    "Endpoint/resource registry rows for this subnet."
-    endpoints: [Endpoint!]!
+    "Endpoint/resource registry rows for this subnet. Filter with kind, layer, provider, publication_state, status, and pool_eligible; threshold with min_/max_latency_ms and min_/max_score; sort with sort + order; and page with limit / cursor, exactly as GET /api/v1/subnets/{netuid}/endpoints does -- an unsupported filter/sort value is a GraphQL error, not a silently substituted default. With no arguments the full list is returned unchanged."
+    endpoints(
+      kind: String
+      layer: String
+      provider: String
+      publication_state: String
+      status: String
+      pool_eligible: Boolean
+      min_latency_ms: Int
+      max_latency_ms: Int
+      min_score: Float
+      max_score: Float
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+    ): [Endpoint!]!
   }
 
   type ProviderList {
