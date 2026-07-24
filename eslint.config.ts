@@ -63,6 +63,12 @@ export default tseslint.config(
       "workers/data-api.worker-configuration.d.ts",
       "workers/registry-sync-api.worker-configuration.d.ts",
       "public/metagraph/**",
+      // @graphql-codegen's own generated resolver-type boilerplate (Resolver,
+      // ResolverTypeWrapper, DirectiveResolverFn, etc.) legitimately uses
+      // `any` as part of its generic utility-type machinery -- the tool's
+      // own code, not this repo's, and never hand-edited (types-epic D,
+      // #7862; regenerate via `npm run build:graphql-types`).
+      "generated/graphql/**",
       "registry/candidates/generated/**",
       "registry/subnets/generated/**",
       "registry/verification/**",
