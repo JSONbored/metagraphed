@@ -18,6 +18,7 @@ import { loadSourceSnapshotsList } from "./source-snapshots-mcp.ts";
 // transforms REST and MCP already use) -- not a reimplementation.
 import { loadGapsList } from "./gaps-mcp.ts";
 import { loadEvidenceList } from "./evidence-mcp.ts";
+import { loadSearchIndexList } from "./search-index-mcp.ts";
 // #7171: GraphQL parity for GET /api/v1/chain-events (paginated Query feed),
 // reusing loadChainEventsFeed that MCP list_chain_events already calls.
 // Distinct from Subscription.chainEvents (live WebSocket firehose).
@@ -557,8 +558,8 @@ export const SDL = `
     top_holders(sort: String, limit: Int): JSON
     "The full compact search index: one document per subnet/surface/provider/doc, each with its id, type, title, subtitle, url, and the per-document token blob that widens server-side recall. Documents are heterogeneous by type, so each is passed through as opaque JSON. Mirrors GET /api/v1/search."
     search(limit: Int, cursor: String): SearchDocumentList!
-    "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Mirrors GET /api/v1/search-index."
-    search_index(limit: Int, cursor: String): SearchDocumentList!
+    "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Filter by type/netuid/q, sort with sort/order, and page with limit/cursor. An invalid filter/sort/limit/cursor is a GraphQL error. Mirrors GET /api/v1/search-index."
+    search_index(type: String, netuid: Int, q: String, sort: String, order: String, limit: Int, cursor: Int): SearchIndexList!
     "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains."
     domains: DomainOverview!
     "One domain/capability tag's own rollup. tag must be one of the 14 fixed domain tags (the same enum ?domain= validates on subnets); an unknown tag is a BAD_USER_INPUT error. Mirrors GET /api/v1/domains/{tag}/summary."
@@ -2897,6 +2898,19 @@ export const SDL = `
     documents: [JSON!]!
     total: Int!
     next_cursor: String
+  }
+
+  "Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877)."
+  type SearchIndexList {
+    documents: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+    generated_at: String
   }
 
   "One domain/capability tag's rollup (#6989). Mirrors GET /api/v1/domains/{tag}/summary."
@@ -6665,15 +6679,13 @@ const rootValue = {
     });
   },
 
-  search_index({ limit, cursor }: Row, context: GqlContext) {
-    // The slim companion: identical documents minus the per-document token
-    // blobs, served from its own artifact exactly as REST serves it.
-    return listPage(context, ARTIFACT.searchIndex, "documents", {
-      limit,
-      cursor,
-      resultKey: "documents",
-      keyFn: (d: Row) => d.id,
-    });
+  // #7877: reuse loadSearchIndexList (the same loader MCP list_search_index +
+  // REST GET /api/v1/search-index call) unchanged. type/netuid/q/sort/order/
+  // limit/cursor validation and filtering are all handled by the loader --
+  // an invalid arg throws and becomes a GraphQL error, matching every other
+  // filtered field's convention.
+  search_index(args: Row, context: GqlContext) {
+    return loadSearchIndexList(mcpCtx(context), args, { readArtifact });
   },
 
   async domains(_args: unknown, context: GqlContext) {
