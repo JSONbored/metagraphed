@@ -80,6 +80,7 @@ export function AppShell({
   fullBleedMain = false,
   flushTop = false,
   afterHeader,
+  crumbLabel,
 }: {
   children: ReactNode;
   // Fumadocs' DocsLayout manages its own full-height sidebar/content grid
@@ -95,6 +96,13 @@ export function AppShell({
   // column. Used by the home route to seat the alpha-price ticker in what
   // would otherwise be dead space between the ecosystem strip and the hero.
   afterHeader?: ReactNode;
+  // Overrides the trailing (leaf) breadcrumb's label. `buildCrumbs` only ever
+  // sees the raw URL segment (e.g. "1", "0x4f2a…"), so detail routes that want
+  // to show something a user actually recognizes -- a zero-padded netuid, a
+  // comma-grouped block number, an entity's display name -- pass it here
+  // instead of standing up a second, redundant breadcrumb trail of their own
+  // (#7853). Only ever the last crumb; every ancestor segment stays generic.
+  crumbLabel?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -127,7 +135,13 @@ export function AppShell({
       if (trigger) requestAnimationFrame(() => trigger.focus());
     }
   }, []);
-  const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
+  const crumbs = useMemo(() => {
+    const base = buildCrumbs(pathname);
+    if (!crumbLabel || base.length === 0) return base;
+    const last = base[base.length - 1];
+    if (!last) return base;
+    return [...base.slice(0, -1), { ...last, label: crumbLabel }];
+  }, [pathname, crumbLabel]);
   const parent = useMemo(() => parentCrumb(crumbs), [crumbs]);
 
   // Close mobile sheet on route change

@@ -31,16 +31,15 @@ describe("subnet-masthead ShareButton", () => {
     expect(importBlock).toContain("ShareButton");
   });
 
-  it("keeps the status row to just the breadcrumb -- no separate 'stale' tag duplicating the freshness caption, no actions", () => {
-    const statusRow = mastheadSource.slice(
-      mastheadSource.indexOf("Status row"),
-      mastheadSource.indexOf("{banner ?"),
-    );
-    expect(statusRow).toContain("Registry");
-    expect(statusRow).not.toContain("<ActionBar");
-    expect(statusRow).not.toContain("<ShareButton");
-    expect(statusRow).not.toContain("<StaleBanner");
-    expect(statusRow).not.toMatch(/>\s*stale\s*</);
+  it("#7853: no longer renders its own breadcrumb/status row -- the app-shell row is the single canonical trail, and AppShell's crumbLabel prop carries the padded netuid this used to duplicate", () => {
+    const beforeIdentityRow = mastheadSource.slice(0, mastheadSource.indexOf("{banner ?"));
+    expect(beforeIdentityRow).not.toContain('aria-label="Breadcrumb"');
+    expect(beforeIdentityRow).not.toContain("Registry");
+    expect(beforeIdentityRow).not.toContain("Subnets / ");
+    expect(beforeIdentityRow).not.toContain("<ActionBar");
+    expect(beforeIdentityRow).not.toContain("<ShareButton");
+    expect(beforeIdentityRow).not.toContain("<StaleBanner");
+    expect(beforeIdentityRow).not.toMatch(/>\s*stale\s*</);
   });
 
   it("consolidates HealthPill/CurationChip/freshness/Refresh into one identity-row meta strip, not a separate desktop-only side column", () => {
@@ -128,5 +127,44 @@ describe("providers.$slug.tsx ShareButton + ApiSourceFooter", () => {
     const footerCall = providerRouteSource.slice(providerRouteSource.indexOf("<ApiSourceFooter"));
     expect(footerCall).toContain("`/api/v1/providers/${slug}`");
     expect(footerCall).toContain("`/api/v1/providers/${slug}/endpoints`");
+  });
+
+  it("#7853: no longer renders its own standalone <Breadcrumbs> -- migrates the provider name into AppShell's crumbLabel prop instead", () => {
+    expect(providerRouteSource).not.toContain("<Breadcrumbs");
+    const componentBody = providerRouteSource.slice(
+      providerRouteSource.indexOf("function ProviderDetail"),
+      providerRouteSource.indexOf("function ProviderShell"),
+    );
+    expect(componentBody).toContain("<AppShell crumbLabel={loaderData?.name ?? undefined}>");
+  });
+});
+
+describe("#7853 breadcrumb de-duplication: AppShell crumbLabel wiring", () => {
+  const appShellSource = readFileSync(
+    fileURLToPath(new URL("../components/metagraphed/app-shell.tsx", import.meta.url)),
+    "utf8",
+  );
+  const blocksRouteSource = readFileSync(
+    fileURLToPath(new URL("./blocks.$ref.tsx", import.meta.url)),
+    "utf8",
+  );
+
+  it("app-shell.tsx accepts a crumbLabel prop and uses it to override only the trailing crumb", () => {
+    expect(appShellSource).toContain("crumbLabel?: string");
+    const memo = appShellSource.slice(
+      appShellSource.indexOf("const crumbs = useMemo"),
+      appShellSource.indexOf("const parent = useMemo"),
+    );
+    expect(memo).toContain("buildCrumbs(pathname)");
+    expect(memo).toContain("crumbLabel");
+  });
+
+  it("subnets.$netuid.tsx passes the zero-padded netuid as the shell's crumbLabel", () => {
+    expect(subnetRouteSource).toContain('crumbLabel={String(netuid).padStart(3, "0")}');
+  });
+
+  it("blocks.$ref.tsx passes the loader-resolved, comma-formatted block number as the shell's crumbLabel instead of a second custom breadcrumb trail", () => {
+    expect(blocksRouteSource).not.toContain("hideBreadcrumbs={false}");
+    expect(blocksRouteSource).toContain("<AppShell crumbLabel={crumbLabel}>");
   });
 });

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useQuery, type QueryKey } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import {
   BookOpen,
   Github,
@@ -337,20 +336,9 @@ export function SubnetMasthead({
         }}
       />
 
-      {/* Status row — breadcrumb only. Health/curation/freshness/stale and
-          the Share/Refresh actions all live in the identity row below now
-          (#5481) -- one consolidated meta strip instead of scattering
-          overlapping status signals (a separate "stale" tag that just
-          repeated what the freshness caption already said) across rows. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-ink-muted mb-3">
-        <Link to="/subnets" className="font-mono uppercase tracking-widest hover:text-ink-strong">
-          Registry
-        </Link>
-        <span aria-hidden>/</span>
-        <span className="font-mono uppercase tracking-widest">
-          Subnets / {String(netuid).padStart(3, "0")}
-        </span>
-      </div>
+      {/* No breadcrumb row here: the app-shell's own row is the single
+          canonical trail (#7853). AppShell's `crumbLabel` prop carries the
+          zero-padded netuid this masthead used to render redundantly. */}
 
       {banner ? <div className="mb-4">{banner}</div> : null}
 

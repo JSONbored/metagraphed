@@ -259,7 +259,7 @@ const SECTION_TO_TAB: Record<string, string> = {
 function SubnetDetailPage() {
   const { netuid } = Route.useParams();
   return (
-    <AppShell flushTop>
+    <AppShell flushTop crumbLabel={String(netuid).padStart(3, "0")}>
       <AsyncPanel
         context="subnet profile"
         fallback={<DetailSkeleton />}

@@ -105,8 +105,14 @@ export const Route = createFileRoute("/blocks/$ref")({
 
 function BlockDetailPage() {
   const { ref } = Route.useParams();
+  // The loader already primed this query for head()'s title -- reuse its
+  // resolved block number for the shell's breadcrumb label too, rather than
+  // standing up a second breadcrumb trail of our own (#7853).
+  const loaderData = Route.useLoaderData();
+  const crumbLabel =
+    loaderData?.blockNumber != null ? `#${formatNumber(loaderData.blockNumber)}` : undefined;
   return (
-    <AppShell>
+    <AppShell crumbLabel={crumbLabel}>
       <ValueUnitProvider>
         <AsyncPanel
           context="block detail"
@@ -201,12 +207,6 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
     <>
       <ShortcutsDialog blockRef={refValue} />
       <PageMasthead
-        crumbs={[
-          { to: "/", label: "Home" },
-          { to: "/blocks", label: "Blocks" },
-          { to: `/blocks/${refValue}`, label: `#${formatNumber(block.block_number)}` },
-        ]}
-        hideBreadcrumbs={false}
         eyebrow="Explorer · block"
         live
         title={`#${formatNumber(block.block_number)}`}

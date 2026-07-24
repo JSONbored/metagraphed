@@ -14,7 +14,6 @@ import {
 } from "@jsonbored/ui-kit";
 import {
   AsyncPanel,
-  Breadcrumbs,
   PageMasthead,
   RoutePending,
   TabStrip,
@@ -97,8 +96,12 @@ const SECTION_TO_TAB: Record<string, string> = {
 
 function ProviderDetail() {
   const { slug } = Route.useParams();
+  // The loader already primed this query for head()'s title -- reuse its
+  // resolved provider name for the shell's breadcrumb label too, rather than
+  // standing up a second breadcrumb trail of our own (#7853).
+  const loaderData = Route.useLoaderData();
   return (
-    <AppShell>
+    <AppShell crumbLabel={loaderData?.name ?? undefined}>
       <AsyncPanel
         height="md"
         context="provider"
@@ -129,15 +132,9 @@ function ProviderShell({ slug }: { slug: string }) {
 
   return (
     <>
-      <Breadcrumbs
-        crumbs={[
-          { to: "/", label: "Home" },
-          { to: "/providers", label: "Providers" },
-          { to: `/providers/${slug}`, label: p?.name ?? slug },
-        ]}
-        className="mb-2"
-      />
-
+      {/* No breadcrumb row here: the app-shell's own row is the single
+          canonical trail (#7853). AppShell's `crumbLabel` prop carries the
+          provider's display name this used to render redundantly. */}
       <PageMasthead
         eyebrow={["Provider", p?.kind, p?.authority].filter(Boolean).join(" · ")}
         title={p?.name ?? slug}
