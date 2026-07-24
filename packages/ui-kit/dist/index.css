@@ -134,6 +134,8 @@
   --mg-type-label: 11px;
   --mg-tracking-label: 0.14em;
   --mg-tracking-micro: 0.18em;
+  --mg-type-caption: 12px;
+  --mg-type-caption-lg: 13px;
 }
 .mg-panel-pad {
   padding: var(--mg-panel-pad);
@@ -156,6 +158,24 @@
   font-size: var(--mg-type-label);
   line-height: 1.25;
   letter-spacing: var(--mg-tracking-label);
+}
+.mg-type-caption {
+  font-size: var(--mg-type-caption);
+  line-height: 1.45;
+}
+.mg-type-caption-lg {
+  font-size: var(--mg-type-caption-lg);
+  line-height: 1.5;
+}
+.mg-type-data {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.mg-type-data-sm {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.35;
 }
 @keyframes mg-skel-pulse {
   0%, 100% {

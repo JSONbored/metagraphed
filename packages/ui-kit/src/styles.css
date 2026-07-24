@@ -291,6 +291,12 @@
   --mg-type-label: 11px;
   --mg-tracking-label: 0.14em;
   --mg-tracking-micro: 0.18em;
+
+  /* #7844: the 12/13px body-adjacent band and the mono data/numeric band --
+     both had a bare-arbitrary-text-size guardrail warning at every site (no
+     utility class existed to reach for), unlike mg-type-micro/label above. */
+  --mg-type-caption: 12px;
+  --mg-type-caption-lg: 13px;
 }
 
 .mg-panel-pad {
@@ -314,6 +320,31 @@
   font-size: var(--mg-type-label);
   line-height: 1.25;
   letter-spacing: var(--mg-tracking-label);
+}
+/* Sans/inherited family -- captions, descriptions, secondary prose. Not the
+   uppercase-tracking label idiom above; a set line-height replaces today's
+   bare text-[12px]/[13px]'s inherited one, so a dense-row sweep site may
+   need an explicit leading-* override to avoid a layout shift (#7844). */
+.mg-type-caption {
+  font-size: var(--mg-type-caption);
+  line-height: 1.45;
+}
+.mg-type-caption-lg {
+  font-size: var(--mg-type-caption-lg);
+  line-height: 1.5;
+}
+/* Mono data/numeric idiom (timestamps, hashes, tabular values) -- deliberately
+   NOT uppercase/tracked, which is exactly why #7808 correctly left these
+   sites alone when it converted every eyebrow label to mg-type-micro/label. */
+.mg-type-data {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.mg-type-data-sm {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.35;
 }
 @keyframes mg-skel-pulse {
   0%,
