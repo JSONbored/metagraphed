@@ -900,7 +900,7 @@ function EndpointsTable() {
       {/* One shared command surface replaces the previous stacked category,
           search, select, toggle, and view-control bars. */}
       <div
-        className="sticky z-20 -mx-1 bg-paper/92 px-1 py-2 backdrop-blur"
+        className="sticky z-[var(--mg-z-raised)] -mx-1 bg-paper/92 px-1 py-2 backdrop-blur"
         style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
       >
         <QueryBar ariaLabel="Filter endpoint directory">

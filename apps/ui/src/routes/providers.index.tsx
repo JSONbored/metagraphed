@@ -311,7 +311,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
 
       <SourceHealthRollup />
 
-      <div className="sticky top-[var(--mg-sticky-offset)] z-20 bg-paper/95 py-2 backdrop-blur-sm">
+      <div className="sticky top-[var(--mg-sticky-offset)] z-[var(--mg-z-raised)] bg-paper/95 py-2 backdrop-blur-sm">
         <QueryBar ariaLabel="Provider directory filters">
           <QueryBar.Search
             value={q}

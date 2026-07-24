@@ -69,7 +69,7 @@ export function EntityHoverCard(props: EntityHoverCardProps) {
         sideOffset={placement.sideOffset}
         aria-label={ariaLabel}
         data-testid="entity-hover-card"
-        className="w-80 p-3 bg-card border-border shadow-lg z-50"
+        className="w-80 p-3 bg-card border-border shadow-lg z-[var(--mg-z-modal)]"
       >
         {props.kind === "subnet" ? (
           <SubnetMiniProfile netuid={props.netuid} />

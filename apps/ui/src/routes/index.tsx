@@ -393,7 +393,7 @@ function HomeHero() {
 
   return (
     <section className="mg-hero-slab relative overflow-hidden px-4 py-12 sm:px-6 md:py-20">
-      <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center text-center">
+      <div className="relative z-[var(--mg-z-sticky)] mx-auto flex max-w-4xl flex-col items-center text-center">
         <h1 className="mg-fade-in mt-2 font-display text-[30px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.08] text-ink-strong">
           <span className="block">Bittensor,</span>
           <span className="block text-accent">de-mystified.</span>
@@ -470,7 +470,7 @@ function HomeHero() {
         <ChainHeadTip />
       </div>
 
-      <div className="relative z-10 mx-auto mt-10 max-w-6xl px-0 sm:px-2">
+      <div className="relative z-[var(--mg-z-sticky)] mx-auto mt-10 max-w-6xl px-0 sm:px-2">
         <HeroFeatureRow />
       </div>
     </section>

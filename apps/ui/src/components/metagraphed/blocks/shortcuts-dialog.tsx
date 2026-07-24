@@ -69,7 +69,7 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
       role="dialog"
       aria-modal
       aria-labelledby="mg-shortcut-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-strong/30 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[var(--mg-z-modal)] flex items-center justify-center bg-ink-strong/30 p-4 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) setOpen(false);
       }}

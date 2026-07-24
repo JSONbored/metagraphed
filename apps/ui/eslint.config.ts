@@ -116,6 +116,17 @@ const ELEVATION_RULES = [
   },
 ];
 
+// #7841: bare z-* stacking steps collapsed into a named --mg-z-* layer scale
+// (packages/ui-kit/src/styles.css). Also flags the 6 documented z-[1]/z-[2]
+// sticky-cell micro-stacking exceptions in the two compare drawers -- that's
+// intentional (matches the residual-worklist convention other guardrails use).
+const Z_INDEX_RULES = [
+  {
+    selector: "Literal[value=/\\bz-(\\[[0-9]+\\]|[0-9]+\\b)/]",
+    message: "Raw z-index step. Use one of the --mg-z-* layer tokens (see styles.css).",
+  },
+];
+
 export default tseslint.config(
   // .source is fumadocs-mdx's generated content collection output (see
   // source.config.ts) -- codegen, not authored code, same treatment as dist.
@@ -184,6 +195,7 @@ export default tseslint.config(
         ...PRIMITIVE_STEER_RULES,
         ...SSR_SAFETY_RULES,
         ...ELEVATION_RULES,
+        ...Z_INDEX_RULES,
       ],
     },
   },

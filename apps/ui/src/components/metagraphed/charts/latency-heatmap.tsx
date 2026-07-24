@@ -167,7 +167,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
           >
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-card text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
+                <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-card text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
                   Provider
                 </th>
                 {kinds.map((k) => (
@@ -198,7 +198,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
                 const total = row.reduce((a, c) => a + c.count, 0);
                 return (
                   <tr key={p} className="border-b border-border last:border-b-0">
-                    <td className="sticky left-0 z-10 bg-card px-3 py-1.5 text-ink-strong border-r border-border">
+                    <td className="sticky left-0 z-[var(--mg-z-sticky)] bg-card px-3 py-1.5 text-ink-strong border-r border-border">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Link

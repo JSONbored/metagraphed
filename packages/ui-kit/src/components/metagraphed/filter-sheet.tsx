@@ -71,7 +71,7 @@ export function FilterSheet({
           role="dialog"
           aria-modal="true"
           aria-label={label}
-          className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center"
+          className="fixed inset-0 z-[var(--mg-z-modal)] flex items-end sm:items-center sm:justify-center"
         >
           <div
             className="absolute inset-0 bg-ink-strong/30 backdrop-blur-sm"
@@ -80,7 +80,7 @@ export function FilterSheet({
           />
           <div
             className={classNames(
-              "relative z-10 w-full max-h-[85vh] overflow-y-auto",
+              "relative z-[var(--mg-z-sticky)] w-full max-h-[85vh] overflow-y-auto",
               "rounded-t-xl border-t border-border bg-card p-4",
               "sm:max-w-md sm:rounded-xl sm:border sm:mx-4",
               "mg-scroll",

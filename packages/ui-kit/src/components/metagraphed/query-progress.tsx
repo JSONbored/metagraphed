@@ -27,9 +27,10 @@ export function QueryProgress({
       aria-hidden={!active}
       className={classNames(
         "mg-query-progress pointer-events-none overflow-hidden",
-        position === "absolute" && "absolute inset-x-0 top-0 z-10",
-        position === "fixed" && "fixed inset-x-0 top-0 z-50",
-        position === "sticky" && "sticky top-0 z-10 -mt-px",
+        position === "absolute" &&
+          "absolute inset-x-0 top-0 z-[var(--mg-z-sticky)]",
+        position === "fixed" && "fixed inset-x-0 top-0 z-[var(--mg-z-modal)]",
+        position === "sticky" && "sticky top-0 z-[var(--mg-z-sticky)] -mt-px",
         "h-[2px]",
         active ? "opacity-100" : "opacity-0 transition-opacity duration-300",
         className,

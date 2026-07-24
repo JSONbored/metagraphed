@@ -47,12 +47,12 @@ export function ColumnCustomizer({
           <button
             type="button"
             aria-label="Close column menu"
-            className="fixed inset-0 z-30 cursor-default"
+            className="fixed inset-0 z-[var(--mg-z-overlay)] cursor-default"
             onClick={() => setOpen(false)}
           />
           <div
             role="menu"
-            className="absolute right-0 z-40 mt-1.5 w-64 rounded border border-border bg-card p-1 mg-card-glow"
+            className="absolute right-0 z-[var(--mg-z-overlay)] mt-1.5 w-64 rounded border border-border bg-card p-1 mg-card-glow"
           >
             <div className="flex items-center justify-between px-2 py-1.5">
               <span className="mg-type-micro text-ink-muted">Columns</span>

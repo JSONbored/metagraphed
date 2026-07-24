@@ -225,7 +225,7 @@ export function CandlestickMini({
       </svg>
       {hoverBar && tooltipText ? (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap"
+          className="pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap"
           style={{
             left: Math.max(60, Math.min(width - 60, hoverBar.cx)),
             top: Math.max(0, hoverBar.wickTop - 4),

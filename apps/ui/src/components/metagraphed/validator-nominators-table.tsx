@@ -114,7 +114,7 @@ export function ValidatorNominatorsTable({ queryOptions, search, setSearch }: Pr
       ))}
       table={
         <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[var(--mg-shadow-hairline)]">
+          <thead className="sticky top-0 z-[var(--mg-z-sticky)] bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[var(--mg-shadow-hairline)]">
             <tr>
               <th className="px-4 py-2.5">Coldkey</th>
               <th className="px-4 py-2.5 text-right">Net staked</th>

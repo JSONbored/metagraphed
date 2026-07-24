@@ -71,7 +71,7 @@ export function ScrollShadow({
         <div
           aria-hidden
           className={classNames(
-            "pointer-events-none absolute z-10",
+            "pointer-events-none absolute z-[var(--mg-z-sticky)]",
             isH
               ? "left-0 top-0 h-full w-6 bg-gradient-to-r from-card to-transparent"
               : "left-0 top-0 h-6 w-full bg-gradient-to-b from-card to-transparent",
@@ -82,7 +82,7 @@ export function ScrollShadow({
         <div
           aria-hidden
           className={classNames(
-            "pointer-events-none absolute z-10",
+            "pointer-events-none absolute z-[var(--mg-z-sticky)]",
             isH
               ? "right-0 top-0 h-full w-6 bg-gradient-to-l from-card to-transparent"
               : "bottom-0 left-0 h-6 w-full bg-gradient-to-t from-card to-transparent",

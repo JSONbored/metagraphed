@@ -63,7 +63,7 @@ export function BackToTop({ threshold = 600 }: { threshold?: number }) {
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
       className={classNames(
-        "fixed z-40 bottom-5 right-5 md:bottom-7 md:right-7",
+        "fixed z-[var(--mg-z-overlay)] bottom-5 right-5 md:bottom-7 md:right-7",
         "inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 backdrop-blur",
         "px-3 py-2 mg-type-label uppercase text-ink-strong",
         "shadow-[var(--mg-shadow-pop)] hover:border-accent/60 hover:text-accent",

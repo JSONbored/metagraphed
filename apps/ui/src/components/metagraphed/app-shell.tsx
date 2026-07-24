@@ -212,14 +212,14 @@ export function AppShell({
           {/* Skip link: first focusable element, visible only on keyboard focus. */}
           <a
             href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded focus:bg-ink-strong focus:px-4 focus:py-2 focus:text-paper"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[var(--mg-z-skip-link)] focus:rounded focus:bg-ink-strong focus:px-4 focus:py-2 focus:text-paper"
           >
             Skip to main content
           </a>
           {/* Top bar */}
           <header
             data-scrolled={scrolled ? "true" : "false"}
-            className="mg-header sticky top-0 z-30 border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75"
+            className="mg-header sticky top-0 z-[var(--mg-z-nav)] border-b border-border bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75"
           >
             <div className="max-w-shell-max mx-auto px-4 md:px-8 flex h-nav items-center gap-3">
               <button

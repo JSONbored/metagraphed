@@ -69,7 +69,7 @@ export function ValidatorSubnetHeatmap() {
           <table className="w-full min-w-[640px] text-[11px] font-mono">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 border-b border-border bg-card px-3 py-2 text-left mg-type-micro text-ink-muted">
+                <th className="sticky left-0 z-[var(--mg-z-sticky)] border-b border-border bg-card px-3 py-2 text-left mg-type-micro text-ink-muted">
                   Validator
                 </th>
                 {netuids.map((n) => (
@@ -87,7 +87,7 @@ export function ValidatorSubnetHeatmap() {
                 const byNet = new Map((v.subnets ?? []).map((s) => [s.netuid, s]));
                 return (
                   <tr key={v.hotkey} className="border-b border-border last:border-b-0">
-                    <td className="sticky left-0 z-10 border-r border-border bg-card px-3 py-1.5 text-ink-strong">
+                    <td className="sticky left-0 z-[var(--mg-z-sticky)] border-r border-border bg-card px-3 py-1.5 text-ink-strong">
                       <Link
                         to="/accounts/$ss58"
                         params={{ ss58: v.hotkey }}

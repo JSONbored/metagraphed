@@ -179,6 +179,15 @@
   --mg-shadow-pill-active: 0 12px 30px -24px color-mix(in oklab, var(--ink-strong) 85%, transparent);
   --mg-shadow-ring-accent: 0 0 0 1px color-mix(in oklab, var(--accent) 25%, transparent);
 }
+:root {
+  --mg-z-sticky: 10;
+  --mg-z-raised: 20;
+  --mg-z-nav: 30;
+  --mg-z-overlay: 40;
+  --mg-z-modal: 50;
+  --mg-z-progress: 60;
+  --mg-z-skip-link: 100;
+}
 .dark {
   --paper: oklch(0.14 0.003 250);
   --surface: oklch(0.175 0.003 250);

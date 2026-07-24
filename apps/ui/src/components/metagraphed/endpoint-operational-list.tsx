@@ -130,7 +130,7 @@ export function EndpointOperationalList({
         return (
           <section key={String(group.netuid)} aria-labelledby={`group-${group.netuid}`}>
             <header
-              className="mg-section-rule sticky z-10 -mx-1 flex items-center justify-between gap-3 bg-paper/92 px-1 py-2 backdrop-blur"
+              className="mg-section-rule sticky z-[var(--mg-z-sticky)] -mx-1 flex items-center justify-between gap-3 bg-paper/92 px-1 py-2 backdrop-blur"
               style={{ top: "calc(var(--mg-sticky-offset, 3.5rem) + 3.75rem)" }}
             >
               <div className="flex min-w-0 items-center gap-2.5">
@@ -200,7 +200,7 @@ export function EndpointOperationalList({
                       />
                       {onToggleCompare ? (
                         <label
-                          className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded border border-border bg-paper/85 px-1 py-0.5 mg-type-micro text-ink-muted backdrop-blur hover:text-ink-strong"
+                          className="absolute left-2 top-2 z-[var(--mg-z-sticky)] flex items-center gap-1 rounded border border-border bg-paper/85 px-1 py-0.5 mg-type-micro text-ink-muted backdrop-blur hover:text-ink-strong"
                           onClick={(e) => e.stopPropagation()}
                           title={
                             compareIds?.has(endpoint.id)

@@ -73,6 +73,15 @@ const DESIGN_RULES = [
     message:
       "Raw shadow value. Use one of the --mg-shadow-* elevation tokens (see styles.css).",
   },
+  {
+    // #7841: bare z-* stacking steps collapsed into a named --mg-z-* layer
+    // scale (styles.css). Also flags the 6 documented z-[1]/z-[2] sticky-cell
+    // micro-stacking exceptions -- intentional, matches the residual-worklist
+    // convention the shadow rule above already uses.
+    selector: "Literal[value=/\\bz-(\\[[0-9]+\\]|[0-9]+\\b)/]",
+    message:
+      "Raw z-index step. Use one of the --mg-z-* layer tokens (see styles.css).",
+  },
 ];
 
 // SSR footguns -- see apps/ui/docs/ssr-safety.md. ui-kit's own components

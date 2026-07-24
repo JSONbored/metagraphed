@@ -30,7 +30,7 @@ export function StickyToolbar({
     <div
       style={top}
       className={cn(
-        "sticky z-20 -mx-4 border-b bg-paper/95 px-4 py-2 backdrop-blur transition-[border-color,box-shadow] sm:mx-0 sm:px-0",
+        "sticky z-[var(--mg-z-raised)] -mx-4 border-b bg-paper/95 px-4 py-2 backdrop-blur transition-[border-color,box-shadow] sm:mx-0 sm:px-0",
         hairline && scrolled ? "border-border" : "border-transparent",
         className,
       )}

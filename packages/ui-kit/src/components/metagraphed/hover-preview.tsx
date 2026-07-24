@@ -37,7 +37,7 @@ export function HoverPreview({
       {open ? (
         <span
           role="tooltip"
-          className="absolute left-0 top-full z-40 mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 shadow-lg text-[11px] text-ink leading-relaxed"
+          className="absolute left-0 top-full z-[var(--mg-z-overlay)] mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 shadow-lg text-[11px] text-ink leading-relaxed"
         >
           {content}
         </span>

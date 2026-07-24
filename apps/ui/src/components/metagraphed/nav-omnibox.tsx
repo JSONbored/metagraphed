@@ -394,7 +394,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         <div
           id="nav-omnibox-listbox"
           role="listbox"
-          className="absolute right-0 mt-1.5 w-[600px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-paper shadow-2xl z-50 overflow-hidden"
+          className="absolute right-0 mt-1.5 w-[600px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-paper shadow-2xl z-[var(--mg-z-modal)] overflow-hidden"
         >
           {/* ── Empty state: no query typed ─────────────────────────── */}
           {showSuggestions ? (

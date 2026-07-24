@@ -64,7 +64,7 @@ export function ProfileTabs({
   return (
     <nav
       aria-label="Profile sections"
-      className="sticky z-10 -mx-4 md:mx-0 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
+      className="sticky z-[var(--mg-z-sticky)] -mx-4 md:mx-0 mb-8 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80"
       style={{ top: "var(--mg-sticky-offset, 3.5rem)" }}
     >
       <div className="flex items-stretch gap-3 px-4 md:px-0">

@@ -126,7 +126,7 @@ var DialogOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PU
   {
     ref,
     className: cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[var(--mg-z-modal)] bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     ),
     ...props
@@ -140,7 +140,7 @@ var DialogContent = React3.forwardRef(({ className, children, ...props }, ref) =
     {
       ref,
       className: cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-[var(--mg-z-modal)] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
         className
       ),
       ...props,
@@ -310,7 +310,7 @@ var HoverCardContent = React3.forwardRef(({ className, align = "center", sideOff
     align,
     sideOffset,
     className: cn(
-      "z-50 w-64 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-hover-card-content-transform-origin)",
+      "z-[var(--mg-z-modal)] w-64 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-hover-card-content-transform-origin)",
       className
     ),
     ...props
@@ -327,7 +327,7 @@ var PopoverContent = React3.forwardRef(({ className, align = "center", sideOffse
     align,
     sideOffset,
     className: cn(
-      "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-popover-content-transform-origin)",
+      "z-[var(--mg-z-modal)] w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-popover-content-transform-origin)",
       className
     ),
     ...props
@@ -342,7 +342,7 @@ var SheetOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
   DialogPrimitive.Overlay,
   {
     className: cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[var(--mg-z-modal)] bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     ),
     ...props,
@@ -351,7 +351,7 @@ var SheetOverlay = React3.forwardRef(({ className, ...props }, ref) => /* @__PUR
 ));
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 var sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "fixed z-[var(--mg-z-modal)] gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
     variants: {
       side: {
@@ -501,7 +501,7 @@ var TooltipContent = React3.forwardRef(({ className, sideOffset = 4, ...props },
     ref,
     sideOffset,
     className: cn(
-      "z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-tooltip-content-transform-origin)",
+      "z-[var(--mg-z-modal)] overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-tooltip-content-transform-origin)",
       className
     ),
     ...props
@@ -653,7 +653,7 @@ function BackToTop({ threshold = 600 }) {
       "aria-hidden": !visible,
       tabIndex: visible ? 0 : -1,
       className: classNames(
-        "fixed z-40 bottom-5 right-5 md:bottom-7 md:right-7",
+        "fixed z-[var(--mg-z-overlay)] bottom-5 right-5 md:bottom-7 md:right-7",
         "inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 backdrop-blur",
         "px-3 py-2 mg-type-label uppercase text-ink-strong",
         "shadow-[var(--mg-shadow-pop)] hover:border-accent/60 hover:text-accent",
@@ -1803,7 +1803,7 @@ function HoverPreview({
           "span",
           {
             role: "tooltip",
-            className: "absolute left-0 top-full z-40 mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 shadow-lg text-[11px] text-ink leading-relaxed",
+            className: "absolute left-0 top-full z-[var(--mg-z-overlay)] mt-1.5 w-72 max-w-[80vw] rounded border border-border bg-card p-3 shadow-lg text-[11px] text-ink leading-relaxed",
             children: content
           }
         ) : null
@@ -1921,7 +1921,7 @@ function ListShell({
             className: classNames(
               // Sticky filter bar. Offset reads --mg-sticky-offset (published by
               // AppShell to match real header + ticker height) with a fallback.
-              "sticky z-20 -mx-4 md:mx-0 mb-3",
+              "sticky z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
               "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
               "border-b border-border md:border md:rounded md:bg-card",
               "px-3 py-2 md:p-2.5"
@@ -3222,7 +3222,7 @@ function CandlestickMini({
         hoverBar && tooltipText ? /* @__PURE__ */ jsx(
           "div",
           {
-            className: "pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap",
             style: {
               left: Math.max(60, Math.min(width - 60, hoverBar.cx)),
               top: Math.max(0, hoverBar.wickTop - 4)
@@ -3549,7 +3549,7 @@ function Sparkline({
         hoverPoint && tooltipText ? /* @__PURE__ */ jsx(
           "div",
           {
-            className: "pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap",
+            className: "pointer-events-none absolute z-[var(--mg-z-sticky)] -translate-x-1/2 -translate-y-full rounded border border-border bg-paper px-1.5 py-0.5 font-mono text-[10px] leading-tight text-ink-strong shadow-sm whitespace-nowrap",
             style: {
               left: Math.max(24, Math.min(width - 24, hoverPoint[0])),
               top: hoverPoint[1] - 4
@@ -4220,7 +4220,7 @@ function ColumnCustomizer({
         {
           type: "button",
           "aria-label": "Close column menu",
-          className: "fixed inset-0 z-30 cursor-default",
+          className: "fixed inset-0 z-[var(--mg-z-overlay)] cursor-default",
           onClick: () => setOpen(false)
         }
       ),
@@ -4228,7 +4228,7 @@ function ColumnCustomizer({
         "div",
         {
           role: "menu",
-          className: "absolute right-0 z-40 mt-1.5 w-64 rounded border border-border bg-card p-1 mg-card-glow",
+          className: "absolute right-0 z-[var(--mg-z-overlay)] mt-1.5 w-64 rounded border border-border bg-card p-1 mg-card-glow",
           children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-2 py-1.5", children: [
               /* @__PURE__ */ jsx("span", { className: "mg-type-micro text-ink-muted", children: "Columns" }),
@@ -4782,7 +4782,7 @@ function StickyToolbar({
     {
       style: top,
       className: cn(
-        "sticky z-20 -mx-4 border-b bg-paper/95 px-4 py-2 backdrop-blur transition-[border-color,box-shadow] sm:mx-0 sm:px-0",
+        "sticky z-[var(--mg-z-raised)] -mx-4 border-b bg-paper/95 px-4 py-2 backdrop-blur transition-[border-color,box-shadow] sm:mx-0 sm:px-0",
         hairline && scrolled ? "border-border" : "border-transparent",
         className
       ),
@@ -5019,7 +5019,7 @@ function ScrollShadow({
       {
         "aria-hidden": true,
         className: classNames(
-          "pointer-events-none absolute z-10",
+          "pointer-events-none absolute z-[var(--mg-z-sticky)]",
           isH ? "left-0 top-0 h-full w-6 bg-gradient-to-r from-card to-transparent" : "left-0 top-0 h-6 w-full bg-gradient-to-b from-card to-transparent"
         )
       }
@@ -5029,7 +5029,7 @@ function ScrollShadow({
       {
         "aria-hidden": true,
         className: classNames(
-          "pointer-events-none absolute z-10",
+          "pointer-events-none absolute z-[var(--mg-z-sticky)]",
           isH ? "right-0 top-0 h-full w-6 bg-gradient-to-l from-card to-transparent" : "bottom-0 left-0 h-6 w-full bg-gradient-to-t from-card to-transparent"
         )
       }
@@ -5108,7 +5108,7 @@ function FilterSheet({
         role: "dialog",
         "aria-modal": "true",
         "aria-label": label,
-        className: "fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center",
+        className: "fixed inset-0 z-[var(--mg-z-modal)] flex items-end sm:items-center sm:justify-center",
         children: [
           /* @__PURE__ */ jsx(
             "div",
@@ -5122,7 +5122,7 @@ function FilterSheet({
             "div",
             {
               className: classNames(
-                "relative z-10 w-full max-h-[85vh] overflow-y-auto",
+                "relative z-[var(--mg-z-sticky)] w-full max-h-[85vh] overflow-y-auto",
                 "rounded-t-xl border-t border-border bg-card p-4",
                 "sm:max-w-md sm:rounded-xl sm:border sm:mx-4",
                 "mg-scroll"
@@ -5232,7 +5232,7 @@ function PageActions({
               "div",
               {
                 role: "menu",
-                className: "absolute right-0 top-full z-30 mt-2 min-w-[180px] rounded border border-border bg-card p-2 shadow-lg",
+                className: "absolute right-0 top-full z-[var(--mg-z-overlay)] mt-2 min-w-[180px] rounded border border-border bg-card p-2 shadow-lg",
                 children: /* @__PURE__ */ jsx("div", { className: "flex flex-col items-stretch gap-1 [&>*]:w-full [&>*]:justify-start", children: secondary })
               }
             ) : null
@@ -5916,9 +5916,9 @@ function QueryProgress({
       "aria-hidden": !active,
       className: classNames(
         "mg-query-progress pointer-events-none overflow-hidden",
-        position === "absolute" && "absolute inset-x-0 top-0 z-10",
-        position === "fixed" && "fixed inset-x-0 top-0 z-50",
-        position === "sticky" && "sticky top-0 z-10 -mt-px",
+        position === "absolute" && "absolute inset-x-0 top-0 z-[var(--mg-z-sticky)]",
+        position === "fixed" && "fixed inset-x-0 top-0 z-[var(--mg-z-modal)]",
+        position === "sticky" && "sticky top-0 z-[var(--mg-z-sticky)] -mt-px",
         "h-[2px]",
         active ? "opacity-100" : "opacity-0 transition-opacity duration-300",
         className

@@ -400,7 +400,7 @@ function RouteTransitionBar() {
   return (
     <div
       aria-hidden
-      className="fixed inset-x-0 top-0 z-[60] h-0.5 pointer-events-none overflow-hidden"
+      className="fixed inset-x-0 top-0 z-[var(--mg-z-progress)] h-0.5 pointer-events-none overflow-hidden"
       style={{ opacity: isLoading ? 1 : 0, transition: "opacity 200ms ease-out" }}
     >
       {isLoading ? (

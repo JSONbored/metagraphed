@@ -79,7 +79,7 @@ export function ListShell({
         className={classNames(
           // Sticky filter bar. Offset reads --mg-sticky-offset (published by
           // AppShell to match real header + ticker height) with a fallback.
-          "sticky z-20 -mx-4 md:mx-0 mb-3",
+          "sticky z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
           "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5",

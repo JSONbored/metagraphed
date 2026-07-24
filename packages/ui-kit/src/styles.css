@@ -355,6 +355,22 @@
     color-mix(in oklab, var(--accent) 25%, transparent);
 }
 
+/* ============================================================
+ * Layer tokens (#7841) — a named stacking-order scale so a new
+ * component reaches for one of these instead of guessing a bare
+ * z-* step. Radix's own portals default to z-50, so --mg-z-modal
+ * stays 50 to avoid needing per-primitive overrides.
+ * ============================================================ */
+:root {
+  --mg-z-sticky: 10; /* sticky theads/toolbars, scroll shadows, in-flow progress bars */
+  --mg-z-raised: 20; /* must clear sticky content within the same page section */
+  --mg-z-nav: 30; /* site header/nav chrome */
+  --mg-z-overlay: 40; /* drawers, back-to-top, hover cards, lightweight menus */
+  --mg-z-modal: 50; /* dialogs, popovers, sheets, command palette (Radix default) */
+  --mg-z-progress: 60; /* route-transition progress bar -- must beat modal */
+  --mg-z-skip-link: 100; /* a11y skip-link -- must beat everything */
+}
+
 /* ============ DARK — Ink + dialed mint ============ */
 .dark {
   --paper: oklch(0.14 0.003 250);

@@ -137,7 +137,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
           <table className="w-full border-collapse text-[11px] font-mono">
             <thead>
               <tr className="bg-paper/30">
-                <th className="sticky left-0 z-10 bg-paper/30 text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
+                <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-paper/30 text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
                   Subnet
                 </th>
                 {KINDS.map((k) => (
@@ -159,7 +159,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
                   key={r.netuid}
                   className="border-b border-border last:border-b-0 hover:bg-paper/30"
                 >
-                  <td className="sticky left-0 z-10 bg-card px-3 py-1.5 border-r border-border text-ink-strong">
+                  <td className="sticky left-0 z-[var(--mg-z-sticky)] bg-card px-3 py-1.5 border-r border-border text-ink-strong">
                     <div className="flex items-center gap-2">
                       <Link
                         to="/subnets/$netuid"

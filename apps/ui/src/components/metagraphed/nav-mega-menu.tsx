@@ -281,7 +281,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
           <div aria-hidden className="mg-mega-scrim" onClick={() => setOpenKey(null)} />
           <div
             ref={panelRef}
-            className="absolute left-1/2 -translate-x-1/2 top-full mt-3 z-40"
+            className="absolute left-1/2 -translate-x-1/2 top-full mt-3 z-[var(--mg-z-overlay)]"
             role="dialog"
             aria-modal="true"
             aria-label={`${activePanel.label} menu`}
