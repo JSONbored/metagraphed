@@ -636,6 +636,8 @@ export const SDL = `
     review_profile_completeness(netuid: Int, profile_level: String, confidence: String, identity_level: String, identity_promotion_kinds: String, native_name_quality: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): ReviewProfileCompletenessList!
     "The registry-wide summary: overall subnet count, coverage/curation-level/profile-level counts, recent registry changes, and the most-complete top subnets. A fast orientation for the whole Bittensor application layer. Null when the summary has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the registry_summary MCP/REST shape. Mirrors GET /api/v1/registry/summary."
     registry_summary: JSON
+    "The registry's captured API-schema index: which subnet surfaces publish a machine-readable OpenAPI/Swagger schema, each schema's hash, and its drift status (new/unchanged/changed). Null when the schema index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the list_schemas MCP/REST shape. Mirrors GET /api/v1/schemas."
+    schemas: JSON
     "The per-provider source-health rollup: for each provider/source, the candidate-surface count and its live/redirected/dead classification, endpoint and RPC-endpoint counts, verification-result count, and an overall status. Null when the rollup has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_source_health MCP/REST shape. Mirrors GET /api/v1/source-health."
     source_health: JSON
     "The maintainer-approved cross-network subnet lineage: which testnet subnets have graduated to mainnet (mainnet <-> testnet pairs with match evidence), plus any flagged broken links. Null when the lineage has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_lineage MCP/REST shape. Mirrors GET /api/v1/lineage."
@@ -4279,6 +4281,7 @@ export const FIELD_COMPLEXITY = {
   domain_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   compare_validators: RELATIONSHIP_FIELD_COMPLEXITY,
   coverage: RELATIONSHIP_FIELD_COMPLEXITY,
+  schemas: RELATIONSHIP_FIELD_COMPLEXITY,
   coverage_depth: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_ohlc: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -6596,6 +6599,13 @@ const rootValue = {
     // Same baked artifact the REST /api/v1/coverage route + get_coverage MCP
     // tool read; GraphQL degrades to null when cold, like agent_resources.
     return loadArtifact(context, "/metagraph/coverage.json");
+  },
+
+  schemas(_args, context) {
+    // #7866: the same baked schema-index artifact the REST /api/v1/schemas
+    // route + list_schemas MCP tool read; opaque-JSON passthrough degrading to
+    // null when cold, like coverage/curation above.
+    return loadArtifact(context, "/metagraph/schemas/index.json");
   },
 
   async coverage_depth(_args, context) {

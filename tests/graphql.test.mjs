@@ -19965,6 +19965,39 @@ describe("graphql — coverage + coverage_depth", () => {
     assert.equal(body.data.coverage.completeness.level, "broad");
   });
 
+  test("schemas resolves the baked schema-index artifact (#7866)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/schemas/index.json": {
+        generated_at: "2026-07-23T00:00:00.000Z",
+        schemas: [
+          {
+            surface_id: "sn-1-example-openapi",
+            hash: "abc123",
+            drift: "unchanged",
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql("{ schemas }", env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(
+      body.data.schemas.schemas[0].surface_id,
+      "sn-1-example-openapi",
+    );
+    assert.equal(body.data.schemas.schemas[0].drift, "unchanged");
+  });
+
+  test("schemas degrades to null when the artifact has not been baked (#7866)", async () => {
+    const { status, body } = await gql("{ schemas }", emptyEnv);
+    assert.equal(status, 200);
+    assert.equal(body.data.schemas, null);
+  });
+
+  test("schemas is weighted as a fan-out field like its sibling artifact resolvers (#7866)", () => {
+    assert.equal(FIELD_COMPLEXITY.schemas, 5);
+  });
+
   test("coverage_depth resolves the baked coverage-depth artifact", async () => {
     const env = fixtureEnv({
       "/metagraph/coverage-depth.json": {
