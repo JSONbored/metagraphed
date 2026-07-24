@@ -16083,7 +16083,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_rpc_endpoints rejects an unexpected argument", async () => {
-    const res = await callTool("list_rpc_endpoints", { netuid: 7 });
+    const res = await callTool("list_rpc_endpoints", { bogus: "nope" });
     assert.equal(res.body.result.isError, true);
   });
 
