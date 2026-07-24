@@ -90,18 +90,76 @@ function clampLimit(value: unknown, fallback: number, max: number): number {
   return Math.min(max, Math.floor(value));
 }
 
+function resolveMissingKinds(
+  args: Record<string, unknown> | null | undefined,
+): string | null {
+  const value = args?.missing_kinds;
+  if (value === undefined || value === null || value === "") return null;
+  // GraphQL advertises [String!]; REST accepts a single enum — use the first
+  // requested kind after validating every entry.
+  if (Array.isArray(value)) {
+    const kinds = value
+      .filter((part): part is string => typeof part === "string")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (kinds.length === 0) {
+      throw subnetGapsMcpError(
+        "invalid_params",
+        "Argument `missing_kinds` must be a non-empty list of surface kinds when provided.",
+      );
+    }
+    for (const kind of kinds) {
+      if (!(SURFACE_KINDS as readonly string[]).includes(kind)) {
+        throw subnetGapsMcpError(
+          "invalid_params",
+          `Argument \`missing_kinds\` must be one of: ${SURFACE_KINDS.join(", ")}.`,
+        );
+      }
+    }
+    return kinds[0];
+  }
+  return optionalEnum(args, "missing_kinds", SURFACE_KINDS as string[]);
+}
+
+function resolveCursor(
+  args: Record<string, unknown> | null | undefined,
+): number | null {
+  const value = args?.cursor;
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "string") {
+    if (!/^\d+$/.test(value.trim())) {
+      throw subnetGapsMcpError(
+        "invalid_params",
+        "cursor must be a non-negative integer.",
+      );
+    }
+    return Number(value.trim());
+  }
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw subnetGapsMcpError(
+      "invalid_params",
+      "cursor must be a non-negative integer.",
+    );
+  }
+  return value;
+}
+
 export function subnetGapsQueryUrl(
   args: Record<string, unknown> | null | undefined,
 ): URL {
   const url = new URL("https://mcp.internal/subnets/gaps");
   requireNetuid(args);
-  const curationLevel = optionalEnum(args, "curation_level", CURATION_LEVELS);
+  const curationLevel = optionalEnum(
+    args,
+    "curation_level",
+    CURATION_LEVELS as string[],
+  );
   if (curationLevel) url.searchParams.set("curation_level", curationLevel);
-  const missingKinds = optionalEnum(args, "missing_kinds", SURFACE_KINDS);
+  const missingKinds = resolveMissingKinds(args);
   if (missingKinds) url.searchParams.set("missing_kinds", missingKinds);
   const reviewState = optionalString(args, "review_state");
   if (reviewState) url.searchParams.set("review_state", reviewState);
-  const sort = optionalEnum(args, "sort", GAP_PRIORITY_SORT_FIELDS);
+  const sort = optionalEnum(args, "sort", GAP_PRIORITY_SORT_FIELDS as string[]);
   if (sort) url.searchParams.set("sort", sort);
   const order = optionalEnum(args, "order", ["asc", "desc"]);
   if (order) url.searchParams.set("order", order);
@@ -110,16 +168,8 @@ export function subnetGapsQueryUrl(
   if (args?.limit !== undefined) {
     url.searchParams.set("limit", String(clampLimit(args.limit, 50, 100)));
   }
-  if (args?.cursor !== undefined) {
-    const cursor = args.cursor;
-    if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
-      throw subnetGapsMcpError(
-        "invalid_params",
-        "cursor must be a non-negative integer.",
-      );
-    }
-    url.searchParams.set("cursor", String(cursor));
-  }
+  const cursor = resolveCursor(args);
+  if (cursor !== null) url.searchParams.set("cursor", String(cursor));
   return url;
 }
 
@@ -156,7 +206,14 @@ export async function loadSubnetGapsList(
   if (!result?.ok) {
     const code =
       (result as { code?: string } | undefined)?.code || "artifact_unavailable";
-    if (code === "artifact_not_found") {
+    // Treat cold/unbound storage the same as a missing per-netuid report so
+    // GraphQL can keep its schema-stable null degradation (and MCP still gets
+    // a not_found toolError).
+    if (
+      code === "artifact_not_found" ||
+      code === "r2_binding_missing" ||
+      code === "artifact_unavailable"
+    ) {
       throw subnetGapsMcpError(
         "not_found",
         `No gap report exists for netuid ${netuid}.`,
