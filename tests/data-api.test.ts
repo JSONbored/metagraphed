@@ -69,6 +69,11 @@ const subnetHyperparamsLatestHashes = vi.hoisted(() => ({
 const subnetLocksSyncFailure = vi.hoisted(() => ({
   error: null as Error | null,
 }));
+// Rows the subnet-locks full-snapshot prune "deletes" (RETURNING netuid) -- same shape as
+// subnetHyperparamsPruneRows above; drives the success-path pruned count (METAGRAPHED-7
+// follow-through: the route's write path gained retry coverage, which exposed that its
+// success path had never been exercised at all).
+const subnetLocksPruneRows = vi.hoisted(() => ({ current: [] as Row[] }));
 // State for the account-identity-sync write route's tests only (#4832
 // gap-closure). No prune-rows hook -- unlike subnet_hyperparams, this table
 // has no purge step (see handleAccountIdentitySync's own header comment).
@@ -429,6 +434,9 @@ vi.mock("postgres", () => ({
       if (/DELETE FROM subnet_hyperparams\b/.test(text)) {
         return Promise.resolve(subnetHyperparamsPruneRows.current);
       }
+      if (/DELETE FROM subnet_locks\b/.test(text)) {
+        return Promise.resolve(subnetLocksPruneRows.current);
+      }
       if (/FROM account_identity WHERE account IN/.test(text)) {
         if (accountIdentityJoinQueryFailure.error) {
           return Promise.reject(accountIdentityJoinQueryFailure.error);
@@ -535,6 +543,7 @@ beforeEach(() => {
   subnetHyperparamsPruneRows.current = [];
   subnetHyperparamsLatestHashes.current = [];
   subnetLocksSyncFailure.error = null;
+  subnetLocksPruneRows.current = [];
   accountIdentitySyncFailure.error = null;
   accountIdentityLatestHashes.current = [];
   validatorNominatorCountsSyncFailure.error = null;
@@ -5239,6 +5248,54 @@ test("subnet-locks-sync maps a DB failure to a clean 502 instead of throwing", a
   });
   expect(res.status).toBe(502);
   expect(((await res.json()) as Row).error).toBe("write failed");
+});
+
+function subnetLocksSyncRow(overrides: Record<string, unknown> = {}) {
+  return {
+    netuid: 1,
+    hotkey: "5FakeHotkeyAddress",
+    is_owner: true,
+    is_perpetual: false,
+    locked_mass: 1000,
+    conviction_bits: "12345",
+    last_update: 100,
+    captured_at: 1_780_000_000_000,
+    ...overrides,
+  };
+}
+
+function postSubnetLocks(body: unknown) {
+  return req("/api/v1/internal/subnet-locks-sync", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-subnet-locks-sync-token": SUBNET_LOCKS_SYNC_SECRET,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+test("subnet-locks-sync upserts the batch, prunes rows the snapshot didn't report, and reports both counts", async () => {
+  subnetLocksPruneRows.current = [{ netuid: 99 }];
+  const res = await postSubnetLocks([subnetLocksSyncRow()]);
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body).toMatchObject({ ok: true, subnet_locks_written: 1, pruned: 1 });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).toMatch(/INSERT INTO subnet_locks\b/);
+  // Full-network-snapshot semantics: whatever this batch didn't report gets pruned via the
+  // scalar row-value tuple DELETE (fetch_types:false makes bound-array ANY() unreliable).
+  expect(text).toMatch(/DELETE FROM subnet_locks\b/);
+});
+
+test("subnet-locks-sync on an empty batch is a clean no-op: no insert, no prune", async () => {
+  const res = await postSubnetLocks([]);
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body).toMatchObject({ ok: true, subnet_locks_written: 0, pruned: 0 });
+  const text = sqlCalls.map((c) => c.text).join("\n");
+  expect(text).not.toMatch(/INSERT INTO subnet_locks\b/);
+  expect(text).not.toMatch(/DELETE FROM subnet_locks\b/);
 });
 
 test("GET /api/v1/subnets/:netuid/hyperparameters returns the latest row", async () => {
