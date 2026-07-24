@@ -69,7 +69,7 @@ function subscribe(cb: () => void): () => void {
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
-function getSnapshot(): Store {
+export function getSnapshot(): Store {
   if (typeof window === "undefined") return EMPTY_STORE;
   let raw: string | null;
   try {
@@ -139,6 +139,28 @@ function useHistoryStore(): Store {
 }
 
 /**
+ * Merge locally-recorded points with server-provided probe_history samples,
+ * deduping by minute bucket (server + local can otherwise double up on the
+ * same observation) and capping to the same rolling window as local storage.
+ */
+export function mergeLatencyHistory(
+  local: LatencyPoint[],
+  serverSamples?: LatencyPoint[],
+): LatencyPoint[] {
+  if (!serverSamples || serverSamples.length === 0) return local;
+  const merged = [...serverSamples, ...local].sort((a, b) => a.t - b.t);
+  const seen = new Set<number>();
+  const out: LatencyPoint[] = [];
+  for (const p of merged) {
+    const bucket = Math.floor(p.t / MIN_INTERVAL_MS);
+    if (seen.has(bucket)) continue;
+    seen.add(bucket);
+    out.push(p);
+  }
+  return out.slice(-MAX_POINTS);
+}
+
+/**
  * Return the collected latency series for one endpoint, merged with any
  * server-provided probe_history samples that carry timestamps.
  */
@@ -147,21 +169,10 @@ export function useLatencyHistory(
   serverSamples?: LatencyPoint[],
 ): LatencyPoint[] {
   const store = useHistoryStore();
-  return useMemo(() => {
-    const local = store[endpointId] ?? [];
-    if (!serverSamples || serverSamples.length === 0) return local;
-    const merged = [...serverSamples, ...local].sort((a, b) => a.t - b.t);
-    // Dedup by minute bucket.
-    const seen = new Set<number>();
-    const out: LatencyPoint[] = [];
-    for (const p of merged) {
-      const bucket = Math.floor(p.t / MIN_INTERVAL_MS);
-      if (seen.has(bucket)) continue;
-      seen.add(bucket);
-      out.push(p);
-    }
-    return out.slice(-MAX_POINTS);
-  }, [store, endpointId, serverSamples]);
+  return useMemo(
+    () => mergeLatencyHistory(store[endpointId] ?? [], serverSamples),
+    [store, endpointId, serverSamples],
+  );
 }
 
 /**
