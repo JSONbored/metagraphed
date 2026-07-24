@@ -27,6 +27,7 @@ export const ASK_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 // https://developers.cloudflare.com/workers-ai/models/llama-4-scout-17b-16e-instruct/
 // (checked 2026-07-24) -- update alongside ASK_MODEL if the model ever changes.
 const ASK_PROVIDER = "cloudflare_workers_ai";
+const ASK_TRACE_NAME = "ask";
 const ASK_MODEL_INPUT_USD_PER_MILLION = 0.27;
 const ASK_MODEL_OUTPUT_USD_PER_MILLION = 0.85;
 export const VECTORIZE_INDEX_NAME = "metagraphed-registry-v2";
@@ -654,18 +655,22 @@ export async function askQuestion(
     await recordAiGenerationEvent(env, {
       provider: ASK_PROVIDER,
       model: ASK_MODEL,
+      traceName: ASK_TRACE_NAME,
       latencyMs: Date.now() - generationStart,
       isError: true,
       error,
       modelParameters,
+      input: messages,
     });
     throw error;
   });
   const inputTokens = completion?.usage?.prompt_tokens;
   const outputTokens = completion?.usage?.completion_tokens;
+  const answer = (completion?.response || "").trim();
   await recordAiGenerationEvent(env, {
     provider: ASK_PROVIDER,
     model: ASK_MODEL,
+    traceName: ASK_TRACE_NAME,
     latencyMs: Date.now() - generationStart,
     isError: false,
     inputTokens,
@@ -673,8 +678,9 @@ export async function askQuestion(
     inputCostUsd: costUsd(inputTokens, ASK_MODEL_INPUT_USD_PER_MILLION),
     outputCostUsd: costUsd(outputTokens, ASK_MODEL_OUTPUT_USD_PER_MILLION),
     modelParameters,
+    input: messages,
+    outputChoices: [{ role: "assistant", content: answer }],
   });
-  const answer = (completion?.response || "").trim();
   return {
     question: q,
     answer,
