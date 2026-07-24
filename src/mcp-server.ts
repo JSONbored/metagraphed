@@ -205,6 +205,10 @@ import {
   loadEndpointIncidentsList,
 } from "./endpoint-incidents-mcp.ts";
 import {
+  applyGlobalIncidentsListQuery,
+  GLOBAL_INCIDENTS_SORT_FIELDS,
+} from "./global-incidents-mcp.ts";
+import {
   LIST_PROVIDER_ENDPOINTS_INSTRUCTIONS,
   LIST_PROVIDER_ENDPOINTS_MCP_TOOL,
   LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
@@ -5314,7 +5318,8 @@ export const MCP_TOOLS = [
     description:
       "Fetch the cross-subnet incident ledger: surfaces that had consecutive " +
       "probe failures grouped into downtime incidents over the requested window " +
-      "(7d or 30d). Mirrors GET /api/v1/incidents.",
+      "(7d or 30d). Filter by netuid, sort with sort + order, and page with " +
+      "limit (1-100) / cursor. Mirrors GET /api/v1/incidents.",
     inputSchema: {
       type: "object",
       properties: {
@@ -5322,6 +5327,32 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["7d", "30d"],
           description: "Incident lookback window (default 7d).",
+        },
+        netuid: {
+          type: "integer",
+          description: "Filter to one subnet netuid.",
+          minimum: 0,
+        },
+        sort: {
+          type: "string",
+          enum: GLOBAL_INCIDENTS_SORT_FIELDS,
+          description: "Field to sort by before paging.",
+        },
+        order: {
+          type: "string",
+          enum: ["asc", "desc"],
+          description: "Sort direction for sort (default asc).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max rows to return (1-100). Enables pagination.",
+          minimum: 1,
+          maximum: 100,
+        },
+        cursor: {
+          type: "integer",
+          description: "Pagination cursor from a prior response's next_cursor.",
+          minimum: 0,
         },
       },
       additionalProperties: false,
@@ -5332,16 +5363,26 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label } = parsed!;
-      return (
+      const data =
         (await tryPostgresTier(
           ctx.env,
-          mcpNeuronsTierRequest("/api/v1/incidents", { window: label }),
+          mcpNeuronsTierRequest("/api/v1/incidents", {
+            window: label,
+            netuid: args?.netuid,
+            limit: args?.limit,
+            cursor: args?.cursor,
+            sort: args?.sort,
+            order: args?.order,
+          }),
           "METAGRAPH_HEALTH_SOURCE",
         )) ??
         (await loadGlobalIncidents({
           windowLabel: label,
           observedAt: await mcpObservedAt(ctx),
-        }))
+        }));
+      return applyGlobalIncidentsListQuery(
+        data as Record<string, unknown>,
+        args,
       );
     },
   },
@@ -13549,8 +13590,16 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: "integer" },
       window: NULLABLE_STRING,
       observed_at: NULLABLE_STRING,
+      source: NULLABLE_STRING,
       summary: { type: "object" },
       surfaces: { type: "array", items: { type: "object" } },
+      total: { type: "integer" },
+      returned: { type: "integer" },
+      limit: { type: "integer" },
+      cursor: { type: "integer" },
+      next_cursor: NULLABLE_INT,
+      sort: NULLABLE_STRING,
+      order: NULLABLE_STRING,
     },
   },
   get_subnet_metagraph: {

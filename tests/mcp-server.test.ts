@@ -12323,6 +12323,69 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.surfaces, []);
   });
 
+  test("get_global_incidents filters by netuid over Postgres-tier surfaces", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            surfaces: [
+              { netuid: 7, surface_id: "a", incident_count: 1 },
+              { netuid: 31, surface_id: "b", incident_count: 2 },
+            ],
+          }),
+      },
+    };
+    const res = await callTool("get_global_incidents", { netuid: 7 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].netuid, 7);
+  });
+
+  test("get_global_incidents pages Postgres-tier surfaces with limit/cursor", async () => {
+    const env = {
+      METAGRAPH_HEALTH_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            window: "7d",
+            surfaces: [
+              { netuid: 7, surface_id: "a", incident_count: 1 },
+              { netuid: 31, surface_id: "b", incident_count: 2 },
+            ],
+          }),
+      },
+    };
+    const res = await callTool(
+      "get_global_incidents",
+      { sort: "netuid", order: "desc", limit: 1 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.total, 2);
+    assert.equal(out.surfaces[0].netuid, 31);
+    assert.equal(out.next_cursor, 1);
+
+    const nextPage = await callTool(
+      "get_global_incidents",
+      { sort: "netuid", order: "desc", limit: 1, cursor: out.next_cursor },
+      { env },
+    );
+    const nextOut = nextPage.body.result.structuredContent;
+    assert.equal(nextOut.surfaces[0].netuid, 7);
+    assert.equal(nextOut.next_cursor, null);
+  });
+
+  test("get_global_incidents rejects an invalid limit", async () => {
+    const res = await callTool("get_global_incidents", { limit: 0 });
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("live analytics tools reject invalid window/board params", async () => {
     const uptime = await callTool("get_subnet_uptime", {
       netuid: 7,
