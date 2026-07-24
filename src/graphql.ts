@@ -53,6 +53,10 @@ import { loadRpcEndpointsList } from "./rpc-endpoints-mcp.ts";
 // authority/sort/order/fields + limit/cursor), reusing loadProvidersList that
 // MCP list_providers already calls -- not a reimplementation.
 import { loadProvidersList } from "./providers-mcp.ts";
+// #7871: GraphQL parity -- candidates(...) reuses loadCandidatesList (the same
+// loader list_candidates MCP calls) so its id/confidence filters and sort/order
+// come straight from GET /api/v1/candidates and can't drift.
+import { loadCandidatesList } from "./candidates-mcp.ts";
 // #7167: GraphQL parity for the /api/v1/review/* contributor-review family,
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
 // and page logic REST and MCP already use) -- not a reimplementation.
@@ -555,8 +559,8 @@ export const SDL = `
     agent_resources: JSON
     "Curation states by subnet — each subnet's registry curation level and review state. Null when the artifact has not been baked. Opaque JSON passed through verbatim, matching the list_curation MCP/REST shape. Mirrors GET /api/v1/curation."
     curation: JSON
-    "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state and page with limit/cursor, exactly like the REST route. Resolves to {items,total,next_cursor} as opaque JSON. Mirrors GET /api/v1/candidates."
-    candidates(netuid: Int, kind: String, provider: String, state: String, limit: Int, cursor: String): JSON
+    "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state, plus id (exact match) and confidence (low/medium/high); sort with sort + order; project with fields; and page with limit (1-1000) / cursor, exactly like the REST route -- an unsupported filter/sort value is a GraphQL error, not a silently substituted default. Resolves to {candidates,total,returned,limit,cursor,next_cursor,sort,order} as opaque JSON, matching the pagination meta REST returns. A cold/absent catalog artifact is a GraphQL error (matching REST/MCP not_found), not an empty page. Mirrors GET /api/v1/candidates."
+    candidates(netuid: Int, kind: String, provider: String, state: String, id: String, confidence: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): JSON
     "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}."
     saved_query(id: String!, params: JSON): JSON
     "The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
@@ -5318,29 +5322,19 @@ const rootValue = {
     }
   },
 
-  // #6991: five registry-meta routes that had an MCP tool but no GraphQL
-  // field. Each reads the same baked artifact (and applies the same overlay /
+  // #6991: registry-meta routes that had an MCP tool but no GraphQL field.
+  // Each reads the same baked artifact (and applies the same overlay /
   // builder) its MCP tool does, so REST, MCP, and GraphQL can't drift.
-  async candidates(
-    { netuid, kind, provider, state, limit, cursor }: Row,
-    context: GqlContext,
-  ) {
-    const data = await loadArtifact(context, "/metagraph/candidates.json");
-    const all = Array.isArray(data?.candidates) ? data.candidates : [];
-    const filtered = all.filter(
-      (c: Row) =>
-        (netuid == null || c.netuid === netuid) &&
-        (kind == null || c.kind === kind) &&
-        (provider == null || c.provider === provider) &&
-        (state == null || c.state === state),
-    );
-    const { page, total, nextCursor } = paginate(
-      filtered,
-      limit,
-      cursor,
-      (c: Row) => c.id ?? c.key,
-    );
-    return { items: page, total, next_cursor: nextCursor };
+  //
+  // #7871: candidates now reuses loadCandidatesList -- the same loader
+  // list_candidates MCP calls -- instead of the earlier inline filter/paginate
+  // pass, so its id/confidence filters and sort/order come straight from the
+  // REST allowlists and this field can't drift from GET /api/v1/candidates.
+  // Mirrors the sibling gaps(...) field exactly: an unsupported filter/sort
+  // value (or a cold catalog artifact) is a GraphQL error, not a silently
+  // substituted default.
+  candidates(args: Row, context: GqlContext) {
+    return loadCandidatesList(mcpCtx(context), args, { readArtifact });
   },
 
   fixtures(_args: unknown, context: GqlContext) {

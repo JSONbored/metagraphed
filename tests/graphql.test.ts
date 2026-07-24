@@ -8396,70 +8396,118 @@ describe("graphql — agent_resources (#6987, baked AI-resources index)", () => 
 });
 
 describe("graphql — candidates / fixtures / agent_catalog / freshness / top_holders (#6991)", () => {
+  // #7871: candidates(...) now mirrors the sibling gaps(...) field -- it reuses
+  // loadCandidatesList, so id/confidence filters, sort/order, and pagination
+  // meta come straight from GET /api/v1/candidates. The field resolves to the
+  // loader's opaque-JSON envelope ({candidates,total,returned,...}), so it is
+  // selected as a scalar (no subfield selection) like subnet_candidates.
   const CANDIDATES = {
+    generated_at: "2026-07-01T00:00:00.000Z",
+    notes: ["fixture"],
     candidates: [
-      { id: "c1", netuid: 1, kind: "docs", provider: "acme", state: "new" },
-      { id: "c2", netuid: 2, kind: "api", provider: "beta", state: "verified" },
+      {
+        id: "c1",
+        netuid: 1,
+        kind: "docs",
+        provider: "acme",
+        state: "verified",
+        confidence: "high",
+        name: "Alpha",
+      },
+      {
+        id: "c2",
+        netuid: 2,
+        kind: "openapi",
+        provider: "beta",
+        state: "stale",
+        confidence: "low",
+        name: "Bravo",
+      },
     ],
   };
 
-  test("candidates resolves the ledger with total and next_cursor", async () => {
+  test("candidates resolves the ledger with total, returned and generated_at", async () => {
     const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
     const { status, body } = await gql("{ candidates }", env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.equal(body.data.candidates.total, 2);
-    assert.equal(body.data.candidates.items.length, 2);
+    assert.equal(body.data.candidates.candidates.length, 2);
+    assert.equal(body.data.candidates.returned, 2);
+    assert.equal(body.data.candidates.generated_at, "2026-07-01T00:00:00.000Z");
   });
 
   test("candidates applies the netuid/kind/provider/state filters", async () => {
     const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
     const { body } = await gql(
-      '{ candidates(netuid: 2, kind: "api", provider: "beta", state: "verified") }',
+      '{ candidates(netuid: 2, kind: "openapi", provider: "beta", state: "stale") }',
       env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.equal(body.data.candidates.total, 1);
-    assert.equal(body.data.candidates.items[0].id, "c2");
+    assert.equal(body.data.candidates.candidates[0].id, "c2");
   });
 
-  test("candidates keys the cursor off `key` when a row has no id", async () => {
-    const env = fixtureEnv({
-      "/metagraph/candidates.json": {
-        candidates: [
-          {
-            key: "k1",
-            netuid: 1,
-            kind: "docs",
-            provider: "acme",
-            state: "new",
-          },
-          { key: "k2", netuid: 2, kind: "api", provider: "beta", state: "new" },
-        ],
-      },
-    });
-    const { body } = await gql("{ candidates(limit: 1) }", env);
+  test("candidates filters by id (exact match)", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql(
+      '{ candidates(id: "c1") }',
+      env as unknown as Env,
+    );
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.candidates.next_cursor, "k1");
+    assert.equal(body.data.candidates.total, 1);
+    assert.equal(body.data.candidates.candidates[0].id, "c1");
+  });
+
+  test("candidates filters by confidence", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql(
+      '{ candidates(confidence: "low") }',
+      env as unknown as Env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.total, 1);
+    assert.equal(body.data.candidates.candidates[0].id, "c2");
+  });
+
+  test("candidates sorts by a field with an explicit order", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { status, body } = await gql(
+      '{ candidates(sort: "netuid", order: "desc") }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.candidates.total, 2);
+    assert.equal(body.data.candidates.candidates[0].id, "c2");
   });
 
   test("candidates pages with limit and hands back a next_cursor", async () => {
     const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
-    const { body } = await gql("{ candidates(limit: 1) }", env);
+    const { body } = await gql(
+      "{ candidates(limit: 1) }",
+      env as unknown as Env,
+    );
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.candidates.items.length, 1);
+    assert.equal(body.data.candidates.candidates.length, 1);
     assert.equal(body.data.candidates.total, 2);
-    assert.equal(body.data.candidates.next_cursor, "c1");
+    assert.equal(body.data.candidates.returned, 1);
+    assert.ok(body.data.candidates.next_cursor != null);
   });
 
-  test("candidates resolves an empty ledger when the artifact is cold", async () => {
-    const { body } = await gql("{ candidates }");
-    assert.equal(body.errors, undefined);
-    assert.deepEqual(body.data.candidates, {
-      items: [],
-      total: 0,
-      next_cursor: null,
-    });
+  test("candidates surfaces an invalid sort as a GraphQL error, not a silent default", async () => {
+    const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
+    const { body } = await gql(
+      '{ candidates(sort: "bogus") }',
+      env as unknown as Env,
+    );
+    assert.ok(body.errors?.length);
+  });
+
+  test("candidates surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
+    const { body } = await gql("{ candidates }", emptyEnv);
+    assert.ok(body.errors?.length);
+    assert.equal(body.data.candidates, null);
   });
 
   test("fixtures resolves the baked fixture index", async () => {
