@@ -57,6 +57,11 @@ import { loadProfileCompletenessList } from "./profile-completeness-mcp.ts";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.ts";
+// #7885: nested Subnet.surfaces filter parity, reusing the same loader MCP
+// list_surfaces / REST GET /api/v1/surfaces already call -- not a
+// reimplementation. Reads the same /metagraph/surfaces.json the unfiltered
+// nested path reads, so filtered and unfiltered reads can't diverge.
+import { loadSurfacesList } from "./surfaces-mcp.ts";
 // #7170: GraphQL parity for the changelog/contracts/health-history REST routes,
 // reusing the same loaders MCP get_changelog/get_contracts/get_health_history
 // already call -- not a reimplementation.
@@ -895,8 +900,8 @@ export const SDL = `
     health: SubnetHealth
     "Per-subnet economic + validator metrics."
     economics: SubnetEconomics
-    "Curated public interface surfaces of this subnet."
-    surfaces: [Surface!]!
+    "Curated public interface surfaces of this subnet. Called with no arguments this is the full unpaged list (unchanged). Supplying any filter/sort/page argument routes the field through the same loader MCP list_surfaces and REST GET /api/v1/surfaces use -- filter by kind/provider/id, sort with sort/order, project with fields, and page with limit (1-100)/cursor (a non-negative integer offset). An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default (#7885)."
+    surfaces(kind: String, provider: String, id: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): [Surface!]!
     "Endpoint/resource registry rows for this subnet."
     endpoints: [Endpoint!]!
   }
@@ -4821,9 +4826,45 @@ function subnetNode(identity: Row, prefetch: Row = {}) {
       loadSubnetHealth(context, netuid),
     economics: (_args: unknown, context: GqlContext) =>
       loadSubnetEconomics(context, netuid),
-    surfaces: bundledOr(prefetch.surfaces, loadSubnetSurfaces),
+    // #7885: with no arguments this stays exactly what it was -- the rows
+    // bundled onto the subnet detail artifact, else the surfaces artifact
+    // filtered by netuid. Supplying ANY filter/sort/page argument routes it
+    // through list_surfaces' own loader instead (the same
+    // /metagraph/surfaces.json read plus the shared query engine REST applies),
+    // so a filtered nested read matches REST rather than a GraphQL-only
+    // reimplementation. Unfiltered callers keep the bundling optimisation.
+    surfaces: async (args: Row, context: GqlContext) => {
+      if (!hasSubnetSurfaceFilters(args)) {
+        return bundledOr(prefetch.surfaces, loadSubnetSurfaces)(args, context);
+      }
+      const result = await loadSurfacesList(
+        mcpCtx(context),
+        { ...args, netuid },
+        { readArtifact },
+      );
+      return result.surfaces;
+    },
     endpoints: bundledOr(prefetch.endpoints, loadSubnetEndpoints),
   };
+}
+
+// #7885: the nested Subnet.surfaces filter/sort/page vocabulary -- the same
+// arguments MCP list_surfaces and REST accept (netuid excluded: the nested
+// field takes it from its parent subnet).
+const SUBNET_SURFACE_FILTER_ARGS = [
+  "kind",
+  "provider",
+  "id",
+  "sort",
+  "order",
+  "fields",
+  "limit",
+  "cursor",
+];
+
+function hasSubnetSurfaceFilters(args: Row | undefined | null): boolean {
+  if (!args) return false;
+  return SUBNET_SURFACE_FILTER_ARGS.some((key) => args[key] !== undefined);
 }
 
 // formatExtrinsic's call_args is a decoded JS value (object/array/null), but
