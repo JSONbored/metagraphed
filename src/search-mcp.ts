@@ -11,6 +11,10 @@ import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 export const SEARCH_ARTIFACT = "/metagraph/search.json";
 
 const DOCUMENT_SORT_FIELDS = API_QUERY_COLLECTIONS.documents.sort_fields;
+// #7896: document *type* (subnet/surface/provider), sourced from the same
+// collection contract the REST route validates against so the tool cannot drift.
+const DOCUMENT_TYPES = API_QUERY_COLLECTIONS.documents.filters.type
+  .enum as string[];
 
 export interface SearchMcpError extends Error {
   toolError: true;
@@ -67,6 +71,20 @@ export function searchQueryUrl(
   const url = new URL("https://mcp.internal/search");
   const q = optionalString(args, "q");
   if (q) url.searchParams.set("q", q);
+  // #7896: scope hits by document type and subnet, the same two filter axes
+  // REST's GET /api/v1/search accepts. They AND with q and with each other.
+  const type = optionalEnum(args, "type", DOCUMENT_TYPES);
+  if (type) url.searchParams.set("type", type);
+  if (args?.netuid !== undefined) {
+    const netuid = args.netuid;
+    if (typeof netuid !== "number" || !Number.isInteger(netuid) || netuid < 0) {
+      throw searchMcpError(
+        "invalid_params",
+        "netuid must be a non-negative integer.",
+      );
+    }
+    url.searchParams.set("netuid", String(netuid));
+  }
   const sort = optionalEnum(args, "sort", DOCUMENT_SORT_FIELDS);
   if (sort) url.searchParams.set("sort", sort);
   const order = optionalEnum(args, "order", ["asc", "desc"]);
@@ -167,7 +185,7 @@ export const LIST_SEARCH_MCP_TOOL = {
   description:
     "Keyword-search the full registry search index: subnet, surface, and " +
     "provider documents with their per-document token blobs, mirroring " +
-    "GET /api/v1/search. Filter with q, sort with sort + order, project with " +
+    "GET /api/v1/search. Filter with q, type, and netuid, sort with sort + order, project with " +
     "fields, and page with limit (1-100) / cursor. Unlike search_subnets — which reads " +
     "the same artifact but only ever returns subnet hits — this spans all " +
     "three document types, so it works to find surfaces and providers even " +
@@ -180,6 +198,17 @@ export const LIST_SEARCH_MCP_TOOL = {
       q: {
         type: "string",
         description: "Keyword search across title, subtitle, slug, and tokens.",
+      },
+      type: {
+        type: "string",
+        enum: DOCUMENT_TYPES,
+        description:
+          "Document type filter: subnet, surface, or provider. Distinct from surface kind.",
+      },
+      netuid: {
+        type: "integer",
+        description: "Filter to documents belonging to one subnet netuid.",
+        minimum: 0,
       },
       sort: {
         type: "string",

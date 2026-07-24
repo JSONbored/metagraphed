@@ -162,6 +162,41 @@ describe("search-mcp", () => {
     assert.equal(out.documents[0].type, "surface");
   });
 
+  test("searchQueryUrl forwards type and netuid, rejecting bad values (#7896)", () => {
+    const url = searchQueryUrl({ type: "surface", netuid: 7 });
+    assert.equal(url.searchParams.get("type"), "surface");
+    assert.equal(url.searchParams.get("netuid"), "7");
+    assert.throws(
+      () => searchQueryUrl({ type: "not-a-type" }),
+      (err: Row) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => searchQueryUrl({ netuid: -1 }),
+      (err: Row) => err.code === "invalid_params",
+    );
+  });
+
+  test("loadSearchList scopes by a type + netuid combination (#7896)", async () => {
+    const ctx = { env: {}, readArtifact } as unknown as LoadCtx;
+    // netuid 7 has both a subnet and a surface document; type picks one.
+    const combined = await loadSearchList(ctx, { type: "surface", netuid: 7 });
+    assert.equal(combined.returned, 1);
+    assert.equal(combined.documents[0].id, "surface-7-openapi");
+
+    const byNetuid = await loadSearchList(ctx, { netuid: 7 });
+    assert.equal(byNetuid.returned, 2);
+
+    const byType = await loadSearchList(ctx, { type: "provider" });
+    assert.equal(byType.returned, 1);
+    assert.equal(byType.documents[0].slug, "datura");
+  });
+
+  test("list_search declares the type and netuid filters in its inputSchema (#7896)", () => {
+    const props = LIST_SEARCH_MCP_TOOL.inputSchema.properties as Row;
+    assert.ok(((props.type as Row).enum as string[]).includes("surface"));
+    assert.equal((props.netuid as Row).type, "integer");
+  });
+
   test("loadSearchList keeps token blobs the slim index omits", async () => {
     const out = await loadSearchList(
       { env: {}, readArtifact } as unknown as LoadCtx,
