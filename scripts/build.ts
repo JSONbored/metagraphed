@@ -141,6 +141,14 @@ function revertDeployOwnedArtifactsIfChanged(): void {
 function localSteps(): Step[] {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.ts", "--write"),
+    // Zod-owned OpenAPI components (types-epic B, #7860) -- an early,
+    // independently-failing checkpoint that schemas-src/openapi-registry.ts
+    // still emits cleanly. build-artifacts below is what actually merges
+    // these into public/metagraph/openapi.json (via
+    // scripts/openapi-components.ts::loadOpenApiComponentSchemas()), so this
+    // step's own stdout isn't consumed by anything -- it exists to fail
+    // build fast and separately from the merge if the Zod schemas break.
+    nodeStep("openapi-zod", "scripts/generate-openapi-zod-components.ts"),
     nodeStep("build-artifacts", "scripts/build-artifacts.ts", {
       METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
     }),
@@ -158,6 +166,9 @@ function localSteps(): Step[] {
 function productionSteps(): Step[] {
   return [
     nodeStep("bundle-schemas", "scripts/bundle-schemas.ts", "--write"),
+    // See localSteps' own comment -- early, independently-failing checkpoint;
+    // build-artifacts further down does the actual merge into openapi.json.
+    nodeStep("openapi-zod", "scripts/generate-openapi-zod-components.ts"),
     // Refresh the finney native chain snapshot fresh each publish (ADR 0006
     // step 2) so the registry stays current without the retired scheduled
     // sync-subnets PR. Tolerant: a chain RPC failure keeps the last snapshot and

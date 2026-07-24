@@ -49,7 +49,11 @@ export type PartnershipTier = z.infer<typeof PartnershipTierSchema>;
 
 export const PartnershipMetadataSchema = z
   .object({
-    since: z.string(),
+    // The hand-edited OpenAPI component declares format: "date" (plain
+    // calendar date, e.g. "2026-07-04") -- z.iso.date() is the Zod
+    // equivalent, verified against real registry/subnets/*.json partnership
+    // data before adding this constraint.
+    since: z.iso.date(),
     tier: PartnershipTierSchema,
     validator_hotkey: z.string().optional(),
   })

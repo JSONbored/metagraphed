@@ -2,8 +2,22 @@ import path from "node:path";
 import { QUERY_ENUMS } from "../src/contracts.ts";
 import { readJson, repoRoot } from "./lib.ts";
 
-const schemaBundle = await readJson(
-  path.join(repoRoot, "schemas/api-components.schema.json"),
+// Reads from the final PUBLISHED document (public/metagraph/openapi.json),
+// not schemas/api-components.schema.json -- the latter bundles only the
+// hand-edited schemas/components/*.schema.json files and deliberately
+// excludes Zod-generated components (see scripts/openapi-components.ts's
+// loadOpenApiComponentSchemas(), which merges Zod output OVER that bundle
+// one layer later). types-epic B (#7860) migrates components from
+// hand-edited to Zod-generated one batch at a time; reading the bundle
+// alone would report every migrated enum component as entirely missing
+// (caught in PR #8054 review: SurfaceKind/EndpointLayer/CurationLevel/
+// HealthStatus/Classification/Authority all went from real drift-checks to
+// false "missing_from_schema=[everything]" the moment they left the
+// hand-edited bundle). The published document is a strict superset of the
+// bundle for any given component, so this is a pure widening, not a
+// behavior change for still-hand-edited components.
+const openApiDocument = await readJson(
+  path.join(repoRoot, "public/metagraph/openapi.json"),
 );
 const candidateSchema = await readJson(
   path.join(repoRoot, "schemas/candidate-surface.schema.json"),
@@ -12,7 +26,7 @@ const subnetSchema = await readJson(
   path.join(repoRoot, "schemas/subnet-manifest.schema.json"),
 );
 
-const componentSchemas = schemaBundle.components.schemas;
+const componentSchemas = openApiDocument.components.schemas;
 const errors: string[] = [];
 
 compareComponent("SurfaceKind", QUERY_ENUMS.surfaceKind);

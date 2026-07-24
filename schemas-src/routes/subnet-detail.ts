@@ -97,7 +97,7 @@ const QualitySignalsSchema = z
   })
   .strict();
 
-const VerificationResultSchema = z
+export const VerificationResultSchema = z
   .object({
     archived: z.boolean().optional(),
     candidate_id: z.string(),
@@ -108,9 +108,16 @@ const VerificationResultSchema = z
     description: z.string().nullable().optional(),
     error: z.string().nullable().optional(),
     github_api_status: z.int().optional(),
-    github_api_url: z.string().optional(),
+    github_api_url: z.url().optional(),
     homepage: z.string().nullable().optional(),
-    html_url: z.string().optional(),
+    // format:"uri" throughout this block -- z.url() verified against every
+    // registry/subnets/*.json Surface.verification value that shares these
+    // exact field names (#7860's diff audit); CandidateSurface's own
+    // verification carries no committed sample data to cross-check
+    // (candidate_surfaces isn't present in this repo snapshot), but these
+    // are the same GitHub-API-shaped fields (html_url/url mirror GitHub's
+    // own REST API, always absolute URIs).
+    html_url: z.url().optional(),
     kind: SurfaceKindSchema.optional(),
     last_push_at: z.string().nullable().optional(),
     latency_ms: z.int().min(0).nullable().optional(),
@@ -120,15 +127,15 @@ const VerificationResultSchema = z
     private_redirect_blocked: z.boolean().optional(),
     provider: z.string().optional(),
     quality_signals: QualitySignalsSchema.optional(),
-    redirect_target: z.string().nullable().optional(),
+    redirect_target: z.url().nullable().optional(),
     source_tier: SourceTierSchema.optional(),
     source_type: z.string().optional(),
-    source_url: z.string().optional(),
-    source_urls: z.array(z.string()).optional(),
+    source_url: z.url().optional(),
+    source_urls: z.array(z.url()).optional(),
     status: HealthStatusSchema,
     status_code: z.int().nullable().optional(),
     topics: z.array(z.string()).optional(),
-    url: z.string(),
+    url: z.url(),
     verified_at: z.string(),
   })
   .strict();
@@ -154,7 +161,9 @@ const AuthSchema = z
       .optional(),
     location: z.enum(["header", "query", "cookie", "body"]).optional(),
     name: z.string().optional(),
-    names: z.array(z.string()).optional(),
+    // minItems:1 in the hand-edited contract -- verified against real
+    // registry/subnets/*.json auth.names values (#7860's diff audit).
+    names: z.array(z.string()).min(1).optional(),
     scheme: z.enum([
       "none",
       "bearer",
@@ -190,12 +199,12 @@ export const CandidateSurfaceSchema = z
     schema_version: z.literal(1),
     source_tier: SourceTierSchema.optional(),
     source_type: z.string().optional(),
-    source_url: z.string(),
-    source_urls: z.array(z.string()).optional(),
+    source_url: z.url(),
+    source_urls: z.array(z.url()).optional(),
     state: CandidateStateSchema,
     subnet_name: z.string().nullable().optional(),
     superseded_by: z.string().nullable().optional(),
-    url: z.string(),
+    url: z.url(),
     verification: z.union([VerificationResultSchema, z.null()]).optional(),
   })
   .strict();
@@ -229,7 +238,7 @@ export type EndpointPublicationState = z.infer<
   typeof EndpointPublicationStateSchema
 >;
 
-const EndpointMonitoringPolicySchema = z
+export const EndpointMonitoringPolicySchema = z
   .object({
     enabled: z.boolean(),
     expect: z.string().nullable(),
@@ -239,7 +248,7 @@ const EndpointMonitoringPolicySchema = z
   })
   .strict();
 
-const EndpointScoreReasonSchema = z
+export const EndpointScoreReasonSchema = z
   .object({
     points: z.int(),
     reason: z.string(),
@@ -288,13 +297,13 @@ export const EndpointResourceSchema = z
     rpc_method_count: z.int().min(0).nullable().optional(),
     score: z.int().min(0),
     score_reasons: z.array(EndpointScoreReasonSchema).optional(),
-    source_urls: z.array(z.string()).optional(),
+    source_urls: z.array(z.url()).optional(),
     status: HealthStatusSchema,
     subnet_name: z.string().optional(),
     subnet_slug: z.string().optional(),
     surface_id: z.string(),
     surface_key: z.string(),
-    url: z.string(),
+    url: z.url(),
   })
   .strict();
 export type EndpointResource = z.infer<typeof EndpointResourceSchema>;
@@ -308,7 +317,7 @@ export const GapsSchema = z
   .strict();
 export type Gaps = z.infer<typeof GapsSchema>;
 
-const ReviewStateSchema = z.enum([
+export const ReviewStateSchema = z.enum([
   "unreviewed",
   "machine-generated",
   "maintainer-reviewed",
@@ -316,7 +325,7 @@ const ReviewStateSchema = z.enum([
   "stale",
 ]);
 
-const CurationMetadataSchema = z
+export const CurationMetadataSchema = z
   .object({
     gap_notes: z.array(z.string()).optional(),
     level: CurationLevelSchema,
@@ -326,6 +335,7 @@ const CurationMetadataSchema = z
     verified_at: z.string().nullable().optional(),
   })
   .strict();
+export type CurationMetadata = z.infer<typeof CurationMetadataSchema>;
 
 export const SubnetDetailSchema = z
   .object({
@@ -336,22 +346,27 @@ export const SubnetDetailSchema = z
     coverage_level: CoverageLevelSchema,
     curation: CurationMetadataSchema,
     curation_level: CurationLevelSchema,
-    dashboard_url: z.string().nullable().optional(),
+    // format:"uri"/"date-time" in the hand-edited OpenAPI contract --
+    // z.url()/z.iso.datetime() match exactly (verified against every
+    // registry/subnets/*.json value before adding these constraints,
+    // #7860's diff audit; same fields as schemas-src/routes/subnets.ts's
+    // SubnetIndexEntrySchema).
+    dashboard_url: z.url().nullable().optional(),
     derived_categories: z.array(z.string()).optional(),
     description: z.string().nullable().optional(),
-    docs_url: z.string().nullable().optional(),
+    docs_url: z.url().nullable().optional(),
     gap_count: z.int().min(0).optional(),
     gaps: GapsSchema,
     github_languages: z
       .record(z.string(), z.int().min(0))
       .nullable()
       .optional(),
-    github_last_push_at: z.string().nullable().optional(),
+    github_last_push_at: z.iso.datetime().nullable().optional(),
     lifecycle: z.enum(["active", "deprecated", "parked", "pending"]).optional(),
     // Genuinely open shape in the source contract (additionalProperties:
     // true, no fixed properties) -- see this file's header.
     links: z.array(z.object({}).passthrough()),
-    logo_url: z.string().nullable().optional(),
+    logo_url: z.url().nullable().optional(),
     mechanism_count: z.int().min(0).optional(),
     name: z.string(),
     native_name: z.string().nullable().optional(),
@@ -377,18 +392,18 @@ export const SubnetDetailSchema = z
       .strict()
       .nullable()
       .optional(),
-    source_repo: z.string().nullable().optional(),
+    source_repo: z.url().nullable().optional(),
     status: SubnetStatusSchema,
     subnet_type: SubnetTypeSchema,
     surface_count: z.int().min(0),
     symbol: z.string().nullable().optional(),
     tempo: z.int().min(0).optional(),
-    website_url: z.string().nullable().optional(),
+    website_url: z.url().nullable().optional(),
   })
   .strict();
 export type SubnetDetail = z.infer<typeof SubnetDetailSchema>;
 
-const ProbeConfigSchema = z
+export const ProbeConfigSchema = z
   .object({
     enabled: z.boolean(),
     expect: z.enum(["json", "html", "sse", "any"]),
@@ -435,7 +450,7 @@ export const SurfaceSchema = z
       .enum(["machine-readable", "ui-only", "not-captured"])
       .optional(),
     schema_url: HttpOrWssUrlSchema.optional(),
-    source_urls: z.array(z.string()).optional(),
+    source_urls: z.array(z.url()).optional(),
     stale: z.boolean().optional(),
     status: HealthStatusSchema.optional(),
     subnet_name: z.string().optional(),
@@ -449,12 +464,12 @@ export const SurfaceSchema = z
         content_type: z.string().nullable().optional(),
         default_branch: z.string().nullable().optional(),
         error: z.string().nullable().optional(),
-        github_api_url: z.string().optional(),
+        github_api_url: z.url().optional(),
         homepage: z.string().nullable().optional(),
         last_push_at: z.string().nullable().optional(),
         latency_ms: z.int().min(0).nullable().optional(),
         method_tested: z.string().optional(),
-        redirect_target: z.string().nullable().optional(),
+        redirect_target: z.url().nullable().optional(),
         status_code: z.int().nullable().optional(),
         topics: z.array(z.string()).optional(),
         verified_at: z.string().optional(),

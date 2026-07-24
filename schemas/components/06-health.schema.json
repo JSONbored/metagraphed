@@ -176,67 +176,6 @@
         },
         "additionalProperties": false
       },
-      "HealthSubnetSummary": {
-        "type": "object",
-        "required": [
-          "status",
-          "surface_count",
-          "ok_count",
-          "failed_count",
-          "degraded_count",
-          "unknown_count"
-        ],
-        "properties": {
-          "netuid": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "slug": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/HealthStatus"
-          },
-          "surface_count": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "ok_count": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "failed_count": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "degraded_count": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "unknown_count": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "last_checked": {
-            "type": ["string", "null"]
-          },
-          "last_ok": {
-            "type": ["string", "null"]
-          },
-          "avg_latency_ms": {
-            "type": ["integer", "null"],
-            "minimum": 0
-          },
-          "latency_sample_count": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "additionalProperties": false
-      },
       "HealthLatestArtifact": {
         "allOf": [
           {
@@ -264,31 +203,6 @@
             "additionalProperties": true
           }
         ]
-      },
-      "HealthSummaryArtifact": {
-        "type": "object",
-        "description": "Live-computed global operational health (served from KV/D1; `unknown` when the live store is cold). No longer a static artifact.",
-        "required": ["schema_version", "global", "subnets"],
-        "properties": {
-          "schema_version": { "type": "integer" },
-          "contract_version": { "type": "string" },
-          "generated_at": { "type": ["string", "null"] },
-          "scope": { "type": "string" },
-          "source": { "type": "string" },
-          "health_source": { "type": "string" },
-          "operational_observed_at": { "type": ["string", "null"] },
-          "global": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "subnets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HealthSubnetSummary"
-            }
-          }
-        },
-        "additionalProperties": true
       },
       "HealthHistoryArtifact": {
         "allOf": [
@@ -1430,39 +1344,6 @@
           "net_flow_tao": { "type": "number" },
           "stake_events": { "type": "integer", "minimum": 0 },
           "unstake_events": { "type": "integer", "minimum": 0 }
-        },
-        "additionalProperties": false
-      },
-      "SubnetStakeQuoteArtifact": {
-        "type": "object",
-        "description": "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for an ?amount=/?direction=stake|unstake swap against the subnet's live economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math -- no chain write, no custody -- mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000x the relevant reserve is rejected). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote with null pool reserves.",
-        "required": [
-          "schema_version",
-          "netuid",
-          "direction",
-          "amount",
-          "expected_out",
-          "expected_out_unit",
-          "spot_price_tao",
-          "effective_price_tao",
-          "price_impact_pct",
-          "tao_in_pool_tao",
-          "alpha_in_pool",
-          "is_root"
-        ],
-        "properties": {
-          "schema_version": { "type": "integer" },
-          "netuid": { "type": "integer", "minimum": 0 },
-          "direction": { "type": "string", "enum": ["stake", "unstake"] },
-          "amount": { "type": "number", "exclusiveMinimum": 0 },
-          "expected_out": { "type": "number", "minimum": 0 },
-          "expected_out_unit": { "type": "string", "enum": ["alpha", "tao"] },
-          "spot_price_tao": { "type": "number", "minimum": 0 },
-          "effective_price_tao": { "type": "number", "minimum": 0 },
-          "price_impact_pct": { "type": "number", "minimum": 0 },
-          "tao_in_pool_tao": { "type": ["number", "null"] },
-          "alpha_in_pool": { "type": ["number", "null"] },
-          "is_root": { "type": "boolean" }
         },
         "additionalProperties": false
       },

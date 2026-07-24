@@ -12,8 +12,6 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { readJson, repoRoot } from "../scripts/lib.ts";
 
-const SCHEME_PATTERN = "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://";
-
 // candidate-surface.schema.json is self-contained (no $refs), so it validates
 // standalone with ajv — the same shape as tests/provider-url-http-pattern.test.mjs.
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
@@ -81,13 +79,31 @@ describe("candidate-surface url scheme pattern (#5582)", () => {
 });
 
 describe("Surface component url/schema_url carry the http/ws scheme pattern (#5582)", () => {
+  // Surface is a Zod-owned OpenAPI component since types-epic B (#7860) --
+  // schemas/components/04-surfaces.schema.json no longer defines it (see
+  // .claude/skills/metagraphed/reference.md's Zod-owned-components note), so
+  // the published contract (public/metagraph/openapi.json) is the
+  // authoritative place to read it now. Compares REGEX BEHAVIOR, not the
+  // exact `pattern` string: a JS RegExp literal's `.source` always
+  // backslash-escapes `/` (src/openapi-sample.ts's valueForPattern has the
+  // full explanation), so the emitted pattern is a differently-escaped but
+  // functionally identical string to the original hand-typed one -- this
+  // test's real guarantee is "the pattern still accepts http/ws, rejects
+  // other schemes", which a string-equality check doesn't actually need.
   test("Surface.url and Surface.schema_url declare the http/ws pattern", async () => {
-    const surfaces = await readJson(
-      path.join(repoRoot, "schemas/components/04-surfaces.schema.json"),
+    const openapi = await readJson(
+      path.join(repoRoot, "public/metagraph/openapi.json"),
     );
-    const surface = surfaces.components?.schemas?.Surface?.properties;
-    assert.ok(surface, "04-surfaces must define a Surface schema");
-    assert.equal(surface.url?.pattern, SCHEME_PATTERN);
-    assert.equal(surface.schema_url?.pattern, SCHEME_PATTERN);
+    const surface = openapi.components?.schemas?.Surface?.properties;
+    assert.ok(surface, "openapi.json must define a Surface component");
+    for (const field of ["url", "schema_url"] as const) {
+      const pattern = surface[field]?.pattern;
+      assert.ok(pattern, `Surface.${field} must declare a pattern`);
+      const re = new RegExp(pattern);
+      assert.equal(re.test("https://example.com"), true, field);
+      assert.equal(re.test("wss://example.com"), true, field);
+      assert.equal(re.test("ftp://example.com"), false, field);
+      assert.equal(re.test("javascript:alert(1)"), false, field);
+    }
   });
 });

@@ -1,10 +1,17 @@
 // Regression coverage for #5552: scripts/validate.ts hand-rolls a
 // `verificationClassifications` allow-list that must stay in lock-step with
-// schemas/components/01-enums.schema.json's `Classification` enum (the schema
-// that backs the required `classification` property of every surface's and
+// the published `Classification` component's enum (the schema that backs
+// the required `classification` property of every surface's and
 // candidate's `verification`). The hand-rolled set had drifted — it was
 // missing "unknown" — so a schema-legal `classification: "unknown"` would be
 // hard-rejected by `npm run validate` as an "invalid classification".
+//
+// Reads public/metagraph/openapi.json (the final published document), not
+// schemas/components/01-enums.schema.json directly: Classification became a
+// types-epic B (#7860) Zod-generated component, so the hand-edited file no
+// longer declares it at all (see .claude/skills/metagraphed/reference.md's
+// Zod-owned-components note) — the published document is the only place
+// this enum still exists as a real, checkable artifact.
 //
 // validate.ts is a top-level script (it runs and process.exit()s on import,
 // and in isolation fails on unrelated stale generated-artifact checks), so it
@@ -20,10 +27,7 @@ import { repoRoot } from "../scripts/lib.ts";
 
 function classificationEnumFromSchema() {
   const schema = JSON.parse(
-    readFileSync(
-      path.join(repoRoot, "schemas/components/01-enums.schema.json"),
-      "utf8",
-    ),
+    readFileSync(path.join(repoRoot, "public/metagraph/openapi.json"), "utf8"),
   );
   const enumValues = schema.components?.schemas?.Classification?.enum;
   assert.ok(

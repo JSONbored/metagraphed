@@ -300,6 +300,7 @@ import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
+import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
@@ -2346,6 +2347,7 @@ export async function handleRequest(
         env,
         Number(stakeQuoteMatch[1]),
         resolved.url,
+        ctx,
       );
     }
     const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(
@@ -4366,24 +4368,45 @@ async function handleApiRequest(
       responseData = { ...responseData, ...patch };
     }
   }
+  const envelopePayload = {
+    data: responseData,
+    meta: {
+      artifact_path: artifactPath,
+      cache: matched.cache as CacheProfile,
+      contract_version: contractVersion(env),
+      generated_at: effectivePublishedAt || baseData?.generated_at || null,
+      published_at: effectivePublishedAt,
+      source: baseSource,
+      ...(staleContract ? { stale_contract: staleContract } : {}),
+      ...(baseData?.operational_observed_at
+        ? { operational_observed_at: baseData.operational_observed_at }
+        : {}),
+      ...transformed.meta,
+    },
+  };
+  // Staging drift tripwire (types-epic B, #7860 requirement 6): OFF by
+  // default (METAGRAPH_VALIDATE_RESPONSES unset/"false") -- the flag check
+  // is the ONLY cost paid on every request; the schema import + parse only
+  // happen once it's flipped on, and via waitUntil so it never adds latency
+  // to the real response. See src/response-validation-tripwire.ts.
+  // `as string`: wrangler types this literally as `"false"` (its committed
+  // wrangler.jsonc default), not `string` -- true for every other
+  // METAGRAPH_*-flag var too, but they all default "true" so comparing
+  // against the SAME literal never trips the "no overlap" check this one
+  // does. A preview/staging environment override still sets the real
+  // runtime value to "true"; only the static type is too narrow.
+  if ((env.METAGRAPH_VALIDATE_RESPONSES as string) === "true") {
+    ctx?.waitUntil?.(
+      validateResponseTripwire(matched.id, {
+        ok: true,
+        schema_version: 1,
+        ...envelopePayload,
+      }),
+    );
+  }
   const response = await envelopeResponse(
     request,
-    {
-      data: responseData,
-      meta: {
-        artifact_path: artifactPath,
-        cache: matched.cache as CacheProfile,
-        contract_version: contractVersion(env),
-        generated_at: effectivePublishedAt || baseData?.generated_at || null,
-        published_at: effectivePublishedAt,
-        source: baseSource,
-        ...(staleContract ? { stale_contract: staleContract } : {}),
-        ...(baseData?.operational_observed_at
-          ? { operational_observed_at: baseData.operational_observed_at }
-          : {}),
-        ...transformed.meta,
-      },
-    },
+    envelopePayload,
     matched.cache as CacheProfile,
     linkValue ? { link: linkValue } : {},
   );

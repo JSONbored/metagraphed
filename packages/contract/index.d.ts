@@ -3851,12 +3851,9 @@ export interface components {
             status: "ok" | "warn" | "fail";
             warn_bytes: number;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         Authority: "official" | "provider-claimed" | "community" | "registry-observed";
-        /**
-         * @description Bittensor chain network this record belongs to. Values are the chain-accurate SDK network names; the public API + UI address them with the friendly aliases mainnet (finney), testnet (test), and local. 'finney' is the default for back-compatibility.
-         * @enum {unknown}
-         */
+        /** @enum {string} */
         BittensorNetwork: "finney" | "test" | "local";
         /** @description One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time. */
         Block: {
@@ -4013,43 +4010,24 @@ export interface components {
         /** @enum {unknown} */
         CandidateState: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
         CandidateSurface: {
-            /** @description Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness. */
             auth?: {
-                /** @description For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {"payload": {...}, "sig": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default). */
                 body_envelope?: {
-                    /** @description Top-level body key the credential bundle (every name/value pair from `names`) is nested under, e.g. "sig". */
                     credential_key: string;
-                    /** @description Top-level body key the caller-supplied semantic payload (the `body` argument, or {} when absent) is wrapped under, e.g. "payload". */
                     payload_key: string;
                 };
-                /**
-                 * @description Where the credential is sent. "body" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie).
-                 * @enum {unknown}
-                 */
+                /** @enum {string} */
                 location?: "header" | "query" | "cookie" | "body";
-                /** @description Header or query-parameter name, e.g. "Authorization" or "X-API-Key". Mutually exclusive with `names` -- single-value schemes (bearer/api-key/basic) use this; scheme:signature uses `names` instead. */
                 name?: string;
-                /** @description For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. ["X-Hotkey", "X-Timestamp", "X-Signature"]. Mutually exclusive with `name`. */
                 names?: string[];
-                /**
-                 * @description Credential scheme. "signature" is a multi-value bundle (e.g. a Bittensor hotkey-signed request: signature + timestamp + address headers) the caller computes and supplies as a whole -- see `names`, not `name`.
-                 * @enum {unknown}
-                 */
+                /** @enum {string} */
                 scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
-                /** @description Note on required scopes or how to obtain a credential. */
                 scopes_note?: string;
-                /**
-                 * Format: uri
-                 * @description OAuth2/OIDC token or authorize endpoint, when the spec declares one.
-                 */
                 token_url?: string;
-                /** @description Placeholder showing the value shape, e.g. "Bearer <token>". Never a real secret. */
                 value_format?: string;
             } | null;
             auth_required: boolean;
-            /** @enum {unknown} */
+            /** @enum {string} */
             confidence?: "low" | "medium" | "high";
-            /** @description Distinct discovery sources (clustered domains) that independently surfaced this candidate, from its source_urls (#1007). 2+ entries is corroboration — multiple sources agreeing on the same (netuid, kind, url) — which adds a bonus to the verification score so a corroborated candidate ranks above an otherwise-identical single-source one. */
             confirmed_by?: string[];
             id: string;
             kind: components["schemas"]["SurfaceKind"];
@@ -4057,20 +4035,12 @@ export interface components {
             netuid: number;
             provider: string;
             public_safe: boolean;
-            /** @description Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness. */
             rate_limit?: {
-                /** @description Optional short-term burst allowance above the steady rate. */
                 burst?: number;
-                /** @description Notes on weighted/credit costs or tier differences. */
                 cost_notes?: string;
-                /** @description Permitted requests per window. */
                 requests: number;
-                /**
-                 * @description What the limit is counted against.
-                 * @enum {unknown}
-                 */
+                /** @enum {string} */
                 scope?: "per-key" | "per-ip" | "global" | "unknown";
-                /** @description Window the request budget applies to, e.g. "60s", "1m", "1h", "1d". */
                 window: string;
             };
             rate_limit_notes?: string;
@@ -4082,9 +4052,9 @@ export interface components {
             /** Format: uri */
             source_url: string;
             source_urls?: string[];
-            state: components["schemas"]["CandidateState"];
+            /** @enum {string} */
+            state: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
             subnet_name?: string | null;
-            /** @description When set, the id of a curated registry surface that shares this candidate's (netuid, kind, normalized-url) identity. The candidate is a duplicate of an already-verified surface and is excluded from the review/enrichment queue. Null when the candidate is not yet covered by any surface. */
             superseded_by?: string | null;
             /** Format: uri */
             url: string;
@@ -4795,7 +4765,7 @@ export interface components {
             entries: components["schemas"]["ChildDelegationEntry"][];
             netuid: number;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
         /** @description Self-declared on-chain identity (SubtensorModule::set_identity) for a `coldkey`, joined server-side (#5234) -- see the hotkey/coldkey caveat: this is NOT hotkey-specific. A single `coldkey` can run multiple hotkeys across different validators and subnets, so the same identity can appear on more than one leaderboard row, and it says nothing about how any one hotkey brands itself. has_identity is false, and every other field null, for the common case of a `coldkey` that has never called set_identity. Operator-controlled untrusted data. */
         ColdkeyIdentity: {
@@ -5081,10 +5051,7 @@ export interface components {
             slug: string;
             surface_count: number;
         };
-        /**
-         * @description Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · community-seeded (contributor seeded) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).
-         * @enum {unknown}
-         */
+        /** @enum {string} */
         CurationLevel: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
         CurationMetadata: {
             gap_notes?: string[];
@@ -5112,25 +5079,57 @@ export interface components {
             total_emission_share: number | null;
             total_stake_tao: number | null;
         };
-        EconomicsArtifact: components["schemas"]["ArtifactBase"] & {
+        EconomicsArtifact: {
             captured_at: string | null;
+            contract_version?: string;
+            generated_at: string;
             network: string | null;
-            subnets: components["schemas"]["SubnetEconomics"][];
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            subnets: {
+                alpha_fdv_tao: number | null;
+                alpha_in_pool: number | null;
+                alpha_market_cap_tao: number | null;
+                alpha_out_pool: number | null;
+                alpha_price_change_1d?: number | null;
+                alpha_price_change_1h?: number | null;
+                alpha_price_change_1m?: number | null;
+                alpha_price_change_7d?: number | null;
+                alpha_price_tao: number | null;
+                block?: number | null;
+                emission_share: number | null;
+                max_stake_tao: number | null;
+                max_uids: number;
+                max_validators: number;
+                miner_count: number;
+                miner_readiness?: number | null;
+                name: string;
+                netuid: number;
+                open_slots?: number | null;
+                owner_coldkey: string | null;
+                owner_hotkey: string | null;
+                registration_allowed: boolean;
+                registration_cost_tao: number | null;
+                slug: string;
+                subnet_volume_tao: number | null;
+                tao_in_pool_tao: number | null;
+                total_stake_tao: number | null;
+                validator_count: number;
+            }[];
             summary: {
                 registration_open_count: number;
                 subnet_count: number;
-                /** @description Sum of every non-root subnet's alpha_market_cap_tao (alpha_price_tao times the total_stake_tao circulating-alpha proxy), lossless fixed 9-decimal rao-precision string (#6641). Excludes netuid 0 so root stake isn't double-counted as alpha value. */
                 total_alpha_value_tao: string;
                 total_miners: number;
-                /** @description total_root_value_tao plus total_alpha_value_tao, summed in exact rao-integer space (#6641) -- Backprop's "Total Network Value" (TNV): the network's single top-line economic figure. */
                 total_network_value_tao: string;
-                /** @description Root (netuid 0) TAO-denominated stake, lossless fixed 9-decimal rao-precision string (#6641). Root has no AMM/alpha token, so this is total_stake_tao read directly, not price-multiplied. */
                 total_root_value_tao: string;
-                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding. */
                 total_stake_tao: string;
                 total_validators: number;
                 with_economics_count: number;
             };
+        } & {
+            [key: string]: unknown;
         };
         /** @description Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup — the same source the per-subnet /api/v1/subnets/{netuid}/trajectory reads. Each day rolls up total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share. Served live at /api/v1/economics/trends over a 7d|30d|90d|1y|all window (no static file); day_count is 0 and days is empty when the rollup is cold. */
         EconomicsTrendsArtifact: {
@@ -5200,7 +5199,7 @@ export interface components {
             by_status?: components["schemas"]["CountMap"];
             incident_count: number;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         EndpointLayer: "bittensor-base" | "subnet-app" | "data-provider" | "docs-provider";
         EndpointMonitoringPolicy: {
             enabled: boolean;
@@ -5231,7 +5230,7 @@ export interface components {
             chain?: "bittensor";
             classification?: components["schemas"]["Classification"];
             error?: string | null;
-            /** @enum {unknown} */
+            /** @enum {string} */
             health_source: "probe-derived" | "missing-probe" | "not-monitored" | "live-cron-prober" | "unavailable";
             health_stale: boolean;
             id: string;
@@ -5246,17 +5245,19 @@ export interface components {
             } | string[] | null;
             method_tested?: string | null;
             monitoring_policy: components["schemas"]["EndpointMonitoringPolicy"];
-            /** @enum {unknown} */
+            /** @enum {string} */
             monitoring_status: "monitored" | "not_monitored";
             netuid: number;
-            network?: components["schemas"]["BittensorNetwork"];
+            /** @enum {string} */
+            network?: "finney" | "test" | "local";
             observed_at: string | null;
             operator: string;
             pool_eligibility_reasons?: string[];
             pool_eligible: boolean;
             provider: string;
             public_safe: boolean;
-            publication_state: components["schemas"]["EndpointPublicationState"];
+            /** @enum {string} */
+            publication_state: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
             rate_limit_notes?: string | null;
             rpc_method_count?: number | null;
             score: number;
@@ -5266,7 +5267,6 @@ export interface components {
             subnet_name?: string;
             subnet_slug?: string;
             surface_id: string;
-            /** @description Stable surface identity (#1005): hash of netuid|kind|url. Endpoint ids derive from this value so display slug renames do not break endpoint links. */
             surface_key: string;
             /** Format: uri */
             url: string;
@@ -5704,10 +5704,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /**
-         * @description Live probe verdict for a surface: ok (responding) · degraded (responding but slow/partial) · failed (down) · unknown (not yet probed / no data).
-         * @enum {unknown}
-         */
+        /** @enum {string} */
         HealthStatus: "ok" | "degraded" | "failed" | "unknown";
         /** @description Live-computed per-subnet operational health (served from KV/D1; `unknown` when the live store is cold). Identity fields (slug/name/generated_at) are optional because health is no longer sourced from a static artifact. */
         HealthSubnetArtifact: {
@@ -5739,7 +5736,6 @@ export interface components {
             surface_count: number;
             unknown_count: number;
         };
-        /** @description Live-computed global operational health (served from KV/D1; `unknown` when the live store is cold). No longer a static artifact. */
         HealthSummaryArtifact: {
             contract_version?: string;
             generated_at?: string | null;
@@ -6032,11 +6028,11 @@ export interface components {
             entries: components["schemas"]["ParentDelegationEntry"][];
             netuid: number;
         };
-        /** @description Display/placement metadata — e.g. a featured-pilot homepage slot. Distinct from `curation` and `authority`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md). */
         PartnershipMetadata: {
             /** Format: date */
             since: string;
-            tier: components["schemas"]["PartnershipTier"];
+            /** @enum {string} */
+            tier: "pilot";
             validator_hotkey?: string;
         };
         /**
@@ -6063,9 +6059,9 @@ export interface components {
         };
         ProbeConfig: {
             enabled: boolean;
-            /** @enum {unknown} */
+            /** @enum {string} */
             expect: "json" | "html" | "sse" | "any";
-            /** @enum {unknown} */
+            /** @enum {string} */
             method: "GET" | "HEAD" | "JSON-RPC" | "WSS-RPC";
             timeout_ms?: number;
         };
@@ -6614,7 +6610,7 @@ export interface components {
             supported_interface_kinds: components["schemas"]["SurfaceKind"][];
         };
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
-        /** @enum {unknown} */
+        /** @enum {string} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
         /** @description One netuid's root-claim accounting for a (hotkey, account) pair (#7229). claimable_rate is RootClaimable's I96F32 rate; claimed is RootClaimed's u128 watermark (string); threshold is RootClaimableThreshold. */
         RootClaimEntry: {
@@ -6989,7 +6985,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @enum {unknown} */
+        /** @enum {string} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
         /** @description Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1), summed live from the same account_events stream as SubnetStakeFlowArtifact: alpha and TAO bought (StakeAdded) vs sold (StakeRemoved), unsigned totals (never netted), and event counts. Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals — net_volume_alpha (buy minus sell), sentiment_ratio (net/gross, bounded [-1,1], null with zero volume), and a bullish/bearish/neutral label — plus a vol/mcap turnover ratio (#4339/8.3): total_volume_tao over the live economics tier's alpha_market_cap_tao, null when that external input is unavailable. Fixed 24h window, not OHLC/price data. */
         SubnetAlphaVolumeArtifact: {
@@ -7253,58 +7249,108 @@ export interface components {
             /** Format: uri */
             website_url?: string | null;
         };
-        SubnetDetailArtifact: components["schemas"]["ArtifactBase"] & ({
+        SubnetDetailArtifact: {
             candidate_surfaces: components["schemas"]["CandidateSurface"][];
             candidates?: components["schemas"]["CandidateSurface"][];
-            economics?: components["schemas"]["SubnetEconomics"];
+            contract_version?: string;
+            economics?: {
+                alpha_fdv_tao: number | null;
+                alpha_in_pool: number | null;
+                alpha_market_cap_tao: number | null;
+                alpha_out_pool: number | null;
+                alpha_price_change_1d?: number | null;
+                alpha_price_change_1h?: number | null;
+                alpha_price_change_1m?: number | null;
+                alpha_price_change_7d?: number | null;
+                alpha_price_tao: number | null;
+                block?: number | null;
+                emission_share: number | null;
+                max_stake_tao: number | null;
+                max_uids: number;
+                max_validators: number;
+                miner_count: number;
+                miner_readiness?: number | null;
+                name: string;
+                netuid: number;
+                open_slots?: number | null;
+                owner_coldkey: string | null;
+                owner_hotkey: string | null;
+                registration_allowed: boolean;
+                registration_cost_tao: number | null;
+                slug: string;
+                subnet_volume_tao: number | null;
+                tao_in_pool_tao: number | null;
+                total_stake_tao: number | null;
+                validator_count: number;
+            };
             endpoints?: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
-            subnet: components["schemas"]["SubnetDetail"];
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            subnet: {
+                block?: number;
+                candidate_count?: number;
+                categories?: string[];
+                contact?: string | null;
+                /** @enum {string} */
+                coverage_level: "native-only" | "manifested" | "probed";
+                curation: components["schemas"]["CurationMetadata"];
+                curation_level: components["schemas"]["CurationLevel"];
+                dashboard_url?: string | null;
+                derived_categories?: string[];
+                description?: string | null;
+                docs_url?: string | null;
+                gap_count?: number;
+                gaps: components["schemas"]["Gaps"];
+                github_languages?: {
+                    [key: string]: number;
+                } | null;
+                github_last_push_at?: string | null;
+                /** @enum {string} */
+                lifecycle?: "active" | "deprecated" | "parked" | "pending";
+                links: {
+                    [key: string]: unknown;
+                }[];
+                logo_url?: string | null;
+                mechanism_count?: number;
+                name: string;
+                native_name?: string | null;
+                /** @enum {string} */
+                native_name_quality?: "chain" | "placeholder" | "empty";
+                native_slug?: string | null;
+                netuid: number;
+                notes?: string | null;
+                participant_count?: number;
+                partnership?: components["schemas"]["PartnershipMetadata"] | null;
+                previously_known_as?: string[];
+                probed_surface_count?: number;
+                provenance: {
+                    [key: string]: unknown;
+                };
+                registered_at_block?: number;
+                slug: string;
+                social?: {
+                    reddit?: string;
+                    telegram?: string;
+                    x?: string;
+                    youtube?: string;
+                } | null;
+                source_repo?: string | null;
+                /** @enum {string} */
+                status: "active" | "inactive" | "unknown";
+                /** @enum {string} */
+                subnet_type: "root" | "application";
+                surface_count: number;
+                symbol?: string | null;
+                tempo?: number;
+                website_url?: string | null;
+            };
             surfaces: components["schemas"]["Surface"][];
             verified_surfaces?: components["schemas"]["Surface"][];
         } & {
             [key: string]: unknown;
-        });
-        /** @description Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses. */
-        SubnetEconomics: {
-            /** @description Fully-diluted valuation proxy: alpha_price_tao multiplied by the fixed per-subnet alpha max supply (21,000,000). Null when alpha price is missing or non-finite. */
-            alpha_fdv_tao: number | null;
-            alpha_in_pool: number | null;
-            /** @description Derived market-cap proxy: alpha_price_tao multiplied by total_stake_tao, where total_stake_tao is the circulating-alpha proxy. Null when either input is missing. */
-            alpha_market_cap_tao: number | null;
-            alpha_out_pool: number | null;
-            /** @description Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots. Null when history is insufficient (#7227). */
-            alpha_price_change_1d?: number | null;
-            /** @description Signed %-change in alpha_price_tao over ~1 hour. Always null while listings derive from daily subnet_snapshots (intraday OHLC is a separate source); kept for a stable schema shape (#7227). */
-            alpha_price_change_1h?: number | null;
-            /** @description Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (same window as trajectory's 30d delta). Null when history is insufficient (#7227). */
-            alpha_price_change_1m?: number | null;
-            /** @description Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots. Null when history is insufficient (#7227). */
-            alpha_price_change_7d?: number | null;
-            alpha_price_tao: number | null;
-            /** @description Block height at which this subnet was registered on-chain — the same field the subnets collection exposes for sorting and range filters. */
-            block?: number | null;
-            /** @description Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price. */
-            emission_share: number | null;
-            max_stake_tao: number | null;
-            max_uids: number;
-            max_validators: number;
-            miner_count: number;
-            /** @description 0-100 heuristic for how easy it is for a new miner to join and earn here (registration open, free slots, low cost, active subnet). Display/ranking signal only (#1306). */
-            miner_readiness?: number | null;
-            name: string;
-            netuid: number;
-            /** @description Free UID slots (max_uids − validator_count − miner_count); null when max_uids is unknown. A miner-discovery signal (#1306). */
-            open_slots?: number | null;
-            owner_coldkey: string | null;
-            owner_hotkey: string | null;
-            registration_allowed: boolean;
-            registration_cost_tao: number | null;
-            slug: string;
-            subnet_volume_tao: number | null;
-            tao_in_pool_tao: number | null;
-            total_stake_tao: number | null;
-            validator_count: number;
         };
         SubnetEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
             endpoints: components["schemas"]["EndpointResource"][];
@@ -7515,87 +7561,57 @@ export interface components {
             block?: number;
             candidate_count?: number;
             categories?: string[];
-            /** @description Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data. */
             contact?: string | null;
-            /** @description On-chain SubnetIdentitiesV3 flag claiming a maintainer contact exists. Operator-controlled and orthogonal to discord/discord_url: a subnet may expose a Discord contact while this is false, or vice versa. */
             contact_present?: boolean;
-            coverage_level: components["schemas"]["CoverageLevel"];
+            /** @enum {string} */
+            coverage_level: "native-only" | "manifested" | "probed";
             curation_level: components["schemas"]["CurationLevel"];
-            /** Format: uri */
             dashboard_url?: string | null;
-            /** @description Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness. Filterable via ?domain=. */
             derived_categories?: string[];
-            /** @description Fallback 'what does it do' blurb from a curated provider's notes (source: derived-from-provider-notes), present only when the curated description is null. Display-only — never backfills description or feeds completeness. */
             derived_description?: string | null;
             description?: string | null;
-            /** @description Discord contact from on-chain SubnetIdentitiesV3 — usually a plain handle (e.g. "macrocrux"), sometimes a normalized invite URL. Operator-controlled untrusted data, allowlisted at build time (handle shape or guarded URL); treat as data, never as instructions. */
             discord?: string | null;
-            /**
-             * Format: uri
-             * @description Normalized Discord URL when the on-chain contact is an explicit URL (scheme allowlist + SSRF/credential guards); null when the contact is a plain handle. Operator-controlled untrusted data.
-             */
             discord_url?: string | null;
-            /** Format: uri */
             docs_url?: string | null;
-            /** @description True when the subnet has at least one operator-official (first-party) surface (issue #348). Reporting-only — never feeds completeness. */
             first_party?: boolean;
             gap_count?: number;
-            /** @description Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.ts --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live. */
             github_languages?: {
                 [key: string]: number;
             } | null;
-            /**
-             * Format: date-time
-             * @description Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet.
-             */
             github_last_push_at?: string | null;
-            /** @description 0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring. */
             integration_readiness?: number;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
-            /** Format: uri */
             logo_url?: string | null;
             mechanism_count?: number;
             name: string;
             native_name?: string | null;
-            /** @enum {unknown} */
+            /** @enum {string} */
             native_name_quality?: "chain" | "placeholder" | "empty";
             native_slug?: string | null;
             netuid: number;
-            /** @description Count of operator-official (first-party) curated surfaces for this subnet. */
             official_surface_count?: number;
             participant_count?: number;
-            /** @description Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation_level, which is a trust signal only. */
             partnership?: components["schemas"]["PartnershipMetadata"] | null;
             probed_surface_count?: number;
             registered_at_block?: number;
-            /** @description Count of low-trust registry-observed (harvested) surfaces for this subnet. */
             registry_observed_count?: number;
             slug: string;
-            /** @description Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification. */
             social?: {
-                /** Format: uri */
                 reddit?: string;
-                /** Format: uri */
                 telegram?: string;
-                /** Format: uri */
                 x?: string;
-                /** Format: uri */
                 youtube?: string;
             } | null;
-            /** Format: uri */
             source_repo?: string | null;
-            status: components["schemas"]["SubnetStatus"];
-            subnet_type: components["schemas"]["SubnetType"];
+            /** @enum {string} */
+            status: "active" | "inactive" | "unknown";
+            /** @enum {string} */
+            subnet_type: "root" | "application";
             surface_count: number;
             symbol?: string | null;
             tempo?: number;
-            /**
-             * Format: date-time
-             * @description When the authoritative native chain snapshot backing this row was captured (the snapshot's captured_at). A display-only freshness floor for the list's 'last updated' column; the live per-surface probe time is overlaid on the detail/health routes, not here. Never feeds completeness/readiness/gaps (the #343 flywheel-preservation gate).
-             */
             updated_at?: string | null;
-            /** Format: uri */
             website_url?: string | null;
         };
         /** @description The terms of one active subnet lease (#6719/#6718, pallets/subtensor/src/subnets/leasing.rs). beneficiary/coldkey/hotkey are SS58-encoded. emissions_share_percent is 0..100. end_block is null for a perpetual lease. accumulated_dividends_alpha is null only when its own sub-read failed independently of the rest of the lease decoding. */
@@ -8031,9 +8047,13 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | null;
         };
-        SubnetsArtifact: components["schemas"]["ArtifactBase"] & ({
+        SubnetsArtifact: {
+            contract_version?: string;
+            generated_at: string;
             network: components["schemas"]["BittensorNetwork"];
-            /** @description Provenance of the native chain snapshot this index was built from. */
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
             source: {
                 identity_storage?: string;
                 kind?: string;
@@ -8047,7 +8067,7 @@ export interface components {
             subnets: components["schemas"]["SubnetIndexEntry"][];
         } & {
             [key: string]: unknown;
-        });
+        };
         /** @description Per-subnet axon-serving announcement activity over a 7d/30d window: the distinct servers (hotkeys), AxonServed event count, and announcements per server for ONE subnet. The per-subnet drill-in of /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid), served live from the account_events AxonServed stream at /api/v1/subnets/{netuid}/serving (no static file); zeroed when the subnet has no AxonServed events in the window. */
         SubnetServingArtifact: {
             announcements: number;
@@ -8084,7 +8104,6 @@ export interface components {
             /** @enum {string|null} */
             window: "7d" | "30d" | null;
         };
-        /** @description Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for an ?amount=/?direction=stake|unstake swap against the subnet's live economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math -- no chain write, no custody -- mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000x the relevant reserve is rejected). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote with null pool reserves. */
         SubnetStakeQuoteArtifact: {
             alpha_in_pool: number | null;
             amount: number;
@@ -8312,49 +8331,28 @@ export interface components {
             [key: string]: unknown;
         };
         Surface: {
-            /** @description Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness. */
             auth?: {
-                /** @description For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {"payload": {...}, "sig": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default). */
                 body_envelope?: {
-                    /** @description Top-level body key the credential bundle (every name/value pair from `names`) is nested under, e.g. "sig". */
                     credential_key: string;
-                    /** @description Top-level body key the caller-supplied semantic payload (the `body` argument, or {} when absent) is wrapped under, e.g. "payload". */
                     payload_key: string;
                 };
-                /**
-                 * @description Where the credential is sent. "body" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie).
-                 * @enum {unknown}
-                 */
+                /** @enum {string} */
                 location?: "header" | "query" | "cookie" | "body";
-                /** @description Header or query-parameter name, e.g. "Authorization" or "X-API-Key". Mutually exclusive with `names` -- single-value schemes (bearer/api-key/basic) use this; scheme:signature uses `names` instead. */
                 name?: string;
-                /** @description For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. ["X-Hotkey", "X-Timestamp", "X-Signature"]. Mutually exclusive with `name`. */
                 names?: string[];
-                /**
-                 * @description Credential scheme. "signature" is a multi-value bundle (e.g. a Bittensor hotkey-signed request: signature + timestamp + address headers) the caller computes and supplies as a whole -- see `names`, not `name`.
-                 * @enum {unknown}
-                 */
+                /** @enum {string} */
                 scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
-                /** @description Note on required scopes or how to obtain a credential. */
                 scopes_note?: string;
-                /**
-                 * Format: uri
-                 * @description OAuth2/OIDC token or authorize endpoint, when the spec declares one.
-                 */
                 token_url?: string;
-                /** @description Placeholder showing the value shape, e.g. "Bearer <token>". Never a real secret. */
                 value_format?: string;
             } | null;
             auth_required: boolean;
             authority: components["schemas"]["Authority"];
             classification?: components["schemas"]["Classification"];
-            /** @description Resolved trust tier for this surface (#1757), derived once at the source from the provider `authority` and verification freshness so consumers no longer conflate the Authority and CurationLevel enums. A stale verification demotes the tier; an official, freshly-verified surface inherits the subnet's maintainer-reviewed / adapter-backed ceiling. */
             curation_level?: components["schemas"]["CurationLevel"];
             id: string;
-            /** @description Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it. */
             key?: string;
             kind: components["schemas"]["SurfaceKind"];
-            /** @description Per-field provenance (#1006): the as-of timestamp this surface was last verified — a per-surface verification when present, otherwise the subnet curation's verified_at. null when unverified. Agents reason about how fresh the value is and cache-bust on it. */
             last_verified_at?: string | null;
             name?: string;
             netuid: number;
@@ -8373,50 +8371,32 @@ export interface components {
                 source_tier?: components["schemas"]["SourceTier"];
                 transient_failure?: boolean;
             };
-            /** @description Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness. */
             rate_limit?: {
-                /** @description Optional short-term burst allowance above the steady rate. */
                 burst?: number;
-                /** @description Notes on weighted/credit costs or tier differences. */
                 cost_notes?: string;
-                /** @description Permitted requests per window. */
                 requests: number;
-                /**
-                 * @description What the limit is counted against.
-                 * @enum {unknown}
-                 */
+                /** @enum {string} */
                 scope?: "per-key" | "per-ip" | "global" | "unknown";
-                /** @description Window the request budget applies to, e.g. "60s", "1m", "1h", "1d". */
                 window: string;
             };
             rate_limit_notes?: string;
-            /** @description Per-surface HUMAN review/governance state (single-file contribution model): a surface enters as "community-submitted"; a maintainer promotes it to "maintainer-reviewed" or marks it "rejected". This is the human-governance axis ONLY — machine verification + freshness (is the surface live or stale) is the separate probe-derived overlay (health, last_verified_at, incidents), and subnet-level curation has its own curation.review_state. */
             review?: {
-                /** @enum {unknown} */
+                /** @enum {string} */
                 confidence?: "low" | "medium" | "high";
                 review_notes?: string;
-                /** @enum {unknown} */
+                /** @enum {string} */
                 state: "community-submitted" | "maintainer-reviewed" | "rejected";
                 submitted_at?: string;
                 submitted_by?: string;
             };
-            /** @enum {unknown} */
+            /** @enum {string} */
             schema_status?: "machine-readable" | "ui-only" | "not-captured";
-            /**
-             * Format: uri
-             * @example https://example.com/openapi.json
-             */
             schema_url?: string;
             source_urls?: string[];
-            /** @description Freshness TTL (#1006): true when last_verified_at is older than the per-kind window (callable surfaces ~30d, identity surfaces ~90-120d), measured against the dataset's native-snapshot captured_at. false when fresh or unverified. */
             stale?: boolean;
             status?: components["schemas"]["HealthStatus"];
             subnet_name?: string;
             subnet_slug?: string;
-            /**
-             * Format: uri
-             * @example https://example.com
-             */
             url: string;
             verification?: {
                 archived?: boolean;
@@ -8431,7 +8411,6 @@ export interface components {
                 last_push_at?: string | null;
                 latency_ms?: number | null;
                 method_tested?: string;
-                /** Format: uri */
                 redirect_target?: string | null;
                 status_code?: number | null;
                 topics?: string[];
@@ -8477,7 +8456,7 @@ export interface components {
                 status: number | null;
             };
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
         SurfacesArtifact: components["schemas"]["ArtifactBase"] & ({
             surfaces: components["schemas"]["Surface"][];
@@ -8690,7 +8669,6 @@ export interface components {
                 source_tier?: components["schemas"]["SourceTier"];
                 transient_failure?: boolean;
             };
-            /** Format: uri */
             redirect_target?: string | null;
             source_tier?: components["schemas"]["SourceTier"];
             source_type?: string;
@@ -20137,7 +20115,9 @@ export interface operations {
                      *       "data": {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
-                     *         "global": {},
+                     *         "global": {
+                     *           "example": null
+                     *         },
                      *         "health_source": "probe-derived",
                      *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
