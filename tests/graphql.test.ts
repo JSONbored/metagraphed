@@ -4579,6 +4579,47 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
       { uid: 4, from_hotkey: "5Ha", to_hotkey: "5Hb" },
     ]);
   });
+
+  test("a changes block with no lists resolves to zeroed, empty lists (#7883)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        // A block carrying neither counts nor lists must still satisfy the
+        // non-nullable list fields rather than resolving them to null.
+        fetch: async () => Response.json({ netuid: 5, changes: {} }),
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5, changes: true) { ${CHANGES_SELECTION} } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_turnover.changes, {
+      validators_entered_count: 0,
+      validators_exited_count: 0,
+      uid_reassignment_count: 0,
+      validators_entered: [],
+      validators_exited: [],
+      uid_reassignments: [],
+    });
+  });
+
+  test("a non-object changes value resolves to null, not a malformed block (#7883)", async () => {
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => Response.json({ netuid: 5, changes: "unexpected" }),
+      },
+    };
+    const { status, body } = await gql(
+      `{ subnet_turnover(netuid: 5, changes: true) { changes { uid_reassignment_count } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_turnover.changes, null);
+  });
 });
 
 // #6978: GraphQL parity for the conviction/ownership-contest (#4302) and
