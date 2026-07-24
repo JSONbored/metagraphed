@@ -16212,6 +16212,76 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.endpoints[0].netuid, 2);
   });
 
+  test("list_endpoints sorts by a sort_fields entry with order applied", async () => {
+    const deps = endpointsDeps();
+    const desc = (
+      await callTool(
+        "list_endpoints",
+        { sort: "netuid", order: "desc" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      desc.endpoints.map((e: Row) => e.netuid),
+      [12, 7, 7],
+    );
+    assert.equal(desc.sort, "netuid");
+    assert.equal(desc.order, "desc");
+
+    const asc = (await callTool("list_endpoints", { sort: "netuid" }, { deps }))
+      .body.result.structuredContent;
+    assert.deepEqual(
+      asc.endpoints.map((e: Row) => e.netuid),
+      [7, 7, 12],
+    );
+    assert.equal(asc.order, "asc");
+  });
+
+  test("list_endpoints projects a fields subset", async () => {
+    const deps = endpointsDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { fields: "netuid,provider" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total, 3);
+    for (const row of out.endpoints) {
+      assert.deepEqual(Object.keys(row).sort(), ["netuid", "provider"]);
+    }
+  });
+
+  test("list_endpoints rejects an unsupported sort field", async () => {
+    const deps = endpointsDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { sort: "not-a-field" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("list_endpoints rejects an unsupported order value", async () => {
+    const deps = endpointsDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { order: "sideways" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("list_endpoints rejects an unknown fields projection field", async () => {
+    const deps = endpointsDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { fields: "not_a_real_field" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
   test("list_evidence returns filtered claim rows", async () => {
     const deps = makeDeps({
       "/metagraph/evidence-ledger.json": {

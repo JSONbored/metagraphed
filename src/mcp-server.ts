@@ -72,7 +72,12 @@ import {
   listSubscribableMcpResourceClasses,
   parseSubnetStatusResourceUri,
 } from "./subnet-status-subscribe.ts";
-import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.ts";
+import {
+  API_QUERY_COLLECTIONS,
+  CONTRACT_VERSION,
+  PRIMARY_DOMAIN,
+  QUERY_ENUMS,
+} from "./contracts.ts";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
   GET_ECONOMICS_MCP_TOOL,
@@ -2390,6 +2395,23 @@ function coverageDepthMatches(
   }
   return true;
 }
+
+// Fields list_endpoints can sort by -- the network-wide mirror of
+// GET /api/v1/endpoints's sort_fields (contracts.ts), read from the same
+// config so the inputSchema enum and applyQueryFilters can't drift.
+const ENDPOINT_SORT_FIELDS = API_QUERY_COLLECTIONS.endpoints.sort_fields;
+// Filter names applyQueryFilters accepts for the "endpoints" collection --
+// list_endpoints's own kind/layer/netuid/provider/publication_state/status/
+// pool_eligible args, matching GET /api/v1/endpoints's full filter set.
+const ENDPOINTS_QUERY_FILTER_NAMES = [
+  "kind",
+  "layer",
+  "netuid",
+  "pool_eligible",
+  "provider",
+  "publication_state",
+  "status",
+];
 
 // ---------------------------------------------------------------------------
 // Tool registry. Each tool is a thin wrapper over artifact/KV reads.
@@ -9690,8 +9712,9 @@ export const MCP_TOOLS = [
       "probe-derived status/latency/score. Use it to discover live endpoints " +
       "network-wide. Optionally filter by kind/layer/netuid/provider/" +
       "publication_state/status/pool_eligible, bound by min_/max_latency_ms " +
-      "and min_/max_score, and page with limit/cursor — the full catalog can " +
-      "be large. Mirrors GET /api/v1/endpoints.",
+      "and min_/max_score, sort with sort + order, project a subset of fields " +
+      "with fields, and page with limit/cursor — the full catalog can be " +
+      "large. Mirrors GET /api/v1/endpoints.",
     inputSchema: {
       type: "object",
       properties: {
@@ -9741,6 +9764,21 @@ export const MCP_TOOLS = [
           type: "number",
           description: "Only endpoints with probe-derived score <= this.",
         },
+        sort: {
+          type: "string",
+          enum: ENDPOINT_SORT_FIELDS,
+          description: "Field to sort by before paging.",
+        },
+        order: {
+          type: "string",
+          enum: ["asc", "desc"],
+          description: "Sort direction for sort (default asc).",
+        },
+        fields: {
+          type: "string",
+          description:
+            "Comma-separated projection of endpoint row fields to return.",
+        },
         limit: {
           type: "integer",
           description: "Max endpoints to return. Omit for the full list.",
@@ -9769,24 +9807,26 @@ export const MCP_TOOLS = [
       const poolEligible = optionalNullableBoolean(args, "pool_eligible");
       // Inclusive numeric range bounds, the MCP mirror of REST's
       // rangeFilters: ["latency_ms", "score"] on the endpoints collection
-      // (contracts.mjs) — same shape as LIST_SUBNETS_RANGE_BOUNDS.
-      const rangeBounds = [
-        { arg: "min_latency_ms", field: "latency_ms", op: "min" },
-        { arg: "max_latency_ms", field: "latency_ms", op: "max" },
-        { arg: "min_score", field: "score", op: "min" },
-        { arg: "max_score", field: "score", op: "max" },
-      ]
-        .filter(({ arg }) => Number.isFinite(args?.[arg]))
-        .map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
+      // (contracts.ts) — passed through verbatim as min_/max_ query params
+      // below, applyQueryFilters applies the bound.
+      const rangeArgs = [
+        "min_latency_ms",
+        "max_latency_ms",
+        "min_score",
+        "max_score",
+      ].filter((arg) => Number.isFinite(args?.[arg]));
+      const sort = optionalEnum(args, "sort", ENDPOINT_SORT_FIELDS);
+      const order = optionalEnum(args, "order", ["asc", "desc"]);
+      const fields = optionalString(args, "fields");
       const limit = optionalPositiveInt(args, "limit");
       const cursor = optionalNonNegativeInt(args, "cursor") ?? 0;
       let data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
       // Live per-endpoint health overlay (mirrors workers/api.mjs's raw-
       // artifact serving path): the build-time endpoints.json bakes stale
       // operational health, so replace it from the 15-minute cron snapshot
-      // before filtering/pagination -- status/pool_eligible filters below
-      // (and the latency_ms/score bounds, which come from this same overlay)
-      // must see live values, not the baked ones.
+      // before filtering/sorting -- status/pool_eligible filters below (and
+      // the latency_ms/score bounds, which come from this same overlay) must
+      // see live values, not the baked ones.
       if (
         Array.isArray(data?.endpoints) &&
         data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
@@ -9797,37 +9837,56 @@ export const MCP_TOOLS = [
         );
         if (overlaid) data = overlaid;
       }
-      const all = Array.isArray(data.endpoints) ? data.endpoints : [];
-      const filtered = all.filter(
-        (e: Row) =>
-          (kind === null || e.kind === kind) &&
-          (layer === null || e.layer === layer) &&
-          (netuid === null || e.netuid === netuid) &&
-          (provider === null || e.provider === provider) &&
-          (publicationState === null ||
-            e.publication_state === publicationState) &&
-          (status === null || e.status === status) &&
-          (poolEligible === null || e.pool_eligible === poolEligible) &&
-          rangeBounds.every(({ field, op, limit: bound }) => {
-            const value = e[field];
-            if (typeof value !== "number") return false;
-            return op === "min" ? value >= bound : value <= bound;
-          }),
+      // Schema-stability guard: an artifact with no endpoints array (or a
+      // corrupted one) must still report an empty list, not fall through
+      // applyQueryFilters' own "unknown collection" passthrough (which would
+      // omit total/returned/cursor entirely).
+      if (!Array.isArray(data?.endpoints)) {
+        data = { ...data, endpoints: [] };
+      }
+      // Delegate filter/sort/projection/pagination to the shared
+      // applyQueryFilters engine over a synthetic query URL -- the same
+      // REST-parity path list_subnet_endpoints and list_endpoint_pools
+      // already use -- replacing the hand-rolled filter + cursorWindow pass.
+      const queryUrl = new URL("https://mcp.internal/endpoints");
+      if (kind) queryUrl.searchParams.set("kind", kind);
+      if (layer) queryUrl.searchParams.set("layer", layer);
+      if (netuid !== null) queryUrl.searchParams.set("netuid", String(netuid));
+      if (provider) queryUrl.searchParams.set("provider", provider);
+      if (publicationState) {
+        queryUrl.searchParams.set("publication_state", publicationState);
+      }
+      if (status) queryUrl.searchParams.set("status", status);
+      if (poolEligible !== null) {
+        queryUrl.searchParams.set("pool_eligible", String(poolEligible));
+      }
+      for (const arg of rangeArgs) {
+        queryUrl.searchParams.set(arg, String(args[arg]));
+      }
+      if (sort) queryUrl.searchParams.set("sort", sort);
+      if (order) queryUrl.searchParams.set("order", order);
+      if (fields) queryUrl.searchParams.set("fields", fields);
+      if (limit !== null) queryUrl.searchParams.set("limit", String(limit));
+      if (cursor > 0) queryUrl.searchParams.set("cursor", String(cursor));
+      const transformed = applyQueryFilters(
+        data,
+        queryUrl,
+        "endpoints",
+        ENDPOINTS_QUERY_FILTER_NAMES,
       );
-      const window = cursorWindow(filtered, {
-        collection: "endpoints",
-        dataKey: "endpoints",
-        limit,
-        cursor,
-      });
+      if (transformed.error) {
+        throw toolError("invalid_params", transformed.error.message);
+      }
+      const page = (transformed.meta?.pagination ?? {}) as Row;
       return {
-        ...data,
-        endpoints: window.page,
-        total: window.total,
-        returned: window.returned,
-        cursor: window.cursor,
-        limit: window.limit,
-        next_cursor: window.next_cursor,
+        ...(transformed.data as Row),
+        total: page.total,
+        returned: page.returned,
+        cursor: page.cursor,
+        limit: page.limit,
+        next_cursor: page.next_cursor,
+        sort: page.sort,
+        order: page.order,
       };
     },
   },
@@ -15469,6 +15528,8 @@ const TOOL_OUTPUT_SCHEMAS = {
       cursor: { type: "integer" },
       limit: { type: "integer" },
       next_cursor: { type: ["integer", "null"] },
+      sort: NULLABLE_STRING,
+      order: NULLABLE_STRING,
       generated_at: NULLABLE_STRING,
       schema_version: { type: ["string", "integer", "null"] },
     },
