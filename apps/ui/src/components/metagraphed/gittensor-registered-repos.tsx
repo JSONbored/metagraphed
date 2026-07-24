@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { BrandIcon } from "@jsonbored/ui-kit";
+import { Panel } from "@/components/metagraphed/primitives";
 import { adapterQuery } from "@/lib/metagraphed/queries";
 
 // Gittensor-specific extra (netuid 74 only — see subnets.$netuid.tsx's gate).
@@ -47,7 +48,7 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
   const total = master?.repository_count;
 
   return (
-    <div id="registered-repos" className="rounded-xl border border-border bg-card p-4">
+    <Panel as="div" dense id="registered-repos">
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="mg-type-micro text-ink-muted">Registered repositories</span>
         {total ? (
@@ -93,6 +94,6 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
           View all {total} registered repositories →
         </a>
       ) : null}
-    </div>
+    </Panel>
   );
 }

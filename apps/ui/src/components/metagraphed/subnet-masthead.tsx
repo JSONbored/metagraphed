@@ -412,7 +412,12 @@ export function SubnetMasthead({
             // aria-label/title on each segment. Share always renders here
             // too (a resource/link action, not a status readout), so the
             // bar itself is unconditional even when there are no links yet.
-            <div className="mt-3 inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden">
+            <Panel
+              as="div"
+              flush
+              className="mt-3"
+              bodyClassName="inline-flex items-center divide-x divide-border overflow-hidden"
+            >
               {links.map((l) => {
                 const Icon = l.icon;
                 const safeHref = safeExternalUrl(l.href);
@@ -453,7 +458,7 @@ export function SubnetMasthead({
                 );
               })}
               <ShareButton connected />
-            </div>
+            </Panel>
           }
         </div>
       </div>

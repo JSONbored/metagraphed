@@ -141,21 +141,14 @@ function UsageStat({
   tone?: "default" | "ok" | "warn";
 }) {
   return (
-    <div
-      className={classNames(
-        "rounded border bg-card px-3 py-2.5",
-        tone === "ok" && "border-health-ok/30",
-        tone === "warn" && "border-health-warn/30",
-        tone === "default" && "border-border",
-      )}
-    >
+    <Panel as="div" flush tintBorderOnly tone={tone} bodyClassName="px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-ink-muted">
         <Icon className="size-3" aria-hidden />
         <span className="mg-type-micro">{eyebrow}</span>
       </div>
       <div className="mt-1 font-mono text-lg font-semibold text-ink-strong">{value}</div>
       {hint ? <div className="mg-type-data-sm text-ink-muted">{hint}</div> : null}
-    </div>
+    </Panel>
   );
 }
 

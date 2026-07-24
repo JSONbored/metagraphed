@@ -284,11 +284,12 @@ function DiffRow({
   highlight?: boolean;
 }) {
   return (
-    <div
-      className={classNames(
-        "rounded-lg border bg-card px-3 py-2.5",
-        highlight ? "border-accent/60" : "border-border",
-      )}
+    <Panel
+      as="div"
+      flush
+      tintBorderOnly
+      tone={highlight ? "accent" : "default"}
+      bodyClassName="px-3 py-2.5"
     >
       <div className="mg-type-micro text-ink-muted">{title}</div>
       <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
@@ -300,7 +301,7 @@ function DiffRow({
           {peerValue}
         </span>
       </div>
-    </div>
+    </Panel>
   );
 }
 

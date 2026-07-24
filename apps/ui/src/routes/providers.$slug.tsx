@@ -143,7 +143,11 @@ function ProviderShell({ slug }: { slug: string }) {
         }
         live={(summary?.by_status?.ok ?? 0) > 0}
         actions={
-          <div className="inline-flex items-center rounded-md border border-border bg-card divide-x divide-border overflow-hidden">
+          <Panel
+            as="div"
+            flush
+            bodyClassName="inline-flex items-center divide-x divide-border overflow-hidden"
+          >
             <PrimaryLinksRail
               bare
               website={p?.website ?? p?.homepage}
@@ -151,7 +155,7 @@ function ProviderShell({ slug }: { slug: string }) {
               repo={p?.repo}
             />
             <ShareButton connected />
-          </div>
+          </Panel>
         }
       />
       {shouldShowProviderSlugSubtitle(p?.name, slug) ? (

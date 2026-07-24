@@ -1,5 +1,5 @@
 import { ArrowRight, Check, Minus } from "lucide-react";
-import { ExternalLink } from "@jsonbored/ui-kit";
+import { ExternalLink, Panel } from "@jsonbored/ui-kit";
 import { classNames } from "@/lib/metagraphed/format";
 import type { SubnetProfile } from "@/lib/metagraphed/types";
 
@@ -43,10 +43,7 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
   const tone = typeof score === "number" ? scoreTone(score) : null;
 
   return (
-    <section
-      className="rounded-xl border border-border bg-card p-4"
-      aria-label="Integration readiness"
-    >
+    <Panel dense aria-label="Integration readiness">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="mg-label text-ink-subtle-text">Integration readiness</div>
@@ -114,6 +111,6 @@ export function ReadinessScorecard({ profile }: { profile?: SubnetProfile }) {
           ) : null}
         </div>
       ) : null}
-    </section>
+    </Panel>
   );
 }

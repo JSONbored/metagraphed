@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AccountAddress } from "@/components/metagraphed/account-address";
+import { Panel } from "@/components/metagraphed/primitives";
 import { Sparkline, TimeAgo } from "@jsonbored/ui-kit";
 import { useRefetchInterval } from "@/hooks/use-refetch-interval";
 import { blocksQuery, chainActivityQuery } from "@/lib/metagraphed/queries";
@@ -36,8 +37,11 @@ export function LiveBlockRail() {
   const dailyPts = chrono.map((d) => ({ t: d.day, v: d.block_count }));
 
   return (
-    <div
-      className="mb-3 grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]"
+    <Panel
+      as="div"
+      dense
+      className="mb-3"
+      bodyClassName="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.9fr)]"
       role="status"
       aria-live="polite"
     >
@@ -125,6 +129,6 @@ export function LiveBlockRail() {
           />
         ) : null}
       </div>
-    </div>
+    </Panel>
   );
 }

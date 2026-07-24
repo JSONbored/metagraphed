@@ -270,11 +270,6 @@ function Verdict() {
     warn: "text-health-warn",
     down: "text-health-down",
   }[verdict.tone];
-  const toneBorder = {
-    ok: "border-health-ok/40",
-    warn: "border-health-warn/40",
-    down: "border-health-down/40",
-  }[verdict.tone];
 
   const segs = healthStatusSegments({ ok, warn, down, unknown });
   // /api/v1/health carries no real 24h uptime series — this is the share of
@@ -293,8 +288,12 @@ function Verdict() {
           refreshLabel="Refresh health now"
         />
       ) : null}
-      <div
-        className={classNames("flex items-center gap-4 rounded-lg border bg-card p-4", toneBorder)}
+      <Panel
+        as="div"
+        dense
+        tintBorderOnly
+        tone={verdict.tone}
+        bodyClassName="flex items-center gap-4"
         role="status"
       >
         <verdict.Icon className={classNames("size-9 shrink-0", toneText)} aria-hidden="true" />
@@ -306,7 +305,7 @@ function Verdict() {
             {verdict.blurb} · snapshot <TimeAgo at={hRes.meta?.generated_at} />
           </div>
         </div>
-      </div>
+      </Panel>
 
       <div className="grid gap-3 md:grid-cols-3">
         <Panel dense bodyClassName="flex items-center gap-4">
