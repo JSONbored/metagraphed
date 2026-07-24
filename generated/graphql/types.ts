@@ -2498,7 +2498,7 @@ export type Query = {
   endpoint_incidents: IncidentList;
   /** Generalized endpoint pool scores -- each pool's kind, eligible/total endpoint count, and probe-derived routing score. Filter by id/kind, threshold with min_/max_eligible_count and min_/max_endpoint_count, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-pools. */
   endpoint_pools: PoolList;
-  /** Endpoint/resource registry, optionally scoped to one subnet. */
+  /** Endpoint/resource registry with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/provider/publication_state/status/pool_eligible, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error (matching endpoint_pools/rpc_pools/rpc_endpoints), not a silently substituted default. Mirrors GET /api/v1/endpoints. */
   endpoints: EndpointList;
   /** Network-wide public evidence ledger -- the append-only provenance record behind registry surfaces. Search with q across subject/claim/source_url/support_summary, sort with sort/order, project with fields, and page with limit (1-100)/cursor. An invalid sort/limit/cursor is a GraphQL error, not a silently substituted default. Distinct from subnet_evidence(netuid) (one subnet's claims). Mirrors GET /api/v1/evidence. */
   evidence: EvidenceList;
@@ -3126,8 +3126,21 @@ export type QueryEndpoint_PoolsArgs = {
 
 export type QueryEndpointsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
+  fields?: InputMaybe<Array<Scalars['String']['input']>>;
+  kind?: InputMaybe<Scalars['String']['input']>;
+  layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  max_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  max_score?: InputMaybe<Scalars['Float']['input']>;
+  min_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  min_score?: InputMaybe<Scalars['Float']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  pool_eligible?: InputMaybe<Scalars['Boolean']['input']>;
+  provider?: InputMaybe<Scalars['String']['input']>;
+  publication_state?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
 };
 
 

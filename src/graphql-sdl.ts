@@ -249,8 +249,25 @@ export const SDL = /* GraphQL */ `
     economics(limit: Int, cursor: String): EconomicsList!
     "Curated public interface surfaces, optionally scoped to one subnet."
     surfaces(netuid: Int, limit: Int, cursor: String): SurfaceList!
-    "Endpoint/resource registry, optionally scoped to one subnet."
-    endpoints(netuid: Int, limit: Int, cursor: String): EndpointList!
+    "Endpoint/resource registry with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/provider/publication_state/status/pool_eligible, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error (matching endpoint_pools/rpc_pools/rpc_endpoints), not a silently substituted default. Mirrors GET /api/v1/endpoints."
+    endpoints(
+      netuid: Int
+      kind: String
+      layer: String
+      provider: String
+      publication_state: String
+      status: String
+      pool_eligible: Boolean
+      min_latency_ms: Int
+      max_latency_ms: Int
+      min_score: Float
+      max_score: Float
+      sort: String
+      order: String
+      fields: [String!]
+      limit: Int
+      cursor: String
+    ): EndpointList!
     "One provider's endpoint rows with full REST filter parity: filter by kind/layer/publication_state/status, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints."
     provider_endpoints(
       slug: String!

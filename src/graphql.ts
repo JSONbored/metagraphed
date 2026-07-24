@@ -1454,6 +1454,67 @@ async function listPage(
   };
 }
 
+// #7887: full REST filter parity for the root `endpoints` field, mirroring
+// the sibling rpc_endpoints (#7886)/endpoint_pools/rpc_pools fields. The baked
+// endpoints collection is filtered/sorted/projected by applyQueryFilters over
+// the very same "endpoints" query-collection config the REST route (GET
+// /api/v1/endpoints) and the list_endpoints MCP tool use -- kind/layer/
+// provider/publication_state/status/pool_eligible, the min_/max_latency_ms and
+// min_/max_score ranges, sort/order, and the fields projection -- so the
+// GraphQL filter allowlist cannot drift from REST. Only the filter/sort/
+// projection params are handed to applyQueryFilters (never limit/cursor): with
+// neither present it returns the full matching set unpaged, and the existing
+// keyFn string-cursor paginate() below then owns paging, preserving
+// EndpointList's items/total/next_cursor shape and its backward-compatible
+// String cursor unchanged. An unsupported filter/sort surfaces as a
+// BAD_USER_INPUT GraphQL error, matching endpoint_pools/rpc_pools/rpc_endpoints
+// "not a silently substituted default" convention.
+function endpointsListQueryUrl(args: Row): URL {
+  const url = new URL("https://graphql.internal/endpoints");
+  const set = (key: string, value: unknown) => {
+    if (value !== undefined) url.searchParams.set(key, String(value));
+  };
+  set("netuid", args.netuid);
+  set("kind", args.kind);
+  set("layer", args.layer);
+  set("provider", args.provider);
+  set("publication_state", args.publication_state);
+  set("status", args.status);
+  set("pool_eligible", args.pool_eligible);
+  set("min_latency_ms", args.min_latency_ms);
+  set("max_latency_ms", args.max_latency_ms);
+  set("min_score", args.min_score);
+  set("max_score", args.max_score);
+  set("sort", args.sort);
+  set("order", args.order);
+  set("fields", args.fields);
+  return url;
+}
+
+async function loadEndpointsPage(context: GqlContext, args: Row) {
+  const blob = await loadArtifact(context, ARTIFACT.endpoints);
+  const rows = Array.isArray(blob?.endpoints) ? (blob.endpoints as Row[]) : [];
+  const transformed = applyQueryFilters(
+    { endpoints: rows },
+    endpointsListQueryUrl(args),
+    "endpoints",
+    [],
+  );
+  if (transformed.error) {
+    throw new GraphQLError(transformed.error.message, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  const filtered = (transformed.data as Row).endpoints as Row[];
+  const { page, total, nextCursor } = paginate(
+    filtered,
+    args.limit,
+    args.cursor,
+    (e: Row) => e.id ?? e.surface_id,
+  );
+  return { items: page, total, next_cursor: nextCursor };
+}
+
 // readArtifact's static-asset tier resolves the path through a URL parser that
 // collapses "../", so an unvalidated provider id could escape the providers/
 // namespace. Constrain it to the safe slug charset the other id-bearing artifact
@@ -2808,13 +2869,8 @@ const rootValue = {
     });
   },
 
-  endpoints({ netuid, limit, cursor }: Row, context: GqlContext) {
-    return listPage(context, ARTIFACT.endpoints, "endpoints", {
-      limit,
-      cursor,
-      netuid,
-      keyFn: (e: Row) => e.id ?? e.surface_id,
-    });
+  endpoints(args: Row, context: GqlContext) {
+    return loadEndpointsPage(context, args);
   },
 
   // #7868: reuse list_provider_endpoints' own loader unchanged (provider-
