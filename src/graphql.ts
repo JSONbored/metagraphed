@@ -45,6 +45,10 @@ import { loadEndpointIncidentsList } from "./endpoint-incidents-mcp.ts";
 // same loadProviderEndpointsList that MCP list_provider_endpoints already calls
 // (#3289) -- not a reimplementation.
 import { loadProviderEndpointsList } from "./provider-endpoints-mcp.ts";
+// #7886: GraphQL parity for GET /api/v1/rpc/endpoints filters — reuse
+// loadRpcEndpointsList (live overlay + applyQueryFilters on the endpoints
+// collection), matching endpoint_pools / rpc_pools / provider_endpoints.
+import { loadRpcEndpointsList } from "./rpc-endpoints-mcp.ts";
 // #7167: GraphQL parity for the /api/v1/review/* contributor-review family,
 // reusing each list_* MCP loader unchanged (same artifact read, filter, sort,
 // and page logic REST and MCP already use) -- not a reimplementation.
@@ -173,7 +177,6 @@ import {
   LEADERBOARD_BOARDS,
   loadSubnetTrajectory,
   mergeFreshness,
-  mergeRpcEndpoints,
   overlayOverviewHealth,
   loadSubnetReliability,
   overlayCatalogDetail,
@@ -340,7 +343,7 @@ import {
   buildCounterparties,
   buildCounterpartyRelationship,
 } from "./counterparties.ts";
-import { KV_HEALTH_META, KV_HEALTH_RPC_POOL } from "./kv-keys.ts";
+import { KV_HEALTH_META } from "./kv-keys.ts";
 import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
@@ -674,8 +677,8 @@ export const SDL = `
     source_health: JSON
     "The maintainer-approved cross-network subnet lineage: which testnet subnets have graduated to mainnet (mainnet <-> testnet pairs with match evidence), plus any flagged broken links. Null when the lineage has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_lineage MCP/REST shape. Mirrors GET /api/v1/lineage."
     lineage: JSON
-    "The full catalog of monitored Bittensor base-layer RPC endpoints and their status (each endpoint's URL, network, and probe-derived health/latency), with the same live 15-minute cron RPC-pool overlay REST and MCP apply before serving. Null when the catalog has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the list_rpc_endpoints MCP/REST shape. Mirrors GET /api/v1/rpc/endpoints."
-    rpc_endpoints: JSON
+    "The full catalog of monitored Bittensor base-layer RPC endpoints and their status (each endpoint's URL, network, and probe-derived health/latency), with the same live 15-minute cron RPC-pool overlay REST and MCP apply before serving. Filter by kind/layer/netuid/pool_eligible/provider/publication_state/status, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default; a cold/absent catalog is likewise a GraphQL error (matching endpoint_pools / rpc_pools). Opaque JSON passed through verbatim, matching the list_rpc_endpoints MCP/REST shape. Mirrors GET /api/v1/rpc/endpoints."
+    rpc_endpoints(kind: String, layer: String, netuid: Int, pool_eligible: Boolean, provider: String, publication_state: String, status: String, min_latency_ms: Int, max_latency_ms: Int, min_score: Float, max_score: Float, fields: [String!], limit: Int, cursor: String, sort: String, order: String): JSON
     "The latest generated registry changelog: artifact added/modified/removed rows, subnet added/removed/renamed events, and coverage deltas since the previous publish. Resolves to a GraphQL error (not null) when the changelog artifact has not been baked in this environment, matching the REST route's 404 and the get_changelog MCP tool. Mirrors GET /api/v1/changelog."
     changelog: Changelog
     "The registry's public artifact contract metadata: every baked artifact path, storage tier, schema reference, and consumer notes. Resolves to a GraphQL error (not null) when the contracts artifact has not been baked in this environment, matching the REST route's 404 and the get_contracts MCP tool. Mirrors GET /api/v1/contracts."
@@ -6445,21 +6448,20 @@ const rootValue = {
     return loadArtifact(context, "/metagraph/lineage.json");
   },
 
-  async rpc_endpoints(_args: unknown, context: GqlContext) {
-    // Same baked catalog the REST route + list_rpc_endpoints MCP tool read,
-    // with the same live overlay: the 15-minute cron RPC-pool KV snapshot
-    // replaces the stale build-time health/latency (mergeRpcEndpoints). With no
-    // live snapshot the static catalog passes through; a cold artifact degrades
-    // to null instead of erroring, matching the other artifact-backed resolvers.
-    const staticData = await loadArtifact(
-      context,
-      "/metagraph/rpc-endpoints.json",
+  rpc_endpoints(args: Row, context: GqlContext) {
+    // #7886: reuse loadRpcEndpointsList — same live 15-minute cron overlay +
+    // endpoints-collection list-query transforms REST applies. The loader
+    // validates its own args and throws on an invalid filter/sort or a cold
+    // artifact; that throw becomes a GraphQL error, matching endpoint_pools /
+    // rpc_pools' "an unsupported filter/sort is a GraphQL error, not a
+    // silently substituted default" convention.
+    return loadRpcEndpointsList(
+      { ...context, readHealthKv } as unknown as Parameters<
+        typeof loadRpcEndpointsList
+      >[0],
+      args,
+      { readArtifact },
     );
-    const pool = (await readHealthKv(
-      context.env,
-      KV_HEALTH_RPC_POOL,
-    )) as Row | null;
-    return pool ? mergeRpcEndpoints(staticData ?? {}, pool) : staticData;
   },
 
   // #7170: reuse get_changelog's/get_contracts's own loaders unchanged (the same

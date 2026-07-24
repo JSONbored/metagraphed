@@ -8060,9 +8060,11 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
 
 // #7168: GraphQL parity for the registry-summary / source-health / lineage /
 // rpc-endpoints REST routes, each reusing the same baked artifact its MCP tool
+// GraphQL parity for the four "catalog snapshot" fields that MCP
 // (registry_summary / get_source_health / get_lineage / list_rpc_endpoints)
-// reads -- a cold artifact degrades to null (schema-stable), never a GraphQL
-// error, matching agent_resources and the other artifact-backed resolvers.
+// reads -- registry_summary / source_health / lineage degrade to null on a
+// cold artifact; rpc_endpoints (#7886) now errors like endpoint_pools when
+// the catalog is missing (filter loader path).
 describe("graphql — registry_summary / source_health / lineage / rpc_endpoints (#7168)", () => {
   test("registry_summary resolves the baked summary artifact", async () => {
     const env = fixtureEnv({
@@ -8116,15 +8118,46 @@ describe("graphql — registry_summary / source_health / lineage / rpc_endpoints
         id: "finney-wss",
         url: "wss://entrypoint-finney.opentensor.ai",
         network: "finney",
+        kind: "subtensor-wss",
+        layer: "bittensor-base",
+        provider: "opentensor",
+        publication_state: "monitored",
         status: "degraded",
+        latency_ms: 200,
+        score: 40,
+        pool_eligible: true,
+        netuid: 0,
         archive_support: false,
       },
       {
         id: "subvortex",
         url: "wss://subvortex.example",
         network: "finney",
+        kind: "subtensor-wss",
+        layer: "bittensor-base",
+        provider: "subvortex",
+        publication_state: "monitored",
         status: "degraded",
+        latency_ms: 80,
+        score: 70,
+        pool_eligible: false,
+        netuid: 0,
         archive_support: true,
+      },
+      {
+        id: "finney-rpc",
+        url: "https://entrypoint-finney.opentensor.ai",
+        network: "finney",
+        kind: "subtensor-rpc",
+        layer: "bittensor-base",
+        provider: "opentensor",
+        publication_state: "pool-eligible",
+        status: "ok",
+        latency_ms: 50,
+        score: 90,
+        pool_eligible: true,
+        netuid: 0,
+        archive_support: false,
       },
     ],
   };
@@ -8136,10 +8169,10 @@ describe("graphql — registry_summary / source_health / lineage / rpc_endpoints
     const { status, body } = await gql("{ rpc_endpoints }", env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.rpc_endpoints.endpoints.length, 2);
+    assert.equal(body.data.rpc_endpoints.endpoints.length, 3);
     assert.equal(body.data.rpc_endpoints.endpoints[0].id, "finney-wss");
     // No live snapshot -> the static catalog passes through unchanged.
-    assert.equal(body.data.rpc_endpoints.source, undefined);
+    assert.equal(body.data.rpc_endpoints.source, null);
   });
 
   test("rpc_endpoints applies the live 15-minute RPC-pool overlay", async () => {
@@ -8174,18 +8207,46 @@ describe("graphql — registry_summary / source_health / lineage / rpc_endpoints
     assert.equal(overlaid.health_source, "probe-derived");
   });
 
-  test("each field degrades to null on a cold artifact, never a GraphQL error", async () => {
-    for (const field of [
-      "registry_summary",
-      "source_health",
-      "lineage",
-      "rpc_endpoints",
-    ]) {
+  test("rpc_endpoints combines filters and sort/order (#7886)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/rpc-endpoints.json": RPC_ENDPOINTS_BLOB,
+    });
+    const { status, body } = await gql(
+      `{ rpc_endpoints(
+          kind: "subtensor-wss",
+          provider: "opentensor",
+          pool_eligible: true,
+          sort: "latency_ms",
+          order: "asc"
+        ) }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.rpc_endpoints.total, 1);
+    assert.equal(body.data.rpc_endpoints.endpoints.length, 1);
+    assert.equal(body.data.rpc_endpoints.endpoints[0].id, "finney-wss");
+    assert.equal(body.data.rpc_endpoints.sort, "latency_ms");
+    assert.equal(body.data.rpc_endpoints.order, "asc");
+  });
+
+  test("rpc_endpoints an unsupported sort is a GraphQL error (#7886)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/rpc-endpoints.json": RPC_ENDPOINTS_BLOB,
+    });
+    const { body } = await gql('{ rpc_endpoints(sort: "bogus") }', env);
+    assert.ok(body.errors, "expected a GraphQL error");
+  });
+
+  test("registry_summary / source_health / lineage degrade to null on a cold artifact; rpc_endpoints errors like endpoint_pools", async () => {
+    for (const field of ["registry_summary", "source_health", "lineage"]) {
       const { status, body } = await gql(`{ ${field} }`);
       assert.equal(status, 200, `${field} should not error`);
       assert.equal(body.errors, undefined, `${field} should not error`);
       assert.equal(body.data[field], null, `${field} should degrade to null`);
     }
+    const { body: rpcBody } = await gql("{ rpc_endpoints }");
+    assert.ok(rpcBody.errors, "rpc_endpoints cold catalog is a GraphQL error");
   });
 
   test("FIELD_COMPLEXITY weights all four new fields like their sibling relationship fields", () => {
