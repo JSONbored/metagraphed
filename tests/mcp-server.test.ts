@@ -2923,6 +2923,44 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(rowOut.targets[0].rank, null);
   });
 
+  test("list_enrichment_targets filters by agent_status (#7898)", async () => {
+    const callable = await callTool(
+      "list_enrichment_targets",
+      { agent_status: "callable" },
+      { deps },
+    );
+    const callableOut = callable.body.result.structuredContent;
+    assert.equal(callableOut.returned, 1);
+    assert.equal(callableOut.targets[0].netuid, 7);
+    assert.equal(callableOut.filters.agent_status, "callable");
+
+    const blocked = await callTool(
+      "list_enrichment_targets",
+      { agent_status: "blocked" },
+      { deps },
+    );
+    const blockedOut = blocked.body.result.structuredContent;
+    assert.equal(blockedOut.returned, 1);
+    assert.equal(blockedOut.targets[0].netuid, 31);
+
+    // Independent of tier: a status no row carries returns nothing.
+    const none = await callTool(
+      "list_enrichment_targets",
+      { agent_status: "candidate" },
+      { deps },
+    );
+    assert.equal(none.body.result.structuredContent.returned, 0);
+  });
+
+  test("list_enrichment_targets rejects an agent_status outside the enum (#7898)", async () => {
+    const res = await callTool(
+      "list_enrichment_targets",
+      { agent_status: "bogus" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
   test("list_enrichment_targets reports missing coverage-depth artifact", async () => {
     const missingDeps = makeDeps({});
     const res = await callTool(
