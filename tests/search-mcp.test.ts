@@ -119,6 +119,27 @@ describe("search-mcp", () => {
     assert.equal(url.searchParams.get("fields"), "id,title");
   });
 
+  test("searchQueryUrl sets type and netuid params", () => {
+    const url = searchQueryUrl({ type: "surface", netuid: 7 });
+    assert.equal(url.searchParams.get("type"), "surface");
+    assert.equal(url.searchParams.get("netuid"), "7");
+  });
+
+  test("searchQueryUrl rejects invalid type and negative netuid", () => {
+    assert.throws(
+      () => searchQueryUrl({ type: "miner" }),
+      (err: Row) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => searchQueryUrl({ netuid: -1 }),
+      (err: Row) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => searchQueryUrl({ netuid: 1.5 }),
+      (err: Row) => err.code === "invalid_params",
+    );
+  });
+
   test("searchQueryUrl clamps a non-numeric limit to the default", () => {
     const url = searchQueryUrl({ limit: "lots" });
     assert.equal(url.searchParams.get("limit"), "50");
@@ -151,6 +172,29 @@ describe("search-mcp", () => {
     );
     assert.equal(out.returned, 1);
     assert.equal(out.documents[0].type, "provider");
+  });
+
+  test("loadSearchList filters by type and netuid", async () => {
+    const byType = await loadSearchList(
+      { env: {}, readArtifact } as unknown as LoadCtx,
+      { type: "subnet" },
+    );
+    assert.equal(byType.returned, 1);
+    assert.equal(byType.documents[0].type, "subnet");
+
+    const byNetuid = await loadSearchList(
+      { env: {}, readArtifact } as unknown as LoadCtx,
+      { netuid: 7 },
+    );
+    assert.equal(byNetuid.returned, 2);
+
+    const byBoth = await loadSearchList(
+      { env: {}, readArtifact } as unknown as LoadCtx,
+      { type: "surface", netuid: 7 },
+    );
+    assert.equal(byBoth.returned, 1);
+    assert.equal(byBoth.documents[0].type, "surface");
+    assert.equal(byBoth.documents[0].netuid, 7);
   });
 
   test("loadSearchList surfaces surface hits search_subnets would drop", async () => {
@@ -392,6 +436,9 @@ describe("search-mcp", () => {
       { sort: "title", order: "desc", limit: 1 },
       { sort: "netuid", order: "asc", limit: 2, cursor: 1 },
       { fields: "id,title", limit: 2 },
+      { type: "subnet" },
+      { type: "surface", netuid: 7 },
+      { netuid: 7 },
       {},
     ];
 

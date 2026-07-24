@@ -86,6 +86,21 @@ export function searchQueryUrl(
     }
     url.searchParams.set("cursor", String(cursor));
   }
+  const type = optionalEnum(args, "type", ["subnet", "surface", "provider"]);
+  if (type) url.searchParams.set("type", type);
+  if (args?.netuid !== undefined) {
+    if (
+      typeof args.netuid !== "number" ||
+      !Number.isInteger(args.netuid) ||
+      (args.netuid as number) < 0
+    ) {
+      throw searchMcpError(
+        "invalid_params",
+        "netuid must be a non-negative integer.",
+      );
+    }
+    url.searchParams.set("netuid", String(args.netuid));
+  }
   return url;
 }
 
@@ -167,19 +182,29 @@ export const LIST_SEARCH_MCP_TOOL = {
   description:
     "Keyword-search the full registry search index: subnet, surface, and " +
     "provider documents with their per-document token blobs, mirroring " +
-    "GET /api/v1/search. Filter with q, sort with sort + order, project with " +
-    "fields, and page with limit (1-100) / cursor. Unlike search_subnets — which reads " +
-    "the same artifact but only ever returns subnet hits — this spans all " +
-    "three document types, so it works to find surfaces and providers even " +
-    "when the AI layer semantic_search depends on is not configured. Unlike " +
-    "list_search_index, which serves the slim variant without token blobs, this " +
-    "keeps the full documents. Use semantic_search for meaning-based discovery.",
+    "GET /api/v1/search. Filter with q, type, netuid; sort with sort + order; " +
+    "project with fields; and page with limit (1-100) / cursor. Unlike " +
+    "search_subnets — which reads the same artifact but only ever returns subnet " +
+    "hits — this spans all three document types, so it works to find surfaces and " +
+    "providers even when the AI layer semantic_search depends on is not configured. " +
+    "Unlike list_search_index, which serves the slim variant without token blobs, " +
+    "this keeps the full documents. Use semantic_search for meaning-based discovery.",
   inputSchema: {
     type: "object",
     properties: {
       q: {
         type: "string",
         description: "Keyword search across title, subtitle, slug, and tokens.",
+      },
+      type: {
+        type: "string",
+        enum: ["subnet", "surface", "provider"],
+        description: "Filter by document type (subnet, surface, or provider).",
+      },
+      netuid: {
+        type: "integer",
+        description: "Filter by subnet netuid.",
+        minimum: 0,
       },
       sort: {
         type: "string",
