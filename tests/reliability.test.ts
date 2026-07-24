@@ -97,6 +97,20 @@ describe("scoreFromStats", () => {
     assert.equal(stats!.uptime_ratio, 0.9995);
   });
 
+  test("clamps score to 100 when okCount exceeds samples (malformed/racy row)", () => {
+    // Nothing upstream enforces okCount <= samples; a duplicate-write race in
+    // the daily upsert (or any malformed row) can push okCount past samples,
+    // yielding an uptimeRatio > 1. The score must still cap at 100, not run
+    // past it (e.g. 150) with a nonsensical grade.
+    const stats = scoreFromStats({
+      samples: 10,
+      okCount: 15,
+      avgLatencyMs: null,
+    });
+    assert.equal(stats!.score, 100);
+    assert.equal(stats!.grade, "A");
+  });
+
   test("assigns each grade band from the uptime score", () => {
     const grade = (okCount: number) =>
       scoreFromStats({ samples: 100, okCount, avgLatencyMs: null })!.grade;
