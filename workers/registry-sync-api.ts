@@ -19,7 +19,8 @@
 // endpoint; the database itself stays exactly as private as it already was
 // (bound to 127.0.0.1 on its host, reachable only via the Cloudflare Tunnel
 // + Workers VPC Service + Hyperdrive path already proven for reads).
-import postgres from "postgres";
+import type postgres from "postgres";
+import { syncBeginWithConnectionRetry } from "./hyperdrive-sync-retry.ts";
 import { timingSafeEqual } from "../src/webhooks.ts";
 import { resolveClientIp } from "./config.ts";
 
@@ -186,12 +187,6 @@ export default {
       return json({ error: "no rows provided" }, 400);
     }
 
-    const sql = postgres(env.HYPERDRIVE.connectionString, {
-      max: 5,
-      prepare: false,
-      fetch_types: false,
-    });
-
     const summary = {
       providers_written: 0,
       subnets_written: 0,
@@ -209,7 +204,7 @@ export default {
       // already been written committed and the rest silently never applied,
       // a partial-sync state with no way to tell it happened; now the whole
       // batch commits together or rolls back together.
-      return await sql.begin(async (sql) => {
+      return await syncBeginWithConnectionRetry(env, async (sql) => {
         await sql`SET statement_timeout = '10000ms'`;
 
         for (const p of providers) {

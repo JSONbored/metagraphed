@@ -101,6 +101,14 @@ const subnetIdentityLatestHashes = vi.hoisted(() => ({ current: [] as Row[] }));
 const healthChecksSyncFailure = vi.hoisted(() => ({
   error: null as Error | null,
 }));
+// State for the sync-route connection-retry tests (METAGRAPHED-7, second recurrence):
+// countdown semantics identical to blockDetailConnectionFailure below, but scoped to
+// health-checks-sync's surface_checks INSERT so what gets exercised is the WRITE path's
+// own fresh-client retry (workers/hyperdrive-sync-retry.ts), not the read dispatcher's.
+const healthChecksSyncConnectionFailure = vi.hoisted(() => ({
+  remainingFailures: 0,
+  code: "CONNECTION_CLOSED",
+}));
 const healthUptimeRollupSyncFailure = vi.hoisted(() => ({
   error: null as Error | null,
 }));
@@ -329,6 +337,20 @@ vi.mock("postgres", () => ({
         return Promise.reject(healthChecksSyncFailure.error);
       }
       if (
+        healthChecksSyncConnectionFailure.remainingFailures > 0 &&
+        /INSERT INTO surface_checks\b/.test(text)
+      ) {
+        healthChecksSyncConnectionFailure.remainingFailures -= 1;
+        return Promise.reject(
+          Object.assign(
+            new Error(
+              `write ${healthChecksSyncConnectionFailure.code} mock.hyperdrive.local:5432`,
+            ),
+            { code: healthChecksSyncConnectionFailure.code },
+          ),
+        );
+      }
+      if (
         featuredValidatorsQueryFailure.error &&
         /FROM featured_validators\b/.test(text)
       ) {
@@ -528,6 +550,8 @@ beforeEach(() => {
   subnetIdentitySyncFailure.error = null;
   subnetIdentityLatestHashes.current = [];
   healthChecksSyncFailure.error = null;
+  healthChecksSyncConnectionFailure.remainingFailures = 0;
+  healthChecksSyncConnectionFailure.code = "CONNECTION_CLOSED";
   subnetSnapshotSyncFailure.error = null;
   healthUptimeRollupSyncFailure.error = null;
   rpcUsageSyncFailure.error = null;
@@ -6881,6 +6905,53 @@ test("health-checks-sync maps a DB failure to a clean 502 instead of throwing", 
   );
   expect(res.status).toBe(502);
   expect(((await res.json()) as Row).error).toBe("write failed");
+});
+
+test("health-checks-sync retries with a fresh client after a Hyperdrive CONNECTION_CLOSED and lands the mirror write (METAGRAPHED-7 second recurrence)", async () => {
+  // The 09:00Z origin blip class: one dropped socket used to lose the whole probe cycle's
+  // mirror write, because the sync routes deliberately sat outside the read dispatcher's
+  // retry. The atomic sql.begin() batch makes the retry safe (rollback ⇒ nothing partial).
+  healthChecksSyncConnectionFailure.remainingFailures = 1;
+  const res = await postHealthChecks(
+    { probed: [probedRow()] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as Row;
+  expect(body.ok).toBe(true);
+  expect(body.checks_written).toBe(1);
+  // The INSERT ran twice: attempt 1 died on the dropped socket, attempt 2 (fresh client) landed.
+  expect(
+    sqlCalls.filter((c) => /INSERT INTO surface_checks\b/.test(c.text)).length,
+  ).toBe(2);
+});
+
+test("health-checks-sync still 502s once every connection retry is exhausted (METAGRAPHED-7)", async () => {
+  // 3 total attempts (1 original + MAX_CONNECTION_RETRY_ATTEMPTS retries) -- all failing
+  // must surface as the existing clean 502, never retry indefinitely.
+  healthChecksSyncConnectionFailure.remainingFailures = 3;
+  const res = await postHealthChecks(
+    { probed: [probedRow()] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(502);
+  expect(((await res.json()) as Row).error).toBe("write failed");
+});
+
+test("health-checks-sync does not retry a non-connection error, even once (METAGRAPHED-7 scoping)", async () => {
+  // A deterministic DB error (here a unique violation) must fail immediately -- retrying it
+  // would just re-run a doomed batch. Asserting one INSERT proves the retry is scoped to
+  // RETRYABLE_CONNECTION_ERROR_CODES, not every rejection.
+  healthChecksSyncConnectionFailure.remainingFailures = 1;
+  healthChecksSyncConnectionFailure.code = "23505";
+  const res = await postHealthChecks(
+    { probed: [probedRow()] },
+    { secret: HEALTH_CHECKS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(502);
+  expect(
+    sqlCalls.filter((c) => /INSERT INTO surface_checks\b/.test(c.text)).length,
+  ).toBe(1);
 });
 
 // #4832 gap-closure: health-uptime-rollup-sync -- best-effort Postgres

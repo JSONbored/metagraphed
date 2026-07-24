@@ -21,6 +21,11 @@
 // read routes' `cache-control: public, max-age=10`).
 import postgres from "postgres";
 import * as Sentry from "@sentry/cloudflare";
+import {
+  MAX_CONNECTION_RETRY_ATTEMPTS,
+  RETRYABLE_CONNECTION_ERROR_CODES,
+  syncBeginWithConnectionRetry,
+} from "./hyperdrive-sync-retry.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { parseJsonPreservingBigIntegers } from "../src/postgres-json-parse.ts";
 import { decodeCursor, encodeCursor } from "../src/cursor.ts";
@@ -399,23 +404,11 @@ const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // METAGRAPHED-7: Hyperdrive closes/recycles pooled connections out from under a live query
 // under load -- postgres.js's Cloudflare build (node_modules/postgres/cf/src/connection.js)
-// surfaces this as one of these three `error.code`s (Errors.connection in cf/src/errors.js),
-// all transport-layer, never a query-correctness problem: CONNECTION_CLOSED (socket closed
-// mid-query), CONNECTION_DESTROYED (pool tore the connection down), CONNECT_TIMEOUT (the
-// initial handshake itself timed out). Retried below (MAX_CONNECTION_RETRY_ATTEMPTS times),
-// only for the read-only route dispatcher (already scoped to a single sql.begin()
-// transaction, so nothing can have partially committed) -- never for the write/sync routes,
-// where blindly retrying a batch that may have partially applied would risk double-writes.
-const RETRYABLE_CONNECTION_ERROR_CODES = new Set([
-  "CONNECTION_CLOSED",
-  "CONNECTION_DESTROYED",
-  "CONNECT_TIMEOUT",
-]);
-// A single retry (the original METAGRAPHED-7 fix) regressed: under sustained load,
-// Hyperdrive can recycle the retry's own freshly created connection too, so the retry
-// itself hits the same error class and the request still fails. 2 retries (3 total
-// attempts) gives a second freshly created client a chance before giving up.
-const MAX_CONNECTION_RETRY_ATTEMPTS = 2;
+// surfaces this as one of three transport-layer `error.code`s, never a query-correctness
+// problem. The retryable code set, the attempt cap, and the sync-route transaction retry
+// all live in workers/hyperdrive-sync-retry.ts (shared with registry-sync-api) -- the read
+// dispatcher below keeps its own inline fresh-client loop over the same imported constants
+// because its client options differ (bigIntSafeJson types + idle_timeout).
 
 // Resolve a ?window= label to a cutoff epoch-ms, matching the D1 loaders'
 // `Date.now() - days*DAY_MS` exactly. An unrecognized label falls back to the
@@ -762,30 +755,26 @@ async function handleNeuronsSync(request: Request, env: Env) {
   }
   const netuids = [...netuidMaxCapturedAt.keys()];
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
     // sql.begin() reserves ONE physical connection for the whole batch, same
     // connection-affinity reasoning as the read path above (#4686) -- and
     // makes the whole snapshot atomic: a mid-batch failure must never leave
     // `neurons` upserted with stale UIDs left un-pruned, or `neuron_daily`
     // partially written for the day.
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
 
-      const dailyRows = rows.map((row: Row) => ({
-        ...row,
-        snapshot_date: neuronSyncSnapshotDate(row.captured_at),
-        updated_at: Date.now(),
-      }));
+        const dailyRows = rows.map((row: Row) => ({
+          ...row,
+          snapshot_date: neuronSyncSnapshotDate(row.captured_at),
+          updated_at: Date.now(),
+        }));
 
-      for (let i = 0; i < rows.length; i += NEURONS_SYNC_ROWS_PER_STATEMENT) {
-        const chunk = rows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
-        await sql`
+        for (let i = 0; i < rows.length; i += NEURONS_SYNC_ROWS_PER_STATEMENT) {
+          const chunk = rows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
+          await sql`
           INSERT INTO neurons ${sql(chunk, ...NEURON_INSERT_COLUMNS)}
           ON CONFLICT (netuid, uid) DO UPDATE SET
             hotkey = EXCLUDED.hotkey,
@@ -807,15 +796,15 @@ async function handleNeuronsSync(request: Request, env: Env) {
             captured_at = EXCLUDED.captured_at,
             take = EXCLUDED.take
           WHERE neurons.captured_at <= EXCLUDED.captured_at`;
-      }
+        }
 
-      for (
-        let i = 0;
-        i < dailyRows.length;
-        i += NEURONS_SYNC_ROWS_PER_STATEMENT
-      ) {
-        const chunk = dailyRows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
-        await sql`
+        for (
+          let i = 0;
+          i < dailyRows.length;
+          i += NEURONS_SYNC_ROWS_PER_STATEMENT
+        ) {
+          const chunk = dailyRows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
+          await sql`
           INSERT INTO neuron_daily ${sql(chunk, ...NEURON_INSERT_COLUMNS, "snapshot_date", "updated_at")}
           ON CONFLICT (netuid, uid, snapshot_date) DO UPDATE SET
             hotkey = EXCLUDED.hotkey,
@@ -838,44 +827,44 @@ async function handleNeuronsSync(request: Request, env: Env) {
             updated_at = EXCLUDED.updated_at,
             take = EXCLUDED.take
           WHERE neuron_daily.captured_at <= EXCLUDED.captured_at`;
-      }
+        }
 
-      // Per-account daily position rollup (#4832 gap-closure; #4839 gave this
-      // its own Postgres write path in this same transaction, replacing D1's
-      // now-retired rollupAccountPositionDaily / src/account-position-history.mjs):
-      // the SAME snapshot as neuron_daily above, re-keyed by (account, netuid,
-      // snapshot_date) with account = hotkey. `hotkey IS NOT NULL` mirrors that
-      // retired D1 rollup's own filter -- account is NOT NULL and part of the
-      // primary key, but a neuron row's hotkey can itself be null.
-      const positionRows = dailyRows
-        .filter((row: Row) => row.hotkey != null)
-        .map((row: Row) => ({
-          account: row.hotkey,
-          netuid: row.netuid,
-          snapshot_date: row.snapshot_date,
-          uid: row.uid,
-          coldkey: row.coldkey,
-          active: row.active,
-          validator_permit: row.validator_permit,
-          rank: row.rank,
-          trust: row.trust,
-          incentive: row.incentive,
-          dividends: row.dividends,
-          stake_tao: row.stake_tao,
-          emission_tao: row.emission_tao,
-          captured_at: row.captured_at,
-          updated_at: row.updated_at,
-        }));
-      for (
-        let i = 0;
-        i < positionRows.length;
-        i += NEURONS_SYNC_ROWS_PER_STATEMENT
-      ) {
-        const chunk = positionRows.slice(
-          i,
-          i + NEURONS_SYNC_ROWS_PER_STATEMENT,
-        );
-        await sql`
+        // Per-account daily position rollup (#4832 gap-closure; #4839 gave this
+        // its own Postgres write path in this same transaction, replacing D1's
+        // now-retired rollupAccountPositionDaily / src/account-position-history.mjs):
+        // the SAME snapshot as neuron_daily above, re-keyed by (account, netuid,
+        // snapshot_date) with account = hotkey. `hotkey IS NOT NULL` mirrors that
+        // retired D1 rollup's own filter -- account is NOT NULL and part of the
+        // primary key, but a neuron row's hotkey can itself be null.
+        const positionRows = dailyRows
+          .filter((row: Row) => row.hotkey != null)
+          .map((row: Row) => ({
+            account: row.hotkey,
+            netuid: row.netuid,
+            snapshot_date: row.snapshot_date,
+            uid: row.uid,
+            coldkey: row.coldkey,
+            active: row.active,
+            validator_permit: row.validator_permit,
+            rank: row.rank,
+            trust: row.trust,
+            incentive: row.incentive,
+            dividends: row.dividends,
+            stake_tao: row.stake_tao,
+            emission_tao: row.emission_tao,
+            captured_at: row.captured_at,
+            updated_at: row.updated_at,
+          }));
+        for (
+          let i = 0;
+          i < positionRows.length;
+          i += NEURONS_SYNC_ROWS_PER_STATEMENT
+        ) {
+          const chunk = positionRows.slice(
+            i,
+            i + NEURONS_SYNC_ROWS_PER_STATEMENT,
+          );
+          await sql`
           INSERT INTO account_position_daily ${sql(chunk, "account", "netuid", "snapshot_date", "uid", "coldkey", "active", "validator_permit", "rank", "trust", "incentive", "dividends", "stake_tao", "emission_tao", "captured_at", "updated_at")}
           ON CONFLICT (account, netuid, snapshot_date) DO UPDATE SET
             uid = EXCLUDED.uid,
@@ -891,54 +880,55 @@ async function handleNeuronsSync(request: Request, env: Env) {
             captured_at = EXCLUDED.captured_at,
             updated_at = EXCLUDED.updated_at
           WHERE account_position_daily.captured_at <= EXCLUDED.captured_at`;
-      }
+        }
 
-      // Prune UIDs that no longer appear in the snapshot for a netuid this
-      // batch actually covers (deregistered/replaced UIDs) -- scoped to ONLY
-      // the netuids present in this payload, so a partial-coverage batch can
-      // never wipe an unrelated subnet's rows. Mirrors D1's loadStagedNeurons
-      // prune, minus its "legacy" whole-table branch: every batch here
-      // declares its own coverage implicitly via which netuids its rows
-      // belong to. `netuids` is never empty here -- the earlier
-      // `!incoming.length` check guarantees at least one row, and every row
-      // has a netuid.
-      //
-      // The VALUES join builds a per-netuid threshold table -- each netuid is
-      // only pruned against ITS OWN max captured_at, never another netuid's,
-      // closing the cross-netuid data-loss gap a single shared threshold
-      // would open. Built via sql.unsafe with explicit-cast positional
-      // placeholders (plain scalar binds, one per cell) rather than a bound
-      // JS array -- confirmed live 2026-07-10 that Hyperdrive's recommended
-      // `fetch_types: false` (this Worker's own setting, above) breaks
-      // postgres.js's automatic ARRAY-literal serialization (`ANY($1)`/
-      // `unnest($1::int[])` sent a malformed literal with no braces), while
-      // scalar binds -- the only kind every other query in this Worker
-      // uses -- are unaffected.
-      const valuesSql = netuids
-        .map((_, i) => `($${i * 2 + 1}::int, $${i * 2 + 2}::bigint)`)
-        .join(", ");
-      const pruneParams = netuids.flatMap((netuid) => [
-        netuid,
-        netuidMaxCapturedAt.get(netuid),
-      ]);
-      const pruned = await sql.unsafe(
-        `DELETE FROM neurons n
+        // Prune UIDs that no longer appear in the snapshot for a netuid this
+        // batch actually covers (deregistered/replaced UIDs) -- scoped to ONLY
+        // the netuids present in this payload, so a partial-coverage batch can
+        // never wipe an unrelated subnet's rows. Mirrors D1's loadStagedNeurons
+        // prune, minus its "legacy" whole-table branch: every batch here
+        // declares its own coverage implicitly via which netuids its rows
+        // belong to. `netuids` is never empty here -- the earlier
+        // `!incoming.length` check guarantees at least one row, and every row
+        // has a netuid.
+        //
+        // The VALUES join builds a per-netuid threshold table -- each netuid is
+        // only pruned against ITS OWN max captured_at, never another netuid's,
+        // closing the cross-netuid data-loss gap a single shared threshold
+        // would open. Built via sql.unsafe with explicit-cast positional
+        // placeholders (plain scalar binds, one per cell) rather than a bound
+        // JS array -- confirmed live 2026-07-10 that Hyperdrive's recommended
+        // `fetch_types: false` (this Worker's own setting, above) breaks
+        // postgres.js's automatic ARRAY-literal serialization (`ANY($1)`/
+        // `unnest($1::int[])` sent a malformed literal with no braces), while
+        // scalar binds -- the only kind every other query in this Worker
+        // uses -- are unaffected.
+        const valuesSql = netuids
+          .map((_, i) => `($${i * 2 + 1}::int, $${i * 2 + 2}::bigint)`)
+          .join(", ");
+        const pruneParams = netuids.flatMap((netuid) => [
+          netuid,
+          netuidMaxCapturedAt.get(netuid),
+        ]);
+        const pruned = await sql.unsafe(
+          `DELETE FROM neurons n
          USING (VALUES ${valuesSql}) AS batch(netuid, captured_at)
          WHERE n.netuid = batch.netuid
            AND n.captured_at < batch.captured_at
          RETURNING n.netuid`,
-        pruneParams,
-      );
+          pruneParams,
+        );
 
-      return writeJson({
-        ok: true,
-        neurons_written: rows.length,
-        neuron_daily_written: dailyRows.length,
-        account_position_daily_written: positionRows.length,
-        netuids_covered: netuids.length,
-        deregistered_pruned: pruned.length,
-      });
-    });
+        return writeJson({
+          ok: true,
+          neurons_written: rows.length,
+          neuron_daily_written: dailyRows.length,
+          account_position_daily_written: positionRows.length,
+          netuids_covered: netuids.length,
+          deregistered_pruned: pruned.length,
+        });
+      },
+    );
   } catch (err) {
     console.error("data-api neurons-sync write failed:", err);
     await captureDataApiError(err, "neurons-sync", env);
@@ -1061,23 +1051,19 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
       updated_at: row.updated_at,
     }));
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
 
-      for (
-        let i = 0;
-        i < dailyRows.length;
-        i += NEURONS_SYNC_ROWS_PER_STATEMENT
-      ) {
-        const chunk = dailyRows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
-        await sql`
+        for (
+          let i = 0;
+          i < dailyRows.length;
+          i += NEURONS_SYNC_ROWS_PER_STATEMENT
+        ) {
+          const chunk = dailyRows.slice(i, i + NEURONS_SYNC_ROWS_PER_STATEMENT);
+          await sql`
           INSERT INTO neuron_daily ${sql(chunk, ...NEURON_INSERT_COLUMNS, "snapshot_date", "updated_at")}
           ON CONFLICT (netuid, uid, snapshot_date) DO UPDATE SET
             hotkey = EXCLUDED.hotkey,
@@ -1100,18 +1086,18 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
             updated_at = EXCLUDED.updated_at,
             take = EXCLUDED.take
           WHERE neuron_daily.captured_at <= EXCLUDED.captured_at`;
-      }
+        }
 
-      for (
-        let i = 0;
-        i < positionRows.length;
-        i += NEURONS_SYNC_ROWS_PER_STATEMENT
-      ) {
-        const chunk = positionRows.slice(
-          i,
-          i + NEURONS_SYNC_ROWS_PER_STATEMENT,
-        );
-        await sql`
+        for (
+          let i = 0;
+          i < positionRows.length;
+          i += NEURONS_SYNC_ROWS_PER_STATEMENT
+        ) {
+          const chunk = positionRows.slice(
+            i,
+            i + NEURONS_SYNC_ROWS_PER_STATEMENT,
+          );
+          await sql`
           INSERT INTO account_position_daily ${sql(chunk, "account", "netuid", "snapshot_date", "uid", "coldkey", "active", "validator_permit", "rank", "trust", "incentive", "dividends", "stake_tao", "emission_tao", "captured_at", "updated_at")}
           ON CONFLICT (account, netuid, snapshot_date) DO UPDATE SET
             uid = EXCLUDED.uid,
@@ -1127,14 +1113,15 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
             captured_at = EXCLUDED.captured_at,
             updated_at = EXCLUDED.updated_at
           WHERE account_position_daily.captured_at <= EXCLUDED.captured_at`;
-      }
+        }
 
-      return writeJson({
-        ok: true,
-        neuron_daily_written: dailyRows.length,
-        account_position_daily_written: positionRows.length,
-      });
-    });
+        return writeJson({
+          ok: true,
+          neuron_daily_written: dailyRows.length,
+          account_position_daily_written: positionRows.length,
+        });
+      },
+    );
   } catch (err) {
     console.error("data-api neuron-daily-backfill write failed:", err);
     await captureDataApiError(err, "neuron-daily-backfill", env);
@@ -1199,18 +1186,15 @@ async function handleRollupAccountEventsDaily(request: Request, env: Env) {
 
   const runAt = Date.now();
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
 
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
-      const rolled = [];
-      for (const { date, start, end } of days) {
-        await sql`
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
+        const rolled = [];
+        for (const { date, start, end } of days) {
+          await sql`
           INSERT INTO account_events_daily (hotkey, netuid, day, event_count, event_kinds, first_block, last_block, updated_at)
           SELECT
             hotkey,
@@ -1231,12 +1215,12 @@ async function handleRollupAccountEventsDaily(request: Request, env: Env) {
             first_block = EXCLUDED.first_block,
             last_block = EXCLUDED.last_block,
             updated_at = EXCLUDED.updated_at`;
-        // wallet_flow_daily (#6886/#6887): the account-keyed counterpart to
-        // account_events_daily above, scoped to just the two stake-flow
-        // kinds and grouped by account instead of (hotkey, netuid). Both
-        // StakeAdded and StakeRemoved carry a positive amount_tao (see
-        // src/chain-stake-flow.ts's own header), so net = added - removed.
-        await sql`
+          // wallet_flow_daily (#6886/#6887): the account-keyed counterpart to
+          // account_events_daily above, scoped to just the two stake-flow
+          // kinds and grouped by account instead of (hotkey, netuid). Both
+          // StakeAdded and StakeRemoved carry a positive amount_tao (see
+          // src/chain-stake-flow.ts's own header), so net = added - removed.
+          await sql`
           INSERT INTO wallet_flow_daily (coldkey, day, net_flow_tao, gross_in_tao, gross_out_tao, updated_at)
           SELECT
             coldkey,
@@ -1254,10 +1238,11 @@ async function handleRollupAccountEventsDaily(request: Request, env: Env) {
             gross_in_tao = EXCLUDED.gross_in_tao,
             gross_out_tao = EXCLUDED.gross_out_tao,
             updated_at = EXCLUDED.updated_at`;
-        rolled.push(date);
-      }
-      return writeJson({ ok: true, rolled });
-    });
+          rolled.push(date);
+        }
+        return writeJson({ ok: true, rolled });
+      },
+    );
   } catch (err) {
     console.error("data-api account-events-daily rollup failed:", err);
     await captureDataApiError(err, "account-events-daily-rollup", env);
@@ -1412,17 +1397,13 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
   const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
   const netuids = incoming.map((row: Row) => row.netuid);
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
 
-      await sql`
+        await sql`
         INSERT INTO subnet_hyperparams ${sql(rows, ...SUBNET_HYPERPARAMS_INSERT_COLUMNS)}
         ON CONFLICT (netuid) DO UPDATE SET
           kappa_ratio = EXCLUDED.kappa_ratio,
@@ -1462,48 +1443,48 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
           captured_at = EXCLUDED.captured_at
         WHERE subnet_hyperparams.captured_at <= EXCLUDED.captured_at`;
 
-      // Prune subnets no longer in the snapshot (deregistered/removed) --
-      // scalar positional binds via sql.unsafe, not a bound array, avoiding
-      // the same fetch_types:false ANY()/array-bind landmine documented on
-      // handleNeuronsSync's own prune above. `netuids` is never empty here
-      // -- the earlier `!incoming.length` check guarantees at least one row.
-      const placeholders = netuids
-        .map((_: unknown, i: number) => `$${i + 1}::int`)
-        .join(", ");
-      const pruned = await sql.unsafe(
-        `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${placeholders}) RETURNING netuid`,
-        netuids,
-      );
+        // Prune subnets no longer in the snapshot (deregistered/removed) --
+        // scalar positional binds via sql.unsafe, not a bound array, avoiding
+        // the same fetch_types:false ANY()/array-bind landmine documented on
+        // handleNeuronsSync's own prune above. `netuids` is never empty here
+        // -- the earlier `!incoming.length` check guarantees at least one row.
+        const placeholders = netuids
+          .map((_: unknown, i: number) => `$${i + 1}::int`)
+          .join(", ");
+        const pruned = await sql.unsafe(
+          `DELETE FROM subnet_hyperparams WHERE netuid NOT IN (${placeholders}) RETURNING netuid`,
+          netuids,
+        );
 
-      // Diff-and-append into subnet_hyperparams_history (mirrors D1's
-      // recordSubnetHyperparamsChanges) -- hashed on the RAW incoming rows
-      // (pre-coercion): formatSubnetHyperparams' toD1Flag(value) already
-      // tolerates either a 0/1 number or a real boolean, so the hash stays
-      // domain-identical to the D1 path regardless of which shape reaches it.
-      const latest = await sql`
+        // Diff-and-append into subnet_hyperparams_history (mirrors D1's
+        // recordSubnetHyperparamsChanges) -- hashed on the RAW incoming rows
+        // (pre-coercion): formatSubnetHyperparams' toD1Flag(value) already
+        // tolerates either a 0/1 number or a real boolean, so the hash stays
+        // domain-identical to the D1 path regardless of which shape reaches it.
+        const latest = await sql`
         SELECT DISTINCT ON (netuid) netuid, hyperparams_hash
         FROM subnet_hyperparams_history
         ORDER BY netuid, id DESC`;
-      const latestByNetuid = new Map(
-        latest.map((row) => [Number(row.netuid), row.hyperparams_hash]),
-      );
-      const now = Date.now();
-      const changedRows: Row[] = [];
-      for (const row of incoming) {
-        const hyperparameters = formatSubnetHyperparams(row);
-        const hash = await hyperparamsHash(hyperparameters);
-        if (latestByNetuid.get(row.netuid) === hash) continue;
-        changedRows.push({
-          netuid: row.netuid,
-          block_number: row.block_number ?? null,
-          observed_at: now,
-          ...hyperparameters,
-          hyperparams_hash: hash,
-        });
-        latestByNetuid.set(row.netuid, hash);
-      }
-      if (changedRows.length) {
-        await sql`
+        const latestByNetuid = new Map(
+          latest.map((row) => [Number(row.netuid), row.hyperparams_hash]),
+        );
+        const now = Date.now();
+        const changedRows: Row[] = [];
+        for (const row of incoming) {
+          const hyperparameters = formatSubnetHyperparams(row);
+          const hash = await hyperparamsHash(hyperparameters);
+          if (latestByNetuid.get(row.netuid) === hash) continue;
+          changedRows.push({
+            netuid: row.netuid,
+            block_number: row.block_number ?? null,
+            observed_at: now,
+            ...hyperparameters,
+            hyperparams_hash: hash,
+          });
+          latestByNetuid.set(row.netuid, hash);
+        }
+        if (changedRows.length) {
+          await sql`
           INSERT INTO subnet_hyperparams_history ${sql(
             changedRows,
             "netuid",
@@ -1512,15 +1493,16 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
             ...SUBNET_HYPERPARAMS_HISTORY_FIELDS,
             "hyperparams_hash",
           )}`;
-      }
+        }
 
-      return writeJson({
-        ok: true,
-        subnet_hyperparams_written: rows.length,
-        deregistered_pruned: pruned.length,
-        history_appended: changedRows.length,
-      });
-    });
+        return writeJson({
+          ok: true,
+          subnet_hyperparams_written: rows.length,
+          deregistered_pruned: pruned.length,
+          history_appended: changedRows.length,
+        });
+      },
+    );
   } catch (err) {
     console.error("data-api subnet-hyperparams-sync write failed:", err);
     await captureDataApiError(err, "subnet-hyperparams-sync", env);
@@ -1645,18 +1627,14 @@ async function handleSubnetLocksSync(request: Request, env: Env) {
     );
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
 
-      if (incoming.length) {
-        await sql`
+        if (incoming.length) {
+          await sql`
           INSERT INTO subnet_locks ${sql(incoming, ...SUBNET_LOCKS_INSERT_COLUMNS)}
           ON CONFLICT (netuid, hotkey, is_owner, is_perpetual) DO UPDATE SET
             locked_mass = EXCLUDED.locked_mass,
@@ -1664,37 +1642,38 @@ async function handleSubnetLocksSync(request: Request, env: Env) {
             last_update = EXCLUDED.last_update,
             captured_at = EXCLUDED.captured_at
           WHERE subnet_locks.captured_at <= EXCLUDED.captured_at`;
-      }
+        }
 
-      // Every run is a full-network snapshot (see header comment) -- prune
-      // whatever this batch didn't report. Row-value tuple comparison
-      // (native Postgres, no array bind) -- scalar positional placeholders
-      // via sql.unsafe, same landmine-avoidance as handleSubnetHyperparams-
-      // Sync's own prune (fetch_types:false makes bound ARRAY/ANY() params
-      // unreliable on this connection).
-      let prunedCount = 0;
-      if (incoming.length) {
-        const values: (number | string | boolean)[] = [];
-        const tuples = incoming.map((row: Row, i: number) => {
-          const base = i * 4;
-          values.push(row.netuid, row.hotkey, row.is_owner, row.is_perpetual);
-          return `($${base + 1}::int, $${base + 2}::text, $${base + 3}::bool, $${base + 4}::bool)`;
-        });
-        const prunedRows = await sql.unsafe(
-          `DELETE FROM subnet_locks
+        // Every run is a full-network snapshot (see header comment) -- prune
+        // whatever this batch didn't report. Row-value tuple comparison
+        // (native Postgres, no array bind) -- scalar positional placeholders
+        // via sql.unsafe, same landmine-avoidance as handleSubnetHyperparams-
+        // Sync's own prune (fetch_types:false makes bound ARRAY/ANY() params
+        // unreliable on this connection).
+        let prunedCount = 0;
+        if (incoming.length) {
+          const values: (number | string | boolean)[] = [];
+          const tuples = incoming.map((row: Row, i: number) => {
+            const base = i * 4;
+            values.push(row.netuid, row.hotkey, row.is_owner, row.is_perpetual);
+            return `($${base + 1}::int, $${base + 2}::text, $${base + 3}::bool, $${base + 4}::bool)`;
+          });
+          const prunedRows = await sql.unsafe(
+            `DELETE FROM subnet_locks
            WHERE (netuid, hotkey, is_owner, is_perpetual) NOT IN (${tuples.join(", ")})
            RETURNING netuid`,
-          values,
-        );
-        prunedCount = prunedRows.length;
-      }
+            values,
+          );
+          prunedCount = prunedRows.length;
+        }
 
-      return writeJson({
-        ok: true,
-        subnet_locks_written: incoming.length,
-        pruned: prunedCount,
-      });
-    });
+        return writeJson({
+          ok: true,
+          subnet_locks_written: incoming.length,
+          pruned: prunedCount,
+        });
+      },
+    );
   } catch (err) {
     console.error("data-api subnet-locks-sync write failed:", err);
     await captureDataApiError(err, "subnet-locks-sync", env);
@@ -1837,17 +1816,13 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
   const sanitized = incoming.map(sanitizeAccountIdentitySyncRow);
   const rows = sanitized.map(coerceAccountIdentitySyncRow);
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
 
-      await sql`
+        await sql`
         INSERT INTO account_identity ${sql(rows, ...ACCOUNT_IDENTITY_INSERT_COLUMNS)}
         ON CONFLICT (account) DO UPDATE SET
           name = EXCLUDED.name,
@@ -1860,35 +1835,35 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
           captured_at = EXCLUDED.captured_at
         WHERE account_identity.captured_at <= EXCLUDED.captured_at`;
 
-      // Diff-and-append into account_identity_history (mirrors D1's
-      // recordAccountIdentityChanges) -- hashed on the sanitized rows (NUL
-      // bytes already stripped above), matching identitySnapshotFromRow's
-      // own field selection.
-      const latest = await sql`
+        // Diff-and-append into account_identity_history (mirrors D1's
+        // recordAccountIdentityChanges) -- hashed on the sanitized rows (NUL
+        // bytes already stripped above), matching identitySnapshotFromRow's
+        // own field selection.
+        const latest = await sql`
         SELECT DISTINCT ON (account) account, identity_hash
         FROM account_identity_history
         ORDER BY account, id DESC`;
-      const latestByAccount = new Map(
-        latest.map((row) => [row.account, row.identity_hash]),
-      );
-      const now = Date.now();
-      const changedRows: Row[] = [];
-      for (const row of sanitized) {
-        const snapshot: Row = {};
-        for (const field of IDENTITY_FIELDS)
-          snapshot[field] = row[field] ?? null;
-        const hash = await identityHash(snapshot);
-        if (latestByAccount.get(row.account) === hash) continue;
-        changedRows.push({
-          account: row.account,
-          observed_at: now,
-          ...snapshot,
-          identity_hash: hash,
-        });
-        latestByAccount.set(row.account, hash);
-      }
-      if (changedRows.length) {
-        await sql`
+        const latestByAccount = new Map(
+          latest.map((row) => [row.account, row.identity_hash]),
+        );
+        const now = Date.now();
+        const changedRows: Row[] = [];
+        for (const row of sanitized) {
+          const snapshot: Row = {};
+          for (const field of IDENTITY_FIELDS)
+            snapshot[field] = row[field] ?? null;
+          const hash = await identityHash(snapshot);
+          if (latestByAccount.get(row.account) === hash) continue;
+          changedRows.push({
+            account: row.account,
+            observed_at: now,
+            ...snapshot,
+            identity_hash: hash,
+          });
+          latestByAccount.set(row.account, hash);
+        }
+        if (changedRows.length) {
+          await sql`
           INSERT INTO account_identity_history ${sql(
             changedRows,
             "account",
@@ -1896,14 +1871,15 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
             ...IDENTITY_FIELDS,
             "identity_hash",
           )}`;
-      }
+        }
 
-      return writeJson({
-        ok: true,
-        account_identity_written: rows.length,
-        history_appended: changedRows.length,
-      });
-    });
+        return writeJson({
+          ok: true,
+          account_identity_written: rows.length,
+          history_appended: changedRows.length,
+        });
+      },
+    );
   } catch (err) {
     console.error("data-api account-identity-sync write failed:", err);
     await captureDataApiError(err, "account-identity-sync", env);
@@ -2049,27 +2025,24 @@ async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
     );
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
-      await batchedUpsert(
-        sql,
-        incoming,
-        (sql, batch) => sql`
+    await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
+        await batchedUpsert(
+          sql,
+          incoming,
+          (sql, batch) => sql`
           INSERT INTO validator_nominator_counts ${sql(batch, ...VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS)}
           ON CONFLICT (hotkey) DO UPDATE SET
             nominator_count = EXCLUDED.nominator_count,
             captured_at = EXCLUDED.captured_at
           WHERE validator_nominator_counts.captured_at <= EXCLUDED.captured_at`,
-        VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH,
-      );
-    });
+          VALIDATOR_NOMINATOR_COUNTS_MAX_ROWS_PER_BATCH,
+        );
+      },
+    );
     return writeJson({
       ok: true,
       validator_nominator_counts_written: incoming.length,
@@ -2182,27 +2155,24 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
     );
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
-      await batchedUpsert(
-        sql,
-        incoming,
-        (sql, batch) => sql`
+    await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
+        await batchedUpsert(
+          sql,
+          incoming,
+          (sql, batch) => sql`
           INSERT INTO nominator_positions ${sql(batch, ...NOMINATOR_POSITION_INSERT_COLUMNS)}
           ON CONFLICT (coldkey, hotkey, netuid) DO UPDATE SET
             share_fraction = EXCLUDED.share_fraction,
             captured_at = EXCLUDED.captured_at
           WHERE nominator_positions.captured_at <= EXCLUDED.captured_at`,
-        NOMINATOR_POSITIONS_MAX_ROWS_PER_BATCH,
-      );
-    });
+          NOMINATOR_POSITIONS_MAX_ROWS_PER_BATCH,
+        );
+      },
+    );
     return writeJson({
       ok: true,
       nominator_positions_written: incoming.length,
@@ -2315,28 +2285,25 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
     );
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
-      await batchedUpsert(
-        sql,
-        incoming,
-        (sql, batch) => sql`
+    await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
+        await batchedUpsert(
+          sql,
+          incoming,
+          (sql, batch) => sql`
           INSERT INTO account_balances ${sql(batch, ...ACCOUNT_BALANCE_INSERT_COLUMNS)}
           ON CONFLICT (ss58) DO UPDATE SET
             free_tao = EXCLUDED.free_tao,
             reserved_tao = EXCLUDED.reserved_tao,
             captured_at = EXCLUDED.captured_at
           WHERE account_balances.captured_at <= EXCLUDED.captured_at`,
-        ACCOUNT_BALANCES_MAX_ROWS_PER_BATCH,
-      );
-    });
+          ACCOUNT_BALANCES_MAX_ROWS_PER_BATCH,
+        );
+      },
+    );
     return writeJson({ ok: true, account_balances_written: incoming.length });
   } catch (err) {
     console.error("data-api account-balances-sync write failed:", err);
@@ -2438,49 +2405,45 @@ async function handleSubnetIdentitySync(request: Request, env: Env) {
     return writeJson({ error: "profiles must be a non-empty array" }, 400);
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
 
-      const latest = await sql`
+        const latest = await sql`
         SELECT DISTINCT ON (netuid) netuid, identity_hash
         FROM subnet_identity_history
         ORDER BY netuid, id DESC`;
-      const latestByNetuid = new Map(
-        latest.map((row) => [Number(row.netuid), row.identity_hash]),
-      );
-      const [blockRow] = await sql`
-        SELECT MAX(block_number) AS block_number FROM blocks`;
-      const blockNumber =
-        blockRow?.block_number == null ? null : Number(blockRow.block_number);
-
-      const now = Date.now();
-      const changedRows: Row[] = [];
-      for (const profile of profiles) {
-        if (!Number.isInteger(profile?.netuid)) continue;
-        const snapshot = sanitizeSubnetIdentitySyncSnapshot(
-          identitySnapshotFromProfile(profile),
+        const latestByNetuid = new Map(
+          latest.map((row) => [Number(row.netuid), row.identity_hash]),
         );
-        if (!snapshot) continue;
-        const hash = await subnetIdentityHash(snapshot);
-        if (latestByNetuid.get(profile.netuid) === hash) continue;
-        changedRows.push({
-          netuid: profile.netuid,
-          block_number: blockNumber,
-          observed_at: now,
-          ...snapshot,
-          identity_hash: hash,
-        });
-        latestByNetuid.set(profile.netuid, hash);
-      }
-      if (changedRows.length) {
-        await sql`
+        const [blockRow] = await sql`
+        SELECT MAX(block_number) AS block_number FROM blocks`;
+        const blockNumber =
+          blockRow?.block_number == null ? null : Number(blockRow.block_number);
+
+        const now = Date.now();
+        const changedRows: Row[] = [];
+        for (const profile of profiles) {
+          if (!Number.isInteger(profile?.netuid)) continue;
+          const snapshot = sanitizeSubnetIdentitySyncSnapshot(
+            identitySnapshotFromProfile(profile),
+          );
+          if (!snapshot) continue;
+          const hash = await subnetIdentityHash(snapshot);
+          if (latestByNetuid.get(profile.netuid) === hash) continue;
+          changedRows.push({
+            netuid: profile.netuid,
+            block_number: blockNumber,
+            observed_at: now,
+            ...snapshot,
+            identity_hash: hash,
+          });
+          latestByNetuid.set(profile.netuid, hash);
+        }
+        if (changedRows.length) {
+          await sql`
           INSERT INTO subnet_identity_history ${sql(
             changedRows,
             "netuid",
@@ -2495,13 +2458,14 @@ async function handleSubnetIdentitySync(request: Request, env: Env) {
             "logo_url",
             "identity_hash",
           )}`;
-      }
+        }
 
-      return writeJson({
-        ok: true,
-        history_appended: changedRows.length,
-      });
-    });
+        return writeJson({
+          ok: true,
+          history_appended: changedRows.length,
+        });
+      },
+    );
   } catch (err) {
     console.error("data-api subnet-identity-sync write failed:", err);
     await captureDataApiError(err, "subnet-identity-sync", env);
@@ -2578,12 +2542,6 @@ async function handleHealthChecksSync(request: Request, env: Env) {
     return writeJson({ ok: true, checks_written: 0, status_written: 0 });
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   const validRows = probed.filter(
     (row: Row) =>
       row &&
@@ -2652,9 +2610,11 @@ async function handleHealthChecksSync(request: Request, env: Env) {
   );
 
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '10000ms'`;
-      await sql`
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '10000ms'`;
+        await sql`
         INSERT INTO surface_checks ${sql(
           checkRows,
           "surface_id",
@@ -2669,30 +2629,30 @@ async function handleHealthChecksSync(request: Request, env: Env) {
           "checked_at",
         )}
         ON CONFLICT (surface_id, checked_at) DO NOTHING`;
-      // METAGRAPHED-B: evict any stale row still holding one of this batch's
-      // surface_keys under a DIFFERENT surface_id -- a surface rename leaves
-      // the old id's row behind, and idx_surface_status_key_unique then
-      // rejects the new id's insert (the upsert's conflict target is
-      // surface_id, so the key collision surfaces as a hard error, not an
-      // update). Scalar positional binds via a VALUES join -- this Worker's
-      // fetch_types:false Hyperdrive setting breaks postgres.js's bound-array
-      // ANY($1) serialization (see the neurons-sync prune query's comment).
-      const keyedRows = dedupedStatusRows.filter(
-        (row) => row.surface_key !== null,
-      );
-      if (keyedRows.length) {
-        const valuesSql = keyedRows
-          .map((_, i) => `($${i * 2 + 1}::text, $${i * 2 + 2}::text)`)
-          .join(", ");
-        await sql.unsafe(
-          `DELETE FROM surface_status s
+        // METAGRAPHED-B: evict any stale row still holding one of this batch's
+        // surface_keys under a DIFFERENT surface_id -- a surface rename leaves
+        // the old id's row behind, and idx_surface_status_key_unique then
+        // rejects the new id's insert (the upsert's conflict target is
+        // surface_id, so the key collision surfaces as a hard error, not an
+        // update). Scalar positional binds via a VALUES join -- this Worker's
+        // fetch_types:false Hyperdrive setting breaks postgres.js's bound-array
+        // ANY($1) serialization (see the neurons-sync prune query's comment).
+        const keyedRows = dedupedStatusRows.filter(
+          (row) => row.surface_key !== null,
+        );
+        if (keyedRows.length) {
+          const valuesSql = keyedRows
+            .map((_, i) => `($${i * 2 + 1}::text, $${i * 2 + 2}::text)`)
+            .join(", ");
+          await sql.unsafe(
+            `DELETE FROM surface_status s
            USING (VALUES ${valuesSql}) AS incoming(surface_key, surface_id)
            WHERE s.surface_key = incoming.surface_key
              AND s.surface_id <> incoming.surface_id`,
-          keyedRows.flatMap((row) => [row.surface_key, row.surface_id]),
-        );
-      }
-      await sql`
+            keyedRows.flatMap((row) => [row.surface_key, row.surface_id]),
+          );
+        }
+        await sql`
         INSERT INTO surface_status ${sql(
           dedupedStatusRows,
           "surface_id",
@@ -2724,12 +2684,13 @@ async function handleHealthChecksSync(request: Request, env: Env) {
           last_ok = excluded.last_ok,
           consecutive_failures = excluded.consecutive_failures,
           updated_at = excluded.updated_at`;
-      return writeJson({
-        ok: true,
-        checks_written: checkRows.length,
-        status_written: dedupedStatusRows.length,
-      });
-    });
+        return writeJson({
+          ok: true,
+          checks_written: checkRows.length,
+          status_written: dedupedStatusRows.length,
+        });
+      },
+    );
   } catch (err) {
     console.error("data-api health-checks-sync write failed:", err);
     await captureDataApiError(err, "health-checks-sync", env);
@@ -2802,17 +2763,13 @@ async function handleHealthUptimeRollupSync(request: Request, env: Env) {
     return writeJson({ ok: true, days_rolled: [] });
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '20000ms'`;
-      for (const { date, start, end } of validDays) {
-        await sql`
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '20000ms'`;
+        for (const { date, start, end } of validDays) {
+          await sql`
         WITH ranked AS (
           SELECT
             surface_id,
@@ -2865,12 +2822,13 @@ async function handleHealthUptimeRollupSync(request: Request, env: Env) {
           p99_latency_ms = excluded.p99_latency_ms,
           status = excluded.status,
           updated_at = excluded.updated_at`;
-      }
-      return writeJson({
-        ok: true,
-        days_rolled: validDays.map((d: Row) => d.date),
-      });
-    });
+        }
+        return writeJson({
+          ok: true,
+          days_rolled: validDays.map((d: Row) => d.date),
+        });
+      },
+    );
   } catch (err) {
     console.error("data-api health-uptime-rollup-sync write failed:", err);
     await captureDataApiError(err, "health-uptime-rollup-sync", env);
@@ -2958,12 +2916,6 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
     return writeJson({ ok: true, rows_written: 0 });
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   const snapshotRows = validRows.map((row) => ({
     netuid: row.netuid,
     snapshot_date: row.snapshot_date,
@@ -3011,9 +2963,11 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
   }));
 
   try {
-    return await sql.begin(async (sql: postgres.TransactionSql) => {
-      await sql`SET statement_timeout = '10000ms'`;
-      await sql`
+    return await syncBeginWithConnectionRetry(
+      env,
+      async (sql: postgres.TransactionSql) => {
+        await sql`SET statement_timeout = '10000ms'`;
+        await sql`
         INSERT INTO subnet_snapshots ${sql(
           snapshotRows,
           "netuid",
@@ -3044,8 +2998,9 @@ async function handleSubnetSnapshotSync(request: Request, env: Env) {
           alpha_in_pool = COALESCE(subnet_snapshots.alpha_in_pool, excluded.alpha_in_pool),
           alpha_out_pool = COALESCE(subnet_snapshots.alpha_out_pool, excluded.alpha_out_pool),
           subnet_volume_tao = COALESCE(subnet_snapshots.subnet_volume_tao, excluded.subnet_volume_tao)`;
-      return writeJson({ ok: true, rows_written: snapshotRows.length });
-    });
+        return writeJson({ ok: true, rows_written: snapshotRows.length });
+      },
+    );
   } catch (err) {
     console.error("data-api subnet-snapshot-sync write failed:", err);
     await captureDataApiError(err, "subnet-snapshot-sync", env);
@@ -3109,6 +3064,10 @@ async function handleRpcUsageEventSync(request: Request, env: Env) {
     return writeJson({ error: "malformed rpc usage event" }, 400);
   }
 
+  // Deliberately NOT syncBeginWithConnectionRetry: this is a plain single-row INSERT with
+  // no conflict target, so an ambiguous commit (statement applied, socket died before the
+  // OK arrived -- exactly the CONNECTION_CLOSED class the retry targets) plus a retry
+  // would double-count the event. A rare dropped telemetry row is the cheaper failure.
   const sql = postgres(env.HYPERDRIVE.connectionString, {
     max: 5,
     prepare: false,
@@ -3175,16 +3134,15 @@ async function handleRpcUsageEventPrune(request: Request, env: Env) {
     return writeJson({ error: "cutoff must be a finite number" }, 400);
   }
 
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 5,
-    prepare: false,
-    fetch_types: false,
-  });
-
   try {
-    const result = await sql`
-      DELETE FROM rpc_proxy_events WHERE observed_at < ${body.cutoff}`;
-    return writeJson({ ok: true, rows_deleted: result.count });
+    // A cutoff DELETE is idempotent (re-running deletes nothing new), so unlike the
+    // event INSERT above it safely takes the shared connection retry; the transaction
+    // wrapper only buys the retry semantics, the single statement was already atomic.
+    return await syncBeginWithConnectionRetry(env, async (sql) => {
+      const result = await sql`
+        DELETE FROM rpc_proxy_events WHERE observed_at < ${body.cutoff}`;
+      return writeJson({ ok: true, rows_deleted: result.count });
+    });
   } catch (err) {
     console.error("data-api rpc-usage-prune write failed:", err);
     await captureDataApiError(err, "rpc-usage-prune", env);

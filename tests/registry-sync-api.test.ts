@@ -12,6 +12,14 @@ const deleteResult = vi.hoisted(() => ({
   subnets: [] as Row[],
 }));
 const failure = vi.hoisted(() => ({ error: null as Error | null }));
+// Countdown connection-failure state (METAGRAPHED-7, second recurrence) -- same semantics
+// as data-api's healthChecksSyncConnectionFailure: N rejections carrying a retryable
+// postgres.js connection code, then success, so the fresh-client retry in
+// workers/hyperdrive-sync-retry.ts is what a passing test proves.
+const connectionFailure = vi.hoisted(() => ({
+  remainingFailures: 0,
+  code: "CONNECTION_CLOSED",
+}));
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -20,6 +28,20 @@ vi.mock("postgres", () => ({
       sqlCalls.push({ text, values });
       if (failure.error && /INSERT INTO providers/.test(text)) {
         return Promise.reject(failure.error);
+      }
+      if (
+        connectionFailure.remainingFailures > 0 &&
+        /INSERT INTO providers/.test(text)
+      ) {
+        connectionFailure.remainingFailures -= 1;
+        return Promise.reject(
+          Object.assign(
+            new Error(
+              `write ${connectionFailure.code} mock.hyperdrive.local:5432`,
+            ),
+            { code: connectionFailure.code },
+          ),
+        );
       }
       if (/INSERT INTO surfaces/.test(text)) {
         return Promise.resolve(surfaceResult.current);
@@ -117,6 +139,8 @@ beforeEach(() => {
   deleteResult.surfaces = [];
   deleteResult.subnets = [];
   failure.error = null;
+  connectionFailure.remainingFailures = 0;
+  connectionFailure.code = "CONNECTION_CLOSED";
 });
 
 test("rejects non-POST (405)", async () => {
@@ -595,6 +619,31 @@ test("does not delete a subnet that is also upserted in the same request", async
 
 test("maps a DB failure to a clean 502 instead of throwing", async () => {
   failure.error = new Error("connection reset");
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    baseEnv(),
+  );
+  expect(res.status).toBe(502);
+  expect((await jsonBody(res)).error).toBe("write failed");
+});
+
+test("retries with a fresh client after a Hyperdrive CONNECTION_CLOSED and lands the batch (METAGRAPHED-7 second recurrence)", async () => {
+  connectionFailure.remainingFailures = 1;
+  const res = await worker.fetch(
+    post({ providers: [provider()] }, { secret: SECRET }),
+    baseEnv(),
+  );
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ ok: true, providers_written: 1 });
+  // The providers INSERT ran twice: dropped socket on attempt 1, fresh client landed attempt 2.
+  expect(
+    sqlCalls.filter((c) => /INSERT INTO providers/.test(c.text as string))
+      .length,
+  ).toBe(2);
+});
+
+test("still 502s once every connection retry is exhausted (METAGRAPHED-7)", async () => {
+  connectionFailure.remainingFailures = 3;
   const res = await worker.fetch(
     post({ providers: [provider()] }, { secret: SECRET }),
     baseEnv(),
