@@ -3510,6 +3510,86 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     assert.equal(capturedUrl!.searchParams.get("call_module"), null);
   });
 
+  // #7873: block-range (block_start/block_end -> block_number) and time-range
+  // (from/to -> observed_at) bounds, matching REST + MCP
+  // get_governance_config_changes.
+  function capturingEnv(sink: { url?: URL }) {
+    return {
+      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async (req: Request) => {
+          sink.url = new URL(req.url);
+          return Response.json({
+            schema_version: 1,
+            extrinsic_count: 0,
+            limit: 20,
+            offset: 0,
+            next_cursor: null,
+            extrinsics: [],
+          });
+        },
+      },
+    } as unknown as Env;
+  }
+
+  test("governance_config_changes: a block range is forwarded (#7873)", async () => {
+    const sink: { url?: URL } = {};
+    await gql(
+      "{ governance_config_changes(block_start: 100, block_end: 200) { total } }",
+      capturingEnv(sink),
+    );
+    assert.equal(sink.url!.pathname, "/api/v1/governance/config-changes");
+    assert.equal(sink.url!.searchParams.get("block_start"), "100");
+    assert.equal(sink.url!.searchParams.get("block_end"), "200");
+  });
+
+  test("governance_config_changes: a time range is forwarded (#7873)", async () => {
+    const sink: { url?: URL } = {};
+    await gql(
+      "{ governance_config_changes(from: 1750000000, to: 1760000000) { total } }",
+      capturingEnv(sink),
+    );
+    assert.equal(sink.url!.searchParams.get("from"), "1750000000");
+    assert.equal(sink.url!.searchParams.get("to"), "1760000000");
+  });
+
+  test("governance_config_changes: block and time bounds combine with the existing filters (#7873)", async () => {
+    const sink: { url?: URL } = {};
+    await gql(
+      `{ governance_config_changes(limit: 5, call_function: "sudo_set_tempo", block_start: 10, block_end: 20, from: 1, to: 2) { total } }`,
+      capturingEnv(sink),
+    );
+    assert.equal(sink.url!.searchParams.get("limit"), "5");
+    assert.equal(sink.url!.searchParams.get("call_function"), "sudo_set_tempo");
+    assert.equal(sink.url!.searchParams.get("block_start"), "10");
+    assert.equal(sink.url!.searchParams.get("block_end"), "20");
+    assert.equal(sink.url!.searchParams.get("from"), "1");
+    assert.equal(sink.url!.searchParams.get("to"), "2");
+  });
+
+  test("governance_config_changes: omitted bounds are not forwarded (#7873)", async () => {
+    const sink: { url?: URL } = {};
+    await gql("{ governance_config_changes { total } }", capturingEnv(sink));
+    for (const p of ["block_start", "block_end", "from", "to"]) {
+      assert.equal(sink.url!.searchParams.get(p), null, `${p} must be absent`);
+    }
+  });
+
+  test("governance_config_changes: a negative bound is BAD_USER_INPUT (#7873)", async () => {
+    for (const arg of [
+      "block_start: -1",
+      "block_end: -1",
+      "from: -1",
+      "to: -1",
+    ]) {
+      const { body } = await gql(
+        `{ governance_config_changes(${arg}) { total } }`,
+      );
+      assert.ok(body.errors, `expected a GraphQL error for ${arg}`);
+      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    }
+  });
+
   test("governance_config_changes: a cursor arg is forwarded as a query param", async () => {
     let capturedUrl: URL | undefined;
     const env = {

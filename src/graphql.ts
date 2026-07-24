@@ -714,7 +714,7 @@ export const SDL = `
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
     extrinsic(ref: String!): ExtrinsicDetail
     "Subtensor's root-origin hyperparameter/network-config change feed (newest first) -- the extrinsics feed fixed to call_module=AdminUtils, so it takes no signer/call_module filter. Same ExtrinsicList shape as extrinsics. Mirrors GET /api/v1/governance/config-changes."
-    governance_config_changes(limit: Int, offset: Int, cursor: String, block: Int, call_function: String, success: Boolean): ExtrinsicList!
+    governance_config_changes(limit: Int, offset: Int, cursor: String, block: Int, call_function: String, success: Boolean, block_start: Int, block_end: Int, from: Int, to: Int): ExtrinsicList!
     "Recent-block feed (newest first). Optionally filter by author (SS58), spec_version, block_start/block_end (inclusive block-height range), from/to (observed_at epoch-ms range — String args because epoch-ms exceeds GraphQL Int's 32-bit range, matching account_history), min_extrinsics, and min_events — the same filter set MCP list_blocks and GET /api/v1/blocks accept. Mirrors GET /api/v1/blocks."
     blocks(limit: Int, offset: Int, cursor: String, author: String, spec_version: Int, block_start: Int, block_end: Int, from: String, to: String, min_extrinsics: Int, min_events: Int): BlockList!
     "One block by numeric height or 0x block hash; block is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/{ref}."
@@ -7363,13 +7363,41 @@ const rootValue = {
   },
 
   async governance_config_changes(
-    { limit, offset, cursor, block, call_function: callFunction, success }: Row,
+    {
+      limit,
+      offset,
+      cursor,
+      block,
+      call_function: callFunction,
+      success,
+      block_start: blockStart,
+      block_end: blockEnd,
+      from,
+      to,
+    }: Row,
     context: GqlContext,
   ) {
     if (block != null && (!Number.isInteger(block) || block < 0)) {
       throw new GraphQLError("block must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
+    }
+    // #7873: the same block-range (block_start/block_end -> block_number) and
+    // time-range (from/to -> observed_at) bounds the REST route and MCP
+    // get_governance_config_changes accept. All four are parsed by the tier's
+    // nonNegativeIntegerParam, so a negative value is BAD_USER_INPUT here
+    // rather than being silently dropped by the tier.
+    for (const [name, value] of [
+      ["block_start", blockStart],
+      ["block_end", blockEnd],
+      ["from", from],
+      ["to", to],
+    ] as const) {
+      if (value != null && (!Number.isInteger(value) || value < 0)) {
+        throw new GraphQLError(`${name} must be a non-negative integer.`, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
     }
     const safeLimit = clampLimit(limit, BLOCK_PAGINATION);
     const safeOffset = clampOffset(offset);
@@ -7380,6 +7408,10 @@ const rootValue = {
     if (block != null) params.set("block", String(block));
     if (callFunction) params.set("call_function", callFunction);
     if (success != null) params.set("success", String(success));
+    if (blockStart != null) params.set("block_start", String(blockStart));
+    if (blockEnd != null) params.set("block_end", String(blockEnd));
+    if (from != null) params.set("from", String(from));
+    if (to != null) params.set("to", String(to));
     // Same DATA_API extrinsics tier as Query.extrinsics, hitting the
     // /governance/config-changes path so the worker fixes call_module=AdminUtils
     // itself (see SUDO_GOVERNANCE_ROUTES in workers/data-api.mjs) -- no filter
