@@ -231,5 +231,17 @@ export default tseslint.config(
     files: ["src/components/**/*.{ts,tsx}"],
     rules: { "react-refresh/only-export-components": "off" },
   },
+  {
+    // These three lib/ files are React context modules: the provider
+    // component and its useXCtx/useX hook both need direct access to the
+    // same module-private createContext() value, so the hook can't move to
+    // a sibling file without exporting the context object itself (#7850).
+    files: [
+      "src/lib/metagraphed/api-source-context.tsx",
+      "src/lib/metagraphed/subnet-window.tsx",
+      "src/lib/metagraphed/value-unit.tsx",
+    ],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
   eslintPluginPrettier,
 );

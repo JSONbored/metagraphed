@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isSubnetWindow, SubnetWindowProvider, useSubnetWindow } from "./subnet-window";
+import { SubnetWindowProvider, useSubnetWindow } from "./subnet-window";
+import { isSubnetWindow } from "./subnet-window-helpers";
 
 const navigate = vi.fn();
 

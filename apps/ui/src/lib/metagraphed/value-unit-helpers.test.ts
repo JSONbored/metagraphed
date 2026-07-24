@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { readStoredValueUnit } from "./value-unit";
+import { readStoredValueUnit } from "./value-unit-helpers";
 
 const STORAGE_KEY = "mg:value-unit";
 

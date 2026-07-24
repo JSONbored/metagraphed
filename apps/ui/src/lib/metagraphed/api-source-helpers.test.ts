@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dedupeApiSources, type ApiSource } from "./api-source-context";
+import { dedupeApiSources, type ApiSource } from "./api-source-helpers";
 
 describe("dedupeApiSources", () => {
   it("returns an empty list for no registrations", () => {

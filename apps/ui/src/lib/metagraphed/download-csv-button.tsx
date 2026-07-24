@@ -11,11 +11,6 @@ export interface DownloadCsvButtonProps {
   className?: string;
 }
 
-/** Click handler shared by {@link DownloadCsvButton} and unit tests. */
-export function onDownloadCsvButtonClick(url: string): void {
-  downloadCsvFromUrl(url);
-}
-
 /** Presentational CSV export trigger — not wired into any page yet (#3403–#3409). */
 export function DownloadCsvButton({
   url,
@@ -27,7 +22,7 @@ export function DownloadCsvButton({
   return (
     <button
       type="button"
-      onClick={() => onDownloadCsvButtonClick(url)}
+      onClick={() => downloadCsvFromUrl(url)}
       aria-label={label}
       title={title}
       className={classNames(

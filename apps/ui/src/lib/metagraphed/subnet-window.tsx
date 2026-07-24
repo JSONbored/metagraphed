@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { SegmentedToggle } from "@jsonbored/ui-kit";
+import { SUBNET_WINDOWS, isSubnetWindow, type SubnetWindow } from "./subnet-window-helpers";
 
 /**
  * Shared time-window state for the /subnets/:netuid detail page. Persisted
@@ -11,13 +12,7 @@ import { SegmentedToggle } from "@jsonbored/ui-kit";
  * Values are intentionally aligned with the /subnets list route so the
  * user's window carries over when they drill in.
  */
-export type SubnetWindow = "7d" | "30d" | "90d";
-
-export const SUBNET_WINDOWS: SubnetWindow[] = ["7d", "30d", "90d"];
-
-export function isSubnetWindow(v: unknown): v is SubnetWindow {
-  return v === "7d" || v === "30d" || v === "90d";
-}
+export type { SubnetWindow };
 
 interface Ctx {
   window: SubnetWindow;
