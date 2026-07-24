@@ -193,6 +193,37 @@ describe("surfaces-mcp", () => {
     assert.equal((out.surfaces[0] as Row).kind, "openapi");
   });
 
+  test("surfacesQueryUrl forwards an exact id filter (#7894)", () => {
+    const url = surfacesQueryUrl({ id: "sn7-api" });
+    assert.equal(url.searchParams.get("id"), "sn7-api");
+  });
+
+  test("surfacesQueryUrl rejects a blank or non-string id (#7894)", () => {
+    assert.throws(
+      () => surfacesQueryUrl({ id: "   " }),
+      (err: Row) => err.code === "invalid_params",
+    );
+    assert.throws(
+      () => surfacesQueryUrl({ id: 42 }),
+      (err: Row) => err.code === "invalid_params",
+    );
+  });
+
+  test("loadSurfacesList narrows to a single surface by id (#7894)", async () => {
+    const out = await loadSurfacesList(
+      { env: {}, readArtifact } as unknown as LoadCtx,
+      { id: "sn12-openapi" },
+    );
+    assert.equal(out.returned, 1);
+    assert.equal((out.surfaces[0] as Row).id, "sn12-openapi");
+    assert.equal((out.surfaces[0] as Row).netuid, 12);
+  });
+
+  test("list_surfaces declares the id filter in its inputSchema (#7894)", () => {
+    const props = LIST_SURFACES_MCP_TOOL.inputSchema.properties as Row;
+    assert.equal((props.id as Row).type, "string");
+  });
+
   test("loadSurfacesList uses an injected readArtifact dep", async () => {
     const out = await loadSurfacesList(
       {

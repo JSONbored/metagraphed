@@ -75,6 +75,10 @@ export function surfacesQueryUrl(
   if (kind) url.searchParams.set("kind", kind);
   const provider = optionalString(args, "provider");
   if (provider) url.searchParams.set("provider", provider);
+  // #7894: exact-match surface id, the same filter axis REST's
+  // GET /api/v1/surfaces already accepts (curated-surfaces filters.id).
+  const id = optionalString(args, "id");
+  if (id) url.searchParams.set("id", id);
   const sort = optionalEnum(args, "sort", SURFACE_SORT_FIELDS);
   if (sort) url.searchParams.set("sort", sort);
   const order = optionalEnum(args, "order", ["asc", "desc"]);
@@ -190,7 +194,7 @@ export const LIST_SURFACES_MCP_TOOL = {
   description:
     "Fetch the catalog of curated public surfaces across all subnets: each " +
     "surface's subnet (netuid), kind, provider, title, url, and review state. " +
-    "Filter by netuid, kind, or provider; sort with sort + order; project with " +
+    "Filter by netuid, kind, provider, or exact id; sort with sort + order; project with " +
     "fields; and page with limit (1-100) / cursor. Distinct from " +
     "get_subnet_surfaces (one subnet's raw artifact dump). Mirrors " +
     "GET /api/v1/surfaces.",
@@ -210,6 +214,10 @@ export const LIST_SURFACES_MCP_TOOL = {
       provider: {
         type: "string",
         description: "Provider slug, e.g. 'datura'.",
+      },
+      id: {
+        type: "string",
+        description: "Exact surface id, to narrow to a single surface.",
       },
       sort: {
         type: "string",
