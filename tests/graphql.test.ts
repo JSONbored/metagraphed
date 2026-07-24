@@ -8932,18 +8932,104 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
 });
 
 describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifacts)", () => {
+  const SUBNET_GAPS_BLOB = {
+    schema_version: 1,
+    netuid: 5,
+    slug: "demo",
+    name: "Demo",
+    priorities: [
+      {
+        netuid: 5,
+        slug: "demo",
+        name: "Demo",
+        missing_kinds: ["docs"],
+        priority_score: 72,
+        curation_level: "maintainer-reviewed",
+        review_state: "maintainer-reviewed",
+        surface_count: 4,
+        candidate_count: 1,
+        verified_candidate_count: 1,
+      },
+      {
+        netuid: 5,
+        slug: "demo",
+        name: "Demo",
+        missing_kinds: ["openapi"],
+        priority_score: 40,
+        curation_level: "candidate-discovered",
+        review_state: "community-submitted",
+        surface_count: 2,
+        candidate_count: 3,
+        verified_candidate_count: 0,
+      },
+    ],
+    enrichment_queue: [
+      {
+        netuid: 5,
+        lane: "direct-submission",
+        missing_kinds: ["docs"],
+        recommended_action: "Submit official docs evidence",
+      },
+    ],
+  };
+
   test("subnet_gaps resolves the baked gap report", async () => {
     const env = fixtureEnv({
-      "/metagraph/review/gaps/5.json": {
-        netuid: 5,
-        gaps: [{ kind: "api", missing: true }],
-      },
+      "/metagraph/review/gaps/5.json": SUBNET_GAPS_BLOB,
     });
     const { status, body } = await gql("{ subnet_gaps(netuid: 5) }", env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.equal(body.data.subnet_gaps.netuid, 5);
-    assert.equal(body.data.subnet_gaps.gaps[0].kind, "api");
+    assert.equal(body.data.subnet_gaps.priorities[0].missing_kinds[0], "docs");
+    assert.equal(body.data.subnet_gaps.total, 2);
+  });
+
+  test("subnet_gaps filters by curation_level (#7880)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/review/gaps/5.json": SUBNET_GAPS_BLOB,
+    });
+    const { status, body } = await gql(
+      '{ subnet_gaps(netuid: 5, curation_level: "candidate-discovered") }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_gaps.total, 1);
+    assert.equal(
+      body.data.subnet_gaps.priorities[0].curation_level,
+      "candidate-discovered",
+    );
+  });
+
+  test("subnet_gaps filters by missing_kinds (#7880)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/review/gaps/5.json": SUBNET_GAPS_BLOB,
+    });
+    const { status, body } = await gql(
+      '{ subnet_gaps(netuid: 5, missing_kinds: ["openapi"]) }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_gaps.total, 1);
+    assert.deepEqual(body.data.subnet_gaps.priorities[0].missing_kinds, [
+      "openapi",
+    ]);
+  });
+
+  test("subnet_gaps an unsupported sort is a GraphQL error (#7880)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/review/gaps/5.json": SUBNET_GAPS_BLOB,
+    });
+    const { body } = await gql(
+      '{ subnet_gaps(netuid: 5, sort: "bogus") }',
+      env,
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("subnet_gaps degrades to null when no report is baked, never an error", async () => {
@@ -8951,6 +9037,25 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.equal(body.data.subnet_gaps, null);
+  });
+
+  test("subnet_gaps propagates a non-toolError from the artifact read (#7880)", async () => {
+    const env = {
+      METAGRAPH_R2_LATEST_PREFIX: "latest/",
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              throw new Error("corrupt subnet gaps artifact");
+            },
+          };
+        },
+      },
+    };
+    const { status, body } = await gql("{ subnet_gaps(netuid: 5) }", env);
+    assert.equal(status, 200);
+    assert.ok(body.errors?.length > 0);
+    assert.equal(body.data?.subnet_gaps ?? null, null);
   });
 
   test("subnet_evidence resolves the baked evidence record", async () => {

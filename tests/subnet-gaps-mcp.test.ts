@@ -386,7 +386,66 @@ describe("subnet-gaps-mcp", () => {
           } as unknown as LoadCtx,
           { netuid: NETUID },
         ),
-      (err: Row) => err.code === "artifact_unavailable",
+      (err: Row) => err.code === "not_found",
+    );
+  });
+
+  test("loadSubnetGapsList maps r2_binding_missing to not_found", async () => {
+    await assert.rejects(
+      () =>
+        loadSubnetGapsList(
+          {
+            env: {},
+            readArtifact: async () => ({
+              ok: false,
+              code: "r2_binding_missing",
+            }),
+          } as unknown as LoadCtx,
+          { netuid: NETUID },
+        ),
+      (err: Row) => err.code === "not_found",
+    );
+  });
+
+  test("subnetGapsQueryUrl accepts string cursor and missing_kinds list", () => {
+    const url = subnetGapsQueryUrl({
+      netuid: NETUID,
+      missing_kinds: ["openapi", "docs"],
+      cursor: "3",
+    });
+    assert.equal(url.searchParams.get("missing_kinds"), "openapi");
+    assert.equal(url.searchParams.get("cursor"), "3");
+  });
+
+  test("subnetGapsQueryUrl rejects an empty missing_kinds list", () => {
+    assert.throws(
+      () => subnetGapsQueryUrl({ netuid: NETUID, missing_kinds: [] }),
+      (err: Row) => err.code === "invalid_params",
+    );
+  });
+
+  test("subnetGapsQueryUrl rejects an invalid kind inside a missing_kinds list", () => {
+    assert.throws(
+      () =>
+        subnetGapsQueryUrl({
+          netuid: NETUID,
+          missing_kinds: ["openapi", "not-a-kind"],
+        }),
+      (err: Row) => err.code === "invalid_params",
+    );
+  });
+
+  test("subnetGapsQueryUrl rejects a list of only non-string missing_kinds", () => {
+    assert.throws(
+      () => subnetGapsQueryUrl({ netuid: NETUID, missing_kinds: [12] }),
+      (err: Row) => err.code === "invalid_params",
+    );
+  });
+
+  test("subnetGapsQueryUrl rejects a non-digit string cursor", () => {
+    assert.throws(
+      () => subnetGapsQueryUrl({ netuid: NETUID, cursor: "abc" }),
+      (err: Row) => err.code === "invalid_params",
     );
   });
 
