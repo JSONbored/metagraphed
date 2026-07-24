@@ -1,5 +1,6 @@
 import {
   GraphQLError,
+  type GraphQLObjectType,
   buildSchema,
   execute,
   parse,
@@ -564,6 +565,55 @@ export const schema = buildSchema(SDL);
 // that also needs subscriptions. context.chainFirehose is supplied by
 // whichever Durable Object drives the graphql-ws server (workers/chain-firehose-hub.mjs)
 // -- see GRAPHQL_SUBSCRIPTION_CONTEXT_KEY below.
+// #7885: the nested Subnet.surfaces field takes the same filter/sort/page
+// arguments as GET /api/v1/subnets/{netuid}/surfaces. A nested field needs an
+// explicit resolve to see its own args (the default field resolver ignores
+// them and just reads the parent property), attached here the same way the
+// subscription's `subscribe` is below -- buildSchema carries no resolver map.
+// The query itself runs through applyQueryFilters against the same
+// curated-surfaces collection the REST route uses, so the allowlists cannot
+// drift; with no arguments the parent's surfaces pass through untouched.
+const SUBNET_SURFACES_FILTER_NAMES = ["kind", "provider", "id"];
+(schema.getType("Subnet") as GraphQLObjectType).getFields().surfaces.resolve =
+  async function subnetSurfaces(
+    parent: Row,
+    args: Row,
+    context: GqlContext,
+    info: unknown,
+  ) {
+    // subnetNode -- the only producer of Subnet objects -- always exposes
+    // `surfaces` as a thunk (bundled rows via `() => rows ?? []`, or a lazy
+    // per-netuid artifact load), which the default field resolver would have
+    // invoked. Do the same here so adding arguments does not turn the lazy path
+    // into an empty list.
+    const surfaces = (await parent.surfaces(args, context, info)) as Row[];
+    const queryUrl = new URL("https://graphql.internal/subnets/surfaces");
+    for (const [name, value] of [
+      ["kind", args?.kind],
+      ["provider", args?.provider],
+      ["id", args?.id],
+      ["sort", args?.sort],
+      ["order", args?.order],
+      ["limit", args?.limit],
+      ["cursor", args?.cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
+    }
+    if ([...queryUrl.searchParams].length === 0) return surfaces;
+    const transformed = applyQueryFilters(
+      { surfaces },
+      queryUrl,
+      "curated-surfaces",
+      SUBNET_SURFACES_FILTER_NAMES,
+    );
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return (transformed.data as Row).surfaces;
+  };
+
 export const GRAPHQL_SUBSCRIPTION_CONTEXT_KEY = "chainFirehose";
 schema.getSubscriptionType()!.getFields().chainEvents.subscribe =
   async function* chainEventsSubscribe(

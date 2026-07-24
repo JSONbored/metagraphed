@@ -829,8 +829,16 @@ export const SDL = /* GraphQL */ `
     health: SubnetHealth
     "Per-subnet economic + validator metrics."
     economics: SubnetEconomics
-    "Curated public interface surfaces of this subnet."
-    surfaces: [Surface!]!
+    "Curated public interface surfaces of this subnet. Filter with kind, provider, and id; sort with sort + order; and page with limit / cursor, exactly as GET /api/v1/subnets/{netuid}/surfaces does -- an unsupported filter/sort value is a GraphQL error, not a silently substituted default. With no arguments the full list is returned unchanged."
+    surfaces(
+      kind: String
+      provider: String
+      id: String
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+    ): [Surface!]!
     "Endpoint/resource registry rows for this subnet."
     endpoints: [Endpoint!]!
   }

@@ -1112,6 +1112,131 @@ describe("graphql — broadened Subnet + nested relationships", () => {
     assert.equal(reads.has("latest/endpoints.json"), false);
   });
 
+  // #7885: the nested Subnet.surfaces field takes the same filter/sort/page
+  // arguments as GET /api/v1/subnets/{netuid}/surfaces.
+  function nestedSurfacesEnv(reads?: Map<string, number>) {
+    return fixtureEnv(
+      {
+        "/metagraph/subnets/7.json": {
+          subnet: { netuid: 7, name: "Allways", slug: "allways" },
+          surfaces: [
+            { id: "s-a", netuid: 7, kind: "subnet-api", provider: "alpha" },
+            { id: "s-b", netuid: 7, kind: "openapi", provider: "alpha" },
+            { id: "s-c", netuid: 7, kind: "subnet-api", provider: "beta" },
+          ],
+          endpoints: [],
+        },
+      },
+      reads ? { reads } : {},
+    ) as unknown as Env;
+  }
+
+  test("nested Subnet.surfaces filters by kind (#7885)", async () => {
+    const { status, body } = await gql(
+      `{ subnet(netuid: 7) { surfaces(kind: "subnet-api") { id kind } } }`,
+      nestedSurfacesEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(
+      body.data.subnet.surfaces.map((s: Row) => s.id),
+      ["s-a", "s-c"],
+    );
+  });
+
+  test("nested Subnet.surfaces filters by provider (#7885)", async () => {
+    const { body } = await gql(
+      `{ subnet(netuid: 7) { surfaces(provider: "alpha") { id provider } } }`,
+      nestedSurfacesEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(
+      body.data.subnet.surfaces.map((s: Row) => s.id),
+      ["s-a", "s-b"],
+    );
+  });
+
+  test("nested Subnet.surfaces combines filters, sorts, and pages (#7885)", async () => {
+    const first = await gql(
+      `{ subnet(netuid: 7) { surfaces(kind: "subnet-api", sort: "id", order: "asc", limit: 1) { id } } }`,
+      nestedSurfacesEnv(),
+    );
+    assert.equal(first.body.errors, undefined);
+    assert.deepEqual(
+      first.body.data.subnet.surfaces.map((s: Row) => s.id),
+      ["s-a"],
+    );
+
+    const second = await gql(
+      `{ subnet(netuid: 7) { surfaces(kind: "subnet-api", sort: "id", order: "asc", limit: 1, cursor: 1) { id } } }`,
+      nestedSurfacesEnv(),
+    );
+    assert.deepEqual(
+      second.body.data.subnet.surfaces.map((s: Row) => s.id),
+      ["s-c"],
+    );
+  });
+
+  test("nested Subnet.surfaces matches an exact id (#7885)", async () => {
+    const { body } = await gql(
+      `{ subnet(netuid: 7) { surfaces(id: "s-b") { id kind } } }`,
+      nestedSurfacesEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet.surfaces.length, 1);
+    assert.equal(body.data.subnet.surfaces[0].id, "s-b");
+  });
+
+  test("nested Subnet.surfaces returns the full list unchanged with no arguments (#7885)", async () => {
+    const { body } = await gql(
+      "{ subnet(netuid: 7) { surfaces { id } } }",
+      nestedSurfacesEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(
+      body.data.subnet.surfaces.map((s: Row) => s.id),
+      ["s-a", "s-b", "s-c"],
+    );
+  });
+
+  test("nested Subnet.surfaces rejects an unsupported filter or sort (#7885)", async () => {
+    for (const arg of ['kind: "bogus"', 'sort: "not_a_column"']) {
+      const { body } = await gql(
+        `{ subnet(netuid: 7) { surfaces(${arg}) { id } } }`,
+        nestedSurfacesEnv(),
+      );
+      assert.ok(body.errors, `expected a GraphQL error for ${arg}`);
+      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    }
+  });
+
+  test("nested Subnet.surfaces still filters the lazily-loaded list (#7885)", async () => {
+    // A subnet reached through the list has no bundled surfaces -- the thunk
+    // loads them per-netuid. Filtering must apply to that path too, not
+    // collapse it to an empty list.
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 7, name: "Allways", slug: "allways" }],
+      },
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          { id: "s-a", netuid: 7, kind: "subnet-api", provider: "alpha" },
+          { id: "s-b", netuid: 7, kind: "openapi", provider: "alpha" },
+        ],
+      },
+    });
+    const { body } = await gql(
+      `{ subnets { items { netuid surfaces(kind: "openapi") { id kind } } } }`,
+      env as unknown as Env,
+    );
+    assert.equal(body.errors, undefined);
+    const item = body.data.subnets.items[0];
+    assert.deepEqual(
+      item.surfaces.map((s: Row) => s.id),
+      ["s-b"],
+    );
+  });
+
   test("subnet.health resolves from the live health snapshot by netuid", async () => {
     const env = fixtureEnv(
       {

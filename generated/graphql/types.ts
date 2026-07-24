@@ -4111,10 +4111,21 @@ export type Subnet = {
   status?: Maybe<Scalars['String']['output']>;
   subnet_type?: Maybe<Scalars['String']['output']>;
   surface_count?: Maybe<Scalars['Int']['output']>;
-  /** Curated public interface surfaces of this subnet. */
+  /** Curated public interface surfaces of this subnet. Filter with kind, provider, and id; sort with sort + order; and page with limit / cursor, exactly as GET /api/v1/subnets/{netuid}/surfaces does -- an unsupported filter/sort value is a GraphQL error, not a silently substituted default. With no arguments the full list is returned unchanged. */
   surfaces: Array<Surface>;
   symbol?: Maybe<Scalars['String']['output']>;
   website_url?: Maybe<Scalars['String']['output']>;
+};
+
+
+export type SubnetSurfacesArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  kind?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  provider?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SubnetAxonRemovals = {
@@ -8060,7 +8071,7 @@ export type SubnetResolvers<ContextType = GqlContext, ParentType extends Resolve
   status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_type?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   surface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  surfaces?: Resolver<Array<ResolversTypes['Surface']>, ParentType, ContextType>;
+  surfaces?: Resolver<Array<ResolversTypes['Surface']>, ParentType, ContextType, Partial<SubnetSurfacesArgs>>;
   symbol?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   website_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
