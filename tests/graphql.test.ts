@@ -7,7 +7,8 @@ import {
   subscribe,
   validate,
 } from "graphql";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import * as subnetEvidenceMcp from "../src/subnet-evidence-mcp.ts";
 import {
   FIELD_COMPLEXITY,
   GRAPHQL_MAX_BODY_BYTES,
@@ -8874,6 +8875,113 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
   test("both artifact fields are weighted as fan-out fields", () => {
     assert.equal(FIELD_COMPLEXITY.subnet_gaps, 5);
     assert.equal(FIELD_COMPLEXITY.subnet_evidence, 5);
+  });
+
+  // #7879: q / sort / order / fields / limit / cursor parity, reusing the same
+  // loader MCP list_subnet_evidence calls.
+  const EVIDENCE_ENV = () =>
+    fixtureEnv({
+      "/metagraph/evidence/5.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        netuid: 5,
+        claims: [
+          {
+            subject: "alpha-api",
+            claim: "endpoint responds",
+            source_url: "https://alpha.example.com/openapi.json",
+            support_summary: "probe returned 200",
+            verified_at: "2026-06-01T00:00:00.000Z",
+          },
+          {
+            subject: "beta-docs",
+            claim: "documentation published",
+            source_url: "https://beta.example.com/docs",
+            support_summary: "manual review",
+            verified_at: "2026-06-02T00:00:00.000Z",
+          },
+          {
+            subject: "gamma-api",
+            claim: "schema validates",
+            source_url: "https://gamma.example.com/openapi.json",
+            support_summary: "openapi lint clean",
+            verified_at: "2026-06-03T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+
+  test("subnet_evidence searches with q (#7879)", async () => {
+    const { status, body } = await gql(
+      '{ subnet_evidence(netuid: 5, q: "openapi") }',
+      EVIDENCE_ENV(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const out = body.data.subnet_evidence;
+    assert.equal(out.returned, 2);
+    assert.deepEqual(out.claims.map((row: Row) => row.subject).sort(), [
+      "alpha-api",
+      "gamma-api",
+    ]);
+  });
+
+  test("subnet_evidence pages a q search and round-trips next_cursor (#7879)", async () => {
+    const first = await gql(
+      '{ subnet_evidence(netuid: 5, q: "openapi", sort: "subject", order: "asc", limit: 1) }',
+      EVIDENCE_ENV(),
+    );
+    assert.equal(first.body.errors, undefined);
+    const page1 = first.body.data.subnet_evidence;
+    assert.equal(page1.total, 2);
+    assert.equal(page1.returned, 1);
+    assert.equal(page1.claims[0].subject, "alpha-api");
+    assert.equal(page1.next_cursor, 1);
+
+    const second = await gql(
+      '{ subnet_evidence(netuid: 5, q: "openapi", sort: "subject", order: "asc", limit: 1, cursor: 1) }',
+      EVIDENCE_ENV(),
+    );
+    const page2 = second.body.data.subnet_evidence;
+    assert.equal(page2.claims[0].subject, "gamma-api");
+    assert.equal(page2.next_cursor, null);
+  });
+
+  test("subnet_evidence projects fields and rejects an unsupported sort (#7879)", async () => {
+    const projected = await gql(
+      '{ subnet_evidence(netuid: 5, q: "documentation", fields: "subject,claim") }',
+      EVIDENCE_ENV(),
+    );
+    assert.equal(projected.body.errors, undefined);
+    assert.deepEqual(projected.body.data.subnet_evidence.claims[0], {
+      subject: "beta-docs",
+      claim: "documentation published",
+    });
+
+    const badSort = await gql(
+      '{ subnet_evidence(netuid: 5, sort: "not_a_column") }',
+      EVIDENCE_ENV(),
+    );
+    assert.ok(badSort.body.errors, "expected a GraphQL error for sort");
+    assert.equal(badSort.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("subnet_evidence propagates an unexpected loader failure (#7879)", async () => {
+    // Only the loader's own toolErrors map to null/BAD_USER_INPUT; anything
+    // else is a real fault and must surface rather than being masked as
+    // "no evidence baked".
+    const spy = vi
+      .spyOn(subnetEvidenceMcp, "loadSubnetEvidenceList")
+      .mockRejectedValue(new Error("loader exploded"));
+    try {
+      const { body } = await gql(
+        "{ subnet_evidence(netuid: 5) }",
+        EVIDENCE_ENV(),
+      );
+      assert.ok(body.errors, "expected the raw failure to surface");
+      assert.match(body.errors[0].message, /loader exploded/);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

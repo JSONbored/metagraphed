@@ -52,6 +52,10 @@ import { loadAdapterCandidatesList } from "./adapter-candidates-mcp.ts";
 import { loadEnrichmentEvidenceList } from "./enrichment-evidence-mcp.ts";
 import { loadEnrichmentQueueList } from "./enrichment-queue-mcp.ts";
 import { loadReviewEnrichmentTargetsList } from "./review-enrichment-targets-mcp.ts";
+// #7879: GraphQL parity for GET /api/v1/subnets/{netuid}/evidence, reusing
+// loadSubnetEvidenceList that MCP list_subnet_evidence already calls -- not a
+// reimplementation.
+import { loadSubnetEvidenceList } from "./subnet-evidence-mcp.ts";
 import { loadReviewGapsList } from "./review-gaps-mcp.ts";
 import { loadProfileCompletenessList } from "./profile-completeness-mcp.ts";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
@@ -576,8 +580,8 @@ export const SDL = `
     subnet_event_summary(netuid: Int!, window: String, limit: Int): SubnetEventSummary!
     "One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_gaps MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/gaps."
     subnet_gaps(netuid: Int!): JSON
-    "One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet_evidence MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/evidence."
-    subnet_evidence(netuid: Int!): JSON
+    "One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Search with q across subject, claim, source_url, and support_summary; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does — an unsupported sort/limit/cursor is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the claims rows. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/evidence."
+    subnet_evidence(netuid: Int!, q: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): JSON
     "One subnet's unpromoted candidate-surface queue — the baked per-subnet /metagraph/candidates/{netuid}.json artifact the REST route and get_subnet_candidates MCP tool read. Null when no candidate artifact has been baked for the netuid (rather than a GraphQL error). Opaque JSON passed through verbatim. Distinct from candidates(...) (the filterable network-wide candidate catalog). Mirrors GET /api/v1/subnets/{netuid}/candidates."
     subnet_candidates(netuid: Int!): JSON
     "Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals."
@@ -7030,15 +7034,39 @@ const rootValue = {
     return loadArtifact(context, `/metagraph/review/gaps/${netuid}.json`);
   },
 
-  async subnet_evidence({ netuid }: Row, context: GqlContext) {
+  async subnet_evidence(args: Row, context: GqlContext) {
+    const { netuid } = args;
     if (!Number.isInteger(netuid) || netuid < 0) {
       throw new GraphQLError("netuid must be a non-negative integer.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same baked evidence artifact the REST route + get_subnet_evidence MCP
-    // tool read; null when no record has been baked for this netuid.
-    return loadArtifact(context, `/metagraph/evidence/${netuid}.json`);
+    // #7879: reuse loadSubnetEvidenceList -- the same loader MCP
+    // list_subnet_evidence calls -- rather than reimplementing the
+    // search/sort/page pass here, so this field cannot drift from
+    // GET /api/v1/subnets/{netuid}/evidence. It reads the same baked
+    // per-subnet artifact and validates every sort/limit/cursor value against
+    // the REST allowlists, throwing on an unsupported one.
+    try {
+      return await loadSubnetEvidenceList(mcpCtx(context), args, {
+        readArtifact,
+      });
+    } catch (rawErr) {
+      const err = rawErr as Row;
+      // An unsupported sort/limit/cursor is BAD_USER_INPUT, matching every
+      // other field's "not a silently substituted default" convention.
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      // Any other loader miss (not baked / cold R2 / unavailable) stays null,
+      // preserving this field's documented cold-artifact contract --
+      // loadArtifact, which this resolver used before, swallowed those the
+      // same way.
+      if (err?.toolError) return null;
+      throw err;
+    }
   },
 
   async subnet_candidates({ netuid }: Row, context: GqlContext) {
