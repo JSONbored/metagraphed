@@ -15858,6 +15858,94 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.endpoints[0].provider, "chutes");
   });
 
+  test("list_endpoints sorts by netuid, honoring order (default asc)", async () => {
+    const deps = endpointsDeps();
+    const asc = (await callTool("list_endpoints", { sort: "netuid" }, { deps }))
+      .body.result.structuredContent;
+    assert.deepEqual(
+      asc.endpoints.map((e: Row) => e.netuid),
+      [7, 7, 12],
+    );
+
+    const desc = (
+      await callTool(
+        "list_endpoints",
+        { sort: "netuid", order: "desc" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      desc.endpoints.map((e: Row) => e.netuid),
+      [12, 7, 7],
+    );
+  });
+
+  test("list_endpoints projects only the requested fields", async () => {
+    const deps = endpointsDeps();
+    const res = await callTool(
+      "list_endpoints",
+      { netuid: 12, fields: "netuid,provider" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.endpoints.length, 1);
+    assert.deepEqual(Object.keys(out.endpoints[0]).sort(), [
+      "netuid",
+      "provider",
+    ]);
+  });
+
+  test("list_endpoints rejects an unknown sort/order/fields value", async () => {
+    const deps = endpointsDeps();
+    const badSort = await callTool(
+      "list_endpoints",
+      { sort: "not-a-field" },
+      { deps },
+    );
+    assert.equal(badSort.body.result.isError, true);
+
+    const badOrder = await callTool(
+      "list_endpoints",
+      { sort: "netuid", order: "sideways" },
+      { deps },
+    );
+    assert.equal(badOrder.body.result.isError, true);
+
+    const badFields = await callTool(
+      "list_endpoints",
+      { fields: "not_a_column" },
+      { deps },
+    );
+    assert.equal(badFields.body.result.isError, true);
+  });
+
+  test("list_endpoints falls back when pagination meta is absent", async () => {
+    const deps = endpointsDeps();
+    const spy = vi.spyOn(
+      await import("../workers/list-query.ts"),
+      "applyQueryFilters",
+    );
+    spy.mockReturnValue({
+      data: {
+        endpoints: [
+          { netuid: 7, provider: "datura" },
+          { netuid: 12, provider: "chutes" },
+        ],
+      },
+      meta: {},
+    });
+    try {
+      const out = (await callTool("list_endpoints", {}, { deps })).body.result
+        .structuredContent;
+      assert.equal(out.total, 2);
+      assert.equal(out.returned, 2);
+      assert.equal(out.cursor, 0);
+      assert.equal(out.next_cursor, null);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   test("list_endpoints rejects an unknown kind/layer/publication_state/status enum value", async () => {
     const deps = endpointsDeps();
     const badKind = await callTool(

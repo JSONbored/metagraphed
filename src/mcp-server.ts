@@ -72,7 +72,12 @@ import {
   listSubscribableMcpResourceClasses,
   parseSubnetStatusResourceUri,
 } from "./subnet-status-subscribe.ts";
-import { CONTRACT_VERSION, PRIMARY_DOMAIN, QUERY_ENUMS } from "./contracts.ts";
+import {
+  API_QUERY_COLLECTIONS,
+  CONTRACT_VERSION,
+  PRIMARY_DOMAIN,
+  QUERY_ENUMS,
+} from "./contracts.ts";
 import {
   GET_ECONOMICS_INSTRUCTIONS,
   GET_ECONOMICS_MCP_TOOL,
@@ -9617,7 +9622,8 @@ export const MCP_TOOLS = [
       "probe-derived status/latency/score. Use it to discover live endpoints " +
       "network-wide. Optionally filter by kind/layer/netuid/provider/" +
       "publication_state/status/pool_eligible, bound by min_/max_latency_ms " +
-      "and min_/max_score, and page with limit/cursor — the full catalog can " +
+      "and min_/max_score, sort with sort + order, project with fields, and " +
+      "page with limit/cursor — the full catalog can " +
       "be large. Mirrors GET /api/v1/endpoints.",
     inputSchema: {
       type: "object",
@@ -9668,6 +9674,21 @@ export const MCP_TOOLS = [
           type: "number",
           description: "Only endpoints with probe-derived score <= this.",
         },
+        sort: {
+          type: "string",
+          enum: API_QUERY_COLLECTIONS.endpoints.sort_fields,
+          description: "Field to sort by before paging.",
+        },
+        order: {
+          type: "string",
+          enum: ["asc", "desc"],
+          description: "Sort direction for sort (default asc).",
+        },
+        fields: {
+          type: "string",
+          description:
+            "Comma-separated projection of endpoint row fields to return.",
+        },
         limit: {
           type: "integer",
           description: "Max endpoints to return. Omit for the full list.",
@@ -9683,37 +9704,13 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args: Row, ctx: McpCtx) {
-      const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
-      const layer = optionalEnum(args, "layer", QUERY_ENUMS.endpointLayer);
-      const netuid = optionalNonNegativeInt(args, "netuid");
-      const provider = optionalString(args, "provider");
-      const publicationState = optionalEnum(
-        args,
-        "publication_state",
-        QUERY_ENUMS.endpointPublicationState,
-      );
-      const status = optionalEnum(args, "status", QUERY_ENUMS.healthStatus);
-      const poolEligible = optionalNullableBoolean(args, "pool_eligible");
-      // Inclusive numeric range bounds, the MCP mirror of REST's
-      // rangeFilters: ["latency_ms", "score"] on the endpoints collection
-      // (contracts.mjs) — same shape as LIST_SUBNETS_RANGE_BOUNDS.
-      const rangeBounds = [
-        { arg: "min_latency_ms", field: "latency_ms", op: "min" },
-        { arg: "max_latency_ms", field: "latency_ms", op: "max" },
-        { arg: "min_score", field: "score", op: "min" },
-        { arg: "max_score", field: "score", op: "max" },
-      ]
-        .filter(({ arg }) => Number.isFinite(args?.[arg]))
-        .map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
-      const limit = optionalPositiveInt(args, "limit");
-      const cursor = optionalNonNegativeInt(args, "cursor") ?? 0;
       let data = await loadArtifactData(ctx, "/metagraph/endpoints.json");
       // Live per-endpoint health overlay (mirrors workers/api.mjs's raw-
       // artifact serving path): the build-time endpoints.json bakes stale
       // operational health, so replace it from the 15-minute cron snapshot
-      // before filtering/pagination -- status/pool_eligible filters below
-      // (and the latency_ms/score bounds, which come from this same overlay)
-      // must see live values, not the baked ones.
+      // before filtering -- status/pool_eligible filters below (and the
+      // latency_ms/score bounds, which come from this same overlay) must
+      // see live values, not the baked ones.
       if (
         Array.isArray(data?.endpoints) &&
         data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
@@ -9724,37 +9721,78 @@ export const MCP_TOOLS = [
         );
         if (overlaid) data = overlaid;
       }
-      const all = Array.isArray(data.endpoints) ? data.endpoints : [];
-      const filtered = all.filter(
-        (e: Row) =>
-          (kind === null || e.kind === kind) &&
-          (layer === null || e.layer === layer) &&
-          (netuid === null || e.netuid === netuid) &&
-          (provider === null || e.provider === provider) &&
-          (publicationState === null ||
-            e.publication_state === publicationState) &&
-          (status === null || e.status === status) &&
-          (poolEligible === null || e.pool_eligible === poolEligible) &&
-          rangeBounds.every(({ field, op, limit: bound }) => {
-            const value = e[field];
-            if (typeof value !== "number") return false;
-            return op === "min" ? value >= bound : value <= bound;
-          }),
+      // Schema-stable even when the artifact predates the endpoints key or
+      // carries a malformed one — applyQueryFilters needs a real array under
+      // "endpoints" to project a (possibly empty) page rather than undefined.
+      if (!Array.isArray(data?.endpoints)) {
+        data = { ...data, endpoints: [] };
+      }
+      // Full REST-parity query — filters, sort/order, fields projection, and
+      // cursor pagination in one applyQueryFilters call over the "endpoints"
+      // collection (same collection GET /api/v1/endpoints uses), mirroring
+      // list_provider_endpoints (src/provider-endpoints-mcp.ts).
+      const queryUrl = new URL("https://mcp.internal/endpoints");
+      const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
+      if (kind) queryUrl.searchParams.set("kind", kind);
+      const layer = optionalEnum(args, "layer", QUERY_ENUMS.endpointLayer);
+      if (layer) queryUrl.searchParams.set("layer", layer);
+      const netuid = optionalNonNegativeInt(args, "netuid");
+      if (netuid !== null) queryUrl.searchParams.set("netuid", String(netuid));
+      const provider = optionalString(args, "provider");
+      if (provider) queryUrl.searchParams.set("provider", provider);
+      const publicationState = optionalEnum(
+        args,
+        "publication_state",
+        QUERY_ENUMS.endpointPublicationState,
       );
-      const window = cursorWindow(filtered, {
-        collection: "endpoints",
-        dataKey: "endpoints",
-        limit,
-        cursor,
-      });
+      if (publicationState) {
+        queryUrl.searchParams.set("publication_state", publicationState);
+      }
+      const status = optionalEnum(args, "status", QUERY_ENUMS.healthStatus);
+      if (status) queryUrl.searchParams.set("status", status);
+      const poolEligible = optionalNullableBoolean(args, "pool_eligible");
+      if (poolEligible !== null) {
+        queryUrl.searchParams.set("pool_eligible", String(poolEligible));
+      }
+      for (const arg of [
+        "min_latency_ms",
+        "max_latency_ms",
+        "min_score",
+        "max_score",
+      ]) {
+        if (Number.isFinite(args?.[arg])) {
+          queryUrl.searchParams.set(arg, String(args[arg]));
+        }
+      }
+      const sort = optionalEnum(
+        args,
+        "sort",
+        API_QUERY_COLLECTIONS.endpoints.sort_fields,
+      );
+      if (sort) queryUrl.searchParams.set("sort", sort);
+      const order = optionalEnum(args, "order", ["asc", "desc"]);
+      if (order) queryUrl.searchParams.set("order", order);
+      const fields = optionalString(args, "fields");
+      if (fields) queryUrl.searchParams.set("fields", fields);
+      const limit = optionalPositiveInt(args, "limit");
+      if (limit !== null) queryUrl.searchParams.set("limit", String(limit));
+      const cursor = optionalNonNegativeInt(args, "cursor") ?? 0;
+      if (cursor > 0) queryUrl.searchParams.set("cursor", String(cursor));
+      const transformed = applyQueryFilters(data, queryUrl, "endpoints", []);
+      if (transformed.error) {
+        throw toolError("invalid_params", transformed.error.message);
+      }
+      const result = transformed.data as Row;
+      const page = (transformed.meta?.pagination as Row) || {};
+      const rows = Array.isArray(result.endpoints) ? result.endpoints : [];
+      const rowLen = rows.length;
       return {
-        ...data,
-        endpoints: window.page,
-        total: window.total,
-        returned: window.returned,
-        cursor: window.cursor,
-        limit: window.limit,
-        next_cursor: window.next_cursor,
+        ...result,
+        total: page.total ?? rowLen,
+        returned: page.returned ?? rowLen,
+        cursor: page.cursor ?? 0,
+        limit: page.limit ?? rowLen,
+        next_cursor: page.next_cursor ?? null,
       };
     },
   },
