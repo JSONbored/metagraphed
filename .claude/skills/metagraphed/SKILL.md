@@ -347,7 +347,7 @@ exceptions. A real PR (#3757) shipped 10 of its 12 screenshots at 115,000–142,
 full-page capture bug, not a display issue) and sat unreviewable until recaptured. Don't repeat
 that.
 
-**Recommended: automated capture (#3769).** `apps/ui/tests/e2e/capture-pr-screenshots.mjs`
+**Recommended: automated capture (#3769).** `apps/ui/tests/e2e/capture-pr-screenshots.ts`
 automates everything below — the two-worktree orchestration, fixed-viewport-only capture, explicit
 theme toggling, the 12-image matrix, and (with `--push`) hosting + the ready-to-paste markdown
 table:

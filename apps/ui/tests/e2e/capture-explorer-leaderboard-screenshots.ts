@@ -6,8 +6,8 @@
  * (3 viewports × 2 themes × before/after).
  *
  * Usage (with dev server running — pass its base URL explicitly):
- *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after node tests/e2e/capture-explorer-leaderboard-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8086 VARIANT=before node tests/e2e/capture-explorer-leaderboard-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after node tests/e2e/capture-explorer-leaderboard-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8086 VARIANT=before node tests/e2e/capture-explorer-leaderboard-screenshots.ts
  *
  * Writes to tmp/explorer-leaderboard-screenshots/{VARIANT}-{viewport}-{theme}.png
  */
@@ -15,7 +15,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { DATED_ENDPOINT_PATTERNS, findHarFixture, harPathForRoute } from "./har-path.js";
+import { DATED_ENDPOINT_PATTERNS, findHarFixture, harPathForRoute } from "./har-path.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.resolve(__dirname, "../../../../tmp/explorer-leaderboard-screenshots");

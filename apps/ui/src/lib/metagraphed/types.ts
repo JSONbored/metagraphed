@@ -1407,7 +1407,7 @@ export interface AccountDelegationSubnet {
  * #6723: /accounts/{ss58}/children | /parents — this account's live stake-weight
  * delegation graph, per subnet. `subnets` is `null` (not `[]`) when the live RPC
  * failed, so callers can distinguish "temporarily unavailable" from "genuinely
- * none" — matching src/child-hotkey-delegation.mjs's tri-state contract.
+ * none" — matching src/child-hotkey-delegation.ts's tri-state contract.
  */
 export interface AccountDelegationGraph {
   account: string;
@@ -1493,7 +1493,7 @@ export interface AccountPortfolio {
 
 /**
  * One reconstructed nominator-side (coldkey) position from
- * buildAccountPositions (src/account-nominator-positions.mjs) -- share_fraction
+ * buildAccountPositions (src/account-nominator-positions.ts) -- share_fraction
  * is dimensionless (the coldkey's share of that hotkey+netuid's total stake),
  * not a snapshotted TAO figure; stake_tao is derived by multiplying it against
  * the live neurons stake_tao at read time.

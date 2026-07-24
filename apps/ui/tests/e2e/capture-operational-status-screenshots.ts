@@ -5,8 +5,8 @@
  * the "Operational status" section into view so reviewers see what visitors see.
  *
  * Usage (dev server must already be running on BASE_URL):
- *   VARIANT=before node tests/e2e/capture-operational-status-screenshots.mjs
- *   VARIANT=after node tests/e2e/capture-operational-status-screenshots.mjs
+ *   VARIANT=before node tests/e2e/capture-operational-status-screenshots.ts
+ *   VARIANT=after node tests/e2e/capture-operational-status-screenshots.ts
  *
  * Writes to tmp/operational-status-screenshots/{VARIANT}-{viewport}-{theme}.png
  */

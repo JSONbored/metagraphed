@@ -159,7 +159,7 @@ export function isAnonymousMcpRequest(request: Request): boolean {
 // `import ... from "cloudflare:workers"` at module scope (confirmed against
 // dist/oauth-provider.js, not just its .d.ts), a protocol plain Node
 // doesn't implement -- same justification as workers/*.sentry.mjs's
-// vitest.config.mjs exclusion. Both real routes
+// vitest.config.ts exclusion. Both real routes
 // (handleAuthorizeRequest/handleGithubOAuthCallback) accept an injectable
 // deps.getHelpers precisely so their own logic stays fully covered without
 // this function ever running in a test.

@@ -46,7 +46,7 @@ function formatTimestamp(ms: number | null): string {
  * (use-api-session.ts), then generate/list/revoke against /api/v1/keys.
  * No invite code: every wallet-connected account mints at its own tier
  * immediately. Tier changes are an operator action, not something this UI
- * exposes -- see workers/data-api.mjs's handleAccountTierPromote.
+ * exposes -- see workers/data-api.ts's handleAccountTierPromote.
  */
 export function ApiKeysManager() {
   const { wallet, status: walletStatus } = useWallet();

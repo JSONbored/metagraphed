@@ -1,7 +1,7 @@
 // Unit tests for scripts/chain-firehose-relay.ts's pure logic (#4981,
 // #5027, ADR 0015). The long-running poll/cleanup loop (main()) needs a real
 // Postgres connection and process lifecycle and is intentionally excluded
-// from vitest.config.mjs's coverage.include (matching deploy/wss-lb's
+// from vitest.config.ts's coverage.include (matching deploy/wss-lb's
 // node --test convention for standalone deploy/-tier processes) -- see that
 // function's own /* v8 ignore */ comment. Every decision it makes is tested
 // directly here instead.

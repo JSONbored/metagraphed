@@ -116,7 +116,7 @@ function StakeTransfersTile({ netuid }: { netuid: number }) {
 // #4339/8.4: cumulative TAO recycled for registration on this subnet, queried
 // live from the chain (600s KV cache on the backend) rather than the
 // account_events log-layer aggregations the sibling stake tiles above use --
-// see subnet-recycled.mjs's header for why. recycled_tao stays "—" (not "0")
+// see subnet-recycled.ts's header for why. recycled_tao stays "—" (not "0")
 // on an RPC failure, since 0 is a real, distinct value here.
 function RecycledTaoTile({ netuid }: { netuid: number }) {
   const { data: res, isPending, isError } = useQuery(subnetRecycledQuery(netuid));

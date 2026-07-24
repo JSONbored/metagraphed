@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
-import { findOverflowViolations } from "./find-overflow-violations.js";
-import { ROUTES, VIEWPORTS } from "./overflow-check.config.js";
-import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.js";
+import { findOverflowViolations } from "./find-overflow-violations.ts";
+import { ROUTES, VIEWPORTS } from "./overflow-check.config.ts";
+import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
 
 // Baseline-diff, not zero-tolerance: this app has pre-existing, already-tracked
 // overflow bugs (#3930, #3931, #3985, etc.) that are separately-scored

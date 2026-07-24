@@ -243,7 +243,7 @@ jobs:
       - name: Prepare test reports dir
         run: mkdir -p reports/junit
 
-      # The suite runs in two non-overlapping passes (see vitest.config.mjs's
+      # The suite runs in two non-overlapping passes (see vitest.config.ts's
       # fileParallelism note). `test:ci` runs the parallelizable bulk — every
       # file EXCEPT five that race each other (or the shared R2 staging tree)
       # under parallel execution — concurrently WITH coverage;
@@ -791,9 +791,9 @@ jobs:
         if: env.RUN_UI_VALIDATION == 'true'
         working-directory: apps/ui
         run: |
-          node scripts/generate-openapi-docs.mjs
+          node scripts/generate-openapi-docs.ts
           if ! git diff --exit-code -- content/docs/api-reference; then
-            echo "::error::apps/ui/content/docs/api-reference is stale -- run 'node scripts/generate-openapi-docs.mjs' (from apps/ui) and commit the result."
+            echo "::error::apps/ui/content/docs/api-reference is stale -- run 'node scripts/generate-openapi-docs.ts' (from apps/ui) and commit the result."
             exit 1
           fi
 
@@ -807,9 +807,9 @@ jobs:
         if: env.RUN_UI_VALIDATION == 'true'
         working-directory: apps/ui
         run: |
-          node scripts/generate-catalog-docs.mjs
+          node scripts/generate-catalog-docs.ts
           if ! git diff --exit-code -- content/docs/catalog.mdx; then
-            echo "::error::apps/ui/content/docs/catalog.mdx is stale -- run 'node scripts/generate-catalog-docs.mjs' (from apps/ui) and commit the result."
+            echo "::error::apps/ui/content/docs/catalog.mdx is stale -- run 'node scripts/generate-catalog-docs.ts' (from apps/ui) and commit the result."
             exit 1
           fi
 
@@ -823,7 +823,7 @@ jobs:
 
       # Enforces the #4867 epic's core invariant: packages/ui-kit stays a
       # real, standalone library. no-restricted-imports (packages/ui-kit/
-      # eslint.config.js) fails on @tanstack/react-router,
+      # eslint.config.ts) fails on @tanstack/react-router,
       # @tanstack/react-query, or any import resolving into apps/ui/**.
       - name: Lint packages/ui-kit (app-logic import guardrail)
         if: env.RUN_UI_VALIDATION == 'true'

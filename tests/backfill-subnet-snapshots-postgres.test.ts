@@ -1,7 +1,7 @@
 // Unit tests for scripts/backfill-subnet-snapshots-postgres.ts's pure
 // helpers (SQL-literal encoding, statement batching, arg parsing, and the D1
 // paging loop with an injected subprocess runner). Not part of the codecov
-// coverage.include scope (see vitest.config.mjs's own comment on why only a
+// coverage.include scope (see vitest.config.ts's own comment on why only a
 // named subset of scripts/ is instrumented) -- these tests exist for
 // correctness confidence before running the script against production, the
 // same convention tests/registry-sync-client.test.mjs already follows for

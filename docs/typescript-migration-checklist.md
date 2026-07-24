@@ -28,7 +28,7 @@ For every file in a batch:
    `public/metagraph/types.d.ts`), import and reuse it — do not hand-redeclare it.
 6. `npx tsc --noEmit` must be clean for the file. No `any` / `@ts-ignore` / `@ts-expect-error` without
    an inline comment explaining the specific reason (e.g. a genuinely untyped third-party import).
-7. Confirm the file is covered by `vitest.config.mjs`'s `coverage.include` (widened to `.{mjs,ts}`
+7. Confirm the file is covered by `vitest.config.ts`'s `coverage.include` (widened to `.{mjs,ts}`
    repo-wide in #7511, so after that PR this is a verification step, not an edit).
 8. Run `npm run lint`, `npm run typecheck`, `npm run test:coverage`, and `npm run validate:types`
    locally — all must stay green, and the file's own coverage % must not regress.

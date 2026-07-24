@@ -5,8 +5,8 @@
  * the Metagraph → Yield section into view so reviewers see what visitors see.
  *
  * Usage (with dev server running — pass its base URL explicitly):
- *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after node tests/e2e/capture-yield-percentile-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8086 VARIANT=before node tests/e2e/capture-yield-percentile-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after node tests/e2e/capture-yield-percentile-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8086 VARIANT=before node tests/e2e/capture-yield-percentile-screenshots.ts
  *
  * Writes to tmp/yield-percentile-screenshots/{VARIANT}-{viewport}-{theme}.png
  */

@@ -14,7 +14,7 @@ import type {
   WebhookSubscriptionView,
 } from "@/lib/metagraphed/types";
 
-// Must match src/webhooks.mjs — WEBHOOK_SUBSCRIPTION_TOKEN_HEADER / WEBHOOK_SECRET_HEADER.
+// Must match src/webhooks.ts — WEBHOOK_SUBSCRIPTION_TOKEN_HEADER / WEBHOOK_SECRET_HEADER.
 const SUBSCRIPTION_TOKEN_HEADER = "x-metagraph-webhook-subscription-token";
 const SUBSCRIPTION_SECRET_HEADER = "x-metagraph-webhook-secret";
 

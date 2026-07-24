@@ -5,8 +5,8 @@
  * missing, after captures show the live index + one operation page.
  *
  * Usage:
- *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=before node tests/e2e/capture-api-reference-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after  node tests/e2e/capture-api-reference-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=before node tests/e2e/capture-api-reference-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after  node tests/e2e/capture-api-reference-screenshots.ts
  */
 import { mkdir } from "node:fs/promises";
 import path from "node:path";

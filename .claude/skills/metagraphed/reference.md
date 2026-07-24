@@ -163,7 +163,7 @@ safely exclude them — see the "new artifact/route checklist" in §8 for why a 
 trip a contract gate with no lexical hint in the diff. Per-area **test** splitting (e.g. skip
 MCP-specific tests when `src/mcp-server.ts` wasn't touched) was evaluated and rejected: the suite has
 no per-subject directory structure (all 154 files sit flat in `tests/`), a third of it imports
-`workers/api.ts`'s shared router directly, and `vitest.config.mjs`'s `fileParallelism: false` exists
+`workers/api.ts`'s shared router directly, and `vitest.config.ts`'s `fileParallelism: false` exists
 for a filesystem-race reason (see below) unrelated to subject area — splitting by area would need a
 real test-tree/module-boundary refactor, not a CI config change.
 
@@ -383,7 +383,7 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   runs dedicated `npm run typecheck --workspace=packages/ui-kit` ("Typecheck packages/ui-kit") and
   `npm test --workspace=packages/ui-kit` ("Test packages/ui-kit") steps. **A separate "Lint
   packages/ui-kit (app-logic import guardrail)" step (#4865) enforces that the package stays a real,
-  standalone library** — `packages/ui-kit/eslint.config.js`'s `no-restricted-imports` rule fails on
+  standalone library** — `packages/ui-kit/eslint.config.ts`'s `no-restricted-imports` rule fails on
   any import of `@tanstack/react-router`, `@tanstack/react-query`, or anything resolving into
   `apps/ui/**`. If a component genuinely needs routing/data, accept it as a prop from the caller
   instead of reaching for app infrastructure — that's the exact regression this package's extraction
@@ -438,7 +438,7 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   coverage even with 100% coverage on the underlying `src/*.ts` module; and the `ui` CI job's
   "Build API reference docs (drift check)" step (added 2026-07-18, mirrors the
   `packages/client`/`packages/ui-kit` drift checks just above it) fails if `apps/ui/content/docs/
-api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs.mjs` from
+api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs.ts` from
   `apps/ui/` and commit the result alongside the contract change. Two more, caught live 2026-07-18
   shipping a templated computed artifact: `src/contracts.ts` has **two separate registries** for a
   route with no static file — a `route(...)` entry (API surface metadata) AND a distinct

@@ -23,9 +23,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:update-baseline": "node tests/e2e/generate-overflow-baseline.mjs",
-    "test:e2e:record-har": "node tests/e2e/record-har.mjs",
-    "screenshots": "node tests/e2e/capture-pr-screenshots.mjs"
+    "test:e2e:update-baseline": "node tests/e2e/generate-overflow-baseline.ts",
+    "test:e2e:record-har": "node tests/e2e/record-har.ts",
+    "screenshots": "node tests/e2e/capture-pr-screenshots.ts"
   },
   "dependencies": {
     "@jsonbored/metagraphed": "*",

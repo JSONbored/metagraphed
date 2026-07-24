@@ -1,5 +1,5 @@
 # Codecov — the primary PR coverage gate (replaces the fixed absolute-% pin that
-# vitest.config.mjs used to enforce; those thresholds are now just a backstop
+# vitest.config.ts used to enforce; those thresholds are now just a backstop
 # floor). This is DELTA-based, so it never causes the "every PR must match a
 # near-peak absolute number and one merge pushes the others below it" churn:
 #   - `project` compares total coverage to the PR base, tolerating a small drop.

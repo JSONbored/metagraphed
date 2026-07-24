@@ -1,12 +1,12 @@
 /**
- * Capture /feeds docs page screenshots for #3512 (Path C2).
+ * Capture /rpc docs page screenshots for #3515 (Path C2).
  *
  * New page — before captures are the 404/fallback when the route is missing;
  * after captures show the live docs page.
  *
  * Usage:
- *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=before node tests/e2e/capture-feeds-docs-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after  node tests/e2e/capture-feeds-docs-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8113 VARIANT=before node tests/e2e/capture-rpc-docs-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8114 VARIANT=after  node tests/e2e/capture-rpc-docs-screenshots.ts
  */
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -14,8 +14,8 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = path.resolve(__dirname, "../../../../tmp/feeds-docs-screenshots");
-const BASE_URL = process.env.UI_BASE_URL ?? "http://127.0.0.1:8085";
+const OUT_DIR = path.resolve(__dirname, "../../../../tmp/rpc-docs-screenshots");
+const BASE_URL = process.env.UI_BASE_URL ?? "http://127.0.0.1:8114";
 const VARIANT = process.env.VARIANT === "before" ? "before" : "after";
 const VIEWPORT_FILTER = process.env.VIEWPORT_FILTER;
 const ALL_VIEWPORTS = [
@@ -35,15 +35,15 @@ async function setTheme(page, theme) {
   }, theme);
 }
 
-async function openFeedsDocs(page) {
-  await page.goto(`${BASE_URL}/feeds`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+async function openRpcDocs(page) {
+  await page.goto(`${BASE_URL}/rpc`, { waitUntil: "domcontentloaded", timeout: 90_000 });
   try {
     await page.waitForLoadState("networkidle", { timeout: 8000 });
   } catch {
     await page.waitForTimeout(2000);
   }
-  const docs = page.locator('[data-testid="feeds-docs"]');
-  const hero = page.getByRole("heading", { name: /^Feeds$/i }).first();
+  const docs = page.locator('[data-testid="rpc-docs"]');
+  const hero = page.getByRole("heading", { name: /^RPC$/i }).first();
   try {
     await docs.waitFor({ state: "visible", timeout: 5000 });
   } catch {
@@ -63,7 +63,7 @@ async function main() {
       });
       const page = await context.newPage();
       await setTheme(page, theme);
-      await openFeedsDocs(page);
+      await openRpcDocs(page);
       const file = path.join(OUT_DIR, `${VARIANT}-${viewport.name}-${theme}.png`);
       await page.screenshot({ path: file, fullPage: false });
       console.log(`wrote ${file}`);

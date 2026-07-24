@@ -4,7 +4,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
-// Bone & Ink guardrails, ported from apps/ui/eslint.config.js (2026-07-23) once
+// Bone & Ink guardrails, ported from apps/ui/eslint.config.ts (2026-07-23) once
 // <Panel>/<SectionLabel>/etc. relocated here — see CONTRIBUTING.md. Kept in
 // sync with apps/ui's copy; if one changes, check the other.
 const ALLOWED_SPACE = "0|px|0\\.5|1|1\\.5|2|2\\.5|3|4|6|8|10|12|16|20|24";
@@ -28,7 +28,7 @@ const DESIGN_RULES = [
       "Bone & Ink caps font-weight at 600. Use font-medium or font-semibold — never bold/extrabold/black.",
   },
   {
-    // See apps/ui/eslint.config.js's identical rule for why this is anchored
+    // See apps/ui/eslint.config.ts's identical rule for why this is anchored
     // to a bare hex literal or Tailwind's `[#...]` bracket syntax rather than
     // an unanchored `#[0-9a-f]{3,8}` scan (false-positives on GitHub issue
     // refs in prose strings). wordmark.tsx's fixed brand-mint fill is this
@@ -50,7 +50,7 @@ const DESIGN_RULES = [
   },
   {
     // Scoped to plain <div>/<section> className literals only -- see
-    // apps/ui/eslint.config.js's identical rule for why an unscoped version
+    // apps/ui/eslint.config.ts's identical rule for why an unscoped version
     // false-positives on buttons/links/inputs and existing styled components.
     // Excludes mg-card-glow (a distinct soft-elevation variant, not drift).
     selector:

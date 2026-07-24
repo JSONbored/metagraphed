@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { test, expect } from "@playwright/test";
-import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.js";
+import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
 
 // #6434: /subnets/:netuid renders EvidencePanel twice -- a preview embedded in
 // the Overview tab and the full section under the dedicated Evidence tab. Both

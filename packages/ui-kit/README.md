@@ -17,7 +17,7 @@ components, and the chart primitives have all migrated
 
 This package must stay a real, standalone, dependency-free library — the moment a component here
 imports something app-specific, the extraction has silently regressed back into the exact problem
-this package exists to fix. `eslint.config.js`'s `no-restricted-imports` rule enforces this in CI:
+this package exists to fix. `eslint.config.ts`'s `no-restricted-imports` rule enforces this in CI:
 importing `@tanstack/react-router`, `@tanstack/react-query`, or anything resolving into
 `apps/ui/**` fails the build. If a component genuinely needs routing/data, accept it as a prop
 from the caller instead. If it needs a small pure helper that also lives in `apps/ui` (date

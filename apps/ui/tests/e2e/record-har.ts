@@ -23,8 +23,8 @@
 // fall-through back to live data.
 import { mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
-import { ROUTES } from "./overflow-check.config.js";
-import { HAR_DIR, harPathForRoute } from "./har-path.js";
+import { ROUTES } from "./overflow-check.config.ts";
+import { HAR_DIR, harPathForRoute } from "./har-path.ts";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:8080";
 

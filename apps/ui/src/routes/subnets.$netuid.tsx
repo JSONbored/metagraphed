@@ -925,7 +925,7 @@ function fmtQuotePrice(v: number): string {
 // driving a live query, no existing precedent elsewhere in the app). Direction
 // gates the input/output units: "stake" takes a TAO amount and quotes alpha
 // out; "unstake" takes an alpha amount and quotes TAO out (mirrors the
-// chain's own swap direction, see src/stake-quote.mjs).
+// chain's own swap direction, see src/stake-quote.ts).
 function StakeQuoteCalculator({ netuid }: { netuid: number }) {
   const [amountInput, setAmountInput] = useState("");
   const [direction, setDirection] = useState<(typeof STAKE_QUOTE_DIRECTIONS)[number]>("stake");

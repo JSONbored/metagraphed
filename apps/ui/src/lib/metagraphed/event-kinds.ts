@@ -1,5 +1,5 @@
 // Human-readable event-kind labels + category map for the explorer UI. Mirrors the
-// backend EVENT_KIND_CATEGORIES in src/account-events.mjs so the client can group
+// backend EVENT_KIND_CATEGORIES in src/account-events.ts so the client can group
 // and label chain events without duplicating the normalization logic inline.
 
 export type EventKindCategory =
@@ -13,7 +13,7 @@ export type EventKindCategory =
   | "transfer"
   | "other";
 
-/** Category slug for each known on-chain event kind (keep in sync with account-events.mjs). */
+/** Category slug for each known on-chain event kind (keep in sync with account-events.ts). */
 export const EVENT_KIND_CATEGORIES: Record<string, EventKindCategory> = {
   NeuronRegistered: "registration",
   NeuronDeregistered: "registration",

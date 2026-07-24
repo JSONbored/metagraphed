@@ -36,7 +36,7 @@
     }
   },
   "scripts": {
-    "sync": "node scripts/sync-generated.mjs",
+    "sync": "node scripts/sync-generated.ts",
     "build": "npm run sync && tsup src/index.ts --format esm,cjs --dts --dts-resolve --clean --treeshake",
     "prepublishOnly": "npm run build"
   },

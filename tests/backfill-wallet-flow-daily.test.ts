@@ -1,6 +1,6 @@
 // Unit tests for scripts/backfill-wallet-flow-daily.ts's pure helpers
 // (arg parsing, option validation). Not part of the codecov coverage.include
-// scope (see vitest.config.mjs's own comment on why only a named subset of
+// scope (see vitest.config.ts's own comment on why only a named subset of
 // scripts/ is instrumented) -- these tests exist for correctness confidence
 // before running the script against production, the same convention
 // tests/backfill-subnet-snapshots-postgres.test.mjs already follows for its

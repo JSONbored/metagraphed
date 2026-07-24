@@ -15,7 +15,7 @@
 // wrangler.jsonc's "main" points HERE instead of at the raw handler file,
 // so only the actual deployed Worker -- running in the real workerd
 // runtime, never a test -- ever executes the wrapped path. This file
-// itself is excluded from coverage tracking (vitest.config.mjs) for the
+// itself is excluded from coverage tracking (vitest.config.ts) for the
 // same runtime-mismatch reason; it's a thin, mechanical re-export with no
 // logic of its own to test.
 //

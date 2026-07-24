@@ -4,7 +4,7 @@
  * breadcrumb, and Fumadocs' native ViewOptionsPopover (open + closed).
  *
  * Usage:
- *   UI_BASE_URL=http://127.0.0.1:8085 node tests/e2e/capture-docs-page-actions-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8085 node tests/e2e/capture-docs-page-actions-screenshots.ts
  */
 import { mkdir } from "node:fs/promises";
 import path from "node:path";

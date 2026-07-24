@@ -30,7 +30,7 @@ The blank-screen watchdog (`src/lib/blank-screen-watchdog.ts`) plus the
 mounted in `src/routes/__root.tsx`) catch runtime regressions in production —
 window error/rejection handlers and a rendered-height check report through
 `reportLovableError`. The eslint `no-restricted-syntax` rules in
-`eslint.config.js` block the two most common regressions (reading
+`eslint.config.ts` block the two most common regressions (reading
 `localStorage`/`matchMedia` inside a `useState` initializer) at PR time.
 
 ## Known safe entry points

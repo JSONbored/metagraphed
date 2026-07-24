@@ -1,7 +1,7 @@
 // Client-SDK drift gate.
 //
 // The published `@jsonbored/metagraphed` client is a thin re-export of the
-// repo's generated contract (`packages/client/scripts/sync-generated.mjs` copies
+// repo's generated contract (`packages/client/scripts/sync-generated.ts` copies
 // `generated/metagraphed-client.ts` into the package on build; the contract types
 // come from the `metagraphed-contract` package / `packages/contract/index.d.ts`,
 // and the package tracks `public/metagraph/openapi.json`). But
@@ -33,7 +33,7 @@ import { repoRoot } from "./lib.ts";
 // The contract surface the published client re-exports. A change to any of these
 // versus the merge base means the npm package's shipped types/openapi would
 // drift unless the client version is bumped in the same PR. Kept in sync with
-// packages/client/scripts/sync-generated.mjs (the generated copies) + the
+// packages/client/scripts/sync-generated.ts (the generated copies) + the
 // package's openapi tracking.
 export const CONTRACT_PATHS = [
   "public/metagraph/openapi.json",

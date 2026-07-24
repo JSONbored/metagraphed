@@ -1,7 +1,7 @@
 /**
  * Capture the hash-nav focus indicator for #6421.
  *
- * capture-pr-screenshots.mjs can't drive this: the change is what happens when
+ * capture-pr-screenshots.ts can't drive this: the change is what happens when
  * useHashScroll resolves a deep link, so the shot has to land on the hash URL
  * and let the hook scroll + focus. Same Phase C2 contract otherwise -- fixed
  * viewports only, never fullPage, theme forced via mg-theme.
@@ -12,8 +12,8 @@
  * so the heading lands in-frame.
  *
  * Usage:
- *   UI_BASE_URL=http://127.0.0.1:8081 VARIANT=before node tests/e2e/capture-hashscroll-focus-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8080 VARIANT=after  node tests/e2e/capture-hashscroll-focus-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8081 VARIANT=before node tests/e2e/capture-hashscroll-focus-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8080 VARIANT=after  node tests/e2e/capture-hashscroll-focus-screenshots.ts
  */
 import { mkdir } from "node:fs/promises";
 import path from "node:path";

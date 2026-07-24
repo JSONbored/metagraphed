@@ -1,4 +1,4 @@
-// Shared between responsive-overflow.spec.ts and record-har.mjs so the two
+// Shared between responsive-overflow.spec.ts and record-har.ts so the two
 // can't silently drift apart -- one HAR fixture file per ROUTES entry.
 import { readFileSync } from "node:fs";
 import path from "node:path";

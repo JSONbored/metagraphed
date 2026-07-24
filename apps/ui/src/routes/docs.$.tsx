@@ -61,7 +61,7 @@ export const Route = createFileRoute("/docs/$")({
   }),
 });
 
-// content/docs/api-reference/**/*.mdx pages (scripts/generate-openapi-docs.mjs)
+// content/docs/api-reference/**/*.mdx pages (scripts/generate-openapi-docs.ts)
 // carry an `_openapi.preload` frontmatter array of schema URLs -- this
 // resolves those into real bundled schema data server-side, since
 // fumadocs-openapi's <APIPage /> never fetches its `document` prop itself

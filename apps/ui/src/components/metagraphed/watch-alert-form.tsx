@@ -8,7 +8,7 @@ import { ApiError } from "@/lib/metagraphed/client";
 // gate and owner-token-once-shown result, differing only in which match field
 // they send. These are the parts that are identical between them.
 
-// Must match src/alert-triggers.mjs — ALERT_TRIGGER_CREATE_TOKEN_HEADER.
+// Must match src/alert-triggers.ts — ALERT_TRIGGER_CREATE_TOKEN_HEADER.
 export const CREATE_TOKEN_HEADER = "x-alert-trigger-create-token";
 
 export const CHANNELS = ["webhook", "discord"] as const;

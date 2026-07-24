@@ -1,4 +1,4 @@
-// Shared between responsive-overflow.spec.ts and generate-overflow-baseline.mjs
+// Shared between responsive-overflow.spec.ts and generate-overflow-baseline.ts
 // so the two can't silently drift apart.
 //
 export const ROUTES = ["/", "/subnets/1", "/endpoints", "/status", "/settings", "/explorer"];

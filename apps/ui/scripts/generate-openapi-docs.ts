@@ -5,7 +5,7 @@
 // routeTree.gen.ts and openapi.json's own generated types -- re-run this
 // after the OpenAPI spec changes:
 //
-//   node scripts/generate-openapi-docs.mjs
+//   node scripts/generate-openapi-docs.ts
 //
 // Two things learned empirically, not documented anywhere obvious:
 // - fumadocs-openapi's own `groupBy: "tag"` option (v11.2.1) produces zero
@@ -154,7 +154,7 @@ function primaryTag(tags) {
 
 async function main() {
   // path.resolve (CWD-relative) -- this script always runs as
-  // `node scripts/generate-openapi-docs.mjs` from apps/ui/.
+  // `node scripts/generate-openapi-docs.ts` from apps/ui/.
   const spec = JSON.parse(await readFile(path.resolve(LOCAL_SPEC_PATH), "utf8"));
   const tagByOperationId = new Map();
   for (const methods of Object.values(spec.paths ?? {})) {

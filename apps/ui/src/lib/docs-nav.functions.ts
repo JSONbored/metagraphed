@@ -8,7 +8,7 @@ export interface DocsNavEntry {
 }
 
 // content/docs/api-reference/** holds 150+ individually-generated OpenAPI
-// operation pages (see scripts/generate-openapi-docs.mjs) -- real content
+// operation pages (see scripts/generate-openapi-docs.ts) -- real content
 // for Fumadocs' own sidebar/search, but far too many to flood the ⌘K
 // palette's "Jump to" list with. Only its index page (the reference landing
 // page) is surfaced there; the generated operation pages stay reachable via

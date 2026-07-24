@@ -11,8 +11,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 import prettier from "prettier";
-import { findOverflowViolations } from "./find-overflow-violations.js";
-import { ROUTES, VIEWPORTS } from "./overflow-check.config.js";
+import { findOverflowViolations } from "./find-overflow-violations.ts";
+import { ROUTES, VIEWPORTS } from "./overflow-check.config.ts";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:8080";
 

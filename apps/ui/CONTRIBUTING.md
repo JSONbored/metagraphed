@@ -56,7 +56,7 @@ budget — keep new dependencies/imports lean.
 - **Components** live in `src/components/metagraphed/`; route trees in `src/routes/`.
 - Reuse existing design tokens (`src/styles.css`, `packages/ui-kit/src/styles.css`) and
   shared components instead of inventing new one-off styles. The "Bone & Ink" rules,
-  mechanically flagged (as warnings — see `eslint.config.js`) by `no-restricted-syntax`:
+  mechanically flagged (as warnings — see `eslint.config.ts`) by `no-restricted-syntax`:
   - Semantic tokens only — `bg-paper`, `text-ink-strong`, `bg-health-ok`, `text-accent-text`,
     `border-border`, etc. Never a raw Tailwind palette color (`bg-emerald-500`,
     `text-gray-600`) and never a hex/rgb literal in code. Author new colors in OKLCH in

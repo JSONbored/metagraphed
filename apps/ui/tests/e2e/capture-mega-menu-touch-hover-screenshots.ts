@@ -6,8 +6,8 @@
  * fixed-viewport PNGs plus a short webm of the hover interaction.
  *
  * Usage:
- *   UI_BASE_URL=http://127.0.0.1:8094 VARIANT=before node tests/e2e/capture-mega-menu-touch-hover-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8095 VARIANT=after  node tests/e2e/capture-mega-menu-touch-hover-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8094 VARIANT=before node tests/e2e/capture-mega-menu-touch-hover-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8095 VARIANT=after  node tests/e2e/capture-mega-menu-touch-hover-screenshots.ts
  */
 import { mkdir } from "node:fs/promises";
 import path from "node:path";

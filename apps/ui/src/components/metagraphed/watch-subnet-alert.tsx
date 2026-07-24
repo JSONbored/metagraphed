@@ -14,7 +14,7 @@ import {
   type Channel,
 } from "@/components/metagraphed/watch-alert-form";
 
-// The backend (src/alert-triggers.mjs) validates `netuid` (0-65535) as an
+// The backend (src/alert-triggers.ts) validates `netuid` (0-65535) as an
 // independently-sufficient match condition, so a netuid-only trigger fires on
 // every matching chain event for that subnet. This mirrors WatchValidatorAlert
 // (account-scoped) — same #4984 endpoint, create-token gate, and one-time

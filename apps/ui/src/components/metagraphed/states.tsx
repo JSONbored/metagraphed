@@ -75,7 +75,7 @@ export function ErrorState({
   if (isApi && error.code === "artifact_not_found" && getNetworkPrefix() !== "") {
     return <NativeOnlyNotice context={context} />;
   }
-  // #2564: the chain-events deep-history tier (workers/api.mjs's handleChainEventsProxy)
+  // #2564: the chain-events deep-history tier (workers/api.ts's handleChainEventsProxy)
   // 503s with this exact code whenever the DATA_API service binding isn't wired into a
   // deployment (e.g. a preview/fork environment). That's an expected, documented
   // condition, not a fault in this feed — an informational notice reads better than a

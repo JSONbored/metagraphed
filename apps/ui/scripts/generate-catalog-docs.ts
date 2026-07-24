@@ -7,10 +7,10 @@
 // entry renders -- one source, two destinations (README + this docs page).
 //
 // Committed generated output, same convention as content/docs/api-reference/**
-// (scripts/generate-openapi-docs.mjs) -- re-run this after a registry overlay
+// (scripts/generate-openapi-docs.ts) -- re-run this after a registry overlay
 // changes:
 //
-//   node scripts/generate-catalog-docs.mjs
+//   node scripts/generate-catalog-docs.ts
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

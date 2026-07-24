@@ -688,7 +688,7 @@ export async function forwardBatch(
    it makes (config validation, backoff timing, retry count, batch
    forwarding) is delegated to the pure functions above and unit-tested
    directly (see tests/chain-firehose-relay.test.mjs). This file is
-   intentionally outside vitest.config.mjs's coverage.include, matching every
+   intentionally outside vitest.config.ts's coverage.include, matching every
    other standalone deploy/-tier process in this repo (e.g. deploy/wss-lb,
    tested via `node --test` instead) -- see that config's own comment for the
    convention. */

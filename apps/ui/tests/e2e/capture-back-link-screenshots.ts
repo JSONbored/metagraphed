@@ -1,7 +1,7 @@
 /**
  * Capture the bottom-of-page "back to index" link for #6432.
  *
- * capture-pr-screenshots.mjs can't drive this one: `--section` pins a section's
+ * capture-pr-screenshots.ts can't drive this one: `--section` pins a section's
  * top just under the sticky header, but the back-link sits *above* the section
  * it precedes, so it lands off-frame -- and in the `before` variant the link
  * doesn't exist at all, so there is no id to anchor on either. Same contract as
@@ -11,8 +11,8 @@
  * the viewport bottom, so the space the link occupies is what fills the frame.
  *
  * Usage:
- *   UI_BASE_URL=http://127.0.0.1:8081 VARIANT=before node tests/e2e/capture-back-link-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8080 VARIANT=after  node tests/e2e/capture-back-link-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8081 VARIANT=before node tests/e2e/capture-back-link-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8080 VARIANT=after  node tests/e2e/capture-back-link-screenshots.ts
  */
 import { mkdir } from "node:fs/promises";
 import path from "node:path";

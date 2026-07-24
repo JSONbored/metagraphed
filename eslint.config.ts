@@ -46,11 +46,11 @@ export default tseslint.config(
       // fail on files that don't exist yet in that worktree's working tree.
       // Not application source; never meant to be linted from the root config.
       ".claude/**",
-      // apps/ui has its own eslint.config.js scoped to its own React/TS setup —
+      // apps/ui has its own eslint.config.ts scoped to its own React/TS setup —
       // this repo's root config has no TSX/JSX parser wired in and would just
       // error on syntax it can't parse, not meaningfully lint it.
       "apps/ui/**",
-      // packages/ui-kit has its own eslint.config.js + tsconfig.json; packages/client
+      // packages/ui-kit has its own eslint.config.ts + tsconfig.json; packages/client
       // has its own tsconfig.json. Linting either from here creates a multi-root
       // tsconfig ambiguity for the TS parser (typescript-eslint can't tell which
       // tsconfig.json is authoritative for a file under two candidate roots).

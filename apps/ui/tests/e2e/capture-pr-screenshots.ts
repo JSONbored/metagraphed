@@ -6,19 +6,19 @@
  * fullPage -- a full-page capture is exactly what broke #3757) against two
  * dev servers: one checked out at a base ref (default: the merge-base with
  * main), one at the current working tree. Generalizes the one-off
- * capture-*-screenshots.mjs scripts already in this directory (each hardcoded
+ * capture-*-screenshots.ts scripts already in this directory (each hardcoded
  * to one PR's route/selectors) into a reusable, route-agnostic tool, and adds
  * the two-server orchestration none of them do.
  *
  * Usage:
- *   node tests/e2e/capture-pr-screenshots.mjs --route /status
- *   node tests/e2e/capture-pr-screenshots.mjs --route /subnets/1 \
+ *   node tests/e2e/capture-pr-screenshots.ts --route /status
+ *   node tests/e2e/capture-pr-screenshots.ts --route /subnets/1 \
  *     --section volume-24h --prefix 5483-volume
  *
  * Fast path for iterative work (servers you're already running -- e.g. an AI
  * coding tool mid-session, or a contributor who already has both dev servers
  * up): skip the worktree/install/spawn dance entirely and point at them.
- *   node tests/e2e/capture-pr-screenshots.mjs --route /status \
+ *   node tests/e2e/capture-pr-screenshots.ts --route /status \
  *     --before-url http://localhost:8081 --after-url http://localhost:8080
  *
  * Writes 12 PNGs to --out (default tmp/pr-screenshots/), named
@@ -98,7 +98,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Usage: node tests/e2e/capture-pr-screenshots.mjs --route <path> [options]
+  console.log(`Usage: node tests/e2e/capture-pr-screenshots.ts --route <path> [options]
 
 Required:
   --route <path>            Route to capture, e.g. /status or /subnets/1
@@ -267,7 +267,7 @@ async function setTheme(page, baseUrl, theme) {
 
 /** `networkidle` is the right wait condition (it's what lets a late-mounting
  * chart or a client-side non-suspense query settle before capture -- see
- * capture-operational-status-screenshots.mjs), but a just-spawned dev
+ * capture-operational-status-screenshots.ts), but a just-spawned dev
  * server's first hit on a route pays Vite's cold transform/optimize cost on
  * top of the app's own data fetches, occasionally blowing past a single
  * timeout. Retry once, then fall back to the cheaper `load` condition plus a
@@ -292,7 +292,7 @@ async function gotoRoute(page, url) {
 /** Scrolls `sectionId` into view, accounting for the sticky masthead's live
  * height, then re-scrolls once after a settle wait so late data-driven
  * layout shifts (queries resolving, charts mounting) don't push the target
- * back out of frame -- mirrors capture-operational-status-screenshots.mjs. */
+ * back out of frame -- mirrors capture-operational-status-screenshots.ts. */
 async function scrollToSection(page, sectionId) {
   const scroll = () =>
     page.evaluate((id) => {

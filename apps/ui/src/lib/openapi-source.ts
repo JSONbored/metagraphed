@@ -1,7 +1,7 @@
 import { createOpenAPI } from "fumadocs-openapi/server";
 import { DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 
-// Same unwrapped spec URL scripts/generate-openapi-docs.mjs bakes into every
+// Same unwrapped spec URL scripts/generate-openapi-docs.ts bakes into every
 // generated content/docs/api-reference/**/*.mdx page's `_openapi.preload`
 // frontmatter -- derived from DEFAULT_API_BASE (not the runtime-overridable
 // getApiBase()/API_BASE) rather than a second hardcoded domain literal, so
@@ -16,7 +16,7 @@ const LIVE_SPEC_URL = `${DEFAULT_API_BASE}/metagraph/openapi.json`;
 // fumadocs-openapi's own <APIPage/> internals independently re-derive a
 // title from `operation.summary` at render time (operation/index.js:
 // `operation.summary || pathItem.summary || idToTitle(...)`), so this
-// runtime-fetched copy needs the same fix scripts/generate-openapi-docs.mjs
+// runtime-fetched copy needs the same fix scripts/generate-openapi-docs.ts
 // applies to the one baked into each generated page's frontmatter --
 // duplicated rather than shared (that script is a standalone Node process,
 // this module runs inside the Vite/TanStack app build).
@@ -64,7 +64,7 @@ interface OpenAPIOperationLike {
 // status." (a 37-char summary, technically short, but still a full
 // sentence that wraps across lines as a nav item) reads as inconsistent;
 // every title in the reference should follow the same short, Title Case
-// pattern. Kept in sync with scripts/generate-openapi-docs.mjs's twin.
+// pattern. Kept in sync with scripts/generate-openapi-docs.ts's twin.
 function splitOperationSummaries(spec: { paths?: Record<string, Record<string, unknown>> }): void {
   for (const methods of Object.values(spec.paths ?? {})) {
     for (const op of Object.values(methods)) {
@@ -90,7 +90,7 @@ async function fetchSpec() {
 // docs.$.tsx's server loader calls openapi.preloadOpenAPIPage(page) to
 // resolve a page's `document` reference into real bundled schema data
 // before the client ever renders <APIPage />. "metagraph" (not the raw
-// URL) is the schema key -- must match scripts/generate-openapi-docs.mjs's
+// URL) is the schema key -- must match scripts/generate-openapi-docs.ts's
 // own createOpenAPI() call exactly, since preloadOpenAPIPage resolves each
 // generated page's `document` prop by looking up this same key.
 export const openapi = createOpenAPI({ input: { metagraph: fetchSpec } });

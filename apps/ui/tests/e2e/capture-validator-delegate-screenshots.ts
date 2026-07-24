@@ -3,8 +3,8 @@
  * Fixed viewport only — never fullPage or element crops.
  *
  * Usage (with dev servers running — pass base URL explicitly):
- *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after node tests/e2e/capture-validator-delegate-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8086 VARIANT=before node tests/e2e/capture-validator-delegate-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8085 VARIANT=after node tests/e2e/capture-validator-delegate-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8086 VARIANT=before node tests/e2e/capture-validator-delegate-screenshots.ts
  *
  * PAGE=directory|detail (default: directory)
  * Writes to tmp/validator-delegate-screenshots/5245-{page}-{viewport}-{theme}-{variant}.png

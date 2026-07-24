@@ -11,7 +11,7 @@ import { adapterQuery } from "@/lib/metagraphed/queries";
 // for visual consistency — same compact ranked-row shape, same
 // self-contained "hide on error/empty" discovery-extra behavior — and reuses
 // its already-live /api/v1/adapters/:slug data (dimensions.master_repositories,
-// refreshed by scripts/snapshot-adapters.mjs's snapshotGittensor()) rather
+// refreshed by scripts/snapshot-adapters.ts's snapshotGittensor()) rather
 // than inventing a new endpoint.
 
 const ROWS_SHOWN = 6;

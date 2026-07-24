@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/metagraphed/client";
 import { describeApiError } from "@/components/metagraphed/watch-alert-form";
 
-// #6558: the backend (src/alert-triggers.mjs) already validates netuid-scoped
+// #6558: the backend (src/alert-triggers.ts) already validates netuid-scoped
 // alert triggers, but only the validator page had a Watch UI. WatchSubnetAlert
 // extends the same pattern to subnets — same #4984 endpoint, create-token gate,
 // and one-time owner-token result — sending `netuid` instead of `account`.

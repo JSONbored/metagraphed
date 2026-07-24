@@ -3,10 +3,10 @@
  *
  * The badge is intentionally byte-identical at rest (the issue asks to preserve
  * its styling and only add navigation), so the fixed-viewport at-rest matrix
- * from capture-pr-screenshots.mjs shows no delta by design. What actually
+ * from capture-pr-screenshots.ts shows no delta by design. What actually
  * changes is only observable on interaction, which is what this captures --
  * the "animated evidence" case in SKILL.md Phase C2, following the same shape
- * as capture-mega-menu-touch-hover-screenshots.mjs:
+ * as capture-mega-menu-touch-hover-screenshots.ts:
  *
  *   - `<variant>-hover-<theme>.png`  the badge under the cursor. Before: a
  *     plain <span>, so hovering does nothing. After: a Link, so the pill
@@ -19,8 +19,8 @@
  * Fixed viewport only, never fullPage; theme forced via mg-theme (Phase C2).
  *
  * Usage:
- *   UI_BASE_URL=http://127.0.0.1:8081 VARIANT=before node tests/e2e/capture-validator-badge-hover-screenshots.mjs
- *   UI_BASE_URL=http://127.0.0.1:8080 VARIANT=after  node tests/e2e/capture-validator-badge-hover-screenshots.mjs
+ *   UI_BASE_URL=http://127.0.0.1:8081 VARIANT=before node tests/e2e/capture-validator-badge-hover-screenshots.ts
+ *   UI_BASE_URL=http://127.0.0.1:8080 VARIANT=after  node tests/e2e/capture-validator-badge-hover-screenshots.ts
  */
 import { mkdir } from "node:fs/promises";
 import path from "node:path";

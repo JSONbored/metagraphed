@@ -1,5 +1,5 @@
 // Plain JS (not .ts): imported both by the Playwright test (via its
-// TS-aware runner) and by generate-overflow-baseline.mjs (run with plain
+// TS-aware runner) and by generate-overflow-baseline.ts (run with plain
 // `node`, no TypeScript loader) -- keeping one shared implementation instead
 // of two copies that could drift.
 //

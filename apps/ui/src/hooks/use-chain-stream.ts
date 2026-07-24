@@ -19,7 +19,7 @@ export type ChainFirehoseTopic = (typeof CHAIN_FIREHOSE_TOPICS)[number];
  * Build the absolute EventSource URL for `GET /api/v1/chain/stream`, applying
  * the selected network prefix and optional comma-separated `topics` filter
  * (same contract as `parseChainFirehoseTopics` / `chainFirehoseMatchesTopics`
- * in `workers/chain-firehose-hub.mjs`).
+ * in `workers/chain-firehose-hub.ts`).
  */
 export function buildChainStreamUrl(topics?: readonly string[]): string {
   const base = getApiBase().replace(/\/$/, "");
