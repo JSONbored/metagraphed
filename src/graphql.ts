@@ -183,6 +183,10 @@ import {
   analyticsWindow,
   loadGlobalIncidentsLedger,
 } from "../workers/request-handlers/analytics.ts";
+// #7875: GraphQL parity for GET /api/v1/incidents list filters (netuid/limit/
+// cursor/sort/order), reusing applyGlobalIncidentsListQuery that MCP
+// get_global_incidents already calls -- not a reimplementation.
+import { applyGlobalIncidentsListQuery } from "./global-incidents-mcp.ts";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
@@ -3092,10 +3096,11 @@ const rootValue = {
     });
   },
 
-  async incidents({ window }: Row, context: GqlContext) {
+  async incidents(args: Row, context: GqlContext) {
     // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
     // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL BAD_USER_INPUT
     // error, not a silent empty result. analyticsWindow reads only the ?window param.
+    const { window, ...listArgs } = args;
     const windowUrl = new URL((context.request as Request).url);
     windowUrl.search = "";
     if (window != null) windowUrl.searchParams.set("window", window);
@@ -3119,23 +3124,45 @@ const rootValue = {
         "METAGRAPH_HEALTH_SOURCE",
       )) as Row | null) ??
       (await loadGlobalIncidentsLedger(context.env, { label })).data;
-    return {
-      schema_version: data.schema_version ?? 1,
-      window: data.window ?? label,
-      observed_at: data.observed_at ?? null,
-      source: data.source ?? null,
-      summary: data.summary ?? null,
-      surfaces: data.surfaces ?? [],
-    };
+    // #7875: reuse applyGlobalIncidentsListQuery (same netuid/sort/order/limit/
+    // cursor transform MCP get_global_incidents / REST already apply) rather
+    // than re-deriving a GraphQL-only filterFn. invalid_params -> BAD_USER_INPUT.
+    try {
+      // Defaults first, then the tier/ledger payload — avoids `??` partials on
+      // fields the warm path always supplies (codecov/patch is branch-counted).
+      return applyGlobalIncidentsListQuery(
+        Object.assign(
+          {
+            schema_version: 1,
+            window: label,
+            observed_at: null,
+            source: null,
+            summary: null,
+            surfaces: [],
+          },
+          data,
+        ),
+        listArgs,
+      );
+    } catch (rawErr) {
+      const err = rawErr as Row;
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      throw err;
+    }
   },
 
-  // #7643: the get_global_incidents-aligned name for the same downtime-incident
-  // ledger -- a thin delegate so MCP tool names and GraphQL fields line up.
-  // Identical window validation (7d/30d -> BAD_USER_INPUT), Postgres-tier ->
-  // retired-D1 fallback, and schema-stable cold-tier degradation; nothing
-  // re-derived. Distinct from endpoint_incidents (the active endpoint feed).
-  async global_incidents({ window }: Row, context: GqlContext) {
-    return rootValue.incidents({ window }, context);
+  // #7643 / #7875: the get_global_incidents-aligned name for the same downtime-
+  // incident ledger -- a thin delegate so MCP tool names and GraphQL fields
+  // line up. Identical window validation (7d/30d -> BAD_USER_INPUT), list-query
+  // filters, Postgres-tier -> retired-D1 fallback, and schema-stable cold-tier
+  // degradation; nothing re-derived. Distinct from endpoint_incidents (the
+  // active endpoint feed).
+  async global_incidents(args: Row, context: GqlContext) {
+    return rootValue.incidents(args, context);
   },
 
   // #7876: GraphQL parity for the search field's REST/MCP filters. Reuse
