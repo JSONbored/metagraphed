@@ -8,6 +8,7 @@ import {
   validate,
 } from "graphql";
 import { describe, test, vi } from "vitest";
+import * as listQuery from "../workers/list-query.ts";
 import * as subnetCandidatesMcp from "../src/subnet-candidates-mcp.ts";
 import * as subnetEvidenceMcp from "../src/subnet-evidence-mcp.ts";
 import {
@@ -15994,6 +15995,15 @@ describe("graphql — subnet_health (#7640, live-cron overlay parity with REST +
       health_source: "unavailable",
       reliability: null,
       surfaces: [],
+      // #7881: the card now carries the same pagination meta the REST route's
+      // list query reports alongside the surfaces.
+      total: 0,
+      returned: 0,
+      limit: 0,
+      cursor: 0,
+      next_cursor: null,
+      sort: null,
+      order: "asc",
     });
   });
 
@@ -16004,6 +16014,161 @@ describe("graphql — subnet_health (#7640, live-cron overlay parity with REST +
 
   test("subnet_health is weighted as a fan-out field", () => {
     assert.equal(FIELD_COMPLEXITY.subnet_health, 5);
+  });
+
+  // #7881: kind/provider/status/classification filters plus sort/order,
+  // fields projection and limit/cursor paging, matching the REST route's
+  // health-surfaces list query.
+  function threeSurfaceEnv() {
+    const surface = (
+      id: string,
+      surfaceStatus: string,
+      classification: string,
+      provider: string,
+      latency: number,
+    ) => ({
+      surface_id: id,
+      netuid: NETUID,
+      kind: "subnet-api",
+      provider,
+      url: `https://${provider}.example/api`,
+      status: surfaceStatus,
+      classification,
+      latency_ms: latency,
+      last_ok: "2026-06-13T00:00:00.000Z",
+      last_checked: "2026-06-13T00:05:00.000Z",
+    });
+    return fixtureEnv(
+      {},
+      {
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            surfaces: [
+              surface("s-a", "ok", "live", "alpha", 100),
+              surface("s-b", "failed", "live", "beta", 300),
+              surface("s-c", "ok", "timeout", "alpha", 200),
+            ],
+          },
+        },
+      },
+    ) as unknown as Env;
+  }
+
+  test("subnet_health filters by status (#7881)", async () => {
+    const { status, body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}, status: "ok") }`,
+      threeSurfaceEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const card = body.data.subnet_health;
+    assert.equal(card.total, 2);
+    assert.deepEqual(card.surfaces.map((s: Row) => s.surface_id).sort(), [
+      "s-a",
+      "s-c",
+    ]);
+  });
+
+  test("subnet_health filters by classification (#7881)", async () => {
+    const { body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}, classification: "timeout") }`,
+      threeSurfaceEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    const card = body.data.subnet_health;
+    assert.equal(card.total, 1);
+    assert.equal(card.surfaces[0].surface_id, "s-c");
+  });
+
+  test("subnet_health combines filters, sorts, and pages (#7881)", async () => {
+    const first = await gql(
+      `{ subnet_health(netuid: ${NETUID}, status: "ok", provider: "alpha", sort: "latency_ms", order: "asc", limit: 1) }`,
+      threeSurfaceEnv(),
+    );
+    assert.equal(first.body.errors, undefined);
+    const p1 = first.body.data.subnet_health;
+    assert.equal(p1.total, 2);
+    assert.equal(p1.returned, 1);
+    assert.equal(p1.next_cursor, 1);
+    assert.equal(p1.surfaces[0].surface_id, "s-a");
+
+    const second = await gql(
+      `{ subnet_health(netuid: ${NETUID}, status: "ok", provider: "alpha", sort: "latency_ms", order: "asc", limit: 1, cursor: 1) }`,
+      threeSurfaceEnv(),
+    );
+    const p2 = second.body.data.subnet_health;
+    assert.equal(p2.surfaces[0].surface_id, "s-c");
+    assert.equal(p2.next_cursor, null);
+  });
+
+  test("subnet_health projects surface fields when requested (#7881)", async () => {
+    const { body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}, classification: "timeout", fields: "surface_id,status") }`,
+      threeSurfaceEnv(),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_health.surfaces[0], {
+      surface_id: "s-c",
+      status: "ok",
+    });
+  });
+
+  test("subnet_health rejects an unsupported filter or sort value (#7881)", async () => {
+    for (const arg of [
+      'status: "bogus"',
+      'classification: "bogus"',
+      'kind: "bogus"',
+      'sort: "not_a_column"',
+    ]) {
+      const { body } = await gql(
+        `{ subnet_health(netuid: ${NETUID}, ${arg}) }`,
+        threeSurfaceEnv(),
+      );
+      assert.ok(body.errors, `expected a GraphQL error for ${arg}`);
+      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    }
+  });
+
+  test("subnet_health falls back to schema-stable meta when the list query returns no pagination (#7881)", async () => {
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { surfaces: [{ surface_id: "s-a" }, { surface_id: "s-b" }] },
+      meta: {},
+    } as unknown as ReturnType<typeof listQuery.applyQueryFilters>);
+    try {
+      const { body } = await gql(
+        `{ subnet_health(netuid: ${NETUID}) }`,
+        threeSurfaceEnv(),
+      );
+      assert.equal(body.errors, undefined);
+      const card = body.data.subnet_health;
+      assert.equal(card.total, 2);
+      assert.equal(card.returned, 2);
+      assert.equal(card.limit, 2);
+      assert.equal(card.cursor, 0);
+      assert.equal(card.next_cursor, null);
+      assert.equal(card.sort, null);
+      assert.equal(card.order, null);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("subnet_health degrades to an empty page when the list query returns no surfaces array (#7881)", async () => {
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { surfaces: null },
+      meta: {},
+    } as unknown as ReturnType<typeof listQuery.applyQueryFilters>);
+    try {
+      const { body } = await gql(
+        `{ subnet_health(netuid: ${NETUID}) }`,
+        threeSurfaceEnv(),
+      );
+      assert.equal(body.errors, undefined);
+      assert.deepEqual(body.data.subnet_health.surfaces, []);
+      assert.equal(body.data.subnet_health.total, 0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

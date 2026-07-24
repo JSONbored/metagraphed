@@ -8,6 +8,10 @@ import {
 } from "graphql";
 import * as Sentry from "@sentry/cloudflare";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
+// #7881: the same list-query helper the REST pipeline and the list_* MCP
+// loaders use, so subnet_health's filter/sort/page allowlists cannot drift
+// from GET /api/v1/subnets/{netuid}/health.
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
@@ -548,7 +552,7 @@ export const SDL = `
     "One subnet's per-surface latency percentiles (p50/p90/p95/p99) over a 7d/30d window (default 7d), computed live from the success-only health-probe history. The latency-distribution companion of subnet_health_incidents' availability view. A subnet with no probe history resolves to a schema-stable empty surfaces list, never null. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles."
     subnet_health_percentiles(netuid: Int!, window: String): SubnetHealthPercentiles!
     "One subnet's current live operational-health card: the per-surface status/latency/last-ok rows from the latest ~15-minute cron probe (summarized into ok/degraded/failed/unknown counts) plus the cross-window reliability score. The at-a-glance base card completing the health family whose windowed views are subnet_health_trends/subnet_health_incidents/subnet_health_percentiles. A subnet with no live health data resolves to the same schema-stable unknown card (summary.status of unknown, empty surfaces), never null. Opaque JSON passed through verbatim, matching the get_subnet_health MCP/REST shape (the existing typed SubnetHealth is the flat health-list item, a different shape, so this base card is JSON like the sibling surfaces payloads). Mirrors GET /api/v1/subnets/{netuid}/health."
-    subnet_health(netuid: Int!): JSON
+    subnet_health(netuid: Int!, kind: String, provider: String, status: String, classification: String, sort: String, order: String, fields: String, limit: Int, cursor: Int): JSON
     "One subnet's rolling 24h alpha trading volume from the StakeAdded/StakeRemoved trade stream: buy/sell volume in alpha and TAO, trade counts, net flow, a buy-vs-sell sentiment ratio, and volume-to-market-cap ratio. A subnet with no trades resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/volume."
     subnet_volume(netuid: Int!): SubnetVolume!
     "The machine-readable AI-resources index: the copyable agent prompt (/agent.md), MCP server install metadata and tool listing, the Bittensor skill, llms.txt, OpenAPI, and links to the agent-facing APIs. Use it to bootstrap an agent integration before calling the catalog/search fields. Null when the index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_agent_resources MCP/REST shape. Mirrors GET /api/v1/agent-resources."
@@ -10073,7 +10077,19 @@ const rootValue = {
     };
   },
 
-  async subnet_health({ netuid }: Row, context: GqlContext) {
+  async subnet_health(args: Row, context: GqlContext) {
+    const {
+      netuid,
+      kind,
+      provider,
+      status,
+      classification,
+      sort,
+      order,
+      fields,
+      limit,
+      cursor,
+    } = args;
     // Same non-negative netuid gate the other per-subnet resolvers use --
     // GraphQL Int coercion rejects non-integers at parse time; a negative
     // netuid is a BAD_USER_INPUT error, not a silent card.
@@ -10100,17 +10116,63 @@ const rootValue = {
       loadSubnetReliability(),
     ]);
     const overlaid = overlaySubnetHealth(null, live, netuid);
-    if (overlaid) {
-      return { ...overlaid, reliability };
+    const card = overlaid
+      ? { ...overlaid, reliability }
+      : {
+          schema_version: 1,
+          netuid,
+          summary: { status: "unknown", surface_count: 0 },
+          operational_observed_at: null,
+          health_source: "unavailable",
+          reliability,
+          surfaces: [],
+        };
+    // #7881: apply the same list query GET /api/v1/subnets/{netuid}/health runs
+    // over the card's surfaces (listQuery("health-surfaces", { exclude:
+    // ["netuid"] })) -- kind/provider/status/classification filters plus
+    // sort/order, fields projection, and limit/cursor paging. applyQueryFilters
+    // is the same helper the REST pipeline and the list_* MCP loaders use, so
+    // the allowlists cannot drift; an unsupported value is a GraphQL error
+    // rather than a silently substituted default. With no filter args the card
+    // passes through with its surfaces intact, preserving the existing shape.
+    const queryUrl = new URL("https://graphql.internal/subnets/health");
+    for (const [name, value] of [
+      ["kind", kind],
+      ["provider", provider],
+      ["status", status],
+      ["classification", classification],
+      ["sort", sort],
+      ["order", order],
+      ["fields", fields],
+      ["limit", limit],
+      ["cursor", cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
     }
+    const transformed = applyQueryFilters(card, queryUrl, "health-surfaces", [
+      "kind",
+      "provider",
+      "status",
+      "classification",
+    ]);
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const filtered = transformed.data as Row;
+    const page = ((transformed.meta as Row)?.pagination ?? {}) as Row;
+    const surfaces = Array.isArray(filtered.surfaces) ? filtered.surfaces : [];
     return {
-      schema_version: 1,
-      netuid,
-      summary: { status: "unknown", surface_count: 0 },
-      operational_observed_at: null,
-      health_source: "unavailable",
-      reliability,
-      surfaces: [],
+      ...card,
+      surfaces,
+      total: page.total ?? surfaces.length,
+      returned: page.returned ?? surfaces.length,
+      limit: page.limit ?? surfaces.length,
+      cursor: page.cursor ?? 0,
+      next_cursor: page.next_cursor ?? null,
+      sort: page.sort ?? null,
+      order: page.order ?? null,
     };
   },
 
