@@ -323,12 +323,12 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               {block.block_hash ? (
                 <div className="flex min-w-0 items-center gap-1.5">
                   <span
-                    className="font-mono text-[12px] text-ink-strong break-all md:hidden"
+                    className="font-mono mg-type-caption text-ink-strong break-all md:hidden"
                     title={block.block_hash}
                   >
                     {shortHash(block.block_hash, 10)}
                   </span>
-                  <span className="hidden md:inline font-mono text-[12px] text-ink-strong break-all">
+                  <span className="hidden md:inline font-mono mg-type-caption text-ink-strong break-all">
                     {block.block_hash}
                   </span>
                   <CopyButton value={block.block_hash} label="block hash" compact />
@@ -343,7 +343,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   <Link
                     to="/blocks/$ref"
                     params={{ ref: block.parent_hash }}
-                    className="font-mono text-[12px] text-ink-strong hover:underline break-all md:hidden"
+                    className="font-mono mg-type-caption text-ink-strong hover:underline break-all md:hidden"
                     title={block.parent_hash}
                   >
                     {shortHash(block.parent_hash, 10)}
@@ -351,7 +351,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                   <Link
                     to="/blocks/$ref"
                     params={{ ref: block.parent_hash }}
-                    className="hidden md:inline font-mono text-[12px] text-ink-strong hover:underline break-all"
+                    className="hidden md:inline font-mono mg-type-caption text-ink-strong hover:underline break-all"
                   >
                     {block.parent_hash}
                   </Link>
@@ -393,7 +393,7 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
               </span>
             </FieldRow>
             <FieldRow label="Observed at">
-              <span className="font-mono text-[12px] text-ink-muted">
+              <span className="font-mono mg-type-caption text-ink-muted">
                 <TimeAgo at={block.observed_at} />
               </span>
             </FieldRow>
@@ -468,12 +468,12 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                         }
                         className="mg-row-accent hover:bg-surface/40"
                       >
-                        <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                        <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
                           {extrinsic.extrinsic_index != null
                             ? formatNumber(extrinsic.extrinsic_index)
                             : "—"}
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted break-all">
+                        <td className="px-4 py-2.5 mg-type-data text-ink-muted break-all">
                           {extrinsic.extrinsic_hash ? (
                             <Link
                               to="/extrinsics/$hash"
@@ -486,12 +486,10 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                             "—"
                           )}
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                        <td className="px-4 py-2.5 mg-type-data text-ink-strong">
                           {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
                         </td>
-                        <td className={`px-4 py-2.5 font-mono text-[11px] ${resultClass}`}>
-                          {result}
-                        </td>
+                        <td className={`px-4 py-2.5 mg-type-data ${resultClass}`}>{result}</td>
                       </tr>
                     );
                   })}
@@ -593,18 +591,18 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
                           key={`${event.block_number}-${event.event_index}`}
                           className="mg-row-accent hover:bg-surface/40"
                         >
-                          <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                          <td className="px-4 py-2.5 mg-type-data text-ink-strong">
                             {extrinsicCall(event.pallet, event.method)}
                           </td>
-                          <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                          <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                             {event.phase ?? "—"}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
+                          <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink">
                             {event.extrinsic_index != null
                               ? formatNumber(event.extrinsic_index)
                               : "—"}
                           </td>
-                          <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                          <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                             <div className="flex max-w-xs items-center gap-1.5">
                               <span className="truncate" title={formatChainEventArgs(event.args)}>
                                 {formatChainEventArgs(event.args)}
@@ -827,10 +825,10 @@ function GroupedEvents({
                 ) : (
                   <ChevronRight className="size-3.5 shrink-0 text-ink-muted" />
                 )}
-                <span className="font-mono text-[11px] tabular-nums text-ink-muted w-8 sm:w-10 shrink-0">
+                <span className="mg-type-data tabular-nums text-ink-muted w-8 sm:w-10 shrink-0">
                   {g.isSystem ? "sys" : `#${g.index}`}
                 </span>
-                <span className="font-mono text-[11px] text-ink-strong truncate min-w-0 flex-1">
+                <span className="mg-type-data text-ink-strong truncate min-w-0 flex-1">
                   {title}
                 </span>
                 {success != null ? (
@@ -848,7 +846,7 @@ function GroupedEvents({
                     to="/extrinsics/$hash"
                     params={{ hash: g.extrinsic.extrinsic_hash }}
                     onClick={(e) => e.stopPropagation()}
-                    className="hidden sm:inline font-mono text-[10px] text-ink-muted hover:text-ink-strong hover:underline shrink-0"
+                    className="hidden sm:inline mg-type-data-sm text-ink-muted hover:text-ink-strong hover:underline shrink-0"
                     title={g.extrinsic.extrinsic_hash}
                   >
                     {shortHash(g.extrinsic.extrinsic_hash, 6)}
@@ -871,13 +869,13 @@ function GroupedEvents({
                           key={`${event.block_number}-${event.event_index}-${event.event_kind ?? "unknown"}`}
                         >
                           <td
-                            className="px-2 py-1.5 font-mono text-[11px] text-ink-strong"
+                            className="px-2 py-1.5 mg-type-data text-ink-strong"
                             title={event.event_kind ?? undefined}
                           >
                             {eventKindLabel(event.event_kind)}
                           </td>
                           {showHotkeyCol ? (
-                            <td className="px-2 py-1.5 font-mono text-[11px] text-ink">
+                            <td className="px-2 py-1.5 mg-type-data text-ink">
                               <AccountAddress
                                 ss58={event.hotkey}
                                 keep={10}
@@ -890,7 +888,7 @@ function GroupedEvents({
                             {event.amount_tao != null ? (
                               <TaoValue amount={event.amount_tao} layout="stacked" precision={4} />
                             ) : (
-                              <span className="font-mono text-[11px] text-ink-muted">—</span>
+                              <span className="mg-type-data text-ink-muted">—</span>
                             )}
                           </td>
                         </tr>
@@ -980,15 +978,11 @@ function JumpToBlock() {
         placeholder="Jump to # or 0x…"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? "jump-to-block-err" : undefined}
-        className="mg-focus-ring h-8 w-40 rounded border border-border bg-paper px-2 font-mono text-[12px] tabular-nums text-ink-strong placeholder:text-ink-subtle sm:w-48"
+        className="mg-focus-ring h-8 w-40 rounded border border-border bg-paper px-2 font-mono mg-type-caption tabular-nums text-ink-strong placeholder:text-ink-subtle sm:w-48"
       />
       <Kbd>↵</Kbd>
       {error ? (
-        <span
-          id="jump-to-block-err"
-          role="alert"
-          className="ml-1 font-mono text-[10px] text-health-down"
-        >
+        <span id="jump-to-block-err" role="alert" className="ml-1 mg-type-data-sm text-health-down">
           {error}
         </span>
       ) : null}

@@ -111,7 +111,7 @@ export function PageMasthead({
             // renders identically for the plain-text case this line-clamp
             // styling targets, while staying valid for the richer one.
             <div
-              className="mt-1 max-w-3xl text-[13px] text-ink-muted leading-snug line-clamp-2"
+              className="mt-1 max-w-3xl mg-type-caption-lg text-ink-muted leading-snug line-clamp-2"
               title={typeof description === "string" ? description : undefined}
             >
               {description}
@@ -134,7 +134,7 @@ export function PageMasthead({
                   {k.value}
                 </span>
                 {k.hint ? (
-                  <span className="font-mono text-[10px] text-ink-muted truncate">{k.hint}</span>
+                  <span className="mg-type-data-sm text-ink-muted truncate">{k.hint}</span>
                 ) : null}
               </div>
               {k.chart ? <div className="mt-1 -ml-0.5">{k.chart}</div> : null}

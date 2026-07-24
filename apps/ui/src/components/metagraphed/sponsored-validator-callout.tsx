@@ -46,7 +46,7 @@ export function SponsoredValidatorCallout({
     <div className="rounded-xl border border-ink-muted/30 bg-surface/40 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <SponsoredBadge />
-        <span className="font-mono text-[10px] text-ink-muted">
+        <span className="mg-type-data-sm text-ink-muted">
           Paid placement — not ranked or endorsed by Metagraphed.
         </span>
       </div>
@@ -55,14 +55,14 @@ export function SponsoredValidatorCallout({
           <Link
             to="/validators/$hotkey"
             params={{ hotkey: validator.hotkey }}
-            className="truncate font-mono text-[13px] text-ink-strong hover:text-accent hover:underline"
+            className="truncate font-mono mg-type-caption-lg text-ink-strong hover:text-accent hover:underline"
             title={validator.hotkey}
           >
             {shortHash(validator.hotkey, 6) ?? validator.hotkey}
           </Link>
           <CopyButton value={validator.hotkey} label="hotkey" />
         </div>
-        <div className="flex flex-wrap items-center gap-4 font-mono text-[11px] text-ink-muted">
+        <div className="flex flex-wrap items-center gap-4 mg-type-data text-ink-muted">
           <span>
             Stake{" "}
             <span className="text-ink-strong tabular-nums">

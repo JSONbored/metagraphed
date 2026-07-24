@@ -82,7 +82,7 @@ export function EndpointSnippet({ rows }: { rows: EndpointSnippetRow[] }) {
         ))}
       </div>
       {lang === "python" ? (
-        <p className="mt-2 font-mono text-[10px] text-ink-muted">
+        <p className="mt-2 mg-type-data-sm text-ink-muted">
           requires <code className="text-ink-strong">pip install requests</code>
         </p>
       ) : null}

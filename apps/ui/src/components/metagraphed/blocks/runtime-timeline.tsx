@@ -41,7 +41,7 @@ export function RuntimeTimeline() {
       }
       caption={
         payload.coverage_from_block != null ? (
-          <span className="font-mono text-[11px] text-ink-muted">
+          <span className="mg-type-data text-ink-muted">
             Coverage from #{formatNumber(payload.coverage_from_block)} ·{" "}
             <TimeAgo at={payload.coverage_from_at} />
           </span>
@@ -63,16 +63,16 @@ export function RuntimeTimeline() {
             >
               <span
                 className={
-                  "font-mono text-[11px] font-semibold tabular-nums " +
+                  "font-mono mg-type-data font-semibold tabular-nums " +
                   (isLatest ? "text-accent-text" : "text-ink-strong")
                 }
               >
                 v{t.spec_version ?? "?"}
               </span>
-              <span className="font-mono text-[10px] tabular-nums text-ink-muted">
+              <span className="mg-type-data-sm tabular-nums text-ink-muted">
                 #{t.block_number != null ? formatNumber(t.block_number) : "—"}
               </span>
-              <span className="font-mono text-[10px] text-ink-subtle">
+              <span className="mg-type-data-sm text-ink-subtle">
                 <TimeAgo at={t.observed_at} />
               </span>
             </div>

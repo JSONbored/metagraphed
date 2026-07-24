@@ -234,7 +234,7 @@ function CsvExportMenu({ win }: { win: LeaderboardWindow }) {
               setOpen(false);
               window.location.href = buildCsvDownloadUrl(exp.url);
             }}
-            className="w-full flex items-center gap-2 rounded px-2 py-2 text-left text-[12px] text-ink hover:bg-surface hover:text-ink-strong transition-colors min-h-9"
+            className="w-full flex items-center gap-2 rounded px-2 py-2 text-left mg-type-caption text-ink hover:bg-surface hover:text-ink-strong transition-colors min-h-9"
           >
             <Download className="size-3.5 shrink-0 text-ink-muted" aria-hidden />
             <span>{exp.label}</span>
@@ -313,7 +313,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
         <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <span className="mg-type-label uppercase text-ink-muted">Per-subnet rankings</span>
-            <span className="font-mono text-[11px] text-ink-muted">
+            <span className="mg-type-data text-ink-muted">
               {formatNumber(board.subnet_count)} subnets
               {board.observed_at ? (
                 <>
@@ -339,7 +339,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
                       params={{ netuid: row.netuid }}
                       className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
                     >
-                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                      <span className="shrink-0 mg-type-data tabular-nums text-ink-muted">
                         {i + 1}
                       </span>
                       <BrandIcon
@@ -351,13 +351,13 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
                       />
                       <span className="truncate text-sm text-ink-strong">{name}</span>
                     </Link>
-                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                    <span className="shrink-0 mg-type-data tabular-nums text-ink-muted">
                       {row.sets_per_setter != null
                         ? `${row.sets_per_setter.toFixed(2)} / setter`
                         : "—"}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                  <div className="mt-2 flex items-center justify-between mg-type-data tabular-nums text-ink-muted">
                     <span>{formatNumber(row.weight_sets)} weight-sets</span>
                     <span>{formatNumber(row.distinct_setters)} setters</span>
                   </div>
@@ -382,7 +382,7 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
                   const name = subnet?.name ?? `Subnet ${row.netuid}`;
                   return (
                     <tr key={row.netuid} className="hover:bg-surface/40">
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
                         {i + 1}
                       </td>
                       <td className="px-4 py-2.5">
@@ -401,13 +401,13 @@ function WeightSettingLeaderboard({ win }: { win: LeaderboardWindow }) {
                           <span className="truncate text-sm text-ink-strong">{name}</span>
                         </Link>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-strong">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-strong">
                         {formatNumber(row.weight_sets)}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
                         {formatNumber(row.distinct_setters)}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
                         {row.sets_per_setter != null ? row.sets_per_setter.toFixed(2) : "—"}
                       </td>
                     </tr>
@@ -487,7 +487,7 @@ function EmissionsLeaderboard() {
         <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <span className="mg-type-label uppercase text-ink-muted">Per-subnet rankings</span>
-            <span className="font-mono text-[11px] text-ink-muted">
+            <span className="mg-type-data text-ink-muted">
               top {top.length} of {formatNumber(ranked.length)} subnets
             </span>
           </div>
@@ -503,7 +503,7 @@ function EmissionsLeaderboard() {
                       params={{ netuid: row.netuid }}
                       className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
                     >
-                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                      <span className="shrink-0 mg-type-data tabular-nums text-ink-muted">
                         {i + 1}
                       </span>
                       <BrandIcon
@@ -515,7 +515,7 @@ function EmissionsLeaderboard() {
                       />
                       <span className="truncate text-sm text-ink-strong">{name}</span>
                     </Link>
-                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-strong">
+                    <span className="shrink-0 mg-type-data tabular-nums text-ink-strong">
                       {pct(row.emission_share)}
                     </span>
                   </div>
@@ -538,7 +538,7 @@ function EmissionsLeaderboard() {
                   const name = subnet?.name ?? row.name ?? `Subnet ${row.netuid}`;
                   return (
                     <tr key={row.netuid} className="hover:bg-surface/40">
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
                         {i + 1}
                       </td>
                       <td className="px-4 py-2.5">
@@ -557,7 +557,7 @@ function EmissionsLeaderboard() {
                           <span className="truncate text-sm text-ink-strong">{name}</span>
                         </Link>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-strong">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-strong">
                         {pct(row.emission_share)}
                       </td>
                     </tr>
@@ -624,7 +624,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
         <Panel flush>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <span className="mg-type-label uppercase text-ink-muted">Per-subnet rankings</span>
-            <span className="font-mono text-[11px] text-ink-muted">
+            <span className="mg-type-data text-ink-muted">
               {formatNumber(board.subnet_count)} subnets
               {board.observed_at ? (
                 <>
@@ -647,7 +647,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
                       params={{ netuid: row.netuid }}
                       className="inline-flex min-w-0 items-center gap-2 hover:text-accent"
                     >
-                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                      <span className="shrink-0 mg-type-data tabular-nums text-ink-muted">
                         {i + 1}
                       </span>
                       <BrandIcon
@@ -659,13 +659,13 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
                       />
                       <span className="truncate text-sm text-ink-strong">{name}</span>
                     </Link>
-                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-muted">
+                    <span className="shrink-0 mg-type-data tabular-nums text-ink-muted">
                       {row.deregistrations_per_hotkey != null
                         ? `${row.deregistrations_per_hotkey.toFixed(2)} / hotkey`
                         : "—"}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                  <div className="mt-2 flex items-center justify-between mg-type-data tabular-nums text-ink-muted">
                     <span>{formatNumber(row.deregistrations)} deregistrations</span>
                     <span>{formatNumber(row.distinct_deregistered_hotkeys)} hotkeys</span>
                   </div>
@@ -690,7 +690,7 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
                   const name = subnet?.name ?? `Subnet ${row.netuid}`;
                   return (
                     <tr key={row.netuid} className="hover:bg-surface/40">
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
                         {i + 1}
                       </td>
                       <td className="px-4 py-2.5">
@@ -709,13 +709,13 @@ function DeregistrationsLeaderboard({ win }: { win: LeaderboardWindow }) {
                           <span className="truncate text-sm text-ink-strong">{name}</span>
                         </Link>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-strong">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-strong">
                         {formatNumber(row.deregistrations)}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
                         {formatNumber(row.distinct_deregistered_hotkeys)}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+                      <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
                         {row.deregistrations_per_hotkey != null
                           ? row.deregistrations_per_hotkey.toFixed(2)
                           : "—"}

@@ -101,7 +101,7 @@ function DriftBody({
             <Link
               to="/subnets/$netuid"
               params={{ netuid: schema.netuid }}
-              className="font-mono text-[10px] text-accent hover:underline"
+              className="mg-type-data-sm text-accent hover:underline"
               onClick={onClose}
             >
               SN{schema.netuid}
@@ -109,7 +109,7 @@ function DriftBody({
           ) : null}
         </DialogTitle>
         <DialogDescription>
-          <span className="font-mono text-[11px]">
+          <span className="mg-type-data">
             {freshLine ?? "snapshot"}
             {freshAbs ? ` · last checked ${freshAbs}` : ""}
           </span>
@@ -187,7 +187,7 @@ function EvidenceSection({
       </div>
       <ul className="space-y-1.5">
         {links.map((l) => (
-          <li key={l.href} className="flex items-center gap-2 font-mono text-[11px] text-ink">
+          <li key={l.href} className="flex items-center gap-2 mg-type-data text-ink">
             <span className="shrink-0 rounded border border-border bg-paper px-1.5 py-0.5 mg-type-micro text-ink-muted">
               {l.label}
             </span>

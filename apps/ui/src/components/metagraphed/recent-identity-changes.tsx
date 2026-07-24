@@ -63,10 +63,10 @@ export function RecentIdentityChanges() {
               {c.symbol ? <span className="ml-1.5 text-ink-muted">({c.symbol})</span> : null}
             </div>
             {c.description ? (
-              <div className="truncate font-mono text-[10px] text-ink-muted">{c.description}</div>
+              <div className="truncate mg-type-data-sm text-ink-muted">{c.description}</div>
             ) : null}
           </div>
-          <span className="shrink-0 font-mono text-[10px] text-ink-muted">
+          <span className="shrink-0 mg-type-data-sm text-ink-muted">
             <TimeAgo at={c.observed_at} />
           </span>
         </li>

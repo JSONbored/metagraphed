@@ -319,7 +319,7 @@ function Verdict() {
           />
           <div className="min-w-0 flex-1">
             <div className="mg-label mb-1">Status mix</div>
-            <div className="mb-1 font-mono text-[11px] tabular-nums text-ink-muted">
+            <div className="mb-1 mg-type-data tabular-nums text-ink-muted">
               {ok} of {total} healthy
             </div>
             <DonutLegend segments={segs} />
@@ -405,7 +405,7 @@ function RecentIncidents() {
             {ongoingCount > 0 ? <>{ongoingCount} ongoing</> : "All clear"}
           </div>
         </div>
-        <div className="text-[11px] font-mono text-ink-muted">
+        <div className="mg-type-data text-ink-muted">
           <AnimatedNumber value={summary?.incident_count} /> sustained event
           {summary?.incident_count === 1 ? "" : "s"} · {window} · across {affected}{" "}
           {affected === 1 ? "surface" : "surfaces"}
@@ -480,7 +480,7 @@ function IncidentsFeedSubscribe() {
             return (
               <div key={suffix} className="flex flex-wrap items-center gap-2">
                 <span className="mg-label w-12 shrink-0">{label}</span>
-                <ExternalLink href={url} className="font-mono text-[11px] hover:text-ink-strong">
+                <ExternalLink href={url} className="mg-type-data hover:text-ink-strong">
                   {path}
                 </ExternalLink>
                 <CopyableCode value={url} label="copy" className="px-1.5 py-0.5" />
@@ -511,7 +511,9 @@ function SurfaceRow({ surface, ongoing }: { surface: GlobalIncidentSurface; ongo
         {ongoing ? "Ongoing" : "Resolved"}
       </span>
       <span className="mg-label shrink-0">SN{surface.netuid}</span>
-      <span className="font-mono text-[12px] text-ink-strong truncate">{surface.surface_id}</span>
+      <span className="font-mono mg-type-caption text-ink-strong truncate">
+        {surface.surface_id}
+      </span>
       <span className="ml-auto inline-flex items-center gap-3 mg-label shrink-0">
         <span className="text-ink-muted tabular-nums">
           {surface.incident_count} {surface.incident_count === 1 ? "event" : "events"}

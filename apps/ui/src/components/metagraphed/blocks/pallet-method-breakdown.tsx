@@ -53,7 +53,10 @@ export function PalletMethodBreakdown({ events }: { events: ChainEvent[] }) {
                   <span className="mg-type-micro shrink-0 text-ink-subtle tabular-nums">
                     #{i + 1}
                   </span>
-                  <span className="font-mono text-[12px] text-ink-strong truncate" title={r.label}>
+                  <span
+                    className="font-mono mg-type-caption text-ink-strong truncate"
+                    title={r.label}
+                  >
                     <span className="text-ink-muted">{pallet}.</span>
                     {method}
                   </span>
@@ -71,9 +74,9 @@ export function PalletMethodBreakdown({ events }: { events: ChainEvent[] }) {
                   />
                 </div>
               </div>
-              <div className="shrink-0 text-right font-mono text-[11px] tabular-nums">
+              <div className="shrink-0 text-right mg-type-data tabular-nums">
                 <div className="text-ink-strong">{formatNumber(r.count)}</div>
-                <div className="text-[10px] text-ink-muted">{share.toFixed(1)}%</div>
+                <div className="mg-type-data-sm text-ink-muted">{share.toFixed(1)}%</div>
               </div>
             </li>
           );

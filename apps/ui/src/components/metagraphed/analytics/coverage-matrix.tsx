@@ -134,7 +134,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
           right-edge fade signals there's more to scroll. */}
       <div className="relative">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[11px] font-mono">
+          <table className="w-full border-collapse mg-type-data">
             <thead>
               <tr className="bg-paper/30">
                 <th className="sticky left-0 z-[var(--mg-z-sticky)] bg-paper/30 text-left px-3 py-2 mg-type-micro text-ink-muted border-b border-border">
@@ -166,7 +166,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
                         params={{ netuid: r.netuid }}
                         className="inline-flex min-w-0 items-center gap-1.5 hover:text-accent"
                       >
-                        <span className="font-mono text-[10px] text-ink-muted">SN{r.netuid}</span>
+                        <span className="mg-type-data-sm text-ink-muted">SN{r.netuid}</span>
                         <span className="truncate max-w-[110px] sm:max-w-[160px]">{r.name}</span>
                       </Link>
                       <CompletenessChip value={r.completeness} netuid={r.netuid} />
@@ -210,7 +210,7 @@ export function CoverageMatrix({ topN = 24 }: { topN?: number }) {
         </div>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-paper/30 px-4 py-2 font-mono text-[10px] text-ink-muted">
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-paper/30 px-4 py-2 mg-type-data-sm text-ink-muted">
         <div className="flex items-center gap-3">
           <Legend cell="present" count={totals.present} />
           <Legend cell="candidate" count={totals.candidate} />
@@ -309,7 +309,7 @@ export function CompletenessHistogram() {
           </h3>
         </div>
         {stats ? (
-          <div className="flex items-center gap-3 font-mono text-[10px] text-ink-muted">
+          <div className="flex items-center gap-3 mg-type-data-sm text-ink-muted">
             <Stat label="p25" value={`${Math.round(stats.p25 * 100)}%`} />
             <Stat label="p50" value={`${Math.round(stats.p50 * 100)}%`} />
             <Stat label="p75" value={`${Math.round(stats.p75 * 100)}%`} />
@@ -381,7 +381,7 @@ export function CompletenessHistogram() {
             })
           : null}
       </svg>
-      <p className="mt-1 font-mono text-[10px] text-ink-muted">
+      <p className="mt-1 mg-type-data-sm text-ink-muted">
         {rows.length} subnets bucketed in 10% bins. Median (p50) marks the middle of the registry;
         long tail to the right is the goal.
       </p>

@@ -37,18 +37,18 @@ export function BlockMetadataPanel({ block }: { block: Block }) {
               {r.mono ? (
                 <>
                   <span
-                    className="font-mono text-[12px] text-ink-strong break-all md:hidden"
+                    className="font-mono mg-type-caption text-ink-strong break-all md:hidden"
                     title={r.value}
                   >
                     {truncate(r.value, 28)}
                   </span>
-                  <span className="hidden md:inline font-mono text-[12px] text-ink-strong break-all">
+                  <span className="hidden md:inline font-mono mg-type-caption text-ink-strong break-all">
                     {r.value}
                   </span>
                   <CopyButton value={r.value} label={r.label} compact />
                 </>
               ) : (
-                <span className="font-mono text-[12px] text-ink-strong tabular-nums">
+                <span className="font-mono mg-type-caption text-ink-strong tabular-nums">
                   {r.value}
                 </span>
               )}

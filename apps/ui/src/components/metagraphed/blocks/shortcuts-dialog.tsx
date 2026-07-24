@@ -91,7 +91,7 @@ export function ShortcutsDialog({ blockRef }: { blockRef: string }) {
         <dl className="divide-y divide-border/60">
           {SHORTCUTS.map((s) => (
             <div key={s.label} className="flex items-center justify-between gap-3 px-4 py-2.5">
-              <dt className="text-[13px] text-ink">{s.label}</dt>
+              <dt className="mg-type-caption-lg text-ink">{s.label}</dt>
               <dd className="flex items-center gap-1">
                 {s.keys.map((k) => (
                   <Kbd key={k}>{k}</Kbd>

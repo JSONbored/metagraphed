@@ -78,7 +78,7 @@ export function ProxyHero() {
       <h2 className="mt-2 font-display text-lg font-semibold text-ink-strong">
         One endpoint for Bittensor RPC
       </h2>
-      <p className="mt-1 max-w-2xl text-[13px] text-ink-muted">
+      <p className="mt-1 max-w-2xl mg-type-caption-lg text-ink-muted">
         POST JSON-RPC to a single URL and Metagraphed routes it across the healthiest, most in-sync
         public endpoints — with failover, edge caching, and abuse controls. No key, no account, no
         single point of failure.
@@ -87,7 +87,9 @@ export function ProxyHero() {
       <Panel as="div" flush className="mt-4">
         <div className="flex items-center gap-2 px-3 py-2">
           <span className="mg-label">POST</span>
-          <code className="flex-1 truncate font-mono text-[13px] text-ink-strong">{proxyUrl}</code>
+          <code className="flex-1 truncate font-mono mg-type-caption-lg text-ink-strong">
+            {proxyUrl}
+          </code>
           <CopyButton value={proxyUrl} label="proxy URL" />
         </div>
       </Panel>
@@ -97,7 +99,7 @@ export function ProxyHero() {
           <span className="mg-label">Try it</span>
           <CopyButton value={curlExample} label="curl command" />
         </div>
-        <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed text-ink">
+        <pre className="overflow-x-auto px-3 py-2 mg-type-data leading-relaxed text-ink">
           {curlExample}
         </pre>
       </div>
@@ -107,7 +109,7 @@ export function ProxyHero() {
           <li key={title} className="flex gap-2.5">
             <Icon className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
             <div>
-              <p className="text-[12px] font-medium text-ink-strong">{title}</p>
+              <p className="mg-type-caption font-medium text-ink-strong">{title}</p>
               <p className="text-[11px] leading-snug text-ink-muted">{body}</p>
             </div>
           </li>
@@ -152,7 +154,7 @@ function UsageStat({
         <span className="mg-type-micro">{eyebrow}</span>
       </div>
       <div className="mt-1 font-mono text-lg font-semibold text-ink-strong">{value}</div>
-      {hint ? <div className="font-mono text-[10px] text-ink-muted">{hint}</div> : null}
+      {hint ? <div className="mg-type-data-sm text-ink-muted">{hint}</div> : null}
     </div>
   );
 }
@@ -171,7 +173,7 @@ export function ProxyUsagePanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="font-mono text-[11px] text-ink-muted">
+        <p className="mg-type-data text-ink-muted">
           {usage.observed_at ? (
             <>
               Updated <TimeAgo at={usage.observed_at} />
@@ -253,7 +255,7 @@ export function ProxyUsagePanel() {
               {usage.networks.map((n) => (
                 <span
                   key={n.network}
-                  className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-0.5 font-mono text-[11px]"
+                  className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2 py-0.5 mg-type-data"
                 >
                   <span className="text-ink-strong">{n.network}</span>
                   <span className="text-ink-muted">{formatNumber(n.requests)}</span>
@@ -283,10 +285,10 @@ export function ProxyUsagePanel() {
                     const share = s.total_requests ? e.requests / s.total_requests : null;
                     return (
                       <tr key={e.endpoint_id ?? e.rank} className="mg-row-hover">
-                        <td className="px-3 py-2 font-mono text-[12px] text-ink-strong">
+                        <td className="px-3 py-2 font-mono mg-type-caption text-ink-strong">
                           {e.endpoint_id ?? "—"}
                         </td>
-                        <td className="px-3 py-2 text-[12px] text-ink-muted">
+                        <td className="px-3 py-2 mg-type-caption text-ink-muted">
                           {e.provider ?? "—"}
                         </td>
                         <td className="px-3 py-2 text-right font-mono">

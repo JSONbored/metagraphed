@@ -42,7 +42,7 @@ export function SubnetsCompareDrawer() {
               {selected.map((netuid) => (
                 <span
                   key={netuid}
-                  className="inline-flex h-6 items-center gap-1 rounded-full border border-border bg-paper pl-2.5 pr-1 font-mono text-[10px] text-ink-strong"
+                  className="inline-flex h-6 items-center gap-1 rounded-full border border-border bg-paper pl-2.5 pr-1 mg-type-data-sm text-ink-strong"
                 >
                   SN{netuid}
                   <button
@@ -200,7 +200,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
         const ok = h.ok_count ?? 0;
         const down = Math.max(0, h.surface_count - ok);
         return (
-          <span className="font-mono text-[11px] tabular-nums">
+          <span className="mg-type-data tabular-nums">
             <span className="text-health-ok">{ok}</span>
             {" · "}
             <span className="text-health-down">{down}</span>
@@ -213,7 +213,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
   if (isError) {
     return (
       <div className="border-t border-border px-3 py-6 text-center">
-        <p className="font-mono text-[11px] text-ink-muted">Could not load comparison.</p>
+        <p className="mg-type-data text-ink-muted">Could not load comparison.</p>
         <button
           type="button"
           onClick={() => refetch()}
@@ -227,7 +227,7 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
 
   return (
     <div className="border-t border-border max-h-[55vh] overflow-auto">
-      <table className="min-w-full text-[12px]">
+      <table className="min-w-full mg-type-caption">
         {/* local stacking context: sticky corner cell over sticky row/col — not a global layer (#7841) */}
         <thead className="sticky top-0 mg-glass z-[1]">
           <tr>

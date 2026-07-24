@@ -85,7 +85,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
           />
           <span>drift activity</span>
         </div>
-        <div className="font-mono text-[11px] text-ink">
+        <div className="mg-type-data text-ink">
           <span className="text-health-warn">{drifting.length} drifting</span>
           <span className="text-ink-muted"> · {stable.length} stable</span>
         </div>
@@ -159,7 +159,7 @@ export function DriftActivity({ schemas, fromPath }: Props) {
         </div>
       ) : null}
 
-      <div className="border-t border-border px-4 py-2 font-mono text-[10px] text-ink-muted">
+      <div className="border-t border-border px-4 py-2 mg-type-data-sm text-ink-muted">
         click a drifting row for change details · stable rows open in the explorer below
       </div>
     </Panel>
@@ -186,7 +186,7 @@ function DriftRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => void
         <WeightBar weight={w} tone="warn" />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="min-w-0 break-words font-display text-[13px] font-medium text-ink-strong">
+            <span className="min-w-0 break-words font-display mg-type-caption-lg font-medium text-ink-strong">
               {label}
             </span>
             {schema.netuid != null ? (
@@ -234,7 +234,7 @@ function StableRow({ schema, onClick }: { schema: SchemaInfo; onClick: () => voi
           className="inline-block size-1.5 shrink-0 rounded-full bg-ink-subtle/50"
           aria-hidden
         />
-        <span className="truncate text-[12px] text-ink-muted group-hover:text-ink-strong">
+        <span className="truncate mg-type-caption text-ink-muted group-hover:text-ink-strong">
           {label}
         </span>
         {schema.netuid != null ? (

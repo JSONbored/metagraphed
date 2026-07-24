@@ -703,9 +703,7 @@ function OverviewSummaryStrip({ netuid }: { netuid: number }) {
           visible while scrolling) in the tab-bar badges above, so they're not
           restated as StatTiles here — the strip keeps only the status/curation
           chips and the top-gap hint the badges don't cover (#5316). */}
-      {topGapHint ? (
-        <p className="font-mono text-[11px] text-ink-muted">Top gap: {topGapHint}</p>
-      ) : null}
+      {topGapHint ? <p className="mg-type-data text-ink-muted">Top gap: {topGapHint}</p> : null}
     </div>
   );
 }
@@ -763,7 +761,7 @@ function SubnetLineageSection({ netuid }: { netuid: number }) {
           <span className="font-mono text-xs text-ink-muted">#{counterpartNetuid}</span>
         </div>
         {matchedBy ? (
-          <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-mono text-ink-muted">
+          <span className="rounded-full border border-border px-2 py-0.5 mg-type-data text-ink-muted">
             matched by {matchedBy}
           </span>
         ) : null}
@@ -816,7 +814,7 @@ function IdentityHistoryList({ netuid }: { netuid: number }) {
                 <span className="ml-1.5 font-mono text-xs text-ink-muted">{entry.symbol}</span>
               ) : null}
             </span>
-            <span className="font-mono text-[11px] text-ink-muted">
+            <span className="mg-type-data text-ink-muted">
               {entry.observed_at ? <TimeAgo at={entry.observed_at} /> : "unknown time"}
               {entry.block_number != null ? ` · block #${formatNumber(entry.block_number)}` : ""}
             </span>
@@ -992,16 +990,16 @@ function StakeQuoteCalculator({ netuid }: { netuid: number }) {
       </div>
 
       {!hasValidAmount ? (
-        <p className="font-mono text-[11px] text-ink-muted">
+        <p className="mg-type-data text-ink-muted">
           Enter an amount to estimate slippage against the subnet's live pool reserves.
         </p>
       ) : result.isError ? (
-        <p className="inline-flex items-center gap-1.5 font-mono text-[11px] text-health-down">
+        <p className="inline-flex items-center gap-1.5 mg-type-data text-health-down">
           <AlertCircle className="size-3.5 shrink-0" aria-hidden />
           {result.error instanceof Error ? result.error.message : "Could not compute a quote."}
         </p>
       ) : result.isPending ? (
-        <p className="font-mono text-[11px] text-ink-muted">Calculating…</p>
+        <p className="mg-type-data text-ink-muted">Calculating…</p>
       ) : quote ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
@@ -1267,7 +1265,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
                   replace: true,
                 })
               }
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 font-mono text-[11px] text-ink-muted hover:border-ink/30 hover:text-ink-strong"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 mg-type-data text-ink-muted hover:border-ink/30 hover:text-ink-strong"
             >
               Clear filter
             </button>
@@ -1298,7 +1296,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
           <tbody className="divide-y divide-border">
             {events.map((ev, i) => (
               <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono text-[12px] whitespace-nowrap">
+                <td className="px-4 py-2.5 font-mono mg-type-caption whitespace-nowrap">
                   {ev.block_number != null ? (
                     <Link
                       to="/blocks/$ref"
@@ -1314,7 +1312,7 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
                 <td className="px-4 py-2.5 whitespace-nowrap">
                   <EventKindCell kind={ev.event_kind} />
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] whitespace-nowrap">
+                <td className="px-4 py-2.5 mg-type-data whitespace-nowrap">
                   {ev.hotkey ? (
                     <Link
                       to="/accounts/$ss58"
@@ -1327,10 +1325,10 @@ function ActivityTableLoader({ netuid, kind }: { netuid: number; kind?: string }
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink whitespace-nowrap">
+                <td className="px-4 py-2.5 text-right mg-type-data tabular-nums text-ink whitespace-nowrap">
                   {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted whitespace-nowrap">
+                <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted whitespace-nowrap">
                   <TimeAgo at={ev.observed_at} />
                 </td>
               </tr>
@@ -1440,7 +1438,7 @@ function AgentReadinessCard({
             <span className="font-display text-2xl font-semibold tabular-nums text-ink-strong">
               {score != null ? score : "—"}
             </span>
-            <span className="font-mono text-[10px] text-ink-muted">/ 100</span>
+            <span className="mg-type-data-sm text-ink-muted">/ 100</span>
           </div>
         </div>
         {tier ? (
@@ -1460,7 +1458,7 @@ function AgentReadinessCard({
           <div className="mg-label mb-1.5">What's blocking buildability</div>
           <ul className="space-y-1.5">
             {blockers.map((b, i) => (
-              <li key={b.code ?? i} className="text-[12px] leading-relaxed text-ink">
+              <li key={b.code ?? i} className="mg-type-caption leading-relaxed text-ink">
                 <span className="font-medium text-ink-strong">{b.message ?? b.code}</span>
                 {b.next_action ? <span className="text-ink-muted"> — {b.next_action}</span> : null}
               </li>
@@ -1484,7 +1482,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
           {service.capability ?? service.surface_id ?? "Service"}
         </span>
         {service.provider ? (
-          <span className="font-mono text-[10px] text-ink-muted">{service.provider}</span>
+          <span className="mg-type-data-sm text-ink-muted">{service.provider}</span>
         ) : null}
         <span className="ml-auto inline-flex items-center gap-2">
           <span
@@ -1506,7 +1504,7 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
         </span>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[11px] text-ink-muted">
+      <div className="mt-2 flex flex-wrap items-center gap-3 mg-type-data text-ink-muted">
         {service.base_url ? (
           <CopyableCode label="url" value={service.base_url} className="max-w-full" />
         ) : null}
@@ -1697,7 +1695,7 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
           <span className="hidden shrink-0 mg-type-micro text-ink-muted sm:inline">
             Weight-setters · per-validator breakdown
           </span>
-          <span className="shrink-0 font-mono text-[10px] text-ink-muted whitespace-nowrap">
+          <span className="shrink-0 mg-type-data-sm text-ink-muted whitespace-nowrap">
             {formatNumber(d.setter_count)} validators · {windowLabel}
           </span>
         </div>
@@ -1716,16 +1714,16 @@ function WeightSettersLoader({ netuid }: { netuid: number }) {
             <tbody>
               {rows.map((setter, i) => (
                 <tr key={setter.uid ?? setter.hotkey ?? i} className="border-t border-border">
-                  <td className="px-3 py-2.5 font-mono text-[12px] tabular-nums text-ink-muted">
+                  <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-muted">
                     {i + 1}
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-[12px] tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-strong">
                     {setter.uid != null ? `UID ${setter.uid}` : "validator"}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-strong">
+                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
                     {formatNumber(setter.weight_sets)}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
                     {setter.share != null ? `${(setter.share * 100).toFixed(1)}%` : "0%"}
                   </td>
                 </tr>
@@ -1872,7 +1870,7 @@ function GapsList({ netuid }: { netuid: number }) {
             {missing.map((k) => (
               <span
                 key={k}
-                className="rounded border border-dashed border-ink-subtle bg-paper px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
+                className="rounded border border-dashed border-ink-subtle bg-paper px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
               >
                 {k}
               </span>
@@ -1881,7 +1879,7 @@ function GapsList({ netuid }: { netuid: number }) {
         </div>
       ) : null}
       {notes.length > 0 ? (
-        <ul className="space-y-1 text-[12px] text-ink leading-relaxed">
+        <ul className="space-y-1 mg-type-caption text-ink leading-relaxed">
           {notes.map((n, i) => (
             <li key={i}>· {n}</li>
           ))}
@@ -2161,7 +2159,7 @@ function HyperparametersTable({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-6">
       {res.data.captured_at ? (
-        <p className="font-mono text-[11px] text-ink-muted">
+        <p className="mg-type-data text-ink-muted">
           Captured <TimeAgo at={res.data.captured_at} />
           {res.data.block_number != null ? ` · block #${formatNumber(res.data.block_number)}` : ""}
         </p>
@@ -2186,7 +2184,9 @@ function HyperparamGroupsTable({ h }: { h: SubnetHyperparameters }) {
             {group.fields.map((field) => (
               <div key={field.key} className="px-4 py-2.5">
                 <div className="mg-type-micro text-[10px] text-ink-muted">{field.label}</div>
-                <div className="mt-1 font-mono text-[13px] text-ink-strong">{field.format(h)}</div>
+                <div className="mt-1 font-mono mg-type-caption-lg text-ink-strong">
+                  {field.format(h)}
+                </div>
               </div>
             ))}
           </div>
@@ -2249,7 +2249,7 @@ function HyperparamsHistoryList({ netuid }: { netuid: number }) {
                 />
                 {entry.observed_at ? <TimeAgo at={entry.observed_at} /> : "unknown time"}
               </span>
-              <span className="font-mono text-[11px] text-ink-muted">
+              <span className="mg-type-data text-ink-muted">
                 {entry.block_number != null ? `block #${formatNumber(entry.block_number)} · ` : ""}
                 {entry.hyperparams_hash.slice(0, 10)}
               </span>
@@ -2303,7 +2303,7 @@ function SurfacesList({ netuid }: { netuid: number }) {
         <div key={kind}>
           <div className="mb-1.5 flex items-center gap-2">
             <span className="mg-label">{kind}</span>
-            <span className="font-mono text-[10px] text-ink-muted">{items.length}</span>
+            <span className="mg-type-data-sm text-ink-muted">{items.length}</span>
           </div>
           <ul className="space-y-2">
             {items.map((s) => (
@@ -2318,7 +2318,7 @@ function SurfacesList({ netuid }: { netuid: number }) {
                         <Link
                           to="/providers/$slug"
                           params={{ slug: s.provider }}
-                          className="font-mono text-[10px] text-ink-muted hover:text-ink-strong"
+                          className="mg-type-data-sm text-ink-muted hover:text-ink-strong"
                         >
                           {s.provider}
                         </Link>
@@ -2335,7 +2335,7 @@ function SurfacesList({ netuid }: { netuid: number }) {
                       </ExternalLink>
                     ) : null}
                   </div>
-                  <span className="font-mono text-[10px] text-ink-muted shrink-0">
+                  <span className="mg-type-data-sm text-ink-muted shrink-0">
                     <TimeAgo at={s.updated_at} />
                   </span>
                 </div>
@@ -2376,11 +2376,9 @@ function CandidatesList({ netuid }: { netuid: number }) {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <CandidateChip />
-                <span className="font-mono text-[10px] uppercase text-ink-muted">
-                  {c.kind ?? "lead"}
-                </span>
+                <span className="mg-type-data-sm uppercase text-ink-muted">{c.kind ?? "lead"}</span>
                 {(c as Record<string, unknown>).provider ? (
-                  <span className="font-mono text-[10px] text-ink-muted">
+                  <span className="mg-type-data-sm text-ink-muted">
                     via {(c as Record<string, unknown>).provider as string}
                   </span>
                 ) : null}
@@ -2394,7 +2392,7 @@ function CandidatesList({ netuid }: { netuid: number }) {
                 <p className="mt-1 text-xs text-ink-muted leading-relaxed">{c.notes}</p>
               ) : null}
             </div>
-            <span className="font-mono text-[10px] text-ink-muted shrink-0">
+            <span className="mg-type-data-sm text-ink-muted shrink-0">
               <TimeAgo at={c.discovered_at} />
             </span>
           </div>

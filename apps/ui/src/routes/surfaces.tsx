@@ -488,7 +488,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
         <span className="font-medium text-ink-strong truncate">{s.name ?? "—"}</span>
       </div>
       {s.url ? (
-        <div className="mt-1 text-[12px] truncate">
+        <div className="mt-1 mg-type-caption truncate">
           <ExternalLink
             href={s.url}
             authRequired={s.auth_required}
@@ -498,7 +498,7 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
           </ExternalLink>
         </div>
       ) : null}
-      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
+      <div className="mt-2 flex items-center justify-between gap-2 mg-type-data text-ink-muted">
         <span className="inline-flex items-center gap-2 min-w-0">
           {renderSubnetCell(s.netuid)}
           <span aria-hidden>·</span>
@@ -598,14 +598,14 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
               <tbody className="divide-y divide-border">
                 {rows.map((s) => (
                   <tr key={s.id} className="mg-row-accent hover:bg-surface/40">
-                    <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
+                    <td className="px-3 py-2 mg-type-data text-ink-muted">
                       {renderSubnetCell(s.netuid)}
                     </td>
-                    <td className="px-3 py-2 font-mono text-[11px]">{s.kind ?? "—"}</td>
+                    <td className="px-3 py-2 mg-type-data">{s.kind ?? "—"}</td>
                     <td className="px-3 py-2 font-medium text-ink-strong">
                       <span className="truncate">{s.name ?? "—"}</span>
                     </td>
-                    <td className="px-3 py-2 text-[12px]">
+                    <td className="px-3 py-2 mg-type-caption">
                       {s.url ? (
                         <ExternalLink
                           href={s.url}
@@ -618,14 +618,14 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                         "—"
                       )}
                     </td>
-                    <td className="px-3 py-2 text-[12px]">{renderProviderCell(s)}</td>
+                    <td className="px-3 py-2 mg-type-caption">{renderProviderCell(s)}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1.5">
                         <CurationChip level={s.curation_level} />
                         <ReviewChip state={s.review?.state} />
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
+                    <td className="px-3 py-2 text-right mg-type-data text-ink-muted">
                       <SparkLegend
                         metric="Surface verification"
                         source="/api/v1/surfaces"

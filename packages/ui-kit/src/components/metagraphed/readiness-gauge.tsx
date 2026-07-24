@@ -24,7 +24,7 @@ export function ReadinessGauge({
   className,
 }: ReadinessGaugeProps) {
   if (score == null && !tier) {
-    return <span className="font-mono text-[11px] text-ink-muted">—</span>;
+    return <span className="mg-type-data text-ink-muted">—</span>;
   }
 
   const value = Math.max(0, Math.min(100, score ?? 0));
@@ -62,7 +62,7 @@ export function ReadinessGauge({
           style={{ width: `${value}%` }}
         />
       </span>
-      <span className="text-right font-mono text-[11px] tabular-nums text-ink-strong">
+      <span className="text-right mg-type-data tabular-nums text-ink-strong">
         {value}
       </span>
     </span>

@@ -80,7 +80,7 @@ export function ValidatorsTableLoader({
               Validator stake · top {stakeBars.length}
             </span>
             <span className="ml-auto flex items-center gap-2">
-              <span className="font-mono text-[10px] text-ink-muted">
+              <span className="mg-type-data-sm text-ink-muted">
                 peak {taoCompact(stakeBars[0]?.value)} τ
               </span>
               {freshness}

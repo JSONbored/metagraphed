@@ -52,7 +52,7 @@ export function ChartCard({
         {loading ? (
           <div className="absolute inset-0 mg-skel animate-pulse rounded" />
         ) : empty ? (
-          <div className="absolute inset-0 flex items-center justify-center text-[13px] text-ink-muted">
+          <div className="absolute inset-0 flex items-center justify-center mg-type-caption-lg text-ink-muted">
             {emptyLabel}
           </div>
         ) : (
@@ -62,7 +62,7 @@ export function ChartCard({
       {footer != null ? (
         <div
           className={classNames(
-            "mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3 text-[12px] text-ink-muted",
+            "mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3 mg-type-caption text-ink-muted",
           )}
         >
           {footer}

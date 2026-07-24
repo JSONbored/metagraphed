@@ -70,7 +70,7 @@ export function AuthorSharePanel({ rows }: { rows: Block[] }) {
                 <button
                   type="button"
                   onClick={filterByAuthor}
-                  className="mg-focus-ring shrink-0 text-right font-mono text-[11px] tabular-nums text-ink-strong"
+                  className="mg-focus-ring shrink-0 text-right mg-type-data tabular-nums text-ink-strong"
                   title="Filter by this author"
                 >
                   <div>{formatNumber(count)}</div>

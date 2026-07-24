@@ -112,7 +112,7 @@ export function SearchInput({
       {shortcut ? (
         <kbd
           aria-hidden
-          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
+          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
         >
           /
         </kbd>
@@ -220,7 +220,7 @@ export function FilterChip({
       {label ? <span className="mg-type-micro opacity-80 shrink-0">{label}</span> : null}
       <span
         className={classNames(
-          "font-mono text-[11px] truncate max-w-[100px]",
+          "mg-type-data truncate max-w-[100px]",
           active ? "text-ink-strong" : "text-ink-muted",
         )}
       >

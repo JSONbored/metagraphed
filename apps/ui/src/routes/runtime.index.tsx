@@ -101,10 +101,10 @@ function RuntimeContent() {
                       key={`${row.spec_version}-${row.block_number}`}
                       className="mg-row-hover border-t border-border/60"
                     >
-                      <td className="px-3 py-2.5 font-mono text-[12px] tabular-nums text-ink-strong">
+                      <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums text-ink-strong">
                         {formatNumber(row.spec_version)}
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-[12px] tabular-nums">
+                      <td className="px-3 py-2.5 font-mono mg-type-caption tabular-nums">
                         {row.block_number != null ? (
                           <Link
                             to="/blocks/$ref"
@@ -117,7 +117,7 @@ function RuntimeContent() {
                           "—"
                         )}
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-[12px] text-ink-muted">
+                      <td className="px-3 py-2.5 font-mono mg-type-caption text-ink-muted">
                         {row.observed_at ? <TimeAgo at={row.observed_at} /> : "—"}
                       </td>
                     </tr>

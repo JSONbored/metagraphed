@@ -141,7 +141,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
         <div className="px-4 py-2.5 border-b border-border flex flex-wrap items-center justify-between gap-2">
           <div className="mg-type-micro text-ink-muted">Latency heatmap · provider × kind</div>
           <div
-            className="flex flex-wrap items-center gap-2.5 text-[10px] font-mono text-ink-muted"
+            className="flex flex-wrap items-center gap-2.5 mg-type-data-sm text-ink-muted"
             role="list"
             aria-label="Latency legend"
           >
@@ -161,7 +161,7 @@ export function LatencyHeatmap({ endpoints, minEndpoints = 1, maxProviders = 20 
         </div>
         <div className="w-full overflow-x-auto [scrollbar-gutter:stable]">
           <table
-            className="w-full min-w-[480px] text-[11px] font-mono"
+            className="w-full min-w-[480px] mg-type-data"
             role="table"
             aria-label="Endpoint latency by provider and kind"
           >
@@ -311,12 +311,12 @@ function Cell({ cell }: { cell: Cell }) {
             <h3 className="m-0 min-w-0 mg-type-micro text-ink-muted truncate">
               {cell.provider} · {cell.kind}
             </h3>
-            <span className="font-mono text-[10px] text-ink-strong tabular-nums shrink-0">
+            <span className="mg-type-data-sm text-ink-strong tabular-nums shrink-0">
               {cell.avgLatency != null ? `${Math.round(cell.avgLatency)}ms avg` : "—"}
             </span>
           </div>
           <div
-            className="grid grid-cols-3 gap-1.5 text-[10px] font-mono"
+            className="grid grid-cols-3 gap-1.5 mg-type-data-sm"
             role="list"
             aria-label="Health breakdown"
           >
@@ -329,7 +329,7 @@ function Cell({ cell }: { cell: Cell }) {
               <Link
                 to="/providers/$slug"
                 params={{ slug: cell.provider }}
-                className="inline-flex items-center gap-1 font-mono text-[11px] text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded"
+                className="inline-flex items-center gap-1 mg-type-data text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded"
               >
                 open provider <ExternalLink className="size-3" />
               </Link>
@@ -357,7 +357,7 @@ function Cell({ cell }: { cell: Cell }) {
                         params={{ netuid: n }}
                         search={{ tab: "endpoints" } as never}
                         hash="endpoints"
-                        className="inline-flex h-6 items-center rounded border border-border bg-paper px-2 font-mono text-[10px] text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                        className="inline-flex h-6 items-center rounded border border-border bg-paper px-2 mg-type-data-sm text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                         aria-label={`Jump to subnet ${n} endpoints`}
                       >
                         SN{n}
@@ -379,16 +379,13 @@ function Cell({ cell }: { cell: Cell }) {
                         to="/endpoints"
                         search={{ q: p } as never}
                         hash={`pool-${p}`}
-                        className="inline-flex h-6 max-w-[16ch] items-center truncate rounded border border-border bg-paper px-2 font-mono text-[10px] text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
+                        className="inline-flex h-6 max-w-[16ch] items-center truncate rounded border border-border bg-paper px-2 mg-type-data-sm text-ink hover:border-accent/60 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
                         aria-label={`Scroll to pool ${p} in endpoints`}
                       >
                         {p}
                       </Link>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="top"
-                      className="font-mono text-[11px] break-all max-w-[90vw]"
-                    >
+                    <TooltipContent side="top" className="mg-type-data break-all max-w-[90vw]">
                       {p}
                     </TooltipContent>
                   </Tooltip>
@@ -418,7 +415,7 @@ function ChipGroup({ label, id, children }: { label: string; id: string; childre
 function CellStat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="rounded border border-border bg-paper px-2 py-1 text-center" role="listitem">
-      <div className={classNames("tabular-nums text-[12px] font-semibold", color)}>{value}</div>
+      <div className={classNames("tabular-nums mg-type-caption font-semibold", color)}>{value}</div>
       <div className="mg-type-micro text-ink-muted">{label}</div>
     </div>
   );

@@ -148,7 +148,7 @@ export function EndpointOperationalList({
                 )}
                 <h3
                   id={`group-${group.netuid}`}
-                  className="truncate font-display text-[13px] font-medium text-ink-strong"
+                  className="truncate font-display mg-type-caption-lg font-medium text-ink-strong"
                 >
                   {group.label}
                 </h3>
@@ -280,14 +280,14 @@ export function EndpointOperationalList({
                                 <>
                                   <ExternalLink
                                     href={endpoint.url}
-                                    className="truncate font-mono text-[13px] font-medium text-ink-strong hover:text-accent-text"
+                                    className="truncate font-mono mg-type-caption-lg font-medium text-ink-strong hover:text-accent-text"
                                   >
                                     {endpoint.url}
                                   </ExternalLink>
                                   <CopyButton value={endpoint.url} label="endpoint URL" />
                                 </>
                               ) : (
-                                <span className="font-mono text-[13px] text-ink-muted">
+                                <span className="font-mono mg-type-caption-lg text-ink-muted">
                                   URL unavailable
                                 </span>
                               )}
@@ -359,7 +359,7 @@ export function EndpointOperationalList({
                           <div className="min-w-0">
                             <div className="mg-label mb-1 lg:hidden">7d uptime</div>
                             <EndpointUptimeBar endpointId={endpoint.id} incidents={incidents} />
-                            <div className="mt-1 font-mono text-[10px] text-ink-muted">
+                            <div className="mt-1 mg-type-data-sm text-ink-muted">
                               probed <TimeAgo at={endpoint.last_probed_at} />
                             </div>
                           </div>

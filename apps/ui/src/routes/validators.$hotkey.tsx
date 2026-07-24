@@ -164,7 +164,7 @@ function SubnetPerformanceTable({
         <tbody className="divide-y divide-border">
           {sorted.map((s) => (
             <tr key={s.netuid} className="hover:bg-surface/40">
-              <td className="px-3 py-2 font-mono text-[11px]">
+              <td className="px-3 py-2 mg-type-data">
                 <Link
                   to="/subnets/$netuid"
                   params={{ netuid: s.netuid }}
@@ -177,19 +177,19 @@ function SubnetPerformanceTable({
                   SN{s.netuid}
                 </Link>
               </td>
-              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink-muted">
+              <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
                 {s.uid}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink-strong">
+              <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
                 {taoCompact(s.stake_tao)}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink">
+              <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink">
                 {taoCompact(s.emission_tao)}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink">
+              <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink">
                 {scoreStr(s.dividends)}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-[12px] tabular-nums text-ink-muted">
+              <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
                 {scoreStr(s.validator_trust)}
               </td>
               <td className="px-3 py-2 text-center">
@@ -198,7 +198,7 @@ function SubnetPerformanceTable({
                     Yes
                   </span>
                 ) : (
-                  <span className="font-mono text-[10px] text-ink-subtle-text">—</span>
+                  <span className="mg-type-data-sm text-ink-subtle-text">—</span>
                 )}
               </td>
               <td className="px-3 py-2 text-right">
@@ -384,7 +384,7 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
             <p className="text-sm font-medium text-ink-strong">
               This hotkey isn&apos;t a registered validator
             </p>
-            <p className="mt-1 max-w-2xl text-[13px] text-ink-muted">
+            <p className="mt-1 max-w-2xl mg-type-caption-lg text-ink-muted">
               The address is a valid ss58, but it has never been seen validating on any subnet —
               every figure below reads zero for that reason, not because the validator is idle. It
               may be mistyped, or a coldkey rather than a hotkey.

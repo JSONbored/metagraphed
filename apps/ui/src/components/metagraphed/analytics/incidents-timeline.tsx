@@ -208,9 +208,11 @@ export function IncidentsTimeline({ className }: { className?: string }) {
                       )}
                       aria-hidden
                     />
-                    <span className="font-mono text-[12px] text-ink-strong truncate">{r.host}</span>
+                    <span className="font-mono mg-type-caption text-ink-strong truncate">
+                      {r.host}
+                    </span>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-2 font-mono text-[10px] text-ink-muted">
+                  <div className="mt-0.5 flex items-center gap-2 mg-type-data-sm text-ink-muted">
                     {r.ongoing > 0 ? (
                       <span className="text-health-down">{r.ongoing} ongoing</span>
                     ) : null}

@@ -229,7 +229,7 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                         )}
                       />
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="font-mono text-[10px]">
+                    <TooltipContent side="top" className="mg-type-data-sm">
                       <div className="text-ink-strong">{e.kind?.toUpperCase() ?? "—"}</div>
                       <div className="text-ink">{e.url?.replace(/^https?:\/\//, "") ?? "—"}</div>
                       <div className="text-ink-muted">
@@ -301,12 +301,12 @@ export function OperationalPanel({ netuid }: { netuid: number }) {
                         <span className="shrink-0 mt-0.5">{sevIcon(inc.severity)}</span>
                         <div className="min-w-0 flex-1">
                           <div
-                            className="truncate text-[12px] text-ink-strong"
+                            className="truncate mg-type-caption text-ink-strong"
                             title={inc.surface_id}
                           >
                             {shortSurfaceId(inc.surface_id, netuid)}
                           </div>
-                          <div className="mt-0.5 font-mono text-[10px] text-ink-muted">
+                          <div className="mt-0.5 mg-type-data-sm text-ink-muted">
                             {inc.started_at ? (
                               <>
                                 <TimeAgo at={inc.started_at} />
@@ -476,7 +476,7 @@ function SegBtn({
           style={{ width: `${pct}%` }}
         />
       </TooltipTrigger>
-      <TooltipContent side="top" className="font-mono text-[10px]">
+      <TooltipContent side="top" className="mg-type-data-sm">
         {count} {sev} · click to filter (shift+click to add)
       </TooltipContent>
     </Tooltip>

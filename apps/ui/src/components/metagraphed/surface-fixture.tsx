@@ -48,9 +48,9 @@ export function SurfaceFixture({
         />
         <span className="mg-label">sample response</span>
         {entry.response_status != null ? (
-          <span className="font-mono text-[10px] text-health-ok">{entry.response_status}</span>
+          <span className="mg-type-data-sm text-health-ok">{entry.response_status}</span>
         ) : null}
-        <span className="ml-auto font-mono text-[10px] text-ink-muted">
+        <span className="ml-auto mg-type-data-sm text-ink-muted">
           <TimeAgo at={entry.captured_at ?? undefined} />
         </span>
       </button>
@@ -73,12 +73,12 @@ export function SurfaceFixture({
                 <div className="mb-1 flex items-center gap-2">
                   <span className="mg-label">response</span>
                   {fixture.response?.status != null ? (
-                    <span className="font-mono text-[10px] text-health-ok">
+                    <span className="mg-type-data-sm text-health-ok">
                       {fixture.response.status}
                     </span>
                   ) : null}
                   {fixture.response?.content_type ? (
-                    <span className="font-mono text-[10px] text-ink-muted">
+                    <span className="mg-type-data-sm text-ink-muted">
                       {fixture.response.content_type}
                     </span>
                   ) : null}
@@ -87,7 +87,7 @@ export function SurfaceFixture({
                   ) : null}
                 </div>
                 {bodyText ? (
-                  <pre className="max-h-64 overflow-auto rounded bg-card p-2 font-mono text-[11px] leading-relaxed text-ink-strong">
+                  <pre className="max-h-64 overflow-auto rounded bg-card p-2 mg-type-data leading-relaxed text-ink-strong">
                     {bodyText}
                   </pre>
                 ) : (

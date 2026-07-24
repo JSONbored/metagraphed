@@ -192,7 +192,7 @@ function ValidatorsTable({
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-mono text-[11px] text-ink-muted">
+        <span className="mg-type-data text-ink-muted">
           {formatNumber(validators.length)} validators · ranked by {SORT_LABELS[sort]}
         </span>
         <DensityToggle value={density} onChange={onDensityChange} />

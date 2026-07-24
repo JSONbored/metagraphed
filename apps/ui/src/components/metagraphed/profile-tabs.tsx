@@ -91,7 +91,7 @@ export function ProfileTabs({
                     onKeyDown={onKeyDown(i)}
                     onClick={() => selectAt(i)}
                     className={classNames(
-                      "relative inline-flex items-center gap-1.5 px-1 py-3 text-[13px] font-medium whitespace-nowrap transition-colors mg-focus-ring",
+                      "relative inline-flex items-center gap-1.5 px-1 py-3 mg-type-caption-lg font-medium whitespace-nowrap transition-colors mg-focus-ring",
                       isActive
                         ? "text-ink-strong after:absolute after:left-1 after:right-1 after:-bottom-[1.5px] after:h-[1.5px] after:rounded-full after:bg-accent after:content-['']"
                         : "text-ink-muted hover:text-ink-strong",
@@ -100,9 +100,7 @@ export function ProfileTabs({
                   >
                     <span>{t.label}</span>
                     {t.count != null ? (
-                      <span className="font-mono text-[10px] text-ink-muted tabular-nums">
-                        {t.count}
-                      </span>
+                      <span className="mg-type-data-sm text-ink-muted tabular-nums">{t.count}</span>
                     ) : null}
                     {isActive ? (
                       <span

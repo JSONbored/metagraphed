@@ -95,7 +95,7 @@ function NotFoundComponent() {
               <AlertTriangle className="size-3.5 text-health-warn" /> Attempted URL
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded border border-border bg-paper px-2 py-1.5 font-mono text-[12px] text-ink">
+              <code className="min-w-0 flex-1 truncate rounded border border-border bg-paper px-2 py-1.5 font-mono mg-type-caption text-ink">
                 {attempted}
               </code>
               <button
@@ -163,7 +163,7 @@ function NotFoundComponent() {
                     className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 hover:border-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-mono text-[12px] text-ink-strong">
+                      <span className="block truncate font-mono mg-type-caption text-ink-strong">
                         {ex.label}
                       </span>
                       <span className="block truncate text-[11px] text-ink-muted">{ex.note}</span>
@@ -236,7 +236,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             <div className="flex items-center gap-2 mg-label">
               <AlertTriangle className="size-3.5 text-health-warn" /> Diagnostic
             </div>
-            <code className="mt-2 block break-words font-mono text-[11px]">{error.message}</code>
+            <code className="mt-2 block break-words mg-type-data">{error.message}</code>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
             <button

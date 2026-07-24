@@ -111,7 +111,9 @@ export function NetworkSwitcher() {
                     <Globe2 className="mt-0.5 size-3.5 text-ink-muted shrink-0" />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
-                        <span className="text-[12px] font-medium text-ink-strong">{n.label}</span>
+                        <span className="mg-type-caption font-medium text-ink-strong">
+                          {n.label}
+                        </span>
                         {active ? <Check className="size-3 text-health-ok" /> : null}
                       </span>
                       <span className="mt-0.5 block text-[10px] text-ink-muted">
@@ -127,7 +129,7 @@ export function NetworkSwitcher() {
                 <div className="px-2 py-2">
                   <div className="flex items-center gap-2">
                     <TerminalSquare className="size-3.5 text-ink-muted shrink-0" />
-                    <span className="text-[12px] font-medium text-ink-strong">
+                    <span className="mg-type-caption font-medium text-ink-strong">
                       {LOCAL_DEV.label}
                     </span>
                   </div>
@@ -135,9 +137,7 @@ export function NetworkSwitcher() {
                     {LOCAL_DEV.description}
                   </span>
                   <div className="mt-1 flex items-center justify-between gap-2">
-                    <code className="font-mono text-[10px] text-ink-muted truncate">
-                      {LOCAL_DEV.rpc}
-                    </code>
+                    <code className="mg-type-data-sm text-ink-muted truncate">{LOCAL_DEV.rpc}</code>
                     <a
                       href={LOCAL_DEV.guideUrl}
                       target="_blank"
@@ -204,7 +204,7 @@ export function NetworkSwitcher() {
                   // the field needs its own aria-label -- matching SearchInput's
                   // convention in table-controls.tsx.
                   aria-label="Custom API origin"
-                  className="flex-1 rounded border border-border bg-card px-2 py-1 font-mono text-[11px] focus:outline-none focus:border-ink/30"
+                  className="flex-1 rounded border border-border bg-card px-2 py-1 mg-type-data focus:outline-none focus:border-ink/30"
                 />
                 <button
                   type="submit"
@@ -214,7 +214,7 @@ export function NetworkSwitcher() {
                 </button>
               </form>
               <div className="flex items-center justify-between gap-2">
-                <code className="font-mono text-[10px] text-ink-muted truncate">{base}</code>
+                <code className="mg-type-data-sm text-ink-muted truncate">{base}</code>
                 {!baseIsDefault ? (
                   <button
                     type="button"

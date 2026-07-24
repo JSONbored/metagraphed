@@ -111,7 +111,7 @@ export function ContinueExploring() {
                 ) : (
                   <span
                     aria-hidden
-                    className="shrink-0 inline-flex items-center justify-center size-[22px] rounded-md border border-border bg-paper text-[10px] font-mono text-ink-muted"
+                    className="shrink-0 inline-flex items-center justify-center size-[22px] rounded-md border border-border bg-paper mg-type-data-sm text-ink-muted"
                   >
                     {v.kind === "provider" ? "PR" : "•"}
                   </span>
@@ -142,7 +142,7 @@ export function ContinueExploring() {
                 <Link
                   to="/subnets"
                   search={{ q } as never}
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] text-ink hover:border-accent/40 hover:text-accent transition-colors"
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 mg-type-caption text-ink hover:border-accent/40 hover:text-accent transition-colors"
                 >
                   <Search className="size-3 text-ink-muted group-hover:text-accent transition-colors" />
                   <span className="truncate max-w-[200px]">{q}</span>

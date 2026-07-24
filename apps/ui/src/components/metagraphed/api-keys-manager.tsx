@@ -94,7 +94,7 @@ function SignInPrompt({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-[12px] text-ink-muted">
+      <p className="mg-type-caption text-ink-muted">
         Sign a one-time message with your connected wallet to manage your API keys. This never
         constructs or broadcasts a transaction -- it only proves you control this address.
       </p>
@@ -110,7 +110,7 @@ function SignInPrompt({
         type="button"
         onClick={onSignIn}
         disabled={signingIn}
-        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-[12px] font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
       >
         {signingIn ? "Signing in…" : "Sign in with wallet"}
       </button>
@@ -181,7 +181,7 @@ function ApiKeysPanel({
         type="button"
         onClick={() => createMutation.mutate()}
         disabled={createMutation.isPending}
-        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-[12px] font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
       >
         {createMutation.isPending ? "Generating…" : "Generate new key"}
       </button>
@@ -189,7 +189,7 @@ function ApiKeysPanel({
       {createMutation.isError ? (
         <div
           role="alert"
-          className="rounded border border-health-down/30 bg-health-down/5 p-3 text-[12px] text-health-down"
+          className="rounded border border-health-down/30 bg-health-down/5 p-3 mg-type-caption text-health-down"
         >
           {describeApiError(createMutation.error)}
         </div>
@@ -197,7 +197,7 @@ function ApiKeysPanel({
 
       {createMutation.data ? (
         <div className="space-y-2 rounded border border-accent/40 bg-primary-soft/40 p-4">
-          <p className="text-[12px] font-medium text-health-warn">
+          <p className="mg-type-caption font-medium text-health-warn">
             This key is shown once and is never echoed back -- store it now.
           </p>
           {/* ph-no-capture: excludes this one-time secret reveal from
@@ -217,7 +217,7 @@ function ApiKeysPanel({
         {listQuery.isError ? (
           <div
             role="alert"
-            className="rounded border border-health-down/30 bg-health-down/5 p-3 text-[12px] text-health-down"
+            className="rounded border border-health-down/30 bg-health-down/5 p-3 mg-type-caption text-health-down"
           >
             {describeApiError(listQuery.error)}
           </div>
@@ -231,7 +231,7 @@ function ApiKeysPanel({
             className="flex flex-wrap items-center justify-between gap-2 rounded border border-border bg-surface/40 px-3 py-2"
           >
             <div className="min-w-0">
-              <div className="font-mono text-[12px] text-ink-strong truncate">{key.key_id}</div>
+              <div className="font-mono mg-type-caption text-ink-strong truncate">{key.key_id}</div>
               <div className="text-[10px] text-ink-muted">
                 Created {formatTimestamp(key.created_at)} · Last used{" "}
                 {formatTimestamp(key.last_used_at)}

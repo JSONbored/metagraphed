@@ -88,7 +88,7 @@ export function TurnoverLoader({ netuid }: { netuid: number }) {
         />
       </div>
       {t.start_date && t.end_date ? (
-        <p className="font-mono text-[11px] text-ink-muted">
+        <p className="mg-type-data text-ink-muted">
           Compared {t.start_date} → {t.end_date}
           {t.window ? ` (${t.window})` : ""}
         </p>

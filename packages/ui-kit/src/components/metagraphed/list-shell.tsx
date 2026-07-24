@@ -182,7 +182,7 @@ export function LoadMore({
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 text-[11px] font-mono text-ink-muted">
+    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 mg-type-data text-ink-muted">
       <span>
         {shown}
         {total != null ? ` of ${total}` : ""}

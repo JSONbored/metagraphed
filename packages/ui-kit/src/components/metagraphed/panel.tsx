@@ -81,7 +81,9 @@ export function Panel({
           <div className="min-w-0">
             {title != null ? <SectionLabel>{title}</SectionLabel> : null}
             {caption != null ? (
-              <p className="mt-1 text-[13px] text-ink-muted">{caption}</p>
+              <p className="mt-1 mg-type-caption-lg text-ink-muted">
+                {caption}
+              </p>
             ) : null}
           </div>
           {action != null ? (

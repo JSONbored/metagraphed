@@ -114,9 +114,7 @@ function SubnetMiniProfile({ netuid }: { netuid: number }) {
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <CurationChip level={s.curation_level} />
-        {s.type ? (
-          <span className="font-mono text-[10px] uppercase text-ink-muted">{s.type}</span>
-        ) : null}
+        {s.type ? <span className="mg-type-data-sm uppercase text-ink-muted">{s.type}</span> : null}
       </div>
       <dl className="grid grid-cols-3 gap-2 pt-1">
         <Mini label="Participants" value={formatNumber(s.participants)} />
@@ -127,7 +125,7 @@ function SubnetMiniProfile({ netuid }: { netuid: number }) {
         />
       </dl>
       {s.updated_at || s.freshness ? (
-        <div className="pt-1 border-t border-border font-mono text-[10px] text-ink-muted">
+        <div className="pt-1 border-t border-border mg-type-data-sm text-ink-muted">
           updated <TimeAgo at={s.updated_at ?? s.freshness} />
         </div>
       ) : null}
@@ -161,7 +159,7 @@ function ProviderMiniProfile({ slug }: { slug: string }) {
           <div className="font-display text-sm font-semibold text-ink-strong truncate">
             {p.name ?? slug}
           </div>
-          <div className="font-mono text-[10px] text-ink-muted truncate">{slug}</div>
+          <div className="mg-type-data-sm text-ink-muted truncate">{slug}</div>
         </div>
       </div>
       {p.notes ? <p className="text-[11px] text-ink-muted line-clamp-3">{p.notes}</p> : null}
@@ -186,14 +184,14 @@ function AccountMiniProfile({ ss58 }: { ss58: string }) {
     <div className="space-y-2">
       <div className="min-w-0">
         <div className="mg-type-micro text-ink-muted">account</div>
-        <div className="font-mono text-[10px] text-ink-muted truncate">{ss58}</div>
+        <div className="mg-type-data-sm text-ink-muted truncate">{ss58}</div>
       </div>
       <dl className="grid grid-cols-2 gap-2 pt-1">
         <Mini label="Events" value={formatNumber(a.event_count)} />
         <Mini label="Subnets" value={formatNumber(a.subnet_count)} />
       </dl>
       {a.last_seen_at ? (
-        <div className="pt-1 border-t border-border font-mono text-[10px] text-ink-muted">
+        <div className="pt-1 border-t border-border mg-type-data-sm text-ink-muted">
           last seen <TimeAgo at={a.last_seen_at} />
         </div>
       ) : null}
@@ -205,7 +203,7 @@ function Mini({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded border border-border/60 bg-paper/40 px-2 py-1">
       <dt className="mg-type-micro text-ink-muted">{label}</dt>
-      <dd className="font-mono text-[12px] text-ink-strong truncate">{value}</dd>
+      <dd className="font-mono mg-type-caption text-ink-strong truncate">{value}</dd>
     </div>
   );
 }

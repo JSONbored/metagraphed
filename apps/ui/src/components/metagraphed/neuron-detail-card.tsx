@@ -111,7 +111,7 @@ export function NeuronDetailCard({
             <Link
               to="/blocks/$ref"
               params={{ ref: String(n.registered_at_block) }}
-              className="font-mono text-[12px] text-ink hover:text-accent hover:underline"
+              className="font-mono mg-type-caption text-ink hover:text-accent hover:underline"
             >
               #{formatNumber(n.registered_at_block)}
             </Link>
@@ -138,7 +138,7 @@ function KeyRow({ label, value }: { label: string; value?: string }) {
     <div className="flex items-center justify-between gap-3">
       <span className="mg-type-micro text-ink-muted">{label}</span>
       {value ? (
-        <span className="font-mono text-[12px] text-ink">
+        <span className="font-mono mg-type-caption text-ink">
           <AccountAddress
             ss58={value}
             compact
@@ -146,7 +146,7 @@ function KeyRow({ label, value }: { label: string; value?: string }) {
           />
         </span>
       ) : (
-        <span className="font-mono text-[12px] text-ink-muted">—</span>
+        <span className="font-mono mg-type-caption text-ink-muted">—</span>
       )}
     </div>
   );

@@ -10,7 +10,7 @@ import { formatApyPct, formatTakePct } from "@/lib/metagraphed/validator-apy";
 import type { GlobalValidator, GlobalValidatorSort } from "@/lib/metagraphed/types";
 
 const TH_BASE = "px-3 py-2 mg-type-micro text-ink-muted";
-const TD_BASE = "px-3 py-2 font-mono text-[11px]";
+const TD_BASE = "px-3 py-2 mg-type-data";
 const TD_NUM = `${TD_BASE} text-right tabular-nums`;
 
 /**

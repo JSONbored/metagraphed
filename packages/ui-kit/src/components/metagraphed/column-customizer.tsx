@@ -59,7 +59,7 @@ export function ColumnCustomizer({
               <button
                 type="button"
                 onClick={onReset}
-                className="mg-focus-ring inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted hover:text-ink-strong"
+                className="mg-focus-ring inline-flex items-center gap-1 mg-type-data-sm text-ink-muted hover:text-ink-strong"
                 title="Reset to defaults"
               >
                 <RotateCcw className="size-3" aria-hidden /> Reset
@@ -72,7 +72,7 @@ export function ColumnCustomizer({
                   <label
                     key={c.id}
                     className={classNames(
-                      "flex items-center gap-2 rounded px-2 py-1.5 text-[12px] text-ink hover:bg-surface-2 cursor-pointer",
+                      "flex items-center gap-2 rounded px-2 py-1.5 mg-type-caption text-ink hover:bg-surface-2 cursor-pointer",
                       c.required ? "opacity-60 cursor-not-allowed" : null,
                     )}
                   >

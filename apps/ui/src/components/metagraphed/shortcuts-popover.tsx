@@ -81,7 +81,7 @@ export function ShortcutsPopover() {
       </Tooltip>
       <PopoverContent align="start" side="top" className="w-80 p-4">
         <div className="mg-type-micro text-ink-muted mb-3">Shortcuts</div>
-        <ul className="space-y-1.5 text-[12px]">
+        <ul className="space-y-1.5 mg-type-caption">
           <Row label="Focus search">
             <Kbd>/</Kbd>
             <span className="text-ink-muted">or</span>
@@ -96,7 +96,7 @@ export function ShortcutsPopover() {
           </Row>
         </ul>
         <div className="mg-type-micro text-ink-muted mt-4 mb-2">Go to</div>
-        <ul className="space-y-1.5 text-[12px]">
+        <ul className="space-y-1.5 mg-type-caption">
           {GOTO.map((g) => (
             <Row key={g.keys} label={g.label}>
               {g.keys.split(" ").map((k, i) => (
@@ -110,7 +110,7 @@ export function ShortcutsPopover() {
             shortcut above, so it gets its own labeled section instead of
             reading as a global binding. */}
         <div className="mg-type-micro text-ink-muted mt-4 mb-2">On block pages</div>
-        <ul className="space-y-1.5 text-[12px]">
+        <ul className="space-y-1.5 mg-type-caption">
           <Row label="Previous / next block">
             <Kbd>←</Kbd>
             <Kbd>→</Kbd>

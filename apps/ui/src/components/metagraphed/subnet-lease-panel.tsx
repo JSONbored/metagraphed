@@ -132,10 +132,10 @@ function LeaseStatusCard({
           <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 mg-type-micro text-accent-text">
             Leased
           </span>
-          <span className="font-mono text-[11px] text-ink-muted">lease #{lease.lease_id}</span>
+          <span className="mg-type-data text-ink-muted">lease #{lease.lease_id}</span>
         </div>
         {queriedAt ? (
-          <span className="font-mono text-[11px] text-ink-muted">
+          <span className="mg-type-data text-ink-muted">
             queried <TimeAgo at={queriedAt} />
           </span>
         ) : null}
@@ -245,10 +245,10 @@ function LeaseHistorySection({
                   {ev.beneficiary ? (
                     <CopyableCode value={ev.beneficiary} className="max-w-full" />
                   ) : (
-                    <span className="font-mono text-[11px] text-ink-muted">no beneficiary</span>
+                    <span className="mg-type-data text-ink-muted">no beneficiary</span>
                   )}
                 </div>
-                <span className="shrink-0 font-mono text-[11px] text-ink-muted">
+                <span className="shrink-0 mg-type-data text-ink-muted">
                   {ev.block_number != null ? `block #${formatNumber(ev.block_number)} · ` : ""}
                   {ev.observed_at ? <TimeAgo at={ev.observed_at} /> : "unknown time"}
                 </span>

@@ -87,7 +87,7 @@ export function PanelShell({
         {showFreshnessPill ? (
           <span
             className={
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] " +
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 mg-type-data-sm " +
               (stale
                 ? "border-health-warn/40 bg-health-warn/10 text-health-warn"
                 : "border-border bg-paper/60 text-ink-muted")
@@ -104,7 +104,7 @@ export function PanelShell({
             onClick={onRefresh}
             disabled={refreshing}
             aria-label="Refresh panel"
-            className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:cursor-progress disabled:opacity-60"
+            className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 mg-type-data-sm text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:cursor-progress disabled:opacity-60"
           >
             <RefreshCw className={classNames("size-3", refreshing && "animate-spin")} />
           </button>

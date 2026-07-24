@@ -59,7 +59,7 @@ export function WalletConnectButton() {
           aria-label={connected ? `Wallet connected: ${wallet.address}` : "Connect wallet"}
           title={connected ? `Connected · ${wallet.source} · ${wallet.address}` : "Connect wallet"}
           className={classNames(
-            "inline-flex items-center gap-1.5 rounded border px-2 py-1.5 min-h-11 text-[11px] font-mono transition-colors",
+            "inline-flex items-center gap-1.5 rounded border px-2 py-1.5 min-h-11 mg-type-data transition-colors",
             connected
               ? "border-ink-strong/40 bg-surface text-ink-strong"
               : "border-border bg-card text-ink-muted hover:text-ink-strong hover:border-ink/30",
@@ -128,7 +128,7 @@ export function WalletConnectPanel({ onConnected }: { onConnected?: () => void }
           await connect();
         }}
         disabled={status === "connecting"}
-        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-2 text-[12px] font-medium text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-60"
+        className="w-full inline-flex items-center justify-center gap-1.5 rounded border border-border bg-card px-3 py-2 mg-type-caption font-medium text-ink-strong hover:border-ink/30 transition-colors disabled:opacity-60"
       >
         {status === "connecting" ? (
           <>
@@ -205,7 +205,7 @@ function AccountPicker({
               className="w-full flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-left transition-colors hover:border-ink/30 min-h-9"
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-[12px] font-medium text-ink-strong truncate">
+                <span className="block mg-type-caption font-medium text-ink-strong truncate">
                   {account.meta.name || shortHash(account.address, 6)}
                 </span>
                 <span className="block text-[10px] text-ink-muted truncate">
@@ -235,7 +235,7 @@ function ConnectedView({
         <div className="flex items-center gap-2">
           <Check className="size-3.5 text-health-ok shrink-0" aria-hidden="true" />
           <span className="min-w-0 flex-1">
-            <span className="block text-[12px] font-medium text-ink-strong font-mono truncate">
+            <span className="block mg-type-caption font-medium text-ink-strong font-mono truncate">
               {shortHash(wallet.address, 6)}
             </span>
             <span className="block text-[10px] text-ink-muted">Connected via {wallet.source}</span>

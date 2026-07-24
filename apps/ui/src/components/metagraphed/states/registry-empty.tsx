@@ -108,7 +108,7 @@ export function RegistryEmpty({
               {tone.label}
             </span>
             {variant === "stale" && fresh ? (
-              <span className="font-mono text-[10px] text-ink-muted">
+              <span className="mg-type-data-sm text-ink-muted">
                 {fresh}
                 {freshAbs ? ` · last checked ${freshAbs}` : ""}
               </span>
@@ -116,7 +116,7 @@ export function RegistryEmpty({
           </div>
 
           {description ? (
-            <p className="text-[13px] leading-relaxed text-ink-muted">{description}</p>
+            <p className="mg-type-caption-lg leading-relaxed text-ink-muted">{description}</p>
           ) : null}
 
           {freshnessHint ? (

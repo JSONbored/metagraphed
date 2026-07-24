@@ -300,7 +300,7 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
                 <span className="font-display text-sm font-semibold text-ink-strong">
                   {activePanel.label}
                 </span>
-                <span className="text-[12px] text-ink-muted">— {activePanel.blurb}</span>
+                <span className="mg-type-caption text-ink-muted">— {activePanel.blurb}</span>
               </div>
               <Suspense fallback={<MegaPanelFallback />}>
                 <MegaPanelBody

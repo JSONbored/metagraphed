@@ -85,7 +85,7 @@ export function QuickActionsRow() {
               <div className="space-y-1">
                 <div className="mg-type-micro text-ink-muted">{a.eyebrow}</div>
                 <div className="font-display text-sm font-semibold text-ink-strong">{a.title}</div>
-                <p className="text-[12px] leading-relaxed text-ink-muted">{a.description}</p>
+                <p className="mg-type-caption leading-relaxed text-ink-muted">{a.description}</p>
               </div>
             </Link>
           );

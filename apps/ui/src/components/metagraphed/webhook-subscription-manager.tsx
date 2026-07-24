@@ -19,7 +19,7 @@ const SUBSCRIPTION_TOKEN_HEADER = "x-metagraph-webhook-subscription-token";
 const SUBSCRIPTION_SECRET_HEADER = "x-metagraph-webhook-secret";
 
 const inputCls =
-  "w-full rounded border border-border bg-card px-2.5 py-1.5 text-[13px] text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
+  "w-full rounded border border-border bg-card px-2.5 py-1.5 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30";
 
 /** Comma-separated netuids -> integers, or an error describing the offending token. Empty input is valid (no filter). */
 export function parseNetuidsInput(
@@ -209,7 +209,10 @@ function CreateSubscriptionSection() {
         <Field label="Kinds filter" hint="Optional — leave unchecked to receive all change kinds.">
           <div className="flex gap-4">
             {CHANGE_KINDS.map((kind) => (
-              <label key={kind} className="inline-flex items-center gap-1.5 text-[12px] text-ink">
+              <label
+                key={kind}
+                className="inline-flex items-center gap-1.5 mg-type-caption text-ink"
+              >
                 <input
                   type="checkbox"
                   checked={kinds.has(kind)}
@@ -236,7 +239,7 @@ function CreateSubscriptionSection() {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 text-[12px] font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded border border-accent/40 bg-primary-soft px-3 py-1.5 mg-type-caption font-medium text-ink-strong hover:bg-primary-soft/80 disabled:opacity-50"
         >
           {mutation.isPending ? "Creating…" : "Create subscription"}
         </button>
@@ -248,7 +251,7 @@ function CreateSubscriptionSection() {
 
       {result ? (
         <div className="mt-3 space-y-3 rounded border border-accent/40 bg-primary-soft/40 p-4">
-          <p className="text-[12px] font-medium text-health-warn">
+          <p className="mg-type-caption font-medium text-health-warn">
             The secret below is shown once and is never echoed back by GET — store it now.
           </p>
           <CopyableCode label="id" value={result.id} truncate={false} className="w-full" />
@@ -324,7 +327,7 @@ function LookupSubscriptionSection() {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 text-[12px] font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-3 py-1.5 mg-type-caption font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30 disabled:opacity-50"
         >
           {mutation.isPending ? "Looking up…" : "Look up"}
         </button>
@@ -347,14 +350,14 @@ function LookupSubscriptionSection() {
             <DeliveryStatusPill status={result.delivery.status} />
             <span
               className={classNames(
-                "font-mono text-[11px]",
+                "mg-type-data",
                 result.active ? "text-health-ok" : "text-ink-muted",
               )}
             >
               {result.active ? "active" : "inactive"}
             </span>
           </div>
-          <dl className="grid gap-2 text-[12px]">
+          <dl className="grid gap-2 mg-type-caption">
             <Row label="URL" value={result.url} />
             <Row label="Created" value={result.created_at ?? "—"} />
             <Row
@@ -443,7 +446,7 @@ function DeleteSubscriptionSection() {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="inline-flex items-center gap-1.5 rounded border border-health-down/40 bg-health-down/5 px-3 py-1.5 text-[12px] font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded border border-health-down/40 bg-health-down/5 px-3 py-1.5 mg-type-caption font-medium text-health-down hover:bg-health-down/10 disabled:opacity-50"
         >
           {mutation.isPending ? "Deleting…" : "Delete subscription"}
         </button>
@@ -456,7 +459,7 @@ function DeleteSubscriptionSection() {
       {mutation.data?.deleted ? (
         <div
           role="status"
-          className="mt-3 rounded border border-health-ok/30 bg-health-ok/5 p-3 text-[12px] text-health-ok"
+          className="mt-3 rounded border border-health-ok/30 bg-health-ok/5 p-3 mg-type-caption text-health-ok"
         >
           Subscription {mutation.data.id} deleted.
         </div>
@@ -494,7 +497,7 @@ function ErrorPanel({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="mt-3 rounded border border-health-down/30 bg-health-down/5 p-3 text-[12px] text-health-down"
+      className="mt-3 rounded border border-health-down/30 bg-health-down/5 p-3 mg-type-caption text-health-down"
     >
       {message}
     </div>

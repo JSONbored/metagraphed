@@ -47,7 +47,7 @@ export function EndpointComparePanel({
     >
       <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="font-display text-[12px] font-medium text-ink-strong">
+          <span className="font-display mg-type-caption font-medium text-ink-strong">
             Compare — {endpoints.length} endpoint{endpoints.length === 1 ? "" : "s"}
           </span>
           <span className="mg-type-micro text-ink-muted">side-by-side</span>
@@ -128,7 +128,7 @@ function CompareColumn({
                 ? `SN${endpoint.netuid}${subnet?.name ? ` · ${subnet.name}` : ""}`
                 : "Unassigned"}
           </div>
-          <div className="truncate font-mono text-[12px] font-medium text-ink-strong">
+          <div className="truncate font-mono mg-type-caption font-medium text-ink-strong">
             {endpoint.url ?? endpoint.id}
           </div>
           {endpoint.provider_slug ? (
@@ -165,7 +165,7 @@ function CompareColumn({
         <Field label="Health">
           <span
             className={classNames(
-              "inline-flex items-center gap-1 font-mono text-[11px] uppercase",
+              "inline-flex items-center gap-1 mg-type-data uppercase",
               endpoint.health === "ok"
                 ? "text-health-ok"
                 : endpoint.health === "warn"
@@ -184,7 +184,7 @@ function CompareColumn({
           </span>
         </Field>
         <Field label="Latency">
-          <span className="font-mono text-[11px] tabular-nums text-ink-strong">
+          <span className="mg-type-data tabular-nums text-ink-strong">
             {endpoint.latency_ms != null ? `${Math.round(endpoint.latency_ms)}ms` : "—"}
           </span>
         </Field>
@@ -194,7 +194,7 @@ function CompareColumn({
         <Field label="Incidents (retained)">
           <span
             className={classNames(
-              "font-mono text-[11px] tabular-nums",
+              "mg-type-data tabular-nums",
               incidentCount > 0 ? "text-health-warn-text" : "text-ink-strong",
             )}
           >
@@ -202,7 +202,7 @@ function CompareColumn({
           </span>
         </Field>
         <Field label="Freshness">
-          <span className="font-mono text-[10px] text-ink-muted">
+          <span className="mg-type-data-sm text-ink-muted">
             probed <TimeAgo at={endpoint.last_probed_at} />
           </span>
         </Field>

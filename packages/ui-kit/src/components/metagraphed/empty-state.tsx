@@ -83,7 +83,9 @@ export function EmptyState({
           {title}
         </p>
         {hint != null ? (
-          <p className="text-[13px] leading-relaxed text-ink-muted">{hint}</p>
+          <p className="mg-type-caption-lg leading-relaxed text-ink-muted">
+            {hint}
+          </p>
         ) : null}
       </div>
       {action != null || evidenceHref ? (

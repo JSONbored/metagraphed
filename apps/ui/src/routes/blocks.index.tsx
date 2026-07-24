@@ -480,14 +480,14 @@ function BlocksTable() {
               <div className="font-mono text-sm font-medium text-ink-strong">
                 #{formatNumber(b.block_number)}
               </div>
-              <span className="font-mono text-[11px] text-ink-muted">
+              <span className="mg-type-data text-ink-muted">
                 <TimeAgo at={b.observed_at} />
               </span>
             </div>
-            <div className="mt-1 font-mono text-[11px] text-ink-muted truncate">
+            <div className="mt-1 mg-type-data text-ink-muted truncate">
               {shortHash(b.block_hash)}
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
+            <div className="mt-2 flex items-center justify-between mg-type-data text-ink-muted">
               <span>{shortHash(b.author) ?? "no author"}</span>
               <span>{formatNumber(b.extrinsic_count ?? 0)} ext</span>
               <span>{formatNumber(b.event_count ?? 0)} evt</span>
@@ -534,7 +534,7 @@ function BlocksTable() {
                     key={b.block_hash || b.block_number}
                     className="group mg-row-accent odd:bg-surface/30 hover:bg-surface/60"
                   >
-                    <td className="px-4 py-2.5 font-mono text-[12px] align-top">
+                    <td className="px-4 py-2.5 font-mono mg-type-caption align-top">
                       <Link
                         to="/blocks/$ref"
                         params={{ ref: String(b.block_number) }}
@@ -551,7 +551,7 @@ function BlocksTable() {
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted align-top">
+                    <td className="px-4 py-2.5 mg-type-data text-ink-muted align-top">
                       <span className="inline-flex items-center gap-1 min-w-0">
                         <Link
                           to="/blocks/$ref"
@@ -569,7 +569,7 @@ function BlocksTable() {
                       </span>
                     </td>
                     <td
-                      className="px-4 py-2.5 font-mono text-[11px] text-ink-muted align-top"
+                      className="px-4 py-2.5 mg-type-data text-ink-muted align-top"
                       title={b.author ?? undefined}
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -594,14 +594,14 @@ function BlocksTable() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink align-top">
+                    <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink align-top">
                       <ActivityCell value={b.extrinsic_count ?? 0} max={maxExt} tone="accent" />
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink align-top">
+                    <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink align-top">
                       <ActivityCell value={b.event_count ?? 0} max={maxEvt} tone="ink" />
                     </td>
                     <td
-                      className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted align-top"
+                      className="px-4 py-2.5 text-right mg-type-data text-ink-muted align-top"
                       title={b.observed_at ?? undefined}
                     >
                       <TimeAgo at={b.observed_at} />

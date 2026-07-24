@@ -80,7 +80,7 @@ function Stat({ field, trailing }: { field: Field; trailing?: React.ReactNode })
             </span>
           </TooltipTrigger>
           {hasValue ? (
-            <TooltipContent side="top" className="font-mono text-[11px]">
+            <TooltipContent side="top" className="mg-type-data">
               {full}
               {field.unit ? ` ${field.unit}` : ""}
             </TooltipContent>
@@ -227,7 +227,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
         {hydrated && lineagePeer ? (
           <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-border bg-surface/20">
             <GitMerge className="size-3.5 text-accent" />
-            <span className="text-[12px] text-ink">
+            <span className="mg-type-caption text-ink">
               Paired with its {lineagePeer.label.toLowerCase()} counterpart
             </span>
             <ArrowRight className="size-3 text-ink-muted" />
@@ -265,7 +265,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                       Pool composition
                       <InfoTooltip label="Alpha In ÷ (Alpha In + Alpha Out) from the latest on-chain AMM reserves snapshot, taken from /api/v1/economics. Tile shows a `stale` chip when the snapshot is older than the refresh budget; numbers still render from the last known values." />
                     </div>
-                    <div className="mt-1 space-y-1 font-mono text-[10px] text-ink-muted">
+                    <div className="mt-1 space-y-1 mg-type-data-sm text-ink-muted">
                       <div className="flex items-center gap-1.5">
                         <span
                           aria-hidden
@@ -292,7 +292,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                   </div>
                 </>
               ) : (
-                <div className="font-mono text-[10px] text-ink-muted">No pool data</div>
+                <div className="mg-type-data-sm text-ink-muted">No pool data</div>
               )}
             </div>
             <div className="flex items-center gap-4 p-4">
@@ -314,7 +314,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                   </div>
                 </>
               ) : (
-                <div className="font-mono text-[10px] text-ink-muted">No endpoints tracked</div>
+                <div className="mg-type-data-sm text-ink-muted">No endpoints tracked</div>
               )}
             </div>
             <div className="p-4">
@@ -336,14 +336,14 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                       >
                         {p.name}
                       </Link>
-                      <span className="ml-auto font-mono text-[10px] tabular-nums text-ink-muted">
+                      <span className="ml-auto mg-type-data-sm tabular-nums text-ink-muted">
                         {p.count}
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <div className="mt-2 font-mono text-[10px] text-ink-muted">
+                <div className="mt-2 mg-type-data-sm text-ink-muted">
                   No provider attribution yet.
                 </div>
               )}
@@ -399,7 +399,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
             {completenessPct != null ? (
               <div>
                 <div className="flex items-baseline justify-between mb-1">
-                  <span className="font-mono text-[10px] text-ink-muted">Completeness</span>
+                  <span className="mg-type-data-sm text-ink-muted">Completeness</span>
                   <span className="font-display text-sm font-semibold tabular-nums text-ink-strong">
                     {completenessPct}%
                   </span>
@@ -418,7 +418,7 @@ export function SubnetProfilePanel({ netuid }: { netuid: number }) {
                 </div>
               </div>
             ) : null}
-            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono text-ink-muted">
+            <div className="flex flex-wrap items-center gap-1.5 mg-type-data-sm text-ink-muted">
               {profile?.coverage_level ? (
                 <span className="rounded border border-border bg-surface/50 px-1.5 py-0.5 uppercase tracking-wider">
                   {profile.coverage_level}

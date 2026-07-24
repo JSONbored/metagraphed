@@ -91,7 +91,7 @@ export function IncidentStrip() {
     <div
       role="alert"
       className={classNames(
-        "border-b text-[12px] mg-fade-in",
+        "border-b mg-type-caption mg-fade-in",
         isDown
           ? "bg-health-down/10 border-health-down/30 text-ink-strong"
           : "bg-health-warn/10 border-health-warn/30 text-ink-strong",

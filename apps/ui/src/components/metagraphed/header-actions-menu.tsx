@@ -40,7 +40,7 @@ export function HeaderActionsMenu() {
                 setMenuOpen(false);
                 open();
               }}
-              className="w-full flex items-center gap-2 rounded border border-border bg-card px-2 py-2 text-left text-[12px] text-ink hover:border-ink/30 hover:text-ink-strong transition-colors min-h-9"
+              className="w-full flex items-center gap-2 rounded border border-border bg-card px-2 py-2 text-left mg-type-caption text-ink hover:border-ink/30 hover:text-ink-strong transition-colors min-h-9"
             >
               <Code2 className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
               <span>View API source</span>
@@ -49,7 +49,7 @@ export function HeaderActionsMenu() {
           <Link
             to="/settings"
             onClick={() => setMenuOpen(false)}
-            className="w-full flex items-center gap-2 rounded border border-border bg-card px-2 py-2 text-left text-[12px] text-ink hover:border-ink/30 hover:text-ink-strong transition-colors min-h-9"
+            className="w-full flex items-center gap-2 rounded border border-border bg-card px-2 py-2 text-left mg-type-caption text-ink hover:border-ink/30 hover:text-ink-strong transition-colors min-h-9"
           >
             <Webhook className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
             <span>Developer settings</span>

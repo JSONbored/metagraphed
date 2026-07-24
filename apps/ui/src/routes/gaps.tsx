@@ -429,9 +429,7 @@ function MissingKindsAtAGlance() {
                   style={{ width: `${pct}%` }}
                   aria-hidden
                 />
-                <span className="font-mono text-[11px] tabular-nums text-ink-muted">
-                  {n} subnets
-                </span>
+                <span className="mg-type-data tabular-nums text-ink-muted">{n} subnets</span>
               </button>
             </li>
           );
@@ -550,7 +548,7 @@ function OpenGapsSection() {
           value={search.q}
           onChange={(e) => setSearch({ q: e.target.value })}
           placeholder="Search title, description, netuid…"
-          className="w-full rounded-full border border-border bg-card pl-8 pr-3 py-1.5 text-[12px] focus:outline-none focus:border-accent/50"
+          className="w-full rounded-full border border-border bg-card pl-8 pr-3 py-1.5 mg-type-caption focus:outline-none focus:border-accent/50"
           aria-label="Search gaps"
         />
       </div>
@@ -576,7 +574,7 @@ function OpenGapsSection() {
         active={hasFilters}
         onReset={() => navigate({ search: {} as never, replace: true })}
       />
-      <span className="ml-auto font-mono text-[10px] text-ink-muted">
+      <span className="ml-auto mg-type-data-sm text-ink-muted">
         {sorted.length} of {rows.length}
       </span>
     </>
@@ -618,7 +616,7 @@ function OpenGapsSection() {
       </div>
 
       {missingSet.size > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-accent/30 bg-primary-soft/40 px-3 py-2 font-mono text-[11px] text-ink-strong">
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-accent/30 bg-primary-soft/40 px-3 py-2 mg-type-data text-ink-strong">
           <span className="mg-type-micro text-ink-muted">filtered by missing kind:</span>
           {Array.from(missingSet).map((k) => (
             <span
@@ -760,7 +758,7 @@ function GapRow({
             <Link
               to="/subnets/$netuid"
               params={{ netuid: gap.netuid }}
-              className="inline-flex items-center gap-1.5 font-mono text-[10px] text-accent hover:underline"
+              className="inline-flex items-center gap-1.5 mg-type-data-sm text-accent hover:underline"
             >
               <BrandIcon
                 url={subnet?.website}
@@ -781,12 +779,12 @@ function GapRow({
         </div>
         <div className="font-medium text-ink-strong">{gap.title ?? gap.id}</div>
         {gap.description ? (
-          <p className="mt-1 text-[13px] text-ink-muted leading-relaxed line-clamp-2">
+          <p className="mt-1 mg-type-caption-lg text-ink-muted leading-relaxed line-clamp-2">
             {gap.description}
           </p>
         ) : null}
         {gap.suggested_action ? (
-          <p className="mt-1.5 text-[12px] text-ink">↳ {gap.suggested_action}</p>
+          <p className="mt-1.5 mg-type-caption text-ink">↳ {gap.suggested_action}</p>
         ) : null}
         {matchedKind && (rawSources.length > 0 || gap.netuid != null) ? (
           <div className="mg-type-micro mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-muted">
@@ -911,7 +909,7 @@ function CompletenessList() {
           <Link
             to="/subnets/$netuid"
             params={{ netuid: r.netuid }}
-            className="font-mono text-[11px] text-ink-muted hover:text-accent w-12"
+            className="mg-type-data text-ink-muted hover:text-accent w-12"
           >
             SN{r.netuid}
           </Link>
@@ -921,7 +919,7 @@ function CompletenessList() {
               style={{ width: `${Math.round((r.completeness ?? 0) * 100)}%` }}
             />
           </div>
-          <span className="font-mono text-[11px] text-ink-strong w-10 text-right tabular-nums">
+          <span className="mg-type-data text-ink-strong w-10 text-right tabular-nums">
             {Math.round((r.completeness ?? 0) * 100)}%
           </span>
         </li>
@@ -955,21 +953,18 @@ function AdapterCandidates() {
             <Link
               to="/subnets/$netuid"
               params={{ netuid: r.netuid }}
-              className="font-mono text-[11px] text-ink-muted hover:text-accent w-12"
+              className="mg-type-data text-ink-muted hover:text-accent w-12"
             >
               SN{r.netuid}
             </Link>
           ) : (
-            <span className="font-mono text-[11px] text-ink-muted w-12">—</span>
+            <span className="mg-type-data text-ink-muted w-12">—</span>
           )}
-          <span className="flex-1 text-[13px] text-ink">
+          <span className="flex-1 mg-type-caption-lg text-ink">
             {r.reason ?? <span className="text-ink-muted">No recommendation recorded</span>}
           </span>
           {r.score != null ? (
-            <span
-              className="font-mono text-[11px] text-ink-strong tabular-nums"
-              title="Priority score"
-            >
+            <span className="mg-type-data text-ink-strong tabular-nums" title="Priority score">
               {Math.round(r.score)}
             </span>
           ) : null}
@@ -1008,8 +1003,8 @@ function EnrichmentQueue() {
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">{r.id}</td>
-                <td className="px-4 py-2.5 font-mono text-[11px]">
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">{r.id}</td>
+                <td className="px-4 py-2.5 mg-type-data">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -1022,8 +1017,8 @@ function EnrichmentQueue() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px]">{r.priority ?? "—"}</td>
-                <td className="px-4 py-2.5 text-[12px] text-ink-muted">{r.note ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-data">{r.priority ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">{r.note ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -1066,7 +1061,7 @@ function EnrichmentTargets() {
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 font-mono text-[11px]">
+                <td className="px-4 py-2.5 mg-type-data">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -1079,15 +1074,11 @@ function EnrichmentTargets() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-[12px] text-ink-strong">{r.name ?? "—"}</td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {r.targetType ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {r.targetAction ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 font-mono text-[11px]">{r.priority ?? "—"}</td>
-                <td className="px-4 py-2.5 text-[12px] text-ink-muted">{r.note ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-caption text-ink-strong">{r.name ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">{r.targetType ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">{r.targetAction ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-data">{r.priority ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">{r.note ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -1131,7 +1122,7 @@ function EnrichmentEvidence() {
           <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.id} className="mg-row-hover">
-                <td className="px-4 py-2.5 font-mono text-[11px]">
+                <td className="px-4 py-2.5 mg-type-data">
                   {r.netuid != null ? (
                     <Link
                       to="/subnets/$netuid"
@@ -1144,19 +1135,17 @@ function EnrichmentEvidence() {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
-                  {r.lane ?? "—"}
-                </td>
-                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">{r.lane ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-data text-ink-muted">
                   {r.evidenceAction ?? "—"}
                 </td>
-                <td className="px-4 py-2.5 text-[12px] text-ink-muted">
+                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">
                   {r.missingKinds.length > 0 ? r.missingKinds.join(", ") : "—"}
                 </td>
-                <td className="px-4 py-2.5 text-[12px] text-ink-muted">
+                <td className="px-4 py-2.5 mg-type-caption text-ink-muted">
                   {r.directSubmissionKinds.length > 0 ? r.directSubmissionKinds.join(", ") : "—"}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-[11px]">{r.priority ?? "—"}</td>
+                <td className="px-4 py-2.5 mg-type-data">{r.priority ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -1195,21 +1184,21 @@ function GapPriorityList() {
             <Link
               to="/subnets/$netuid"
               params={{ netuid: r.netuid }}
-              className="font-mono text-[11px] text-ink-muted hover:text-accent w-12 shrink-0"
+              className="mg-type-data text-ink-muted hover:text-accent w-12 shrink-0"
             >
               SN{r.netuid}
             </Link>
           ) : (
-            <span className="font-mono text-[11px] text-ink-muted w-12 shrink-0">—</span>
+            <span className="mg-type-data text-ink-muted w-12 shrink-0">—</span>
           )}
-          <span className="flex-1 text-[13px] text-ink truncate">{r.name ?? "—"}</span>
+          <span className="flex-1 mg-type-caption-lg text-ink truncate">{r.name ?? "—"}</span>
           <CurationChip level={r.curation_level} />
           <span className="hidden sm:block max-w-[240px] truncate text-[11px] text-ink-muted">
             {r.missing_kinds && r.missing_kinds.length > 0 ? r.missing_kinds.join(", ") : "—"}
           </span>
           {r.priority_score != null ? (
             <span
-              className="font-mono text-[11px] text-ink-strong tabular-nums shrink-0"
+              className="mg-type-data text-ink-strong tabular-nums shrink-0"
               title="Priority score"
             >
               {Math.round(r.priority_score)}

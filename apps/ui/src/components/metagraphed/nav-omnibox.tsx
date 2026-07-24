@@ -411,7 +411,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                     >
                       <r.Icon className="size-3.5 shrink-0 text-ink-muted group-hover/jump:text-accent transition-colors" />
                       <span className="min-w-0">
-                        <span className="block text-[12px] font-medium text-ink-strong truncate">
+                        <span className="block mg-type-caption font-medium text-ink-strong truncate">
                           {r.label}
                         </span>
                         <span className="block text-[10px] text-ink-muted truncate">{r.hint}</span>
@@ -454,13 +454,13 @@ export function NavOmnibox({ onOpenPalette }: Props) {
               ) : null}
 
               <div className="px-3 py-2 border-t border-border flex items-center justify-between">
-                <span className="font-mono text-[10px] text-ink-muted">
+                <span className="mg-type-data-sm text-ink-muted">
                   <Kbd>↑</Kbd> <Kbd>↓</Kbd> navigate · <Kbd>↵</Kbd> open
                 </span>
                 <button
                   type="button"
                   onClick={onOpenPalette}
-                  className="inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted hover:text-ink-strong transition-colors"
+                  className="inline-flex items-center gap-1 mg-type-data-sm text-ink-muted hover:text-ink-strong transition-colors"
                 >
                   Full search
                   <ArrowRight className="size-2.5" />
@@ -499,7 +499,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                           <span className="block text-sm font-medium text-ink-strong">
                             {n.label}
                           </span>
-                          <span className="block font-mono text-[10px] text-ink-muted truncate">
+                          <span className="block mg-type-data-sm text-ink-muted truncate">
                             {n.hint}
                           </span>
                         </span>
@@ -514,11 +514,9 @@ export function NavOmnibox({ onOpenPalette }: Props) {
 
               {/* Search hits */}
               {isFetching && hits.length === 0 ? (
-                <div className="px-3 py-4 text-center font-mono text-[11px] text-ink-muted">
-                  Searching…
-                </div>
+                <div className="px-3 py-4 text-center mg-type-data text-ink-muted">Searching…</div>
               ) : hits.length === 0 && navTargets.length === 0 ? (
-                <div className="px-3 py-4 text-center font-mono text-[11px] text-ink-muted">
+                <div className="px-3 py-4 text-center mg-type-data text-ink-muted">
                   No results. Try pasting a wallet address, block number, or tx hash.
                 </div>
               ) : hits.length > 0 ? (
@@ -555,7 +553,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                                 <span className="block text-sm text-ink-strong truncate">
                                   {h.title ?? h.url ?? h.id}
                                 </span>
-                                <span className="block font-mono text-[10px] text-ink-muted truncate">
+                                <span className="block mg-type-data-sm text-ink-muted truncate">
                                   {h.netuid != null
                                     ? `netuid ${h.netuid}`
                                     : (h.slug ?? h.url ?? "")}
@@ -590,7 +588,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                       Filter /subnets by{" "}
                       <span className="font-mono text-accent-text">"{debounced}"</span>
                     </span>
-                    <span className="ml-auto font-mono text-[10px] text-ink-muted">
+                    <span className="ml-auto mg-type-data-sm text-ink-muted">
                       <Kbd>↵</Kbd>
                     </span>
                   </button>

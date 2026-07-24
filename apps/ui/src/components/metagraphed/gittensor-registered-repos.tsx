@@ -51,7 +51,7 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="mg-type-micro text-ink-muted">Registered repositories</span>
         {total ? (
-          <span className="shrink-0 font-mono text-[10px] text-ink-muted tabular-nums">
+          <span className="shrink-0 mg-type-data-sm text-ink-muted tabular-nums">
             {total} total
           </span>
         ) : null}
@@ -69,13 +69,13 @@ export function GittensorRegisteredRepos({ slug }: { slug: string }) {
                 className="mg-row-hover flex items-center justify-between gap-2 rounded-md px-2 py-1.5"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="w-4 shrink-0 text-right font-mono text-[10px] text-ink-muted tabular-nums">
+                  <span className="w-4 shrink-0 text-right mg-type-data-sm text-ink-muted tabular-nums">
                     {i + 1}
                   </span>
                   <BrandIcon size={18} name={row.repository} repoUrl={repoUrl} fallback={i + 1} />
                   <span className="truncate text-sm text-ink-strong">{row.repository}</span>
                 </span>
-                <span className="shrink-0 font-mono text-[12px] tabular-nums text-ink-muted">
+                <span className="shrink-0 font-mono mg-type-caption tabular-nums text-ink-muted">
                   {sharePct !== null ? `${sharePct.toFixed(1)}%` : "—"}
                 </span>
               </a>

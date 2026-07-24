@@ -93,7 +93,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
 
             <Panel as="div" dense className="mt-6">
               <div className="mg-label">Error message</div>
-              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-paper p-2 font-mono text-[12px] text-ink">
+              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-paper p-2 font-mono mg-type-caption text-ink">
                 {message || "Unknown error"}
               </pre>
             </Panel>

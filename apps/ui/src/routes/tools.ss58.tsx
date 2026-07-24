@@ -123,7 +123,7 @@ function Ss58ToolPage() {
               <dd className="text-health-ok">Valid</dd>
             </dl>
             {decoded.format !== DEFAULT_SS58_FORMAT ? (
-              <p className="mt-3 text-[13px] text-ink-muted">
+              <p className="mt-3 mg-type-caption-lg text-ink-muted">
                 This is a well-formed SS58 address, but its network prefix ({decoded.format}) is not
                 Bittensor&apos;s ({DEFAULT_SS58_FORMAT}) — it belongs to
                 {KNOWN_FORMATS[decoded.format]
@@ -136,7 +136,7 @@ function Ss58ToolPage() {
           </ResultCard>
         ) : null}
 
-        <Panel as="section" flush bodyClassName="text-[13px] leading-relaxed text-ink-muted">
+        <Panel as="section" flush bodyClassName="mg-type-caption-lg leading-relaxed text-ink-muted">
           <div className="p-4">
             <h2 className="mb-2 font-display text-sm font-semibold text-ink-strong">
               How this works
@@ -194,7 +194,7 @@ function ResultCard({
         />
         <h2 className="font-display text-sm font-semibold text-ink-strong">{title}</h2>
       </div>
-      <div className="mt-2.5 text-[13px] leading-relaxed text-ink-muted">{children}</div>
+      <div className="mt-2.5 mg-type-caption-lg leading-relaxed text-ink-muted">{children}</div>
     </div>
   );
 }

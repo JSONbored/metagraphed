@@ -49,7 +49,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
               Score distribution
             </h3>
           </div>
-          <div className="flex items-center gap-3 font-mono text-[10px] text-ink-muted">
+          <div className="flex items-center gap-3 mg-type-data-sm text-ink-muted">
             {cov.median_score != null ? <Stat label="p50" value={`${cov.median_score}`} /> : null}
             {cov.average_score != null ? <Stat label="μ" value={`${cov.average_score}`} /> : null}
             <InfoTooltip label="Per-subnet completeness_score (0–100) bucketed by /api/v1/registry/summary. The rightmost bin (100) is the fully-complete set." />
@@ -103,7 +103,7 @@ export function RegistryScoreHistogram({ className }: { className?: string }) {
             );
           })}
         </svg>
-        <p className="mt-1 font-mono text-[10px] text-ink-muted">
+        <p className="mt-1 mg-type-data-sm text-ink-muted">
           {scored != null ? `${scored} subnets scored.` : ""} Each bin is a completeness band; the
           goal is to push the registry rightward.
         </p>
@@ -177,7 +177,7 @@ export function DimensionCoverageHeatmap({ className }: { className?: string }) 
           <InfoTooltip label="Share of subnets with at least one surface of each kind, registry-wide (/api/v1/registry/summary). Green ≥75%, amber/red are the enrichment frontier." />
         </header>
         <BarMini data={data} max={100} showValue />
-        <div className="mt-3 flex items-center justify-between font-mono text-[10px] text-ink-muted">
+        <div className="mt-3 flex items-center justify-between mg-type-data-sm text-ink-muted">
           <span>% of {subnetCount ?? "all"} subnets covered</span>
           <span className="inline-flex items-center gap-2">
             <Swatch color="var(--health-ok)" label="≥75" />
@@ -304,14 +304,14 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
   const tone = SEVERITY_TONE[row.severity ?? ""] ?? "text-ink-muted border-border";
   return (
     <tr className="mg-row-hover">
-      <td className="px-3 py-2.5 font-mono text-[11px] tabular-nums text-ink-muted">{row.rank}</td>
+      <td className="px-3 py-2.5 mg-type-data tabular-nums text-ink-muted">{row.rank}</td>
       <td className="px-3 py-2.5">
         <Link
           to="/subnets/$netuid"
           params={{ netuid: row.netuid }}
           className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
         >
-          <span className="font-mono text-[11px] text-ink-muted">
+          <span className="mg-type-data text-ink-muted">
             #{String(row.netuid).padStart(3, "0")}
           </span>
           <span className="truncate">{row.name ?? `Subnet ${row.netuid}`}</span>
@@ -331,13 +331,13 @@ function QueueRow({ row }: { row: CoverageDepthQueueRow }) {
           "—"
         )}
       </td>
-      <td className="px-3 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-strong">
+      <td className="px-3 py-2.5 text-right mg-type-data tabular-nums text-ink-strong">
         {row.priority_score ?? "—"}
       </td>
-      <td className="px-3 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink-muted">
+      <td className="px-3 py-2.5 text-right mg-type-data tabular-nums text-ink-muted">
         {row.score ?? "—"}
       </td>
-      <td className="px-3 py-2.5 text-[12px] text-ink">
+      <td className="px-3 py-2.5 mg-type-caption text-ink">
         <span className="line-clamp-1" title={row.recommended_next_action}>
           {row.recommended_next_action ?? "—"}
         </span>

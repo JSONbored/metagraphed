@@ -137,7 +137,7 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
           <Filter className="size-3" />
           <span className="hidden sm:inline">Filters</span>
           {activeCount > 0 ? (
-            <span className="rounded-full bg-accent/15 px-1.5 font-mono text-[10px] text-accent-text">
+            <span className="rounded-full bg-accent/15 px-1.5 mg-type-data-sm text-accent-text">
               {activeCount}
             </span>
           ) : null}
@@ -157,7 +157,7 @@ function FiltersTrigger({ filter }: { filter: ReturnType<typeof useSubnetFilter>
                 onClick={() => filter.toggle(s)}
                 aria-pressed={active}
                 className={classNames(
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors",
+                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 mg-type-caption font-medium transition-colors",
                   active
                     ? "border-accent bg-accent/10 text-ink-strong"
                     : "border-border bg-card text-ink-muted hover:text-ink-strong",
@@ -365,16 +365,14 @@ function EndpointsView({
           <li key={g.kind}>
             <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/30">
               <span className="mg-type-micro text-ink-strong">{KIND_LABEL[g.kind] ?? g.kind}</span>
-              <span className="font-mono text-[10px] text-ink-muted tabular-nums">
-                {g.items.length}
-              </span>
+              <span className="mg-type-data-sm text-ink-muted tabular-nums">{g.items.length}</span>
             </div>
             <ul>
               {g.items.slice(0, 5).map((e) => (
                 <EndpointRow key={e.id} e={e} />
               ))}
               {g.items.length > 5 ? (
-                <li className="px-4 py-1.5 font-mono text-[10px] text-ink-muted">
+                <li className="px-4 py-1.5 mg-type-data-sm text-ink-muted">
                   + {g.items.length - 5} more — open the Endpoints tab
                 </li>
               ) : null}
@@ -396,22 +394,22 @@ function EndpointRow({ e }: { e: Endpoint }) {
         <Tooltip delayDuration={200}>
           <TooltipTrigger asChild>
             <div className="flex items-baseline gap-1 min-w-0 cursor-default">
-              <span className="font-mono text-[12px] text-ink-strong truncate">{host(e.url)}</span>
+              <span className="font-mono mg-type-caption text-ink-strong truncate">
+                {host(e.url)}
+              </span>
               {pathOf(e.url) ? (
-                <span className="font-mono text-[11px] text-ink-muted truncate">
-                  {pathOf(e.url)}
-                </span>
+                <span className="mg-type-data text-ink-muted truncate">{pathOf(e.url)}</span>
               ) : null}
             </div>
           </TooltipTrigger>
           {e.url ? (
-            <TooltipContent side="top" className="max-w-md break-all font-mono text-[11px]">
+            <TooltipContent side="top" className="max-w-md break-all mg-type-data">
               {e.url}
             </TooltipContent>
           ) : null}
         </Tooltip>
         {e.provider || e.region ? (
-          <div className="mt-0.5 flex items-center gap-2 font-mono text-[10px] text-ink-muted">
+          <div className="mt-0.5 flex items-center gap-2 mg-type-data-sm text-ink-muted">
             {e.provider ? (
               <Link
                 to="/providers/$slug"
@@ -425,10 +423,10 @@ function EndpointRow({ e }: { e: Endpoint }) {
           </div>
         ) : null}
       </div>
-      <span className="font-mono text-[10px] text-ink-muted tabular-nums">
+      <span className="mg-type-data-sm text-ink-muted tabular-nums">
         {e.latency_ms != null ? `${e.latency_ms}ms` : "—"}
       </span>
-      <span className="hidden sm:inline font-mono text-[10px] text-ink-muted">
+      <span className="hidden sm:inline mg-type-data-sm text-ink-muted">
         <TimeAgo at={e.last_probed_at} />
       </span>
       <div className="inline-flex items-center gap-0.5">
@@ -581,16 +579,14 @@ function SurfacesView({
           <li key={kind}>
             <div className="flex items-center gap-2 px-4 py-1.5 bg-surface/30">
               <span className="mg-type-micro text-ink-strong">{kind}</span>
-              <span className="font-mono text-[10px] text-ink-muted tabular-nums">
-                {items.length}
-              </span>
+              <span className="mg-type-data-sm text-ink-muted tabular-nums">{items.length}</span>
             </div>
             <ul>
               {items.slice(0, 4).map((s) => (
                 <SurfaceRow key={s.id} s={s} />
               ))}
               {items.length > 4 ? (
-                <li className="px-4 py-1.5 font-mono text-[10px] text-ink-muted">
+                <li className="px-4 py-1.5 mg-type-data-sm text-ink-muted">
                   + {items.length - 4} more
                 </li>
               ) : null}
@@ -609,7 +605,7 @@ function SurfaceRow({ s }: { s: Surface }) {
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 mg-row-hover">
       <div className="min-w-0">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="truncate text-[12px] font-medium text-ink-strong">
+          <span className="truncate mg-type-caption font-medium text-ink-strong">
             {s.name ?? s.url}
           </span>
           <CurationChip level={s.curation_level} />
@@ -623,25 +619,25 @@ function SurfaceRow({ s }: { s: Surface }) {
                   href={safeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-0.5 block truncate font-mono text-[11px] text-ink-muted hover:text-ink-strong"
+                  className="mt-0.5 block truncate mg-type-data text-ink-muted hover:text-ink-strong"
                 >
                   {host(s.url)}
                   {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
                 </a>
               ) : (
-                <span className="mt-0.5 block cursor-not-allowed truncate font-mono text-[11px] text-ink-muted/50">
+                <span className="mt-0.5 block cursor-not-allowed truncate mg-type-data text-ink-muted/50">
                   {host(s.url)}
                   {pathOf(s.url) ? <span className="opacity-70">{pathOf(s.url)}</span> : null}
                 </span>
               )}
             </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-md break-all font-mono text-[11px]">
+            <TooltipContent side="top" className="max-w-md break-all mg-type-data">
               {safeUrl ? s.url : "Blocked unsafe URL"}
             </TooltipContent>
           </Tooltip>
         ) : null}
       </div>
-      <span className="font-mono text-[10px] text-ink-muted">
+      <span className="mg-type-data-sm text-ink-muted">
         <TimeAgo at={s.updated_at} />
       </span>
     </li>

@@ -235,7 +235,7 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
               ariaLabel="Daily account activity history"
               formatValue={eventCountLabel}
             />
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-ink-muted">
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 mg-type-data text-ink-muted">
               <span>
                 {scope === "all" ? "aggregated across subnets" : `filtered to SN${scope}`}
               </span>

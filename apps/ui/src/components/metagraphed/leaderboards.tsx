@@ -106,7 +106,7 @@ function BoardCard({
               className="mg-row-hover flex items-center justify-between gap-2 rounded-md px-2 py-1.5"
             >
               <span className="flex min-w-0 items-center gap-2">
-                <span className="w-4 shrink-0 text-right font-mono text-[10px] text-ink-muted tabular-nums">
+                <span className="w-4 shrink-0 text-right mg-type-data-sm text-ink-muted tabular-nums">
                   {i + 1}
                 </span>
                 <BrandIcon
@@ -120,7 +120,7 @@ function BoardCard({
                   {row.name ?? `Subnet ${row.netuid}`}
                 </span>
               </span>
-              <span className="shrink-0 font-mono text-[12px] tabular-nums text-ink-muted">
+              <span className="shrink-0 font-mono mg-type-caption tabular-nums text-ink-muted">
                 {metric(row) ?? "—"}
               </span>
             </Link>

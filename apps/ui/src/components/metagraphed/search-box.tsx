@@ -39,7 +39,7 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
   const content = (
     <div className="flex items-center justify-between gap-3 px-3 py-2.5">
       <div className="min-w-0">
-        <p className="truncate text-[13px] text-ink-strong">{resultLabel(result)}</p>
+        <p className="truncate mg-type-caption-lg text-ink-strong">{resultLabel(result)}</p>
         {result.subtitle ? (
           <p className="truncate text-[11px] text-ink-muted">{result.subtitle}</p>
         ) : null}
@@ -48,7 +48,7 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-ink-muted"
+                className="rounded border border-border px-1.5 py-0.5 mg-type-data-sm text-ink-muted"
               >
                 {tag}
               </span>
@@ -56,7 +56,7 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
           </div>
         ) : null}
       </div>
-      <span className="shrink-0 font-mono text-[10px] text-ink-muted">{resultMeta(result)}</span>
+      <span className="shrink-0 mg-type-data-sm text-ink-muted">{resultMeta(result)}</span>
     </div>
   );
 
@@ -78,7 +78,9 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
 
 function SearchResults({ results }: { results: SemanticSearchResult[] }) {
   if (results.length === 0) {
-    return <p className="mt-3 text-[12px] text-ink-muted">No matches — try a different phrase.</p>;
+    return (
+      <p className="mt-3 mg-type-caption text-ink-muted">No matches — try a different phrase.</p>
+    );
   }
   return (
     <ul className="mt-4 divide-y divide-border rounded-lg border border-border bg-card">
@@ -117,14 +119,14 @@ export function SearchBox() {
             placeholder="video generation"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-[13px] text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 mg-type-caption-lg text-ink placeholder:text-ink-muted focus:outline-none focus:border-ink/30"
           />
         </label>
         <button
           type="submit"
           disabled={isFetching || !query.trim()}
           className={classNames(
-            "shrink-0 rounded-lg border border-accent/40 bg-accent/10 px-4 py-2 text-[13px] font-medium text-accent hover:bg-accent/15",
+            "shrink-0 rounded-lg border border-accent/40 bg-accent/10 px-4 py-2 mg-type-caption-lg font-medium text-accent hover:bg-accent/15",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >
@@ -133,7 +135,7 @@ export function SearchBox() {
       </form>
 
       {isError ? (
-        <p role="alert" className="mt-3 font-mono text-[12px] text-health-warn">
+        <p role="alert" className="mt-3 font-mono mg-type-caption text-health-warn">
           {describeSearchError(error)}
         </p>
       ) : null}

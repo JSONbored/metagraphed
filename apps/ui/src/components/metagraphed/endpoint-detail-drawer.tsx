@@ -111,7 +111,7 @@ export function EndpointDetailDrawer({
           <div className="flex items-center gap-1.5 min-w-0">
             {endpoint.url ? (
               <>
-                <ExternalLink href={endpoint.url} className="truncate font-mono text-[12px]">
+                <ExternalLink href={endpoint.url} className="truncate font-mono mg-type-caption">
                   {endpoint.url}
                 </ExternalLink>
                 <CopyButton value={endpoint.url} label="URL" />
@@ -122,7 +122,7 @@ export function EndpointDetailDrawer({
                 />
               </>
             ) : (
-              <span className="font-mono text-[12px] text-ink-muted">no url</span>
+              <span className="font-mono mg-type-caption text-ink-muted">no url</span>
             )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -149,7 +149,7 @@ export function EndpointDetailDrawer({
                 samples as you monitor the endpoint.
               </p>
             </div>
-            <span className="font-mono text-[11px] text-ink-strong">
+            <span className="mg-type-data text-ink-strong">
               {endpoint.latency_ms != null ? `${endpoint.latency_ms}ms latest` : "No latest sample"}
             </span>
           </div>
@@ -178,9 +178,7 @@ export function EndpointDetailDrawer({
               .map((p, index) => (
                 <div key={`${p.t}-${index}`} className="min-w-0 border-l border-border pl-2">
                   <div className="mg-label">{index === 0 ? "Latest" : `Prior ${index}`}</div>
-                  <div className="mt-1 font-mono text-[11px] text-ink-strong">
-                    {Math.round(p.v)}ms
-                  </div>
+                  <div className="mt-1 mg-type-data text-ink-strong">{Math.round(p.v)}ms</div>
                   <div className="mt-0.5 truncate font-mono text-[9px] text-ink-muted">
                     {new Date(p.t).toLocaleString()}
                   </div>
@@ -194,7 +192,7 @@ export function EndpointDetailDrawer({
             <div id={`incidents-${endpoint.id}`} className="mg-label">
               Incident timeline
             </div>
-            <span className="font-mono text-[10px] text-ink-muted tabular-nums">
+            <span className="mg-type-data-sm text-ink-muted tabular-nums">
               {allRows.length} total
             </span>
           </div>
@@ -270,11 +268,11 @@ export function EndpointDetailDrawer({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="font-mono text-[11px] text-ink-strong">
+                        <span className="mg-type-data text-ink-strong">
                           {String(inc.state ?? "incident")}
                         </span>
                         <span className="flex items-center gap-1">
-                          <span className="font-mono text-[10px] text-ink-muted tabular-nums">
+                          <span className="mg-type-data-sm text-ink-muted tabular-nums">
                             {inc.started_at ? new Date(inc.started_at).toLocaleString() : "—"}
                           </span>
                           <CopyLinkButton
@@ -289,7 +287,7 @@ export function EndpointDetailDrawer({
                           {inc.message}
                         </div>
                       ) : null}
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-[10px] text-ink-subtle-text">
+                      <div className="mt-0.5 flex flex-wrap items-center gap-2 mg-type-data-sm text-ink-subtle-text">
                         <a
                           href={`#endpoint-${affected}`}
                           className="mg-focus-ring hover:text-accent-text"

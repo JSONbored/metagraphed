@@ -99,14 +99,14 @@ export function ErrorState({
           Couldn't load {context ?? "this data"}
         </span>
         {status ? (
-          <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-ink-muted">
+          <code className="rounded bg-surface px-1.5 py-0.5 mg-type-data-sm text-ink-muted">
             HTTP {status}
           </code>
         ) : null}
       </div>
       <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-ink-muted">{message}</p>
       {url ? (
-        <code className="mx-auto mt-1 block max-w-md truncate font-mono text-[10px] text-ink-muted">
+        <code className="mx-auto mt-1 block max-w-md truncate mg-type-data-sm text-ink-muted">
           {url}
         </code>
       ) : null}
@@ -175,7 +175,7 @@ export function EmptyState({
         <p className="mt-1 text-xs text-ink-muted max-w-md mx-auto">{description}</p>
       ) : null}
       {isUsableTimestamp(lastChecked) ? (
-        <div className="mt-2 font-mono text-[10px] text-ink-muted">
+        <div className="mt-2 mg-type-data-sm text-ink-muted">
           Last checked <TimeAgo at={lastChecked} />
         </div>
       ) : null}
@@ -242,7 +242,7 @@ export function StaleBanner({
   if (!hasTimestamp) {
     if (hideText) return null;
     return (
-      <p className="flex items-center gap-1.5 font-mono text-[10px] text-ink-muted">
+      <p className="flex items-center gap-1.5 mg-type-data-sm text-ink-muted">
         <Clock className="size-3 shrink-0" aria-hidden />
         Snapshot freshness unknown — verify before relying on this data.
       </p>
@@ -271,7 +271,7 @@ export function StaleBanner({
     <div
       role="status"
       aria-live="polite"
-      className={`flex items-center font-mono text-[10px] text-ink-muted ${
+      className={`flex items-center mg-type-data-sm text-ink-muted ${
         compact ? "gap-2" : "flex-wrap gap-x-3 gap-y-1.5"
       }`}
     >

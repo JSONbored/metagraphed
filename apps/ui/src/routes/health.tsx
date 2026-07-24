@@ -484,7 +484,7 @@ function StatusBoard({ interval }: { interval: number | false }) {
           </div>
         </BoardCard>
       </div>
-      <div className="text-[11px] font-mono text-ink-muted">
+      <div className="mg-type-data text-ink-muted">
         snapshot <TimeAgo at={hRes.meta?.generated_at} />
       </div>
     </div>
@@ -556,7 +556,7 @@ function SourceHealth({ interval }: { interval: number | false }) {
               <td className="px-4 py-3">
                 <HealthPill state={s.ok === false ? "down" : s.ok ? "ok" : "unknown"} />
               </td>
-              <td className="px-4 py-3 text-right font-mono text-[11px] text-ink-muted">
+              <td className="px-4 py-3 text-right mg-type-data text-ink-muted">
                 <TimeAgo at={s.last_seen} />
               </td>
             </tr>
@@ -727,7 +727,7 @@ function Incidents({ interval }: { interval: number | false }) {
             <span className="text-[10px] tabular-nums opacity-80">{opt.count}</span>
           </button>
         ))}
-        <span className="ml-auto font-mono text-[10px] text-ink-muted">
+        <span className="ml-auto mg-type-data-sm text-ink-muted">
           {groups.length} {groups.length === 1 ? "host" : "hosts"} · {filtered.length} incidents
         </span>
       </div>
@@ -758,7 +758,9 @@ function Incidents({ interval }: { interval: number | false }) {
                       <ChevronRight className="size-3.5 text-ink-muted shrink-0" />
                     )}
                     <HealthPill state={g.dominantState} />
-                    <span className="font-mono text-[12px] text-ink-strong truncate">{g.host}</span>
+                    <span className="font-mono mg-type-caption text-ink-strong truncate">
+                      {g.host}
+                    </span>
                     <span className="mg-type-micro ml-auto inline-flex items-center gap-2 text-[10px] text-ink-muted shrink-0">
                       {g.ongoing > 0 ? (
                         <span className="text-health-down">{g.ongoing} ongoing</span>

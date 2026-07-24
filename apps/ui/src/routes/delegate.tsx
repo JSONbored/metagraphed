@@ -90,8 +90,8 @@ function DelegatePage() {
                     {p.live ? "Live" : "Coming soon"}
                   </span>
                 </div>
-                <p className="mt-3 text-[13px] text-ink-muted leading-relaxed">{p.blurb}</p>
-                <div className="mt-4 inline-flex items-center gap-1.5 self-start rounded-full border border-accent/50 bg-primary-soft/50 px-3 py-1.5 text-[12px] font-medium text-ink-strong transition-colors group-hover:border-accent">
+                <p className="mt-3 mg-type-caption-lg text-ink-muted leading-relaxed">{p.blurb}</p>
+                <div className="mt-4 inline-flex items-center gap-1.5 self-start rounded-full border border-accent/50 bg-primary-soft/50 px-3 py-1.5 mg-type-caption font-medium text-ink-strong transition-colors group-hover:border-accent">
                   {p.live ? "Stake / redelegate" : "Open subnet"}
                   <ArrowUpRight className="size-3" />
                 </div>
@@ -104,7 +104,9 @@ function DelegatePage() {
       {/* Disclosure */}
       <section className="mt-10 rounded-xl border border-border mg-glass-soft p-4">
         <div className="mg-label mb-2">Disclosure</div>
-        <p className="text-[13px] text-ink-muted leading-relaxed">{PARTNER_ORG.disclosure}</p>
+        <p className="mg-type-caption-lg text-ink-muted leading-relaxed">
+          {PARTNER_ORG.disclosure}
+        </p>
       </section>
     </AppShell>
   );
@@ -119,7 +121,7 @@ function TrustCell({ icon, title, body }: { icon: React.ReactNode; title: string
         </span>
         <span className="mg-type-micro">{title}</span>
       </div>
-      <p className="mt-1.5 text-[12px] text-ink-muted leading-relaxed">{body}</p>
+      <p className="mt-1.5 mg-type-caption text-ink-muted leading-relaxed">{body}</p>
     </div>
   );
 }

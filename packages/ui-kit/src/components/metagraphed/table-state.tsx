@@ -105,12 +105,12 @@ export function TableState({
         </p>
       ) : null}
       {variant === "stale" && generatedAt ? (
-        <p className="mt-3 font-mono text-[11px] text-ink-muted">
+        <p className="mt-3 mg-type-data text-ink-muted">
           Last verified <TimeAgo at={generatedAt} />
         </p>
       ) : null}
       {message ? (
-        <p className="mx-auto mt-3 max-w-md font-mono text-[11px] text-ink-muted">
+        <p className="mx-auto mt-3 max-w-md mg-type-data text-ink-muted">
           {status ? (
             <span className="text-health-down">HTTP {status} · </span>
           ) : null}
@@ -123,7 +123,7 @@ export function TableState({
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3.5 py-1.5 text-[12px] font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-paper px-3.5 py-1.5 mg-type-caption font-medium text-ink hover:border-accent/50 hover:text-accent transition-colors"
             >
               <RefreshCw className="size-3" /> Retry
             </button>
@@ -134,7 +134,7 @@ export function TableState({
               {...(cta.external
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
-              className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-3.5 py-1.5 text-[12px] font-medium text-paper hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink-strong px-3.5 py-1.5 mg-type-caption font-medium text-paper hover:opacity-90 transition-opacity"
             >
               {cta.label}
               {cta.external ? <ExternalLinkIcon className="size-3" /> : null}
@@ -145,7 +145,7 @@ export function TableState({
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] font-mono text-ink-muted hover:text-ink-strong"
+              className="inline-flex items-center gap-1.5 mg-type-data text-ink-muted hover:text-ink-strong"
             >
               View API URL <ExternalLinkIcon className="size-3" />
             </a>

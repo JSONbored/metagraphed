@@ -87,7 +87,7 @@ export function ValidatorNominatorsTable({ queryOptions, search, setSearch }: Pr
   );
 
   const footerNode = (
-    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 text-[11px] font-mono text-ink-muted">
+    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 mg-type-data text-ink-muted">
       <span>
         {rows.length
           ? `${formatNumber(search.offset + 1)}–${formatNumber(search.offset + rows.length)}`
@@ -127,22 +127,22 @@ export function ValidatorNominatorsTable({ queryOptions, search, setSearch }: Pr
           <tbody className="divide-y divide-border">
             {rows.map((n) => (
               <tr key={n.coldkey} className="mg-row-accent hover:bg-surface/40">
-                <td className="px-4 py-2.5 font-mono text-[11px]">
+                <td className="px-4 py-2.5 mg-type-data">
                   <CopyableCode value={n.coldkey} className="max-w-full" />
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-strong">
+                <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
                   {taoCompact(n.net_staked_tao)}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink">
                   {taoCompact(n.gross_staked_tao)}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink-muted">
+                <td className="px-4 py-2.5 text-right font-mono mg-type-caption tabular-nums text-ink-muted">
                   {taoCompact(n.unstaked_tao)}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
                   {formatNumber(n.event_count)}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                <td className="px-4 py-2.5 text-right mg-type-data text-ink-muted">
                   <TimeAgo at={n.last_observed_at} />
                 </td>
               </tr>
@@ -160,11 +160,11 @@ function NominatorCard({ n }: { n: ValidatorNominatorEntry }) {
     <Panel as="div" dense className="block min-h-11">
       <div className="flex items-center justify-between gap-2">
         <CopyableCode value={n.coldkey} className="max-w-[70%]" />
-        <span className="font-mono text-[11px] text-ink-muted shrink-0">
+        <span className="mg-type-data text-ink-muted shrink-0">
           <TimeAgo at={n.last_observed_at} />
         </span>
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
+      <div className="mt-2 flex items-center justify-between gap-2 mg-type-data text-ink-muted">
         <span>net {taoCompact(n.net_staked_tao)}</span>
         <span>gross {taoCompact(n.gross_staked_tao)}</span>
         <span>{formatNumber(n.event_count)} events</span>

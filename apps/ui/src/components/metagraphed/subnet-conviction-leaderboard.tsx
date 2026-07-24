@@ -108,7 +108,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
   return (
     <div className="space-y-3">
       {data?.queried_at_block != null ? (
-        <p className="font-mono text-[11px] text-ink-muted">
+        <p className="mg-type-data text-ink-muted">
           Rolled forward to block #{formatNumber(data.queried_at_block)}
           {data.unlock_rate != null ? ` · unlock_rate ${formatNumber(data.unlock_rate)}` : ""}
           {data.maturity_rate != null ? ` · maturity_rate ${formatNumber(data.maturity_rate)}` : ""}
@@ -162,7 +162,7 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
                         {!isKing && gap != null ? (
                           <div
                             className={classNames(
-                              "flex items-center gap-1.5 font-mono text-[11px] tabular-nums",
+                              "flex items-center gap-1.5 mg-type-data tabular-nums",
                               tone?.className ?? "text-ink-muted",
                             )}
                           >
@@ -177,10 +177,10 @@ export function SubnetConvictionLeaderboard({ netuid }: { netuid: number }) {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 align-top text-right font-mono text-[12px] tabular-nums text-ink">
+                    <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums text-ink">
                       {fmtAlpha(entry.locked_mass)}
                     </td>
-                    <td className="px-4 py-2.5 align-top text-right font-mono text-[12px] tabular-nums text-ink-strong">
+                    <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums text-ink-strong">
                       {fmtAlpha(entry.conviction)}
                     </td>
                   </tr>

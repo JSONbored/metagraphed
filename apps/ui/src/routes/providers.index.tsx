@@ -439,7 +439,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                       />
                       <span className="min-w-0">
                         <span className="block truncate font-medium text-ink-strong">{f.name}</span>
-                        <span className="block truncate font-mono text-[10px] text-ink-muted">
+                        <span className="block truncate mg-type-data-sm text-ink-muted">
                           {p.slug}
                         </span>
                       </span>
@@ -455,7 +455,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                       </span>
                     ) : null}
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2 font-mono text-[11px] text-ink-muted">
+                  <div className="mt-2 flex items-center justify-between gap-2 mg-type-data text-ink-muted">
                     <span className="inline-flex min-w-0 items-center gap-2">
                       <span className="shrink-0">{f.kindLabel}</span>
                       {host ? <span className="max-w-[20ch] truncate">{host}</span> : null}
@@ -519,14 +519,10 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                           <span className="font-medium text-ink-strong truncate">
                             {p.name ?? p.slug}
                           </span>
-                          <span className="font-mono text-[10px] text-ink-muted truncate">
-                            {p.slug}
-                          </span>
+                          <span className="mg-type-data-sm text-ink-muted truncate">{p.slug}</span>
                         </Link>
                       </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-ink-muted">
-                        {p.kind ?? "—"}
-                      </td>
+                      <td className="px-3 py-2 mg-type-data text-ink-muted">{p.kind ?? "—"}</td>
                       <td className="px-3 py-2">
                         {p.authority ? (
                           <span
@@ -541,19 +537,19 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                           <span className="text-ink-muted">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-ink-muted truncate max-w-[22ch]">
+                      <td className="px-3 py-2 mg-type-data text-ink-muted truncate max-w-[22ch]">
                         {host ?? "—"}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                      <td className="px-3 py-2 text-right mg-type-data tabular-nums">
                         {c?.subnets ?? 0}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                      <td className="px-3 py-2 text-right mg-type-data tabular-nums">
                         {c?.surfaces ?? 0}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                      <td className="px-3 py-2 text-right mg-type-data tabular-nums">
                         {c?.endpoints ?? 0}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
+                      <td className="px-3 py-2 text-right mg-type-data text-ink-muted">
                         <div className="inline-flex items-center gap-1 justify-end">
                           <TimeAgo
                             at={typeof p.updated_at === "string" ? p.updated_at : undefined}
@@ -617,9 +613,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                             {p.name ?? p.slug}
                           </div>
                         </div>
-                        <div className="font-mono text-[10px] text-ink-muted truncate">
-                          {p.slug}
-                        </div>
+                        <div className="mg-type-data-sm text-ink-muted truncate">{p.slug}</div>
                       </div>
                     </div>
                     {p.authority ? (
@@ -634,7 +628,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                     ) : null}
                   </div>
                   {p.notes ? (
-                    <p className="mt-3 text-[12px] text-ink-muted leading-relaxed line-clamp-2">
+                    <p className="mt-3 mg-type-caption text-ink-muted leading-relaxed line-clamp-2">
                       {p.notes}
                     </p>
                   ) : null}
@@ -658,7 +652,7 @@ function ProvidersGrid({ view }: { view: "grid" | "table" }) {
                       </span>
                     ) : null}
                     {!webHost && !repoHost && !docsHost ? (
-                      <span className="font-mono text-[10px]">no public links yet</span>
+                      <span className="mg-type-data-sm">no public links yet</span>
                     ) : null}
                     <TimeAgo
                       at={typeof p.updated_at === "string" ? p.updated_at : undefined}
@@ -697,7 +691,7 @@ function ProviderCardStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
       <span className="mg-type-micro text-ink-muted">{label}</span>
-      <span className="font-mono text-[13px] tabular-nums text-ink-strong">{value}</span>
+      <span className="font-mono mg-type-caption-lg tabular-nums text-ink-strong">{value}</span>
     </div>
   );
 }
@@ -733,7 +727,7 @@ function SourceHealthRollup() {
       as="div"
       dense
       className="mt-3"
-      bodyClassName="flex flex-wrap items-center gap-4 font-mono text-[12px] tabular-nums"
+      bodyClassName="flex flex-wrap items-center gap-4 font-mono mg-type-caption tabular-nums"
     >
       <span className="mg-label">Source health</span>
       <span className="text-health-ok">{status.ok ?? 0} ok</span>

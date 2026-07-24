@@ -281,7 +281,7 @@ function ContractsList() {
               <div className="min-w-0">
                 <div className="font-display text-sm font-semibold text-ink-strong">{c.id}</div>
                 {c.description ? (
-                  <div className="font-mono text-[10px] text-ink-muted mt-0.5">{c.description}</div>
+                  <div className="mg-type-data-sm text-ink-muted mt-0.5">{c.description}</div>
                 ) : null}
               </div>
               <FileCode className="size-4 text-ink-muted shrink-0" />
@@ -442,12 +442,12 @@ function SchemaExplorer() {
                           {s.name ?? s.id}
                         </span>
                         {s.netuid != null ? (
-                          <span className="ml-auto font-mono text-[10px] text-ink-muted shrink-0">
+                          <span className="ml-auto mg-type-data-sm text-ink-muted shrink-0">
                             SN{s.netuid}
                           </span>
                         ) : null}
                       </div>
-                      <div className="font-mono text-[10px] text-ink-muted truncate mt-1">
+                      <div className="mg-type-data-sm text-ink-muted truncate mt-1">
                         {s.url ?? s.id}
                       </div>
                     </button>
@@ -522,13 +522,13 @@ function SchemaViewer({ schema }: { schema: SchemaInfo }) {
                 <Link
                   to="/subnets/$netuid"
                   params={{ netuid: schema.netuid }}
-                  className="font-mono text-[10px] text-accent hover:underline"
+                  className="mg-type-data-sm text-accent hover:underline"
                 >
                   SN{schema.netuid}
                 </Link>
               ) : null}
             </div>
-            <div className="font-mono text-[11px] text-ink-muted mt-1.5">
+            <div className="mg-type-data text-ink-muted mt-1.5">
               snapshot <TimeAgo at={schema.updated_at} />
             </div>
           </div>

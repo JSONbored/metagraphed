@@ -78,7 +78,7 @@ export function WhatChangedFeed({ className, limit = 10 }: { className?: string;
               Recent registry signal
             </h3>
           </div>
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted">
+          <span className="inline-flex items-center gap-1 mg-type-data-sm text-ink-muted">
             <Sparkles className="size-3" aria-hidden />
             live
           </span>
@@ -115,7 +115,7 @@ export function WhatChangedFeed({ className, limit = 10 }: { className?: string;
                         <span className="mg-type-micro text-ink-muted truncate">{it.detail}</span>
                       ) : null}
                       {it.at ? (
-                        <span className="font-mono text-[10px] text-ink-muted">
+                        <span className="mg-type-data-sm text-ink-muted">
                           <TimeAgo at={it.at} />
                         </span>
                       ) : null}

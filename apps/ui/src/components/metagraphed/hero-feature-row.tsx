@@ -197,13 +197,13 @@ function LiveSubnetRow({ sn }: { sn: Subnet }) {
         </div>
         <div className="shrink-0 flex flex-col items-end gap-0.5">
           <span
-            className="font-mono text-[11px] tabular-nums text-ink-strong"
+            className="mg-type-data tabular-nums text-ink-strong"
             title="Latest alpha price in TAO"
           >
             {closes.length ? `${formatAlpha(closes.at(-1)!)} τ` : "—"}
           </span>
           <span
-            className={`font-mono text-[10px] tabular-nums ${deltaTone}`}
+            className={`mg-type-data-sm tabular-nums ${deltaTone}`}
             title="Alpha price change over the last 7 days"
           >
             {deltaPct == null ? "—" : `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}%`}
