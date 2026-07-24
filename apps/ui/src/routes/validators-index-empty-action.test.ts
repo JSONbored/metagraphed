@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 // Source assertions: the empty branch only renders when the live feed is empty
 // (it isn't), so a rendered test can't reach it; this suite is node-environment.
 const validators = readFileSync(
-  fileURLToPath(new URL("./validators.index.tsx", import.meta.url)),
+  fileURLToPath(new URL("./-validators-index-page.tsx", import.meta.url)),
   "utf8",
 );
 const feed = readFileSync(

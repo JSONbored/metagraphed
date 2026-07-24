@@ -190,6 +190,11 @@ export default tseslint.config(
     ignores: [
       "src/components/metagraphed/primitives/**",
       "src/routes/design.primitives.tsx",
+      // -design-primitives-page.tsx (#7850): the showcase page's actual
+      // content, moved out of design.primitives.tsx so that file exports
+      // only Route (fast-refresh compliance) -- same authoritative-raw-
+      // values exemption as its route file above.
+      "src/routes/-design-primitives-page.tsx",
       // The one agreed `var(--health-*, <fallback-hex>)` CSS-fallback source of
       // truth (#3458) -- these are inert fallback values for a custom-property
       // reference, not classNames, and must stay literal hex by construction.
@@ -216,6 +221,7 @@ export default tseslint.config(
   {
     files: [
       "src/routes/design.primitives.tsx",
+      "src/routes/-design-primitives-page.tsx",
       "src/components/metagraphed/primitives/**",
       "src/lib/health-tokens.ts",
       "src/lib/og-image.ts",
