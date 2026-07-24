@@ -120,10 +120,17 @@ export async function loadRandomnessStatus(
   const rpcOk = lastStoredRound != null && oldestStoredRound != null;
   // How many pulses are currently retained on-chain, inclusive of both
   // ends -- null unless both bounds resolved (never a misleading partial
-  // span from mixing one live value with a stale/absent other).
-  const storedRoundSpan = rpcOk
-    ? (lastStoredRound as number) - (oldestStoredRound as number) + 1
-    : null;
+  // span from mixing one live value with a stale/absent other). The two
+  // reads are independent, unpinned RPC calls (Promise.all above, no shared
+  // block hash), so a pruning/retention race between them can transiently
+  // land oldestStoredRound ahead of lastStoredRound -- a negative span would
+  // contradict "pulses currently retained" (always >= 0), so treat that
+  // ordering as the same kind of transient inconsistency this field already
+  // nulls out rather than serving a nonsensical negative count.
+  const storedRoundSpan =
+    rpcOk && (lastStoredRound as number) >= (oldestStoredRound as number)
+      ? (lastStoredRound as number) - (oldestStoredRound as number) + 1
+      : null;
 
   const payload: RandomnessStatus = {
     schema_version: 1,

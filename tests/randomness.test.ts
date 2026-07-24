@@ -66,6 +66,34 @@ describe("loadRandomnessStatus", () => {
     });
   });
 
+  test("nulls the span instead of going negative when oldest overtakes last (retention race)", async () => {
+    // The two state_getStorage reads are independent, unpinned RPC calls; a
+    // pruning/retention race between them can transiently report
+    // oldestStoredRound ahead of lastStoredRound. Swap the golden raw values
+    // between the two keys so oldest (5,000,000) > last (4,993,000) -- a
+    // naive `last - oldest + 1` would be -6999.
+    await withFetchStub(
+      async (_url: unknown, init: Row) => {
+        const body = JSON.parse(init.body);
+        const key = body.params[0];
+        const byKey: Record<string, string> = {
+          [LAST_STORED_ROUND_KEY]: GOLDEN_OLDEST_ROUND_RAW,
+          [OLDEST_STORED_ROUND_KEY]: GOLDEN_LAST_ROUND_RAW,
+        };
+        return {
+          ok: true,
+          json: async () => ({ jsonrpc: "2.0", id: 1, result: byKey[key] }),
+        };
+      },
+      async () => {
+        const data = await loadRandomnessStatus(mockEnv());
+        assert.equal(data.last_stored_round, GOLDEN_OLDEST_ROUND);
+        assert.equal(data.oldest_stored_round, GOLDEN_LAST_ROUND);
+        assert.equal(data.stored_round_span, null);
+      },
+    );
+  });
+
   test("queries both storage keys", async () => {
     const seenKeys = new Set();
     await withFetchStub(
