@@ -73,20 +73,21 @@ budget — keep new dependencies/imports lean.
     (`packages/ui-kit/src/styles.css`), never a bare `z-10`/`z-20`/etc. or a
     one-off `z-[N]`. From lowest to highest:
 
-    | Token | Value | Use for |
-    |---|---|---|
-    | `--mg-z-sticky` | 10 | Sticky theads/toolbars, scroll shadows, in-flow progress bars |
-    | `--mg-z-raised` | 20 | Elements that must clear sticky content within the same page section |
-    | `--mg-z-nav` | 30 | Site header/nav chrome |
-    | `--mg-z-overlay` | 40 | Drawers, back-to-top, hover cards, lightweight menus |
-    | `--mg-z-modal` | 50 | Dialogs, popovers, sheets, command palette (matches Radix's own default) |
-    | `--mg-z-progress` | 60 | Route-transition progress bar — must beat modal |
-    | `--mg-z-skip-link` | 100 | a11y skip-link — must beat everything |
+    | Token              | Value | Use for                                                                  |
+    | ------------------ | ----- | ------------------------------------------------------------------------ |
+    | `--mg-z-sticky`    | 10    | Sticky theads/toolbars, scroll shadows, in-flow progress bars            |
+    | `--mg-z-raised`    | 20    | Elements that must clear sticky content within the same page section     |
+    | `--mg-z-nav`       | 30    | Site header/nav chrome                                                   |
+    | `--mg-z-overlay`   | 40    | Drawers, back-to-top, hover cards, lightweight menus                     |
+    | `--mg-z-modal`     | 50    | Dialogs, popovers, sheets, command palette (matches Radix's own default) |
+    | `--mg-z-progress`  | 60    | Route-transition progress bar — must beat modal                          |
+    | `--mg-z-skip-link` | 100   | a11y skip-link — must beat everything                                    |
 
     The only standing exception: the sticky corner cell in the two compare
     drawers (`subnets-compare-drawer.tsx`, `validators-compare-drawer.tsx`) uses
     raw `z-[1]`/`z-[2]` for micro-stacking inside the table's own local
     stacking context — not a global layer, so it doesn't belong on this scale.
+
   - See `docs/ssr-safety.md` for the hydration-safety rules (also partly ESLint-enforced).
 - Keep diffs focused. Don't reformat or refactor unrelated files in a feature PR.
 
