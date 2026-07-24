@@ -8,6 +8,7 @@ import {
 } from "graphql";
 import * as Sentry from "@sentry/cloudflare";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
@@ -539,8 +540,8 @@ export const SDL = `
     subnet_health_incidents(netuid: Int!, window: String): SubnetHealthIncidents!
     "One subnet's per-surface latency percentiles (p50/p90/p95/p99) over a 7d/30d window (default 7d), computed live from the success-only health-probe history. The latency-distribution companion of subnet_health_incidents' availability view. A subnet with no probe history resolves to a schema-stable empty surfaces list, never null. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles."
     subnet_health_percentiles(netuid: Int!, window: String): SubnetHealthPercentiles!
-    "One subnet's current live operational-health card: the per-surface status/latency/last-ok rows from the latest ~15-minute cron probe (summarized into ok/degraded/failed/unknown counts) plus the cross-window reliability score. The at-a-glance base card completing the health family whose windowed views are subnet_health_trends/subnet_health_incidents/subnet_health_percentiles. A subnet with no live health data resolves to the same schema-stable unknown card (summary.status of unknown, empty surfaces), never null. Opaque JSON passed through verbatim, matching the get_subnet_health MCP/REST shape (the existing typed SubnetHealth is the flat health-list item, a different shape, so this base card is JSON like the sibling surfaces payloads). Mirrors GET /api/v1/subnets/{netuid}/health."
-    subnet_health(netuid: Int!): JSON
+    "One subnet's current live operational-health card: the per-surface status/latency/last-ok rows from the latest ~15-minute cron probe (summarized into ok/degraded/failed/unknown counts) plus the cross-window reliability score. The at-a-glance base card completing the health family whose windowed views are subnet_health_trends/subnet_health_incidents/subnet_health_percentiles. Filter surfaces by kind/provider/status/classification, sort with sort/order, and page with limit/cursor -- the same health-surfaces list-query REST applies. A subnet with no live health data resolves to the same schema-stable unknown card (summary.status of unknown, empty surfaces), never null. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Opaque JSON passed through verbatim, matching the get_subnet_health MCP/REST shape plus pagination fields (the existing typed SubnetHealth is the flat health-list item, a different shape, so this base card is JSON like the sibling surfaces payloads). Mirrors GET /api/v1/subnets/{netuid}/health."
+    subnet_health(netuid: Int!, kind: String, provider: String, status: String, classification: String, sort: String, order: String, limit: Int, cursor: Int): JSON
     "One subnet's rolling 24h alpha trading volume from the StakeAdded/StakeRemoved trade stream: buy/sell volume in alpha and TAO, trade counts, net flow, a buy-vs-sell sentiment ratio, and volume-to-market-cap ratio. A subnet with no trades resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/volume."
     subnet_volume(netuid: Int!): SubnetVolume!
     "The machine-readable AI-resources index: the copyable agent prompt (/agent.md), MCP server install metadata and tool listing, the Bittensor skill, llms.txt, OpenAPI, and links to the agent-facing APIs. Use it to bootstrap an agent integration before calling the catalog/search fields. Null when the index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_agent_resources MCP/REST shape. Mirrors GET /api/v1/agent-resources."
@@ -9866,7 +9867,20 @@ const rootValue = {
     };
   },
 
-  async subnet_health({ netuid }: Row, context: GqlContext) {
+  async subnet_health(
+    {
+      netuid,
+      kind,
+      provider,
+      status,
+      classification,
+      sort,
+      order,
+      limit,
+      cursor,
+    }: Row,
+    context: GqlContext,
+  ) {
     // Same non-negative netuid gate the other per-subnet resolvers use --
     // GraphQL Int coercion rejects non-integers at parse time; a negative
     // netuid is a BAD_USER_INPUT error, not a silent card.
@@ -9893,17 +9907,58 @@ const rootValue = {
       loadSubnetReliability(),
     ]);
     const overlaid = overlaySubnetHealth(null, live, netuid);
-    if (overlaid) {
-      return { ...overlaid, reliability };
-    }
-    return {
+    const base: Row = overlaid ?? {
       schema_version: 1,
       netuid,
       summary: { status: "unknown", surface_count: 0 },
       operational_observed_at: null,
       health_source: "unavailable",
-      reliability,
       surfaces: [],
+    };
+    // #7881: full REST filter parity via the same health-surfaces list-query
+    // applyQueryFilters/REST's subnet-health route and the list_subnet_health
+    // MCP tool both drive off (src/subnet-health-mcp.ts, src/contracts.ts) --
+    // applied here on the composed base card so schema_version/slug/name/
+    // summary/reliability survive unchanged and only `surfaces` is
+    // filtered/sorted/paginated, matching REST's own merge shape exactly.
+    // REST surfaces pagination via a Link response header (no header concept
+    // in GraphQL), so the pagination meta is flattened onto the returned JSON
+    // instead.
+    const queryUrl = new URL("https://gql.internal/subnet-health");
+    if (kind != null) queryUrl.searchParams.set("kind", String(kind));
+    if (provider != null)
+      queryUrl.searchParams.set("provider", String(provider));
+    if (status != null) queryUrl.searchParams.set("status", String(status));
+    if (classification != null) {
+      queryUrl.searchParams.set("classification", String(classification));
+    }
+    if (sort != null) queryUrl.searchParams.set("sort", String(sort));
+    if (order != null) queryUrl.searchParams.set("order", String(order));
+    if (limit != null) queryUrl.searchParams.set("limit", String(limit));
+    if (cursor != null) queryUrl.searchParams.set("cursor", String(cursor));
+    const transformed = applyQueryFilters(base, queryUrl, "health-surfaces", [
+      "kind",
+      "provider",
+      "status",
+      "classification",
+    ]);
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const result = transformed.data as Row;
+    const page = ((transformed.meta as Row)?.pagination as Row) || {};
+    return {
+      ...result,
+      total: page.total,
+      returned: page.returned,
+      limit: page.limit,
+      cursor: page.cursor,
+      next_cursor: page.next_cursor,
+      sort: page.sort,
+      order: page.order,
+      reliability,
     };
   },
 

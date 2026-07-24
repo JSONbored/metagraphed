@@ -15355,6 +15355,13 @@ describe("graphql — subnet_health (#7640, live-cron overlay parity with REST +
       health_source: "unavailable",
       reliability: null,
       surfaces: [],
+      total: 0,
+      returned: 0,
+      limit: 0,
+      cursor: 0,
+      next_cursor: null,
+      sort: null,
+      order: "asc",
     });
   });
 
@@ -15365,6 +15372,92 @@ describe("graphql — subnet_health (#7640, live-cron overlay parity with REST +
 
   test("subnet_health is weighted as a fan-out field", () => {
     assert.equal(FIELD_COMPLEXITY.subnet_health, 5);
+  });
+
+  // #7881: GraphQL parity -- subnet_health accepts the full REST filter set
+  // (kind/provider/status/classification/sort/order/limit/cursor) via the same
+  // health-surfaces list-query applyQueryFilters drives for REST + the
+  // list_subnet_health MCP tool.
+  function twoSurfaceEnv() {
+    return fixtureEnv(
+      {},
+      {
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            surfaces: [
+              {
+                surface_id: "7:subnet-api:x",
+                netuid: NETUID,
+                kind: "subnet-api",
+                provider: "x",
+                url: "https://x.example/api",
+                status: "ok",
+                classification: null,
+                latency_ms: 120,
+                last_ok: "2026-06-13T00:00:00.000Z",
+                last_checked: "2026-06-13T00:05:00.000Z",
+              },
+              {
+                surface_id: "7:docs:x",
+                netuid: NETUID,
+                kind: "docs",
+                provider: "x",
+                url: "https://x.example/docs",
+                status: "degraded",
+                classification: "content-mismatch",
+                latency_ms: 900,
+                last_ok: null,
+                last_checked: "2026-06-13T00:05:00.000Z",
+              },
+            ],
+          },
+        },
+      },
+    );
+  }
+
+  test("subnet_health filters surfaces by status", async () => {
+    const { status, body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}, status: "degraded") }`,
+      twoSurfaceEnv() as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const card = body.data.subnet_health;
+    assert.equal(card.surfaces.length, 1);
+    assert.equal(card.surfaces[0].surface_id, "7:docs:x");
+    assert.equal(card.total, 1);
+  });
+
+  test("subnet_health filters surfaces by classification", async () => {
+    const { status, body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}, classification: "content-mismatch") }`,
+      twoSurfaceEnv() as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const card = body.data.subnet_health;
+    assert.equal(card.surfaces.length, 1);
+    assert.equal(card.surfaces[0].surface_id, "7:docs:x");
+  });
+
+  test("subnet_health sorts and pages surfaces", async () => {
+    const { status, body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}, sort: "latency_ms", order: "desc", limit: 1) }`,
+      twoSurfaceEnv() as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const card = body.data.subnet_health;
+    assert.equal(card.surfaces.length, 1);
+    assert.equal(card.surfaces[0].surface_id, "7:docs:x");
+    assert.equal(card.total, 2);
+    assert.equal(card.next_cursor, 1);
+  });
+
+  test("subnet_health surfaces an invalid status filter as a GraphQL error", async () => {
+    const { body } = await gql(
+      `{ subnet_health(netuid: ${NETUID}, status: "bogus") }`,
+      twoSurfaceEnv() as unknown as Env,
+    );
+    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
 });
 
