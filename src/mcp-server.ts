@@ -152,6 +152,12 @@ import {
   loadSubnetCandidatesList,
 } from "./subnet-candidates-mcp.ts";
 import {
+  LIST_SUBNET_HEALTH_INSTRUCTIONS,
+  LIST_SUBNET_HEALTH_MCP_TOOL,
+  LIST_SUBNET_HEALTH_OUTPUT_SCHEMA,
+  loadSubnetHealthList,
+} from "./subnet-health-mcp.ts";
+import {
   LIST_EVIDENCE_INSTRUCTIONS,
   LIST_EVIDENCE_MCP_TOOL,
   LIST_EVIDENCE_OUTPUT_SCHEMA,
@@ -908,7 +914,9 @@ export const MCP_INSTRUCTIONS =
   GET_NETWORK_HEALTH_INSTRUCTIONS +
   GET_HEALTH_HISTORY_INSTRUCTIONS +
   "get_health_trends the all-subnet 7d/30d " +
-  "uptime + latency matrix, get_subnet_health_trends one subnet's per-surface " +
+  "uptime + latency matrix, get_subnet_health one subnet's live health card, " +
+  LIST_SUBNET_HEALTH_INSTRUCTIONS +
+  "get_subnet_health_trends one subnet's per-surface " +
   "health trends, get_subnet_health_percentiles its " +
   "per-surface p50/p95/p99 request-latency distribution, " +
   "get_subnet_health_incidents its per-surface SLA + reconstructed downtime " +
@@ -2945,6 +2953,12 @@ export const MCP_TOOLS = [
         reliability,
         surfaces: [],
       };
+    },
+  },
+  {
+    ...LIST_SUBNET_HEALTH_MCP_TOOL,
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSubnetHealthList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -11998,6 +12012,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       }),
     },
   },
+  list_subnet_health: LIST_SUBNET_HEALTH_OUTPUT_SCHEMA,
   get_subnet_health_trends: {
     type: "object",
     additionalProperties: true,

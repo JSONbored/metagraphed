@@ -2578,6 +2578,108 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
+  test("list_subnet_health filters live surfaces by status and classification", async () => {
+    const deps = makeDeps(
+      {},
+      {
+        "health:current": {
+          last_run_at: FRESH_RUN,
+          surfaces: [
+            {
+              surface_id: "7:subnet-api:x",
+              netuid: 7,
+              kind: "subnet-api",
+              provider: "allways",
+              status: "ok",
+              classification: "live",
+              latency_ms: 100,
+              last_checked: "2026-07-01T00:00:00.000Z",
+              last_ok: "2026-07-01T00:00:00.000Z",
+            },
+            {
+              surface_id: "7:openapi:y",
+              netuid: 7,
+              kind: "openapi",
+              provider: "allways",
+              status: "failed",
+              classification: "timeout",
+              latency_ms: null,
+              last_checked: "2026-07-01T00:00:00.000Z",
+              last_ok: null,
+            },
+          ],
+        },
+      },
+    );
+    const byStatus = await callTool(
+      "list_subnet_health",
+      { netuid: 7, status: "ok" },
+      { deps },
+    );
+    assert.equal(byStatus.body.result.structuredContent.returned, 1);
+    assert.equal(
+      byStatus.body.result.structuredContent.surfaces[0].status,
+      "ok",
+    );
+
+    const byClassification = await callTool(
+      "list_subnet_health",
+      { netuid: 7, classification: "timeout" },
+      { deps },
+    );
+    assert.equal(byClassification.body.result.structuredContent.returned, 1);
+    assert.equal(
+      byClassification.body.result.structuredContent.surfaces[0]
+        .classification,
+      "timeout",
+    );
+  });
+
+  test("list_subnet_health returns empty surfaces when the live store is cold", async () => {
+    const res = await callTool(
+      "list_subnet_health",
+      { netuid: 7 },
+      { deps: makeDeps() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.notEqual(res.body.result.isError, true);
+    assert.deepEqual(out.surfaces, []);
+    assert.equal(out.health_source, "unavailable");
+  });
+
+  test("list_subnet_health payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_subnet_health",
+    )?.outputSchema;
+    const deps = makeDeps(
+      {},
+      {
+        "health:current": {
+          last_run_at: FRESH_RUN,
+          surfaces: [
+            {
+              surface_id: "7:subnet-api:x",
+              netuid: 7,
+              kind: "subnet-api",
+              status: "ok",
+              classification: "live",
+              latency_ms: 80,
+              last_checked: "2026-07-01T00:00:00.000Z",
+              last_ok: "2026-07-01T00:00:00.000Z",
+            },
+          ],
+        },
+      },
+    );
+    const res = await callTool(
+      "list_subnet_health",
+      { netuid: 7, limit: 1 },
+      { deps },
+    );
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("list_endpoint_pools returns filtered pool rows", async () => {
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {

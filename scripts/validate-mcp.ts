@@ -382,6 +382,14 @@ assert.ok(
 const overview = await callOk("get_subnet", { netuid: 7 });
 assert.equal(overview.netuid ?? overview.subnet?.netuid ?? 7, 7);
 await callOk("get_subnet_health", { netuid: 7 });
+const subnetHealthPage = await callOk("list_subnet_health", {
+  netuid: 7,
+  limit: 3,
+});
+assert.ok(
+  Array.isArray(subnetHealthPage.surfaces),
+  "list_subnet_health must return surfaces[]",
+);
 
 const apis = await callOk("list_subnet_apis", { netuid: 7 });
 assert.ok(
