@@ -455,6 +455,15 @@ assert.ok(
   Array.isArray(subnetEndpointsPage.endpoints),
   "list_subnet_endpoints must return endpoints[]",
 );
+const subnetSurfacesPage = await callOk("list_subnet_surfaces", {
+  netuid: 7,
+  limit: 3,
+  kind: "subnet-api",
+});
+assert.ok(
+  Array.isArray(subnetSurfacesPage.surfaces),
+  "list_subnet_surfaces must return surfaces[]",
+);
 const subnetEvidencePage = await callOk("list_subnet_evidence", {
   netuid: 7,
   limit: 3,
