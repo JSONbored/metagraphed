@@ -8554,6 +8554,68 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
     assert.equal(body.data.fixtures, null);
   });
 
+  test("fixture resolves one baked fixture by surface_id (#7867)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/fixtures/allways-api-health.json": {
+        surface_id: "allways-api-health",
+        request: { method: "GET" },
+        response: { status: 200, body: { ok: true } },
+      },
+    });
+    const { status, body } = await gql(
+      '{ fixture(surface_id: "allways-api-health") }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.fixture.surface_id, "allways-api-health");
+    assert.equal(body.data.fixture.response.status, 200);
+  });
+
+  test("fixture degrades to null when the surface_id has no fixture (#7867)", async () => {
+    const { status, body } = await gql(
+      '{ fixture(surface_id: "missing-fixture") }',
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.fixture, null);
+  });
+
+  test("fixture an invalid surface_id is BAD_USER_INPUT (#7867)", async () => {
+    const { body } = await gql('{ fixture(surface_id: "../secrets") }');
+    assert.ok(body.errors?.length > 0);
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
+    assert.equal(body.data?.fixture ?? null, null);
+  });
+
+  test("fixture propagates a non-toolError from the artifact read (#7867)", async () => {
+    const env = {
+      METAGRAPH_R2_LATEST_PREFIX: "latest/",
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              throw new Error("corrupt fixture artifact");
+            },
+          };
+        },
+      },
+    };
+    const { status, body } = await gql(
+      '{ fixture(surface_id: "allways-api-health") }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.ok(body.errors?.length > 0);
+    assert.equal(body.data?.fixture ?? null, null);
+  });
+
+  test("fixture is priced at the relationship-field complexity weight", () => {
+    assert.equal(FIELD_COMPLEXITY.fixture, FIELD_COMPLEXITY.fixtures);
+  });
+
   test("agent_catalog resolves the global index", async () => {
     const env = fixtureEnv({
       "/metagraph/agent-catalog.json": {

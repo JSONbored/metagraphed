@@ -458,6 +458,7 @@ import {
   SURFACE_ID_PATTERN,
 } from "./surface-verify.ts";
 import { SURFACE_ALIASES_PATH } from "./surface-aliases.ts";
+import { loadFixture } from "./fixtures-mcp.ts";
 import {
   callSubnetSurface,
   matchSchemaOperation,
@@ -9627,17 +9628,9 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args: Row, ctx: McpCtx) {
-      const surfaceId = requireString(args, "surface_id");
-      // surface_id is part of an R2 key path; reject anything that could escape
-      // the fixtures/ namespace.
-      if (!/^[A-Za-z0-9._:-]+$/.test(surfaceId)) {
-        throw toolError(
-          "invalid_params",
-          "surface_id contains invalid characters.",
-        );
-      }
-      const artifactId = await resolveArtifactSurfaceId(ctx, surfaceId);
-      return loadArtifactData(ctx, `/metagraph/fixtures/${artifactId}.json`);
+      // #7867: shared loadFixture — same surface_id charset gate, deprecated-id
+      // alias resolve, and artifact read GraphQL fixture(surface_id) uses.
+      return loadFixture(asMcpLoaderCtx(ctx), args);
     },
   },
   {

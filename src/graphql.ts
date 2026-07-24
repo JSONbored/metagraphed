@@ -82,6 +82,10 @@ import { loadProfileCompletenessList } from "./profile-completeness-mcp.ts";
 // #6984: GraphQL parity for GET /api/v1/adapters/{slug}, reusing loadAdapter that
 // MCP get_adapter already calls (#3255) -- not a reimplementation.
 import { loadAdapter } from "./adapters-mcp.ts";
+// #7867: GraphQL parity for GET /api/v1/fixtures/{surface_id}, reusing
+// loadFixture (same surface_id validation + alias resolve + artifact read
+// get_fixture already performs).
+import { loadFixture } from "./fixtures-mcp.ts";
 // #7170: GraphQL parity for the changelog/contracts/health-history REST routes,
 // reusing the same loaders MCP get_changelog/get_contracts/get_health_history
 // already call -- not a reimplementation.
@@ -701,6 +705,7 @@ export const FIELD_COMPLEXITY = {
   candidates: RELATIONSHIP_FIELD_COMPLEXITY,
   saved_query: RELATIONSHIP_FIELD_COMPLEXITY,
   fixtures: RELATIONSHIP_FIELD_COMPLEXITY,
+  fixture: RELATIONSHIP_FIELD_COMPLEXITY,
   agent_catalog: RELATIONSHIP_FIELD_COMPLEXITY,
   freshness: RELATIONSHIP_FIELD_COMPLEXITY,
   top_holders: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1703,6 +1708,26 @@ const rootValue = {
 
   fixtures(_args: unknown, context: GqlContext) {
     return loadArtifact(context, "/metagraph/fixtures.json");
+  },
+
+  // #7867: reuse loadFixture (the same loader get_fixture uses) unchanged --
+  // same surface_id charset gate, deprecated-id alias resolve, and artifact
+  // path as REST GET /api/v1/fixtures/{surface_id}. invalid_params becomes
+  // BAD_USER_INPUT; any other loader miss (not_found / cold R2) resolves to
+  // null, matching adapter's cold/absent convention.
+  async fixture(args: Row, context: GqlContext) {
+    try {
+      return await loadFixture(mcpCtx(context), args, { readArtifact });
+    } catch (rawErr) {
+      const err = rawErr as Row;
+      if (err?.toolError && err.code === "invalid_params") {
+        throw new GraphQLError(err.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      if (err?.toolError) return null;
+      throw err;
+    }
   },
 
   async agent_catalog({ netuid }: Row, context: GqlContext) {

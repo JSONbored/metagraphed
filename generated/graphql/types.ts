@@ -2510,6 +2510,8 @@ export type Query = {
   extrinsic?: Maybe<ExtrinsicDetail>;
   /** Recent-extrinsic feed (newest first), optionally filtered. Mirrors GET /api/v1/extrinsics. */
   extrinsics: ExtrinsicList;
+  /** One captured live request/response fixture by surface_id — the sanitized sample get_fixture / GET /api/v1/fixtures/{surface_id} return. Resolves deprecated surface_id aliases the same way MCP does. Null when no fixture exists for the id (rather than a GraphQL error). An invalid surface_id is BAD_USER_INPUT. Opaque JSON passed through verbatim. Mirrors GET /api/v1/fixtures/{surface_id}. */
+  fixture?: Maybe<Scalars['JSON']['output']>;
   /** The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures. */
   fixtures?: Maybe<Scalars['JSON']['output']>;
   /** Artifact freshness: each published artifact's generated_at/age, merged with the live cron snapshot stamp when the health store is warm. Null when no freshness artifact has been baked. Opaque JSON, matching the get_freshness MCP/REST shape. Mirrors GET /api/v1/freshness. */
@@ -3165,6 +3167,11 @@ export type QueryExtrinsicsArgs = {
   offset?: InputMaybe<Scalars['Int']['input']>;
   signer?: InputMaybe<Scalars['String']['input']>;
   success?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+
+export type QueryFixtureArgs = {
+  surface_id: Scalars['String']['input'];
 };
 
 
@@ -7736,6 +7743,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   evm_address_mapping?: Resolver<Maybe<ResolversTypes['EvmAddressMapping']>, ParentType, ContextType, RequireFields<QueryEvm_Address_MappingArgs, 'h160'>>;
   extrinsic?: Resolver<Maybe<ResolversTypes['ExtrinsicDetail']>, ParentType, ContextType, RequireFields<QueryExtrinsicArgs, 'ref'>>;
   extrinsics?: Resolver<ResolversTypes['ExtrinsicList'], ParentType, ContextType, Partial<QueryExtrinsicsArgs>>;
+  fixture?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QueryFixtureArgs, 'surface_id'>>;
   fixtures?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   freshness?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   gaps?: Resolver<ResolversTypes['GapsList'], ParentType, ContextType, Partial<QueryGapsArgs>>;
