@@ -233,8 +233,12 @@ its structure, naming, and comment density. Build for the class, not the one cas
 
 ### Phase B1 — Implement (match the house style)
 
-- The Worker entry/router is `workers/api.mjs`; serving/overlay/health logic lives in `src/*.mjs`;
-  the contract lives in `schemas/` (+ `schemas/components/`) and `src/contracts.mjs`.
+- The Worker entry/router is `workers/api.ts`; serving/overlay/health logic lives in `src/*.ts`;
+  the contract lives in `schemas/` (+ `schemas/components/`) and `src/contracts.ts`.
+- **All new code/script/test files must be `.ts`** — never `.mjs`/`.js`. The TypeScript migration
+  (metagraphed#7510) is complete, and the `validate:no-hand-written-mjs` CI gate fails any PR that
+  adds a `.mjs`/`.js` file under `src/`, `workers/`, `scripts/`, `tests/`, or `deploy/wss-lb/`
+  (metagraphed#7521).
 - **Schema-first rule:** never hand-edit the generated contract. Edit `schemas/` →
   `npm run build` → commit `openapi.json` + generated types/clients in the same PR.
 - A new `/api/v1` route or artifact trips hidden contract gates — see the new-route checklist in
@@ -256,7 +260,7 @@ suite if a test reads served artifacts.
 | `schemas/` or `schemas/components/`          | `npm run build` | `openapi.json`, generated types, `contracts.json`, api-index                                      |
 | A new/edited `/api/v1` route or artifact     | `npm run build` | the derived `public/metagraph/*` it produces                                                      |
 | A canonical `registry/providers/<slug>.json` | `npm run build` | regenerated artifacts (commit only the provider file + its artifacts)                             |
-| MCP tools in `src/mcp-server.mjs`            | —               | **nothing** — the server card is worker-computed, not a committed artifact                        |
+| MCP tools in `src/mcp-server.ts`             | —               | **nothing** — the server card is worker-computed, not a committed artifact                        |
 | _(any of the above)_                         | `npm run build` | **never** `public/metagraph/r2-manifest.json` / `public/metagraph/schemas/index.json` — see below |
 
 Stale committed artifacts fail the **derived-artifact freshness** + **contract-drift** gates.

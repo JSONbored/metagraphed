@@ -637,6 +637,15 @@ jobs:
         if: env.RUN_MIGRATIONS_VALIDATION == 'true'
         run: npm run validate:migrations
 
+      # Permanent lock on the TS migration (#7510/#7521): no hand-written
+      # .mjs/.js may reappear under src/, workers/, scripts/, tests/, or
+      # deploy/wss-lb/. Runs unconditionally (no DOCS_ONLY skip) — it reads
+      # only `git ls-files` output, costs well under a second, and a skip
+      # predicate would itself be a hole (a "docs-only" PR can still add a
+      # tracked .mjs file).
+      - name: Validate no hand-written .mjs/.js
+        run: npm run validate:no-hand-written-mjs
+
       - name: Validate Cloudflare config
         if: env.DOCS_ONLY != 'true'
         run: npm run cloudflare:verify:dry-run

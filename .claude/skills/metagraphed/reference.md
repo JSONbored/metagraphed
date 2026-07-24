@@ -158,12 +158,12 @@ diff touches that specific path, and `checks` gates each validator step on its o
 each other — a PR can be workflow-only or migration-only without being a docs PR. These are the only
 two `checks` validators with a clean enough path boundary to skip safely; every other validator
 (`validate:schemas`/`api`/`mcp`/`ai`/`openapi`/`types`/`client-sdk-sync`) transitively imports most of
-`src/`+`workers/**` via `workers/api.mjs`, so no path glob short of "almost the whole repo" would
+`src/`+`workers/**` via `workers/api.ts`, so no path glob short of "almost the whole repo" would
 safely exclude them — see the "new artifact/route checklist" in §8 for why a route/handler change can
 trip a contract gate with no lexical hint in the diff. Per-area **test** splitting (e.g. skip
-MCP-specific tests when `src/mcp-server.mjs` wasn't touched) was evaluated and rejected: the suite has
+MCP-specific tests when `src/mcp-server.ts` wasn't touched) was evaluated and rejected: the suite has
 no per-subject directory structure (all 154 files sit flat in `tests/`), a third of it imports
-`workers/api.mjs`'s shared router directly, and `vitest.config.mjs`'s `fileParallelism: false` exists
+`workers/api.ts`'s shared router directly, and `vitest.config.mjs`'s `fileParallelism: false` exists
 for a filesystem-race reason (see below) unrelated to subject area — splitting by area would need a
 real test-tree/module-boundary refactor, not a CI config change.
 
@@ -233,7 +233,7 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 | Validate a surface contribution _(new)_   | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                                                  |
 | Public-safety scan                        | `npm run scan:public-safety`                                                                                                                                                                                                                                |
 | Code/schema: regenerate the contract      | `npm run build`                                                                                                                                                                                                                                             |
-| Code/schema: typecheck _(new)_            | `npm run typecheck` (`tsc --noEmit`; `src/`+`workers/`+`scripts/`+`tests/` are still mostly `.mjs` — see the TypeScript migration epic, metagraphed#7510)                                                                                                   |
+| Code/schema: typecheck _(new)_            | `npm run typecheck` (`tsc --noEmit`; `src/`+`workers/`+`scripts/`+`tests/` are **all `.ts`** — the migration epic metagraphed#7510 is complete, and `validate:no-hand-written-mjs` fails CI if a new `.mjs`/`.js` appears under a covered directory)        |
 | Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:intake` · `validate:workflows`                                  |
 | Tests / coverage                          | `npm test` · `npm run test:coverage`                                                                                                                                                                                                                        |
 | Full local pipeline (after a clean build) | `npm run pipeline:check`                                                                                                                                                                                                                                    |
@@ -319,8 +319,8 @@ fails the PR on its own). No local paths, env dumps, or private notes.
 SDK` commit, so a hand-bump here is redundant at best and a conflicting version at worst once the
   auto PR lands).
 - **MCP server version: do NOT bump in your PR, same as the client SDK above.** `MCP_SERVER_VERSION`
-  (`src/mcp-server.mjs`) and `server.json`'s `"version"` are versioned by the post-merge
-  `sync-mcp-version` workflow — same shape as `sync-client-version`, watching `src/mcp-server.mjs` since
+  (`src/mcp-server.ts`) and `server.json`'s `"version"` are versioned by the post-merge
+  `sync-mcp-version` workflow — same shape as `sync-client-version`, watching `src/mcp-server.ts` since
   its last `chore(mcp): bump server version` commit and bumping both files together when a tool was
   added/changed. `validate:mcp` only checks _internal_ consistency (`MCP_SERVER_VERSION` ==
   `serverInfo.version` == `server.json`'s version) — it stays green regardless of what number those
@@ -422,9 +422,9 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   `npm ci --workspace=apps/ui` command Cloudflare runs — a plain full `npm ci`/`install` won't surface
   this class of bug at all.
 - **MCP server card is worker-computed — no committed artifact.** Adding or changing tools in
-  `src/mcp-server.mjs` does NOT require regenerating `public/.well-known/mcp/server-card.json` (that
+  `src/mcp-server.ts` does NOT require regenerating `public/.well-known/mcp/server-card.json` (that
   file no longer exists in git). The card is served dynamically by `mcpServerCardResponse` in
-  `workers/request-handlers/discovery.mjs`.
+  `workers/request-handlers/discovery.ts`.
 - **New `/api/v1` route or artifact** trips hidden gates depending on whether it's committed
   (DUAL_PATTERNS), live-only D1 (R2_ONLY_PATTERNS + COMPUTED_ARTIFACTS), or `/.well-known`
   worker-computed. Mirror an existing route end-to-end; the build's derived-artifact freshness gate
@@ -433,14 +433,14 @@ SDK` commit, so a hand-bump here is redundant at best and a conflicting version 
   `scripts/validate-api.ts`'s own `checks` array needs a matching `[route, assertion]` entry (it
   asserts `checks.length === API_ROUTES.length`, a **live RPC call** against real finney, not a
   stub); codecov/patch (99%, branch-counted) needs GraphQL/MCP test coverage in the _centralized_
-  `tests/graphql.test.mjs`/`tests/mcp-server.test.mjs` files specifically, not just a per-feature
+  `tests/graphql.test.ts`/`tests/mcp-server.test.ts` files specifically, not just a per-feature
   test file — a per-feature file alone leaves the GraphQL resolver and MCP tool handler at 0% patch
-  coverage even with 100% coverage on the underlying `src/*.mjs` module; and the `ui` CI job's
+  coverage even with 100% coverage on the underlying `src/*.ts` module; and the `ui` CI job's
   "Build API reference docs (drift check)" step (added 2026-07-18, mirrors the
   `packages/client`/`packages/ui-kit` drift checks just above it) fails if `apps/ui/content/docs/
 api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs.mjs` from
   `apps/ui/` and commit the result alongside the contract change. Two more, caught live 2026-07-18
-  shipping a templated computed artifact: `src/contracts.mjs` has **two separate registries** for a
+  shipping a templated computed artifact: `src/contracts.ts` has **two separate registries** for a
   route with no static file — a `route(...)` entry (API surface metadata) AND a distinct
   `artifact(id, path, description, schemaName)` entry (the schema-ref mapping); omitting the
   `artifact()` call makes `npm run build` throw `No public artifact contract maps API artifact
@@ -455,7 +455,7 @@ api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs
   `npm run build` fully populates R2 staging (per ADR-0001) and rewrites both to reflect that local/CI
   build, but their committed copies on `main` reflect the last real deploy/publish — not a local build —
   for reasons unrelated to your change: `r2-manifest.json` is publish infrastructure read from its
-  committed path by `scripts/kv-publish-pointer.ts` / `scripts/cloudflare-verify.mjs` /
+  committed path by `scripts/kv-publish-pointer.ts` / `scripts/cloudflare-verify.ts` /
   `scripts/sync-summary.ts` during the actual publish, and its `*_artifact_size_bytes` totals are
   inherently non-deterministic build-to-build; `schemas/index.json` is a network-capture cache the build
   "reconciles in place". Both are explicitly excluded from the derived-artifact freshness gate in
@@ -475,8 +475,8 @@ api-reference/**` wasn't regenerated — run `node scripts/generate-openapi-docs
   with no lockfile of its own — its version bumps land in the root lockfile, already covered by this
   path. If you ever add a new `actions/setup-node` step to a workflow in this repo, set this
   explicitly rather than relying on the default.
-- The Worker router is `workers/api.mjs`; serving/overlay/health live in `src/*.mjs`; the contract in
-  `schemas/` + `src/contracts.mjs`.
+- The Worker router is `workers/api.ts`; serving/overlay/health live in `src/*.ts`; the contract in
+  `schemas/` + `src/contracts.ts`.
 
 ---
 

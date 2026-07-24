@@ -38,7 +38,7 @@ devcontainer-aware environment, use it instead of installing Node/Playwright you
    `npm run build`, commit the regenerated `openapi.json` + generated types in the same PR, or
    `validate:contract-drift` fails CI. Never hand-edit generated artifacts under `public/`. Do **not**
    bump `packages/client/package.json` in your PR — the `sync-client-version` workflow handles that
-   post-merge. Likewise, do **not** hand-bump `MCP_SERVER_VERSION` (`src/mcp-server.mjs`) or
+   post-merge. Likewise, do **not** hand-bump `MCP_SERVER_VERSION` (`src/mcp-server.ts`) or
    `server.json`'s `"version"` — `sync-mcp-version` bumps both automatically after a tool-registry
    change lands on main. MCP tool additions do **not** require a server-card regen (it's
    worker-computed). **99% patch coverage, branch-counted** — `codecov/patch` enforces
@@ -46,7 +46,10 @@ devcontainer-aware environment, use it instead of installing Node/Playwright you
    unsharded with `npm run test:coverage`.
 5. **House rules:** Conventional Commits, **no AI/Claude/agent attribution** in commits or PR text; no
    secrets / PATs / wallet paths / private URLs anywhere; health/uptime/latency is **probe-derived
-   only** (never hand-set); one focused change per PR. **UI/frontend work now lives in this repo**
+   only** (never hand-set); one focused change per PR. **All new code/script/test files are `.ts`,
+   never `.mjs`/`.js`** — the TypeScript migration (#7510) is complete and the
+   `validate:no-hand-written-mjs` CI gate auto-fails any PR adding a `.mjs`/`.js` file under `src/`,
+   `workers/`, `scripts/`, `tests/`, or `deploy/wss-lb/`. **UI/frontend work now lives in this repo**
    at `apps/ui/` (folded in from the former `metagraphed-ui` repo via monorepo consolidation,
    2026-07) — any PR touching visual output (routes, components, styles) **requires a before/after
    screenshot table and is always held for manual review**, regardless of AI-review confidence; a

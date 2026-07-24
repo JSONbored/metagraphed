@@ -24,6 +24,8 @@ npm run build
 
 `npm run build` here regenerates the root schema/OpenAPI contract and is what `worker:test` depends on — it's a separate step from `apps/ui`'s own build. If you're touching `apps/ui/`, see [apps/ui/CONTRIBUTING.md](apps/ui/CONTRIBUTING.md) for its own `npm run build --workspace=apps/ui` cycle; a PR touching both may need both.
 
+**New files are TypeScript.** All new code, script, and test files must be `.ts` — never `.mjs`/`.js`. The repo-wide TypeScript migration ([#7510](https://github.com/JSONbored/metagraphed/issues/7510)) is complete, and the `validate:no-hand-written-mjs` CI gate fails any PR that adds a `.mjs`/`.js` file under `src/`, `workers/`, `scripts/`, `tests/`, or `deploy/wss-lb/`.
+
 ## Schema-first rule
 
 The contract is generated, so you never edit it by hand:
@@ -39,7 +41,7 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 These are bumped automatically after your PR merges — leave them alone:
 
 - `packages/client/package.json`'s `"version"`.
-- `src/mcp-server.mjs`'s `MCP_SERVER_VERSION` and the matching `"version"` in `server.json`.
+- `src/mcp-server.ts`'s `MCP_SERVER_VERSION` and the matching `"version"` in `server.json`.
 
 CI never requires you to bump these yourself — a PR that changes the contract or adds an MCP tool is valid without touching either. Bumping one of them in your own PR doesn't help and risks a version conflict with the automation's own follow-up PR; expect it to be closed with a request to resubmit without that edit.
 
