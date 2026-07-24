@@ -1,0 +1,146 @@
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { Scale, Coins, Timer } from "lucide-react";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { Skeleton } from "@/components/metagraphed/states";
+import { ShareButton, DownloadCsvButton, ActionBar, StatTile } from "@jsonbored/ui-kit";
+import { AsyncPanel, PageMasthead, TableSkeleton } from "@/components/metagraphed/primitives";
+import { CallModuleExtrinsicsTable } from "@/components/metagraphed/call-module-extrinsics-table";
+import { governanceConfigChangesQuery, networkParametersQuery } from "@/lib/metagraphed/queries";
+import { buildUrl } from "@/lib/metagraphed/client";
+import { API_BASE } from "@/lib/metagraphed/config";
+import { formatNumber, formatTao } from "@/lib/metagraphed/format";
+import type { AdminChangesSearch } from "./admin-changes.index";
+
+function adminChangesQueryParams(search: AdminChangesSearch): Record<string, string | number> {
+  const queryParams: Record<string, string | number> = {
+    limit: search.limit,
+    offset: search.offset,
+  };
+  if (search.call_function) queryParams.call_function = search.call_function;
+  if (search.success) queryParams.success = search.success;
+  return queryParams;
+}
+
+export function AdminChangesPage() {
+  const search = useSearch({ from: "/admin-changes/" });
+  const adminChangesCsvUrl = buildUrl(
+    "/api/v1/governance/config-changes",
+    adminChangesQueryParams(search),
+  );
+
+  return (
+    <AppShell>
+      <PageMasthead
+        eyebrow="Explorer"
+        live
+        title="Admin changes"
+        description="AdminUtils root-origin config changes — subtensor's own admin pallet for subnet hyperparameters and network-wide config, newest first."
+        actions={
+          <>
+            <ActionBar>
+              <DownloadCsvButton url={adminChangesCsvUrl} bare />
+              <ShareButton bare />
+            </ActionBar>
+          </>
+        }
+      />
+      {/* #6997: the change-log below is a history of governance config-change
+          events -- it never showed the *current* live values of the three
+          key protocol/governance parameters those changes actually move.
+          Own AsyncPanel so a slow/failed RPC read never blocks the
+          (unrelated, artifact-backed) change-log table below. */}
+      <AsyncPanel
+        context="network parameters"
+        fallback={
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+        }
+        retryQueryKeys={[networkParametersQuery().queryKey]}
+      >
+        <NetworkParametersCard />
+      </AsyncPanel>
+      <div className="min-w-0">
+        <AsyncPanel context="admin changes" fallback={<TableSkeleton rows={10} columns={6} />}>
+          <AdminChangesTable />
+        </AsyncPanel>
+      </div>
+      <ApiSourceFooter
+        paths={["/api/v1/governance/config-changes", "/api/v1/network/parameters"]}
+        artifacts={["/metagraph/governance/config-changes.json"]}
+      />
+    </AppShell>
+  );
+}
+
+// #6997: current values of the three global Subtensor protocol/governance
+// parameters the change-log table below is a *history* of. Each field is
+// independently null on its own RPC failure (never coerced to 0), so
+// StatTile's own "—" empty-value rendering is what a viewer sees on a
+// per-field failure -- distinct from a real zero (e.g. tao_weight at 0%).
+function NetworkParametersCard() {
+  const { data: res } = useSuspenseQuery(networkParametersQuery());
+  const p = res.data;
+  const taoWeightPct = p.tao_weight != null ? `${(p.tao_weight * 100).toFixed(2)}%` : "—";
+
+  return (
+    <div className="mb-6">
+      <div className="mg-type-micro mb-2 text-[10px] text-ink-muted">
+        Current network parameters
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <StatTile
+          icon={Scale}
+          eyebrow="TaoWeight"
+          value={taoWeightPct}
+          hint="root-weight ratio in consensus"
+        />
+        <StatTile
+          icon={Coins}
+          eyebrow="StakeThreshold"
+          value={formatTao(p.stake_threshold_tao)}
+          hint="min stake to register a hotkey"
+        />
+        <StatTile
+          icon={Timer}
+          eyebrow="PendingChildKeyCooldown"
+          value={formatNumber(p.pending_childkey_cooldown_blocks)}
+          hint="blocks before a pending child key activates"
+        />
+      </div>
+    </div>
+  );
+}
+
+function AdminChangesTable() {
+  const search = useSearch({ from: "/admin-changes/" });
+  const navigate = useNavigate({ from: "/admin-changes/" });
+  const queryParams = adminChangesQueryParams(search);
+
+  const setSearch = (patch: Record<string, unknown>) =>
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never,
+      // Patch in-page search/filter state only; do not scroll to top on each keystroke (#3691).
+      resetScroll: false,
+    });
+
+  return (
+    <CallModuleExtrinsicsTable
+      queryOptions={governanceConfigChangesQuery(queryParams)}
+      search={{
+        limit: search.limit,
+        offset: search.offset,
+        call_function: search.call_function,
+        success: search.success,
+      }}
+      setSearch={setSearch}
+      emptyTitle="No admin config changes indexed yet"
+      emptyDescription="AdminUtils calls set subnet hyperparameters and network config — check back shortly, or open the API directly."
+      emptyApiPath={`${API_BASE}/api/v1/governance/config-changes`}
+    />
+  );
+}
