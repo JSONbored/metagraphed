@@ -13,7 +13,7 @@ import {
   MCP_CAPABILITIES,
   MCP_REGISTRY_META,
   MCP_RESOURCE_TEMPLATES,
-} from "../../src/mcp-server.mjs";
+} from "../../src/mcp-server.ts";
 import { feedLinkHeader } from "../../src/feeds.ts";
 import {
   buildAgentToolsIndex,

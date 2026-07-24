@@ -50,7 +50,7 @@ function eventCountFromDataApi(data: unknown): unknown {
 
 export interface DataApiMcpContext {
   env: Env;
-  clientIp?: string;
+  clientIp?: string | null;
 }
 
 export async function dataApiFetchJson(

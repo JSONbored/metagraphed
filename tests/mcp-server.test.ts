@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import {
   MCP_TOOLS,
   MCP_PROTOCOL_VERSIONS,
@@ -9,7 +9,7 @@ import {
   MAX_MCP_BODY_BYTES,
   listToolDefinitions,
   handleMcpRequest,
-} from "../src/mcp-server.mjs";
+} from "../src/mcp-server.ts";
 import * as profilesMcp from "../src/profiles-mcp.ts";
 import * as healthHistoryMcp from "../src/health-history-mcp.ts";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.ts";
@@ -33,6 +33,7 @@ import { buildChainTransfers } from "../src/chain-transfers.ts";
 import { buildChainCalls } from "../src/chain-analytics.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.ts";
 import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.ts";
+import type { AnyFn, Row } from "./row-type.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -66,9 +67,9 @@ const HEALTH_HISTORY_BLOB = {
 };
 
 // Build injectable deps with controlled artifact + KV responses.
-function makeDeps(artifacts = {}, kv = {}) {
+function makeDeps(artifacts: Row = {}, kv: Row = {}) {
   return {
-    readArtifact(_env, path) {
+    readArtifact(_env: unknown, path: string) {
       if (Object.prototype.hasOwnProperty.call(artifacts, path)) {
         return Promise.resolve({
           ok: true,
@@ -84,7 +85,7 @@ function makeDeps(artifacts = {}, kv = {}) {
         message: `Artifact not found: ${path}`,
       });
     },
-    readHealthKv(_env, key) {
+    readHealthKv(_env: unknown, key: string) {
       return Promise.resolve(
         Object.prototype.hasOwnProperty.call(kv, key) ? kv[key] : null,
       );
@@ -93,20 +94,20 @@ function makeDeps(artifacts = {}, kv = {}) {
 }
 
 async function rpc(
-  payload,
-  { deps = makeDeps(), env = {}, method = "POST", headers = {} } = {},
+  payload: unknown,
+  { deps = makeDeps(), env = {}, method = "POST", headers = {} }: Row = {},
 ) {
   const request = new Request(MCP_URL, {
     method,
     headers: { "content-type": "application/json", ...headers },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
-  const response = await handleMcpRequest(request, env, deps);
+  const response = await handleMcpRequest(request, env as unknown as Env, deps);
   const text = await response.text();
   return {
     status: response.status,
     headers: response.headers,
-    body: text ? JSON.parse(text) : null,
+    body: (text ? JSON.parse(text) : null) as Row,
   };
 }
 
@@ -115,13 +116,13 @@ async function rpc(
 // bound is far looser, but this is what every real client will send).
 const A_SESSION_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
 
-function fakeMcpSessionHubBinding(overrides = {}) {
-  const calls = [];
+function fakeMcpSessionHubBinding(overrides: Row = {}) {
+  const calls: Row[] = [];
   return {
     calls,
-    idFromName: (name) => name,
+    idFromName: (name: string) => name,
     get: () => ({
-      fetch: async (url, init) => {
+      fetch: async (url: string, init: RequestInit) => {
         calls.push({ url, init });
         const path = new URL(url).pathname;
         if (overrides[path]) return overrides[path](init);
@@ -131,7 +132,7 @@ function fakeMcpSessionHubBinding(overrides = {}) {
   };
 }
 
-function callTool(name, args, opts) {
+function callTool(name: string, args?: unknown, opts?: Row) {
   return rpc(
     {
       jsonrpc: "2.0",
@@ -349,7 +350,7 @@ describe("MCP resources (#742)", () => {
     });
     const tpls = res.body.result.resourceTemplates;
     assert.equal(tpls.length, 4);
-    assert.deepEqual(tpls.map((t) => t.uriTemplate).sort(), [
+    assert.deepEqual(tpls.map((t: Row) => t.uriTemplate).sort(), [
       "metagraph://provider/{slug}",
       "metagraph://schema/{surface_id}",
       "metagraph://subnet/{netuid}",
@@ -384,7 +385,7 @@ describe("MCP resources (#742)", () => {
       { jsonrpc: "2.0", id: 1, method: "resources/list" },
       { deps },
     );
-    const uris = res.body.result.resources.map((r) => r.uri);
+    const uris = res.body.result.resources.map((r: Row) => r.uri);
     assert.ok(uris.includes("metagraph://registry/summary"));
     assert.ok(uris.includes("metagraph://subnet/7"));
     assert.ok(uris.includes("metagraph://subnet/7/status"));
@@ -398,7 +399,7 @@ describe("MCP resources (#742)", () => {
 
   test("resources/list degrades gracefully when indexes are missing", async () => {
     const res = await rpc({ jsonrpc: "2.0", id: 1, method: "resources/list" });
-    const uris = res.body.result.resources.map((r) => r.uri);
+    const uris = res.body.result.resources.map((r: Row) => r.uri);
     assert.ok(uris.includes("metagraph://registry/summary"));
     assert.ok(uris.includes("metagraph://registry/catalog"));
   });
@@ -477,7 +478,7 @@ describe("MCP resources/subscribe + resources/unsubscribe (#4983 MCP half)", () 
 
   test("resources/read on the live chain-stream resource returns ChainFirehoseHub's latest payload", async () => {
     const firehose = {
-      idFromName: (name) => name,
+      idFromName: (name: string) => name,
       get: () => ({
         fetch: async () =>
           new Response(
@@ -505,7 +506,7 @@ describe("MCP resources/subscribe + resources/unsubscribe (#4983 MCP half)", () 
 
   test("resources/read on the live chain-stream resource reports 'no event observed yet' when the hub is cold", async () => {
     const firehose = {
-      idFromName: (name) => name,
+      idFromName: (name: string) => name,
       get: () => ({
         fetch: async () =>
           new Response(JSON.stringify({ payload: null }), { status: 200 }),
@@ -758,7 +759,7 @@ describe("MCP prompts (#742)", () => {
       assert.ok(p.name && p.title && p.description);
       assert.ok(Array.isArray(p.arguments));
     }
-    assert.ok(prompts.some((p) => p.name === "integrate_with_subnet"));
+    assert.ok(prompts.some((p: Row) => p.name === "integrate_with_subnet"));
   });
 
   test("prompts/get returns a user message referencing the tools", async () => {
@@ -853,11 +854,11 @@ describe("MCP resources/prompts — branch coverage", () => {
       { jsonrpc: "2.0", id: 1, method: "resources/list" },
       { deps },
     );
-    const uris = res.body.result.resources.map((r) => r.uri);
+    const uris = res.body.result.resources.map((r: Row) => r.uri);
     assert.ok(uris.includes("metagraph://subnet/0"));
-    assert.ok(!uris.some((u) => u.includes("no-netuid")));
+    assert.ok(!uris.some((u: string) => u.includes("no-netuid")));
     assert.ok(uris.includes("metagraph://provider/by-id"));
-    assert.ok(!uris.some((u) => u.includes("no-slug")));
+    assert.ok(!uris.some((u: string) => u.includes("no-slug")));
     assert.ok(uris.includes("metagraph://schema/s1"));
     assert.ok(uris.includes("metagraph://schema/s2"));
   });
@@ -971,9 +972,13 @@ describe("MCP transport handling", () => {
       headers: { "content-type": "application/json" },
       body: "{not json",
     });
-    const response = await handleMcpRequest(request, {}, makeDeps());
+    const response = await handleMcpRequest(
+      request,
+      {} as unknown as Env,
+      makeDeps(),
+    );
     assert.equal(response.status, 400);
-    const body = await response.json();
+    const body = (await response.json()) as Row;
     assert.equal(body.error.code, -32700);
   });
 
@@ -1029,11 +1034,11 @@ describe("MCP transport handling", () => {
   });
 
   test("an oversized batch is rejected before processing messages", async () => {
-    const calls = [];
+    const calls: Row[] = [];
     const deps = {
       ...makeDeps(),
-      readArtifact(_env, path) {
-        calls.push(path);
+      readArtifact(_env: unknown, path: string) {
+        calls.push(path as unknown as Row);
         return Promise.resolve({ ok: true, data: {} });
       },
     };
@@ -1057,9 +1062,13 @@ describe("MCP transport handling", () => {
       headers: { "content-type": "application/json" },
       body: `"${"x".repeat(MAX_MCP_BODY_BYTES)}"`,
     });
-    const response = await handleMcpRequest(request, {}, makeDeps());
+    const response = await handleMcpRequest(
+      request,
+      {} as unknown as Env,
+      makeDeps(),
+    );
     assert.equal(response.status, 413);
-    const body = await response.json();
+    const body = (await response.json()) as Row;
     assert.equal(body.error.code, -32600);
   });
 
@@ -1072,9 +1081,13 @@ describe("MCP transport handling", () => {
       },
       body: "{}",
     });
-    const response = await handleMcpRequest(request, {}, makeDeps());
+    const response = await handleMcpRequest(
+      request,
+      {} as unknown as Env,
+      makeDeps(),
+    );
     assert.equal(response.status, 413);
-    const responseBody = await response.json();
+    const responseBody = (await response.json()) as Row;
     assert.equal(responseBody.error.code, -32600);
   });
 
@@ -1084,9 +1097,13 @@ describe("MCP transport handling", () => {
       headers: { "content-type": "application/json" },
     });
     assert.equal(request.body, null);
-    const response = await handleMcpRequest(request, {}, makeDeps());
+    const response = await handleMcpRequest(
+      request,
+      {} as unknown as Env,
+      makeDeps(),
+    );
     assert.equal(response.status, 400);
-    const body = await response.json();
+    const body = (await response.json()) as Row;
     assert.equal(body.error.code, -32700);
   });
 
@@ -1102,9 +1119,13 @@ describe("MCP transport handling", () => {
       },
       body: `"${"x".repeat(MAX_MCP_BODY_BYTES)}"`,
     });
-    const response = await handleMcpRequest(request, {}, makeDeps());
+    const response = await handleMcpRequest(
+      request,
+      {} as unknown as Env,
+      makeDeps(),
+    );
     assert.equal(response.status, 413);
-    const body = await response.json();
+    const body = (await response.json()) as Row;
     assert.equal(body.error.code, -32600);
   });
 
@@ -1136,9 +1157,13 @@ describe("MCP transport handling", () => {
       headers: { "content-type": "application/json" },
       body: stream,
       duplex: "half",
-    });
+    } as unknown as RequestInit);
 
-    const response = await handleMcpRequest(request, {}, makeDeps());
+    const response = await handleMcpRequest(
+      request,
+      {} as unknown as Env,
+      makeDeps(),
+    );
 
     assert.equal(response.status, 413);
     assert.equal(cancelled, true);
@@ -1166,7 +1191,7 @@ describe("MCP transport handling", () => {
               return { success: false };
             },
           },
-        },
+        } as unknown as Env,
         makeDeps(),
       );
       assert.equal(response.status, 429);
@@ -1188,12 +1213,12 @@ describe("MCP transport handling", () => {
       request,
       {
         MCP_RATE_LIMITER: {
-          async limit({ key }) {
+          async limit({ key }: { key: string }) {
             rateLimitKey = key;
             return { success: false };
           },
         },
-      },
+      } as unknown as Env,
       makeDeps(),
     );
     assert.equal(response.status, 429);
@@ -1204,7 +1229,7 @@ describe("MCP transport handling", () => {
       EXPOSED_RESPONSE_HEADERS_VALUE,
     );
     assert.equal(rateLimitKey, "203.0.113.7");
-    const body = await response.json();
+    const body = (await response.json()) as Row;
     assert.match(body.error.message, /Too many MCP requests/);
   });
 
@@ -1213,7 +1238,7 @@ describe("MCP transport handling", () => {
       method: "POST",
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
     });
-    const response = await handleMcpRequest(request, {});
+    const response = await handleMcpRequest(request, {} as unknown as Env);
     assert.equal(response.status, 200);
   });
 
@@ -1253,7 +1278,7 @@ describe("MCP transport handling", () => {
       assert.equal(res.status, 200);
       const sessionId = res.headers.get("mcp-session-id");
       assert.match(
-        sessionId,
+        sessionId as string,
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       );
     });
@@ -1319,7 +1344,7 @@ describe("MCP transport handling", () => {
       const res = await rpc(null, {
         method: "GET",
         headers: { "mcp-session-id": A_SESSION_ID },
-        env: {},
+        env: {} as unknown as Env,
       });
       assert.equal(res.status, 405);
       assert.equal(res.headers.get("allow"), "POST, OPTIONS");
@@ -1333,7 +1358,7 @@ describe("MCP transport handling", () => {
       });
       const response = await handleMcpRequest(request, {
         MCP_SESSION_HUB: hub,
-      });
+      } as unknown as Env);
       assert.equal(response.status, 200);
       assert.equal(response.headers.get("content-type"), "text/event-stream");
       // #5545: SSE responses must carry nosniff like every other builder.
@@ -1356,9 +1381,9 @@ describe("MCP transport handling", () => {
       });
       const response = await handleMcpRequest(request, {
         MCP_SESSION_HUB: hub,
-      });
+      } as unknown as Env);
       assert.equal(response.status, 409);
-      const body = await response.json();
+      const body = (await response.json()) as Row;
       assert.match(body.error.message, /already open/);
     });
 
@@ -1372,9 +1397,9 @@ describe("MCP transport handling", () => {
       });
       const response = await handleMcpRequest(request, {
         MCP_SESSION_HUB: hub,
-      });
+      } as unknown as Env);
       assert.equal(response.status, 404);
-      const body = await response.json();
+      const body = (await response.json()) as Row;
       assert.match(body.error.message, /No such MCP session/);
     });
   });
@@ -1402,7 +1427,7 @@ describe("MCP transport handling", () => {
       });
       const response = await handleMcpRequest(request, {
         MCP_SESSION_HUB: hub,
-      });
+      } as unknown as Env);
       assert.equal(response.status, 204);
       assert.equal(hub.calls.length, 1);
       assert.match(hub.calls[0].url, /\/terminate$/);
@@ -1422,9 +1447,9 @@ describe("MCP transport handling", () => {
       });
       const response = await handleMcpRequest(request, {
         MCP_SESSION_HUB: hub,
-      });
+      } as unknown as Env);
       assert.equal(response.status, 404);
-      const body = await response.json();
+      const body = (await response.json()) as Row;
       assert.match(body.error.message, /No such MCP session/);
     });
   });
@@ -1678,7 +1703,7 @@ describe("MCP tools (injected deps)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.results[0].netuid, 7);
     assert.ok(out.results[0].url.includes("/api/v1/subnets/7/overview"));
-    assert.ok(out.results.every((r) => r.netuid !== null));
+    assert.ok(out.results.every((r: Row) => r.netuid !== null));
     // Pagination envelope mirrors list_subnets: total/cursor/limit/next_cursor.
     assert.equal(out.total, 1);
     assert.equal(out.count, 1);
@@ -2036,13 +2061,13 @@ describe("MCP tools (injected deps)", () => {
     // 'a' and 'b' are pool_eligible ('c' is not); 'b' appears in two pools but
     // must be deduped -> exactly 2 eligible. 'b' gets live latency 70.
     assert.equal(out.eligible_count, 2);
-    assert.equal(out.endpoints.filter((e) => e.id === "b").length, 1);
+    assert.equal(out.endpoints.filter((e: Row) => e.id === "b").length, 1);
     assert.equal(out.endpoints[0].id, "b");
     assert.equal(out.endpoints[0].latency_ms, 70);
     assert.equal(out.endpoints[0].url, "wss://b.example");
     assert.equal(out.endpoints[0].network, "finney");
     // The bogus pool-key network ("0"/"1") must never leak.
-    assert.ok(out.endpoints.every((e) => e.network === "finney"));
+    assert.ok(out.endpoints.every((e: Row) => e.network === "finney"));
   });
 
   test("get_best_rpc_endpoint works without a live KV snapshot", async () => {
@@ -3015,11 +3040,11 @@ describe("MCP tools (injected deps)", () => {
       "validator-headroom",
     ]);
     assert.deepEqual(
-      out.boards["open-slots"].map((e) => e.netuid),
+      out.boards["open-slots"].map((e: Row) => e.netuid),
       [10, 11],
     );
     assert.deepEqual(
-      out.boards["highest-emission"].map((e) => e.netuid),
+      out.boards["highest-emission"].map((e: Row) => e.netuid),
       [11, 10],
     );
   });
@@ -3066,7 +3091,7 @@ describe("MCP tools (injected deps)", () => {
         }),
       },
     );
-    let out = res.body.result.structuredContent;
+    const out = res.body.result.structuredContent;
     assert.equal(out.with_economics_count, 0);
     assert.equal(out.observed_at, "2026-06-19T00:00:00Z");
     for (const key of [
@@ -3096,11 +3121,11 @@ describe("MCP tools (injected deps)", () => {
 describe("MCP get_chain_activity (DATA_API binding)", () => {
   // A stub DATA_API binding: records the requested URL and returns the supplied
   // stats payload (or a non-OK response when `status` is given).
-  function makeDataApi({ payload, status = 200 } = {}) {
-    const calls = [];
+  function makeDataApi({ payload, status = 200 }: Row = {}) {
+    const calls: URL[] = [];
     return {
       calls,
-      fetch(request) {
+      fetch(request: Request) {
         calls.push(new URL(request.url));
         return Promise.resolve(
           new Response(status === 200 ? JSON.stringify(payload) : "err", {
@@ -3159,7 +3184,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     const dataApi = makeDataApi({
       payload: { window_blocks: 1000, groups: 0, activity: [] },
     });
-    const limiterKeys = [];
+    const limiterKeys: string[] = [];
     const res = await callTool(
       "get_chain_activity",
       {},
@@ -3167,7 +3192,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
         env: {
           DATA_API: dataApi,
           DATA_RATE_LIMITER: {
-            async limit({ key }) {
+            async limit({ key }: { key: string }) {
               limiterKeys.push(key);
               return { success: false };
             },
@@ -3185,7 +3210,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     const dataApi = makeDataApi({
       payload: { window_blocks: 1000, groups: 0, activity: [] },
     });
-    const limiterKeys = [];
+    const limiterKeys: string[] = [];
     const res = await rpc(
       [
         {
@@ -3205,7 +3230,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
         env: {
           DATA_API: dataApi,
           DATA_RATE_LIMITER: {
-            async limit({ key }) {
+            async limit({ key }: { key: string }) {
               limiterKeys.push(key);
               return { success: true };
             },
@@ -3306,8 +3331,8 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
 
   test("list_chain_events surfaces a data-Worker 400 as an invalid_params error", async () => {
     const dataApi = {
-      calls: [],
-      fetch(request) {
+      calls: [] as URL[],
+      fetch(request: Request) {
         this.calls.push(new URL(request.url));
         return Promise.resolve(
           new Response(
@@ -3391,7 +3416,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
 
   test("list_chain_events errors cleanly when the data Worker fetch throws", async () => {
     const dataApi = {
-      calls: [],
+      calls: [] as URL[],
       fetch() {
         return Promise.reject(new Error("socket hang up"));
       },
@@ -3407,8 +3432,8 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
 
   test("list_chain_events falls back to a default message on a non-JSON 400 body", async () => {
     const dataApi = {
-      calls: [],
-      fetch(request) {
+      calls: [] as URL[],
+      fetch(request: Request) {
         this.calls.push(new URL(request.url));
         return Promise.resolve(new Response("not json", { status: 400 }));
       },
@@ -3430,11 +3455,11 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
 // tier as get_chain_activity above (#6637), so its tests mock DATA_API the
 // same way.
 describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
-  function makeDataApi({ payload, status = 200 } = {}) {
-    const calls = [];
+  function makeDataApi({ payload, status = 200 }: Row = {}) {
+    const calls: URL[] = [];
     return {
       calls,
-      fetch(request) {
+      fetch(request: Request) {
         calls.push(new URL(request.url));
         return Promise.resolve(
           new Response(status === 200 ? JSON.stringify(payload) : "err", {
@@ -3544,7 +3569,7 @@ describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
         ownership_changes: [],
       },
     });
-    const limiterKeys = [];
+    const limiterKeys: string[] = [];
     const res = await callTool(
       "get_subnet_ownership_history",
       { netuid: 7 },
@@ -3552,7 +3577,7 @@ describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
         env: {
           DATA_API: dataApi,
           DATA_RATE_LIMITER: {
-            async limit({ key }) {
+            async limit({ key }: { key: string }) {
               limiterKeys.push(key);
               return { success: true };
             },
@@ -3569,11 +3594,11 @@ describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
 // all-events tier as get_subnet_ownership_history above, so its tests mock
 // DATA_API the same way.
 describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
-  function makeDataApi({ payload, status = 200, throws = false } = {}) {
-    const calls = [];
+  function makeDataApi({ payload, status = 200, throws = false }: Row = {}) {
+    const calls: URL[] = [];
     return {
       calls,
-      fetch(request) {
+      fetch(request: Request) {
         calls.push(new URL(request.url));
         if (throws) return Promise.reject(new Error("network down"));
         return Promise.resolve(
@@ -3693,7 +3718,7 @@ describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
     const dataApi = makeDataApi({
       payload: { schema_version: 1, netuid: 7, count: 0, lease_events: [] },
     });
-    const limiterKeys = [];
+    const limiterKeys: string[] = [];
     const res = await callTool(
       "get_subnet_lease_history",
       { netuid: 7 },
@@ -3701,7 +3726,7 @@ describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
         env: {
           DATA_API: dataApi,
           DATA_RATE_LIMITER: {
-            async limit({ key }) {
+            async limit({ key }: { key: string }) {
               limiterKeys.push(key);
               return { success: true };
             },
@@ -3718,11 +3743,11 @@ describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
 // tier as get_subnet_ownership_history above, so its tests mock DATA_API
 // the same way.
 describe("MCP get_subnet_conviction (DATA_API binding)", () => {
-  function makeDataApi({ payload, status = 200 } = {}) {
-    const calls = [];
+  function makeDataApi({ payload, status = 200 }: Row = {}) {
+    const calls: URL[] = [];
     return {
       calls,
-      fetch(request) {
+      fetch(request: Request) {
         calls.push(new URL(request.url));
         return Promise.resolve(
           new Response(status === 200 ? JSON.stringify(payload) : "err", {
@@ -3880,7 +3905,7 @@ describe("MCP get_subnet_snapshot", () => {
   // multi-path mock pattern above -- one binding standing in for the five
   // distinct /api/v1/subnets/:netuid/* routes the compound handler fans out to.
   function subnetSnapshotPostgresEnv() {
-    const calls = [];
+    const calls: Row[] = [];
     return {
       calls,
       env: {
@@ -3888,7 +3913,7 @@ describe("MCP get_subnet_snapshot", () => {
         METAGRAPH_NEURONS_SOURCE: "postgres",
         METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             const url = new URL(request.url);
             calls.push(url);
             if (url.pathname === "/api/v1/subnets/7/hyperparameters") {
@@ -3987,7 +4012,7 @@ describe("MCP get_subnet_snapshot", () => {
         env: {
           ...env,
           DATA_API: {
-            fetch: async (request) => {
+            fetch: async (request: Request) => {
               const url = new URL(request.url);
               calls.push(url);
               if (url.pathname === "/api/v1/subnets/7/events") {
@@ -4077,14 +4102,14 @@ describe("MCP get_chain_signers", () => {
   });
 
   test("applies the data-tier limiter before the signers aggregation", async () => {
-    const limiterKeys = [];
+    const limiterKeys: string[] = [];
     const res = await callTool(
       "get_chain_signers",
       {},
       {
         env: {
           DATA_RATE_LIMITER: {
-            async limit({ key }) {
+            async limit({ key }: { key: string }) {
               limiterKeys.push(key);
               return { success: false };
             },
@@ -4098,14 +4123,14 @@ describe("MCP get_chain_signers", () => {
   });
 
   test("proceeds to the empty signers leaderboard when the data-tier limiter allows the request", async () => {
-    const limiterKeys = [];
+    const limiterKeys: string[] = [];
     const res = await callTool(
       "get_chain_signers",
       {},
       {
         env: {
           DATA_RATE_LIMITER: {
-            async limit({ key }) {
+            async limit({ key }: { key: string }) {
               limiterKeys.push(key);
               return { success: true };
             },
@@ -4166,7 +4191,7 @@ describe("MCP get_chain_signers", () => {
         },
       },
     };
-    const message = (id) => ({
+    const message = (id: unknown) => ({
       jsonrpc: "2.0",
       id,
       method: "tools/call",
@@ -4178,7 +4203,7 @@ describe("MCP get_chain_signers", () => {
     const res = await rpc([message(1), message(2), message(3)], { env });
     assert.equal(res.status, 200);
     assert.equal(res.body.length, 3);
-    for (const entry of res.body) {
+    for (const entry of res.body as unknown as Row[]) {
       assert.equal(entry.result.isError, true);
       assert.match(entry.result.content[0].text, /Too many data API requests/);
     }
@@ -4250,7 +4275,7 @@ describe("MCP get_chain_fees", () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           requestedUrl = new URL(request.url);
           return Response.json({
             schema_version: 1,
@@ -4268,9 +4293,9 @@ describe("MCP get_chain_fees", () => {
       { window: "30d", call_module: "Balances", limit: 10 },
       { env },
     );
-    assert.equal(requestedUrl.searchParams.get("call_module"), "Balances");
-    assert.equal(requestedUrl.searchParams.get("window"), "30d");
-    assert.equal(requestedUrl.searchParams.get("limit"), "10");
+    assert.equal(requestedUrl!.searchParams.get("call_module"), "Balances");
+    assert.equal(requestedUrl!.searchParams.get("window"), "30d");
+    assert.equal(requestedUrl!.searchParams.get("limit"), "10");
   });
 
   test("rejects an invalid window", async () => {
@@ -4315,7 +4340,7 @@ describe("MCP get_chain_registrations", () => {
     return {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           const url = new URL(request.url);
           const window = url.searchParams.get("window") || "7d";
           const limitParam = url.searchParams.get("limit");
@@ -4456,12 +4481,12 @@ describe("MCP decode_evm_call (#6725/#6729)", () => {
   const SUBNET_ADDRESS = "0x0000000000000000000000000000000000000803";
 
   test("decodes a real precompile call end-to-end", async () => {
-    const fn = EVM_PRECOMPILE_BY_ADDRESS.get(SUBNET_ADDRESS).functions.find(
+    const fn = EVM_PRECOMPILE_BY_ADDRESS.get(SUBNET_ADDRESS)!.functions.find(
       (f) => f.name === "getWeightsVersionKey",
     );
     const res = await callTool(
       "decode_evm_call",
-      { to: SUBNET_ADDRESS, input: `${fn.selector}${"7".padStart(64, "0")}` },
+      { to: SUBNET_ADDRESS, input: `${fn!.selector}${"7".padStart(64, "0")}` },
       {},
     );
     assert.equal(res.body.result.isError, false);
@@ -4469,7 +4494,7 @@ describe("MCP decode_evm_call (#6725/#6729)", () => {
       precompile: "Subnet",
       address: SUBNET_ADDRESS,
       function: "getWeightsVersionKey",
-      signature: fn.signature,
+      signature: fn!.signature,
       args: { netuid: 7 },
     });
   });
@@ -4537,10 +4562,10 @@ describe("MCP get_evm_address_mapping (#6725/#6728)", () => {
 
   test("returns the SS58-encoded mapping from finney RPC", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ result: GOLDEN_ETH_CALL_RESULT }),
-    });
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_evm_address_mapping", { h160: H160 }, {});
       const out = res.body.result.structuredContent;
@@ -4554,7 +4579,9 @@ describe("MCP get_evm_address_mapping (#6725/#6728)", () => {
 
   test("ss58 is null on RPC failure", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: false });
+    globalThis.fetch = (async () => ({
+      ok: false,
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_evm_address_mapping", { h160: H160 }, {});
       assert.equal(res.body.result.structuredContent.ss58, null);
@@ -4586,13 +4613,13 @@ describe("MCP get_chain_transfers", () => {
       senders = [{ address: "5Sa", volume_tao: 80, transfer_count: 5 }],
       receivers = [{ address: "5Rx", volume_tao: 60, transfer_count: 4 }],
     } = {},
-    capture = [],
+    capture: Row[] = [],
   ) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -4622,12 +4649,12 @@ describe("MCP get_chain_transfers", () => {
   // running the same pure builder over the caller's own window query param,
   // so the mocked response is byte-identical to what production would
   // actually serve.
-  function chainTransfersPostgresEnv({ totals, senders, receivers }) {
+  function chainTransfersPostgresEnv({ totals, senders, receivers }: Row) {
     return {
       env: {
         METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             const url = new URL(request.url);
             const window = url.searchParams.get("window") || "7d";
             return Response.json(
@@ -4698,12 +4725,12 @@ describe("MCP get_chain_transfers", () => {
 describe("MCP stake-flow and movers economics tools", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  function stakeFlowD1(rows = [], capture = []) {
+  function stakeFlowD1(rows: Row[] = [], capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -4729,12 +4756,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  function moversD1({ bounds, aggregateRows } = {}, capture = []) {
+  function moversD1({ bounds, aggregateRows }: Row = {}, capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -4831,12 +4858,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.deepEqual(out.subnets, []);
   });
 
-  function accountStakeMovesD1(rows = [], capture = []) {
+  function accountStakeMovesD1(rows: Row[] = [], capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -4911,12 +4938,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  function accountAxonRemovalsD1(rows = [], capture = []) {
+  function accountAxonRemovalsD1(rows: Row[] = [], capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -4991,12 +5018,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  function accountPrometheusD1(rows = [], capture = []) {
+  function accountPrometheusD1(rows: Row[] = [], capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5073,12 +5100,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  function accountRegistrationsD1(rows = [], capture = []) {
+  function accountRegistrationsD1(rows: Row[] = [], capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5154,12 +5181,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  function accountServingD1(rows = [], capture = []) {
+  function accountServingD1(rows: Row[] = [], capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5236,12 +5263,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.ok(validate(res.body.result.structuredContent));
   });
 
-  function accountWeightSettersD1(rows = [], capture = []) {
+  function accountWeightSettersD1(rows: Row[] = [], capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5265,12 +5292,12 @@ describe("MCP stake-flow and movers economics tools", () => {
     };
   }
 
-  function accountDeregistrationsD1(rows = [], capture = []) {
+  function accountDeregistrationsD1(rows: Row[] = [], capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5431,9 +5458,9 @@ describe("MCP stake-flow and movers economics tools", () => {
 
   test("stake-flow and movers payloads validate against outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name) =>
+    const validatorFor = (name: string) =>
       ajv.compile(
-        listToolDefinitions().find((t) => t.name === name).outputSchema,
+        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
       );
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
@@ -5610,12 +5637,12 @@ describe("MCP get_subnet_event_summary", () => {
 });
 
 describe("MCP get_subnet_stake_moves", () => {
-  function stakeMovesD1(row = null, capture = []) {
+  function stakeMovesD1(row: Row | null = null, capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5680,12 +5707,12 @@ describe("MCP get_subnet_stake_moves", () => {
 });
 
 describe("MCP get_subnet_stake_transfers", () => {
-  function stakeTransfersD1(row = null, capture = []) {
+  function stakeTransfersD1(row: Row | null = null, capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5751,12 +5778,12 @@ describe("MCP get_subnet_stake_transfers", () => {
 });
 
 describe("MCP get_subnet_registrations", () => {
-  function registrationsSubnetD1(row = null, capture = []) {
+  function registrationsSubnetD1(row: Row | null = null, capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5802,12 +5829,12 @@ describe("MCP get_subnet_registrations", () => {
 });
 
 describe("MCP get_subnet_weights", () => {
-  function weightsD1(row = null, capture = []) {
+  function weightsD1(row: Row | null = null, capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -5938,12 +5965,12 @@ describe("MCP get_subnet_axon_removals", () => {
 });
 
 describe("MCP get_subnet_serving", () => {
-  function servingD1(row = null, capture = []) {
+  function servingD1(row: Row | null = null, capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -6008,12 +6035,12 @@ describe("MCP get_subnet_serving", () => {
 });
 
 describe("MCP get_subnet_prometheus", () => {
-  function prometheusD1(row = null, capture = []) {
+  function prometheusD1(row: Row | null = null, capture: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 async all() {
@@ -6155,12 +6182,12 @@ describe("MCP get_subnet_performance_history", () => {
 });
 
 describe("MCP get_subnet_yield_history", () => {
-  function yieldHistoryD1(rows = []) {
+  function yieldHistoryD1(rows: Row[] = []) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(_sql) {
+        prepare(_sql: unknown) {
           return {
-            bind(..._params) {
+            bind(..._params: unknown[]) {
               return {
                 async all() {
                   return { results: rows };
@@ -6286,9 +6313,9 @@ describe("MCP get_rpc_usage", () => {
   function rpcUsageDb() {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(..._params) {
+            bind(..._params: unknown[]) {
               return {
                 async all() {
                   if (/COUNT\(\*\) AS total/.test(sql)) {
@@ -6425,7 +6452,7 @@ describe("MCP get_rpc_usage", () => {
   test("cold and populated payloads validate against the declared outputSchema", async () => {
     const ajv = new Ajv2020({ strict: false });
     const validate = ajv.compile(
-      listToolDefinitions().find((t) => t.name === "get_rpc_usage")
+      listToolDefinitions().find((t: Row) => t.name === "get_rpc_usage")!
         .outputSchema,
     );
     for (const [label, env] of [
@@ -6467,7 +6494,7 @@ describe("MCP call_rpc", () => {
     return {
       METAGRAPH_ENABLE_RPC_PROXY: "true",
       ASSETS: {
-        async fetch(request) {
+        async fetch(request: Request) {
           const target = new URL(request.url);
           if (target.pathname === "/metagraph/rpc/pools.json") {
             return Response.json(RPC_POOL);
@@ -6546,7 +6573,7 @@ describe("MCP call_rpc", () => {
         },
       },
       RPC_RATE_LIMITER: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           limiterKey = key;
           return { success: false };
         },
@@ -6652,8 +6679,8 @@ describe("MCP call_rpc", () => {
   test("advertises a call_rpc-shaped outputSchema and the result validates against it", async () => {
     const ajv = new Ajv2020({ strict: false });
     const def = listToolDefinitions().find((t) => t.name === "call_rpc");
-    assert.ok(def.outputSchema);
-    const validate = ajv.compile(def.outputSchema);
+    assert.ok(def!.outputSchema);
+    const validate = ajv.compile(def!.outputSchema);
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () =>
       new Response(
@@ -6750,7 +6777,9 @@ describe("MCP query_graphql (#5591 — GraphQL bridge tool)", () => {
     // uses a different key and must still pass so the request reaches the tool.
     const env = {
       RPC_RATE_LIMITER: {
-        limit: async ({ key }) => ({ success: !key.startsWith("gql:") }),
+        limit: async ({ key }: { key: string }) => ({
+          success: !key.startsWith("gql:"),
+        }),
       },
     };
     const res = await callTool(
@@ -6897,7 +6926,7 @@ describe("MCP keyword discovery relevance", () => {
     const res = await callTool("search_subnets", { query: "ai" }, { deps });
     const out = res.body.result.structuredContent;
     assert.deepEqual(
-      out.results.map((r) => r.netuid),
+      out.results.map((r: Row) => r.netuid),
       [1],
     );
   });
@@ -6915,7 +6944,7 @@ describe("MCP keyword discovery relevance", () => {
     );
     const out = res.body.result.structuredContent;
     assert.deepEqual(
-      out.results.map((r) => r.netuid),
+      out.results.map((r: Row) => r.netuid),
       [1],
     );
   });
@@ -7068,9 +7097,9 @@ describe("MCP end-to-end through the Worker dispatch", () => {
         params: { name: "list_subnet_apis", arguments: { netuid: 7 } },
       }),
     });
-    const response = await handleRequest(request, env, {});
+    const response = await handleRequest(request, env as unknown as Env, {});
     assert.equal(response.status, 200);
-    const body = await response.json();
+    const body = (await response.json()) as Row;
     assert.ok(body.result.structuredContent.service_count >= 1);
   });
 });
@@ -7078,11 +7107,11 @@ describe("MCP end-to-end through the Worker dispatch", () => {
 describe("MCP AI tools (semantic_search + ask)", () => {
   // Minimal AI bindings: embed → 1024-d vector, vector query → subnet matches,
   // completion → cited answer. Kill-switch on so aiEnabled() is satisfied.
-  function aiEnv() {
+  function aiEnv(): Row {
     return {
       METAGRAPH_ENABLE_AI: "true",
       AI: {
-        run(model, input) {
+        run(model: string, input: Row) {
           if (Array.isArray(input?.text) || typeof input?.text === "string") {
             const n = Array.isArray(input.text) ? input.text.length : 1;
             return Promise.resolve({
@@ -7145,7 +7174,7 @@ describe("MCP AI tools (semantic_search + ask)", () => {
   test("semantic_search forwards the type scope to Vectorize", async () => {
     const env = aiEnv();
     let lastOptions;
-    env.VECTORIZE.query = (_vector, options) => {
+    env.VECTORIZE.query = (_vector: unknown, options: Row) => {
       lastOptions = options;
       return Promise.resolve({ matches: [] });
     };
@@ -7155,7 +7184,7 @@ describe("MCP AI tools (semantic_search + ask)", () => {
       { env },
     );
     assert.equal(res.body.result.isError, false);
-    assert.deepEqual(lastOptions.filter, {
+    assert.deepEqual(lastOptions!.filter, {
       type: { $in: ["subnet", "provider"] },
     });
   });
@@ -7173,7 +7202,7 @@ describe("MCP AI tools (semantic_search + ask)", () => {
   test("ask forwards the type scope to Vectorize", async () => {
     const env = aiEnv();
     let lastOptions;
-    env.VECTORIZE.query = (_vector, options) => {
+    env.VECTORIZE.query = (_vector: unknown, options: Row) => {
       lastOptions = options;
       return Promise.resolve({ matches: [] });
     };
@@ -7183,7 +7212,7 @@ describe("MCP AI tools (semantic_search + ask)", () => {
       { env },
     );
     assert.equal(res.body.result.isError, false);
-    assert.deepEqual(lastOptions.filter, { type: "provider" });
+    assert.deepEqual(lastOptions!.filter, { type: "provider" });
   });
 
   test("ask returns a grounded answer with citations when AI is enabled", async () => {
@@ -7208,7 +7237,7 @@ describe("MCP AI tools (semantic_search + ask)", () => {
       return Promise.resolve({ data: [new Array(1024).fill(0.02)] });
     };
     env.AI_RATE_LIMITER = {
-      async limit({ key }) {
+      async limit({ key }: { key: string }) {
         limiterKey = key;
         return { success: false };
       },
@@ -7236,7 +7265,7 @@ describe("MCP AI tools (semantic_search + ask)", () => {
       return Promise.resolve({ response: "should not run" });
     };
     env.AI_RATE_LIMITER = {
-      async limit({ key }) {
+      async limit({ key }: { key: string }) {
         limiterCalls += 1;
         assert.equal(key, "ask:anonymous");
         return { success: false };
@@ -7260,7 +7289,7 @@ describe("MCP AI tools (semantic_search + ask)", () => {
     assert.equal(res.body.length, MAX_MCP_BATCH_LENGTH);
     assert.equal(limiterCalls, MAX_MCP_BATCH_LENGTH);
     assert.equal(aiRuns, 0);
-    for (const response of res.body) {
+    for (const response of res.body as unknown as Row[]) {
       assert.equal(response.result.isError, true);
       assert.match(response.result.content[0].text, /rate_limited/);
     }
@@ -7335,7 +7364,7 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.equal(out.results[0].base_url, "https://api.data.io");
     assert.equal(out.results[0].integration_readiness, 70);
     // subnet 8 is not in the catalog (not callable) so it is excluded.
-    assert.ok(out.results.every((r) => r.netuid !== 8));
+    assert.ok(out.results.every((r: Row) => r.netuid !== 8));
   });
 
   test("find_subnet_for_task surfaces a callable subnet ranked beyond the non-callable pool", async () => {
@@ -7465,12 +7494,12 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.match(out.services[0].snippets.curl, /X-API-Key: YOUR_API_KEY/);
     assert.match(out.services[0].snippets.python, /import requests/);
     assert.match(out.services[0].snippets.typescript, /await fetch/);
-    assert.ok(out.next_steps.some((s) => /get_subnet_health/.test(s)));
+    assert.ok(out.next_steps.some((s: string) => /get_subnet_health/.test(s)));
   });
 
   test("how_do_i_call surfaces fixture fetch instructions when available", async () => {
     const fixtureDetail = structuredClone(callDetail);
-    const service =
+    const service: Row =
       fixtureDetail["/metagraph/agent-catalog/7.json"].services[0];
     service.fixture = {
       captured_at: "2026-06-18T00:00:00.000Z",
@@ -7497,12 +7526,12 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
       out.services[0].fixture.fetch_with,
       "get_fixture with surface_id sn-7-api",
     );
-    assert.ok(out.next_steps.some((s) => /get_fixture/.test(s)));
+    assert.ok(out.next_steps.some((s: string) => /get_fixture/.test(s)));
   });
 
   test("how_do_i_call regenerates snippets without cleartext credentials", async () => {
     const cleartextDetail = structuredClone(callDetail);
-    const service =
+    const service: Row =
       cleartextDetail["/metagraph/agent-catalog/7.json"].services[0];
     service.base_url = "http://api.data.io";
     service.snippets = {
@@ -7564,11 +7593,11 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
 
 describe("MCP goal-shaped tools — branch coverage", () => {
   // Minimal AI env whose vector query returns the given subnet netuids in order.
-  function aiEnvWithMatches(netuids) {
+  function aiEnvWithMatches(netuids: number[]) {
     return {
       METAGRAPH_ENABLE_AI: "true",
       AI: {
-        run(_model, input) {
+        run(_model: unknown, input: Row) {
           if (input?.text) {
             return Promise.resolve({ data: [new Array(1024).fill(0.02)] });
           }
@@ -7578,7 +7607,7 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       VECTORIZE: {
         query() {
           return Promise.resolve({
-            matches: netuids.map((n, i) => ({
+            matches: netuids.map((n: number, i: number) => ({
               id: `subnet:${n}`,
               score: 0.9 - i * 0.01,
               metadata: {
@@ -7787,7 +7816,7 @@ describe("MCP goal-shaped tools — branch coverage", () => {
     assert.equal(out.services[0].auth.required, false);
     assert.equal(out.services[0].schema.available, false);
     assert.equal(out.services[0].health.status, "unknown");
-    assert.ok(out.next_steps.every((s) => !/get_api_schema/.test(s)));
+    assert.ok(out.next_steps.every((s: string) => !/get_api_schema/.test(s)));
   });
 
   test("how_do_i_call tolerates a detail with no services array", async () => {
@@ -7957,7 +7986,7 @@ describe("MCP goal-shaped tools — branch coverage", () => {
         { deps },
       );
       const match = res.body.result.structuredContent.results.find(
-        (r) => r.netuid === 7,
+        (r: Row) => r.netuid === 7,
       );
       assert.ok(match, "subnet 7 should rank for the task");
       // health reflects the LIVE probe ("failed"), not the build-time stub.
@@ -8089,8 +8118,8 @@ describe("list_subnets", () => {
   });
 
   // Fixture readiness: {0:15, 7:90, 8:0}; surface_count: {0:17, 7:4, 8:0}.
-  const rangeNetuids = (out) =>
-    out.subnets.map((s) => s.netuid).sort((a, b) => a - b);
+  const rangeNetuids = (out: Row) =>
+    out.subnets.map((s: Row) => s.netuid).sort((a: number, b: number) => a - b);
 
   // Fixture: 0=root/active, 7=application/active/inference,
   // 8=application/deprecated with derived_categories ["data"].
@@ -8249,7 +8278,7 @@ describe("list_subnets", () => {
       )
     ).body.result.structuredContent;
     assert.deepEqual(
-      out.subnets.map((s) => s.netuid),
+      out.subnets.map((s: Row) => s.netuid),
       [7, 0, 8],
     );
     assert.equal(out.sort, "integration_readiness");
@@ -8265,7 +8294,7 @@ describe("list_subnets", () => {
       )
     ).body.result.structuredContent;
     assert.deepEqual(
-      out.subnets.map((s) => s.netuid),
+      out.subnets.map((s: Row) => s.netuid),
       [8, 0, 7],
     );
     assert.equal(out.order, "asc");
@@ -8276,7 +8305,7 @@ describe("list_subnets", () => {
       .body.result.structuredContent;
     // Allways (7), Parked (8), root (0)
     assert.deepEqual(
-      out.subnets.map((s) => s.netuid),
+      out.subnets.map((s: Row) => s.netuid),
       [7, 8, 0],
     );
   });
@@ -8285,7 +8314,7 @@ describe("list_subnets", () => {
     const out = (await callTool("list_subnets", {}, { deps })).body.result
       .structuredContent;
     assert.deepEqual(
-      out.subnets.map((s) => s.netuid),
+      out.subnets.map((s: Row) => s.netuid),
       [0, 7, 8],
     );
     assert.equal(out.sort, null);
@@ -8327,7 +8356,7 @@ describe("list_subnets", () => {
     // 80 first; the two 50s tie → netuid asc (3,5); the nulls sort last → netuid
     // asc (1,9), even under desc.
     assert.deepEqual(
-      out.subnets.map((s) => s.netuid),
+      out.subnets.map((s: Row) => s.netuid),
       [2, 3, 5, 1, 9],
     );
   });
@@ -8353,7 +8382,7 @@ describe("list_subnets", () => {
         )
       ).body.result.structuredContent;
       assert.deepEqual(
-        out.subnets.map((s) => s.netuid),
+        out.subnets.map((s: Row) => s.netuid),
         [1, 2],
       );
     }
@@ -8384,8 +8413,10 @@ describe("list_subnets", () => {
         ],
       },
     });
-    const rangeNetuids = (out) =>
-      out.subnets.map((s) => s.netuid).sort((a, b) => a - b);
+    const rangeNetuids = (out: Row) =>
+      out.subnets
+        .map((s: Row) => s.netuid)
+        .sort((a: number, b: number) => a - b);
 
     const byCoverage = (
       await callTool(
@@ -8455,9 +8486,9 @@ describe("search tools pagination", () => {
 
   // Walk every page by following next_cursor; returns the concatenated results
   // and the (cursor, next_cursor) sequence seen.
-  async function walkAll(tool, baseArgs, limit) {
-    const all = [];
-    const cursors = [];
+  async function walkAll(tool: string, baseArgs: Row, limit: unknown) {
+    const all: Row[] = [];
+    const cursors: Row[] = [];
     let cursor = 0;
     let total = null;
     // Guard well above the real page count so a cursor bug fails fast instead
@@ -8630,7 +8661,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 7 },
       {
         deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8660,7 +8691,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 999 },
       {
         deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8681,7 +8712,7 @@ describe("MCP economics + metagraph data tools", () => {
           },
           {},
         ),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8715,7 +8746,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 1000, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8735,7 +8766,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 500, direction: "unstake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8750,7 +8781,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 10 },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.structuredContent.direction, "stake");
@@ -8762,7 +8793,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 0, amount: 42, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8778,7 +8809,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: -5, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.isError, true);
@@ -8791,7 +8822,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 10, direction: "swap" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.isError, true);
@@ -8804,7 +8835,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 999, amount: 10, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.isError, true);
@@ -8817,7 +8848,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 1000, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8837,7 +8868,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 10 },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.structuredContent.direction, "stake");
@@ -8849,7 +8880,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 500, direction: "unstake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8865,7 +8896,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 0, amount: 42, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8881,7 +8912,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 10, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8916,7 +8947,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 999, amount: 10, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.isError, true);
@@ -8929,7 +8960,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 10, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8944,7 +8975,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 10000, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8960,7 +8991,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 64, amount: 20000, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -8976,7 +9007,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 0, amount: 42, direction: "stake" },
       {
         deps: makeDeps({ "/metagraph/economics.json": STAKE_QUOTE_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -9041,7 +9072,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.cursor, 1);
     assert.equal(out.next_cursor, null);
     assert.deepEqual(
-      out.subnets.map((row) => row.netuid),
+      out.subnets.map((row: Row) => row.netuid),
       [8, 9],
     );
   });
@@ -9052,7 +9083,7 @@ describe("MCP economics + metagraph data tools", () => {
       { sort: "not_a_field" },
       {
         deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.isError, true);
@@ -9064,8 +9095,11 @@ describe("MCP economics + metagraph data tools", () => {
     for (const [args, pattern] of [
       [{ netuid: -1 }, /netuid must be a non-negative integer/],
       [{ cursor: -1 }, /cursor must be a non-negative integer/],
-    ]) {
-      const res = await callTool("get_economics", args, { deps, env: {} });
+    ] as [Row, RegExp][]) {
+      const res = await callTool("get_economics", args, {
+        deps,
+        env: {} as unknown as Env,
+      });
       assert.equal(res.body.result.isError, true, JSON.stringify(args));
       assert.match(res.body.result.content[0].text, pattern);
     }
@@ -9108,7 +9142,7 @@ describe("MCP economics + metagraph data tools", () => {
       { fields: "netuid,not_a_field" },
       {
         deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.isError, true);
@@ -9144,7 +9178,7 @@ describe("MCP economics + metagraph data tools", () => {
       {},
       {
         deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -9161,10 +9195,10 @@ describe("MCP economics + metagraph data tools", () => {
     const tool = MCP_TOOLS.find((t) => t.name === "get_economics");
     await assert.rejects(
       () =>
-        tool.handler(
+        tool!.handler(
           {},
           {
-            env: {},
+            env: {} as unknown as Env,
             readHealthKv: async () => null,
             readArtifact: async () => {
               throw new Error("kaboom");
@@ -9178,7 +9212,7 @@ describe("MCP economics + metagraph data tools", () => {
   test("get_economics payload validates against its declared outputSchema", async () => {
     const ajv = new Ajv2020({ strict: false });
     const validate = ajv.compile(
-      listToolDefinitions().find((t) => t.name === "get_economics")
+      listToolDefinitions().find((t: Row) => t.name === "get_economics")!
         .outputSchema,
     );
     const res = await callTool(
@@ -9186,7 +9220,7 @@ describe("MCP economics + metagraph data tools", () => {
       { sort: "netuid", order: "asc" },
       {
         deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.ok(validate(res.body.result.structuredContent));
@@ -9231,7 +9265,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 7, sort: "completeness_score", order: "desc" },
       {
         deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -9246,7 +9280,7 @@ describe("MCP economics + metagraph data tools", () => {
       { sort: "not_a_field" },
       {
         deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.equal(res.body.result.isError, true);
@@ -9267,10 +9301,10 @@ describe("MCP economics + metagraph data tools", () => {
     const tool = MCP_TOOLS.find((t) => t.name === "list_profiles");
     await assert.rejects(
       () =>
-        tool.handler(
+        tool!.handler(
           {},
           {
-            env: {},
+            env: {} as unknown as Env,
             readArtifact: async () => {
               throw new Error("kaboom");
             },
@@ -9290,7 +9324,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 7 },
       {
         deps: makeDeps({ "/metagraph/profiles/7.json": detail }),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -9312,10 +9346,10 @@ describe("MCP economics + metagraph data tools", () => {
     const tool = MCP_TOOLS.find((t) => t.name === "get_subnet_profile");
     await assert.rejects(
       () =>
-        tool.handler(
+        tool!.handler(
           { netuid: 7 },
           {
-            env: {},
+            env: {} as unknown as Env,
             readArtifact: async () => {
               throw new Error("kaboom");
             },
@@ -9333,8 +9367,8 @@ describe("MCP economics + metagraph data tools", () => {
       .mockRejectedValue(err);
     try {
       await assert.rejects(
-        () => tool.handler({ netuid: 7 }, { env: {} }),
-        (thrown) => {
+        () => tool!.handler({ netuid: 7 }, { env: {} as unknown as Env }),
+        (thrown: Row) => {
           assert.equal(thrown.toolError, true);
           assert.equal(thrown.code, "not_found");
           assert.match(thrown.message, /Profile gone/);
@@ -9354,8 +9388,8 @@ describe("MCP economics + metagraph data tools", () => {
       .mockRejectedValue(err);
     try {
       await assert.rejects(
-        () => tool.handler({}, { env: {} }),
-        (thrown) => {
+        () => tool!.handler({}, { env: {} as unknown as Env }),
+        (thrown: Row) => {
           assert.equal(thrown.toolError, true);
           assert.equal(thrown.code, "invalid_params");
           assert.match(thrown.message, /bad filter/);
@@ -9370,7 +9404,7 @@ describe("MCP economics + metagraph data tools", () => {
   test("list_profiles payload validates against its declared outputSchema", async () => {
     const ajv = new Ajv2020({ strict: false });
     const validate = ajv.compile(
-      listToolDefinitions().find((t) => t.name === "list_profiles")
+      listToolDefinitions().find((t: Row) => t.name === "list_profiles")!
         .outputSchema,
     );
     const res = await callTool(
@@ -9378,7 +9412,7 @@ describe("MCP economics + metagraph data tools", () => {
       { sort: "netuid", order: "asc" },
       {
         deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.ok(validate(res.body.result.structuredContent));
@@ -9387,7 +9421,7 @@ describe("MCP economics + metagraph data tools", () => {
   test("get_subnet_profile payload validates against its declared outputSchema", async () => {
     const ajv = new Ajv2020({ strict: false });
     const validate = ajv.compile(
-      listToolDefinitions().find((t) => t.name === "get_subnet_profile")
+      listToolDefinitions().find((t: Row) => t.name === "get_subnet_profile")!
         .outputSchema,
     );
     const detail = {
@@ -9401,7 +9435,7 @@ describe("MCP economics + metagraph data tools", () => {
       { netuid: 7 },
       {
         deps: makeDeps({ "/metagraph/profiles/7.json": detail }),
-        env: {},
+        env: {} as unknown as Env,
       },
     );
     assert.ok(validate(res.body.result.structuredContent));
@@ -9485,11 +9519,11 @@ describe("MCP economics + metagraph data tools", () => {
     chainServingSubnetRows = [],
     transferPairTotals = [],
     transferPairRows = [],
-  } = {}) {
+  }: Row = {}) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
-          bind(...params) {
+          bind(...params: unknown[]) {
             return {
               all() {
                 if (sql.includes("FROM account_events")) {
@@ -9600,10 +9634,10 @@ describe("MCP economics + metagraph data tools", () => {
                 if (sql.includes("FROM neurons")) {
                   let r = neurons;
                   if (sql.includes("validator_permit = 1")) {
-                    r = r.filter((x) => x.validator_permit === 1);
+                    r = r.filter((x: Row) => x.validator_permit === 1);
                   }
                   if (sql.includes("AND uid = ?")) {
-                    r = r.filter((x) => x.uid === params[1]);
+                    r = r.filter((x: Row) => x.uid === params[1]);
                   }
                   return Promise.resolve({ results: r });
                 }
@@ -9638,7 +9672,7 @@ describe("MCP economics + metagraph data tools", () => {
                   if (sql.includes("WHERE netuid IN")) {
                     const netuids = params.map(Number);
                     return Promise.resolve({
-                      results: surfaceStatus.filter((row) =>
+                      results: surfaceStatus.filter((row: Row) =>
                         netuids.includes(row.netuid),
                       ),
                     });
@@ -10082,11 +10116,11 @@ describe("MCP economics + metagraph data tools", () => {
     });
 
     test("flag=postgres forwards limit as a REST-equivalent query param", async () => {
-      let seenUrl;
+      let seenUrl: URL | undefined;
       const env = {
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             seenUrl = new URL(request.url);
             return Response.json({
               schema_version: 1,
@@ -10098,16 +10132,16 @@ describe("MCP economics + metagraph data tools", () => {
         },
       };
       await callTool("get_chain_identity_history", { limit: 25 }, { env });
-      assert.equal(seenUrl.pathname, "/api/v1/chain/identity-history");
-      assert.equal(seenUrl.searchParams.get("limit"), "25");
+      assert.equal(seenUrl!.pathname, "/api/v1/chain/identity-history");
+      assert.equal(seenUrl!.searchParams.get("limit"), "25");
     });
 
     test("flag=postgres omits the limit param when not supplied", async () => {
-      let seenUrl;
+      let seenUrl: URL | undefined;
       const env = {
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             seenUrl = new URL(request.url);
             return Response.json({
               schema_version: 1,
@@ -10119,8 +10153,8 @@ describe("MCP economics + metagraph data tools", () => {
         },
       };
       await callTool("get_chain_identity_history", {}, { env });
-      assert.equal(seenUrl.pathname, "/api/v1/chain/identity-history");
-      assert.equal(seenUrl.searchParams.has("limit"), false);
+      assert.equal(seenUrl!.pathname, "/api/v1/chain/identity-history");
+      assert.equal(seenUrl!.searchParams.has("limit"), false);
     });
   });
 
@@ -10158,14 +10192,18 @@ describe("MCP economics + metagraph data tools", () => {
 
   // A validator-permit neuron_daily row for one boundary snapshot; keeps the
   // turnover fixtures compact so the churn arithmetic under test stays legible.
-  function turnoverRow(snapshot_date, netuid, hotkey) {
+  function turnoverRow(
+    snapshot_date: unknown,
+    netuid: number,
+    hotkey: unknown,
+  ) {
     return { snapshot_date, netuid, hotkey, validator_permit: 1 };
   }
 
   // A metagraphD1 env wired for the chain-turnover boundary reads: the MIN/MAX
   // bounds row plus the two-snapshot validator rows the loader reads.
   function chainTurnoverEnv(
-    rows,
+    rows: Row[],
     { start = "2026-06-01", end = "2026-06-30" } = {},
   ) {
     return {
@@ -10231,7 +10269,12 @@ describe("MCP economics + metagraph data tools", () => {
 
   // A grouped account_events aggregate row (one per netuid+event_kind), the
   // shape loadChainStakeFlow's SUM/COUNT/MAX query returns.
-  function stakeFlowRow(netuid, event_kind, total_tao, event_count) {
+  function stakeFlowRow(
+    netuid: number,
+    event_kind: unknown,
+    total_tao: unknown,
+    event_count: unknown,
+  ) {
     return {
       netuid,
       event_kind,
@@ -10249,8 +10292,12 @@ describe("MCP economics + metagraph data tools", () => {
   // params, reusing the shared chainAccountEventsPostgresEnv helper (its
   // buildFn ignores the unused networkDistinct arg for this tool, which
   // computes its network rollup straight off the row list).
-  function chainStakeFlowEnv(rows) {
-    return chainAccountEventsPostgresEnv(buildChainStakeFlow, null, rows);
+  function chainStakeFlowEnv(rows: Row[]) {
+    return chainAccountEventsPostgresEnv(
+      buildChainStakeFlow,
+      null as unknown as Row,
+      rows,
+    );
   }
 
   test("get_chain_stake_flow returns schema-stable zeros on cold D1", async () => {
@@ -10334,11 +10381,11 @@ describe("MCP economics + metagraph data tools", () => {
   // One GROUP BY netuid, event_kind row from account_events, the shape
   // loadChainAlphaVolume's SUM/COUNT/MAX query returns.
   function alphaVolumeRow(
-    netuid,
-    event_kind,
-    alpha_volume,
-    tao_volume,
-    event_count,
+    netuid: number,
+    event_kind: unknown,
+    alpha_volume: unknown,
+    tao_volume: unknown,
+    event_count: unknown,
   ) {
     return {
       netuid,
@@ -10356,8 +10403,12 @@ describe("MCP economics + metagraph data tools", () => {
   // [], ...) on any miss/outage, never a live D1 read. Reuses the shared
   // chainAccountEventsPostgresEnv helper (this builder ignores the unused
   // window/networkDistinct options — fixed 24h window, own row-derived rollup).
-  function chainAlphaVolumeEnv(rows) {
-    return chainAccountEventsPostgresEnv(buildChainAlphaVolume, null, rows);
+  function chainAlphaVolumeEnv(rows: Row[]) {
+    return chainAccountEventsPostgresEnv(
+      buildChainAlphaVolume,
+      null as unknown as Row,
+      rows,
+    );
   }
 
   test("get_chain_alpha_volume returns schema-stable zeros on cold D1", async () => {
@@ -10446,7 +10497,7 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainWeights reads first (its COUNT/
   // COUNT(DISTINCT)/MAX(observed_at) probe); a non-null newest_observed unlocks
   // the per-subnet read.
-  function weightsNetwork(weight_sets, distinct_setters) {
+  function weightsNetwork(weight_sets: unknown, distinct_setters: unknown) {
     return {
       weight_sets,
       distinct_setters,
@@ -10455,7 +10506,11 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   // A per-subnet GROUP BY netuid row (COUNT weight_sets + distinct setters).
-  function weightsRow(netuid, weight_sets, distinct_setters) {
+  function weightsRow(
+    netuid: number,
+    weight_sets: unknown,
+    distinct_setters: unknown,
+  ) {
     return { netuid, weight_sets, distinct_setters };
   }
 
@@ -10465,7 +10520,7 @@ describe("MCP economics + metagraph data tools", () => {
   // on any miss/outage, never a live D1 read. Reuses the shared
   // chainAccountEventsPostgresEnv helper -- same shape as
   // get_chain_stake_moves' Postgres-tier test above.
-  function chainWeightsEnv(network, subnets) {
+  function chainWeightsEnv(network: Row, subnets: Row[]) {
     return chainAccountEventsPostgresEnv(buildChainWeights, network, subnets);
   }
 
@@ -10555,12 +10610,16 @@ describe("MCP economics + metagraph data tools", () => {
   // (workers/data-api.mjs) would, over the caller's own window/limit query
   // params, so the mocked response is byte-identical to what production
   // would actually serve.
-  function chainAccountEventsPostgresEnv(buildFn, networkDistinct, subnetRows) {
+  function chainAccountEventsPostgresEnv(
+    buildFn: AnyFn,
+    networkDistinct: Row,
+    subnetRows: Row[],
+  ) {
     return {
       env: {
         METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             const url = new URL(request.url);
             const window = url.searchParams.get("window") || "7d";
             const limitParam = url.searchParams.get("limit");
@@ -10577,12 +10636,12 @@ describe("MCP economics + metagraph data tools", () => {
   function chainWeightSettersD1({
     leaderboardRows = [],
     totalsRow = null,
-  } = {}) {
+  }: Row = {}) {
     return {
       env: {
         METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             const url = new URL(request.url);
             const window = url.searchParams.get("window") || "7d";
             const limitParam = url.searchParams.get("limit");
@@ -10697,7 +10756,7 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainStakeMoves reads first (its
   // COUNT(DISTINCT coldkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
-  function stakeMovesNetwork(distinct_movers) {
+  function stakeMovesNetwork(distinct_movers: unknown) {
     return {
       distinct_movers,
       newest_observed: 1_750_000_000_000,
@@ -10705,11 +10764,15 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   // A per-subnet GROUP BY netuid row (COUNT movements + distinct movers).
-  function stakeMovesRow(netuid, movements, distinct_movers) {
+  function stakeMovesRow(
+    netuid: number,
+    movements: unknown,
+    distinct_movers: unknown,
+  ) {
     return { netuid, movements, distinct_movers };
   }
 
-  function chainStakeMovesEnv(network, subnets) {
+  function chainStakeMovesEnv(network: Row, subnets: Row[]) {
     return chainAccountEventsPostgresEnv(
       buildChainStakeMoves,
       network,
@@ -10798,7 +10861,7 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainStakeTransfers reads first (its
   // COUNT(DISTINCT coldkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
-  function stakeTransfersNetwork(distinct_senders) {
+  function stakeTransfersNetwork(distinct_senders: unknown) {
     return {
       distinct_senders,
       newest_observed: 1_750_000_000_000,
@@ -10806,11 +10869,15 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   // A per-subnet GROUP BY netuid row (COUNT transfers + distinct senders).
-  function stakeTransfersRow(netuid, transfers, distinct_senders) {
+  function stakeTransfersRow(
+    netuid: number,
+    transfers: unknown,
+    distinct_senders: unknown,
+  ) {
     return { netuid, transfers, distinct_senders };
   }
 
-  function chainStakeTransfersEnv(network, subnets) {
+  function chainStakeTransfersEnv(network: Row, subnets: Row[]) {
     return chainAccountEventsPostgresEnv(
       buildChainStakeTransfers,
       network,
@@ -10903,7 +10970,7 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainAxonRemovals reads first (its
   // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
-  function axonRemovalsNetwork(distinct_removers) {
+  function axonRemovalsNetwork(distinct_removers: unknown) {
     return {
       distinct_removers,
       newest_observed: 1_750_000_000_000,
@@ -10911,11 +10978,15 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   // A per-subnet GROUP BY netuid row (COUNT removals + distinct removers).
-  function axonRemovalsRow(netuid, removals, distinct_removers) {
+  function axonRemovalsRow(
+    netuid: number,
+    removals: unknown,
+    distinct_removers: unknown,
+  ) {
     return { netuid, removals, distinct_removers };
   }
 
-  function chainAxonRemovalsEnv(network, subnets) {
+  function chainAxonRemovalsEnv(network: Row, subnets: Row[]) {
     return chainAccountEventsPostgresEnv(
       buildChainAxonRemovals,
       network,
@@ -11008,7 +11079,7 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainDeregistrations reads first (its
   // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
-  function chainDeregistrationsNetwork(distinct_deregistered_hotkeys) {
+  function chainDeregistrationsNetwork(distinct_deregistered_hotkeys: unknown) {
     return {
       distinct_deregistered_hotkeys,
       newest_observed: 1_750_000_000_000,
@@ -11017,14 +11088,14 @@ describe("MCP economics + metagraph data tools", () => {
 
   // A per-subnet GROUP BY netuid row (COUNT deregistrations + distinct hotkeys).
   function chainDeregistrationsRow(
-    netuid,
-    deregistrations,
-    distinct_deregistered_hotkeys,
+    netuid: number,
+    deregistrations: unknown,
+    distinct_deregistered_hotkeys: unknown,
   ) {
     return { netuid, deregistrations, distinct_deregistered_hotkeys };
   }
 
-  function chainDeregistrationsEnv(network, subnets) {
+  function chainDeregistrationsEnv(network: Row, subnets: Row[]) {
     return chainAccountEventsPostgresEnv(
       buildChainDeregistrations,
       network,
@@ -11117,7 +11188,7 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainServing reads first (its
   // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
-  function chainServingNetwork(distinct_servers) {
+  function chainServingNetwork(distinct_servers: unknown) {
     return {
       distinct_servers,
       newest_observed: 1_750_000_000_000,
@@ -11125,11 +11196,15 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   // A per-subnet GROUP BY netuid row (COUNT announcements + distinct servers).
-  function chainServingRow(netuid, announcements, distinct_servers) {
+  function chainServingRow(
+    netuid: number,
+    announcements: unknown,
+    distinct_servers: unknown,
+  ) {
     return { netuid, announcements, distinct_servers };
   }
 
-  function chainServingEnv(network, subnets) {
+  function chainServingEnv(network: Row, subnets: Row[]) {
     return chainAccountEventsPostgresEnv(buildChainServing, network, subnets);
   }
 
@@ -11214,7 +11289,7 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainPrometheus reads first (its
   // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
-  function chainPrometheusNetwork(distinct_exporters) {
+  function chainPrometheusNetwork(distinct_exporters: unknown) {
     return {
       distinct_exporters,
       newest_observed: 1_750_000_000_000,
@@ -11222,11 +11297,15 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   // A per-subnet GROUP BY netuid row (COUNT announcements + distinct exporters).
-  function chainPrometheusRow(netuid, announcements, distinct_exporters) {
+  function chainPrometheusRow(
+    netuid: number,
+    announcements: unknown,
+    distinct_exporters: unknown,
+  ) {
     return { netuid, announcements, distinct_exporters };
   }
 
-  function chainPrometheusEnv(network, subnets) {
+  function chainPrometheusEnv(network: Row, subnets: Row[]) {
     return chainAccountEventsPostgresEnv(
       buildChainPrometheus,
       network,
@@ -11315,10 +11394,10 @@ describe("MCP economics + metagraph data tools", () => {
   // The full-window totals row loadChainTransferPairs reads first (its pair_totals
   // CTE rollup carrying top_pair_volume_tao).
   function transferPairTotals(
-    total_volume_tao,
-    transfer_count,
-    unique_pairs,
-    top,
+    total_volume_tao: unknown,
+    transfer_count: unknown,
+    unique_pairs: unknown,
+    top: unknown,
   ) {
     return {
       total_volume_tao,
@@ -11330,10 +11409,10 @@ describe("MCP economics + metagraph data tools", () => {
 
   // A per-corridor row (hotkey AS from_address, coldkey AS to_address).
   function transferPairRow(
-    from_address,
-    to_address,
-    volume_tao,
-    transfer_count,
+    from_address: unknown,
+    to_address: unknown,
+    volume_tao: unknown,
+    transfer_count: unknown,
   ) {
     return {
       from_address,
@@ -11352,12 +11431,12 @@ describe("MCP economics + metagraph data tools", () => {
   // This mocks the Postgres tier by running the same pure builder over the
   // caller's own window/sort query params, so the mocked response is
   // byte-identical to what production would actually serve.
-  function chainTransferPairsEnv(totals, pairs) {
+  function chainTransferPairsEnv(totals: Row, pairs: Row[]) {
     return {
       env: {
         METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             const url = new URL(request.url);
             const window = url.searchParams.get("window") || "7d";
             const sort = url.searchParams.get("sort") || "volume";
@@ -11745,7 +11824,7 @@ describe("MCP economics + metagraph data tools", () => {
     const path = `/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`;
     const deps = {
       ...makeDeps(),
-      readArtifact(_env, artifactPath) {
+      readArtifact(_env: unknown, artifactPath: string) {
         if (artifactPath === path) {
           return Promise.resolve({ ok: true, data: null, source: "test" });
         }
@@ -11783,10 +11862,10 @@ describe("MCP economics + metagraph data tools", () => {
     const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
     await assert.rejects(
       () =>
-        tool.handler(
+        tool!.handler(
           { date: HEALTH_HISTORY_BLOB.date },
           {
-            env: {},
+            env: {} as unknown as Env,
             readArtifact: async () => {
               throw new Error("kaboom");
             },
@@ -11807,8 +11886,12 @@ describe("MCP economics + metagraph data tools", () => {
       .mockRejectedValue(err);
     try {
       await assert.rejects(
-        () => tool.handler({ date: HEALTH_HISTORY_BLOB.date }, { env: {} }),
-        (thrown) => {
+        () =>
+          tool!.handler(
+            { date: HEALTH_HISTORY_BLOB.date },
+            { env: {} as unknown as Env },
+          ),
+        (thrown: Row) => {
           assert.equal(thrown.toolError, true);
           assert.equal(thrown.code, "invalid_params");
           assert.match(thrown.message, /bad filter/);
@@ -11867,12 +11950,12 @@ describe("MCP economics + metagraph data tools", () => {
   // builder over the caller's own window/group_by query params, so the
   // mocked response is byte-identical to what production would actually
   // serve.
-  function chainCallsPostgresEnv({ total, rows }) {
+  function chainCallsPostgresEnv({ total, rows }: Row) {
     return {
       env: {
         METAGRAPH_EXTRINSICS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             const url = new URL(request.url);
             const window = url.searchParams.get("window") || "7d";
             const groupBy = url.searchParams.get("group_by") || "module";
@@ -11950,7 +12033,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.total_extrinsics, 80);
     assert.equal(out.calls[0].share, 0.625);
     assert.equal(
-      requestedUrl.searchParams.get("call_module"),
+      requestedUrl!.searchParams.get("call_module"),
       "SubtensorModule",
     );
   });
@@ -12021,7 +12104,7 @@ describe("MCP economics + metagraph data tools", () => {
       const out = res.body.result.structuredContent;
       assert.equal(out.domain_count, DOMAIN_TAGS.length);
       assert.equal(out.domains.length, DOMAIN_TAGS.length);
-      const inference = out.domains.find((d) => d.domain === "inference");
+      const inference = out.domains.find((d: Row) => d.domain === "inference");
       assert.equal(inference.subnet_count, 2);
     });
 
@@ -12085,7 +12168,7 @@ describe("MCP economics + metagraph data tools", () => {
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -12116,7 +12199,7 @@ describe("MCP economics + metagraph data tools", () => {
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -12468,9 +12551,9 @@ describe("MCP economics + metagraph data tools", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.netuid, 7);
     assert.equal(out.returned, 1);
-    const tagSets = out.items.map((item) => item.tags);
-    assert.ok(tagSets.some((tags) => tags.includes("registry")));
-    assert.ok(!tagSets.some((tags) => tags.includes("incident")));
+    const tagSets = out.items.map((item: Row) => item.tags);
+    assert.ok(tagSets.some((tags: string[]) => tags.includes("registry")));
+    assert.ok(!tagSets.some((tags: string[]) => tags.includes("incident")));
   });
 
   test("get_feed filters by tag, since/until, and caps with limit", async () => {
@@ -12635,12 +12718,15 @@ describe("MCP account tools (get_account + events + subnets)", () => {
   // rows. Order matters: GROUP BY (kinds) before COUNT (agg), as in the REST
   // account-routes test. `capture` records each bound (sql, params) so a test can
   // assert the clamped LIMIT/OFFSET actually reached the query.
-  function accountD1({ agg, kinds, registrations, events } = {}, capture = []) {
+  function accountD1(
+    { agg, kinds, registrations, events }: Row = {},
+    capture: Row[] = [],
+  ): Row {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 all() {
@@ -12671,7 +12757,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   test("get_account_balance returns balance_tao from finney RPC", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({
         jsonrpc: "2.0",
@@ -12684,7 +12770,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
           "00943577000000000000000000000000" +
           "0065cd1d000000000000000000000000",
       }),
-    });
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_account_balance", { ss58: SS58 }, {});
       const out = res.body.result.structuredContent;
@@ -12735,7 +12821,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
         },
       },
       RPC_RATE_LIMITER: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           limiterKey = key;
           return { success: false };
         },
@@ -12796,7 +12882,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
             },
           },
           RPC_RATE_LIMITER: {
-            async limit({ key }) {
+            async limit({ key }: { key: string }) {
               limiterKey = key;
               return { success: false };
             },
@@ -12826,7 +12912,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
               },
             },
             RPC_RATE_LIMITER: {
-              async limit({ key }) {
+              async limit({ key }: { key: string }) {
                 limiterKey = key;
                 return { success: true };
               },
@@ -12845,13 +12931,13 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   test("get_account_children returns subnets:[] when the account has no children", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
-      const body = JSON.parse(init.body);
+    globalThis.fetch = (async (_url: unknown, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
       return { ok: true, json: async () => ({ result: null }) };
-    };
+    }) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_account_children", { ss58: SS58 }, {});
       const out = res.body.result.structuredContent;
@@ -12875,7 +12961,9 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   test("get_account_children returns subnets:null on RPC failure", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: false });
+    globalThis.fetch = (async () => ({
+      ok: false,
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_account_children", { ss58: SS58 }, {});
       assert.equal(res.body.result.structuredContent.subnets, null);
@@ -12899,7 +12987,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
         },
       },
       RPC_RATE_LIMITER: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           limiterKey = key;
           return { success: false };
         },
@@ -12922,13 +13010,13 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   test("get_account_parents returns subnets:[] when the account has no parents", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
-      const body = JSON.parse(init.body);
+    globalThis.fetch = (async (_url: unknown, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
       return { ok: true, json: async () => ({ result: null }) };
-    };
+    }) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_account_parents", { ss58: SS58 }, {});
       const out = res.body.result.structuredContent;
@@ -12951,7 +13039,9 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   test("get_account_parents returns subnets:null on RPC failure", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: false });
+    globalThis.fetch = (async () => ({
+      ok: false,
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_account_parents", { ss58: SS58 }, {});
       assert.equal(res.body.result.structuredContent.subnets, null);
@@ -12973,7 +13063,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
         },
       },
       RPC_RATE_LIMITER: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           limiterKey = key;
           return { success: false };
         },
@@ -12994,13 +13084,13 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   test("get_account_children proceeds to the live RPC when the rate limiter allows the request", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
-      const body = JSON.parse(init.body);
+    globalThis.fetch = (async (_url: unknown, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
       return { ok: true, json: async () => ({ result: null }) };
-    };
+    }) as unknown as typeof globalThis.fetch;
     const env = {
       RPC_RATE_LIMITER: {
         async limit() {
@@ -13022,13 +13112,13 @@ describe("MCP account tools (get_account + events + subnets)", () => {
 
   test("get_account_parents proceeds to the live RPC when the rate limiter allows the request", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
-      const body = JSON.parse(init.body);
+    globalThis.fetch = (async (_url: unknown, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
       if (body.method === "state_getKeysPaged") {
         return { ok: true, json: async () => ({ result: [] }) };
       }
       return { ok: true, json: async () => ({ result: null }) };
-    };
+    }) as unknown as typeof globalThis.fetch;
     const env = {
       RPC_RATE_LIMITER: {
         async limit() {
@@ -13235,9 +13325,9 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     // validate-mcp only exercises the cold (empty-array) path, so assert the
     // POPULATED shapes here — the only check that the item schemas match the rows.
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name) =>
+    const validatorFor = (name: string) =>
       ajv.compile(
-        listToolDefinitions().find((t) => t.name === name).outputSchema,
+        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
       );
     const reg = {
       netuid: 7,
@@ -13277,7 +13367,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
       ["get_account_events", accountD1({ events: [event] })],
       ["get_account_subnets", accountD1({ registrations: [reg] })],
     ];
-    for (const [name, env] of cases) {
+    for (const [name, env] of cases as [string, Row][]) {
       const res = await callTool(name, { ss58: SS58 }, { env });
       const validate = validatorFor(name);
       assert.ok(
@@ -13350,12 +13440,12 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
   // and native-TAO transfers (get_account_transfers).
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  function tailD1(fixtures = {}, capture = []) {
+  function tailD1(fixtures: Row = {}, capture: Row[] = []): Row {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 all() {
@@ -13569,9 +13659,9 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
 
   test("account tail payloads validate against their declared outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name) =>
+    const validatorFor = (name: string) =>
       ajv.compile(
-        listToolDefinitions().find((t) => t.name === name).outputSchema,
+        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
       );
     const dayRow = {
       day: "2025-06-24",
@@ -13610,7 +13700,7 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
       ["get_account_extrinsics", tailD1({ extrinsics: [extrinsicRow] })],
       ["get_account_transfers", tailD1({ transfers: [transferRow] })],
     ];
-    for (const [name, env] of cases) {
+    for (const [name, env] of cases as [string, Row][]) {
       const res = await callTool(name, { ss58: SS58 }, { env });
       const validate = validatorFor(name);
       assert.ok(
@@ -13624,12 +13714,12 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
 describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsics, get_block_events, list_extrinsics, get_extrinsic)", () => {
   // Tests for the chain block-explorer MCP surface.
 
-  function chainD1(fixtures = {}, capture = []) {
+  function chainD1(fixtures: Row = {}, capture: Row[] = []): Row {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 all() {
@@ -13789,7 +13879,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
   });
 
   test("list_blocks short-circuits impossible count floors without querying D1", async () => {
-    const capture = [];
+    const capture: Row[] = [];
     const env = chainD1({ blocks: [BLOCK_ROW] }, capture);
     const res = await callTool(
       "list_blocks",
@@ -13897,7 +13987,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
   });
 
   test("list_extrinsics short-circuits impossible time ranges without querying D1", async () => {
-    const capture = [];
+    const capture: Row[] = [];
     const env = chainD1({ extrinsics: [EXTRINSIC_ROW] }, capture);
     const res = await callTool(
       "list_extrinsics",
@@ -13944,12 +14034,12 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
   // "flag=postgres" tests for handleExtrinsics/handleExtrinsic in
   // tests/request-handlers-entities.test.mjs, which this block mirrors.
   describe("D1 -> Postgres serving cutover (#4694)", () => {
-    function dataApi(response) {
-      return { fetch: async (request) => response ?? { request } };
+    function dataApi(response: Row) {
+      return { fetch: async (request: Request) => response ?? { request } };
     }
 
     test("list_extrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
-      const capture = [];
+      const capture: Row[] = [];
       const env = chainD1({ extrinsics: [] }, capture);
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = dataApi(
@@ -13972,7 +14062,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     // schema-stable empty feed (buildExtrinsicFeed([], {...})), not a live D1
     // query -- a D1 mock, if bound, is never queried either way.
     test("list_extrinsics: flag=postgres falls back to the schema-stable empty feed on Postgres failure", async () => {
-      const env = {};
+      const env: Row = {};
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = {
         fetch: async () => {
@@ -13984,7 +14074,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     });
 
     test("list_extrinsics: flag absent returns the schema-stable empty feed even when DATA_API is bound (unflipped)", async () => {
-      const env = {};
+      const env: Row = {};
       env.DATA_API = dataApi(
         Response.json({
           schema_version: 1,
@@ -13998,11 +14088,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
 
     test("list_extrinsics: flag=postgres forwards filters as REST-equivalent query params", async () => {
       const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-      let seenUrl;
+      let seenUrl: URL | undefined;
       const env = chainD1({ extrinsics: [] });
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           seenUrl = new URL(request.url);
           return Response.json({
             schema_version: 1,
@@ -14026,20 +14116,20 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         },
         { env },
       );
-      assert.equal(seenUrl.pathname, "/api/v1/extrinsics");
-      assert.equal(seenUrl.searchParams.get("block"), "4200000");
-      assert.equal(seenUrl.searchParams.get("offset"), "20");
-      assert.equal(seenUrl.searchParams.get("signer"), SS58);
-      assert.equal(seenUrl.searchParams.get("call_module"), "SubtensorModule");
-      assert.equal(seenUrl.searchParams.get("call_function"), "set_weights");
-      assert.equal(seenUrl.searchParams.get("call_hash"), callHash);
-      assert.equal(seenUrl.searchParams.get("success"), "true");
-      assert.equal(seenUrl.searchParams.get("limit"), "10");
+      assert.equal(seenUrl!.pathname, "/api/v1/extrinsics");
+      assert.equal(seenUrl!.searchParams.get("block"), "4200000");
+      assert.equal(seenUrl!.searchParams.get("offset"), "20");
+      assert.equal(seenUrl!.searchParams.get("signer"), SS58);
+      assert.equal(seenUrl!.searchParams.get("call_module"), "SubtensorModule");
+      assert.equal(seenUrl!.searchParams.get("call_function"), "set_weights");
+      assert.equal(seenUrl!.searchParams.get("call_hash"), callHash);
+      assert.equal(seenUrl!.searchParams.get("success"), "true");
+      assert.equal(seenUrl!.searchParams.get("limit"), "10");
     });
 
     test("get_extrinsic: flag=postgres uses Postgres data, D1 never queried", async () => {
       const hash = "0x" + "c".repeat(64);
-      const capture = [];
+      const capture: Row[] = [];
       const env = chainD1({ extrinsic: EXTRINSIC_ROW }, capture);
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = dataApi(
@@ -14064,7 +14154,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     // not a live D1 query.
     test("get_extrinsic: flag=postgres falls back to the schema-stable empty detail on Postgres failure", async () => {
       const hash = "0x" + "c".repeat(64);
-      const env = {};
+      const env: Row = {};
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = {
         fetch: async () => new Response("err", { status: 500 }),
@@ -14076,11 +14166,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     });
 
     test("get_extrinsic: flag=postgres forwards the ref in the request path", async () => {
-      let seenUrl;
+      let seenUrl: URL | undefined;
       const env = chainD1({ extrinsic: EXTRINSIC_ROW });
       env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
       env.DATA_API = {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           seenUrl = new URL(request.url);
           return Response.json({
             schema_version: 1,
@@ -14091,15 +14181,15 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         },
       };
       await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
-      assert.equal(seenUrl.pathname, "/api/v1/extrinsics/4200000-3");
+      assert.equal(seenUrl!.pathname, "/api/v1/extrinsics/4200000-3");
     });
   });
 
   test("block-explorer payloads validate against their declared outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name) =>
+    const validatorFor = (name: string) =>
       ajv.compile(
-        listToolDefinitions().find((t) => t.name === name).outputSchema,
+        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
       );
     const hash = "0x" + "c".repeat(64);
     const cases = [
@@ -14129,7 +14219,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         { ref: hash },
       ],
     ];
-    for (const [name, env, args] of cases) {
+    for (const [name, env, args] of cases as [string, Row, Row][]) {
       const res = await callTool(name, args, { env });
       const validate = validatorFor(name);
       assert.ok(
@@ -14175,11 +14265,11 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     ],
   };
 
-  function makeDataApi({ payload, status = 200 } = {}) {
-    const calls = [];
+  function makeDataApi({ payload, status = 200 }: Row = {}) {
+    const calls: URL[] = [];
     return {
       calls,
-      fetch(request) {
+      fetch(request: Request) {
         calls.push(new URL(request.url));
         return Promise.resolve(
           new Response(status === 200 ? JSON.stringify(payload) : "err", {
@@ -14269,10 +14359,10 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
   });
 
   test("get_extrinsic_chain_events follows next_cursor on a follow-up page", async () => {
-    const calls = [];
+    const calls: Row[] = [];
     const dataApi = {
       calls,
-      fetch(request) {
+      fetch(request: Request) {
         calls.push(new URL(request.url));
         const cursor = new URL(request.url).searchParams.get("cursor");
         const payload = cursor
@@ -14323,7 +14413,7 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     for (const [name, args] of [
       ["get_block_chain_events", { block_number: 1 }],
       ["get_extrinsic_chain_events", { ref: "1-0" }],
-    ]) {
+    ] as [string, Row][]) {
       const res = await callTool(name, args, { env: {} });
       assert.equal(res.body.result.isError, true, name);
       assert.match(res.body.result.content[0].text, /unavailable/i);
@@ -14332,9 +14422,9 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
 
   test("all-events tool payloads validate against their declared outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name) =>
+    const validatorFor = (name: string) =>
       ajv.compile(
-        listToolDefinitions().find((t) => t.name === name).outputSchema,
+        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
       );
     const dataApi = makeDataApi({
       payload: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD,
@@ -14444,14 +14534,20 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // parity loaders' WHERE/GROUP-BY clauses get realistic rows. `capture` records
   // each bound (sql, params) so a test can assert what reached the query.
   function parityD1(
-    { dailyAgg, dailyRows, concentrationRows, events, identityHistory } = {},
-    capture = [],
+    {
+      dailyAgg,
+      dailyRows,
+      concentrationRows,
+      events,
+      identityHistory,
+    }: Row = {},
+    capture: Row[] = [],
   ) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 all() {
@@ -14579,7 +14675,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     };
 
     test("flag=postgres uses Postgres data, D1 never queried", async () => {
-      const capture = [];
+      const capture: Row[] = [];
       const env = {
         ...parityD1({ identityHistory: [] }, capture),
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
@@ -14632,7 +14728,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     });
 
     test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-      const capture = [];
+      const capture: Row[] = [];
       const env = {
         ...parityD1({ identityHistory: [MIAO_ROW] }, capture),
         DATA_API: {
@@ -14657,12 +14753,12 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     });
 
     test("flag=postgres forwards netuid + limit/offset/cursor as a REST-equivalent request", async () => {
-      let seenUrl;
+      let seenUrl: URL | undefined;
       const env = {
         ...parityD1({ identityHistory: [] }),
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             seenUrl = new URL(request.url);
             return Response.json({
               schema_version: 1,
@@ -14678,19 +14774,19 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
         { netuid: 86, limit: 10, offset: 5, cursor: "abc" },
         { env },
       );
-      assert.equal(seenUrl.pathname, "/api/v1/subnets/86/identity-history");
-      assert.equal(seenUrl.searchParams.get("limit"), "10");
-      assert.equal(seenUrl.searchParams.get("offset"), "5");
-      assert.equal(seenUrl.searchParams.get("cursor"), "abc");
+      assert.equal(seenUrl!.pathname, "/api/v1/subnets/86/identity-history");
+      assert.equal(seenUrl!.searchParams.get("limit"), "10");
+      assert.equal(seenUrl!.searchParams.get("offset"), "5");
+      assert.equal(seenUrl!.searchParams.get("cursor"), "abc");
     });
 
     test("flag=postgres omits pagination params when not supplied", async () => {
-      let seenUrl;
+      let seenUrl: URL | undefined;
       const env = {
         ...parityD1({ identityHistory: [] }),
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (request) => {
+          fetch: async (request: Request) => {
             seenUrl = new URL(request.url);
             return Response.json({
               schema_version: 1,
@@ -14702,10 +14798,10 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
         },
       };
       await callTool("get_subnet_identity_history", { netuid: 86 }, { env });
-      assert.equal(seenUrl.pathname, "/api/v1/subnets/86/identity-history");
-      assert.equal(seenUrl.searchParams.has("limit"), false);
-      assert.equal(seenUrl.searchParams.has("offset"), false);
-      assert.equal(seenUrl.searchParams.has("cursor"), false);
+      assert.equal(seenUrl!.pathname, "/api/v1/subnets/86/identity-history");
+      assert.equal(seenUrl!.searchParams.has("limit"), false);
+      assert.equal(seenUrl!.searchParams.has("offset"), false);
+      assert.equal(seenUrl!.searchParams.has("cursor"), false);
     });
   });
 
@@ -15698,18 +15794,18 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     const min = (
       await callTool("list_endpoints", { min_latency_ms: 400 }, { deps })
     ).body.result.structuredContent;
-    assert.deepEqual(min.endpoints.map((e) => e.netuid).sort(), [2, 3]);
+    assert.deepEqual(min.endpoints.map((e: Row) => e.netuid).sort(), [2, 3]);
 
     const max = (
       await callTool("list_endpoints", { max_latency_ms: 400 }, { deps })
     ).body.result.structuredContent;
-    assert.deepEqual(max.endpoints.map((e) => e.netuid).sort(), [1, 2]);
+    assert.deepEqual(max.endpoints.map((e: Row) => e.netuid).sort(), [1, 2]);
 
     const missing = (
       await callTool("list_endpoints", { min_latency_ms: 0 }, { deps })
     ).body.result.structuredContent;
     assert.deepEqual(
-      missing.endpoints.map((e) => e.netuid).sort(),
+      missing.endpoints.map((e: Row) => e.netuid).sort(),
       [1, 2, 3],
       "the row with no latency_ms at all must be excluded once a bound is set",
     );
@@ -15720,13 +15816,13 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     const min = (await callTool("list_endpoints", { min_score: 0.5 }, { deps }))
       .body.result.structuredContent;
     assert.deepEqual(
-      min.endpoints.map((e) => e.netuid),
+      min.endpoints.map((e: Row) => e.netuid),
       [1],
     );
 
     const max = (await callTool("list_endpoints", { max_score: 0.4 }, { deps }))
       .body.result.structuredContent;
-    assert.deepEqual(max.endpoints.map((e) => e.netuid).sort(), [2, 3]);
+    assert.deepEqual(max.endpoints.map((e: Row) => e.netuid).sort(), [2, 3]);
   });
 
   test("list_endpoints composes range bounds with existing filters (AND)", async () => {
@@ -16118,7 +16214,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     );
     const out = res.body.result.structuredContent;
     assert.deepEqual(
-      out.pools.map((p) => p.id),
+      out.pools.map((p: Row) => p.id),
       ["b", "c"],
     );
     assert.equal(out.total, 3);
@@ -16153,7 +16249,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     );
     const out = res.body.result.structuredContent;
     assert.deepEqual(
-      out.pools.map((p) => p.id),
+      out.pools.map((p: Row) => p.id),
       ["high"],
     );
   });
@@ -16464,7 +16560,9 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     );
     const res = await callTool("get_freshness", {}, { deps });
     const out = res.body.result.structuredContent;
-    const surfaceHealth = out.sources.find((s) => s.id === "surface-health");
+    const surfaceHealth = out.sources.find(
+      (s: Row) => s.id === "surface-health",
+    );
     assert.equal(surfaceHealth.status, "current");
     assert.equal(surfaceHealth.timestamp, FRESH_RUN);
     assert.equal(out.summary.health_probe_as_of, FRESH_RUN);
@@ -16489,9 +16587,9 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
 // only (no create/delete), matching the exact auth posture of the REST
 // routes they mirror so no new exposure is introduced (#5589/#5590).
 describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)", () => {
-  function makeControlKv(records = {}) {
+  function makeControlKv(records: Row = {}) {
     return {
-      async get(key, opts) {
+      async get(key: string, opts: Row) {
         const value = records[key];
         if (value === undefined) return null;
         return opts?.type === "json" ? value : JSON.stringify(value);
@@ -16582,7 +16680,7 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
     let capturedToken;
     const env = {
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const url = new URL(req.url);
           capturedPath = url.pathname;
           capturedToken = req.headers.get("x-alert-trigger-owner-token");
@@ -16700,7 +16798,7 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
     const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
     const env = {
       METAGRAPH_CONTROL: {
-        async get(key, opts) {
+        async get(key: string, opts: Row) {
           if (key !== `webhooks:sub:${id}`) return null;
           const record = {
             id,
@@ -16729,7 +16827,7 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
     const id = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
     const env = {
       METAGRAPH_CONTROL: {
-        async get(key, opts) {
+        async get(key: string, opts: Row) {
           if (key !== `webhooks:sub:${id}`) return null;
           const record = {
             id,
@@ -16766,7 +16864,7 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
     };
     const env = {
       METAGRAPH_CONTROL: {
-        async get(key, opts) {
+        async get(key: string, opts: Row) {
           const value =
             key === subKey
               ? {
@@ -16783,7 +16881,7 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
           if (value === null) return null;
           return opts?.type === "json" ? value : JSON.stringify(value);
         },
-        async list({ prefix }) {
+        async list({ prefix }: { prefix: string }) {
           assert.equal(prefix, `webhooks:delivery:${id}:`);
           return { keys: [{ name: deliveryKey }] };
         },
@@ -16847,7 +16945,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.equal(out.netuid, null);
     assert.equal(out.validator_count, 2);
     assert.deepEqual(
-      out.validators.map((v) => v.hotkey),
+      out.validators.map((v: Row) => v.hotkey),
       [HOTKEY, HOTKEY2],
     );
     // Cold base: the decision fields resolve to their null aggregates.
@@ -16864,15 +16962,15 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.validator_count, 2);
     assert.deepEqual(
-      out.validators.map((v) => v.hotkey),
+      out.validators.map((v: Row) => v.hotkey),
       [HOTKEY, HOTKEY2],
     );
   });
 
   test("compare_validators output carries no transaction/signing fields", async () => {
     const res = await callTool("compare_validators", { hotkeys: [HOTKEY] });
-    const keys = [];
-    const walk = (value) => {
+    const keys: string[] = [];
+    const walk = (value: unknown) => {
       if (Array.isArray(value)) {
         for (const item of value) walk(item);
       } else if (value && typeof value === "object") {
@@ -16893,9 +16991,9 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const hotkey = decodeURIComponent(
-            new URL(req.url).pathname.split("/").pop(),
+            new URL(req.url).pathname.split("/").pop() as string,
           );
           return Response.json({
             schema_version: 1,
@@ -17242,10 +17340,10 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
 
   test("get_subnet_recycled returns recycled_tao:0 for genuinely unset storage", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
-    });
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_subnet_recycled", { netuid: 7 }, {});
       const out = res.body.result.structuredContent;
@@ -17291,7 +17389,7 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
         },
       },
       RPC_RATE_LIMITER: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           limiterKey = key;
           return { success: false };
         },
@@ -17310,10 +17408,10 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
 
   test("get_subnet_burn returns burn_tao:0 for genuinely unset storage", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
-    });
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_subnet_burn", { netuid: 7 }, {});
       const out = res.body.result.structuredContent;
@@ -17359,7 +17457,7 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
         },
       },
       RPC_RATE_LIMITER: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           limiterKey = key;
           return { success: false };
         },
@@ -17378,10 +17476,10 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
 
   test("get_subnet_burn proceeds to the live RPC when the rate limiter allows the request", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ result: "0x20a1070000000000" }), // 500000 rao
-    });
+    })) as unknown as typeof globalThis.fetch;
     const env = {
       RPC_RATE_LIMITER: {
         async limit() {
@@ -17403,10 +17501,10 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
 describe("MCP get_subnet_lease", () => {
   test("returns leased:false for a confirmed no-lease result", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
-    });
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_subnet_lease", { netuid: 7 }, {});
       const out = res.body.result.structuredContent;
@@ -17453,7 +17551,7 @@ describe("MCP get_subnet_lease", () => {
         },
       },
       RPC_RATE_LIMITER: {
-        async limit({ key }) {
+        async limit({ key }: { key: string }) {
           limiterKey = key;
           return { success: false };
         },
@@ -17474,7 +17572,7 @@ describe("MCP get_subnet_lease", () => {
     const beneficiary = new Uint8Array(32).fill(0x11);
     const coldkey = new Uint8Array(32).fill(0x22);
     const hotkey = new Uint8Array(32).fill(0x33);
-    function hex(bytes) {
+    function hex(bytes: Uint8Array) {
       return (
         "0x" + [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")
       );
@@ -17511,8 +17609,8 @@ describe("MCP get_subnet_lease", () => {
       3,
     );
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
-      const key = JSON.parse(init.body).params[0];
+    globalThis.fetch = (async (_url: unknown, init: RequestInit) => {
+      const key = JSON.parse(init.body as string).params[0] as string;
       if (key.endsWith("0900")) {
         return { ok: true, json: async () => ({ result: "0x03000000" }) };
       }
@@ -17523,7 +17621,7 @@ describe("MCP get_subnet_lease", () => {
         return { ok: true, json: async () => ({ result: null }) };
       }
       throw new Error(`unexpected storage key ${key}`);
-    };
+    }) as unknown as typeof globalThis.fetch;
     const env = {
       RPC_RATE_LIMITER: {
         async limit() {
@@ -17547,12 +17645,15 @@ describe("MCP get_subnet_lease", () => {
 describe("MCP account identity/position-history tools (#5225 parity)", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  function accountIdentityD1({ identity, identityHistory } = {}, capture = []) {
+  function accountIdentityD1(
+    { identity, identityHistory }: Row = {},
+    capture: Row[] = [],
+  ) {
     return {
       METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
+        prepare(sql: string) {
           return {
-            bind(...params) {
+            bind(...params: unknown[]) {
               capture.push({ sql, params });
               return {
                 all() {
@@ -17593,7 +17694,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
 
   describe("get_account_identity D1 -> Postgres serving cutover", () => {
     test("flag=postgres uses Postgres data, D1 never queried", async () => {
-      const capture = [];
+      const capture: Row[] = [];
       const env = {
         ...accountIdentityD1({ identity: [] }, capture),
         METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
@@ -17665,7 +17766,7 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
 
   describe("get_account_identity_history D1 -> Postgres serving cutover", () => {
     test("flag=postgres uses Postgres data, D1 never queried", async () => {
-      const capture = [];
+      const capture: Row[] = [];
       const env = {
         ...accountIdentityD1({ identityHistory: [] }, capture),
         METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
@@ -17853,7 +17954,7 @@ describe("MCP get_account_snapshot", () => {
 
   test("composes all five live views under their named keys", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({
         jsonrpc: "2.0",
@@ -17866,7 +17967,7 @@ describe("MCP get_account_snapshot", () => {
           "00943577000000000000000000000000" +
           "0065cd1d000000000000000000000000",
       }),
-    });
+    })) as unknown as typeof globalThis.fetch;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -17879,7 +17980,7 @@ describe("MCP get_account_snapshot", () => {
         },
       },
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           const url = new URL(request.url);
           if (url.pathname === `/api/v1/accounts/${SS58}/portfolio`) {
             return Response.json({
@@ -17945,7 +18046,7 @@ describe("MCP get_account_snapshot", () => {
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (request) => {
+        fetch: async (request: Request) => {
           const url = new URL(request.url);
           if (url.pathname === `/api/v1/accounts/${SS58}/events`) {
             assert.equal(url.searchParams.get("limit"), "25");
@@ -17984,7 +18085,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedPath = new URL(req.url).pathname;
           return Response.json({
             schema_version: 1,
@@ -18023,7 +18124,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedPath = new URL(req.url).pathname;
           return Response.json({
             schema_version: 1,
@@ -18039,10 +18140,10 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
 
   test("get_sudo_key returns hotkey:null for genuinely unset storage", async () => {
     const orig = globalThis.fetch;
-    globalThis.fetch = async () => ({
+    globalThis.fetch = (async () => ({
       ok: true,
       json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
-    });
+    })) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_sudo_key", {}, {});
       const out = res.body.result.structuredContent;
@@ -18079,9 +18180,9 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     const COOLDOWN_KEY =
       "0x658faa385070e074c85bf6b568cf0555503e4fe5f139cae8b9d045e82e1c83a2";
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
-      const key = JSON.parse(init.body).params[0];
-      const byKey = {
+    globalThis.fetch = (async (_url: unknown, init: RequestInit) => {
+      const key = JSON.parse(init.body as string).params[0] as string;
+      const byKey: Row = {
         [TAO_WEIGHT_KEY]: "0x7a14ae47e17a142e",
         [STAKE_THRESHOLD_KEY]: "0x0010a5d4e8000000",
         [COOLDOWN_KEY]: "0x201c000000000000",
@@ -18090,7 +18191,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
         ok: true,
         json: async () => ({ jsonrpc: "2.0", id: 1, result: byKey[key] }),
       };
-    };
+    }) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_network_parameters", {}, {});
       const out = res.body.result.structuredContent;
@@ -18130,9 +18231,9 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     const OLDEST_STORED_ROUND_KEY =
       "0xa285cdb66e8b8524ea70b1693c7b1e05bc30947083dc3a2cb9eb93b9db7c6fbd";
     const orig = globalThis.fetch;
-    globalThis.fetch = async (_url, init) => {
-      const key = JSON.parse(init.body).params[0];
-      const byKey = {
+    globalThis.fetch = (async (_url: unknown, init: RequestInit) => {
+      const key = JSON.parse(init.body as string).params[0] as string;
+      const byKey: Row = {
         [LAST_STORED_ROUND_KEY]: "0x404b4c0000000000", // round 5,000,000
         [OLDEST_STORED_ROUND_KEY]: "0xe82f4c0000000000", // round 4,993,000
       };
@@ -18140,7 +18241,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
         ok: true,
         json: async () => ({ jsonrpc: "2.0", id: 1, result: byKey[key] }),
       };
-    };
+    }) as unknown as typeof globalThis.fetch;
     try {
       const res = await callTool("get_randomness_status", {}, {});
       const out = res.body.result.structuredContent;
@@ -18187,7 +18288,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     const env = {
       METAGRAPH_BLOCKS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           assert.equal(new URL(req.url).pathname, "/api/v1/runtime");
           return Response.json({
             schema_version: 1,
@@ -18278,7 +18379,7 @@ describe("MCP get_top_holders — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({ schema_version: 1, marker: "from-postgres" });
@@ -18619,7 +18720,7 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
       const env = {
         METAGRAPH_NEURONS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (req) => {
+          fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
             captured = reqUrl.pathname + reqUrl.search;
             return Response.json({
@@ -18698,7 +18799,7 @@ describe("MCP get_rpc_usage — Postgres tier wiring", () => {
       const env = {
         METAGRAPH_RPC_USAGE_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (req) => {
+          fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
             captured = reqUrl.pathname + reqUrl.search;
             return Response.json({
@@ -18783,7 +18884,7 @@ describe("MCP subnet-snapshots-tier analytics tools — Postgres tier wiring", (
       const env = {
         METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (req) => {
+          fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
             captured = reqUrl.pathname + reqUrl.search;
             return Response.json({
@@ -18905,7 +19006,7 @@ describe("MCP extrinsics-tier chain analytics tools — Postgres tier wiring", (
       const env = {
         METAGRAPH_EXTRINSICS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (req) => {
+          fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
             captured = reqUrl.pathname + reqUrl.search;
             return Response.json({
@@ -19010,7 +19111,7 @@ describe("MCP blocks-tier chain-explorer tools — Postgres tier wiring", () => 
       const env = {
         METAGRAPH_BLOCKS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (req) => {
+          fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
             captured = reqUrl.pathname + reqUrl.search;
             return Response.json({
@@ -19073,7 +19174,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({ schema_version: 1, marker: "from-postgres" });
@@ -19128,7 +19229,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({ schema_version: 1, marker: "from-postgres" });
@@ -19153,7 +19254,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({ schema_version: 1, marker: "from-postgres" });
@@ -19176,7 +19277,7 @@ describe("MCP get_subnet_hyperparams* tools — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({ schema_version: 1, marker: "from-postgres" });
@@ -19488,7 +19589,7 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
       const env = {
         METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (req) => {
+          fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
             captured = reqUrl.pathname + reqUrl.search;
             return Response.json({
@@ -19557,7 +19658,7 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -19609,7 +19710,7 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -19687,7 +19788,7 @@ describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -19752,7 +19853,7 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -19816,7 +19917,7 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -19877,7 +19978,7 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -19938,7 +20039,7 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -19999,7 +20100,7 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -20048,7 +20149,7 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -20109,7 +20210,7 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -20170,7 +20271,7 @@ describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_reg
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -20243,7 +20344,7 @@ describe("MCP get_block_events — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -20263,7 +20364,7 @@ describe("MCP get_block_events — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -20328,7 +20429,7 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({ schema_version: 1, marker: "from-postgres" });
@@ -20353,7 +20454,7 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({ schema_version: 1, marker: "from-postgres" });
@@ -20419,7 +20520,7 @@ describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -20446,7 +20547,7 @@ describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           const reqUrl = new URL(req.url);
           captured = reqUrl.pathname + reqUrl.search;
           return Response.json({
@@ -20572,7 +20673,7 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
       const env = {
         METAGRAPH_HEALTH_SOURCE: "postgres",
         DATA_API: {
-          fetch: async (req) => {
+          fetch: async (req: Request) => {
             const reqUrl = new URL(req.url);
             captured = reqUrl.pathname + reqUrl.search;
             return Response.json({

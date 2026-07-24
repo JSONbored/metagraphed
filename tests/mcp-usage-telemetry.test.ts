@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 const CONFIGURED_ENV = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" };
@@ -64,7 +64,11 @@ async function callMcp(
     },
     body: JSON.stringify(body),
   });
-  const response = await handleMcpRequest(request, env, makeDeps(extraDeps));
+  const response = await handleMcpRequest(
+    request,
+    env as unknown as Env,
+    makeDeps(extraDeps),
+  );
   return (await response.json()) as Row;
 }
 

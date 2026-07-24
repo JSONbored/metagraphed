@@ -20,7 +20,7 @@ import {
   maxComplexityRule,
   maxDepthRule,
   schema as chainEventsSchema,
-} from "../src/graphql.mjs";
+} from "../src/graphql.ts";
 import { LEADERBOARD_BOARDS } from "../src/health-serving.ts";
 import { CHAIN_PROMETHEUS_WINDOWS } from "../src/chain-prometheus.ts";
 import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
@@ -35,18 +35,19 @@ import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
 } from "../src/kv-keys.ts";
+import type { AnyFn, Row } from "./row-type.ts";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
-const emptyEnv = {};
+const emptyEnv: Row = {};
 
-async function gql(query, env = emptyEnv, extras = {}) {
+async function gql(query: string, env: Row = emptyEnv, extras: Row = {}) {
   const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ query, ...extras }),
   });
-  const res = await handleGraphQLRequest(req, env);
-  return { status: res.status, body: await res.json() };
+  const res = await handleGraphQLRequest(req, env as unknown as Env);
+  return { status: res.status, body: (await res.json()) as Row };
 }
 
 // Inject synthetic artifacts (R2) and optional live KV tiers (health:current,
@@ -54,11 +55,11 @@ async function gql(query, env = emptyEnv, extras = {}) {
 // `kvReads` record per-key access counts so tests can prove per-request read
 // memoization. GraphQL source paths are R2-only; fixtures are keyed by full
 // artifact path, e.g. "/metagraph/subnets.json". `kv` maps KV keys to values.
-function fixtureEnv(fixtures = {}, { reads, kv, kvReads } = {}) {
-  const env = {
+function fixtureEnv(fixtures: Row = {}, { reads, kv, kvReads }: Row = {}) {
+  const env: Row = {
     METAGRAPH_R2_LATEST_PREFIX: "latest/",
     METAGRAPH_ARCHIVE: {
-      async get(key) {
+      async get(key: string) {
         if (reads) reads.set(key, (reads.get(key) || 0) + 1);
         const path = "/metagraph/" + key.replace(/^latest\//, "");
         const data = fixtures[path];
@@ -74,7 +75,7 @@ function fixtureEnv(fixtures = {}, { reads, kv, kvReads } = {}) {
   };
   if (kv) {
     env.METAGRAPH_CONTROL = {
-      async get(key) {
+      async get(key: string) {
         if (kvReads) kvReads.set(key, (kvReads.get(key) || 0) + 1);
         return Object.hasOwn(kv, key) ? kv[key] : null;
       },
@@ -86,7 +87,7 @@ function fixtureEnv(fixtures = {}, { reads, kv, kvReads } = {}) {
 describe("handleGraphQLRequest — method guard", () => {
   test("GET publishes the SDL document (discoverability)", async () => {
     const req = new Request("https://api.metagraph.sh/api/v1/graphql");
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type") || "", /application\/graphql/);
     assert.equal(res.headers.get("allow"), "GET, POST");
@@ -102,9 +103,9 @@ describe("handleGraphQLRequest — method guard", () => {
     const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
       method: "PUT",
     });
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 405);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.ok(body.errors[0].message.includes("POST"));
     assert.equal(res.headers.get("allow"), "GET, POST");
   });
@@ -117,7 +118,7 @@ describe("handleRequest — GraphQL routing", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ query: "{ __typename }" }),
     });
-    const res = await handleRequest(req, emptyEnv, {});
+    const res = await handleRequest(req, emptyEnv as unknown as Env, {});
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("allow"), null);
     assert.deepEqual(await res.json(), { data: { __typename: "Query" } });
@@ -128,7 +129,7 @@ describe("handleRequest — GraphQL routing", () => {
       new Request("https://api.metagraph.sh/api/v1/graphql", {
         method: "OPTIONS",
       }),
-      emptyEnv,
+      emptyEnv as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -141,7 +142,7 @@ describe("handleRequest — GraphQL routing", () => {
   test("GET /api/v1/graphql through the router returns the SDL", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/graphql"),
-      emptyEnv,
+      emptyEnv as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -157,9 +158,9 @@ describe("handleGraphQLRequest — request validation", () => {
       headers: { "content-type": "application/json" },
       body: "not json",
     });
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 400);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.ok(body.errors[0].message.includes("JSON"));
   });
 
@@ -172,9 +173,9 @@ describe("handleGraphQLRequest — request validation", () => {
       },
       body: JSON.stringify({ query: "{ __typename }" }),
     });
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 413);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.ok(body.errors[0].message.includes("body"));
   });
 
@@ -184,10 +185,10 @@ describe("handleGraphQLRequest — request validation", () => {
       headers: { "content-type": "application/json" },
       body: new Blob([" ".repeat(GRAPHQL_MAX_BODY_BYTES + 1)]).stream(),
       duplex: "half",
-    });
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    } as unknown as RequestInit);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 413);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.ok(body.errors[0].message.includes("body"));
   });
 
@@ -199,14 +200,14 @@ describe("handleGraphQLRequest — request validation", () => {
         query: `# ${"x".repeat(GRAPHQL_MAX_QUERY_BYTES)}\n{ __typename }`,
       }),
     });
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 413);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.ok(body.errors[0].message.includes("query"));
   });
 
   test("missing query field returns 400", async () => {
-    const { status, body } = await gql(undefined);
+    const { status, body } = await gql(undefined as unknown as string);
     assert.equal(status, 400);
     assert.ok(body.errors[0].message.includes("query"));
   });
@@ -245,7 +246,7 @@ describe("handleGraphQLRequest — validation rules", () => {
     const { status, body } = await gql(deep);
     assert.equal(status, 400);
     const ext = body.errors.find(
-      (e) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED",
+      (e: Row) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED",
     );
     assert.ok(
       ext,
@@ -279,7 +280,9 @@ describe("handleGraphQLRequest — validation rules", () => {
     );
     assert.equal(status, 400);
     assert.ok(
-      body.errors.find((e) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED"),
+      body.errors.find(
+        (e: Row) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED",
+      ),
       `expected DEPTH_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
     );
   });
@@ -295,7 +298,7 @@ describe("handleGraphQLRequest — validation rules", () => {
     const { status, body } = await gql(q);
     assert.equal(status, 400);
     const ext = body.errors.find(
-      (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+      (e: Row) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
     );
     assert.ok(
       ext,
@@ -315,7 +318,7 @@ describe("handleGraphQLRequest — validation rules", () => {
     const { status, body } = await gql(q);
     assert.equal(status, 400);
     const ext = body.errors.find(
-      (e) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED",
+      (e: Row) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED",
     );
     assert.ok(
       ext,
@@ -332,7 +335,7 @@ describe("handleGraphQLRequest — validation rules", () => {
     const { status, body } = await gql(q);
     assert.equal(status, 400);
     const ext = body.errors.find(
-      (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+      (e: Row) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
     );
     assert.ok(
       ext,
@@ -364,7 +367,7 @@ describe("handleGraphQLRequest — validation rules", () => {
     assert.equal(over.status, 400);
     assert.ok(
       over.body.errors.find(
-        (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+        (e: Row) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
       ),
     );
   });
@@ -399,7 +402,7 @@ describe("handleGraphQLRequest — validation rules", () => {
     const { status, body } = await gql(`{ ${fields} }`);
     assert.equal(status, 400);
     const ext = body.errors.find(
-      (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+      (e: Row) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
     );
     assert.ok(
       ext,
@@ -420,7 +423,7 @@ describe("handleGraphQLRequest — introspection", () => {
       '{ __type(name: "Subnet") { fields { name } } }',
     );
     assert.equal(status, 200);
-    const names = body.data.__type.fields.map((f) => f.name);
+    const names = body.data.__type.fields.map((f: Row) => f.name);
     assert.ok(names.includes("netuid"), `expected netuid, got: ${names}`);
     assert.ok(names.includes("name"), `expected name, got: ${names}`);
   });
@@ -476,7 +479,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       "{ subnets { items { netuid name slug } total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnets.total, 2);
@@ -496,7 +499,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       "{ subnets(limit: 2) { items { netuid } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnets.items.length, 2);
@@ -517,7 +520,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     for (const limit of [0, -5]) {
       const { status, body } = await gql(
         `{ subnets(limit: ${limit}) { items { netuid } total } }`,
-        env,
+        env as unknown as Env,
       );
       assert.equal(status, 200);
       assert.equal(body.data.subnets.items.length, 3, `limit:${limit}`);
@@ -537,7 +540,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       "{ subnets(netuid: 2) { items { netuid name } total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnets.total, 1);
@@ -556,12 +559,12 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       '{ subnets(status: "Active") { items { netuid } total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnets.total, 2);
     assert.deepEqual(
-      body.data.subnets.items.map((row) => row.netuid),
+      body.data.subnets.items.map((row: Row) => row.netuid),
       [1, 3],
     );
   });
@@ -577,7 +580,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       '{ subnets(status: "active") { items { netuid } total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnets.total, 1);
@@ -611,7 +614,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       '{ subnets(domain: "training") { items { netuid } total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnets.total, 1);
@@ -628,7 +631,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       "{ subnet(netuid: 7) { netuid name slug } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnet.netuid, 7);
@@ -666,7 +669,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
         gap_count
         first_party
       } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const s = body.data.subnet;
@@ -686,7 +689,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       "{ providers { items { id netuids } total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.providers.items[0].netuids, []);
@@ -698,7 +701,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       '{ provider(id: "acme-1.0") { id name } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.provider.name, "Acme");
@@ -721,7 +724,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     for (const id of ["../subnets", "../../economics", "a/b", "foo bar", ""]) {
       const { status, body } = await gql(
         `{ provider(id: ${JSON.stringify(id)}) { id name } }`,
-        env,
+        env as unknown as Env,
       );
       assert.equal(status, 200, id);
       assert.equal(body.data.provider, null, id);
@@ -739,7 +742,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       "{ economics { total subnets { netuid name emission_share miner_count } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics.total, 1);
@@ -769,7 +772,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
           total_root_value_tao total_alpha_value_tao total_network_value_tao
           subnet_count
         } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.economics.summary, {
@@ -788,7 +791,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     });
     const { status, body } = await gql(
       "{ economics { summary { subnet_count } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics.summary, null);
@@ -796,7 +799,7 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
 });
 
 describe("handleGraphQLRequest — error envelope is never cacheable", () => {
-  const post = (env) =>
+  const post = (env: Row) =>
     handleGraphQLRequest(
       new Request("https://api.metagraph.sh/api/v1/graphql", {
         method: "POST",
@@ -805,12 +808,12 @@ describe("handleGraphQLRequest — error envelope is never cacheable", () => {
           query: "{ subnets { items { netuid } total } }",
         }),
       }),
-      env,
+      env as unknown as Env,
     );
 
   test("a clean POST keeps the success cache directive", async () => {
     const res = await post(emptyEnv);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.equal(res.status, 200);
     assert.equal(body.errors, undefined);
     assert.equal(
@@ -835,7 +838,7 @@ describe("handleGraphQLRequest — error envelope is never cacheable", () => {
       },
     };
     const res = await post(env);
-    const body = await res.json();
+    const body = (await res.json()) as Row;
     assert.equal(res.status, 200);
     assert.ok(body.errors?.length > 0);
     assert.equal(res.headers.get("cache-control"), "no-store");
@@ -887,7 +890,7 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
     });
     const { status, body } = await gql(
       '{ subnets(cursor: "999") { items { netuid } total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnets.items.length, 2);
@@ -920,7 +923,7 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
     });
     const { status, body } = await gql(
       '{ provider(id: "acme") { netuids } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.provider.netuids, [1, 7]);
@@ -932,12 +935,12 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
 // limiter binding. A counting limiter that allows the first N keyed hits and
 // denies the rest models the Cloudflare binding closely enough to prove the
 // gate fires on /api/v1/graphql.
-function countingRateLimiterEnv(limit, extra = {}) {
-  const counts = new Map();
+function countingRateLimiterEnv(limit: number, extra: Row = {}): Row {
+  const counts = new Map<string, number>();
   return {
     ...extra,
     RPC_RATE_LIMITER: {
-      limit({ key }) {
+      limit({ key }: { key: string }) {
         const next = (counts.get(key) || 0) + 1;
         counts.set(key, next);
         return Promise.resolve({ success: next <= limit });
@@ -946,14 +949,14 @@ function countingRateLimiterEnv(limit, extra = {}) {
   };
 }
 
-const gqlPost = (env, headers = {}) =>
+const gqlPost = (env: Row, headers = {}) =>
   handleRequest(
     new Request("https://api.metagraph.sh/api/v1/graphql", {
       method: "POST",
       headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify({ query: "{ __typename }" }),
     }),
-    env,
+    env as unknown as Env,
     {},
   );
 
@@ -997,7 +1000,7 @@ describe("handleRequest — GraphQL rate limiting (#security)", () => {
       new Request("https://api.metagraph.sh/api/v1/graphql", {
         headers: { upgrade: "websocket" },
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1007,7 +1010,7 @@ describe("handleRequest — GraphQL rate limiting (#security)", () => {
 
 describe("client IP resolution — x-forwarded-for is not trusted (#security)", () => {
   test("resolveClientIp ignores x-forwarded-for, uses cf-connecting-ip only", () => {
-    const sameCf = (xff) =>
+    const sameCf = (xff: string) =>
       resolveClientIp(
         new Request("https://api.metagraph.sh/api/v1/graphql", {
           method: "POST",
@@ -1087,7 +1090,7 @@ describe("graphql — broadened Subnet + nested relationships", () => {
           surfaces { id kind status }
           endpoints { id kind status }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const s = body.data.subnet;
@@ -1124,7 +1127,7 @@ describe("graphql — broadened Subnet + nested relationships", () => {
     );
     const { status, body } = await gql(
       "{ subnet(netuid: 7) { netuid health { status ok_count surface_count } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnet.health.status, "ok");
@@ -1164,7 +1167,7 @@ describe("graphql — broadened Subnet + nested relationships", () => {
     );
     const { status, body } = await gql(
       "{ subnets { items { netuid economics { emission_share } health { status } } total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnets.total, 2);
@@ -1190,7 +1193,7 @@ describe("graphql — broadened Subnet + nested relationships", () => {
     });
     const { status, body } = await gql(
       '{ provider(id: "acme") { id netuids subnets { netuid name } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.provider.netuids, [2, 1]);
@@ -1213,7 +1216,7 @@ describe("graphql — broadened Subnet + nested relationships", () => {
     });
     const { status, body } = await gql(
       '{ provider(id: "acme") { id endpoints { id kind status netuid } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.provider.endpoints.length, 2);
@@ -1235,7 +1238,7 @@ describe("graphql — broadened Subnet + nested relationships", () => {
     });
     const { status, body } = await gql(
       '{ provider(id: "acme") { id endpoints { id } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.provider.endpoints, []);
@@ -1255,15 +1258,17 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     });
     const filtered = await gql(
       "{ surfaces(netuid: 1) { items { id netuid } total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
     assert.equal(filtered.body.data.surfaces.total, 2);
-    assert.ok(filtered.body.data.surfaces.items.every((s) => s.netuid === 1));
+    assert.ok(
+      filtered.body.data.surfaces.items.every((s: Row) => s.netuid === 1),
+    );
 
     const paged = await gql(
       "{ surfaces(limit: 1) { items { id } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(paged.body.data.surfaces.items.length, 1);
     assert.equal(paged.body.data.surfaces.total, 3);
@@ -1281,7 +1286,7 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     });
     const { status, body } = await gql(
       "{ endpoints(netuid: 6) { items { id status netuid } total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.endpoints.total, 1);
@@ -1299,13 +1304,13 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     });
     const first = await gql(
       "{ endpoints(limit: 1) { items { status } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(first.body.data.endpoints.total, 2);
     assert.equal(first.body.data.endpoints.next_cursor, "x1");
     const second = await gql(
       '{ endpoints(limit: 1, cursor: "x1") { items { id } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(second.body.data.endpoints.items[0].id, "e2");
   });
@@ -1327,7 +1332,7 @@ describe("graphql — surfaces / endpoints / health roots", () => {
     );
     const { status, body } = await gql(
       "{ health { status ok_count surface_count health_source subnets { netuid status } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.health.status, "degraded");
@@ -1406,7 +1411,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     const env = fixtureEnv({ "/metagraph/endpoint-pools.json": POOLS_BLOB });
     const filtered = await gql(
       '{ endpoint_pools(kind: "archive") { pools total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
     assert.equal(filtered.body.data.endpoint_pools.total, 1);
@@ -1417,7 +1422,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
 
     const paged = await gql(
       "{ endpoint_pools(limit: 1) { pools total returned next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(paged.body.data.endpoint_pools.pools.length, 1);
     assert.equal(paged.body.data.endpoint_pools.total, 3);
@@ -1429,7 +1434,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     const env = fixtureEnv({ "/metagraph/endpoint-pools.json": POOLS_BLOB });
     const { body } = await gql(
       '{ endpoint_pools(kind: "bogus") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
   });
@@ -1444,7 +1449,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     const env = fixtureEnv({ "/metagraph/rpc/pools.json": POOLS_BLOB });
     const { status, body } = await gql(
       '{ rpc_pools(sort: "eligible_count", order: "desc") { pools total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.rpc_pools.total, 3);
@@ -1465,7 +1470,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     );
     const { body } = await gql(
       "{ rpc_pools { source operational_observed_at } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.data.rpc_pools.source, "live-cron-prober");
     assert.equal(
@@ -1478,7 +1483,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     const env = fixtureEnv({ "/metagraph/rpc/pools.json": POOLS_BLOB });
     const { body } = await gql(
       "{ rpc_pools { source operational_observed_at } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.data.rpc_pools.source, null);
     assert.equal(body.data.rpc_pools.operational_observed_at, null);
@@ -1490,7 +1495,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     });
     const { status, body } = await gql(
       '{ endpoint_incidents(severity: "critical") { incidents total summary } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.endpoint_incidents.total, 1);
@@ -1499,7 +1504,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
 
     const byNetuid = await gql(
       "{ endpoint_incidents(netuid: 31) { incidents total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(byNetuid.body.data.endpoint_incidents.total, 1);
     assert.equal(
@@ -1514,14 +1519,18 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     });
     const { body } = await gql(
       '{ endpoint_incidents(severity: "bogus") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
   });
 
   test("FIELD_COMPLEXITY weights all three new fields like their sibling relationship fields", () => {
     for (const field of ["endpoint_pools", "rpc_pools", "endpoint_incidents"]) {
-      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+      assert.equal(
+        (FIELD_COMPLEXITY as Row)[field],
+        5,
+        `${field} should be weighted`,
+      );
     }
   });
 });
@@ -1558,7 +1567,7 @@ describe("graphql — source_snapshots", () => {
     });
     const filtered = await gql(
       '{ source_snapshots(q: "chain") { sources total generated_at } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
     assert.equal(filtered.body.data.source_snapshots.total, 1);
@@ -1573,7 +1582,7 @@ describe("graphql — source_snapshots", () => {
 
     const paged = await gql(
       "{ source_snapshots(limit: 1) { sources total returned next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(paged.body.data.source_snapshots.sources.length, 1);
     assert.equal(paged.body.data.source_snapshots.total, 2);
@@ -1587,7 +1596,7 @@ describe("graphql — source_snapshots", () => {
     });
     const { status, body } = await gql(
       '{ source_snapshots(sort: "record_count", order: "desc") { sources summary schema_version } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.source_snapshots.sources[0].id, "chain-events");
@@ -1601,7 +1610,7 @@ describe("graphql — source_snapshots", () => {
     });
     const { body } = await gql(
       '{ source_snapshots(sort: "bogus") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
   });
@@ -1636,7 +1645,7 @@ describe("graphql — changelog", () => {
     const env = fixtureEnv({ "/metagraph/changelog.json": CHANGELOG_BLOB });
     const { status, body } = await gql(
       "{ changelog { generated_at source notes summary artifacts subnets coverage_delta } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const changelog = body.data.changelog;
@@ -1685,7 +1694,7 @@ describe("graphql — contracts", () => {
     const env = fixtureEnv({ "/metagraph/contracts.json": CONTRACTS_BLOB });
     const { status, body } = await gql(
       "{ contracts { schema_version contract_version generated_at name base_path primary_domain openapi_url type_definitions_url notes artifacts } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const contracts = body.data.contracts;
@@ -1736,7 +1745,7 @@ describe("graphql — build", () => {
     const env = fixtureEnv({ "/metagraph/build-summary.json": BUILD_BLOB });
     const { status, body } = await gql(
       "{ build { schema_version contract_version generated_at published_at artifact_count artifact_size_bytes subnet_count surface_count provider_count artifacts coverage artifact_budget_summary } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const build = body.data.build;
@@ -1792,7 +1801,7 @@ describe("graphql — health_history", () => {
     });
     const { status, body } = await gql(
       '{ health_history(date: "2026-07-01") { date summary surfaces total returned limit cursor next_cursor } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const history = body.data.health_history;
@@ -1803,7 +1812,7 @@ describe("graphql — health_history", () => {
 
     const paged = await gql(
       '{ health_history(date: "2026-07-01", limit: 1) { surfaces total returned next_cursor } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(paged.body.data.health_history.surfaces.length, 1);
     assert.equal(paged.body.data.health_history.total, 2);
@@ -1817,7 +1826,7 @@ describe("graphql — health_history", () => {
     });
     const filtered = await gql(
       '{ health_history(date: "2026-07-01", netuid: 1) { total surfaces } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(filtered.body.data.health_history.total, 1);
     assert.equal(
@@ -1827,7 +1836,7 @@ describe("graphql — health_history", () => {
 
     const sorted = await gql(
       '{ health_history(date: "2026-07-01", sort: "latency_ms", order: "desc") { surfaces sort order } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(sorted.body.data.health_history.surfaces[0].netuid, 1);
     assert.equal(sorted.body.data.health_history.sort, "latency_ms");
@@ -1840,7 +1849,7 @@ describe("graphql — health_history", () => {
     });
     const { body } = await gql(
       '{ health_history(date: "not-a-day") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
     assert.equal(body.data, null);
@@ -1852,7 +1861,7 @@ describe("graphql — health_history", () => {
     });
     const { body } = await gql(
       '{ health_history(date: "2026-07-01", status: "alive") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
   });
@@ -1863,7 +1872,7 @@ describe("graphql — health_history", () => {
     });
     const { body } = await gql(
       '{ health_history(date: "2026-07-02") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
     assert.equal(body.data, null);
@@ -1909,7 +1918,7 @@ describe("graphql — profiles", () => {
     const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
     const filtered = await gql(
       "{ profiles(netuid: 7) { profiles total captured_at } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
     assert.equal(filtered.body.data.profiles.total, 1);
@@ -1921,7 +1930,7 @@ describe("graphql — profiles", () => {
 
     const paged = await gql(
       "{ profiles(limit: 1) { profiles total returned next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(paged.body.data.profiles.profiles.length, 1);
     assert.equal(paged.body.data.profiles.total, 2);
@@ -1933,14 +1942,14 @@ describe("graphql — profiles", () => {
     const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
     const searched = await gql(
       '{ profiles(q: "alpha") { profiles total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(searched.body.data.profiles.total, 1);
     assert.equal(searched.body.data.profiles.profiles[0].slug, "alpha");
 
     const sorted = await gql(
       '{ profiles(sort: "completeness_score", order: "desc") { profiles } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(sorted.body.data.profiles.profiles[0].slug, "allways");
   });
@@ -1949,7 +1958,7 @@ describe("graphql — profiles", () => {
     const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
     const { body } = await gql(
       '{ profiles(curation_level: "bogus") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
   });
@@ -1968,7 +1977,7 @@ describe("graphql — profiles", () => {
 // #6977: block-scoped extrinsics/events/chain-events lists mirror the same
 // Postgres tier + schema-stable fallback the block/extrinsics feeds already use.
 describe("graphql — block_extrinsics / block_events / block_chain_events (#6977)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -2009,7 +2018,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
     };
     const { status, body } = await gql(
       '{ block_extrinsics(ref: "9", limit: 10, offset: 2) { block_number extrinsic_count extrinsics } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.block_extrinsics.block_number, 9);
@@ -2050,7 +2059,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
     };
     const { status, body } = await gql(
       '{ block_events(ref: "9", limit: 20, offset: 3) { block_number event_count events } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.block_events.event_count, 1);
@@ -2072,7 +2081,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
     };
     const { status, body } = await gql(
       "{ block_chain_events(block_number: 9) { block_number event_count events } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.block_chain_events.block_number, 9);
@@ -2083,7 +2092,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
   test("block_chain_events: an absent all-events tier is a GraphQL error, not null-degrade", async () => {
     const { body } = await gql(
       "{ block_chain_events(block_number: 9) { event_count } }",
-      emptyEnv,
+      emptyEnv as unknown as Env,
     );
     assert.ok(
       body.errors?.length,
@@ -2098,7 +2107,11 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
       "block_events",
       "block_chain_events",
     ]) {
-      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+      assert.equal(
+        (FIELD_COMPLEXITY as Row)[field],
+        5,
+        `${field} should be weighted`,
+      );
     }
   });
 });
@@ -2247,7 +2260,7 @@ describe("graphql — review_* contributor-review family", () => {
     const env = reviewEnv();
     const filtered = await gql(
       "{ review_adapter_candidates(netuid: 7) { candidates total generated_at } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
     assert.equal(filtered.body.data.review_adapter_candidates.total, 1);
@@ -2262,7 +2275,7 @@ describe("graphql — review_* contributor-review family", () => {
 
     const paged = await gql(
       "{ review_adapter_candidates(limit: 1) { candidates total returned next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(
       paged.body.data.review_adapter_candidates.candidates.length,
@@ -2277,7 +2290,7 @@ describe("graphql — review_* contributor-review family", () => {
     const env = reviewEnv();
     const filtered = await gql(
       '{ review_enrichment_evidence(lane: "direct-submission") { entries total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(filtered.body.data.review_enrichment_evidence.total, 1);
     assert.equal(
@@ -2287,7 +2300,7 @@ describe("graphql — review_* contributor-review family", () => {
 
     const sorted = await gql(
       '{ review_enrichment_evidence(sort: "priority_score", order: "asc") { entries } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(
       sorted.body.data.review_enrichment_evidence.entries[0].netuid,
@@ -2299,7 +2312,7 @@ describe("graphql — review_* contributor-review family", () => {
     const env = reviewEnv();
     const { body } = await gql(
       '{ review_enrichment_queue(curation_level: "maintainer-reviewed") { queue total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.data.review_enrichment_queue.total, 1);
     assert.equal(body.data.review_enrichment_queue.queue[0].netuid, 12);
@@ -2309,7 +2322,7 @@ describe("graphql — review_* contributor-review family", () => {
     const env = reviewEnv();
     const { body } = await gql(
       '{ review_enrichment_targets(target_type: "surface-candidate") { targets total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.data.review_enrichment_targets.total, 1);
     assert.equal(body.data.review_enrichment_targets.targets[0].netuid, 7);
@@ -2319,7 +2332,7 @@ describe("graphql — review_* contributor-review family", () => {
     const env = reviewEnv();
     const { body } = await gql(
       '{ review_gaps(missing_kinds: "openapi") { priorities total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.data.review_gaps.total, 1);
     assert.equal(body.data.review_gaps.priorities[0].netuid, 7);
@@ -2329,7 +2342,7 @@ describe("graphql — review_* contributor-review family", () => {
     const env = reviewEnv();
     const { body } = await gql(
       '{ review_profile_completeness(identity_level: "partial") { profiles total summary } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.data.review_profile_completeness.total, 1);
     assert.equal(body.data.review_profile_completeness.profiles[0].netuid, 7);
@@ -2343,7 +2356,7 @@ describe("graphql — review_* contributor-review family", () => {
     const env = reviewEnv();
     const { body } = await gql(
       '{ review_adapter_candidates(curation_level: "bogus") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
   });
@@ -2351,7 +2364,7 @@ describe("graphql — review_* contributor-review family", () => {
   test("surfaces a cold/missing review artifact as a GraphQL error, matching REST/MCP", async () => {
     const { body } = await gql(
       "{ review_adapter_candidates { total } }",
-      emptyEnv,
+      emptyEnv as unknown as Env,
     );
     assert.ok(body.errors?.length);
     assert.equal(body.data, null);
@@ -2419,12 +2432,12 @@ describe("graphql — economics pagination", () => {
     );
     const { status, body } = await gql(
       "{ economics { subnets { netuid alpha_market_cap_tao } total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics.total, 2);
     assert.deepEqual(
-      body.data.economics.subnets.map((s) => s.netuid),
+      body.data.economics.subnets.map((s: Row) => s.netuid),
       [1, 2],
     );
     assert.equal(body.data.economics.subnets[0].alpha_market_cap_tao, null);
@@ -2516,17 +2529,17 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
     assert.equal(b.highest_emission[0].netuid, 2);
     // Cheapest open registration first (the closed subnet is excluded).
     assert.equal(b.cheapest_registration[0].netuid, 3);
-    assert.ok(b.cheapest_registration.every((e) => e.netuid !== 2));
+    assert.ok(b.cheapest_registration.every((e: Row) => e.netuid !== 2));
     // Most validator headroom first.
     assert.equal(b.validator_headroom[0].netuid, 3);
     // #7227: biggest 1d gainers; netuid 2's negative change is dropped.
     assert.deepEqual(
-      b.biggest_alpha_gain_1d.map((e) => e.netuid),
+      b.biggest_alpha_gain_1d.map((e: Row) => e.netuid),
       [3, 1],
     );
     assert.equal(b.biggest_alpha_gain_1d[0].alpha_price_change_1d, 40);
     assert.deepEqual(
-      b.biggest_alpha_gain_7d.map((e) => e.netuid),
+      b.biggest_alpha_gain_7d.map((e: Row) => e.netuid),
       [2, 3, 1],
     );
   });
@@ -2539,7 +2552,7 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
           biggest_alpha_gain_1d { netuid }
           biggest_alpha_gain_7d { netuid }
         } }`,
-      emptyEnv,
+      emptyEnv as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.opportunity_boards.with_economics_count, 0);
@@ -2562,7 +2575,11 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
       "health",
       "opportunity_boards",
     ]) {
-      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+      assert.equal(
+        (FIELD_COMPLEXITY as Row)[field],
+        5,
+        `${field} should be weighted`,
+      );
     }
   });
 
@@ -2586,7 +2603,7 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
           endpoints { id kind status }
           economics { emission_share open_slots }
       } }`,
-      emptyEnv,
+      emptyEnv as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnet, null); // cold store, but the query was accepted
@@ -2602,12 +2619,12 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
           health { status ok_count failed_count degraded_count unknown_count surface_count avg_latency_ms }
           surfaces { id key kind status url provider name }
       } } }`,
-      emptyEnv,
+      emptyEnv as unknown as Env,
     );
     assert.equal(status, 400);
     assert.ok(
       body.errors.find(
-        (e) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
+        (e: Row) => e.extensions?.code === "COMPLEXITY_LIMIT_EXCEEDED",
       ),
     );
   });
@@ -2637,16 +2654,16 @@ describe("graphql — resolver branch coverage", () => {
     });
     const { status, body } = await gql(
       "{ subnets { items { netuid surfaces { id } endpoints { id } } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const item = body.data.subnets.items[0];
     assert.deepEqual(
-      item.surfaces.map((s) => s.id),
+      item.surfaces.map((s: Row) => s.id),
       ["s1"],
     );
     assert.deepEqual(
-      item.endpoints.map((e) => e.id),
+      item.endpoints.map((e: Row) => e.id),
       ["e1"],
     );
   });
@@ -2661,7 +2678,7 @@ describe("graphql — resolver branch coverage", () => {
     });
     const { status, body } = await gql(
       "{ subnet(netuid: 3) { surfaces { id } endpoints { id } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet.surfaces, []);
@@ -2677,7 +2694,7 @@ describe("graphql — resolver branch coverage", () => {
     });
     const { status, body } = await gql(
       "{ subnet(netuid: 5) { economics { emission_share } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.subnet.economics, null);
@@ -2691,7 +2708,7 @@ describe("graphql — resolver branch coverage", () => {
     });
     const { status, body } = await gql(
       '{ provider(id: "solo") { subnets { netuid } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.provider.subnets, []);
@@ -2708,7 +2725,7 @@ describe("graphql — resolver branch coverage", () => {
     });
     const { status, body } = await gql(
       "{ providers(limit: 1) { items { id } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.providers.total, 2);
@@ -2726,7 +2743,7 @@ describe("graphql — resolver branch coverage", () => {
     });
     const first = await gql(
       "{ surfaces(limit: 1) { items { kind } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(first.body.data.surfaces.total, 2);
     assert.equal(first.body.data.surfaces.next_cursor, "k1");
@@ -2738,24 +2755,26 @@ describe("graphql — resolver branch coverage", () => {
       headers: { "content-type": "application/json", "content-length": "-1" },
       body: JSON.stringify({ query: "{ __typename }" }),
     });
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 400);
-    assert.ok((await res.json()).errors[0].message.includes("Content-Length"));
+    assert.ok(
+      ((await res.json()) as Row).errors[0].message.includes("Content-Length"),
+    );
   });
 
   test("a POST with no body returns a missing-query error", async () => {
     const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
       method: "POST",
     });
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 400);
-    assert.ok((await res.json()).errors[0].message.includes("query"));
+    assert.ok(((await res.json()) as Row).errors[0].message.includes("query"));
   });
 
   test("OPTIONS /mcp advertises GET, POST, DELETE, OPTIONS (the sibling CORS branch, #4983 MCP half)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/mcp", { method: "OPTIONS" }),
-      emptyEnv,
+      emptyEnv as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -2768,7 +2787,7 @@ describe("graphql — resolver branch coverage", () => {
   test("OPTIONS /api/v1/ask advertises POST, OPTIONS (the other CORS operand)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/ask", { method: "OPTIONS" }),
-      emptyEnv,
+      emptyEnv as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -2783,7 +2802,7 @@ describe("graphql — resolver branch coverage", () => {
       new Request("https://api.metagraph.sh/api/v1/subnets", {
         method: "OPTIONS",
       }),
-      emptyEnv,
+      emptyEnv as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -2803,7 +2822,7 @@ describe("graphql — resolver branch coverage", () => {
       },
       body: payload,
     });
-    const res = await handleGraphQLRequest(req, emptyEnv);
+    const res = await handleGraphQLRequest(req, emptyEnv as unknown as Env);
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), { data: { __typename: "Query" } });
   });
@@ -2853,7 +2872,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
             health { ok_count }
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const c = body.data.compare;
@@ -2881,7 +2900,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
       `{ compare(netuids: [1], dimensions: ["structure"]) {
           dimensions subnets { structure { surface_count } economics { emission_share } }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.compare.dimensions, ["structure"]);
@@ -2898,7 +2917,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
     );
     const { body } = await gql(
       `{ compare(netuids: [1], dimensions: ["structure"]) { observed_at } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.data.compare.observed_at, "2026-06-23T00:00:00.000Z");
   });
@@ -2917,7 +2936,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
       `{ compare(netuids: [1], dimensions: ["health"]) {
           subnets { netuid health { surface_count ok_count avg_latency_ms } }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.compare.subnets[0].health, null);
@@ -2930,7 +2949,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
     };
     const { status, body } = await gql(
       `{ compare(netuids: [1], dimensions: ["health"]) { subnets { health { ok_count } } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.compare.subnets[0].health, null);
@@ -2945,7 +2964,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
     };
     const { status, body } = await gql(
       `{ compare(netuids: [1], dimensions: ["health"]) { subnets { health { ok_count } } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.compare.subnets[0].health, null);
@@ -2955,11 +2974,13 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
     const empty = await gql("{ compare(netuids: []) { schema_version } }");
     assert.equal(empty.status, 200);
     assert.ok(
-      empty.body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+      empty.body.errors.find(
+        (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
+      ),
     );
     const neg = await gql("{ compare(netuids: [-1]) { schema_version } }");
     assert.ok(
-      neg.body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+      neg.body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
     );
   });
 
@@ -2967,7 +2988,9 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
     const { body } = await gql(
       '{ compare(netuids: [1], dimensions: ["bogus"]) { schema_version } }',
     );
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("cold store: no profiles/economics artifacts → found:false, empty rows", async () => {
@@ -2991,7 +3014,7 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
 });
 
 describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -3037,7 +3060,7 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     };
     const { status, body } = await gql(
       "{ sudo { items { block_number call_module call_args success } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.sudo.total, 1);
@@ -3052,11 +3075,11 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3071,25 +3094,25 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     };
     await gql(
       `{ sudo(limit: 5, offset: 2, block: 42, call_function: "sudo", success: true) { total } }`,
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.pathname, "/api/v1/sudo");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl.searchParams.get("offset"), "2");
-    assert.equal(capturedUrl.searchParams.get("block"), "42");
-    assert.equal(capturedUrl.searchParams.get("call_function"), "sudo");
-    assert.equal(capturedUrl.searchParams.get("success"), "true");
+    assert.equal(capturedUrl!.pathname, "/api/v1/sudo");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("offset"), "2");
+    assert.equal(capturedUrl!.searchParams.get("block"), "42");
+    assert.equal(capturedUrl!.searchParams.get("call_function"), "sudo");
+    assert.equal(capturedUrl!.searchParams.get("success"), "true");
     // The route fixes call_module=Sudo, so the field exposes neither arg.
-    assert.equal(capturedUrl.searchParams.get("call_module"), null);
-    assert.equal(capturedUrl.searchParams.get("signer"), null);
+    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
+    assert.equal(capturedUrl!.searchParams.get("signer"), null);
   });
 
   test("sudo: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3103,7 +3126,7 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
       },
     };
     await gql(`{ sudo(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
   });
 
   test("sudo: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
@@ -3119,7 +3142,9 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     };
     const { status, body } = await gql("{ sudo(block: -1) { total } }", env);
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -3131,7 +3156,7 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     };
     const { status, body } = await gql(
       "{ sudo { items { call_module } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.sudo, {
@@ -3143,7 +3168,7 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
 });
 
 describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -3189,7 +3214,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     };
     const { status, body } = await gql(
       "{ extrinsics { items { block_number call_module call_args success } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.extrinsics.total, 1);
@@ -3204,11 +3229,11 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: filter args are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3223,26 +3248,26 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     };
     await gql(
       `{ extrinsics(limit: 5, block: 42, signer: "5Signer", call_module: "SubtensorModule", call_function: "register", success: true) { total } }`,
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.pathname, "/api/v1/extrinsics");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl.searchParams.get("block"), "42");
-    assert.equal(capturedUrl.searchParams.get("signer"), "5Signer");
+    assert.equal(capturedUrl!.pathname, "/api/v1/extrinsics");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("block"), "42");
+    assert.equal(capturedUrl!.searchParams.get("signer"), "5Signer");
     assert.equal(
-      capturedUrl.searchParams.get("call_module"),
+      capturedUrl!.searchParams.get("call_module"),
       "SubtensorModule",
     );
-    assert.equal(capturedUrl.searchParams.get("call_function"), "register");
-    assert.equal(capturedUrl.searchParams.get("success"), "true");
+    assert.equal(capturedUrl!.searchParams.get("call_function"), "register");
+    assert.equal(capturedUrl!.searchParams.get("success"), "true");
   });
 
   test("extrinsics: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3256,7 +3281,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
       },
     };
     await gql(`{ extrinsics(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
   });
 
   test("extrinsics: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -3266,7 +3291,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     };
     const { status, body } = await gql(
       "{ extrinsics { items { call_module } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.extrinsics, {
@@ -3284,7 +3309,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     };
     const { status, body } = await gql(
       `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.extrinsic.ref, ref);
@@ -3304,10 +3329,12 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     };
     const { status, body } = await gql(
       "{ extrinsics(block: -1) { total } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -3350,7 +3377,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     };
     const { status, body } = await gql(
       `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module call_function } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.extrinsic.ref, ref);
@@ -3365,7 +3392,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
 });
 
 describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -3411,7 +3438,7 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     };
     const { status, body } = await gql(
       "{ governance_config_changes { items { block_number call_module call_function call_args success } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.governance_config_changes.total, 1);
@@ -3435,7 +3462,7 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     };
     const { status, body } = await gql(
       "{ governance_config_changes { items { call_module } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.governance_config_changes, {
@@ -3446,11 +3473,11 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   });
 
   test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module)", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3465,28 +3492,28 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     };
     await gql(
       `{ governance_config_changes(limit: 5, block: 42, call_function: "sudo_set_tempo", success: true) { total } }`,
-      env,
+      env as unknown as Env,
     );
     // The worker fixes call_module=AdminUtils by path, so the resolver hits the
     // governance route (not /extrinsics) and never forwards signer/call_module.
-    assert.equal(capturedUrl.pathname, "/api/v1/governance/config-changes");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl.searchParams.get("block"), "42");
+    assert.equal(capturedUrl!.pathname, "/api/v1/governance/config-changes");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("block"), "42");
     assert.equal(
-      capturedUrl.searchParams.get("call_function"),
+      capturedUrl!.searchParams.get("call_function"),
       "sudo_set_tempo",
     );
-    assert.equal(capturedUrl.searchParams.get("success"), "true");
-    assert.equal(capturedUrl.searchParams.get("signer"), null);
-    assert.equal(capturedUrl.searchParams.get("call_module"), null);
+    assert.equal(capturedUrl!.searchParams.get("success"), "true");
+    assert.equal(capturedUrl!.searchParams.get("signer"), null);
+    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
   });
 
   test("governance_config_changes: a cursor arg is forwarded as a query param", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3500,7 +3527,7 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
       },
     };
     await gql(`{ governance_config_changes(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
   });
 
   test("governance_config_changes: rejects a negative block with BAD_USER_INPUT", async () => {
@@ -3517,7 +3544,7 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
 });
 
 describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -3560,7 +3587,7 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
     };
     const { status, body } = await gql(
       "{ blocks { items { block_number block_hash extrinsic_count event_count } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.blocks.total, 1);
@@ -3572,11 +3599,11 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
   });
 
   test("blocks: limit/offset/cursor are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_BLOCKS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3591,12 +3618,12 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
     };
     await gql(
       `{ blocks(limit: 5, offset: 10, cursor: "abc123") { total } }`,
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.pathname, "/api/v1/blocks");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl.searchParams.get("offset"), "10");
-    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
+    assert.equal(capturedUrl!.pathname, "/api/v1/blocks");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
   });
 
   test("blocks: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -3606,7 +3633,7 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
     };
     const { status, body } = await gql(
       "{ blocks { items { block_number } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.blocks, {
@@ -3641,7 +3668,7 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
     };
     const { status, body } = await gql(
       `{ block(ref: "${ref}") { ref block { block_number spec_version } prev_block_number next_block_number } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.block.ref, ref);
@@ -3653,11 +3680,11 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
 
   test("block: resolves a Postgres-tier row by 0x block hash", async () => {
     const ref = `0x${"b".repeat(64)}`;
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_BLOCKS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3680,10 +3707,10 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
     };
     const { status, body } = await gql(
       `{ block(ref: "${ref}") { ref block { block_number block_hash } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, `/api/v1/blocks/${ref}`);
+    assert.equal(capturedUrl!.pathname, `/api/v1/blocks/${ref}`);
     assert.equal(body.data.block.block.block_number, 123);
     assert.equal(body.data.block.block.block_hash, ref);
   });
@@ -3709,7 +3736,7 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
     };
     const { status, body } = await gql(
       `{ block(ref: "${ref}") { ref block { block_number } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.block.ref, ref);
@@ -3723,7 +3750,7 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
 });
 
 describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -3792,7 +3819,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     const { status, body } = await gql(
       '{ validators(sort: "total_stake", limit: 5) { items { hotkey featured coldkey nominator_count realized_return_1d realized_return_1w realized_return_1m captured_at block_number subnets { netuid uid stake_tao } } total sort captured_at block_number } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.validators.total, 1);
@@ -3814,11 +3841,11 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
   });
 
   test("validators: sort is forwarded to the Postgres tier; limit is always the REST max window", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3833,17 +3860,17 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       },
     };
     await gql('{ validators(sort: "uid_count", limit: 5) { total } }', env);
-    assert.equal(capturedUrl.pathname, "/api/v1/validators");
-    assert.equal(capturedUrl.searchParams.get("sort"), "uid_count");
-    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+    assert.equal(capturedUrl!.pathname, "/api/v1/validators");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "uid_count");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("validators: an omitted GraphQL limit still fetches the REST max window from the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -3858,8 +3885,8 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       },
     };
     await gql("{ validators { total } }", env);
-    assert.equal(capturedUrl.searchParams.get("sort"), "subnet_count");
-    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "subnet_count");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("validators: paginate with a hotkey cursor", async () => {
@@ -3893,7 +3920,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     const first = await gql(
       "{ validators(limit: 1) { items { hotkey } total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(first.status, 200);
     assert.equal(first.body.data.validators.total, 2);
@@ -3902,7 +3929,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
 
     const second = await gql(
       '{ validators(limit: 1, cursor: "5Alpha") { items { hotkey } next_cursor } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(second.status, 200);
     assert.equal(second.body.data.validators.items[0].hotkey, "5Beta");
@@ -3916,7 +3943,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     const { status, body } = await gql(
       "{ validators { items { hotkey } total sort captured_at block_number } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.validators, {
@@ -3941,10 +3968,12 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     const { status, body } = await gql(
       '{ validators(sort: "not_a_real_sort") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -3998,7 +4027,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     const { status, body } = await gql(
       '{ validator(hotkey: "5Validator") { hotkey subnet_count captured_at block_number subnets { netuid stake_tao } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.validator.hotkey, "5Validator");
@@ -4018,7 +4047,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     };
     const { status, body } = await gql(
       '{ validator(hotkey: "5NoRows") { hotkey featured subnet_count total_stake_tao captured_at block_number subnets { netuid } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4041,7 +4070,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
 
 describe("graphql — account_position_history (#5889, Postgres-tier + empty-points fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -4098,7 +4127,7 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
           ss58 netuid window point_count
           points { snapshot_date captured_at uid coldkey role active stake_tao emission_tao rank trust incentive dividends yield }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4117,7 +4146,9 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
     );
     assert.equal(status, 200);
     assert.equal(body.data, null);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("an out-of-range netuid is BAD_USER_INPUT", async () => {
@@ -4126,15 +4157,17 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
     );
     assert.equal(status, 200);
     assert.equal(body.data, null);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -4142,11 +4175,11 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
     };
     await gql(
       `{ account_position_history(ss58: "${SS58}", netuid: 5, window: "7d") { window } }`,
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
     assert.ok(
-      capturedUrl.pathname.endsWith(`/accounts/${SS58}/subnets/5/history`),
+      capturedUrl!.pathname.endsWith(`/accounts/${SS58}/subnets/5/history`),
     );
   });
 
@@ -4159,7 +4192,7 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
       `{ account_position_history(ss58: "${SS58}", netuid: 3, window: "30d") {
           schema_version ss58 netuid window point_count points { snapshot_date }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4179,12 +4212,14 @@ describe("graphql — account_position_history (#5889, Postgres-tier + empty-poi
     );
     assert.equal(status, 200);
     assert.equal(body.data, null);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 });
 
 describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
   const EMPTY = {
@@ -4243,7 +4278,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
     };
     const { status, body } = await gql(
       `{ subnet_turnover(netuid: 5, window: "90d") { ${ALL_FIELDS} } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4257,19 +4292,19 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
   });
 
   test("window + netuid are forwarded to the Postgres tier route", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql(`{ subnet_turnover(netuid: 7, window: "7d") { window } }`, env);
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/7/turnover"));
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/7/turnover"));
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -4279,7 +4314,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
     };
     const { status, body } = await gql(
       `{ subnet_turnover(netuid: 1, window: "30d") { ${ALL_FIELDS} } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4292,7 +4327,9 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
     );
     assert.equal(status, 200);
     assert.equal(body.data, null);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("an out-of-range netuid is BAD_USER_INPUT", async () => {
@@ -4301,7 +4338,9 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
     );
     assert.equal(status, 200);
     assert.equal(body.data, null);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 });
 
@@ -4311,7 +4350,7 @@ describe("graphql — subnet_turnover (#5886, Postgres-tier + empty-card fallbac
 // unlike subnet_turnover above), mirroring MCP's get_subnet_ownership_history/
 // get_subnet_conviction/get_subnet_lease_history proxies byte-for-byte.
 describe("graphql — subnet_ownership_history / subnet_conviction / subnet_lease_history", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -4336,7 +4375,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     };
     const { status, body } = await gql(
       "{ subnet_ownership_history(netuid: 7) { schema_version netuid count ownership_changes } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4371,7 +4410,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     };
     const { status, body } = await gql(
       "{ subnet_conviction(netuid: 7) { schema_version netuid queried_at_block unlock_rate maturity_rate king count leaderboard } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4405,7 +4444,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     };
     const { status, body } = await gql(
       "{ subnet_lease_history(netuid: 9) { schema_version netuid count lease_events } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -4428,7 +4467,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     };
     const { body } = await gql(
       "{ subnet_ownership_history(netuid: 4) { count ownership_changes } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.data.subnet_ownership_history.count, 0);
     assert.deepEqual(body.data.subnet_ownership_history.ownership_changes, []);
@@ -4442,7 +4481,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
 
     const ownership = await gql(
       "{ subnet_ownership_history(netuid: 4) { schema_version netuid count ownership_changes } }",
-      env,
+      env as unknown as Env,
     );
     assert.deepEqual(ownership.body.data.subnet_ownership_history, {
       schema_version: 1,
@@ -4453,7 +4492,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
 
     const conviction = await gql(
       "{ subnet_conviction(netuid: 4) { schema_version netuid queried_at_block unlock_rate maturity_rate king count leaderboard } }",
-      env,
+      env as unknown as Env,
     );
     assert.deepEqual(conviction.body.data.subnet_conviction, {
       schema_version: 1,
@@ -4468,7 +4507,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
 
     const leaseHistory = await gql(
       "{ subnet_lease_history(netuid: 4) { schema_version netuid count lease_events } }",
-      env,
+      env as unknown as Env,
     );
     assert.deepEqual(leaseHistory.body.data.subnet_lease_history, {
       schema_version: 1,
@@ -4490,7 +4529,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     const env = { DATA_API: dataApi(new Response("err", { status: 502 })) };
     const { body } = await gql(
       "{ subnet_conviction(netuid: 7) { count } }",
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
     assert.equal(body.data, null);
@@ -4506,7 +4545,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     };
     const { body } = await gql(
       "{ subnet_lease_history(netuid: 9) { count } }",
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors?.length);
     assert.equal(body.data, null);
@@ -4518,7 +4557,11 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       "subnet_conviction",
       "subnet_lease_history",
     ]) {
-      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+      assert.equal(
+        (FIELD_COMPLEXITY as Row)[field],
+        5,
+        `${field} should be weighted`,
+      );
     }
   });
 
@@ -4552,7 +4595,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       // the whole response, not just this field.
       assert.equal(body.data, null, `${field} should null the response`);
       assert.ok(
-        body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
         `${field} should be BAD_USER_INPUT`,
       );
       assert.equal(called, false, `${field} should never reach DATA_API`);
@@ -4564,7 +4607,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
 // event log) -- same schema-stable-null-on-RPC-failure shape as
 // subnet_recycled/subnet_burn above, reusing loadSubnetLease unchanged.
 describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.ts)", () => {
-  function withFetchStub(stub, fn) {
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
     return Promise.resolve(fn()).finally(() => {
@@ -4623,7 +4666,7 @@ describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.ts)",
         assert.equal(status, 200);
         assert.equal(body.data.subnet_lease, null);
         assert.ok(
-          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+          body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
         );
         assert.equal(called, false);
       },
@@ -4635,7 +4678,9 @@ describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.ts)",
       "{ subnet_lease(netuid: -1) { leased } }",
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("subnet_lease is weighted like its live-RPC siblings", () => {
@@ -4648,7 +4693,7 @@ describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.ts)",
 });
 
 describe("graphql — validator_history (#5710, Postgres-tier + empty-points fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -4695,7 +4740,7 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
           hotkey window point_count
           points { snapshot_date subnet_count total_stake_tao total_emission_tao rewards_per_1000_tao }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.validator_history;
@@ -4714,11 +4759,11 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -4726,10 +4771,10 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
     };
     await gql(
       '{ validator_history(hotkey: "5Validator", window: "7d") { window } }',
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
-    assert.ok(capturedUrl.pathname.endsWith("/validators/5Validator/history"));
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
+    assert.ok(capturedUrl!.pathname.endsWith("/validators/5Validator/history"));
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -4741,7 +4786,7 @@ describe("graphql — validator_history (#5710, Postgres-tier + empty-points fal
       `{ validator_history(hotkey: "5Validator", window: "30d") {
           schema_version hotkey window point_count points { snapshot_date }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.validator_history, {
@@ -4809,11 +4854,11 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
   });
 
   test("resolves Postgres-tier data and flattens the window-keyed deltas map to a labelled list", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -4839,7 +4884,7 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
     };
     const { status, body } = await gql(trajectoryQuery, env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/trajectory");
+    assert.equal(capturedUrl!.pathname, "/api/v1/subnets/3/trajectory");
     assert.equal(body.data.subnet_trajectory.point_count, 2);
     assert.equal(body.data.subnet_trajectory.points[0].date, "2026-07-01");
     assert.equal(body.data.subnet_trajectory.points[1].completeness_score, 60);
@@ -4893,7 +4938,7 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
 });
 
 describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty timeline fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -4953,7 +4998,7 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
             github_repo subnet_url discord logo_url identity_hash
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.subnet_identity_history;
@@ -4995,7 +5040,7 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
           netuid entry_count limit
           entries { block_number observed_at subnet_name symbol identity_hash }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -5007,11 +5052,11 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
   });
 
   test("pagination args are forwarded to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -5019,12 +5064,12 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
     };
     await gql(
       '{ subnet_identity_history(netuid: 3, limit: 25, offset: 10, cursor: "abc") { entry_count } }',
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.searchParams.get("limit"), "25");
-    assert.equal(capturedUrl.searchParams.get("offset"), "10");
-    assert.equal(capturedUrl.searchParams.get("cursor"), "abc");
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/identity-history"));
+    assert.equal(capturedUrl!.searchParams.get("limit"), "25");
+    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc");
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/identity-history"));
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -5036,7 +5081,7 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
       `{ subnet_identity_history(netuid: 9) {
           schema_version netuid entry_count limit offset next_cursor entries { subnet_name }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_identity_history, {
@@ -5065,7 +5110,7 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
 });
 
 describe("graphql — chain_identity_history (#5878, Postgres-tier + empty-feed fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -5129,7 +5174,7 @@ describe("graphql — chain_identity_history (#5878, Postgres-tier + empty-feed 
           schema_version count subnet_count
           changes { netuid block_number observed_at subnet_name symbol identity_hash }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.chain_identity_history;
@@ -5151,7 +5196,7 @@ describe("graphql — chain_identity_history (#5878, Postgres-tier + empty-feed 
       `{ chain_identity_history {
           schema_version count subnet_count changes { netuid }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_identity_history, {
@@ -5217,7 +5262,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     };
     const { status, body } = await gql(
       '{ accounts(sort: "total_stake", limit: 5) { items { hotkey coldkey subnet_count total_stake_tao stake_dominance latest_captured_at latest_block_number subnets { netuid uid stake_tao emission_tao } } total sort captured_at block_number } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.accounts.total, 1);
@@ -5237,11 +5282,11 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   });
 
   test("accounts: sort and limit args are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -5256,17 +5301,17 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
       },
     };
     await gql('{ accounts(sort: "uid_count", limit: 5) { total } }', env);
-    assert.equal(capturedUrl.pathname, "/api/v1/accounts");
-    assert.equal(capturedUrl.searchParams.get("sort"), "uid_count");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/accounts");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "uid_count");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
   });
 
   test("accounts: an omitted sort/limit forwards the defaults to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -5281,8 +5326,8 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
       },
     };
     await gql("{ accounts { total } }", env);
-    assert.equal(capturedUrl.searchParams.get("sort"), "total_stake");
-    assert.equal(capturedUrl.searchParams.get("limit"), "20");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "total_stake");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "20");
   });
 
   test("accounts: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -5292,7 +5337,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     };
     const { status, body } = await gql(
       "{ accounts { items { hotkey } total sort captured_at block_number } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.accounts, {
@@ -5317,10 +5362,12 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     };
     const { status, body } = await gql(
       '{ accounts(sort: "not_a_real_sort") { total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -5338,10 +5385,12 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     };
     const { status, body } = await gql(
       '{ account(ss58: "not-a-valid-address") { ss58 } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     // `account` is a nullable field (unlike `validators`/`accounts`), so the
     // thrown error nulls out just this field, not the whole `data` object.
     assert.equal(body.data.account, null);
@@ -5408,7 +5457,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     };
     const { status, body } = await gql(
       `{ account(ss58: "${SS58}") { ss58 event_count subnet_count first_block last_block event_kinds { kind count } registrations { netuid stake_tao validator_permit active } recent_events { block_number event_kind } activity { tx_count last_tx_block total_fee_tao modules_called { call_module count } } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.account.ss58, SS58);
@@ -5440,7 +5489,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     };
     const { status, body } = await gql(
       `{ account(ss58: "${SS58}") { ss58 event_count subnet_count event_scan_capped first_block last_block event_kinds { kind } registrations { netuid } recent_events { block_number } activity { tx_count modules_called { call_module } } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account, {
@@ -5466,7 +5515,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
 describe("graphql — account_prometheus (#5703, Postgres-tier { data, generatedAt } + zeroed-card fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_prometheus${argsClause} {
       schema_version address window total_announcements subnet_count concentration dominant_netuid
       subnets { netuid announcements first_announced_at last_announced_at }
@@ -5524,7 +5573,7 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
     };
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "7d")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const p = body.data.account_prometheus;
@@ -5539,11 +5588,11 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             data: { schema_version: 1, address: SS58, subnets: [] },
@@ -5553,8 +5602,8 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
       },
     };
     await gql(query(`(ss58: "${SS58}", window: "90d")`), env);
-    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/prometheus`);
-    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/prometheus`);
+    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed footprint", async () => {
@@ -5610,10 +5659,12 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
     };
     const { status, body } = await gql(
       query('(ss58: "not-a-valid-address")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -5636,7 +5687,7 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
 describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generatedAt } + zeroed-card fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_stake_flow${argsClause} {
       schema_version address window total_staked_tao total_unstaked_tao
       net_flow_tao gross_flow_tao flow_ratio direction stake_events unstake_events
@@ -5720,7 +5771,7 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
     };
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "7d")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const f = body.data.account_stake_flow;
@@ -5736,11 +5787,11 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
   });
 
   test("window and direction are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             data: { schema_version: 1, address: SS58, subnets: [] },
@@ -5750,9 +5801,9 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
       },
     };
     await gql(query(`(ss58: "${SS58}", window: "90d", direction: "in")`), env);
-    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/stake-flow`);
-    assert.equal(capturedUrl.searchParams.get("window"), "90d");
-    assert.equal(capturedUrl.searchParams.get("direction"), "in");
+    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/stake-flow`);
+    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
+    assert.equal(capturedUrl!.searchParams.get("direction"), "in");
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
@@ -5822,10 +5873,12 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
     };
     const { status, body } = await gql(
       query('(ss58: "not-a-valid-address")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -5858,7 +5911,7 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
 describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed-card fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_portfolio${argsClause} {
       schema_version ss58 captured_at subnet_count position_count validator_count
       miner_count total_stake_tao total_emission_tao overall_yield
@@ -5947,11 +6000,11 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
   });
 
   test("ss58 is forwarded on the Postgres-tier request path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -5962,7 +6015,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
       },
     };
     await gql(query(`(ss58: "${SS58}")`), env);
-    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/portfolio`);
+    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/portfolio`);
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty card", async () => {
@@ -6001,10 +6054,12 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
     };
     const { status, body } = await gql(
       query('(ss58: "not-a-valid-address")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -6017,7 +6072,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
 describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-card fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_positions${argsClause} {
       schema_version ss58 captured_at position_count total_stake_tao
       positions { hotkey netuid share_fraction stake_tao }
@@ -6080,11 +6135,11 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
   });
 
   test("ss58 is forwarded on the Postgres-tier request path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -6095,7 +6150,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
       },
     };
     await gql(query(`(ss58: "${SS58}")`), env);
-    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/positions`);
+    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/positions`);
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty card", async () => {
@@ -6128,10 +6183,12 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
     };
     const { status, body } = await gql(
       query('(ss58: "not-a-valid-address")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -6144,7 +6201,7 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
 describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-card fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_subnets${argsClause} {
       schema_version ss58 subnet_count
       subnets { netuid uid stake_tao validator_permit active }
@@ -6204,11 +6261,11 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
   });
 
   test("ss58 is forwarded on the Postgres-tier request path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -6220,7 +6277,7 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
       },
     };
     await gql(query(`(ss58: "${SS58}")`), env);
-    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/subnets`);
+    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/subnets`);
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty footprint", async () => {
@@ -6251,10 +6308,12 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
     };
     const { status, body } = await gql(
       query('(ss58: "not-a-valid-address")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -6267,7 +6326,7 @@ describe("graphql — account_subnets (#5894, Postgres-tier flat body + empty-ca
 describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_extrinsics${argsClause} {
       schema_version ss58 extrinsic_count limit offset next_cursor
       extrinsics { block_number extrinsic_index call_module call_function call_args success fee_tao }
@@ -6336,11 +6395,11 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
   });
 
   test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -6358,14 +6417,14 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
       query(
         `(ss58: "${SS58}", limit: 5, offset: 10, cursor: "abc123", block_start: 100, block_end: 200)`,
       ),
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.pathname, `/api/v1/accounts/${SS58}/extrinsics`);
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl.searchParams.get("offset"), "10");
-    assert.equal(capturedUrl.searchParams.get("cursor"), "abc123");
-    assert.equal(capturedUrl.searchParams.get("block_start"), "100");
-    assert.equal(capturedUrl.searchParams.get("block_end"), "200");
+    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/extrinsics`);
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
+    assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
+    assert.equal(capturedUrl!.searchParams.get("block_end"), "200");
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -6399,10 +6458,12 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
     };
     const { status, body } = await gql(
       query('(ss58: "not-a-valid-address")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -6422,14 +6483,14 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
 // -- using graphql-js's real subscribe() function (not a hand-rolled
 // simulation) against a minimal fake hub, exactly the shape
 // ChainFirehoseHub actually provides via context.
-function fakeChainFirehose(pushAfterSubscribe) {
-  const subscriptions = [];
+function fakeChainFirehose(pushAfterSubscribe?: AnyFn) {
+  const subscriptions: Row[] = [];
   return {
-    subscribeChainEvents(topics) {
-      const pending = [];
-      let waitingResolve = null;
+    subscribeChainEvents(topics: unknown, _clientIp?: unknown) {
+      const pending: unknown[] = [];
+      let waitingResolve: AnyFn | null = null;
       const repeater = {
-        push(value) {
+        push(value: unknown) {
           if (waitingResolve) {
             const resolve = waitingResolve;
             waitingResolve = null;
@@ -6453,7 +6514,7 @@ function fakeChainFirehose(pushAfterSubscribe) {
       if (pushAfterSubscribe) pushAfterSubscribe(repeater);
       return repeater;
     },
-    unsubscribeChainEvents(repeater) {
+    unsubscribeChainEvents(repeater: Row) {
       const index = subscriptions.findIndex((s) => s.repeater === repeater);
       if (index !== -1) subscriptions.splice(index, 1);
     },
@@ -6461,7 +6522,12 @@ function fakeChainFirehose(pushAfterSubscribe) {
   };
 }
 
-async function subscribeChainEvents(query, hub, clientIp) {
+async function subscribeChainEvents(
+  query: string,
+  hub?: Row,
+  clientIp?: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
   const document = parse(query);
   return subscribe({
     schema: chainEventsSchema,
@@ -6476,12 +6542,12 @@ async function subscribeChainEvents(query, hub, clientIp) {
 // through JSON is also a MORE faithful comparison than a raw deep-equal:
 // real clients only ever see this result after it's been JSON-serialized
 // for the wire, same as every other transport in this repo.
-function asPlainJson(value) {
+function asPlainJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
 }
 
 describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -6565,7 +6631,7 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
           throughput { total_extrinsics mean_extrinsics_per_block max_extrinsics_in_block }
           author_concentration { gini nakamoto_coefficient top_1pct_share entropy_normalized }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const s = body.data.blocks_summary;
@@ -6585,19 +6651,19 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
   });
 
   test("forwards to /api/v1/blocks/summary with no query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_BLOCKS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({ schema_version: 1, block_count: 0 });
         },
       },
     };
     await gql("{ blocks_summary { block_count } }", env);
-    assert.equal(capturedUrl.pathname, "/api/v1/blocks/summary");
-    assert.equal(capturedUrl.search, "");
+    assert.equal(capturedUrl!.pathname, "/api/v1/blocks/summary");
+    assert.equal(capturedUrl!.search, "");
   });
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
@@ -6612,7 +6678,7 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
           first_block last_block block_time { count } throughput { total_extrinsics }
           author_concentration { gini } latest_spec_version
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.blocks_summary, {
@@ -6631,7 +6697,7 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
 });
 
 describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + retired-D1 fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -6685,7 +6751,7 @@ describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + reti
           coverage_from_block coverage_from_at
           transitions { spec_version block_number observed_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.runtime, {
@@ -6710,19 +6776,19 @@ describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + reti
   });
 
   test("forwards to /api/v1/runtime with no query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_BLOCKS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({ schema_version: 1, transition_count: 0 });
         },
       },
     };
     await gql("{ runtime { transition_count } }", env);
-    assert.equal(capturedUrl.pathname, "/api/v1/runtime");
-    assert.equal(capturedUrl.search, "");
+    assert.equal(capturedUrl!.pathname, "/api/v1/runtime");
+    assert.equal(capturedUrl!.search, "");
   });
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
@@ -6736,7 +6802,7 @@ describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + reti
           schema_version transition_count current_spec_version
           coverage_from_block coverage_from_at transitions { spec_version }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.runtime, {
@@ -6751,7 +6817,7 @@ describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + reti
 });
 
 describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledger)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
   // Minimal D1 stub: every query returns no rows, so loadGlobalIncidentsLedger's
@@ -6814,7 +6880,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
           summary
           surfaces { id endpoint_id state severity status reason netuid provider health_stale pool_eligible user_reported }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const inc = body.data.incidents;
@@ -6839,7 +6905,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
     };
     const { status, body } = await gql(
       '{ incidents(window: "30d") { schema_version window observed_at source summary surfaces { id } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.incidents, {
@@ -6868,7 +6934,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
 describe("graphql — global_incidents (#7643, get_global_incidents-aligned alias)", () => {
   // Fresh Response per fetch so incidents + global_incidents can each consume
   // their own Postgres-tier body when queried side by side.
-  function dataApi(payload) {
+  function dataApi(payload: Row) {
     return { fetch: async () => Response.json(payload) };
   }
   const emptyHealthDb = {
@@ -6910,7 +6976,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
       }`;
     const { status, body } = await gql(
       `{ global_incidents(window: "30d") ${selection} }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -6923,7 +6989,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     assert.equal(alias.surfaces[0].netuid, 5);
     const canonical = await gql(
       `{ incidents(window: "30d") ${selection} }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(canonical.status, 200);
     assert.equal(canonical.body.errors, undefined);
@@ -6969,8 +7035,8 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const fields = body.data.__type.fields;
-    const canonical = fields.find((f) => f.name === "incidents");
-    const alias = fields.find((f) => f.name === "global_incidents");
+    const canonical = fields.find((f: Row) => f.name === "incidents");
+    const alias = fields.find((f: Row) => f.name === "global_incidents");
     assert.ok(canonical && alias, "both fields present in the schema");
     assert.deepEqual(alias.args, canonical.args);
     assert.deepEqual(alias.type, canonical.type);
@@ -6978,7 +7044,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
 });
 
 describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -7021,7 +7087,7 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
       `{ subnet_registrations(netuid: 5, window: "30d") {
           netuid window observed_at distinct_registrants registrations registrations_per_registrant
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.subnet_registrations;
@@ -7041,7 +7107,7 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
       `{ subnet_registrations(netuid: 9, window: "30d") {
           schema_version netuid window observed_at distinct_registrants registrations registrations_per_registrant
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_registrations, {
@@ -7066,7 +7132,7 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
 });
 
 describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -7178,7 +7244,7 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
           trust { count mean max }
           validator_trust { count min max }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -7199,18 +7265,18 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
   });
 
   test("forwards the performance path to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql("{ subnet_performance(netuid: 3) { neuron_count } }", env);
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/performance"));
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/performance"));
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -7223,7 +7289,7 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
           schema_version netuid neuron_count validator_count active_count
           incentive { holders } trust { count }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_performance, {
@@ -7252,7 +7318,7 @@ describe("graphql — subnet_performance (#5714, Postgres-tier + zeroed-card fal
 });
 
 describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -7344,7 +7410,7 @@ describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card f
           emission { holders total }
           validator_stake { holders gini }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -7364,18 +7430,18 @@ describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card f
   });
 
   test("forwards the concentration path to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql("{ subnet_concentration(netuid: 3) { neuron_count } }", env);
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/concentration"));
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/concentration"));
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -7388,7 +7454,7 @@ describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card f
           schema_version netuid neuron_count entity_count uids_per_entity
           stake { holders } validator_stake { holders }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_concentration, {
@@ -7417,7 +7483,7 @@ describe("graphql — subnet_concentration (#5901, Postgres-tier + zeroed-card f
 });
 
 describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + window validation)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -7477,7 +7543,7 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
           netuid window point_count
           points { snapshot_date neuron_count stake_gini stake_nakamoto_coefficient emission_top_10pct_share }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -7493,11 +7559,11 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
   });
 
   test("forwards the window to the concentration/history Postgres path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -7505,12 +7571,12 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
     };
     await gql(
       '{ subnet_concentration_history(netuid: 3, window: "90d") { point_count } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(
-      capturedUrl.pathname.endsWith("/subnets/3/concentration/history"),
+      capturedUrl!.pathname.endsWith("/subnets/3/concentration/history"),
     );
-    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
   });
 
   test("an unsupported window is a GraphQL error, not a silent series", async () => {
@@ -7551,7 +7617,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     });
     const { status, body } = await gql(
       "{ search(limit: 1) { documents total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -7575,7 +7641,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     });
     const { status, body } = await gql(
       "{ search_index(limit: 1) { documents total next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -7604,7 +7670,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     });
     const { status, body } = await gql(
       "{ domains { schema_version domain_count domains { domain subnet_count netuids total_stake_tao } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -7612,7 +7678,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.equal(d.schema_version, 1);
     assert.equal(d.domain_count, 14);
     assert.equal(d.domains.length, 14);
-    const agents = d.domains.find((row) => row.domain === "agents");
+    const agents = d.domains.find((row: Row) => row.domain === "agents");
     assert.ok(agents, "expected an agents rollup");
   });
 
@@ -7656,11 +7722,11 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
   });
 
   test("compare_validators fetches each hotkey from the Postgres tier", async () => {
-    const paths = [];
+    const paths: string[] = [];
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           paths.push(new URL(req.url).pathname);
           return Response.json({
             schema_version: 1,
@@ -7673,7 +7739,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     };
     const { status, body } = await gql(
       `{ compare_validators(hotkeys: ["${HOTKEY_A}"], netuid: 3) { netuid validator_count validators { hotkey total_stake_tao } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -7768,7 +7834,7 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
     const env = fixtureEnv({ "/metagraph/candidates.json": CANDIDATES });
     const { body } = await gql(
       '{ candidates(netuid: 2, kind: "api", provider: "beta", state: "verified") }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.equal(body.data.candidates.total, 1);
@@ -7881,11 +7947,11 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
   });
 
   test("top_holders resolves the postgres tier payload", async () => {
-    let url;
+    let url: URL | undefined;
     const env = {
       METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           url = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -7897,9 +7963,9 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
     const { body } = await gql("{ top_holders(limit: 5) }", env);
     assert.equal(body.errors, undefined);
     assert.equal(body.data.top_holders.holders[0].ss58, "5A");
-    assert.equal(url.pathname, "/api/v1/accounts/top-holders");
-    assert.equal(url.searchParams.get("limit"), "5");
-    assert.equal(url.searchParams.get("sort"), "total_tao");
+    assert.equal(url!.pathname, "/api/v1/accounts/top-holders");
+    assert.equal(url!.searchParams.get("limit"), "5");
+    assert.equal(url!.searchParams.get("sort"), "total_tao");
   });
 
   test("top_holders falls back to a schema-stable empty list when the tier is cold", async () => {
@@ -7910,11 +7976,11 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
   });
 
   test("top_holders forwards an explicit allowlisted sort", async () => {
-    let url;
+    let url: URL | undefined;
     const env = {
       METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           url = new URL(r.url);
           return Response.json({ schema_version: 1, holders: [] });
         },
@@ -7922,7 +7988,7 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
     };
     const { body } = await gql('{ top_holders(sort: "free_tao") }', env);
     assert.equal(body.errors, undefined);
-    assert.equal(url.searchParams.get("sort"), "free_tao");
+    assert.equal(url!.searchParams.get("sort"), "free_tao");
   });
 
   test("top_holders rejects an unknown sort with BAD_USER_INPUT", async () => {
@@ -7938,7 +8004,7 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
       "freshness",
       "top_holders",
     ]) {
-      assert.equal(FIELD_COMPLEXITY[f], 5, `${f} should be weighted`);
+      assert.equal((FIELD_COMPLEXITY as Row)[f], 5, `${f} should be weighted`);
     }
   });
 });
@@ -8053,7 +8119,7 @@ describe("graphql — registry_summary / source_health / lineage / rpc_endpoints
       "2026-07-20T12:00:00.000Z",
     );
     const overlaid = body.data.rpc_endpoints.endpoints.find(
-      (e) => e.id === "finney-wss",
+      (e: Row) => e.id === "finney-wss",
     );
     assert.equal(overlaid.latency_ms, 42);
     assert.equal(overlaid.health_source, "probe-derived");
@@ -8080,17 +8146,21 @@ describe("graphql — registry_summary / source_health / lineage / rpc_endpoints
       "lineage",
       "rpc_endpoints",
     ]) {
-      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+      assert.equal(
+        (FIELD_COMPLEXITY as Row)[field],
+        5,
+        `${field} should be weighted`,
+      );
     }
   });
 });
 
 describe("graphql — subnet metagraph / overview / profile (#7169, composed-route parity)", () => {
-  function tierEnv(sourceKey, payload, onUrl) {
+  function tierEnv(sourceKey: string, payload: Row, onUrl?: AnyFn) {
     return {
       [sourceKey]: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           onUrl?.(new URL(r.url));
           return Response.json(payload);
         },
@@ -8099,11 +8169,11 @@ describe("graphql — subnet metagraph / overview / profile (#7169, composed-rou
   }
 
   test("subnet_metagraph resolves the postgres-tier payload", async () => {
-    let url;
+    let url: URL | undefined;
     const env = tierEnv(
       "METAGRAPH_NEURONS_SOURCE",
       { schema_version: 1, netuid: 3, neuron_count: 1, neurons: [{ uid: 0 }] },
-      (u) => {
+      (u: URL) => {
         url = u;
       },
     );
@@ -8111,25 +8181,25 @@ describe("graphql — subnet metagraph / overview / profile (#7169, composed-rou
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.equal(body.data.subnet_metagraph.neuron_count, 1);
-    assert.equal(url.pathname, "/api/v1/subnets/3/metagraph");
-    assert.equal(url.searchParams.get("validator_permit"), null);
+    assert.equal(url!.pathname, "/api/v1/subnets/3/metagraph");
+    assert.equal(url!.searchParams.get("validator_permit"), null);
   });
 
   test("subnet_metagraph forwards validator_permit to the tier", async () => {
-    let url;
+    let url: URL | undefined;
     const env = tierEnv(
       "METAGRAPH_NEURONS_SOURCE",
       { schema_version: 1, netuid: 3, neuron_count: 0, neurons: [] },
-      (u) => {
+      (u: URL) => {
         url = u;
       },
     );
     const { body } = await gql(
       "{ subnet_metagraph(netuid: 3, validator_permit: true) }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.equal(url.searchParams.get("validator_permit"), "true");
+    assert.equal(url!.searchParams.get("validator_permit"), "true");
   });
 
   test("subnet_metagraph falls back to a schema-stable empty metagraph, never null", async () => {
@@ -8216,7 +8286,7 @@ describe("graphql — subnet metagraph / overview / profile (#7169, composed-rou
 });
 
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
   const POOL = {
@@ -8271,7 +8341,7 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     };
     const { status, body } = await gql(
       "{ subnet_volume(netuid: 64) { netuid window total_volume_tao buy_count sentiment sentiment_ratio } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -8295,11 +8365,11 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   });
 
   test("subnet_ohlc forwards interval + days and returns tier candles", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -8325,13 +8395,13 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     };
     const { status, body } = await gql(
       '{ subnet_ohlc(netuid: 7, interval: "1d", days: 30) { interval candles { bucket_start close event_count } } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/7/ohlc"));
-    assert.equal(capturedUrl.searchParams.get("interval"), "1d");
-    assert.equal(capturedUrl.searchParams.get("days"), "30");
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/7/ohlc"));
+    assert.equal(capturedUrl!.searchParams.get("interval"), "1d");
+    assert.equal(capturedUrl!.searchParams.get("days"), "30");
     const o = body.data.subnet_ohlc;
     assert.equal(o.interval, "1d");
     assert.equal(o.candles[0].bucket_start, 1770000000000);
@@ -8420,11 +8490,11 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   });
 
   test("subnet_validators resolves the Postgres-tier validator set", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -8446,11 +8516,11 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     };
     const { status, body } = await gql(
       "{ subnet_validators(netuid: 7) { netuid validator_count block_number validators { uid hotkey stake_tao validator_permit } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/7/validators"));
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/7/validators"));
     const v = body.data.subnet_validators;
     assert.equal(v.validator_count, 1);
     assert.equal(v.block_number, 91);
@@ -8545,7 +8615,7 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
 });
 
 describe("graphql — subnet_health_percentiles (#6980, live latency percentiles)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -8589,7 +8659,7 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
     };
     const { status, body } = await gql(
       '{ subnet_health_percentiles(netuid: 7, window: "30d") { netuid window observed_at source surfaces } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -8601,11 +8671,11 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
   });
 
   test("forwards the window to the health/percentiles Postgres path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -8613,10 +8683,10 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
     };
     await gql(
       '{ subnet_health_percentiles(netuid: 3, window: "30d") { netuid } }',
-      env,
+      env as unknown as Env,
     );
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/health/percentiles"));
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/health/percentiles"));
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
   });
 
   test("an unsupported window is a GraphQL error, not a silent card", async () => {
@@ -8633,7 +8703,7 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
 });
 
 describe("graphql — subnet_event_summary (#6980, chain-event activity summary)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -8683,7 +8753,7 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     };
     const { status, body } = await gql(
       '{ subnet_event_summary(netuid: 7, window: "7d") { netuid window total_events kind_count categories event_kinds recent_events } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -8695,11 +8765,11 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
   });
 
   test("clamps the recent-event limit into 1..50 and forwards it", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -8707,26 +8777,26 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     };
     await gql(
       '{ subnet_event_summary(netuid: 3, window: "90d", limit: 999) { netuid } }',
-      env,
+      env as unknown as Env,
     );
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/event-summary"));
-    assert.equal(capturedUrl.searchParams.get("window"), "90d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "50");
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/event-summary"));
+    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "50");
   });
 
   test("clamps a below-range limit up to 1", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql("{ subnet_event_summary(netuid: 3, limit: 0) { netuid } }", env);
-    assert.equal(capturedUrl.searchParams.get("limit"), "1");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "1");
   });
 
   test("an unsupported window is a GraphQL error, not a silent card", async () => {
@@ -8841,7 +8911,7 @@ describe("graphql — subnet_candidates (#7641, baked per-subnet candidate artif
 });
 
 describe("graphql — subnet_performance_history (#6981, neuron_daily reward-distribution trend)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -8917,7 +8987,7 @@ describe("graphql — subnet_performance_history (#6981, neuron_daily reward-dis
           netuid window point_count
           points { snapshot_date neuron_count validator_count incentive_gini dividends_top_10pct_share trust_median validator_trust_mean }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -8934,11 +9004,11 @@ describe("graphql — subnet_performance_history (#6981, neuron_daily reward-dis
   });
 
   test("forwards the window to the performance/history Postgres path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -8946,10 +9016,10 @@ describe("graphql — subnet_performance_history (#6981, neuron_daily reward-dis
     };
     await gql(
       '{ subnet_performance_history(netuid: 3, window: "90d") { point_count } }',
-      env,
+      env as unknown as Env,
     );
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/performance/history"));
-    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/performance/history"));
+    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
   });
 
   test("an unsupported window is a GraphQL error, not a silent series", async () => {
@@ -8976,7 +9046,7 @@ describe("graphql — subnet_performance_history (#6981, neuron_daily reward-dis
 });
 
 describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-stake trend)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -9040,7 +9110,7 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
           netuid window point_count
           points { snapshot_date neuron_count validator_count yield_count subnet_yield median_yield p90_yield }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9057,11 +9127,11 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
   });
 
   test("forwards the window to the yield/history Postgres path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -9069,10 +9139,10 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
     };
     await gql(
       '{ subnet_yield_history(netuid: 3, window: "90d") { point_count } }',
-      env,
+      env as unknown as Env,
     );
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/yield/history"));
-    assert.equal(capturedUrl.searchParams.get("window"), "90d");
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/yield/history"));
+    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
   });
 
   test("an unsupported window is a GraphQL error, not a silent series", async () => {
@@ -9099,7 +9169,7 @@ describe("graphql — subnet_yield_history (#6981, neuron_daily emission-per-sta
 });
 
 describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -9160,7 +9230,7 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
             rank trust stake_tao emission_tao axon take
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9205,7 +9275,7 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
       `{ neuron(netuid: 5, uid: 12) {
           neuron { uid is_immunity_period immunity_expires_at_block immunity_expires_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9218,18 +9288,18 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
   });
 
   test("hits /api/v1/subnets/{netuid}/neurons/{uid} on the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql("{ neuron(netuid: 3, uid: 7) { netuid neuron { uid } } }", env);
-    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/neurons/7");
+    assert.equal(capturedUrl!.pathname, "/api/v1/subnets/3/neurons/7");
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -9241,7 +9311,7 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
       `{ neuron(netuid: 9, uid: 1) {
           schema_version netuid captured_at block_number neuron { uid }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9278,7 +9348,7 @@ describe("graphql — neuron (#5900, Postgres-tier + neuron:null fallback)", () 
 });
 
 describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -9337,7 +9407,7 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
             stake_tao emission_tao rank trust
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9362,11 +9432,11 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -9374,10 +9444,10 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
     };
     await gql(
       '{ neuron_history(netuid: 3, uid: 7, window: "7d") { window } }',
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.pathname, "/api/v1/subnets/3/neurons/7/history");
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl!.pathname, "/api/v1/subnets/3/neurons/7/history");
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -9389,7 +9459,7 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
       `{ neuron_history(netuid: 9, uid: 1, window: "30d") {
           schema_version netuid uid window point_count points { snapshot_date }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9436,7 +9506,7 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
 });
 
 describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -9509,7 +9579,7 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
           p25_yield p75_yield p90_yield
           neurons { uid hotkey role stake_tao emission_tao yield }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9544,7 +9614,7 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
           subnet_yield mean_yield median_yield p25_yield p75_yield p90_yield
           neurons { uid }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9568,7 +9638,7 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
 });
 
 describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -9611,7 +9681,7 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
       `{ subnet_weights(netuid: 5, window: "30d") {
           netuid window observed_at distinct_setters weight_sets sets_per_setter
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const w = body.data.subnet_weights;
@@ -9631,7 +9701,7 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
       `{ subnet_weights(netuid: 9, window: "30d") {
           schema_version netuid window observed_at distinct_setters weight_sets sets_per_setter
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_weights, {
@@ -9656,7 +9726,7 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
 });
 
 describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leaderboard fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -9720,7 +9790,7 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
           netuid window observed_at distinct_setters weight_sets setter_count
           setters { hotkey uid weight_sets share first_set_at last_set_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9735,11 +9805,11 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
@@ -9747,10 +9817,10 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
     };
     await gql(
       '{ subnet_weight_setters(netuid: 3, window: "30d") { setter_count } }',
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.ok(capturedUrl.pathname.endsWith("/subnets/3/weights/setters"));
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/weights/setters"));
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -9763,7 +9833,7 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
           schema_version netuid window observed_at
           distinct_setters weight_sets setter_count setters { hotkey }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_weight_setters, {
@@ -9802,7 +9872,7 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
 });
 
 describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -9845,7 +9915,7 @@ describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fal
       `{ subnet_stake_moves(netuid: 5, window: "30d") {
           netuid window observed_at distinct_movers movements movements_per_mover
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const m = body.data.subnet_stake_moves;
@@ -9865,7 +9935,7 @@ describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fal
       `{ subnet_stake_moves(netuid: 9, window: "30d") {
           schema_version netuid window observed_at distinct_movers movements movements_per_mover
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_stake_moves, {
@@ -9890,7 +9960,7 @@ describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fal
 });
 
 describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -9933,7 +10003,7 @@ describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card
       `{ subnet_stake_transfers(netuid: 5, window: "30d") {
           netuid window observed_at distinct_senders transfers transfers_per_sender
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const t = body.data.subnet_stake_transfers;
@@ -9953,7 +10023,7 @@ describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card
       `{ subnet_stake_transfers(netuid: 9, window: "30d") {
           schema_version netuid window observed_at distinct_senders transfers transfers_per_sender
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_stake_transfers, {
@@ -9987,10 +10057,10 @@ describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card
 describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7172)", () => {
   // A Postgres-tier env whose DATA_API returns `payload` and, if `captured` is
   // passed, records the forwarded URL so a test can assert path/query forwarding.
-  const tierEnv = (source, payload, captured) => ({
+  const tierEnv = (source: string, payload: Row, captured?: Row) => ({
     [source]: "postgres",
     DATA_API: {
-      fetch: async (req) => {
+      fetch: async (req: Request) => {
         if (captured) captured.url = new URL(req.url);
         return Response.json(payload);
       },
@@ -10016,7 +10086,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_idle_stake returns the Postgres-tier card", async () => {
-    const captured = {};
+    const captured: Row = {};
     const env = tierEnv(
       "METAGRAPH_NEURONS_SOURCE",
       {
@@ -10033,7 +10103,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_idle_stake(netuid: 7) {
           netuid captured_at neuron_count idle_neuron_count idle_stake_tao
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.ok(captured.url.pathname.endsWith("/subnets/7/idle-stake"));
@@ -10050,7 +10120,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_idle_stake(netuid: 9) {
           schema_version netuid captured_at neuron_count idle_neuron_count idle_stake_tao
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.deepEqual(body.data.subnet_idle_stake, {
       schema_version: 1,
@@ -10084,7 +10154,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_stake_flow forwards window/direction and unwraps { data }", async () => {
-    const captured = {};
+    const captured: Row = {};
     const env = tierEnv(
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       {
@@ -10105,7 +10175,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_stake_flow(netuid: 7, window: "7d", direction: "in") {
           window net_flow_tao stake_events unstake_events total_staked_tao
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.ok(captured.url.pathname.endsWith("/subnets/7/stake-flow"));
@@ -10124,7 +10194,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
           schema_version netuid window total_staked_tao total_unstaked_tao
           net_flow_tao stake_events unstake_events
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.deepEqual(body.data.subnet_stake_flow, {
       schema_version: 1,
@@ -10169,7 +10239,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_events forwards kind/block bounds/pagination and returns tier rows", async () => {
-    const captured = {};
+    const captured: Row = {};
     const env = tierEnv(
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       {
@@ -10201,7 +10271,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_events(netuid: 7, kind: "StakeAdded", block_start: 10, block_end: 200, limit: 50) {
           event_count limit events { event_kind amount_tao uid hotkey block_number }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.ok(captured.url.pathname.endsWith("/subnets/7/events"));
@@ -10224,7 +10294,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_events(netuid: 9) {
           schema_version netuid event_count limit offset next_cursor events { event_kind }
         } }`,
-      env,
+      env as unknown as Env,
     );
     const f = body.data.subnet_events;
     assert.equal(f.schema_version, 1);
@@ -10252,7 +10322,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_history forwards window and returns tier points", async () => {
-    const captured = {};
+    const captured: Row = {};
     const env = tierEnv(
       "METAGRAPH_NEURONS_SOURCE",
       {
@@ -10276,7 +10346,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_history(netuid: 7, window: "7d") {
           window point_count points { snapshot_date neuron_count validator_count total_stake_tao total_emission_tao }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.ok(captured.url.pathname.endsWith("/subnets/7/history"));
@@ -10295,7 +10365,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_history(netuid: 9, window: "90d") {
           schema_version netuid window point_count points { snapshot_date }
         } }`,
-      env,
+      env as unknown as Env,
     );
     const h = body.data.subnet_history;
     assert.equal(h.schema_version, 1);
@@ -10332,7 +10402,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_prometheus forwards window and returns the tier card", async () => {
-    const captured = {};
+    const captured: Row = {};
     const env = tierEnv(
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       {
@@ -10350,7 +10420,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_prometheus(netuid: 7, window: "30d") {
           window observed_at distinct_exporters announcements announcements_per_exporter
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.ok(captured.url.pathname.endsWith("/subnets/7/prometheus"));
@@ -10368,7 +10438,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       `{ subnet_prometheus(netuid: 9, window: "30d") {
           schema_version netuid window observed_at distinct_exporters announcements announcements_per_exporter
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.deepEqual(body.data.subnet_prometheus, {
       schema_version: 1,
@@ -10410,13 +10480,17 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       "subnet_history",
       "subnet_prometheus",
     ]) {
-      assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
+      assert.equal(
+        (FIELD_COMPLEXITY as Row)[field],
+        5,
+        `${field} should be weighted`,
+      );
     }
   });
 });
 
 describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -10459,7 +10533,7 @@ describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card
       `{ subnet_deregistrations(netuid: 5, window: "30d") {
           netuid window observed_at distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.subnet_deregistrations;
@@ -10479,7 +10553,7 @@ describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card
       `{ subnet_deregistrations(netuid: 9, window: "30d") {
           schema_version netuid window observed_at distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_deregistrations, {
@@ -10504,7 +10578,7 @@ describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card
 });
 
 describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -10547,7 +10621,7 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
       `{ subnet_serving(netuid: 5, window: "30d") {
           netuid window observed_at distinct_servers announcements announcements_per_server
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.subnet_serving;
@@ -10567,7 +10641,7 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
       `{ subnet_serving(netuid: 9, window: "30d") {
           schema_version netuid window observed_at distinct_servers announcements announcements_per_server
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_serving, {
@@ -10594,7 +10668,7 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
 describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fallback)", () => {
   const NETUID = 3;
 
-  function incidentsQuery(argsClause) {
+  function incidentsQuery(argsClause: string) {
     return `{ subnet_health_incidents${argsClause} {
       schema_version netuid window observed_at source surfaces
     } }`;
@@ -10613,11 +10687,11 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
   });
 
   test("resolves Postgres-tier data, forwarding netuid in the path + window param", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -10648,14 +10722,14 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
     };
     const { status, body } = await gql(
       incidentsQuery(`(netuid: ${NETUID}, window: "30d")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(
-      capturedUrl.pathname,
+      capturedUrl!.pathname,
       `/api/v1/subnets/${NETUID}/health/incidents`,
     );
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
     const d = body.data.subnet_health_incidents;
     assert.equal(d.window, "30d");
     const s = d.surfaces[0];
@@ -10673,7 +10747,7 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
     };
     const { status, body } = await gql(
       incidentsQuery(`(netuid: ${NETUID})`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_health_incidents, {
@@ -10699,7 +10773,7 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
 });
 
 describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -10742,7 +10816,7 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
       `{ subnet_axon_removals(netuid: 5, window: "30d") {
           netuid window observed_at distinct_removers removals removals_per_remover
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.subnet_axon_removals;
@@ -10762,7 +10836,7 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
       `{ subnet_axon_removals(netuid: 9, window: "30d") {
           schema_version netuid window observed_at distinct_removers removals removals_per_remover
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_axon_removals, {
@@ -10789,7 +10863,7 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
 describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -10846,7 +10920,7 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
           address window total_registrations subnet_count concentration dominant_netuid
           subnets { netuid registrations first_registered_at last_registered_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.account_registrations;
@@ -10881,7 +10955,7 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
           schema_version address window total_registrations subnet_count
           concentration dominant_netuid subnets { netuid }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_registrations, {
@@ -10918,7 +10992,7 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
 describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-card fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -10975,7 +11049,7 @@ describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-car
           address window total_deregistrations subnet_count concentration dominant_netuid
           subnets { netuid deregistrations first_deregistered_at last_deregistered_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.account_deregistrations;
@@ -11010,7 +11084,7 @@ describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-car
           schema_version address window total_deregistrations subnet_count
           concentration dominant_netuid subnets { netuid }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_deregistrations, {
@@ -11047,7 +11121,7 @@ describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-car
 describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -11104,7 +11178,7 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
           address window total_announcements subnet_count concentration dominant_netuid
           subnets { netuid announcements first_served_at last_served_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.account_serving;
@@ -11139,7 +11213,7 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
           schema_version address window total_announcements subnet_count
           concentration dominant_netuid subnets { netuid }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_serving, {
@@ -11176,7 +11250,7 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
 describe("graphql — account_axon_removals (#5699, Postgres-tier + zeroed-card fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -11233,7 +11307,7 @@ describe("graphql — account_axon_removals (#5699, Postgres-tier + zeroed-card 
           address window total_removals subnet_count concentration dominant_netuid
           subnets { netuid removals first_removed_at last_removed_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.account_axon_removals;
@@ -11268,7 +11342,7 @@ describe("graphql — account_axon_removals (#5699, Postgres-tier + zeroed-card 
           schema_version address window total_removals subnet_count
           concentration dominant_netuid subnets { netuid }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_axon_removals, {
@@ -11305,7 +11379,7 @@ describe("graphql — account_axon_removals (#5699, Postgres-tier + zeroed-card 
 describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -11363,7 +11437,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
           address window total_movements subnet_count concentration dominant_netuid
           subnets { netuid movements first_moved_at last_moved_at price_tao_at_last_move }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.account_stake_moves;
@@ -11400,7 +11474,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
           schema_version address window total_movements subnet_count
           concentration dominant_netuid subnets { netuid }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_stake_moves, {
@@ -11438,7 +11512,7 @@ describe("graphql — account_children / account_parents (#6976, live chain RPC 
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CHILD_SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-  function stubFetch(handler) {
+  function stubFetch(handler: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = handler;
     return () => {
@@ -11450,7 +11524,7 @@ describe("graphql — account_children / account_parents (#6976, live chain RPC 
     ["account_children", "children", "child"],
     ["account_parents", "parents", "parent"],
   ]) {
-    function query(argsClause) {
+    function query(argsClause: string) {
       return `{ ${field}${argsClause} {
         schema_version account queried_at
         subnets { netuid entries { ${counterpartKey} proportion proportion_fraction } }
@@ -11468,7 +11542,7 @@ describe("graphql — account_children / account_parents (#6976, live chain RPC 
         assert.equal(status, 200);
         assert.equal(body.data[field], null);
         assert.ok(
-          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+          body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
         );
         assert.equal(called, false);
       } finally {
@@ -11489,8 +11563,8 @@ describe("graphql — account_children / account_parents (#6976, live chain RPC 
     });
 
     test(`${field}: subnets:[] when the account genuinely has none, schema-stable`, async () => {
-      const restore = stubFetch(async (_url, init) => {
-        const parsedBody = JSON.parse(init.body);
+      const restore = stubFetch(async (_url: unknown, init: RequestInit) => {
+        const parsedBody = JSON.parse(init.body as string);
         if (parsedBody.method === "state_getKeysPaged") {
           return { ok: true, json: async () => ({ result: [] }) };
         }
@@ -11557,7 +11631,7 @@ describe("graphql — account_children / account_parents (#6976, live chain RPC 
 describe("graphql — account_weight_setters (#6976, Postgres-tier { data, generatedAt } + zeroed-card fallback)", () => {
   const SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_weight_setters${argsClause} {
       schema_version address window total_weight_sets subnet_count concentration dominant_netuid
       subnets { netuid weight_sets first_set_at last_set_at }
@@ -11615,7 +11689,7 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
     };
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "30d")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.account_weight_setters;
@@ -11630,11 +11704,11 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             data: { schema_version: 1, address: SS58, subnets: [] },
@@ -11645,10 +11719,10 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
     };
     await gql(query(`(ss58: "${SS58}", window: "30d")`), env);
     assert.equal(
-      capturedUrl.pathname,
+      capturedUrl!.pathname,
       `/api/v1/accounts/${SS58}/weight-setters`,
     );
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
@@ -11704,10 +11778,12 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
     };
     const { status, body } = await gql(
       query('(ss58: "not-a-valid-address")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -11731,7 +11807,7 @@ describe("graphql — account_entities (#6976, R2 entity labels + Postgres-tier 
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const ENTITIES_ARTIFACT_PATH = "/metagraph/entities.json";
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_entities${argsClause} {
       schema_version ss58 ownership_tie_count
       labels { name category notes source_urls }
@@ -11842,10 +11918,12 @@ describe("graphql — account_entities (#6976, R2 entity labels + Postgres-tier 
     };
     const { status, body } = await gql(
       query('(ss58: "not-a-valid-address")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -11859,7 +11937,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -11926,7 +12004,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
           counterparties { address sent_tao received_tao net_tao transfer_count last_block }
           relationship { counterparty }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.account_counterparties;
@@ -12017,7 +12095,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
             transfers { block_number event_index netuid from to amount_tao direction observed_at }
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const r = body.data.account_counterparties;
@@ -12075,7 +12153,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
           counterparties { address sent_tao received_tao net_tao transfer_count last_block }
           relationship { counterparty }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_counterparties, {
@@ -12112,7 +12190,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
           counterparties { address }
           relationship { counterparty }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_counterparties, {
@@ -12147,7 +12225,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
             transfers { direction }
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_counterparties.relationship, {
@@ -12188,7 +12266,7 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
             transfers { block_number event_index netuid from to amount_tao direction observed_at }
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_counterparties.relationship.transfers, [
@@ -12244,9 +12322,9 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function dataApi(response, capture) {
+  function dataApi(response: Row, capture?: Row) {
     return {
-      fetch: async (req) => {
+      fetch: async (req: Request) => {
         if (capture) capture.url = new URL(req.url);
         return response;
       },
@@ -12303,7 +12381,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
           schema_version ss58 transfer_count limit offset next_cursor
           transfers { block_number event_index from to amount_tao direction observed_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -12329,7 +12407,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("hits /api/v1/accounts/{ss58}/transfers and forwards every filter", async () => {
-    const capture = {};
+    const capture: Row = {};
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: dataApi(
@@ -12347,7 +12425,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     };
     const { status } = await gql(
       `{ account_transfers(ss58: "${SS58}", limit: 5, offset: 2, cursor: "c:9:1", direction: "received", block_start: 10, block_end: 20) { transfer_count } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/transfers`);
@@ -12360,14 +12438,14 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds before forwarding", async () => {
-    const capture = {};
+    const capture: Row = {};
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: dataApi(Response.json({}), capture),
     };
     await gql(
       `{ account_transfers(ss58: "${SS58}", limit: 100000, offset: -5) { transfer_count } }`,
-      env,
+      env as unknown as Env,
     );
     const forwardedLimit = Number(capture.url.searchParams.get("limit"));
     const forwardedOffset = Number(capture.url.searchParams.get("offset"));
@@ -12389,7 +12467,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
       `{ account_transfers(ss58: "${SS58}") {
           schema_version ss58 transfer_count limit offset next_cursor transfers { from }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_transfers, {
@@ -12420,7 +12498,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
       `{ account_transfers(ss58: "${SS58}") {
           transfers { block_number event_index from to amount_tao direction observed_at }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_transfers.transfers, [
@@ -12449,7 +12527,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     };
     const { body } = await gql(
       '{ account_transfers(ss58: "not-an-address") { transfer_count } }',
-      env,
+      env as unknown as Env,
     );
     assert.ok(body.errors, "expected a GraphQL error");
     assert.ok(/ss58/i.test(body.errors[0].message));
@@ -12469,16 +12547,16 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function dataApi(response, capture) {
+  function dataApi(response: Row, capture?: Row) {
     return {
-      fetch: async (req) => {
+      fetch: async (req: Request) => {
         if (capture) capture.url = new URL(req.url);
         return response;
       },
     };
   }
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_events${argsClause} {
       schema_version ss58 event_count limit offset next_cursor
       events { block_number event_index event_kind hotkey coldkey netuid uid amount_tao alpha_amount observed_at extrinsic_index }
@@ -12558,7 +12636,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("hits /api/v1/accounts/{ss58}/events and forwards every filter", async () => {
-    const capture = {};
+    const capture: Row = {};
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: dataApi(
@@ -12578,7 +12656,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
       query(
         `(ss58: "${SS58}", kind: "StakeAdded", netuid: 7, block_start: 10, block_end: 20, limit: 5, offset: 2, cursor: "c:9:1")`,
       ),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/events`);
@@ -12592,7 +12670,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
-    const capture = {};
+    const capture: Row = {};
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: dataApi(Response.json({}), capture),
@@ -12689,16 +12767,16 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
 describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHistory fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-  function dataApi(response, capture) {
+  function dataApi(response: Row, capture?: Row) {
     return {
-      fetch: async (req) => {
+      fetch: async (req: Request) => {
         if (capture) capture.url = new URL(req.url);
         return response;
       },
     };
   }
 
-  function query(argsClause) {
+  function query(argsClause: string) {
     return `{ account_history${argsClause} {
       schema_version ss58 day_count limit offset next_cursor
       days { day netuid event_count event_kinds first_block last_block }
@@ -12723,11 +12801,11 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     };
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", from: "not-a-date")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err, "expected a BAD_USER_INPUT error");
     // The same message REST's parseDateRange and MCP's optionalDayArg emit.
@@ -12741,7 +12819,9 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       query(`(ss58: "${SS58}", from: "2026-07-01", to: "07/16/2026")`),
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
   });
 
@@ -12750,18 +12830,20 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       query(`(ss58: "${SS58}", from: "2026-7-1")`),
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("well-formed from/to bounds are accepted and forwarded to the tier", async () => {
-    const capture = {};
+    const capture: Row = {};
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: dataApi(Response.json({ days: [] }), capture),
     };
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", from: "2026-07-01", to: "2026-07-16")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -12785,10 +12867,12 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     };
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", to: "not-a-date")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(prepared, false, "must not reach D1");
   });
 
@@ -12855,7 +12939,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("hits /api/v1/accounts/{ss58}/history and forwards every filter", async () => {
-    const capture = {};
+    const capture: Row = {};
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: dataApi(
@@ -12875,7 +12959,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       query(
         `(ss58: "${SS58}", netuid: 7, from: "2026-06-01", to: "2026-06-30", limit: 5, offset: 2, cursor: "c:20260615:3")`,
       ),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/history`);
@@ -12888,7 +12972,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
-    const capture = {};
+    const capture: Row = {};
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: dataApi(Response.json({}), capture),
@@ -12997,7 +13081,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
 describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live fallback)", () => {
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
-  function historyQuery(argsClause) {
+  function historyQuery(argsClause: string) {
     return `{ account_identity_history${argsClause} {
       schema_version account entry_count limit offset next_cursor
       entries { observed_at name url github image discord description additional identity_hash }
@@ -13025,11 +13109,11 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
   });
 
   test("resolves Postgres-tier data as-is, forwarding limit/offset/cursor as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -13057,16 +13141,16 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
     };
     const { status, body } = await gql(
       historyQuery(`(ss58: "${SS58}", limit: 5, offset: 10, cursor: "xyz")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(
-      capturedUrl.pathname,
+      capturedUrl!.pathname,
       `/api/v1/accounts/${SS58}/identity-history`,
     );
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl.searchParams.get("offset"), "10");
-    assert.equal(capturedUrl.searchParams.get("cursor"), "xyz");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
+    assert.equal(capturedUrl!.searchParams.get("cursor"), "xyz");
     assert.equal(body.data.account_identity_history.entry_count, 1);
     assert.equal(body.data.account_identity_history.entries[0].name, "Example");
     assert.equal(
@@ -13162,7 +13246,7 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
 });
 
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -13207,7 +13291,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
           window day_count
           days { snapshot_date subnet_count total_stake_tao alpha_price_tao_weighted alpha_price_tao_median validator_count miner_count mean_emission_share }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics_trends.window, "90d");
@@ -13223,11 +13307,11 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -13239,8 +13323,8 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
       },
     };
     await gql('{ economics_trends(window: "7d") { day_count } }', env);
-    assert.equal(capturedUrl.pathname, "/api/v1/economics/trends");
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl!.pathname, "/api/v1/economics/trends");
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
   });
 
   test("a malformed Postgres-tier body falls back to the D1 rollup (schema-stable empty on cold D1)", async () => {
@@ -13250,7 +13334,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     };
     const { status, body } = await gql(
       "{ economics_trends { day_count days { snapshot_date } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics_trends.day_count, 0);
@@ -13274,7 +13358,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
       `{ economics_trends(window: "7d") {
           window day_count days { snapshot_date total_stake_tao validator_count }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics_trends.window, "7d");
@@ -13292,7 +13376,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     };
     const { status, body } = await gql(
       "{ economics_trends { day_count days { snapshot_date } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics_trends.day_count, 0);
@@ -13305,7 +13389,9 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     );
     assert.equal(status, 200);
     assert.equal(body.data, null);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.match(body.errors[0].message, /99d/);
   });
 
@@ -13315,7 +13401,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
 });
 
 describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback leaderboard)", () => {
-  function moversQuery(argsClause) {
+  function moversQuery(argsClause: string) {
     return `{ subnet_movers${argsClause} {
       schema_version window start_date end_date sort subnet_count
       network {
@@ -13357,11 +13443,11 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
   });
 
   test("resolves Postgres-tier movers for a valid non-default window/sort combination", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -13411,13 +13497,13 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     };
     const { status, body } = await gql(
       moversQuery('(window: "7d", sort: "emission")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/subnets/movers");
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
-    assert.equal(capturedUrl.searchParams.get("sort"), "emission");
-    assert.equal(capturedUrl.searchParams.get("limit"), "20");
+    assert.equal(capturedUrl!.pathname, "/api/v1/subnets/movers");
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "emission");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "20");
     assert.equal(body.data.subnet_movers.window, "7d");
     assert.equal(body.data.subnet_movers.sort, "emission");
     assert.equal(body.data.subnet_movers.subnet_count, 1);
@@ -13431,18 +13517,18 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
   });
 
   test("a limit argument is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({ schema_version: 1, movers: [] });
         },
       },
     };
     await gql(moversQuery("(limit: 5)"), env);
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
   });
 
   test("a malformed Postgres-tier body degrades to schema-stable defaults (no throw)", async () => {
@@ -13466,7 +13552,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     assert.equal(status, 200);
     assert.equal(body.data, null);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err);
     assert.match(err.message, /1y/);
@@ -13477,7 +13563,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     assert.equal(status, 200);
     assert.equal(body.data, null);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err);
     assert.match(err.message, /bogus/);
@@ -13488,7 +13574,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     assert.equal(status, 200);
     assert.equal(body.data, null);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err);
     assert.match(err.message, /1 to 100/);
@@ -13499,7 +13585,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     assert.equal(status, 200);
     assert.equal(body.data, null);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err);
   });
@@ -13510,7 +13596,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
 });
 
 describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback)", () => {
-  function turnoverQuery(argsClause) {
+  function turnoverQuery(argsClause: string) {
     return `{ chain_turnover${argsClause} {
       schema_version window start_date end_date comparable subnet_count
       network { validators_start validators_end validators_entered validators_exited validator_retention stability_score }
@@ -13543,11 +13629,11 @@ describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -13591,12 +13677,12 @@ describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback
     };
     const { status, body } = await gql(
       turnoverQuery('(window: "7d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/turnover");
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/turnover");
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_turnover.window, "7d");
     assert.equal(body.data.chain_turnover.comparable, true);
     assert.equal(body.data.chain_turnover.subnet_count, 1);
@@ -13631,7 +13717,7 @@ describe("graphql — chain_turnover (#5686, Postgres-tier + cold-store fallback
 });
 
 describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", () => {
-  function weightsQuery(argsClause) {
+  function weightsQuery(argsClause: string) {
     return `{ chain_weights${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_setters weight_sets sets_per_setter }
@@ -13643,9 +13729,9 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   // The network aggregate (COUNT/COUNT DISTINCT/MAX(observed_at)) has no GROUP
   // BY; the per-subnet leaderboard is GROUP BY netuid -- same two-query shape
   // loadChainWeights always issues (mirrors the mcp-server.test.mjs fixture).
-  function chainWeightsD1({ network, subnets = [] } = {}) {
+  function chainWeightsD1({ network, subnets = [] }: Row = {}) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -13677,11 +13763,11 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -13717,12 +13803,12 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
     };
     const { status, body } = await gql(
       weightsQuery('(window: "30d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/weights");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/weights");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_weights.window, "30d");
     assert.equal(body.data.chain_weights.subnet_count, 1);
     assert.equal(body.data.chain_weights.network.weight_sets, 40);
@@ -13787,7 +13873,7 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
     assert.equal(status, 200);
     assert.equal(body.data, null);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err);
     assert.match(err.message, /99d/);
@@ -13799,7 +13885,7 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
 });
 
 describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fallback)", () => {
-  function callsQuery(argsClause) {
+  function callsQuery(argsClause: string) {
     return `{ chain_calls${argsClause} {
       schema_version window group_by observed_at total_extrinsics call_count
       calls { call_module call_function count share }
@@ -13845,7 +13931,7 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
     };
     const { status, body } = await gql(
       callsQuery(`(window: "30d", group_by: "module_function")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const d = body.data.chain_calls;
@@ -13905,11 +13991,11 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("window/group_by/limit/call_module args are forwarded to the /chain/calls path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -13926,14 +14012,14 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
       callsQuery(
         `(window: "30d", group_by: "module", limit: 5, call_module: "SubtensorModule")`,
       ),
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/calls");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("group_by"), "module");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/calls");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("group_by"), "module");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(
-      capturedUrl.searchParams.get("call_module"),
+      capturedUrl!.searchParams.get("call_module"),
       "SubtensorModule",
     );
   });
@@ -13961,7 +14047,7 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
 });
 
 describe("graphql — chain_activity (#5879, Postgres-tier activity series + cold-store fallback)", () => {
-  function activityQuery(argsClause) {
+  function activityQuery(argsClause: string) {
     return `{ chain_activity${argsClause} {
       schema_version window observed_at day_count
       days { day block_count extrinsic_count event_count successful_extrinsics success_rate unique_signers }
@@ -14057,11 +14143,11 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
   });
 
   test("the window arg is forwarded to the /chain/activity path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -14073,8 +14159,8 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
       },
     };
     await gql(activityQuery(`(window: "30d")`), env);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/activity");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/activity");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -14088,7 +14174,7 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
 });
 
 describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store fallback)", () => {
-  function feesQuery(argsClause) {
+  function feesQuery(argsClause: string) {
     return `{ chain_fees${argsClause} {
       schema_version window observed_at day_count
       daily { day extrinsic_count total_fee_tao avg_fee_tao median_fee_tao total_tip_tao avg_tip_tao median_tip_tao }
@@ -14206,11 +14292,11 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
   });
 
   test("window/limit/call_module args are forwarded to the /chain/fees path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -14224,12 +14310,12 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     };
     await gql(
       feesQuery(`(window: "30d", limit: 5, call_module: "Balances")`),
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/fees");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl.searchParams.get("call_module"), "Balances");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/fees");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("call_module"), "Balances");
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -14250,7 +14336,7 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
 });
 
 describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", () => {
-  function servingQuery(argsClause) {
+  function servingQuery(argsClause: string) {
     return `{ chain_serving${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_servers announcements announcements_per_server }
@@ -14263,9 +14349,9 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
   // GROUP BY; the per-subnet leaderboard is GROUP BY netuid -- same two-query
   // shape loadChainServing always issues. The subnet query only fires when the
   // network row carries a non-null newest_observed.
-  function chainServingD1({ network, subnets = [] } = {}) {
+  function chainServingD1({ network, subnets = [] }: Row = {}) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -14301,11 +14387,11 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -14341,12 +14427,12 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
     };
     const { status, body } = await gql(
       servingQuery('(window: "30d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/serving");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/serving");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_serving.window, "30d");
     assert.equal(body.data.chain_serving.subnet_count, 1);
     assert.equal(body.data.chain_serving.network.distinct_servers, 4);
@@ -14401,7 +14487,7 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
     assert.equal(status, 200);
     assert.equal(body.data, null);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err);
     assert.match(err.message, /99d/);
@@ -14413,7 +14499,7 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
 });
 
 describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully eliminated)", () => {
-  function weightSettersQuery(argsClause) {
+  function weightSettersQuery(argsClause: string) {
     return `{ chain_weight_setters${argsClause} {
       schema_version window observed_at distinct_setters weight_sets setter_count
       setters { hotkey netuid uid weight_sets share first_set_at last_set_at }
@@ -14435,11 +14521,11 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -14465,12 +14551,12 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
     };
     const { status, body } = await gql(
       weightSettersQuery('(window: "30d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/weights/setters");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/weights/setters");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_weight_setters.window, "30d");
     assert.equal(body.data.chain_weight_setters.setter_count, 1);
     assert.equal(body.data.chain_weight_setters.setters[0].hotkey, "5Setter");
@@ -14496,7 +14582,7 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
     assert.equal(status, 200);
     assert.equal(body.data, null);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err);
     assert.match(err.message, /99d/);
@@ -14528,7 +14614,7 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
 
   // loadChainAlphaVolume issues a single (netuid, event_kind) GROUP BY over
   // account_events; the mock returns those aggregate rows for the one query.
-  function chainAlphaVolumeD1(rows = []) {
+  function chainAlphaVolumeD1(rows: Row[] = []) {
     return {
       prepare() {
         return {
@@ -14571,11 +14657,11 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
   });
 
   test("resolves Postgres-tier data for an explicit limit, forwarding it as a query param", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -14630,8 +14716,8 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
     };
     const { status, body } = await gql(alphaVolumeQuery("(limit: 5)"), env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/alpha-volume");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/alpha-volume");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     const card = body.data.chain_alpha_volume;
     assert.equal(card.window, "24h");
     assert.equal(card.subnet_count, 1);
@@ -14644,11 +14730,11 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
   });
 
   test("clamps an over-max limit before forwarding it to the Postgres tier", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({});
         },
@@ -14656,7 +14742,7 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
     };
     const { status } = await gql(alphaVolumeQuery("(limit: 9999)"), env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -14740,7 +14826,7 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
 
   // No GROUP BY window label -- loadBulkHealthTrends issues a single query
   // over the full 30d cutoff and buckets rows into 7d/30d itself.
-  function bulkTrendsD1(rows = []) {
+  function bulkTrendsD1(rows: Row[] = []) {
     return {
       prepare() {
         return {
@@ -14768,11 +14854,11 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data, forwarding the request unchanged", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -14798,7 +14884,7 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
     };
     const { status, body } = await gql(trendsQuery(), env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/health/trends");
+    assert.equal(capturedUrl!.pathname, "/api/v1/health/trends");
     assert.equal(
       body.data.health_trends.observed_at,
       "2026-07-10T00:00:00.000Z",
@@ -14854,7 +14940,7 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
     const env = {
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === KV_HEALTH_META
             ? { last_run_at: "2026-06-23T00:00:00.000Z" }
             : null;
@@ -14891,7 +14977,7 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
 describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallback)", () => {
   const NETUID = 3;
 
-  function trendsQuery(netuid) {
+  function trendsQuery(netuid: number) {
     return `{ subnet_health_trends(netuid: ${netuid}) { schema_version netuid observed_at source windows } }`;
   }
 
@@ -14909,11 +14995,11 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
   });
 
   test("resolves Postgres-tier data, forwarding the netuid in the path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -14941,7 +15027,7 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
     const { status, body } = await gql(trendsQuery(NETUID), env);
     assert.equal(status, 200);
     assert.equal(
-      capturedUrl.pathname,
+      capturedUrl!.pathname,
       `/api/v1/subnets/${NETUID}/health/trends`,
     );
     const d = body.data.subnet_health_trends;
@@ -15001,7 +15087,7 @@ describe("graphql — subnet_health (#7640, live-cron overlay parity with REST +
     );
     const { status, body } = await gql(
       `{ subnet_health(netuid: ${NETUID}) }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const card = body.data.subnet_health;
@@ -15018,7 +15104,7 @@ describe("graphql — subnet_health (#7640, live-cron overlay parity with REST +
   test("subnet_health resolves the schema-stable unknown card when the live store is cold", async () => {
     const { status, body } = await gql(
       `{ subnet_health(netuid: ${NETUID}) }`,
-      emptyEnv,
+      emptyEnv as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_health, {
@@ -15058,7 +15144,7 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
 
   // loadSubnetUptime issues a single GROUP BY over surface_uptime_daily; the
   // mock only needs to answer all() with the aggregated day rows.
-  function uptimeD1(rows = []) {
+  function uptimeD1(rows: Row[] = []) {
     return {
       prepare() {
         return {
@@ -15090,11 +15176,11 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data and forwards window + min_samples", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -15132,12 +15218,12 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     };
     const { status, body } = await gql(
       uptimeQuery(`netuid: ${NETUID}, window: "1y", min_samples: 5`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, `/api/v1/subnets/${NETUID}/uptime`);
-    assert.equal(capturedUrl.searchParams.get("window"), "1y");
-    assert.equal(capturedUrl.searchParams.get("min_samples"), "5");
+    assert.equal(capturedUrl!.pathname, `/api/v1/subnets/${NETUID}/uptime`);
+    assert.equal(capturedUrl!.searchParams.get("window"), "1y");
+    assert.equal(capturedUrl!.searchParams.get("min_samples"), "5");
     const d = body.data.subnet_uptime;
     assert.equal(d.window, "1y");
     assert.equal(d.reliability.score, 99);
@@ -15212,7 +15298,7 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     );
     assert.equal(status, 200);
     assert.ok(
-      body.errors?.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+      body.errors?.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
       `expected BAD_USER_INPUT, got: ${JSON.stringify(body.errors)}`,
     );
   });
@@ -15223,7 +15309,7 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     );
     assert.equal(status, 200);
     assert.ok(
-      body.errors?.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+      body.errors?.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
       `expected BAD_USER_INPUT, got: ${JSON.stringify(body.errors)}`,
     );
   });
@@ -15231,7 +15317,7 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
   test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
     const env = {
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === KV_HEALTH_META
             ? { last_run_at: "2026-06-23T00:00:00.000Z" }
             : null;
@@ -15277,9 +15363,9 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     endpoints = [],
     networks = [],
     buckets = [],
-  } = {}) {
+  }: Row = {}) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -15332,11 +15418,11 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
   });
 
   test("resolves Postgres-tier data for a valid non-default window, forwarding it as a query param", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_RPC_USAGE_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -15388,8 +15474,8 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     };
     const { status, body } = await gql(usageQuery('(window: "30d")'), env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/rpc/usage");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.pathname, "/api/v1/rpc/usage");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
     const usage = body.data.rpc_usage;
     assert.equal(usage.window, "30d");
     assert.equal(usage.bucket_granularity, "6h");
@@ -15486,7 +15572,7 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
   test("observed_at is stamped from the health:meta KV freshness on the D1-live path", async () => {
     const env = {
       METAGRAPH_CONTROL: {
-        async get(key) {
+        async get(key: string) {
           return key === KV_HEALTH_META
             ? { last_run_at: "2026-06-23T00:00:00.000Z" }
             : null;
@@ -15518,7 +15604,7 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     assert.equal(status, 200);
     assert.equal(body.data, null);
     const err = body.errors.find(
-      (e) => e.extensions?.code === "BAD_USER_INPUT",
+      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err);
     assert.match(err.message, /99d/);
@@ -15531,7 +15617,7 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
 
 describe("Subscription.chainEvents", () => {
   test("yields a properly-shaped GraphQL execution result for each pushed payload", async () => {
-    const hub = fakeChainFirehose((repeater) => {
+    const hub = fakeChainFirehose((repeater: Row) => {
       // subscribeChainEvents is only invoked once the async generator is
       // first pulled (async generator function BODIES don't run until
       // next() is called) -- pushing here, synchronously inside that same
@@ -15552,10 +15638,10 @@ describe("Subscription.chainEvents", () => {
   });
 
   test("passes the tables argument through to subscribeChainEvents as a Set", async () => {
-    let receivedTopics;
+    let receivedTopics: Set<string> | undefined;
     const hub = fakeChainFirehose();
     const originalSubscribe = hub.subscribeChainEvents.bind(hub);
-    hub.subscribeChainEvents = (topics) => {
+    hub.subscribeChainEvents = (topics: Set<string>) => {
       receivedTopics = topics;
       return originalSubscribe(topics);
     };
@@ -15568,16 +15654,16 @@ describe("Subscription.chainEvents", () => {
     // function only creates the generator object, it doesn't execute any of
     // the body until the first next().
     const pending = result[Symbol.asyncIterator]().next();
-    assert.deepEqual([...receivedTopics].sort(), ["blocks", "extrinsics"]);
+    assert.deepEqual([...receivedTopics!].sort(), ["blocks", "extrinsics"]);
     await hub.unsubscribeChainEvents(hub.subscriptions[0]?.repeater);
     pending.catch(() => {}); // left permanently pending; not under test here
   });
 
   test("an omitted tables argument means no filter (null, matches everything)", async () => {
-    let receivedTopics = "unset";
+    let receivedTopics: unknown = "unset";
     const hub = fakeChainFirehose();
     const originalSubscribe = hub.subscribeChainEvents.bind(hub);
-    hub.subscribeChainEvents = (topics) => {
+    hub.subscribeChainEvents = (topics: Set<string>) => {
       receivedTopics = topics;
       return originalSubscribe(topics);
     };
@@ -15590,10 +15676,10 @@ describe("Subscription.chainEvents", () => {
   });
 
   test("an EXPLICIT empty tables argument means an empty Set (matches nothing) -- consistent with the SSE/WS firehose's own all-unrecognized-topics semantics, not silently 'everything'", async () => {
-    let receivedTopics = "unset";
+    let receivedTopics: unknown = "unset";
     const hub = fakeChainFirehose();
     const originalSubscribe = hub.subscribeChainEvents.bind(hub);
-    hub.subscribeChainEvents = (topics) => {
+    hub.subscribeChainEvents = (topics: Set<string>) => {
       receivedTopics = topics;
       return originalSubscribe(topics);
     };
@@ -15603,7 +15689,7 @@ describe("Subscription.chainEvents", () => {
     );
     result[Symbol.asyncIterator]().next(); // trigger the generator body
     assert.ok(receivedTopics instanceof Set);
-    assert.equal(receivedTopics.size, 0);
+    assert.equal((receivedTopics as Set<string>).size, 0);
   });
 
   test("returns a clear GraphQLError when reached without the graphql-ws WS transport (no context.chainFirehose)", async () => {
@@ -15634,7 +15720,7 @@ describe("Subscription.chainEvents", () => {
     let receivedClientIp = "unset";
     const hub = fakeChainFirehose();
     const originalSubscribe = hub.subscribeChainEvents.bind(hub);
-    hub.subscribeChainEvents = (topics, clientIp) => {
+    hub.subscribeChainEvents = (topics: string[], clientIp: string) => {
       receivedClientIp = clientIp;
       return originalSubscribe(topics);
     };
@@ -15651,7 +15737,7 @@ describe("Subscription.chainEvents", () => {
     let receivedClientIp = "unset";
     const hub = fakeChainFirehose();
     const originalSubscribe = hub.subscribeChainEvents.bind(hub);
-    hub.subscribeChainEvents = (topics, clientIp) => {
+    hub.subscribeChainEvents = (topics: string[], clientIp: string) => {
       receivedClientIp = clientIp;
       return originalSubscribe(topics);
     };
@@ -15690,7 +15776,7 @@ describe("Subscription.chainEvents", () => {
     // pending next() actually resolves first, matching how a real client
     // completes a subscription only after having received at least one
     // event, not mid-flight on an empty stream.
-    const hub = fakeChainFirehose((repeater) => {
+    const hub = fakeChainFirehose((repeater: Row) => {
       repeater.push({ table: "blocks" });
     });
     const result = await subscribeChainEvents(
@@ -15716,7 +15802,7 @@ describe("Subscription.chainEvents", () => {
 describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallback)", () => {
   const HOTKEY = "5FTestValidatorHotkeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-  function nominatorsQuery(argsClause) {
+  function nominatorsQuery(argsClause: string) {
     return `{ validator_nominators${argsClause} {
       schema_version hotkey window sort limit offset nominator_count
       nominators { coldkey staked_tao unstaked_tao net_staked_tao gross_staked_tao event_count last_observed_at }
@@ -15726,9 +15812,9 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   // loadValidatorNominators issues TWO queries: a COUNT(DISTINCT coldkey) total
   // (paging-independent) and the per-coldkey GROUP BY rows -- same two-query shape
   // the chainWeightsD1 fixture above models, so branch on the SQL.
-  function nominatorsD1(rows = [], nominatorCount = rows.length) {
+  function nominatorsD1(rows: Row[] = [], nominatorCount = rows.length) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind: () => ({
             all: async () =>
@@ -15754,11 +15840,11 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   });
 
   test("resolves Postgres-tier data for a valid non-default window/sort, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             data: {
@@ -15790,15 +15876,15 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
       nominatorsQuery(
         `(hotkey: "${HOTKEY}", window: "7d", sort: "gross_staked")`,
       ),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(
-      capturedUrl.pathname,
+      capturedUrl!.pathname,
       `/api/v1/validators/${HOTKEY}/nominators`,
     );
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
-    assert.equal(capturedUrl.searchParams.get("sort"), "gross_staked");
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "gross_staked");
     assert.equal(body.data.validator_nominators.window, "7d");
     assert.equal(body.data.validator_nominators.sort, "gross_staked");
     assert.equal(body.data.validator_nominators.nominator_count, 1);
@@ -15829,7 +15915,7 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     };
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.validator_nominators.nominator_count, 0);
@@ -15848,7 +15934,7 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     };
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.validator_nominators, {
@@ -15914,11 +16000,11 @@ describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fall
   });
 
   test("resolves Postgres-tier data, requesting the mirrored REST path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -15961,7 +16047,7 @@ describe("graphql — chain_performance (#5688, Postgres-tier + zeroed-card fall
     };
     const { status, body } = await gql(PERFORMANCE_QUERY, env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/performance");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/performance");
     assert.equal(body.data.chain_performance.subnet_count, 2);
     assert.equal(body.data.chain_performance.neuron_count, 3);
     assert.equal(body.data.chain_performance.incentive.nakamoto_coefficient, 2);
@@ -16014,11 +16100,11 @@ describe("graphql — chain_concentration (#5872, Postgres-tier + zeroed-card fa
   });
 
   test("resolves Postgres-tier data, requesting the mirrored REST path", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -16051,7 +16137,7 @@ describe("graphql — chain_concentration (#5872, Postgres-tier + zeroed-card fa
     };
     const { status, body } = await gql(CONCENTRATION_QUERY, env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/concentration");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/concentration");
     assert.equal(body.data.chain_concentration.subnet_count, 2);
     assert.equal(body.data.chain_concentration.neuron_count, 3);
     assert.equal(body.data.chain_concentration.entity_count, 2);
@@ -16082,7 +16168,7 @@ describe("graphql — chain_concentration (#5872, Postgres-tier + zeroed-card fa
 });
 
 describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -16148,7 +16234,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
           network_yield validator_yield miner_yield
           distribution { count mean p90 }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     const c = body.data.chain_yield;
@@ -16166,19 +16252,19 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
   });
 
   test("forwards to /api/v1/chain/yield with no query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({ schema_version: 1, subnet_count: 0 });
         },
       },
     };
     await gql("{ chain_yield { subnet_count } }", env);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/yield");
-    assert.equal(capturedUrl.search, "");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/yield");
+    assert.equal(capturedUrl!.search, "");
   });
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
@@ -16193,7 +16279,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
           captured_at total_stake_tao total_emission_tao
           network_yield validator_yield miner_yield distribution { count }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_yield, {
@@ -16224,7 +16310,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
     };
     const { status, body } = await gql(
       `{ chain_yield { distribution { count mean median min max p10 p25 p75 p90 } } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_yield.distribution, {
@@ -16248,7 +16334,7 @@ describe("graphql — chain_yield (Postgres-tier + cold-store fallback)", () => 
 describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/sudo-key.test.mjs.
-  function withFetchStub(stub, fn) {
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
     return Promise.resolve(fn()).finally(() => {
@@ -16316,7 +16402,7 @@ describe("graphql — sudo_key (#5896, live chain RPC via sudo-key.ts)", () => {
 describe("graphql — network_parameters (#6343, live chain RPC via network-parameters.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/network-parameters.test.mjs.
-  function withFetchStub(stub, fn) {
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
     return Promise.resolve(fn()).finally(() => {
@@ -16332,9 +16418,9 @@ describe("graphql — network_parameters (#6343, live chain RPC via network-para
     "0x658faa385070e074c85bf6b568cf0555503e4fe5f139cae8b9d045e82e1c83a2";
 
   function goldenFetchStub() {
-    return async (_url, init) => {
-      const key = JSON.parse(init.body).params[0];
-      const byKey = {
+    return async (_url: unknown, init: RequestInit) => {
+      const key = JSON.parse(init.body as string).params[0] as string;
+      const byKey: Row = {
         [TAO_WEIGHT_KEY]: "0x7a14ae47e17a142e",
         [STAKE_THRESHOLD_KEY]: "0x0010a5d4e8000000", // 1e12 rao = 1000 TAO
         [COOLDOWN_KEY]: "0x201c000000000000", // 7200 blocks
@@ -16392,7 +16478,7 @@ describe("graphql — network_parameters (#6343, live chain RPC via network-para
 });
 
 describe("graphql — network_randomness (#6990, live chain RPC via randomness.ts)", () => {
-  function kvEnv(payload) {
+  function kvEnv(payload: Row) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };
   }
 
@@ -16406,7 +16492,7 @@ describe("graphql — network_randomness (#6990, live chain RPC via randomness.t
     });
     const { status, body } = await gql(
       "{ network_randomness { schema_version last_stored_round oldest_stored_round stored_round_span queried_at } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16428,7 +16514,7 @@ describe("graphql — network_randomness (#6990, live chain RPC via randomness.t
     });
     const { status, body } = await gql(
       "{ network_randomness { last_stored_round stored_round_span queried_at } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16447,7 +16533,7 @@ describe("graphql — network_randomness (#6990, live chain RPC via randomness.t
 });
 
 describe("graphql — randomness_status (#7649, get_randomness_status-aligned alias)", () => {
-  function kvEnv(payload) {
+  function kvEnv(payload: Row) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };
   }
 
@@ -16462,7 +16548,7 @@ describe("graphql — randomness_status (#7649, get_randomness_status-aligned al
     const { status, body } = await gql(
       `{ randomness_status { schema_version last_stored_round oldest_stored_round stored_round_span queried_at }
          network_randomness { schema_version last_stored_round oldest_stored_round stored_round_span queried_at } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16486,7 +16572,7 @@ describe("graphql — randomness_status (#7649, get_randomness_status-aligned al
     });
     const { status, body } = await gql(
       "{ randomness_status { last_stored_round oldest_stored_round stored_round_span queried_at } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16515,8 +16601,8 @@ describe("graphql — randomness_status (#7649, get_randomness_status-aligned al
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const fields = body.data.__type.fields;
-    const canonical = fields.find((f) => f.name === "network_randomness");
-    const alias = fields.find((f) => f.name === "randomness_status");
+    const canonical = fields.find((f: Row) => f.name === "network_randomness");
+    const alias = fields.find((f: Row) => f.name === "randomness_status");
     assert.ok(canonical && alias, "both fields present in the schema");
     assert.deepEqual(alias.args, canonical.args);
     assert.deepEqual(alias.type, canonical.type);
@@ -16524,7 +16610,7 @@ describe("graphql — randomness_status (#7649, get_randomness_status-aligned al
 });
 
 describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs)", () => {
-  function kvEnv(payload) {
+  function kvEnv(payload: Row) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };
   }
   const H160 = "0x1234567890abcdef1234567890abcdef12345678";
@@ -16538,7 +16624,7 @@ describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs
     });
     const { status, body } = await gql(
       `{ evm_address(h160: "${H160}") { schema_version h160 ss58 queried_at } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16558,7 +16644,7 @@ describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs
     });
     const { status, body } = await gql(
       `{ evm_address(h160: "${H160}") { h160 ss58 } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16583,7 +16669,7 @@ describe("graphql — evm_address (#6990, live chain RPC via address-mapping.mjs
 });
 
 describe("graphql — evm_address_mapping (#7648, get_evm_address_mapping name parity)", () => {
-  function kvEnv(payload) {
+  function kvEnv(payload: Row) {
     return { METAGRAPH_CONTROL: { get: async () => payload } };
   }
   const H160 = "0x1234567890abcdef1234567890abcdef12345678";
@@ -16597,7 +16683,7 @@ describe("graphql — evm_address_mapping (#7648, get_evm_address_mapping name p
     });
     const { status, body } = await gql(
       `{ evm_address_mapping(h160: "${H160}") { schema_version h160 ss58 queried_at } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16617,7 +16703,7 @@ describe("graphql — evm_address_mapping (#7648, get_evm_address_mapping name p
     });
     const { status, body } = await gql(
       `{ evm_address_mapping(h160: "${H160}") { h160 ss58 } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16661,7 +16747,7 @@ describe("graphql — evm_address_mapping (#7648, get_evm_address_mapping name p
 describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-recycled.test.mjs.
-  function withFetchStub(stub, fn) {
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
     return Promise.resolve(fn()).finally(() => {
@@ -16724,7 +16810,7 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
         assert.equal(status, 200);
         assert.equal(body.data.subnet_recycled, null);
         assert.ok(
-          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+          body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
         );
         assert.equal(called, false);
       },
@@ -16736,7 +16822,9 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
       "{ subnet_recycled(netuid: -1) { recycled_tao } }",
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("subnet_recycled is weighted heavier than a Postgres-tier relationship field, since it hits live chain RPC", () => {
@@ -16750,7 +16838,7 @@ describe("graphql — subnet_recycled (#5691, live chain RPC via subnet-recycled
 describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.ts)", () => {
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/subnet-burn.test.mjs.
-  function withFetchStub(stub, fn) {
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
     return Promise.resolve(fn()).finally(() => {
@@ -16813,7 +16901,7 @@ describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.ts)", (
         assert.equal(status, 200);
         assert.equal(body.data.subnet_burn, null);
         assert.ok(
-          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+          body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
         );
         assert.equal(called, false);
       },
@@ -16825,7 +16913,9 @@ describe("graphql — subnet_burn (#6321, live chain RPC via subnet-burn.ts)", (
       "{ subnet_burn(netuid: -1) { burn_tao } }",
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
   });
 
   test("subnet_burn is weighted heavier than a Postgres-tier relationship field, since it hits live chain RPC", () => {
@@ -16839,7 +16929,7 @@ describe("graphql — account_balance (#5700, live chain RPC via account-balance
 
   // Stub globalThis.fetch for one test, restore after — mirrors withFetchStub
   // in tests/account-balance.test.mjs.
-  function withFetchStub(stub, fn) {
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
     return Promise.resolve(fn()).finally(() => {
@@ -16908,7 +16998,7 @@ describe("graphql — account_balance (#5700, live chain RPC via account-balance
         assert.equal(status, 200);
         assert.equal(body.data.account_balance, null);
         assert.ok(
-          body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+          body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
         );
         assert.equal(called, false);
       },
@@ -16926,7 +17016,7 @@ describe("graphql — account_balance (#5700, live chain RPC via account-balance
 describe("graphql — account_root_claim (#7229)", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  function withFetchStub(stub, fn) {
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
     const orig = globalThis.fetch;
     globalThis.fetch = stub;
     return Promise.resolve(fn()).finally(() => {
@@ -16978,7 +17068,7 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
 
   // Same shape handleLeaderboards' surface_status aggregate yields; the stub
   // ignores the SQL, so a single board is asserted at a time.
-  function healthDb(results) {
+  function healthDb(results: Row[]) {
     return {
       prepare: () => ({ bind: () => ({ all: async () => ({ results }) }) }),
     };
@@ -17018,7 +17108,7 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     };
     const { status, body } = await gql(
       `{ registry_leaderboards(board: "healthiest") { board boards } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -17089,7 +17179,9 @@ describe("graphql — saved_query (#7642, curated saved-query templates)", () =>
       `{ saved_query(id: "no-such-template") }`,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.match(body.errors[0].message, /no-such-template/);
     assert.match(body.errors[0].message, /subnet-leaderboard/);
     assert.equal(body.data?.saved_query ?? null, null);
@@ -17100,7 +17192,9 @@ describe("graphql — saved_query (#7642, curated saved-query templates)", () =>
       `{ saved_query(id: "subnet-leaderboard", params: { not_a_real_param: 1 }) }`,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.match(body.errors[0].message, /not_a_real_param/);
   });
 
@@ -17123,7 +17217,7 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
     min_childkey_take_ratio: 0.1,
   };
 
-  function hpEnv(body) {
+  function hpEnv(body: Row) {
     return {
       METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
       DATA_API: { fetch: async () => Response.json(body) },
@@ -17184,17 +17278,17 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
   });
 
   test("subnet_hyperparameters requests the subnet's own hyperparameters route", async () => {
-    let seen = null;
+    let seen: URL | null = null;
     await gql(`{ subnet_hyperparameters(netuid: 12) { netuid } }`, {
       METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           seen = new URL(req.url);
           return Response.json({});
         },
       },
     });
-    assert.equal(seen.pathname, "/api/v1/subnets/12/hyperparameters");
+    assert.equal(seen!.pathname, "/api/v1/subnets/12/hyperparameters");
   });
 
   test("subnet_hyperparameters_history resolves the Postgres-tier page", async () => {
@@ -17273,11 +17367,11 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
   });
 
   test("subnet_hyperparameters_history forwards limit/offset, clamped to the REST feed bounds", async () => {
-    let seen = null;
+    let seen: URL | null = null;
     const env = {
       METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           seen = new URL(req.url);
           return Response.json({ entries: [] });
         },
@@ -17285,23 +17379,23 @@ describe("Query.subnet_hyperparameters / subnet_hyperparameters_history", () => 
     };
     await gql(
       `{ subnet_hyperparameters_history(netuid: 2, limit: 5, offset: 10) { netuid } }`,
-      env,
+      env as unknown as Env,
     );
-    assert.equal(seen.pathname, "/api/v1/subnets/2/hyperparameters/history");
-    assert.equal(seen.searchParams.get("limit"), "5");
-    assert.equal(seen.searchParams.get("offset"), "10");
+    assert.equal(seen!.pathname, "/api/v1/subnets/2/hyperparameters/history");
+    assert.equal(seen!.searchParams.get("limit"), "5");
+    assert.equal(seen!.searchParams.get("offset"), "10");
 
     // Over-wide pages are clamped to MAX_LIMIT rather than forwarded verbatim.
     await gql(
       `{ subnet_hyperparameters_history(netuid: 2, limit: 99999) { netuid } }`,
-      env,
+      env as unknown as Env,
     );
-    assert.equal(seen.searchParams.get("limit"), "1000");
+    assert.equal(seen!.searchParams.get("limit"), "1000");
 
     // An absent limit/offset falls back to the feed defaults.
     await gql(`{ subnet_hyperparameters_history(netuid: 2) { netuid } }`, env);
-    assert.equal(seen.searchParams.get("limit"), "100");
-    assert.equal(seen.searchParams.get("offset"), "0");
+    assert.equal(seen!.searchParams.get("limit"), "100");
+    assert.equal(seen!.searchParams.get("offset"), "0");
   });
 
   test("both fields are priced at the relationship-field complexity weight", () => {
@@ -17322,7 +17416,7 @@ describe("Query.account_identity", () => {
     "schema_version account has_identity name url github image discord description additional captured_at";
 
   // Same D1 stub shape the account_identity_history tests use.
-  function identityD1(rows) {
+  function identityD1(rows: Row[]) {
     return {
       prepare: () => ({
         bind: () => ({ all: async () => ({ results: rows }) }),
@@ -17355,7 +17449,7 @@ describe("Query.account_identity", () => {
     };
     const { status, body } = await gql(
       `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -17390,11 +17484,11 @@ describe("Query.account_identity", () => {
 
   test("the Postgres tier takes precedence over D1", async () => {
     let d1Called = false;
-    let seen = null;
+    let seen: URL | null = null;
     const env = {
       METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           seen = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -17420,13 +17514,13 @@ describe("Query.account_identity", () => {
     };
     const { status, body } = await gql(
       `{ account_identity(ss58: "${AI_SS58}") { ${AI_FIELDS} } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.equal(body.data.account_identity.name, "FromPostgres");
     assert.equal(body.data.account_identity.has_identity, true);
-    assert.equal(seen.pathname, `/api/v1/accounts/${AI_SS58}/identity`);
+    assert.equal(seen!.pathname, `/api/v1/accounts/${AI_SS58}/identity`);
     // The `??` short-circuits: D1 is only read when the tier returns nothing.
     assert.equal(d1Called, false);
   });
@@ -17469,10 +17563,12 @@ describe("Query.account_identity", () => {
     };
     const { status, body } = await gql(
       '{ account_identity(ss58: "not-a-valid-address") { account } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -17486,7 +17582,7 @@ describe("Query.account_identity", () => {
 });
 
 describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)", () => {
-  function prometheusQuery(argsClause) {
+  function prometheusQuery(argsClause: string) {
     return `{ chain_prometheus${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_exporters announcements announcements_per_exporter }
@@ -17498,9 +17594,9 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   // Mirrors chainServingD1: loadChainPrometheus issues the network aggregate
   // (COUNT DISTINCT hotkey / MAX(observed_at), no GROUP BY) and only then the
   // GROUP BY netuid leaderboard, and only when newest_observed is non-null.
-  function chainPrometheusD1({ network, subnets = [] } = {}) {
+  function chainPrometheusD1({ network, subnets = [] }: Row = {}) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -17561,11 +17657,11 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -17601,13 +17697,13 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     };
     const { status, body } = await gql(
       prometheusQuery('(window: "30d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/prometheus");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/prometheus");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_prometheus.window, "30d");
     assert.equal(body.data.chain_prometheus.subnet_count, 1);
     assert.equal(body.data.chain_prometheus.network.distinct_exporters, 5);
@@ -17639,18 +17735,18 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql(prometheusQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented window is accepted", async () => {
@@ -17677,7 +17773,9 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     };
     const { status, body } = await gql(prometheusQuery('(window: "1y")'), env);
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -17691,7 +17789,7 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
 });
 
 describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallback)", () => {
-  function removalsQuery(argsClause) {
+  function removalsQuery(argsClause: string) {
     return `{ chain_axon_removals${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_removers removals removals_per_remover }
@@ -17703,9 +17801,9 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   // loadChainAxonRemovals issues the network aggregate (COUNT DISTINCT hotkey /
   // MAX(observed_at), no GROUP BY) and only then the GROUP BY netuid
   // leaderboard, and only when newest_observed is non-null.
-  function chainAxonRemovalsD1({ network, subnets = [] } = {}) {
+  function chainAxonRemovalsD1({ network, subnets = [] }: Row = {}) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -17766,11 +17864,11 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -17806,13 +17904,13 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     };
     const { status, body } = await gql(
       removalsQuery('(window: "30d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/axon-removals");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/axon-removals");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_axon_removals.window, "30d");
     assert.equal(body.data.chain_axon_removals.network.distinct_removers, 5);
   });
@@ -17843,18 +17941,18 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql(removalsQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented window is accepted", async () => {
@@ -17881,7 +17979,9 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     };
     const { status, body } = await gql(removalsQuery('(window: "1y")'), env);
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -17895,7 +17995,7 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
 });
 
 describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallback)", () => {
-  function regQuery(argsClause) {
+  function regQuery(argsClause: string) {
     return `{ chain_registrations${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_registrants registrations registrations_per_registrant }
@@ -17907,9 +18007,9 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   // loadChainRegistrations issues the network aggregate (COUNT DISTINCT hotkey
   // / MAX(observed_at), no GROUP BY) and only then the GROUP BY netuid
   // leaderboard, and only when newest_observed is non-null.
-  function chainRegD1({ network, subnets = [] } = {}) {
+  function chainRegD1({ network, subnets = [] }: Row = {}) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -17973,11 +18073,11 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -18013,13 +18113,13 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     };
     const { status, body } = await gql(
       regQuery('(window: "30d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/registrations");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/registrations");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_registrations.window, "30d");
     assert.equal(body.data.chain_registrations.network.distinct_registrants, 5);
   });
@@ -18050,18 +18150,18 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql(regQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented window is accepted", async () => {
@@ -18086,7 +18186,9 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     };
     const { status, body } = await gql(regQuery('(window: "1y")'), env);
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -18100,7 +18202,7 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
 });
 
 describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fallback)", () => {
-  function deregQuery(argsClause) {
+  function deregQuery(argsClause: string) {
     return `{ chain_deregistrations${argsClause} {
       schema_version window observed_at subnet_count
       network { distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey }
@@ -18112,9 +18214,9 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   // loadChainDeregistrations issues the network aggregate (COUNT DISTINCT hotkey
   // / MAX(observed_at), no GROUP BY) and only then the GROUP BY netuid
   // leaderboard, and only when newest_observed is non-null.
-  function chainDeregD1({ network, subnets = [] } = {}) {
+  function chainDeregD1({ network, subnets = [] }: Row = {}) {
     return {
-      prepare(sql) {
+      prepare(sql: string) {
         return {
           bind() {
             return {
@@ -18178,11 +18280,11 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -18218,13 +18320,13 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     };
     const { status, body } = await gql(
       deregQuery('(window: "30d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/deregistrations");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/deregistrations");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_deregistrations.window, "30d");
     assert.equal(
       body.data.chain_deregistrations.network.distinct_deregistered_hotkeys,
@@ -18258,18 +18360,18 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql(deregQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented window is accepted", async () => {
@@ -18294,7 +18396,9 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     };
     const { status, body } = await gql(deregQuery('(window: "1y")'), env);
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -18310,7 +18414,7 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
 describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", () => {
   const SIGNER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function signersQuery(argsClause) {
+  function signersQuery(argsClause: string) {
     return `{ chain_signers${argsClause} {
       schema_version window sort observed_at signer_count
       signers { signer tx_count total_fee_tao total_tip_tao last_tx_block }
@@ -18319,7 +18423,7 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
 
   // loadChainSigners issues one ranked extrinsics-tier read; the rows carry the
   // per-signer aggregate.
-  function signersD1(rows = []) {
+  function signersD1(rows: Row[] = []) {
     return {
       prepare: () => ({
         bind: () => ({ all: async () => ({ results: rows }) }),
@@ -18368,11 +18472,11 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data, forwarding window/limit/sort/call_module", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             schema_version: 1,
@@ -18397,35 +18501,35 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
       signersQuery(
         '(window: "30d", limit: 5, sort: "total_fee_tao", call_module: "Balances")',
       ),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/signers");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl.searchParams.get("sort"), "total_fee_tao");
-    assert.equal(capturedUrl.searchParams.get("call_module"), "Balances");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/signers");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "total_fee_tao");
+    assert.equal(capturedUrl!.searchParams.get("call_module"), "Balances");
     assert.equal(body.data.chain_signers.sort, "total_fee_tao");
     assert.equal(body.data.chain_signers.signers[0].total_fee_tao, 9.5);
   });
 
   test("omits the optional sort/call_module params when the caller supplies neither", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({ signers: [] });
         },
       },
     };
     await gql(signersQuery(""), env);
-    assert.equal(capturedUrl.searchParams.get("sort"), null);
-    assert.equal(capturedUrl.searchParams.get("call_module"), null);
-    assert.equal(capturedUrl.searchParams.get("window"), "7d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "50");
+    assert.equal(capturedUrl!.searchParams.get("sort"), null);
+    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
+    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "50");
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
@@ -18470,18 +18574,18 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({});
         },
       },
     };
     await gql(signersQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl.searchParams.get("limit"), "100");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented sort is accepted", async () => {
@@ -18506,10 +18610,12 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     };
     const { status, body } = await gql(
       signersQuery('(sort: "not_a_real_sort")'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -18527,7 +18633,9 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     };
     const { status, body } = await gql(signersQuery('(window: "1y")'), env);
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -18545,10 +18653,12 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     };
     const { status, body } = await gql(
       signersQuery(`(call_module: "${"x".repeat(101)}")`),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(called, false);
   });
 
@@ -18580,11 +18690,11 @@ describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallba
   });
 
   test("resolves Postgres-tier data", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -18605,7 +18715,7 @@ describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallba
     };
     const { status, body } = await gql(query, env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/idle-stake");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/idle-stake");
     assert.equal(body.data.chain_idle_stake.subnet_count, 1);
     assert.equal(body.data.chain_idle_stake.total_idle_stake_tao, 12.5);
     assert.equal(body.data.chain_idle_stake.subnets[0].netuid, 7);
@@ -18673,11 +18783,11 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
   });
 
   test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -18723,12 +18833,12 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
     };
     const { status, body } = await gql(
       flowQuery('(window: "30d", limit: 5)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/stake-flow");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "5");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-flow");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_stake_flow.window, "30d");
     assert.equal(body.data.chain_stake_flow.subnet_count, 1);
     assert.equal(body.data.chain_stake_flow.network.net_flow_tao, 60);
@@ -18748,7 +18858,9 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
     };
     const { status, body } = await gql(flowQuery('(window: "1y")'), env);
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -18803,11 +18915,11 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
   });
 
   test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -18843,12 +18955,12 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
     };
     const { status, body } = await gql(
       movesQuery('(window: "30d", limit: 8)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/stake-moves");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "8");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-moves");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "8");
     assert.equal(body.data.chain_stake_moves.network.movements, 12);
     assert.equal(body.data.chain_stake_moves.subnets[0].netuid, 5);
   });
@@ -18856,7 +18968,9 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
   test("unsupported window is BAD_USER_INPUT", async () => {
     const { status, body } = await gql(movesQuery('(window: "90d")'));
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
   });
 
@@ -18912,11 +19026,11 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
   });
 
   test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -18952,12 +19066,12 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
     };
     const { status, body } = await gql(
       transfersQuery('(window: "30d", limit: 3)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/stake-transfers");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "3");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-transfers");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "3");
     assert.equal(body.data.chain_stake_transfers.network.transfers, 6);
     assert.equal(body.data.chain_stake_transfers.subnets[0].netuid, 9);
   });
@@ -18965,7 +19079,9 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
   test("unsupported window is BAD_USER_INPUT", async () => {
     const { status, body } = await gql(transfersQuery('(window: "1y")'));
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
   });
 
@@ -19016,11 +19132,11 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
   });
 
   test("resolves Postgres-tier data forwarding window/sort/limit", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -19048,13 +19164,13 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
     };
     const { status, body } = await gql(
       pairsQuery('(window: "30d", sort: "count", limit: 10)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/transfer-pairs");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("sort"), "count");
-    assert.equal(capturedUrl.searchParams.get("limit"), "10");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/transfer-pairs");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("sort"), "count");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "10");
     assert.equal(body.data.chain_transfer_pairs.sort, "count");
     assert.equal(body.data.chain_transfer_pairs.pairs[0].from, "5Sender");
   });
@@ -19062,7 +19178,9 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
   test("unsupported window is BAD_USER_INPUT", async () => {
     const { status, body } = await gql(pairsQuery('(window: "90d")'));
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
   });
 
@@ -19079,7 +19197,9 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
     };
     const { status, body } = await gql(pairsQuery('(sort: "fee")'), env);
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
     assert.equal(called, false);
   });
@@ -19132,11 +19252,11 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
   });
 
   test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
-        fetch: async (r) => {
+        fetch: async (r: Row) => {
           capturedUrl = new URL(r.url);
           return Response.json({
             schema_version: 1,
@@ -19159,12 +19279,12 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
     };
     const { status, body } = await gql(
       xfersQuery('(window: "30d", limit: 15)'),
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl.pathname, "/api/v1/chain/transfers");
-    assert.equal(capturedUrl.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl.searchParams.get("limit"), "15");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain/transfers");
+    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "15");
     assert.equal(body.data.chain_transfers.total_volume_tao, 500);
     assert.equal(body.data.chain_transfers.top_senders[0].address, "5Alice");
     assert.equal(body.data.chain_transfers.top_receivers[0].address, "5Bob");
@@ -19173,7 +19293,9 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
   test("unsupported window is BAD_USER_INPUT", async () => {
     const { status, body } = await gql(xfersQuery('(window: "1y")'));
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data, null);
   });
 
@@ -19229,7 +19351,7 @@ describe("graphql — adapter (#6984, reuses loadAdapter / MCP get_adapter)", ()
     });
     const { status, body } = await gql(
       '{ adapter(slug: "missing") { slug } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -19248,14 +19370,18 @@ describe("graphql — adapter (#6984, reuses loadAdapter / MCP get_adapter)", ()
       '{ adapter(slug: "Gittensor") { slug } }',
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data?.adapter ?? null, null);
   });
 
   test("an empty slug is BAD_USER_INPUT", async () => {
     const { status, body } = await gql('{ adapter(slug: "  ") { slug } }');
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.equal(body.data?.adapter ?? null, null);
   });
 
@@ -19318,7 +19444,7 @@ describe("graphql — gaps", () => {
     const env = fixtureEnv({ "/metagraph/gaps.json": GAPS_BLOB });
     const filtered = await gql(
       "{ gaps(netuid: 7) { gaps total generated_at } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
     assert.equal(filtered.body.errors, undefined);
@@ -19331,7 +19457,7 @@ describe("graphql — gaps", () => {
 
     const paged = await gql(
       "{ gaps(limit: 1) { gaps total returned next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(paged.body.data.gaps.gaps.length, 1);
     assert.equal(paged.body.data.gaps.total, 2);
@@ -19343,7 +19469,7 @@ describe("graphql — gaps", () => {
     const env = fixtureEnv({ "/metagraph/gaps.json": GAPS_BLOB });
     const { status, body } = await gql(
       '{ gaps(sort: "gap_count", order: "desc", coverage_level: "manifested") { gaps total } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.gaps.total, 1);
@@ -19397,7 +19523,7 @@ describe("graphql — evidence", () => {
     });
     const searched = await gql(
       '{ evidence(q: "OpenAPI") { claims total generated_at summary } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(searched.status, 200);
     assert.equal(searched.body.errors, undefined);
@@ -19407,7 +19533,7 @@ describe("graphql — evidence", () => {
 
     const paged = await gql(
       "{ evidence(limit: 1) { claims total returned next_cursor } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(paged.body.data.evidence.claims.length, 1);
     assert.equal(paged.body.data.evidence.total, 2);
@@ -19420,7 +19546,7 @@ describe("graphql — evidence", () => {
     });
     const { status, body } = await gql(
       '{ evidence(sort: "subject", order: "desc") { claims schema_version } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     // Lexicographic desc: "sn-7" > "sn-31".
@@ -19449,7 +19575,7 @@ describe("graphql — evidence", () => {
 
 // #7171: GraphQL parity for GET /api/v1/chain-events (Query feed).
 describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -19496,7 +19622,7 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
             block_number event_index pallet method args phase extrinsic_index observed_at
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -19513,10 +19639,10 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
   test("a block+extrinsic lookup resolves that extrinsic's emitted events", async () => {
     // The get_extrinsic_chain_events use case (#7647): the raw pallet.method
     // events one specific extrinsic emitted, scoped by ?block=&extrinsic=.
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             count: 2,
@@ -19553,19 +19679,19 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
           count
           events { block_number event_index pallet method extrinsic_index }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl.searchParams.get("block"), "9");
-    assert.equal(capturedUrl.searchParams.get("extrinsic"), "1");
+    assert.equal(capturedUrl!.searchParams.get("block"), "9");
+    assert.equal(capturedUrl!.searchParams.get("extrinsic"), "1");
     assert.equal(body.data.chain_events.count, 2);
     const events = body.data.chain_events.events;
     assert.equal(events.length, 2);
-    assert.ok(events.every((e) => e.block_number === 9));
-    assert.ok(events.every((e) => e.extrinsic_index === 1));
+    assert.ok(events.every((e: Row) => e.block_number === 9));
+    assert.ok(events.every((e: Row) => e.extrinsic_index === 1));
     assert.deepEqual(
-      events.map((e) => `${e.pallet}.${e.method}`),
+      events.map((e: Row) => `${e.pallet}.${e.method}`),
       ["SubtensorModule.StakeAdded", "System.ExtrinsicSuccess"],
     );
   });
@@ -19583,7 +19709,7 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     };
     const { status, body } = await gql(
       "{ chain_events(block: 9, extrinsic: 3) { count next_cursor next_before events { pallet } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -19596,10 +19722,10 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
   });
 
   test("forwards filter args as query params, including legacy before", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             count: 0,
@@ -19612,22 +19738,22 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     };
     await gql(
       '{ chain_events(pallet: "SubtensorModule", method: "WeightsSet", block: 9, extrinsic: 1, before: 8, limit: 25) { count } }',
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.pathname, "/api/v1/chain-events");
-    assert.equal(capturedUrl.searchParams.get("pallet"), "SubtensorModule");
-    assert.equal(capturedUrl.searchParams.get("method"), "WeightsSet");
-    assert.equal(capturedUrl.searchParams.get("block"), "9");
-    assert.equal(capturedUrl.searchParams.get("extrinsic"), "1");
-    assert.equal(capturedUrl.searchParams.get("before"), "8");
-    assert.equal(capturedUrl.searchParams.get("limit"), "25");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain-events");
+    assert.equal(capturedUrl!.searchParams.get("pallet"), "SubtensorModule");
+    assert.equal(capturedUrl!.searchParams.get("method"), "WeightsSet");
+    assert.equal(capturedUrl!.searchParams.get("block"), "9");
+    assert.equal(capturedUrl!.searchParams.get("extrinsic"), "1");
+    assert.equal(capturedUrl!.searchParams.get("before"), "8");
+    assert.equal(capturedUrl!.searchParams.get("limit"), "25");
   });
 
   test("prefers cursor over before when both are set", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             count: 0,
@@ -19639,8 +19765,8 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
       },
     };
     await gql('{ chain_events(cursor: "1.2.3", before: 99) { count } }', env);
-    assert.equal(capturedUrl.searchParams.get("cursor"), "1.2.3");
-    assert.equal(capturedUrl.searchParams.get("before"), null);
+    assert.equal(capturedUrl!.searchParams.get("cursor"), "1.2.3");
+    assert.equal(capturedUrl!.searchParams.get("before"), null);
   });
 
   test("a DATA_API 400 is BAD_USER_INPUT, not an empty feed", async () => {
@@ -19653,10 +19779,12 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     };
     const { status, body } = await gql(
       '{ chain_events(method: "WeightsSet") { count } }',
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+    assert.ok(
+      body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
     assert.match(body.errors[0].message, /method requires pallet/);
     assert.equal(body.data?.chain_events ?? null, null);
   });
@@ -19667,7 +19795,7 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     };
     const { status, body } = await gql(
       "{ chain_events { count next_before next_cursor events { pallet } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -19694,7 +19822,7 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
             block_number event_index pallet method args phase extrinsic_index observed_at
           }
         } }`,
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_events.events[0], {
@@ -19722,7 +19850,7 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     };
     const { status, body } = await gql(
       "{ chain_events { count events { pallet } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -19741,7 +19869,7 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
 // sibling of chain_events), reusing the loadChainActivity + optionalBlocksWindow
 // that MCP get_chain_activity already calls, both relocated to data-api-mcp.ts.
 describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)", () => {
-  function dataApi(response) {
+  function dataApi(response: Row) {
     return { fetch: async () => response };
   }
 
@@ -19761,10 +19889,10 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
   });
 
   test("resolves the pallet.method aggregate from DATA_API", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             window_blocks: 1000,
@@ -19779,14 +19907,14 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
     };
     const { status, body } = await gql(
       "{ chain_events_stats { window_blocks groups activity { pallet method count } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     // Same DATA_API path REST's /chain-events/stats proxy uses; omitted blocks
     // defaults to 1000.
-    assert.equal(capturedUrl.pathname, "/api/v1/chain-events/stats");
-    assert.equal(capturedUrl.searchParams.get("blocks"), "1000");
+    assert.equal(capturedUrl!.pathname, "/api/v1/chain-events/stats");
+    assert.equal(capturedUrl!.searchParams.get("blocks"), "1000");
     assert.equal(body.data.chain_events_stats.window_blocks, 1000);
     assert.equal(body.data.chain_events_stats.groups, 2);
     assert.equal(body.data.chain_events_stats.activity.length, 2);
@@ -19798,10 +19926,10 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
   });
 
   test("forwards an explicit blocks window as a query param", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({ window_blocks: 250, groups: 0, activity: [] });
         },
@@ -19809,17 +19937,17 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
     };
     const { body } = await gql(
       "{ chain_events_stats(blocks: 250) { window_blocks } }",
-      env,
+      env as unknown as Env,
     );
-    assert.equal(capturedUrl.searchParams.get("blocks"), "250");
+    assert.equal(capturedUrl!.searchParams.get("blocks"), "250");
     assert.equal(body.data.chain_events_stats.window_blocks, 250);
   });
 
   test("clamps an over-cap blocks window to 5000", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             window_blocks: 5000,
@@ -19830,14 +19958,14 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
       },
     };
     await gql("{ chain_events_stats(blocks: 99999) { window_blocks } }", env);
-    assert.equal(capturedUrl.searchParams.get("blocks"), "5000");
+    assert.equal(capturedUrl!.searchParams.get("blocks"), "5000");
   });
 
   test("treats an explicit null blocks as the default window", async () => {
-    let capturedUrl;
+    let capturedUrl: URL | undefined;
     const env = {
       DATA_API: {
-        fetch: async (req) => {
+        fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
             window_blocks: 1000,
@@ -19848,7 +19976,7 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
       },
     };
     await gql("{ chain_events_stats(blocks: null) { window_blocks } }", env);
-    assert.equal(capturedUrl.searchParams.get("blocks"), "1000");
+    assert.equal(capturedUrl!.searchParams.get("blocks"), "1000");
   });
 
   test("a non-positive / non-integer blocks is BAD_USER_INPUT, not an aggregate", async () => {
@@ -19859,7 +19987,7 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
       );
       assert.equal(status, 200);
       assert.ok(
-        body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+        body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
         `blocks=${blocks} should be BAD_USER_INPUT`,
       );
       assert.match(body.errors[0].message, /blocks/);
@@ -19871,7 +19999,7 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
     const env = { DATA_API: dataApi(Response.json({})) };
     const { status, body } = await gql(
       "{ chain_events_stats(blocks: 500) { window_blocks groups activity { pallet } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -19901,7 +20029,7 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
     };
     const { status, body } = await gql(
       "{ chain_events_stats { window_blocks groups activity { pallet } } }",
-      env,
+      env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);

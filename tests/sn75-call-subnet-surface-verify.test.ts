@@ -41,7 +41,7 @@ import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 
 const NETUID = 75;
 

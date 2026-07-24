@@ -8,7 +8,7 @@ import {
   loadGlobalOperationalHealth,
   unknownGlobalHealth,
 } from "../src/global-operational-health.ts";
-import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 type LoadCtx = Parameters<typeof loadGlobalOperationalHealth>[0];

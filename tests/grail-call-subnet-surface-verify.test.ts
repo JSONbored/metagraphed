@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import type { Row } from "./row-type.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 
 const SURFACE_ID = "sn-81-grail-grafana-openapi";
 const OPENAPI_URL = "https://grail-grafana.tplr.ai/public/openapi3.json";
@@ -115,7 +115,7 @@ describe("SN81 Grail call_subnet_surface verification (#7094)", () => {
             },
           }),
         }),
-        {},
+        {} as unknown as Env,
         deps,
       );
       const result = ((await response.json()) as Row).result;

@@ -39,7 +39,7 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import { OPERATIONAL_SURFACE_KINDS } from "../src/health-probe-core.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 const NETUID = 120;
@@ -95,7 +95,7 @@ async function callThroughMcpTool(surface: Row, spec: Row) {
           },
         }),
       }),
-      {},
+      {} as unknown as Env,
       deps,
     );
     return ((await httpResponse.json()) as Row).result;
