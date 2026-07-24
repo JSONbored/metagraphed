@@ -20,7 +20,7 @@ import {
   handleTrajectory,
   handleUptime,
 } from "../workers/request-handlers/analytics-routes.ts";
-import { MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_TOOLS } from "../src/mcp-server.ts";
 import {
   unsupportedWindowMessage,
   HISTORY_WINDOWS,
@@ -1111,7 +1111,7 @@ describe("handleCompareValidators", () => {
     assert.ok(compareValidatorsTool, "compare_validators tool must exist");
     const mcpData = await compareValidatorsTool.handler(
       { hotkeys: [HOTKEY_A, HOTKEY_B], netuid: 7 },
-      { env: createLocalArtifactEnv() },
+      { env: createLocalArtifactEnv() as unknown as Env },
     );
 
     assert.deepEqual(mcpData, restBody.data);

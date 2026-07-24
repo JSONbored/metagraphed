@@ -16,7 +16,7 @@ import type { Row } from "./row-type.ts";
 type LoadCtx = Parameters<typeof loadProvidersList>[0];
 type LoadDeps = Parameters<typeof loadProvidersList>[2];
 
-import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",

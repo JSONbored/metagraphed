@@ -37,7 +37,7 @@ const {
   handleGraphQLRequest,
   GRAPHQL_MAX_BODY_BYTES,
   GRAPHQL_MAX_QUERY_BYTES,
-} = await import("../src/graphql.mjs");
+} = await import("../src/graphql.ts");
 
 afterEach(() => {
   captureException.mockClear();
@@ -52,7 +52,7 @@ async function gql(query: string, env: Row = emptyEnv) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ query }),
   });
-  const res = await handleGraphQLRequest(req, env);
+  const res = await handleGraphQLRequest(req, env as unknown as Env);
   return { res, body: (await res.json()) as Row };
 }
 
@@ -249,7 +249,7 @@ test("every transport-level rejection carries its own error code, none reach Sen
   ];
 
   for (const { name, req, status, code } of cases) {
-    const res = await handleGraphQLRequest(req(), emptyEnv);
+    const res = await handleGraphQLRequest(req(), emptyEnv as unknown as Env);
     assert.equal(res.status, status, `${name}: status`);
     assert.equal(
       res.headers.get("x-metagraph-error-code"),

@@ -22,7 +22,7 @@ vi.mock("@sentry/cloudflare", () => ({
   captureException,
 }));
 
-const { handleMcpRequest } = await import("../src/mcp-server.mjs");
+const { handleMcpRequest } = await import("../src/mcp-server.ts");
 
 afterEach(() => {
   startSpanCalls.length = 0;
@@ -77,7 +77,7 @@ async function callTool(name: string, args: Row, fetchImpl?: typeof fetch) {
           params: { name, arguments: args },
         }),
       }),
-      {},
+      {} as unknown as Env,
       deps,
     );
     return ((await response.json()) as Row).result;

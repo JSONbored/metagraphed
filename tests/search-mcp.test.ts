@@ -16,7 +16,7 @@ import type { Row } from "./row-type.ts";
 type LoadCtx = Parameters<typeof loadSearchList>[0];
 type LoadDeps = Parameters<typeof loadSearchList>[2];
 
-import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 

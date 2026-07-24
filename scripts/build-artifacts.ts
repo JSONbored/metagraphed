@@ -84,7 +84,7 @@ import {
   MCP_SERVER_INFO,
   MCP_REGISTRY_META,
   listToolDefinitions,
-} from "../src/mcp-server.mjs";
+} from "../src/mcp-server.ts";
 import { buildDatasetExports } from "./datasets.ts";
 import {
   buildChangelog,

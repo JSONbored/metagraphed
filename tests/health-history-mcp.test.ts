@@ -12,7 +12,7 @@ import {
   healthHistoryQueryUrl,
   loadHealthHistory,
 } from "../src/health-history-mcp.ts";
-import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 const HISTORY_DATE = await latestArtifactDate("health/history");
@@ -299,7 +299,11 @@ describe("health-history-mcp — MCP metadata", () => {
       .mockRejectedValue(err);
     try {
       await assert.rejects(
-        () => tool.handler({ date: HISTORY_BLOB.date }, { env: {} }),
+        () =>
+          tool.handler(
+            { date: HISTORY_BLOB.date },
+            { env: {} as unknown as Env },
+          ),
         (thrown: Row) => {
           assert.equal(thrown.toolError, true);
           assert.equal(thrown.code, "invalid_params");
@@ -319,7 +323,7 @@ describe("health-history-mcp — MCP metadata", () => {
         tool.handler(
           { date: HISTORY_BLOB.date },
           {
-            env: {},
+            env: {} as unknown as Env,
             readArtifact: async () => {
               throw new Error("kaboom");
             },

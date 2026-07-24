@@ -11,7 +11,7 @@
 // Execution is uniform: every tool is run by forwarding the model's tool call
 // to the MCP endpoint as a JSON-RPC `tools/call` (see buildAgentToolsIndex).
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.ts";
-import { MCP_SERVER_INFO, listToolDefinitions } from "./mcp-server.mjs";
+import { MCP_SERVER_INFO, listToolDefinitions } from "./mcp-server.ts";
 
 const ORIGIN = `https://${PRIMARY_DOMAIN}`;
 const MCP_ENDPOINT = `${ORIGIN}/mcp`;

@@ -21,7 +21,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 const registry: Row = JSON.parse(
@@ -140,7 +140,7 @@ for (const { id, url, kind, body } of CASES) {
               },
             }),
           }),
-          {},
+          {} as unknown as Env,
           deps,
         );
         const result = ((await response.json()) as Row).result;

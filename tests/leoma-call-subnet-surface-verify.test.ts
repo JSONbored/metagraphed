@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import type { Row } from "./row-type.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 
 const SURFACE_ID = "sn-99-leoma-health";
 
@@ -110,7 +110,7 @@ describe("SN99 SN99 call_subnet_surface verification (#7111)", () => {
             },
           }),
         }),
-        {},
+        {} as unknown as Env,
         deps,
       );
       const result = ((await response.json()) as Row).result;

@@ -16,7 +16,7 @@ import {
   GRAPHQL_MAX_DEPTH,
   GRAPHQL_MAX_QUERY_BYTES,
   MAX_PAGE_LIMIT,
-} from "../src/graphql.mjs";
+} from "../src/graphql.ts";
 import {
   DENIED_RPC_PREFIXES,
   MAX_RPC_BODY_BYTES,
@@ -68,7 +68,7 @@ function wranglerRateLimit(name: string) {
   return { limit: Number(match[1]), period: Number(match[2]) };
 }
 
-describe("content/docs/graphql.mdx matches src/graphql.mjs", () => {
+describe("content/docs/graphql.mdx matches src/graphql.ts", () => {
   test("limits table", () => {
     assert.equal(
       tableValue(graphqlDocs, "Max depth"),

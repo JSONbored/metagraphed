@@ -11,7 +11,7 @@ import {
   candidatesQueryUrl,
   loadCandidatesList,
 } from "../src/candidates-mcp.ts";
-import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
+import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 type CandidatesCtx = Parameters<typeof loadCandidatesList>[0];
@@ -396,7 +396,7 @@ describe("candidates-mcp (#7889)", () => {
   test("MCP server exports wire list_candidates with new filters", () => {
     assert.match(MCP_INSTRUCTIONS, /list_candidates/);
     assert.match(LIST_CANDIDATES_INSTRUCTIONS, /id\/confidence/);
-    const tool = MCP_TOOLS.find((t) => t.name === "list_candidates");
+    const tool = MCP_TOOLS.find((t: Row) => t.name === "list_candidates");
     assert.ok(tool);
     assert.equal(tool.name, LIST_CANDIDATES_MCP_TOOL.name);
     assert.equal(tool.title, "List unpromoted candidate surfaces");

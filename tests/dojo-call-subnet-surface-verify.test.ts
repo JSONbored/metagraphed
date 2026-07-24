@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
 import type { Row } from "./row-type.ts";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 
 const SURFACE_ID = "sn-52-taomarketcap-subnet-api";
 const NETUID = 52;
@@ -124,7 +124,7 @@ describe("SN52 Dojo call_subnet_surface verification (#7058)", () => {
             },
           }),
         }),
-        {},
+        {} as unknown as Env,
         deps,
       );
       const result = ((await response.json()) as Row).result;

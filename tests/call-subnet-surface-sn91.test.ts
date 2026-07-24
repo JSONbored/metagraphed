@@ -12,7 +12,7 @@
 // regression in the tool or in the surface's registry config is caught.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 // The SN91 health surface exactly as the build emits it into
@@ -78,7 +78,7 @@ async function callSn91Surface(surfaceId: string) {
           },
         }),
       }),
-      {},
+      {} as unknown as Env,
       deps,
     );
     return ((await response.json()) as Row).result;

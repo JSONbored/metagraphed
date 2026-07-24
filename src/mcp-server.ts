@@ -52,7 +52,7 @@ import {
   handleRpcProxyRequest,
   graphqlRateLimited,
 } from "../workers/request-handlers/rpc-proxy.ts";
-import { handleGraphQLRequest } from "./graphql.mjs";
+import { handleGraphQLRequest } from "./graphql.ts";
 import {
   isValidSubscriptionId,
   subscriptionStorageKey,
@@ -687,6 +687,39 @@ import {
 } from "./validator-nominators.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyFn = (...args: any[]) => any;
+
+// Bridges McpCtx (readArtifact optional -- direct-call tests omit it) to the
+// per-domain loader ctx interfaces that declare readArtifact required; every
+// wrapped call site passes its own readArtifact via the loader's deps override
+// or runs where buildMcpContext injected the real reader.
+const asMcpLoaderCtx = (ctx: McpCtx) =>
+  ctx as McpCtx & {
+    readArtifact: (env: Env, path: string) => Promise<never>;
+  };
+
+// The per-request context buildMcpContext assembles for every tool handler:
+// env + domain + optional session/telemetry plumbing, plus the artifact/KV
+// readers the fetch entry injects (kept loose since direct-call tests build
+// partial contexts).
+interface McpCtx {
+  env: Env;
+  domain?: string;
+  sessionId?: string | null;
+  clientIp?: string | null;
+  readArtifact?: AnyFn;
+  readHealthKv?: AnyFn;
+  executionCtx?: { waitUntil?: (p: Promise<unknown>) => void };
+  recordUsageEvent?: AnyFn;
+  chainSignersCache?: Map<string, unknown>;
+  recordMcpToolCallEvent?: AnyFn;
+  recordMcpInitializeEvent?: AnyFn;
+  recordExceptionEvent?: AnyFn;
+}
+
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet
 // the 2025-11-25 requirements for a tools-only, stateless, no-auth Streamable
@@ -723,7 +756,7 @@ const STAKE_PREVIEW_IMPACT_MAX_PCT = 5;
 // `ok` flag) purely from a computed stake quote's price impact — the one signal
 // the preview already carries that reflects how much this size moves the pool.
 // Additive over get_subnet_stake_quote's numbers; adds no execution capability.
-function computeStakePreviewAdvisory(quote) {
+function computeStakePreviewAdvisory(quote: Row) {
   const impact = quote.price_impact_pct;
   const warnings = [];
   if (impact >= STAKE_PREVIEW_IMPACT_MAX_PCT) {
@@ -1060,15 +1093,18 @@ const RPC_INTERNAL_ERROR = -32603;
 
 // A tool-level failure: surfaced to the client as a successful tools/call result
 // with isError:true (per MCP), not as a transport JSON-RPC error.
-function toolError(code, message) {
-  const error = new Error(message);
+function toolError(code: string, message: string) {
+  const error = new Error(message) as Error & {
+    toolError: boolean;
+    code: string;
+  };
   error.toolError = true;
   error.code = code;
   return error;
 }
 
-async function loadArtifactData(ctx, artifactPath) {
-  const result = await ctx.readArtifact(ctx.env, artifactPath);
+async function loadArtifactData(ctx: McpCtx, artifactPath: string) {
+  const result = await ctx.readArtifact!(ctx.env, artifactPath);
   if (!result || !result.ok) {
     const code = result?.code || "artifact_unavailable";
     if (code === "artifact_not_found") {
@@ -1087,14 +1123,17 @@ async function loadArtifactData(ctx, artifactPath) {
   return result.data;
 }
 
-async function loadOptionalArtifact(ctx, artifactPath) {
-  const result = await ctx.readArtifact(ctx.env, artifactPath);
+async function loadOptionalArtifact(ctx: McpCtx, artifactPath: string) {
+  const result = await ctx.readArtifact!(ctx.env, artifactPath);
   return result?.ok ? result.data : null;
 }
 
 // Resolve a catalogued surface by current id, stable surface_key, or deprecated
 // surface_id alias — same resolution verify_integration uses (#358, #1005).
-async function findCataloguedSurface(ctx, surfaceId) {
+async function findCataloguedSurface(
+  ctx: McpCtx,
+  surfaceId: string,
+): Promise<Row | null> {
   const catalog = await loadOptionalArtifact(
     ctx,
     "/metagraph/operational-surfaces.json",
@@ -1105,10 +1144,10 @@ async function findCataloguedSurface(ctx, surfaceId) {
     const aliases = await loadOptionalArtifact(ctx, SURFACE_ALIASES_PATH);
     surface = findSurface(surfaces, surfaceId, aliases);
   }
-  return surface;
+  return surface as Row | null;
 }
 
-async function resolveArtifactSurfaceId(ctx, surfaceId) {
+async function resolveArtifactSurfaceId(ctx: McpCtx, surfaceId: string) {
   const surface = await findCataloguedSurface(ctx, surfaceId);
   return surface?.surface_id ?? surfaceId;
 }
@@ -1117,13 +1156,13 @@ async function resolveArtifactSurfaceId(ctx, surfaceId) {
 // surface_status), so MCP tools serve live health like the REST routes do —
 // never a build-time value. Returns null when no live source is available
 // (caller renders `unknown`). Mirrors workers/api.mjs liveHealthOverlay.
-function mcpLiveHealth(ctx) {
+function mcpLiveHealth(ctx: McpCtx) {
   return resolveLiveHealth({ readHealthKv: ctx.readHealthKv, env: ctx.env });
 }
 
 // Live contract version (env override → default), matching the REST resolver so
 // the economics KV freshness/contract gate behaves the same over MCP.
-function mcpContractVersion(ctx) {
+function mcpContractVersion(ctx: McpCtx) {
   return ctx.env?.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
 }
 
@@ -1134,7 +1173,7 @@ function mcpContractVersion(ctx) {
 // workers/data-api.mjs's extrinsics routes parse. The host in the URL is
 // never dispatched to (DATA_API.fetch resolves the binding directly, the
 // same convention src/data-api-mcp.ts's dataApiFetchJson already uses).
-function mcpExtrinsicsListRequest(args) {
+function mcpExtrinsicsListRequest(args: Row) {
   const params = new URLSearchParams();
   const block = optionalNonNegativeInt(args, "block");
   if (block != null) params.set("block", String(block));
@@ -1171,7 +1210,7 @@ function mcpExtrinsicsListRequest(args) {
 // derives call_module from the pathname itself for these two routes, not a
 // query param -- see its PATH_TO_CALL_MODULE-style mapping), so passing the
 // correct fixed pathname is what selects the filter, nothing else needed.
-function mcpFixedCallModuleFeedRequest(pathname, args) {
+function mcpFixedCallModuleFeedRequest(pathname: string, args: Row) {
   const params = new URLSearchParams();
   const block = optionalNonNegativeInt(args, "block");
   if (block != null) params.set("block", String(block));
@@ -1195,7 +1234,7 @@ function mcpFixedCallModuleFeedRequest(pathname, args) {
   return new Request(`https://d${pathname}${qs ? `?${qs}` : ""}`);
 }
 
-function mcpExtrinsicDetailRequest(ref) {
+function mcpExtrinsicDetailRequest(ref: string) {
   return new Request(`https://d/api/v1/extrinsics/${encodeURIComponent(ref)}`);
 }
 
@@ -1206,7 +1245,10 @@ function mcpExtrinsicDetailRequest(ref) {
 // same METAGRAPH_SUBNET_IDENTITY_SOURCE flag, so get_subnet_identity_history
 // and GET /api/v1/subnets/{netuid}/identity-history never diverge on which
 // tier answered.
-function mcpSubnetIdentityHistoryRequest(netuid, { limit, offset, cursor }) {
+function mcpSubnetIdentityHistoryRequest(
+  netuid: number,
+  { limit, offset, cursor }: Row,
+) {
   const params = new URLSearchParams();
   if (limit != null) params.set("limit", String(limit));
   if (offset != null) params.set("offset", String(offset));
@@ -1222,7 +1264,7 @@ function mcpSubnetIdentityHistoryRequest(netuid, { limit, offset, cursor }) {
 // mirrors REST's handleChainIdentityHistory (also gated on
 // METAGRAPH_SUBNET_IDENTITY_SOURCE, the one flag covering both the per-subnet
 // and network-wide subnet_identity_history reads).
-function mcpChainIdentityHistoryRequest({ limit }) {
+function mcpChainIdentityHistoryRequest({ limit }: Row) {
   const params = new URLSearchParams();
   if (limit != null) params.set("limit", String(limit));
   const qs = params.toString();
@@ -1234,7 +1276,7 @@ function mcpChainIdentityHistoryRequest({ limit }) {
 // Synthetic GET /api/v1/accounts/{ss58}/identity request, forwarded UNCHANGED
 // to DATA_API via tryPostgresTier -- mirrors REST's handleAccountIdentity,
 // same METAGRAPH_ACCOUNT_IDENTITY_SOURCE flag, no query params.
-function mcpAccountIdentityRequest(ss58) {
+function mcpAccountIdentityRequest(ss58: string) {
   return new Request(
     `https://d/api/v1/accounts/${encodeURIComponent(ss58)}/identity`,
   );
@@ -1246,7 +1288,7 @@ function mcpAccountIdentityRequest(ss58) {
 // METAGRAPH_NEURONS_SOURCE flag (entities.mjs's handleSubnetConcentration
 // et al. all call tryPostgresTier(env, request, "METAGRAPH_NEURONS_SOURCE")),
 // so one shared pathname+params builder covers all of them.
-function mcpNeuronsTierRequest(pathname, params = {}) {
+function mcpNeuronsTierRequest(pathname: string, params: Row = {}) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value != null) qs.set(key, String(value));
@@ -1260,7 +1302,7 @@ function mcpNeuronsTierRequest(pathname, params = {}) {
 // subscriptions/{id} route uses), best-effort: a list/get hiccup or a store
 // without `list` (local dev KV mock) degrades to "ok" rather than failing
 // the whole lookup.
-async function readMcpWebhookDeliveryStatus(env, id) {
+async function readMcpWebhookDeliveryStatus(env: Env, id: unknown) {
   try {
     if (typeof env.METAGRAPH_CONTROL.list !== "function") {
       return summarizeDeliveryRecords([]);
@@ -1272,11 +1314,11 @@ async function readMcpWebhookDeliveryStatus(env, id) {
     const records = await Promise.all(
       keys
         .slice(0, WEBHOOK_REDELIVERY_LIST_LIMIT)
-        .map((entry) =>
+        .map((entry: Row) =>
           env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
         ),
     );
-    return summarizeDeliveryRecords(records);
+    return summarizeDeliveryRecords(records as Row[]);
   } catch {
     return summarizeDeliveryRecords([]);
   }
@@ -1286,7 +1328,10 @@ async function readMcpWebhookDeliveryStatus(env, id) {
 // limit/offset/cursor contract as mcpSubnetIdentityHistoryRequest above --
 // mirrors REST's handleAccountIdentityHistory, same
 // METAGRAPH_ACCOUNT_IDENTITY_SOURCE flag as get_account_identity.
-function mcpAccountIdentityHistoryRequest(ss58, { limit, offset, cursor }) {
+function mcpAccountIdentityHistoryRequest(
+  ss58: string,
+  { limit, offset, cursor }: Row,
+) {
   const params = new URLSearchParams();
   if (limit != null) params.set("limit", String(limit));
   if (offset != null) params.set("offset", String(offset));
@@ -1299,7 +1344,7 @@ function mcpAccountIdentityHistoryRequest(ss58, { limit, offset, cursor }) {
 
 // One subnet's economics: live KV tier (KV-primary), else the committed R2
 // snapshot — the precedence /api/v1/economics uses. A missing row → economics:null.
-async function loadSubnetEconomics(ctx, netuid) {
+async function loadSubnetEconomics(ctx: McpCtx, netuid: number) {
   const live = await resolveLiveEconomics({
     readHealthKv: ctx.readHealthKv,
     env: ctx.env,
@@ -1312,7 +1357,8 @@ async function loadSubnetEconomics(ctx, netuid) {
     source: live?.source || "r2-fallback",
     captured_at: blob?.captured_at ?? null,
     summary: blob?.summary ?? null,
-    economics: blob?.subnets?.find((row) => row?.netuid === netuid) ?? null,
+    economics:
+      blob?.subnets?.find((row: Row) => row?.netuid === netuid) ?? null,
   };
 }
 
@@ -1332,7 +1378,7 @@ async function loadSubnetEconomics(ctx, netuid) {
 // all-events tier has no per-table tryPostgresTier flag (unlike
 // account_events-backed routes such as get_subnet_ohlc), so this reaches
 // DATA_API unconditionally, same as list_chain_events above.
-async function loadSubnetOwnershipHistory(ctx, netuid) {
+async function loadSubnetOwnershipHistory(ctx: McpCtx, netuid: number) {
   await requireDataTierRateLimit(ctx);
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
@@ -1360,7 +1406,7 @@ async function loadSubnetOwnershipHistory(ctx, netuid) {
         "Try again shortly.",
     );
   }
-  const data = await response.json();
+  const data = (await response.json()) as Row | null;
   return {
     schema_version: data?.schema_version ?? 1,
     netuid,
@@ -1375,7 +1421,7 @@ async function loadSubnetOwnershipHistory(ctx, netuid) {
 // already does both the subnet_locks read AND the live UnlockRate/
 // MaturityRate RPC lookup and returns the fully-rolled-forward result, so
 // this just proxies -- no duplicate logic here.
-async function loadSubnetConviction(ctx, netuid) {
+async function loadSubnetConviction(ctx: McpCtx, netuid: number) {
   await requireDataTierRateLimit(ctx);
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
@@ -1403,7 +1449,7 @@ async function loadSubnetConviction(ctx, netuid) {
         "Try again shortly.",
     );
   }
-  const data = await response.json();
+  const data = (await response.json()) as Row | null;
   return {
     schema_version: data?.schema_version ?? 1,
     netuid,
@@ -1419,7 +1465,7 @@ async function loadSubnetConviction(ctx, netuid) {
 // Mirrors loadSubnetOwnershipHistory above (#6719): same DATA_API-direct
 // proxy shape, a different Postgres-tier route (account_events, not
 // chain_events).
-async function loadSubnetLeaseHistory(ctx, netuid) {
+async function loadSubnetLeaseHistory(ctx: McpCtx, netuid: number) {
   await requireDataTierRateLimit(ctx);
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
@@ -1447,7 +1493,7 @@ async function loadSubnetLeaseHistory(ctx, netuid) {
         "Try again shortly.",
     );
   }
-  const data = await response.json();
+  const data = (await response.json()) as Row | null;
   return {
     schema_version: data?.schema_version ?? 1,
     netuid,
@@ -1456,7 +1502,7 @@ async function loadSubnetLeaseHistory(ctx, netuid) {
   };
 }
 
-async function requireDataTierRateLimit(ctx) {
+async function requireDataTierRateLimit(ctx: McpCtx) {
   if (!ctx.env?.DATA_RATE_LIMITER?.limit) return;
   const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
     key: `data:${ctx.clientIp}`,
@@ -1469,11 +1515,11 @@ async function requireDataTierRateLimit(ctx) {
   }
 }
 
-function chainSignersCacheKey({ label, limit, callModule, sort }) {
+function chainSignersCacheKey({ label, limit, callModule, sort }: Row) {
   return JSON.stringify([label, limit, callModule || "", sort]);
 }
 
-async function loadMcpChainSigners(ctx, options) {
+async function loadMcpChainSigners(ctx: McpCtx, options: Row) {
   ctx.chainSignersCache ||= new Map();
   const key = chainSignersCacheKey(options);
   if (!ctx.chainSignersCache.has(key)) {
@@ -1495,8 +1541,8 @@ async function loadMcpChainSigners(ctx, options) {
           }),
           rows: [],
         }))
-        .catch((error) => {
-          ctx.chainSignersCache.delete(key);
+        .catch((error: unknown) => {
+          ctx.chainSignersCache!.delete(key);
           throw error;
         }),
     );
@@ -1504,7 +1550,7 @@ async function loadMcpChainSigners(ctx, options) {
   return ctx.chainSignersCache.get(key);
 }
 
-async function mcpObservedAt(ctx) {
+async function mcpObservedAt(ctx: McpCtx) {
   if (!ctx.readHealthKv) return null;
   const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
   return meta?.last_run_at || null;
@@ -1513,19 +1559,19 @@ async function mcpObservedAt(ctx) {
 // Resolve + validate a history window arg (7d|30d|90d|1y|all) the way the REST
 // /history routes do, mapping a bad value to a clean tool error. Returns the
 // parsed {label, days} (days is null for the unbounded `all` window).
-function requireHistoryWindow(args) {
-  const { label, days, error } = parseHistoryWindow(args?.window);
-  if (error) {
-    throw toolError("invalid_params", error.message);
+function requireHistoryWindow(args: Row) {
+  const parsed = parseHistoryWindow(args?.window);
+  if ("error" in parsed) {
+    throw toolError("invalid_params", parsed.error.message);
   }
-  return { label, days };
+  return { label: parsed.label, days: parsed.days };
 }
 
 // One subnet's per-day aggregate history — mirrors handleSubnetHistory. Tries
 // the Postgres tier first (METAGRAPH_NEURONS_SOURCE); the neuron_daily D1
 // table was retired (#4772), so buildSubnetHistory([]) yields the
 // schema-stable point_count:0 payload the same way a cold/absent D1 used to.
-async function loadSubnetHistory(ctx, netuid, { label }) {
+async function loadSubnetHistory(ctx: McpCtx, netuid: number, { label }: Row) {
   return (
     (await tryPostgresTier(
       ctx.env,
@@ -1544,9 +1590,9 @@ async function loadSubnetHistory(ctx, netuid, { label }) {
 // tool and GET /api/v1/subnets/{netuid}/identity-history never diverge on
 // which tier answered.
 async function loadSubnetIdentityHistoryTool(
-  ctx,
-  netuid,
-  { limit, offset, cursor },
+  ctx: McpCtx,
+  netuid: number,
+  { limit, offset, cursor }: Row,
 ) {
   return (
     (await tryPostgresTier(
@@ -1562,7 +1608,12 @@ async function loadSubnetIdentityHistoryTool(
 // Postgres tier first (METAGRAPH_NEURONS_SOURCE); the neuron_daily D1 table
 // was retired (#4772), so buildNeuronHistory([]) yields the schema-stable
 // point_count:0 payload the same way a cold/absent D1 used to.
-async function loadNeuronHistory(ctx, netuid, uid, { label }) {
+async function loadNeuronHistory(
+  ctx: McpCtx,
+  netuid: number,
+  uid: number,
+  { label }: Row,
+) {
   return (
     (await tryPostgresTier(
       ctx.env,
@@ -1582,7 +1633,11 @@ async function loadNeuronHistory(ctx, netuid, uid, { label }) {
 // artifact is optional (a provider may have no endpoints artifact), so a missing
 // one degrades to endpoints:null rather than failing the whole call. The detail
 // artifact missing is a real not_found (loadArtifactData maps it).
-async function loadProviderDetail(ctx, slug, includeEndpoints) {
+async function loadProviderDetail(
+  ctx: McpCtx,
+  slug: string,
+  includeEndpoints: boolean,
+) {
   const detail = await loadArtifactData(
     ctx,
     `/metagraph/providers/${slug}.json`,
@@ -1599,14 +1654,14 @@ async function loadProviderDetail(ctx, slug, includeEndpoints) {
 // freshness artifact overlaid with the live 15-minute prober's last_run_at
 // (mergeFreshness) so the surface-health source reads `current` like the REST
 // route. With no live meta the committed artifact passes through unchanged.
-async function loadFreshness(ctx) {
+async function loadFreshness(ctx: McpCtx) {
   const base = await loadArtifactData(ctx, "/metagraph/freshness.json");
   if (!ctx.readHealthKv) return base;
   const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
   return mergeFreshness(base, meta) ?? base;
 }
 
-async function loadEconomicsSubnetRows(ctx) {
+async function loadEconomicsSubnetRows(ctx: McpCtx) {
   const live = await resolveLiveEconomics({
     readHealthKv: ctx.readHealthKv,
     env: ctx.env,
@@ -1620,7 +1675,7 @@ async function loadEconomicsSubnetRows(ctx) {
 // AI-dependent tools (semantic_search, ask) need the VECTORIZE + AI bindings and
 // the kill-switch on. In a cold/CI env they degrade to a graceful isError result
 // pointing at the keyword fallback, never a transport error.
-function requireAi(ctx) {
+function requireAi(ctx: McpCtx) {
   if (!aiEnabled(ctx.env)) {
     throw toolError(
       "ai_unavailable",
@@ -1630,11 +1685,11 @@ function requireAi(ctx) {
   }
 }
 
-function mcpAiClientKey(ctx, scope) {
+function mcpAiClientKey(ctx: McpCtx, scope: string) {
   return `${scope}:${ctx.clientIp || "anon"}`;
 }
 
-async function requireAiRateLimit(ctx, scope) {
+async function requireAiRateLimit(ctx: McpCtx, scope: string) {
   if (await withinRateLimit(ctx.env, mcpAiClientKey(ctx, scope))) return;
   throw toolError(
     "rate_limited",
@@ -1644,12 +1699,13 @@ async function requireAiRateLimit(ctx, scope) {
 
 // Run an ai-search call, mapping its input-validation errors to tool errors so
 // they surface as a clean isError result instead of a thrown transport error.
-async function runAi(fn) {
+async function runAi(fn: AnyFn) {
   try {
     return await fn();
-  } catch (error) {
+  } catch (rawError) {
+    const error = rawError as Row;
     if (error?.aiInput) throw toolError("invalid_params", error.message);
-    throw error;
+    throw rawError;
   }
 }
 
@@ -1657,7 +1713,7 @@ async function runAi(fn) {
 // `subnet` string (numeric, curated slug, or chain native_slug). Slug lookup
 // joins the committed index curated-slug-first, then native_slug — the same
 // precedence the REST resolver uses (see lookupSubnetNetuid, #331).
-async function resolveNetuid(ctx, args) {
+async function resolveNetuid(ctx: McpCtx, args: Row) {
   if (Number.isInteger(args?.netuid) && args.netuid >= 0) return args.netuid;
   const ref = typeof args?.subnet === "string" ? args.subnet.trim() : "";
   if (ref === "") {
@@ -1672,10 +1728,10 @@ async function resolveNetuid(ctx, args) {
   const key = ref.toLowerCase();
   const match =
     subnets.find(
-      (s) => typeof s.slug === "string" && s.slug.toLowerCase() === key,
+      (s: Row) => typeof s.slug === "string" && s.slug.toLowerCase() === key,
     ) ||
     subnets.find(
-      (s) =>
+      (s: Row) =>
         typeof s.native_slug === "string" &&
         s.native_slug.toLowerCase() === key,
     );
@@ -1691,13 +1747,18 @@ async function resolveNetuid(ctx, args) {
 // Rank subnets relevant to a free-form task. Uses semantic (intent) ranking when
 // the AI layer is available, else keyword overlap over the enriched search index
 // (categories + service_kinds). Returns the discovery mode + ordered candidates.
-async function rankSubnetsForTask(ctx, task, poolSize, callableByNetuid) {
+async function rankSubnetsForTask(
+  ctx: McpCtx,
+  task: string,
+  poolSize: number,
+  callableByNetuid: Map<number, unknown>,
+) {
   // Only subnets exposing callable services can perform a task, so apply the
   // callability filter BEFORE truncating to the pool. Otherwise a callable
   // subnet ranked behind `poolSize` non-callable matches is cut from the pool
   // and the tool falsely reports "no callable subnet matched". (Mirrors the
   // filter-before-slice order in find_subnets_by_capability.)
-  const isCallable = (netuid) => callableByNetuid.has(netuid);
+  const isCallable = (netuid: number) => callableByNetuid.has(netuid);
   if (aiEnabled(ctx.env)) {
     try {
       const out = await semanticSearch(ctx.env, task, {
@@ -1705,12 +1766,12 @@ async function rankSubnetsForTask(ctx, task, poolSize, callableByNetuid) {
       });
       const ranked = (out.results || [])
         .filter(
-          (r) =>
+          (r: Row) =>
             r.type === "subnet" &&
             Number.isInteger(r.netuid) &&
             isCallable(r.netuid),
         )
-        .map((r) => ({ netuid: r.netuid, relevance: r.score }));
+        .map((r: Row) => ({ netuid: r.netuid, relevance: r.score }));
       // Only commit to semantic mode when it yields callable hits; a pool of
       // purely non-callable matches falls through to keyword discovery.
       if (ranked.length > 0) return { mode: "semantic", ranked };
@@ -1722,18 +1783,18 @@ async function rankSubnetsForTask(ctx, task, poolSize, callableByNetuid) {
   const terms = queryTerms(task);
   const docs = Array.isArray(index.documents) ? index.documents : [];
   const ranked = docs
-    .filter((doc) => doc.type === "subnet")
-    .map((doc) => ({
+    .filter((doc: Row) => doc.type === "subnet")
+    .map((doc: Row) => ({
       netuid: doc.netuid,
       relevance: scoreDocument(doc, terms),
     }))
-    .filter((entry) => entry.relevance > 0 && isCallable(entry.netuid))
-    .sort((a, b) => b.relevance - a.relevance || a.netuid - b.netuid)
+    .filter((entry: Row) => entry.relevance > 0 && isCallable(entry.netuid))
+    .sort((a: Row, b: Row) => b.relevance - a.relevance || a.netuid - b.netuid)
     .slice(0, poolSize);
   return { mode: "keyword", ranked };
 }
 
-function validateToolArguments(tool, args) {
+function validateToolArguments(tool: Row, args: Row) {
   if (args === undefined || args === null) return {};
   if (
     typeof args !== "object" ||
@@ -1751,7 +1812,7 @@ function validateToolArguments(tool, args) {
   return args;
 }
 
-function requireNonNegativeInt(args, key) {
+function requireNonNegativeInt(args: Row, key: string) {
   const value = args?.[key];
   if (!Number.isInteger(value) || value < 0) {
     throw toolError(
@@ -1762,7 +1823,7 @@ function requireNonNegativeInt(args, key) {
   return value;
 }
 
-function optionalNonNegativeInt(args, key) {
+function optionalNonNegativeInt(args: Row, key: string) {
   const value = args?.[key];
   if (value === undefined || value === null) return null;
   if (!Number.isInteger(value) || value < 0) {
@@ -1776,7 +1837,7 @@ function optionalNonNegativeInt(args, key) {
 
 // Like optionalNonNegativeInt but for a decimal quantity (e.g. a TAO amount),
 // where a fractional value is valid.
-function optionalNonNegativeNumber(args, key) {
+function optionalNonNegativeNumber(args: Row, key: string) {
   const value = args?.[key];
   if (value === undefined || value === null) return null;
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
@@ -1790,7 +1851,7 @@ function optionalNonNegativeNumber(args, key) {
 
 // Like optionalNonNegativeInt, but 0 is invalid (a "cap the list to zero rows"
 // argument reads as a misuse, not a legitimate empty-result request).
-function optionalPositiveInt(args, key) {
+function optionalPositiveInt(args: Row, key: string) {
   const value = args?.[key];
   if (value === undefined || value === null) return null;
   if (!Number.isInteger(value) || value < 1) {
@@ -1802,11 +1863,11 @@ function optionalPositiveInt(args, key) {
   return value;
 }
 
-function requireNetuid(args) {
+function requireNetuid(args: Row) {
   return requireNonNegativeInt(args, "netuid");
 }
 
-function optionalBoolean(args, key) {
+function optionalBoolean(args: Row, key: string) {
   const value = args?.[key];
   if (value === undefined || value === null) return false;
   if (typeof value !== "boolean") {
@@ -1819,7 +1880,7 @@ function optionalBoolean(args, key) {
 // filter arg must distinguish "not provided, don't filter" (null) from an
 // explicit true/false, or an absent filter would wrongly narrow to only the
 // false-valued rows.
-function optionalNullableBoolean(args, key) {
+function optionalNullableBoolean(args: Row, key: string) {
   const value = args?.[key];
   if (value === undefined || value === null) return null;
   if (typeof value !== "boolean") {
@@ -1828,7 +1889,7 @@ function optionalNullableBoolean(args, key) {
   return value;
 }
 
-function optionalSuccessFilter(args) {
+function optionalSuccessFilter(args: Row) {
   const value = args?.success;
   if (value === undefined || value === null) return undefined;
   if (value === true) return true;
@@ -1839,7 +1900,7 @@ function optionalSuccessFilter(args) {
   );
 }
 
-function requireString(args, key) {
+function requireString(args: Row, key: string) {
   const value = args?.[key];
   if (typeof value !== "string" || value.trim() === "") {
     throw toolError(
@@ -1852,7 +1913,7 @@ function requireString(args, key) {
 
 // A trimmed optional string, or null when absent/blank — for free-form filters
 // like the account-events `kind`, where an enum would wrongly reject valid values.
-function optionalString(args, key) {
+function optionalString(args: Row, key: string) {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || value.trim() === "") {
@@ -1865,7 +1926,7 @@ function optionalString(args, key) {
 }
 
 // Optional YYYY-MM-DD day bound — mirrors parseDateRange() on REST history routes.
-function optionalDayArg(args, key) {
+function optionalDayArg(args: Row, key: string) {
   const value = optionalString(args, key);
   if (value === null) return null;
   if (!DAY_PATTERN.test(value)) {
@@ -1883,9 +1944,9 @@ function optionalDayArg(args, key) {
 
 // Reject unknown event-kind filters before D1, parity with the REST event feeds
 // (handleSubnetEvents / handleAccountEvents) so a typo cannot force a scan.
-function requireKnownEventKind(kind) {
+function requireKnownEventKind(kind: unknown) {
   if (kind == null) return;
-  if (!INGESTED_EVENT_KINDS.includes(kind)) {
+  if (!INGESTED_EVENT_KINDS.includes(kind as string)) {
     throw toolError(
       "invalid_params",
       `"${kind}" is not a supported event kind. Supported: ${INGESTED_EVENT_KINDS.join(", ")}.`,
@@ -1895,7 +1956,7 @@ function requireKnownEventKind(kind) {
 
 // Require a bare SS58 address (hotkey or coldkey) — the same shape the REST
 // account routes accept, from the shared SS58_ADDRESS_PATTERN.
-function requireSs58(args) {
+function requireSs58(args: Row) {
   const value = requireString(args, "ss58");
   if (!SS58_ADDRESS_PATTERN.test(value)) {
     throw toolError(
@@ -1913,7 +1974,7 @@ const SS58_PATTERN_SOURCE = SS58_ADDRESS_PATTERN.source;
 // A validator identity is the same SS58 shape as an account, just a different
 // argument name (a hotkey the caller already knows, not one they're looking
 // up) -- same runtime pattern check as requireSs58, distinct error text.
-function requireHotkey(args) {
+function requireHotkey(args: Row) {
   const value = requireString(args, "hotkey");
   if (!SS58_ADDRESS_PATTERN.test(value)) {
     throw toolError(
@@ -1935,7 +1996,7 @@ function requireHotkey(args) {
 // src/data-api-mcp.ts (exported optionalBlocksWindow, #7432) beside its
 // loadChainActivity loader — shared with GraphQL's chain_events_stats field.
 
-function clampLimit(value, fallback, max) {
+function clampLimit(value: unknown, fallback: number, max: number) {
   // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
   // 1. tools/call does not enforce the inputSchema `minimum`, so an explicit
   // limit:0 reaches here; `Math.max(1, …)` would return a single result, which
@@ -1962,7 +2023,7 @@ function semanticTypeSchema() {
 // bespoke `offset` handling (floor + clamp to 0, no throw): tools/call does not
 // enforce the inputSchema `minimum`, so a bad cursor degrades to the first page
 // instead of erroring.
-function resolveCursor(args) {
+function resolveCursor(args: Row) {
   return Number.isFinite(args?.cursor)
     ? Math.max(0, Math.floor(args.cursor))
     : 0;
@@ -1979,7 +2040,10 @@ function resolveCursor(args) {
 // present cursor as paging on its own. The caller pre-resolves both bounds (limit
 // clamped, cursor a non-negative integer), so validateListQuery inside
 // applyQueryFilters cannot fail here and always returns a pagination envelope.
-function cursorWindow(rows, { collection, dataKey, limit, cursor }) {
+function cursorWindow(
+  rows: Row[],
+  { collection, dataKey, limit, cursor }: Row,
+) {
   const url = new URL("https://mcp.internal/list");
   if (limit != null) {
     url.searchParams.set("limit", String(limit));
@@ -1992,7 +2056,7 @@ function cursorWindow(rows, { collection, dataKey, limit, cursor }) {
     url,
     collection,
     [],
-  );
+  ) as { data: Row; meta: Row };
   const {
     total,
     returned,
@@ -2013,7 +2077,12 @@ function cursorWindow(rows, { collection, dataKey, limit, cursor }) {
 // pagination envelope, and the mapped page. Both search tools page 1-50/10 over
 // the ranked match set (windowed via applyQueryFilters, so `cursor`/`next_cursor`
 // match the REST list contract).
-function searchResponse(label, matched, args, mapResult) {
+function searchResponse(
+  label: Row,
+  matched: Row[],
+  args: Row,
+  mapResult: AnyFn,
+) {
   const { page, total, returned, limit, cursor, next_cursor } = cursorWindow(
     matched,
     {
@@ -2052,7 +2121,7 @@ const LIST_SUBNETS_ORDERS = ["asc", "desc"];
  * @param {string} field - one of LIST_SUBNETS_SORT_FIELDS
  * @returns {number|string|null}
  */
-function subnetSortValue(subnet, field) {
+function subnetSortValue(subnet: Row, field: string) {
   const value = subnet[field];
   return typeof value === "number" || typeof value === "string" ? value : null;
 }
@@ -2067,7 +2136,7 @@ function subnetSortValue(subnet, field) {
  * @param {"asc"|"desc"} order - sort direction
  * @returns {object[]}
  */
-function sortSubnets(rows, field, order) {
+function sortSubnets(rows: Row[], field: string, order: unknown) {
   const dir = order === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => {
     const av = subnetSortValue(a, field);
@@ -2080,7 +2149,9 @@ function sortSubnets(rows, field, order) {
     // mirrors compareValues in workers/list-query.mjs (bare localeCompare), the
     // shared sort convention for the REST list endpoints.
     const cmp =
-      typeof av === "number" ? av - bv : String(av).localeCompare(String(bv));
+      typeof av === "number"
+        ? av - (bv as number)
+        : String(av).localeCompare(String(bv));
     return cmp !== 0 ? cmp * dir : a.netuid - b.netuid;
   });
 }
@@ -2116,14 +2187,14 @@ const LIST_SUBNETS_RANGE_BOUNDS = [
 // non-numeric cannot satisfy a bound, so it is excluded once any bound on that
 // field is set — identical to rangeFilterRows in workers/list-query.mjs. Only
 // finite numeric args count (tools/call does not enforce inputSchema types).
-function rangeFilterSubnets(rows, args) {
+function rangeFilterSubnets(rows: Row[], args: Row) {
   const bounds = LIST_SUBNETS_RANGE_BOUNDS.filter(({ arg }) =>
     Number.isFinite(args?.[arg]),
   ).map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
   if (bounds.length === 0) {
     return rows;
   }
-  return rows.filter((row) =>
+  return rows.filter((row: Row) =>
     bounds.every(({ field, op, limit }) => {
       const value = row[field];
       if (typeof value !== "number") {
@@ -2148,7 +2219,7 @@ const LIST_SUBNETS_CATEGORICAL = [
 // `domain` tests the union of curated + derived categories; the rest are scalar.
 // Shared by inclusion and exclusion so `status=` and `not_status=` stay exact
 // complements.
-function subnetCategoricalMatch(subnet, field, value) {
+function subnetCategoricalMatch(subnet: Row, field: string, value: unknown) {
   if (field === "domain") {
     const tags = [
       ...(Array.isArray(subnet.categories) ? subnet.categories : []),
@@ -2156,7 +2227,7 @@ function subnetCategoricalMatch(subnet, field, value) {
         ? subnet.derived_categories
         : []),
     ].map((tag) => String(tag).toLowerCase());
-    return tags.includes(value);
+    return tags.includes(value as string);
   }
   return String(subnet[field] ?? "").toLowerCase() === value;
 }
@@ -2164,9 +2235,9 @@ function subnetCategoricalMatch(subnet, field, value) {
 // Apply the categorical filters: keep rows matching every `field=v` and matching
 // none of the `not_field=v` exclusions (case-insensitive). A row missing the
 // field never matches, so it survives an exclusion but fails an inclusion.
-function categoricalFilterSubnets(rows, args) {
-  const includes = [];
-  const excludes = [];
+function categoricalFilterSubnets(rows: Row[], args: Row) {
+  const includes: { field: string; value: string }[] = [];
+  const excludes: { field: string; value: string }[] = [];
   for (const arg of LIST_SUBNETS_CATEGORICAL) {
     const inc = typeof args?.[arg] === "string" ? args[arg].trim() : "";
     if (inc) includes.push({ field: arg, value: inc.toLowerCase() });
@@ -2178,7 +2249,7 @@ function categoricalFilterSubnets(rows, args) {
     return rows;
   }
   return rows.filter(
-    (subnet) =>
+    (subnet: Row) =>
       includes.every(({ field, value }) =>
         subnetCategoricalMatch(subnet, field, value),
       ) &&
@@ -2190,7 +2261,7 @@ function categoricalFilterSubnets(rows, args) {
 
 // A search.json document → keywordScore shape: title/slug are identity; subtitle
 // and tokens (which already fold in categories/service kinds) are recall-only.
-function scoreDocument(doc, terms) {
+function scoreDocument(doc: Row, terms: string[]) {
   return keywordScore(
     {
       name: doc.title,
@@ -2211,7 +2282,7 @@ const COVERAGE_DEPTH_TIERS = [
 ];
 const COVERAGE_DEPTH_SEVERITIES = ["hard", "missing-data", "needs-review"];
 
-function optionalEnum(args, key, allowed) {
+function optionalEnum(args: Row, key: string, allowed: readonly string[]) {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !allowed.includes(value)) {
@@ -2223,7 +2294,7 @@ function optionalEnum(args, key, allowed) {
   return value;
 }
 
-function optionalGapCode(args) {
+function optionalGapCode(args: Row) {
   const value = args?.gap_code;
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string" || !/^[a-z0-9-]+$/.test(value)) {
@@ -2235,7 +2306,7 @@ function optionalGapCode(args) {
   return value;
 }
 
-function coverageDepthTarget(row, rank = null) {
+function coverageDepthTarget(row: Row, rank = null) {
   return {
     rank,
     netuid: row.netuid,
@@ -2247,7 +2318,7 @@ function coverageDepthTarget(row, rank = null) {
     agent_status: row.agent_status,
     blocker_level: row.blocker_level,
     top_gap_codes: row.top_gap_codes || [],
-    top_gaps: (row.top_gaps || []).map((gap) => ({
+    top_gaps: (row.top_gaps || []).map((gap: Row) => ({
       code: gap.code,
       severity: gap.severity,
       field: gap.field,
@@ -2272,12 +2343,12 @@ function coverageDepthTarget(row, rank = null) {
   };
 }
 
-function coverageDepthMatches(row, { tier, severity, gapCode }) {
+function coverageDepthMatches(row: Row, { tier, severity, gapCode }: Row) {
   if (tier && row.tier !== tier) return false;
   if (gapCode && !(row.top_gap_codes || []).includes(gapCode)) return false;
   if (
     severity &&
-    !(row.top_gaps || []).some((gap) => gap.severity === severity)
+    !(row.top_gaps || []).some((gap: Row) => gap.severity === severity)
   ) {
     return false;
   }
@@ -2322,16 +2393,18 @@ export const MCP_TOOLS = [
       required: ["query"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const query = requireString(args, "query");
       const index = await loadArtifactData(ctx, "/metagraph/search.json");
       const terms = queryTerms(query);
       const docs = Array.isArray(index.documents) ? index.documents : [];
       const matched = docs
-        .filter((doc) => doc.type === "subnet")
-        .map((doc) => ({ doc, score: scoreDocument(doc, terms) }))
-        .filter((entry) => entry.score > 0)
-        .sort((a, b) => b.score - a.score || a.doc.netuid - b.doc.netuid);
+        .filter((doc: Row) => doc.type === "subnet")
+        .map((doc: Row) => ({ doc, score: scoreDocument(doc, terms) }))
+        .filter((entry: Row) => entry.score > 0)
+        .sort(
+          (a: Row, b: Row) => b.score - a.score || a.doc.netuid - b.doc.netuid,
+        );
       return searchResponse({ query }, matched, args, ({ doc }) => ({
         netuid: doc.netuid,
         slug: doc.slug,
@@ -2526,7 +2599,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const index = await loadArtifactData(ctx, "/metagraph/subnets.json");
       const all = Array.isArray(index.subnets) ? index.subnets : [];
       // Categorical inclusion (status/subnet_type/domain) and exclusion
@@ -2545,7 +2618,7 @@ export const MCP_TOOLS = [
           limit: clampLimit(args?.limit, 50, 100),
           cursor: resolveCursor(args),
         });
-      const subnets = page.map((subnet) => ({
+      const subnets = page.map((subnet: Row) => ({
         netuid: subnet.netuid,
         slug: subnet.slug ?? null,
         title: subnet.name ?? null,
@@ -2609,7 +2682,7 @@ export const MCP_TOOLS = [
       required: ["capability"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const capability = requireString(args, "capability");
       const staticCatalog = await loadArtifactData(
         ctx,
@@ -2620,7 +2693,7 @@ export const MCP_TOOLS = [
       const terms = queryTerms(capability);
       const subnets = Array.isArray(catalog.subnets) ? catalog.subnets : [];
       const matched = subnets
-        .map((subnet) => ({
+        .map((subnet: Row) => ({
           subnet,
           score: keywordScore(
             {
@@ -2636,9 +2709,11 @@ export const MCP_TOOLS = [
             terms,
           ),
         }))
-        .filter((entry) => entry.score > 0 && entry.subnet.callable_count > 0)
+        .filter(
+          (entry: Row) => entry.score > 0 && entry.subnet.callable_count > 0,
+        )
         .sort(
-          (a, b) =>
+          (a: Row, b: Row) =>
             b.score - a.score ||
             (b.subnet.integration_readiness || 0) -
               (a.subnet.integration_readiness || 0) ||
@@ -2669,7 +2744,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const overview = await loadArtifactData(
         ctx,
@@ -2698,7 +2773,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const detail = await loadArtifactData(
         ctx,
@@ -2746,7 +2821,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const topValidatorsLimit =
         optionalPositiveInt(args, "top_validators_limit") ?? 10;
@@ -2793,7 +2868,7 @@ export const MCP_TOOLS = [
       // list_subnet_validators' own limit post-filter (the loader already
       // ranks by stake_tao DESC, so slicing after is a no-op re-sort) --
       // mirrored here rather than exported, since it's three lines.
-      const slicedValidators = (validators?.validators ?? []).slice(
+      const slicedValidators = ((validators?.validators ?? []) as Row[]).slice(
         0,
         topValidatorsLimit,
       );
@@ -2814,7 +2889,7 @@ export const MCP_TOOLS = [
   },
   {
     ...GET_NETWORK_HEALTH_MCP_TOOL,
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadGlobalOperationalHealth(
         { env: ctx.env, readHealthKv: ctx.readHealthKv },
         { contractVersion: () => mcpContractVersion(ctx) },
@@ -2823,12 +2898,13 @@ export const MCP_TOOLS = [
   },
   {
     ...GET_HEALTH_HISTORY_MCP_TOOL,
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       try {
         return await loadHealthHistory(ctx, args, {
-          readArtifact: loadArtifactData,
+          readArtifact: loadArtifactData as AnyFn,
         });
-      } catch (err) {
+      } catch (rawErr) {
+        const err = rawErr as Row;
         if (err?.healthHistoryMcp) {
           throw toolError(err.code, err.message);
         }
@@ -2850,7 +2926,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const [live, reliability] = await Promise.all([
         mcpLiveHealth(ctx),
@@ -2889,7 +2965,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -2918,7 +2994,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       const postgres = await tryPostgresTier(
         ctx.env,
         mcpNeuronsTierRequest("/api/v1/health/trends"),
@@ -2954,13 +3030,13 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed;
+      const { label } = parsed!;
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3002,13 +3078,13 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed;
+      const { label } = parsed!;
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3042,7 +3118,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadSubnetEconomics(ctx, netuid);
     },
@@ -3080,7 +3156,7 @@ export const MCP_TOOLS = [
       required: ["netuid", "amount"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
@@ -3183,7 +3259,7 @@ export const MCP_TOOLS = [
       ],
       additionalProperties: true,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const amount = args?.amount;
       const direction = optionalString(args, "direction") ?? "stake";
@@ -3230,13 +3306,14 @@ export const MCP_TOOLS = [
   },
   {
     ...GET_ECONOMICS_MCP_TOOL,
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       try {
-        return await loadNetworkEconomics(ctx, args, {
+        return await loadNetworkEconomics(asMcpLoaderCtx(ctx), args, {
           contractVersion: mcpContractVersion,
           readOptionalArtifact: loadOptionalArtifact,
         });
-      } catch (err) {
+      } catch (rawErr) {
+        const err = rawErr as Row;
         if (err?.networkEconomics) {
           throw toolError(err.code, err.message);
         }
@@ -3261,7 +3338,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -3291,23 +3368,24 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const parsed = parseEconomicsTrendsWindow(args?.window);
       if (args?.window !== undefined && parsed === null) {
-        const { error } = parseHistoryWindow(args.window);
-        throw toolError("invalid_params", error.message);
+        const reparsed = parseHistoryWindow(args.window);
+        const message =
+          "error" in reparsed
+            ? reparsed.error.message
+            : "window is not supported.";
+        throw toolError("invalid_params", message);
       }
-      const { label, days } = parsed;
+      const { label } = parsed!;
       const postgres = await tryPostgresTier(
         ctx.env,
         mcpNeuronsTierRequest("/api/v1/economics/trends", { window: label }),
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
       );
       if (postgres) return postgres;
-      const { data } = await loadEconomicsTrends({
-        windowLabel: label,
-        windowDays: days,
-      });
+      const { data } = await loadEconomicsTrends({ windowLabel: label });
       return data;
     },
   },
@@ -3328,7 +3406,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -3359,7 +3437,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -3388,7 +3466,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -3415,7 +3493,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3442,7 +3520,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3466,7 +3544,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3501,7 +3579,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       // Mirrors REST's handleChainIdentityHistory: same tryPostgresTier
       // contract, same METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST
       // route (#4832), so this tool and GET /api/v1/chain/identity-history
@@ -3533,7 +3611,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -3573,7 +3651,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
       if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)) {
@@ -3632,7 +3710,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
       if (!Object.hasOwn(CHAIN_STAKE_FLOW_WINDOWS, window)) {
@@ -3688,7 +3766,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const limit = clampLimit(
         args?.limit,
         CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
@@ -3733,7 +3811,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_WEIGHTS_WINDOW;
       if (!Object.hasOwn(CHAIN_WEIGHTS_WINDOWS, window)) {
@@ -3759,7 +3837,7 @@ export const MCP_TOOLS = [
         buildChainWeights([], {
           window,
           limit,
-          networkDistinct: null,
+          networkDistinct: undefined,
         })
       );
     },
@@ -3793,7 +3871,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW;
       if (!Object.hasOwn(CHAIN_WEIGHT_SETTERS_WINDOWS, window)) {
@@ -3853,7 +3931,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_MOVES_WINDOW;
       if (!Object.hasOwn(CHAIN_STAKE_MOVES_WINDOWS, window)) {
@@ -3913,7 +3991,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
       if (!Object.hasOwn(CHAIN_STAKE_TRANSFERS_WINDOWS, window)) {
@@ -3973,7 +4051,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
       if (!Object.hasOwn(CHAIN_AXON_REMOVALS_WINDOWS, window)) {
@@ -4034,7 +4112,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_SERVING_WINDOW;
       if (!Object.hasOwn(CHAIN_SERVING_WINDOWS, window)) {
@@ -4095,7 +4173,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_PROMETHEUS_WINDOW;
       if (!Object.hasOwn(CHAIN_PROMETHEUS_WINDOWS, window)) {
@@ -4138,7 +4216,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       // Mirrors REST's handleBlocksSummary: try Postgres first, fall back to
       // the schema-stable zeroed card now that blocks' D1 write path is
       // retired (#4772) and the table is dropped in production.
@@ -4173,10 +4251,10 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const parsed = parseConcentrationHistoryWindow(args?.window);
-      if (parsed.error) {
+      if ("error" in parsed) {
         throw toolError("invalid_params", parsed.error.message);
       }
       return (
@@ -4226,7 +4304,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const { label } = requireHistoryWindow(args);
       const changes = optionalBoolean(args, "changes");
@@ -4270,7 +4348,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -4304,13 +4382,13 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetYieldHistoryWindow(args?.window);
-      if (args?.window !== undefined && parsed.error) {
+      if (args?.window !== undefined && "error" in parsed && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      const { label } = parsed;
+      const { label } = parsed as { label: string };
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -4355,7 +4433,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
@@ -4420,7 +4498,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
@@ -4474,7 +4552,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -4519,7 +4597,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
@@ -4563,7 +4641,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
@@ -4607,7 +4685,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
@@ -4652,7 +4730,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
@@ -4697,7 +4775,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
@@ -4743,7 +4821,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_SERVING_WINDOW;
@@ -4789,7 +4867,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_PROMETHEUS_WINDOW;
@@ -4833,7 +4911,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
@@ -4876,13 +4954,13 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const parsed = parseSubnetPerformanceHistoryWindow(args?.window);
-      if (args?.window !== undefined && parsed.error) {
+      if (args?.window !== undefined && "error" in parsed && parsed.error) {
         throw toolError("invalid_params", parsed.error.message);
       }
-      const { label } = parsed;
+      const { label } = parsed as { label: string };
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -4931,7 +5009,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window = optionalString(args, "window") ?? DEFAULT_MOVERS_WINDOW;
       if (!Object.hasOwn(MOVERS_WINDOWS, window)) {
         throw toolError(
@@ -5000,7 +5078,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const window = parseUptimeWindow(args?.window);
       if (args?.window !== undefined && window === null) {
@@ -5011,16 +5089,15 @@ export const MCP_TOOLS = [
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/uptime`, {
-            window,
+            window: window as string,
             min_samples: minSamples,
           }),
           "METAGRAPH_HEALTH_SOURCE",
         )) ??
-        (await loadSubnetUptime(netuid, {
-          window,
+        ((await loadSubnetUptime(netuid, {
+          window: window ?? undefined,
           observedAt: await mcpObservedAt(ctx),
-          minSamples,
-        }))
+        })) as Row)
       );
     },
   },
@@ -5051,7 +5128,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const board = optionalEnum(args, "board", LEADERBOARD_BOARDS);
       const limit = clampLimit(args?.limit, 20, 100);
       const profiles =
@@ -5088,7 +5165,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const domain = optionalEnum(args, "domain", DOMAIN_TAGS);
       // A cold/missing subnets index degrades to an empty rollup (like
       // loadEconomicsSubnetRows' own graceful fallback below), not a thrown
@@ -5105,12 +5182,13 @@ export const MCP_TOOLS = [
   },
   {
     ...LIST_PROFILES_MCP_TOOL,
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       try {
-        return await loadProfilesList(ctx, args, {
+        return await loadProfilesList(asMcpLoaderCtx(ctx), args, {
           readOptionalArtifact: loadOptionalArtifact,
         });
-      } catch (err) {
+      } catch (rawErr) {
+        const err = rawErr as Row;
         if (err?.profilesMcp) {
           throw toolError(err.code, err.message);
         }
@@ -5120,13 +5198,14 @@ export const MCP_TOOLS = [
   },
   {
     ...GET_SUBNET_PROFILE_MCP_TOOL,
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       try {
-        return await loadSubnetProfile(ctx, netuid, {
+        return await loadSubnetProfile(asMcpLoaderCtx(ctx), netuid, {
           readArtifact: loadArtifactData,
         });
-      } catch (err) {
+      } catch (rawErr) {
+        const err = rawErr as Row;
         if (err?.profilesMcp) {
           throw toolError(err.code, err.message);
         }
@@ -5163,7 +5242,7 @@ export const MCP_TOOLS = [
       required: ["netuids"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuids = parseCompareNetuidList(args?.netuids);
       if (!netuids) {
         throw toolError(
@@ -5171,7 +5250,7 @@ export const MCP_TOOLS = [
           "netuids must be a non-empty array of 1-128 distinct subnet ids.",
         );
       }
-      const dimensions = parseCompareDimensionList(args?.dimensions);
+      const dimensions = parseCompareDimensionList(args?.dimensions)!;
       if (args?.dimensions !== undefined && dimensions === null) {
         throw toolError(
           "invalid_params",
@@ -5207,7 +5286,7 @@ export const MCP_TOOLS = [
             economicsRows: dimensions.includes("economics")
               ? economicsRows
               : null,
-            healthRows: postgres.rows,
+            healthRows: postgres.rows as Row[],
             observedAt,
           });
         }
@@ -5239,12 +5318,12 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label, days } = parseAnalyticsWindow(args?.window ?? "7d");
+      const { label } = parsed!;
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -5253,7 +5332,6 @@ export const MCP_TOOLS = [
         )) ??
         (await loadGlobalIncidents({
           windowLabel: label,
-          windowDays: days,
           observedAt: await mcpObservedAt(ctx),
         }))
       );
@@ -5281,7 +5359,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       // validator_permit is validated for REST-parity but, like the D1 filter it
       // used to bound, has nothing left to filter now that neurons is retired
@@ -5332,7 +5410,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const limit = optionalPositiveInt(args, "limit");
       const minStakeTao = optionalNonNegativeNumber(args, "min_stake_tao");
@@ -5352,13 +5430,14 @@ export const MCP_TOOLS = [
       }
       // The loader already ranks by stake_tao DESC, so a limit after the
       // min_stake_tao floor keeps the highest-stake survivors — no re-sort.
-      const filtered =
+      const filtered = (
         minStakeTao === null
           ? data.validators
-          : data.validators.filter(
-              (v) =>
+          : (data.validators as Row[]).filter(
+              (v: Row) =>
                 typeof v.stake_tao === "number" && v.stake_tao >= minStakeTao,
-            );
+            )
+      ) as Row[];
       const validators = limit === null ? filtered : filtered.slice(0, limit);
       return { ...data, validator_count: validators.length, validators };
     },
@@ -5393,7 +5472,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const sort =
         optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
         DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -5433,7 +5512,7 @@ export const MCP_TOOLS = [
       required: ["hotkey"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const hotkey = requireHotkey(args);
       return (
         (await tryPostgresTier(
@@ -5483,7 +5562,7 @@ export const MCP_TOOLS = [
       required: ["hotkeys"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const hotkeys = parseCompareHotkeyList(args?.hotkeys);
       if (!hotkeys) {
         throw toolError(
@@ -5534,7 +5613,7 @@ export const MCP_TOOLS = [
       required: ["id"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const id = requireString(args, "id");
       if (!isValidSubscriptionId(id)) {
         throw toolError(
@@ -5561,7 +5640,7 @@ export const MCP_TOOLS = [
         throw toolError("not_found", `No such subscription: ${id}.`);
       }
       return {
-        ...publicSubscriptionView(record),
+        ...publicSubscriptionView(record as Row),
         delivery: await readMcpWebhookDeliveryStatus(ctx.env, id),
       };
     },
@@ -5589,7 +5668,7 @@ export const MCP_TOOLS = [
       required: ["id", "owner_token"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const id = requireString(args, "id");
       const ownerToken = requireString(args, "owner_token");
       if (!ctx.env.DATA_API) {
@@ -5616,8 +5695,8 @@ export const MCP_TOOLS = [
       if (!upstream.ok) {
         throw toolError(
           upstream.status === 404 ? "not_found" : "alert_trigger_error",
-          typeof body?.error === "string"
-            ? body.error
+          typeof (body as Row | null)?.error === "string"
+            ? ((body as Row).error as string)
             : "The alert triggers tier returned an error.",
         );
       }
@@ -5670,7 +5749,7 @@ export const MCP_TOOLS = [
       required: ["hotkey"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const hotkey = requireHotkey(args);
       const window =
         optionalEnum(args, "window", Object.keys(NOMINATOR_WINDOWS)) ??
@@ -5736,7 +5815,7 @@ export const MCP_TOOLS = [
       required: ["hotkey"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const hotkey = requireHotkey(args);
       const { label } = requireHistoryWindow(args);
       return (
@@ -5771,7 +5850,7 @@ export const MCP_TOOLS = [
       required: ["netuid", "uid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       // uid is validated for REST-parity but, like the D1 filter it used to
       // bound, has nothing left to look up now that neurons is retired
@@ -5810,7 +5889,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadSubnetHistory(ctx, netuid, requireHistoryWindow(args));
     },
@@ -5849,7 +5928,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadSubnetIdentityHistoryTool(ctx, netuid, {
         limit: args?.limit,
@@ -5886,7 +5965,7 @@ export const MCP_TOOLS = [
       required: ["netuid", "uid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const uid = requireNonNegativeInt(args, "uid");
       return loadNeuronHistory(ctx, netuid, uid, requireHistoryWindow(args));
@@ -5947,7 +6026,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
@@ -5999,7 +6078,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return (
         (await tryPostgresTier(
@@ -6043,7 +6122,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const limit = clampLimit(args?.limit, 100, 1000);
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
@@ -6084,7 +6163,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const netEconomics = await loadSubnetEconomics(ctx, netuid);
       const marketCapTao =
@@ -6135,7 +6214,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const interval =
         optionalString(args, "interval") ?? OHLC_INTERVAL_DEFAULT;
@@ -6189,7 +6268,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadSubnetOwnershipHistory(ctx, netuid);
     },
@@ -6217,7 +6296,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadSubnetConviction(ctx, netuid);
     },
@@ -6238,7 +6317,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       if (!isU16Netuid(netuid)) {
         throw toolError(
@@ -6277,7 +6356,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       if (!isU16Netuid(netuid)) {
         throw toolError(
@@ -6321,7 +6400,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       if (!isU16Netuid(netuid)) {
         throw toolError(
@@ -6364,7 +6443,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadSubnetLeaseHistory(ctx, netuid);
     },
@@ -6394,7 +6473,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const data =
         (await tryPostgresTier(
@@ -6404,11 +6483,11 @@ export const MCP_TOOLS = [
         )) ?? buildAccountSummary(ss58, {});
       // Community-contributable entity labels (#6739), same REST-parity join
       // as workers/request-handlers/entities.mjs's own handleAccount.
-      const entitiesArtifact = await ctx.readArtifact(
+      const entitiesArtifact = (await ctx.readArtifact!(
         ctx.env,
         ENTITY_LABELS_ARTIFACT,
-      );
-      data.labels = labelsForSs58(
+      )) as Row | null;
+      (data as Row).labels = labelsForSs58(
         entityLabelsIndex(
           entitiesArtifact?.ok ? entitiesArtifact.data?.entities : [],
         ),
@@ -6440,10 +6519,10 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const [entitiesArtifact, ownershipData] = await Promise.all([
-        ctx.readArtifact(ctx.env, ENTITY_LABELS_ARTIFACT),
+        ctx.readArtifact!(ctx.env, ENTITY_LABELS_ARTIFACT),
         tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/entities`),
@@ -6452,7 +6531,7 @@ export const MCP_TOOLS = [
       ]);
       const data =
         ownershipData ?? buildAccountEntities(ss58, { entities: [] });
-      data.labels = labelsForSs58(
+      (data as Row).labels = labelsForSs58(
         entityLabelsIndex(
           entitiesArtifact?.ok ? entitiesArtifact.data?.entities : [],
         ),
@@ -6483,7 +6562,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       if (!isFinneySs58Address(ss58)) {
         throw toolError(
@@ -6529,7 +6608,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       if (!isFinneySs58Address(ss58)) {
         throw toolError(
@@ -6576,7 +6655,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       if (!isFinneySs58Address(ss58)) {
         throw toolError(
@@ -6621,7 +6700,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       if (!isFinneySs58Address(ss58)) {
         throw toolError(
@@ -6710,7 +6789,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
@@ -6770,7 +6849,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       return (
         (await tryPostgresTier(
@@ -6804,7 +6883,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       return (
         (await tryPostgresTier(
@@ -6841,7 +6920,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       return (
         (await tryPostgresTier(
@@ -6887,7 +6966,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const recentEventsLimit = clampLimit(args?.recent_events_limit, 10, 1000);
       // balance is a live RPC call (its own rate limiter + address-network
@@ -6978,7 +7057,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       return (
         (await tryPostgresTier(
@@ -7024,7 +7103,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const limit = clampLimit(args?.limit, 100, 1000);
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
@@ -7069,7 +7148,7 @@ export const MCP_TOOLS = [
       required: ["ss58", "netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const netuid = requireNetuid(args);
       const { label } = requireHistoryWindow(args);
@@ -7131,7 +7210,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
@@ -7196,7 +7275,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW;
@@ -7249,7 +7328,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_AXON_REMOVAL_WINDOW;
@@ -7303,7 +7382,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_PROMETHEUS_WINDOW;
@@ -7356,7 +7435,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_REGISTRATION_WINDOW;
@@ -7408,7 +7487,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW;
@@ -7462,7 +7541,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const window = optionalString(args, "window") ?? DEFAULT_SERVING_WINDOW;
       if (!Object.hasOwn(SERVING_WINDOWS, window)) {
@@ -7515,7 +7594,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const window =
         optionalString(args, "window") ?? DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW;
@@ -7596,7 +7675,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const netuid = optionalNonNegativeInt(args, "netuid") ?? undefined;
       const from = optionalDayArg(args, "from");
@@ -7675,7 +7754,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       // block_start/block_end/cursor are validated for REST-parity and forwarded
       // to the Postgres tier below; the D1 fallback (buildAccountExtrinsics([]))
@@ -7767,7 +7846,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const direction = optionalString(args, "direction");
       // block_start/block_end/cursor are validated for REST-parity and forwarded to
@@ -7845,7 +7924,7 @@ export const MCP_TOOLS = [
       required: ["ss58"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const counterparty = optionalString(args, "counterparty");
       if (counterparty != null) {
@@ -7984,7 +8063,7 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       // Every filter below is validated for REST-parity and, now that the
       // Postgres tier can be flipped on, forwarded to it below -- only the
       // buildBlockFeed([]) D1 fallback ignores them (nothing left to filter
@@ -8052,7 +8131,7 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       // Mirrors REST's handleBlock: try Postgres first, fall back to the
       // schema-stable block:null shape now that blocks' D1 write path is
@@ -8099,7 +8178,7 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       const limit = clampLimit(args?.limit, 50, 100);
       const offset = Number.isFinite(args?.offset)
@@ -8156,7 +8235,7 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       const limit = clampLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
@@ -8276,7 +8355,7 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       // Validated for REST-parity but, like the D1 filters they used to bound, have
       // nothing left to filter now that extrinsics is retired (#4772) --
       // buildExtrinsicFeed([]) below never sees them.
@@ -8336,7 +8415,7 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall back to
       // the schema-stable empty detail now that extrinsics' D1 write path is
@@ -8413,7 +8492,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -8440,7 +8519,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadSudoKey(ctx.env);
     },
   },
@@ -8458,7 +8537,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadNetworkParameters(ctx.env);
     },
   },
@@ -8478,7 +8557,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadRandomnessStatus(ctx.env);
     },
   },
@@ -8545,7 +8624,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -8578,7 +8657,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
       // table is dropped in production, so a D1 query here would always miss.
       return (
@@ -8616,7 +8695,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const sort =
         optionalEnum(args, "sort", ACCOUNTS_LIST_SORTS) ??
         DEFAULT_ACCOUNTS_LIST_SORT;
@@ -8663,7 +8742,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const sort =
         optionalEnum(args, "sort", TOP_HOLDERS_SORTS) ??
         DEFAULT_TOP_HOLDERS_SORT;
@@ -8706,7 +8785,7 @@ export const MCP_TOOLS = [
       required: ["block_number"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const blockNumber = requireNonNegativeInt(args, "block_number");
       return loadBlockChainEvents(ctx, blockNumber);
     },
@@ -8744,7 +8823,7 @@ export const MCP_TOOLS = [
       required: ["ref"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       const cursor = optionalString(args, "cursor");
       return loadExtrinsicChainEvents(ctx, ref, {
@@ -8778,7 +8857,7 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const blocks = optionalBlocksWindow(args);
       return loadChainActivity(ctx, blocks);
     },
@@ -8846,7 +8925,7 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       return loadChainEventsFeed(ctx, {
         pallet: optionalString(args, "pallet"),
         method: optionalString(args, "method"),
@@ -8897,12 +8976,12 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed;
+      const { label } = parsed!;
       const groupBy =
         optionalEnum(args, "group_by", ["module", "module_function"]) ||
         "module";
@@ -8971,12 +9050,12 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label, days } = parsed;
+      const { label, days } = parsed!;
       const sort =
         optionalEnum(args, "sort", CHAIN_SIGNERS_SORTS) || "tx_count";
       const limit = clampLimit(args?.limit, 50, 100);
@@ -8998,14 +9077,14 @@ export const MCP_TOOLS = [
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
       if (postgres) return postgres;
-      const { data } = await loadMcpChainSigners(ctx, {
+      const { data } = (await loadMcpChainSigners(ctx, {
         label,
         days,
         observedAt: await mcpObservedAt(ctx),
         limit,
         callModule,
         sort,
-      });
+      })) as { data: Row };
       return data;
     },
   },
@@ -9039,12 +9118,12 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed;
+      const { label } = parsed!;
       const limit = clampLimit(args?.limit, 25, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
@@ -9099,12 +9178,12 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed;
+      const { label } = parsed!;
       const limit = clampLimit(
         args?.limit,
         CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
@@ -9156,7 +9235,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW;
       if (!Object.hasOwn(CHAIN_DEREGISTRATIONS_WINDOWS, window)) {
@@ -9212,7 +9291,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
       if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, window)) {
@@ -9282,7 +9361,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
       if (!Object.hasOwn(CHAIN_TRANSFER_PAIR_WINDOWS, window)) {
@@ -9338,12 +9417,12 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed;
+      const { label } = parsed!;
       // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
@@ -9375,7 +9454,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const staticDetail = await loadArtifactData(
         ctx,
@@ -9416,7 +9495,7 @@ export const MCP_TOOLS = [
       required: ["surface_id"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const surfaceId = requireString(args, "surface_id");
       // surface_id is part of an R2 key path; reject anything that could escape
       // the schemas/ namespace.
@@ -9452,7 +9531,7 @@ export const MCP_TOOLS = [
       required: ["surface_id"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const surfaceId = requireString(args, "surface_id");
       // surface_id is part of an R2 key path; reject anything that could escape
       // the fixtures/ namespace.
@@ -9496,7 +9575,7 @@ export const MCP_TOOLS = [
       required: ["slug"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const slug = requireString(args, "slug");
       // slug is part of an R2 key path; reject anything that could escape the
       // providers/ namespace.
@@ -9512,20 +9591,20 @@ export const MCP_TOOLS = [
   },
   {
     ...LIST_PROVIDERS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadProvidersList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadProvidersList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_SURFACES_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadSurfacesList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSurfacesList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_CANDIDATES_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadCandidatesList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadCandidatesList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -9603,7 +9682,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
       const layer = optionalEnum(args, "layer", QUERY_ENUMS.endpointLayer);
       const netuid = optionalNonNegativeInt(args, "netuid");
@@ -9637,7 +9716,7 @@ export const MCP_TOOLS = [
       // must see live values, not the baked ones.
       if (
         Array.isArray(data?.endpoints) &&
-        data.endpoints.some((endpoint) => endpoint?.surface_id)
+        data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
       ) {
         const overlaid = overlayArtifactEndpoints(
           data,
@@ -9647,7 +9726,7 @@ export const MCP_TOOLS = [
       }
       const all = Array.isArray(data.endpoints) ? data.endpoints : [];
       const filtered = all.filter(
-        (e) =>
+        (e: Row) =>
           (kind === null || e.kind === kind) &&
           (layer === null || e.layer === layer) &&
           (netuid === null || e.netuid === netuid) &&
@@ -9681,8 +9760,8 @@ export const MCP_TOOLS = [
   },
   {
     ...LIST_EVIDENCE_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadEvidenceList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadEvidenceList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -9698,7 +9777,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       const staticData = await loadArtifactData(
         ctx,
         "/metagraph/rpc-endpoints.json",
@@ -9714,20 +9793,20 @@ export const MCP_TOOLS = [
   },
   {
     ...LIST_SOURCE_SNAPSHOTS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadSourceSnapshotsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSourceSnapshotsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_PROFILE_COMPLETENESS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadProfileCompletenessList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadProfileCompletenessList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_RPC_POOLS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadRpcPoolsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadRpcPoolsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -9747,7 +9826,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const data = await loadArtifactData(
         ctx,
@@ -9756,7 +9835,7 @@ export const MCP_TOOLS = [
       // Live per-endpoint health overlay, same rule as list_endpoints above.
       if (
         Array.isArray(data?.endpoints) &&
-        data.endpoints.some((endpoint) => endpoint?.surface_id)
+        data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
       ) {
         const overlaid = overlayArtifactEndpoints(
           data,
@@ -9769,8 +9848,8 @@ export const MCP_TOOLS = [
   },
   {
     ...LIST_SUBNET_ENDPOINTS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadSubnetEndpointsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSubnetEndpointsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -9790,15 +9869,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadArtifactData(ctx, `/metagraph/candidates/${netuid}.json`);
     },
   },
   {
     ...LIST_SUBNET_CANDIDATES_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadSubnetCandidatesList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSubnetCandidatesList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -9817,15 +9896,15 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadArtifactData(ctx, `/metagraph/evidence/${netuid}.json`);
     },
   },
   {
     ...LIST_SUBNET_EVIDENCE_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadSubnetEvidenceList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSubnetEvidenceList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -9845,7 +9924,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       return loadArtifactData(ctx, `/metagraph/surfaces/${netuid}.json`);
     },
@@ -9863,7 +9942,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/fixtures.json");
     },
   },
@@ -9881,80 +9960,80 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/schemas/index.json");
     },
   },
   {
     ...LIST_SEARCH_INDEX_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadSearchIndexList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSearchIndexList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_SEARCH_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadSearchList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSearchList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_CURATION_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadCurationList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadCurationList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_GAPS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadGapsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadGapsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ENRICHMENT_QUEUE_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadEnrichmentQueueList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadEnrichmentQueueList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ADAPTER_CANDIDATES_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadAdapterCandidatesList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadAdapterCandidatesList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ENRICHMENT_EVIDENCE_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadEnrichmentEvidenceList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadEnrichmentEvidenceList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_REVIEW_GAPS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadReviewGapsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadReviewGapsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_REVIEW_ENRICHMENT_TARGETS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadReviewEnrichmentTargetsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadReviewEnrichmentTargetsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ENDPOINT_POOLS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadEndpointPoolsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadEndpointPoolsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_ENDPOINT_INCIDENTS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadEndpointIncidentsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadEndpointIncidentsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
     ...LIST_PROVIDER_ENDPOINTS_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadProviderEndpointsList(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadProviderEndpointsList(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -9970,7 +10049,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/lineage.json");
     },
   },
@@ -9989,14 +10068,14 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadFreshness(ctx);
     },
   },
   {
     ...GET_CONTRACTS_MCP_TOOL,
-    async handler(_args, ctx) {
-      return loadContracts(ctx);
+    async handler(_args: unknown, ctx: McpCtx) {
+      return loadContracts(asMcpLoaderCtx(ctx));
     },
   },
   {
@@ -10013,27 +10092,26 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/source-health.json");
     },
   },
   {
     ...GET_CHANGELOG_MCP_TOOL,
-    async handler(_args, ctx) {
-      return loadChangelog(ctx);
+    async handler(_args: unknown, ctx: McpCtx) {
+      return loadChangelog(asMcpLoaderCtx(ctx));
     },
   },
   {
     ...GET_FEED_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadFeedItems(ctx, args, {
+    async handler(args: Row, ctx: McpCtx) {
+      return loadFeedItems(asMcpLoaderCtx(ctx), args, {
         // Same cross-subnet incident ledger + wiring get_global_incidents uses
         // (mcpObservedAt), widest window (30d) -- get_feed's own since/until
         // narrow further from there.
         async loadIncidents() {
           return loadGlobalIncidents({
             windowLabel: "30d",
-            windowDays: 30,
             observedAt: await mcpObservedAt(ctx),
           });
         },
@@ -10042,14 +10120,14 @@ export const MCP_TOOLS = [
   },
   {
     ...GET_BUILD_MCP_TOOL,
-    async handler(_args, ctx) {
-      return loadBuildSummary(ctx);
+    async handler(_args: unknown, ctx: McpCtx) {
+      return loadBuildSummary(asMcpLoaderCtx(ctx));
     },
   },
   {
     ...GET_ADAPTER_MCP_TOOL,
-    async handler(args, ctx) {
-      return loadAdapter(ctx, args);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadAdapter(asMcpLoaderCtx(ctx), args);
     },
   },
   {
@@ -10070,7 +10148,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const live = await mcpLiveHealth(ctx);
       if (args?.netuid === undefined || args?.netuid === null) {
         const index = await loadArtifactData(
@@ -10089,8 +10167,8 @@ export const MCP_TOOLS = [
   },
   {
     ...GET_AGENT_RESOURCES_MCP_TOOL,
-    async handler(_args, ctx) {
-      return loadAgentResources(ctx);
+    async handler(_args: unknown, ctx: McpCtx) {
+      return loadAgentResources(asMcpLoaderCtx(ctx));
     },
   },
   {
@@ -10116,12 +10194,12 @@ export const MCP_TOOLS = [
       required: [],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label } = parsed;
+      const { label } = parsed!;
       return (
         (await tryPostgresTier(
           ctx.env,
@@ -10154,7 +10232,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const limit = clampLimit(args?.limit, 3, 10);
       const poolData = await loadArtifactData(ctx, "/metagraph/rpc/pools.json");
       const liveRpcPool = ctx.readHealthKv
@@ -10167,9 +10245,12 @@ export const MCP_TOOLS = [
       // Pool map keys ("0"/"1"/"2") are pool indices, NOT networks — and the
       // same physical endpoint can appear in more than one pool. Dedupe by
       // endpoint id, keeping the best-scored instance.
-      const bestById = new Map();
+      const bestById = new Map<string, Row>();
       for (const pool of Object.values(pools)) {
-        const overlaid = overlayRpcPoolEligibility(pool, liveRpcPool);
+        const overlaid = overlayRpcPoolEligibility(
+          pool as Row,
+          liveRpcPool,
+        ) as Row;
         for (const endpoint of overlaid.endpoints || []) {
           if (!endpoint.pool_eligible) continue;
           const existing = bestById.get(endpoint.id);
@@ -10239,7 +10320,7 @@ export const MCP_TOOLS = [
       required: ["method"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       if (typeof args?.method !== "string" || !args.method) {
         throw toolError(
           "invalid_params",
@@ -10277,7 +10358,7 @@ export const MCP_TOOLS = [
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "cf-connecting-ip": ctx.clientIp,
+            "cf-connecting-ip": ctx.clientIp ?? "",
           },
           body: JSON.stringify(rpcRequestBody),
         },
@@ -10300,14 +10381,20 @@ export const MCP_TOOLS = [
         // handleRpcProxyRequest's every error path goes through workers/http.ts's
         // errorResponse(), which always populates error.code/error.message -- no
         // "malformed error body" case exists to guess a fallback for.
-        throw toolError(payload.error.code, payload.error.message);
+        throw toolError(
+          (payload as Row).error.code,
+          (payload as Row).error.message,
+        );
       }
       return {
         network,
         method: args.method,
-        jsonrpc: payload?.jsonrpc ?? "2.0",
-        result: payload && "result" in payload ? payload.result : null,
-        error: payload?.error ?? null,
+        jsonrpc: (payload as Row | null)?.jsonrpc ?? "2.0",
+        result:
+          payload && "result" in (payload as Row)
+            ? (payload as Row).result
+            : null,
+        error: (payload as Row | null)?.error ?? null,
         endpoint_id: response.headers.get("x-metagraph-rpc-endpoint-id"),
         provider: response.headers.get("x-metagraph-rpc-provider"),
         cache: response.headers.get("x-metagraph-rpc-cache"),
@@ -10364,7 +10451,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: true,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const query = requireString(args, "query");
       if (
         args?.variables !== undefined &&
@@ -10386,7 +10473,7 @@ export const MCP_TOOLS = [
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "cf-connecting-ip": ctx.clientIp,
+          "cf-connecting-ip": ctx.clientIp ?? "",
         },
         body: JSON.stringify({ query, variables: args?.variables }),
       });
@@ -10411,8 +10498,8 @@ export const MCP_TOOLS = [
       // Both are surfaced to the agent as { data, errors } rather than thrown,
       // so it can read partial data and the error detail together.
       return {
-        data: payload?.data ?? null,
-        errors: payload?.errors ?? [],
+        data: (payload as Row | null)?.data ?? null,
+        errors: (payload as Row | null)?.errors ?? [],
       };
     },
   },
@@ -10428,14 +10515,14 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/registry-summary.json");
     },
   },
   {
     ...GET_COVERAGE_MCP_TOOL,
-    async handler(_args, ctx) {
-      return loadRegistryCoverage(ctx);
+    async handler(_args: unknown, ctx: McpCtx) {
+      return loadRegistryCoverage(asMcpLoaderCtx(ctx));
     },
   },
   {
@@ -10451,7 +10538,7 @@ export const MCP_TOOLS = [
       properties: {},
       additionalProperties: false,
     },
-    async handler(_args, ctx) {
+    async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/coverage-depth.json");
     },
   },
@@ -10499,7 +10586,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const limit = clampLimit(args?.limit, 10, 50);
       const tier = optionalEnum(args, "tier", COVERAGE_DEPTH_TIERS);
       const severity = optionalEnum(
@@ -10517,7 +10604,7 @@ export const MCP_TOOLS = [
         "/metagraph/coverage-depth.json",
       );
       const rows = Array.isArray(scorecard.rows) ? scorecard.rows : [];
-      const rowsByNetuid = new Map(rows.map((row) => [row.netuid, row]));
+      const rowsByNetuid = new Map(rows.map((row: Row) => [row.netuid, row]));
       const queue = Array.isArray(scorecard.ranked_queue)
         ? scorecard.ranked_queue
         : [];
@@ -10533,19 +10620,19 @@ export const MCP_TOOLS = [
         candidates = [{ row, rank: null }];
       } else {
         candidates = queue
-          .map((entry) => ({
+          .map((entry: Row) => ({
             row: rowsByNetuid.get(entry.netuid) || entry,
             rank: entry.rank ?? null,
           }))
-          .filter((entry) => Number.isInteger(entry.row?.netuid));
+          .filter((entry: Row) => Number.isInteger(entry.row?.netuid));
       }
       const filters = { tier, severity, gap_code: gapCode, netuid };
       const targets = candidates
-        .filter(({ row }) =>
+        .filter(({ row }: Row) =>
           coverageDepthMatches(row, { tier, severity, gapCode }),
         )
         .slice(0, limit)
-        .map(({ row, rank }) => coverageDepthTarget(row, rank));
+        .map(({ row, rank }: Row) => coverageDepthTarget(row, rank));
       return {
         generated_at: scorecard.generated_at || null,
         coverage_depth_version: scorecard.coverage_depth_version || null,
@@ -10580,7 +10667,7 @@ export const MCP_TOOLS = [
       required: ["netuid"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const gaps = await loadOptionalArtifact(
         ctx,
@@ -10629,7 +10716,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const board = optionalEnum(args, "board", ECONOMIC_LEADERBOARD_BOARDS);
       const limit = clampLimit(args?.limit, 10, 100);
       const economics = await loadArtifactData(
@@ -10648,9 +10735,10 @@ export const MCP_TOOLS = [
         economicsRows: rows,
         subnetMeta: new Map(),
       });
-      const boards = {};
+      const boards: Row = {};
+      const rankedBoards = ranked.boards as Row;
       for (const key of ECONOMIC_LEADERBOARD_BOARDS) {
-        if (ranked.boards[key]) boards[key] = ranked.boards[key];
+        if (rankedBoards[key]) boards[key] = rankedBoards[key];
       }
       return {
         board: board || null,
@@ -10690,7 +10778,7 @@ export const MCP_TOOLS = [
       required: ["query"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       requireAi(ctx);
       const query = requireString(args, "query");
       await requireAiRateLimit(ctx, "semantic");
@@ -10724,7 +10812,7 @@ export const MCP_TOOLS = [
       required: ["question"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       requireAi(ctx);
       const question = requireString(args, "question");
       await requireAiRateLimit(ctx, "ask");
@@ -10765,7 +10853,7 @@ export const MCP_TOOLS = [
       required: ["task"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const task = requireString(args, "task");
       const limit = clampLimit(args?.limit, 5, 20);
       const live = await mcpLiveHealth(ctx);
@@ -10777,8 +10865,10 @@ export const MCP_TOOLS = [
       // result's `health` reflects the current cron-probed status, not the
       // build-time "unknown" stub baked into the artifact.
       const overlaidCatalog = overlayCatalogIndex(catalog, live) || catalog;
-      const byNetuid = new Map(
-        (overlaidCatalog.subnets || []).map((entry) => [entry.netuid, entry]),
+      const byNetuid = new Map<number, Row>(
+        (overlaidCatalog.subnets || []).map(
+          (entry: Row) => [entry.netuid, entry] as [number, Row],
+        ),
       );
       const { mode, ranked } = await rankSubnetsForTask(
         ctx,
@@ -10843,7 +10933,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const netuid = await resolveNetuid(ctx, args);
       const staticDetail = await loadArtifactData(
         ctx,
@@ -10853,54 +10943,56 @@ export const MCP_TOOLS = [
       const detail =
         overlayCatalogDetail(staticDetail, live, netuid) || staticDetail;
       const services = Array.isArray(detail.services) ? detail.services : [];
-      const callable = services.filter((s) => s.eligibility?.callable);
-      const steps = (callable.length > 0 ? callable : services).map((s) => ({
-        surface_id: s.surface_id,
-        kind: s.kind,
-        capability: s.capability,
-        base_url: s.base_url,
-        callable: Boolean(s.eligibility?.callable),
-        auth: {
-          required: Boolean(s.auth_required),
-          schemes: Array.isArray(s.auth_schemes) ? s.auth_schemes : [],
-        },
-        // Ready-to-run curl/Python/TS for a first call (issue #351).
-        // Regenerate from base_url + auth so cleartext credential guards stay
-        // current even when reading older catalogs with stored snippets.
-        snippets: generateServiceSnippets(s) || s.snippets || null,
-        schema: s.schema_artifact
-          ? {
-              available: true,
-              fetch_with: `get_api_schema with surface_id ${
-                s.schema_source?.surface_id || s.surface_id
-              }`,
-              schema_url: s.schema_url || null,
-            }
-          : { available: false, schema_url: s.schema_url || null },
-        fixture: s.fixture
-          ? {
-              available: true,
-              fetch_with: `get_fixture with surface_id ${s.surface_id}`,
-              artifact_path: s.fixture.artifact_path,
-              captured_at: s.fixture.captured_at,
-              response_status: s.fixture.response?.status ?? null,
-              content_type: s.fixture.response?.content_type ?? null,
-            }
-          : {
-              available: false,
-              status: s.fixture_status?.status || "missing",
-              reason:
-                s.fixture_status?.reason || "no captured fixture available",
-            },
-        health: {
-          status: s.health?.status ?? "unknown",
-          stale: s.health?.stale ?? false,
-          observed_by: s.health?.observed_by ?? null,
-        },
-      }));
+      const callable = services.filter((s: Row) => s.eligibility?.callable);
+      const steps = (callable.length > 0 ? callable : services).map(
+        (s: Row) => ({
+          surface_id: s.surface_id,
+          kind: s.kind,
+          capability: s.capability,
+          base_url: s.base_url,
+          callable: Boolean(s.eligibility?.callable),
+          auth: {
+            required: Boolean(s.auth_required),
+            schemes: Array.isArray(s.auth_schemes) ? s.auth_schemes : [],
+          },
+          // Ready-to-run curl/Python/TS for a first call (issue #351).
+          // Regenerate from base_url + auth so cleartext credential guards stay
+          // current even when reading older catalogs with stored snippets.
+          snippets: generateServiceSnippets(s) || s.snippets || null,
+          schema: s.schema_artifact
+            ? {
+                available: true,
+                fetch_with: `get_api_schema with surface_id ${
+                  s.schema_source?.surface_id || s.surface_id
+                }`,
+                schema_url: s.schema_url || null,
+              }
+            : { available: false, schema_url: s.schema_url || null },
+          fixture: s.fixture
+            ? {
+                available: true,
+                fetch_with: `get_fixture with surface_id ${s.surface_id}`,
+                artifact_path: s.fixture.artifact_path,
+                captured_at: s.fixture.captured_at,
+                response_status: s.fixture.response?.status ?? null,
+                content_type: s.fixture.response?.content_type ?? null,
+              }
+            : {
+                available: false,
+                status: s.fixture_status?.status || "missing",
+                reason:
+                  s.fixture_status?.reason || "no captured fixture available",
+              },
+          health: {
+            status: s.health?.status ?? "unknown",
+            stale: s.health?.stale ?? false,
+            observed_by: s.health?.observed_by ?? null,
+          },
+        }),
+      );
       const isCallable = callable.length > 0;
-      const schemaStep = steps.find((s) => s.schema.available);
-      const fixtureStep = steps.find((s) => s.fixture.available);
+      const schemaStep = steps.find((s: Row) => s.schema.available);
+      const fixtureStep = steps.find((s: Row) => s.fixture.available);
       return {
         netuid,
         name: detail.name,
@@ -10946,7 +11038,7 @@ export const MCP_TOOLS = [
       },
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       const catalog = await loadArtifactData(
         ctx,
         "/metagraph/operational-surfaces.json",
@@ -11035,7 +11127,7 @@ export const MCP_TOOLS = [
       required: ["surface_id"],
       additionalProperties: false,
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       if (typeof args?.surface_id !== "string" || !args.surface_id) {
         throw toolError("invalid_params", "surface_id is required.");
       }
@@ -11168,7 +11260,9 @@ export const MCP_TOOLS = [
             );
           }
           const suppliedNames = Object.keys(args.credential);
-          const missing = names.filter((n) => !suppliedNames.includes(n));
+          const missing = names.filter(
+            (n: unknown) => !suppliedNames.includes(n as string),
+          );
           const unexpected = suppliedNames.filter((n) => !names.includes(n));
           if (missing.length > 0 || unexpected.length > 0) {
             throw toolError(
@@ -11254,7 +11348,7 @@ export const MCP_TOOLS = [
             "This surface has no captured schema, so path/method execution is not available for it -- omit path/method to call its single declared url instead.",
           );
         }
-        const match = matchSchemaOperation(
+        const match: Row | null = matchSchemaOperation(
           schema.document,
           args.path,
           normalizedMethod,
@@ -11337,19 +11431,24 @@ export const MCP_TOOLS = [
       if (credentialPlacement?.location === "body" && !requestContentType) {
         requestContentType = "application/json";
       }
-      const result = await callSubnetSurface(surface, {
-        query:
-          args.query && typeof args.query === "object" ? args.query : undefined,
-        path: hasPath ? args.path : undefined,
-        method: hasPath ? normalizedMethod : undefined,
-        body: requestBody,
-        contentType: requestContentType,
-        credential: credentialPlacement,
-        fetchImpl: globalThis.fetch,
-        isUnsafeUrl: workerResolvedUrlSafetyGuard({
+      const result = await callSubnetSurface(
+        surface as unknown as Parameters<typeof callSubnetSurface>[0],
+        {
+          query:
+            args.query && typeof args.query === "object"
+              ? args.query
+              : undefined,
+          path: hasPath ? args.path : undefined,
+          method: hasPath ? normalizedMethod : undefined,
+          body: requestBody,
+          contentType: requestContentType,
+          credential: credentialPlacement,
           fetchImpl: globalThis.fetch,
-        }),
-      });
+          isUnsafeUrl: workerResolvedUrlSafetyGuard({
+            fetchImpl: globalThis.fetch,
+          }),
+        },
+      );
       if (!result.ok) {
         if (
           result.unsafe_url ||
@@ -11430,7 +11529,7 @@ export const MCP_TOOLS = [
         data: {},
       },
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       if (typeof args?.query_id !== "string" || !args.query_id) {
         throw toolError("invalid_params", "Argument `query_id` is required.");
       }
@@ -11481,7 +11580,7 @@ export const MCP_TOOLS = [
         args: { type: "object" },
       },
     },
-    async handler(args) {
+    async handler(args: Row) {
       if (
         typeof args?.to !== "string" ||
         !/^0x[0-9a-fA-F]{40}$/.test(args.to)
@@ -11541,7 +11640,7 @@ export const MCP_TOOLS = [
         queried_at: { type: ["string", "null"] },
       },
     },
-    async handler(args, ctx) {
+    async handler(args: Row, ctx: McpCtx) {
       if (typeof args?.h160 !== "string" || !H160_PATTERN.test(args.h160)) {
         throw toolError(
           "invalid_params",
@@ -15664,8 +15763,9 @@ const TOOL_OUTPUT_SCHEMAS = {
 };
 
 export function listToolDefinitions() {
-  return MCP_TOOLS.map((tool) => {
-    const outputSchema = tool.outputSchema || TOOL_OUTPUT_SCHEMAS[tool.name];
+  return MCP_TOOLS.map((tool: Row) => {
+    const outputSchema =
+      tool.outputSchema || (TOOL_OUTPUT_SCHEMAS as Row)[tool.name];
     return {
       name: tool.name,
       title: tool.title,
@@ -15802,20 +15902,26 @@ const FIXED_RESOURCES = [
 // no change signal, so subscribing to one would accept silently and then
 // never fire. Checked in the resources/subscribe dispatch case below.
 // #6034: also metagraph://subnet/{netuid}/status (predicate, not a fixed set).
-function isSubscribableResourceUri(uri) {
+function isSubscribableResourceUri(uri: string) {
   return isSubscribableMcpResourceUri(uri);
 }
 
 const RESOURCE_PAGE_SIZE = 100;
 
-function resourceEntry(uri, name, title, description, mimeType) {
+function resourceEntry(
+  uri: string,
+  name: string,
+  title: string,
+  description: string,
+  mimeType: string,
+) {
   return { uri, name, title, description, mimeType };
 }
 
 // Build the full ordered resource list from the registry indexes — the same
 // artifacts the tools read, so resources never drift from tools. A missing index
 // degrades gracefully (that section is omitted rather than erroring the list).
-async function listAllResources(ctx) {
+async function listAllResources(ctx: McpCtx) {
   const out = FIXED_RESOURCES.map((r) =>
     resourceEntry(r.uri, r.name, r.title, r.description, r.mimeType),
   );
@@ -15876,23 +15982,23 @@ async function listAllResources(ctx) {
   return out;
 }
 
-function decodeResourceCursor(cursor) {
+function decodeResourceCursor(cursor: unknown) {
   if (cursor == null) return 0;
   const n = Number.parseInt(String(cursor), 10);
   return Number.isInteger(n) && n >= 0 ? n : 0;
 }
 
-async function listResources(params, ctx) {
+async function listResources(params: Row, ctx: McpCtx) {
   const all = await listAllResources(ctx);
   const start = decodeResourceCursor(params?.cursor);
   const page = all.slice(start, start + RESOURCE_PAGE_SIZE);
   const next = start + RESOURCE_PAGE_SIZE;
-  const result = { resources: page };
+  const result: Row = { resources: page };
   if (next < all.length) result.nextCursor = String(next);
   return result;
 }
 
-function parseResourceUri(uri) {
+function parseResourceUri(uri: string) {
   if (typeof uri !== "string" || !uri.startsWith("metagraph://")) return null;
   const rest = uri.slice("metagraph://".length);
   const slash = rest.indexOf("/");
@@ -15904,7 +16010,7 @@ function parseResourceUri(uri) {
 
 // Map a metagraph:// URI to its backing artifact path, validating each id so it
 // cannot escape its R2 namespace (the id is part of the R2 key).
-function resourceArtifactPath(uri) {
+function resourceArtifactPath(uri: string) {
   const fixed = FIXED_RESOURCES.find((r) => r.uri === uri);
   if (fixed) return fixed.artifact;
   const parsed = parseResourceUri(uri);
@@ -15930,7 +16036,7 @@ function resourceArtifactPath(uri) {
 // (binding absent in local/CI, or genuinely no chain event has landed since
 // the hub last cold-started) -- a subscribed client's first resources/read
 // after subscribing is a normal, expected case, not a fault.
-async function readLiveChainStreamResource(ctx) {
+async function readLiveChainStreamResource(ctx: McpCtx) {
   if (!ctx.env.CHAIN_FIREHOSE_HUB) {
     return {
       table: null,
@@ -15947,7 +16053,7 @@ async function readLiveChainStreamResource(ctx) {
   return payload ?? { table: null, message: "no chain event observed yet" };
 }
 
-async function readSubnetStatusResource(ctx, netuid) {
+async function readSubnetStatusResource(ctx: McpCtx, netuid: number) {
   const [live, reliability] = await Promise.all([
     mcpLiveHealth(ctx),
     loadSubnetReliability(),
@@ -15967,7 +16073,7 @@ async function readSubnetStatusResource(ctx, netuid) {
   };
 }
 
-async function readResource(params, ctx) {
+async function readResource(params: Row, ctx: McpCtx) {
   const uri = params?.uri;
   if (uri === MCP_CHAIN_STREAM_RESOURCE_URI) {
     const data = await readLiveChainStreamResource(ctx);
@@ -16010,7 +16116,7 @@ async function readResource(params, ctx) {
 // mirroring the lesson from this session's graphql-ws fix
 // (validateChainEventsSubscribePayload) -- a hand-rolled second validation
 // path is exactly how a security guarantee quietly drifts from the first.
-async function subscribeResource(params, ctx) {
+async function subscribeResource(params: Row, ctx: McpCtx) {
   const uri = params?.uri;
   if (typeof uri !== "string" || !isSubscribableResourceUri(uri)) {
     throw toolError(
@@ -16050,7 +16156,7 @@ async function subscribeResource(params, ctx) {
   return {};
 }
 
-async function unsubscribeResource(params, ctx) {
+async function unsubscribeResource(params: Row, ctx: McpCtx) {
   const uri = params?.uri;
   if (typeof uri !== "string") {
     throw toolError("invalid_params", "Missing required field: uri.");
@@ -16095,7 +16201,7 @@ export const MCP_PROMPTS = [
         required: true,
       },
     ],
-    build: (a) =>
+    build: (a: Row) =>
       `Integrate with Bittensor subnet ${a.netuid} using the metagraphed tools, in order:\n` +
       `1. get_subnet { netuid: ${a.netuid} } — identity + surface overview.\n` +
       `2. list_subnet_apis { netuid: ${a.netuid} } — callable services with base URL, auth, schema URL, health.\n` +
@@ -16115,7 +16221,7 @@ export const MCP_PROMPTS = [
         required: true,
       },
     ],
-    build: (a) =>
+    build: (a: Row) =>
       `Find Bittensor subnets that can do: "${a.task}". Use the metagraphed tools:\n` +
       `1. find_subnet_for_task { task: ${JSON.stringify(a.task)} } — goal-matched callable subnets.\n` +
       `2. semantic_search { q: ${JSON.stringify(a.task)} } — broader meaning-based discovery if needed.\n` +
@@ -16130,7 +16236,7 @@ export const MCP_PROMPTS = [
     arguments: [
       { name: "netuid", description: "The subnet netuid.", required: true },
     ],
-    build: (a) =>
+    build: (a: Row) =>
       `Assess operational health + fallbacks for subnet ${a.netuid}:\n` +
       `1. get_subnet_health { netuid: ${a.netuid} } — per-surface status, latency, reliability.\n` +
       `2. get_best_rpc_endpoint {} — a live-healthy Bittensor base-layer RPC endpoint to fall back to.\n` +
@@ -16149,7 +16255,7 @@ export function listPromptDefinitions() {
   }));
 }
 
-function getPrompt(params) {
+function getPrompt(params: Row) {
   const prompt = PROMPTS_BY_NAME.get(params?.name);
   if (!prompt) {
     throw toolError(
@@ -16174,8 +16280,8 @@ function getPrompt(params) {
   };
 }
 
-function negotiateProtocol(requested) {
-  return MCP_PROTOCOL_VERSIONS.includes(requested)
+function negotiateProtocol(requested: unknown) {
+  return MCP_PROTOCOL_VERSIONS.includes(requested as string)
     ? requested
     : MCP_LATEST_PROTOCOL;
 }
@@ -16196,7 +16302,7 @@ function negotiateProtocol(requested) {
 // but only after recordMcpToolCallEvent (src/usage-telemetry.ts) redacts and
 // size-caps them; see that module's header comment for why (no SDK
 // instrument() wrapper here, so no default redaction pipeline either).
-async function callTool(params, ctx) {
+async function callTool(params: Row, ctx: McpCtx) {
   const startedAt = Date.now();
   const result = await dispatchTool(params, ctx);
   const durationMs = Date.now() - startedAt;
@@ -16232,7 +16338,7 @@ async function callTool(params, ctx) {
  * @param {object} ctx
  * @param {object} event
  */
-function scheduleToolUsageEvent(ctx, event) {
+function scheduleToolUsageEvent(ctx: McpCtx, event: Row) {
   try {
     if (!isUsageTelemetryConfigured(ctx?.env)) return;
     const record = ctx?.recordUsageEvent ?? recordUsageEvent;
@@ -16243,7 +16349,7 @@ function scheduleToolUsageEvent(ctx, event) {
   }
 }
 
-function scheduleMcpToolCallEvent(ctx, event) {
+function scheduleMcpToolCallEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordMcpToolCallEvent ?? recordMcpToolCallEvent;
     const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
@@ -16253,7 +16359,7 @@ function scheduleMcpToolCallEvent(ctx, event) {
   }
 }
 
-function scheduleMcpInitializeEvent(ctx, event) {
+function scheduleMcpInitializeEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordMcpInitializeEvent ?? recordMcpInitializeEvent;
     const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
@@ -16266,7 +16372,7 @@ function scheduleMcpInitializeEvent(ctx, event) {
 // metagraphed#7758: PostHog $exception capture, parallel-run alongside the
 // existing Sentry.captureException at the same site below. Same
 // waitUntil/no-throw discipline as the schedulers above.
-function scheduleExceptionEvent(ctx, event) {
+function scheduleExceptionEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordExceptionEvent ?? recordExceptionEvent;
     const pending = Promise.resolve(record(ctx?.env, event)).catch(() => false);
@@ -16276,7 +16382,7 @@ function scheduleExceptionEvent(ctx, event) {
   }
 }
 
-async function dispatchTool(params, ctx) {
+async function dispatchTool(params: Row, ctx: McpCtx) {
   const name = params?.name;
   const tool = typeof name === "string" ? TOOLS_BY_NAME.get(name) : undefined;
   if (!tool) {
@@ -16306,7 +16412,8 @@ async function dispatchTool(params, ctx) {
       structuredContent: data,
       isError: false,
     };
-  } catch (error) {
+  } catch (rawError) {
+    const error = rawError as Row;
     if (error?.toolError) {
       return {
         content: [{ type: "text", text: `${error.code}: ${error.message}` }],
@@ -16355,7 +16462,7 @@ async function dispatchTool(params, ctx) {
 
 // Dispatch a single JSON-RPC message. Returns the response object for requests,
 // or null for notifications (no id).
-async function dispatchMessage(message, ctx) {
+async function dispatchMessage(message: Row, ctx: McpCtx) {
   const isNotification =
     message === null ||
     typeof message !== "object" ||
@@ -16437,7 +16544,8 @@ async function dispatchMessage(message, ctx) {
           ? null
           : rpcError(id, RPC_METHOD_NOT_FOUND, `Unknown method: ${method}`);
     }
-  } catch (error) {
+  } catch (rawError) {
+    const error = rawError as Row;
     if (isNotification) return null;
     // A toolError thrown by a protocol method (resources/read, prompts/get) is a
     // bad-params condition, not an internal fault — surface it as -32602.
@@ -16450,16 +16558,16 @@ async function dispatchMessage(message, ctx) {
   }
 }
 
-function rpcResult(id, result) {
+function rpcResult(id: unknown, result: Row) {
   return { jsonrpc: JSONRPC_VERSION, id, result };
 }
 
-function rpcError(id, code, message) {
+function rpcError(id: unknown, code: number, message: string) {
   return { jsonrpc: JSONRPC_VERSION, id, error: { code, message } };
 }
 
 // Build the MCP processing context from the Worker request + injected deps.
-function buildContext(request, env, deps) {
+function buildContext(request: Request, env: Env, deps: Row) {
   let domain;
   try {
     domain = new URL(request.url).host || PRIMARY_DOMAIN;
@@ -16495,18 +16603,22 @@ const MCP_HEADERS = {
   "cache-control": "no-store",
 };
 
-function jsonResponse(payload, status = 200, headers = {}) {
+function jsonResponse(
+  payload: unknown,
+  status: number = 200,
+  headers: Row = {},
+) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: { ...MCP_HEADERS, ...headers },
   });
 }
 
-function mcpClientKey(request) {
+function mcpClientKey(request: Request) {
   return resolveClientIp(request);
 }
 
-async function enforceMcpRateLimit(request, env) {
+async function enforceMcpRateLimit(request: Request, env: Env) {
   const limiter = env.MCP_RATE_LIMITER || env.RPC_RATE_LIMITER;
   if (!limiter?.limit) return null;
 
@@ -16548,7 +16660,7 @@ function bodyTooLargeResponse() {
 // than a shared helper since the two files' error-response shapes
 // (JSON-RPC vs GraphQL) differ enough that a shared abstraction would need
 // to take a response-builder callback for no real reuse benefit.
-async function readLimitedMcpBody(request) {
+async function readLimitedMcpBody(request: Request) {
   const declaredLength = Number(request.headers.get("content-length") || 0);
   if (Number.isFinite(declaredLength) && declaredLength > MAX_MCP_BODY_BYTES) {
     return { error: bodyTooLargeResponse() };
@@ -16600,7 +16712,7 @@ async function readLimitedMcpBody(request) {
 // only ever produces a response for a header that IS present and unrecognized
 // (which also correctly rejects a garbage value on `initialize` itself, since
 // a compliant client would never send one there).
-function validateMcpProtocolVersionHeader(request) {
+function validateMcpProtocolVersionHeader(request: Request) {
   const header = request.headers.get("mcp-protocol-version");
   if (!header || MCP_PROTOCOL_VERSIONS.includes(header)) return null;
   return jsonResponse(
@@ -16621,7 +16733,10 @@ function validateMcpProtocolVersionHeader(request) {
 // requiring the header this mints, and all three necessarily come after an
 // initialize. Batched/legacy-array requests predate the 2025-06-18 session
 // concept and are left alone.
-function mintMcpSessionHeaderIfNeeded(body, response) {
+function mintMcpSessionHeaderIfNeeded(
+  body: Row | null,
+  response: Row | null,
+): Record<string, string> {
   if (Array.isArray(body) || body?.method !== "initialize") return {};
   if (!response || response.error) return {};
   return { "mcp-session-id": crypto.randomUUID() };
@@ -16639,7 +16754,7 @@ const MCP_STREAM_HUB_UNAVAILABLE_RESPONSE = new Response(null, {
 // bounded-duration stream rather than an indefinite hold, and why it is a
 // separate Durable Object from the realtime chain firehose. Every other MCP
 // method is POST-only and stateless; this is the one GET route.
-async function handleMcpStreamRequest(request, env) {
+async function handleMcpStreamRequest(request: Request, env: Env) {
   const versionError = validateMcpProtocolVersionHeader(request);
   if (versionError) return versionError;
 
@@ -16694,7 +16809,7 @@ async function handleMcpStreamRequest(request, env) {
 // DELETE /mcp -- explicit client-initiated session termination (spec-
 // optional; supporting it lets a well-behaved client release its
 // McpSessionHub promptly instead of waiting out MCP_SESSION_IDLE_TTL_MS).
-async function handleMcpTerminateRequest(request, env) {
+async function handleMcpTerminateRequest(request: Request, env: Env) {
   const rawSessionId = request.headers.get("mcp-session-id");
   if (!isValidMcpSessionId(rawSessionId)) {
     return jsonResponse(
@@ -16737,7 +16852,11 @@ async function handleMcpTerminateRequest(request, env) {
 // artifact/KV readers from workers/api.mjs. POST carries the stateless
 // JSON-RPC 2.0 envelope; GET opens the SSE push stream; DELETE terminates a
 // session (see the two handlers above for both).
-export async function handleMcpRequest(request, env = {}, deps = {}) {
+export async function handleMcpRequest(
+  request: Request,
+  env: Env = {} as unknown as Env,
+  deps: Row = {},
+) {
   const rateLimitResponse = await enforceMcpRateLimit(request, env);
   if (rateLimitResponse) return rateLimitResponse;
 

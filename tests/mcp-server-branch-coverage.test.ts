@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleMcpRequest } from "../src/mcp-server.mjs";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
@@ -50,7 +50,7 @@ async function rpc(
     headers: headers || { "content-type": "application/json" },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
-  const response = await handleMcpRequest(request, env, deps);
+  const response = await handleMcpRequest(request, env as unknown as Env, deps);
   const text = await response.text();
   return {
     status: response.status,
@@ -1074,7 +1074,11 @@ describe("handleMcpRequest — rate limiter success + content-length guard", () 
       },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
     });
-    const response = await handleMcpRequest(request, {}, makeDeps());
+    const response = await handleMcpRequest(
+      request,
+      {} as unknown as Env,
+      makeDeps(),
+    );
     assert.equal(response.status, 413);
     const body = (await response.json()) as Row;
     assert.equal(body.error.code, -32600);

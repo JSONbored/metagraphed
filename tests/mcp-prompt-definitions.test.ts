@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { listPromptDefinitions } from "../src/mcp-server.mjs";
+import { listPromptDefinitions } from "../src/mcp-server.ts";
 
 describe("listPromptDefinitions", () => {
   test("returns a non-empty list of well-shaped prompt definitions", () => {

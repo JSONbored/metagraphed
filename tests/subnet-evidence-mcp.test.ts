@@ -20,7 +20,7 @@ import {
   MCP_INSTRUCTIONS,
   MCP_SERVER_VERSION,
   MCP_TOOLS,
-} from "../src/mcp-server.mjs";
+} from "../src/mcp-server.ts";
 
 const NETUID = 7;
 const ARTIFACT = subnetEvidenceArtifactPath(NETUID);
