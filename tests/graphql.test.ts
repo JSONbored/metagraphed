@@ -8847,7 +8847,7 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
     const env = fixtureEnv({
       "/metagraph/evidence/5.json": {
         netuid: 5,
-        sources: ["https://example.com"],
+        claims: [{ subject: "sn-5", claim: "Has API" }],
       },
     });
     const { status, body } = await gql("{ subnet_evidence(netuid: 5) }", env);
@@ -8856,14 +8856,53 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
     assert.equal(body.data.subnet_evidence.netuid, 5);
   });
 
-  test("subnet_evidence degrades to null when no record is baked", async () => {
-    const { status, body } = await gql("{ subnet_evidence(netuid: 999) }");
-    assert.equal(status, 200);
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.subnet_evidence, null);
+  test("subnet_evidence surfaces a missing artifact as a GraphQL error (#7879)", async () => {
+    const { body } = await gql("{ subnet_evidence(netuid: 999) }");
+    assert.ok(body.errors?.length);
   });
 
-  test("a negative netuid is a GraphQL error on both artifact fields", async () => {
+  test("subnet_evidence filters claims by q keyword (#7879)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/evidence/7.json": {
+        netuid: 7,
+        claims: [
+          { subject: "sn-7", claim: "Has OpenAPI" },
+          { subject: "sn-7", claim: "Has dashboard" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ subnet_evidence(netuid: 7, q: "OpenAPI") }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_evidence.returned, 1);
+    assert.equal(body.data.subnet_evidence.claims[0].claim, "Has OpenAPI");
+  });
+
+  test("subnet_evidence paginates claims with limit/cursor (#7879)", async () => {
+    const env = fixtureEnv({
+      "/metagraph/evidence/7.json": {
+        netuid: 7,
+        claims: [
+          { subject: "sn-7", claim: "A" },
+          { subject: "sn-7", claim: "B" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnet_evidence(netuid: 7, limit: 1) }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_evidence.total, 2);
+    assert.equal(body.data.subnet_evidence.returned, 1);
+    assert.equal(body.data.subnet_evidence.next_cursor, 1);
+  });
+
+  test("a negative netuid is a GraphQL error on subnet_gaps and subnet_evidence", async () => {
     for (const field of ["subnet_gaps", "subnet_evidence"]) {
       const { body } = await gql(`{ ${field}(netuid: -1) }`);
       assert.ok(body.errors, `expected a GraphQL error for ${field}`);
