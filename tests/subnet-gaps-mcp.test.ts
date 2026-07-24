@@ -416,10 +416,10 @@ describe("subnet-gaps-mcp", () => {
   test("the registered tool handler delegates to loadSubnetGapsList", async () => {
     const tool = MCP_TOOLS.find((t: Row) => t.name === "list_subnet_gaps");
     assert.ok(tool);
-    const out = await tool.handler(
+    const out = (await tool.handler(
       { netuid: NETUID, curation_level: "native" },
       { env: {}, readArtifact } as unknown as LoadCtx,
-    );
+    )) as Row;
     assert.equal(out.returned, 1);
     assert.equal(out.priorities[0].name, "alpha");
   });
