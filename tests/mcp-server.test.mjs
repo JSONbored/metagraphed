@@ -15430,6 +15430,99 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(byState.candidates[0].netuid, 12);
   });
 
+  test("list_candidates filters by id (case-insensitive exact match) (#7889)", async () => {
+    const deps = makeDeps({
+      "/metagraph/candidates.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        candidates: [
+          {
+            id: "sn-7-openapi",
+            netuid: 7,
+            kind: "openapi",
+            provider: "datura",
+            state: "verified",
+            confidence: "high",
+          },
+          {
+            id: "sn-7-website",
+            netuid: 7,
+            kind: "website",
+            provider: "datura",
+            state: "schema-valid",
+            confidence: "low",
+          },
+          {
+            id: "sn-12-openapi",
+            netuid: 12,
+            kind: "openapi",
+            provider: "datura",
+            state: "stale",
+            confidence: "medium",
+          },
+        ],
+      },
+    });
+    const lower = (
+      await callTool("list_candidates", { id: "sn-7-openapi" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(lower.total, 1);
+    assert.equal(lower.candidates[0].id, "sn-7-openapi");
+
+    const upper = (
+      await callTool("list_candidates", { id: "SN-7-OPENAPI" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(upper.total, 1);
+    assert.equal(upper.candidates[0].id, "sn-7-openapi");
+  });
+
+  test("list_candidates filters by confidence (#7889)", async () => {
+    const deps = makeDeps({
+      "/metagraph/candidates.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        candidates: [
+          {
+            id: "sn-7-openapi",
+            netuid: 7,
+            kind: "openapi",
+            confidence: "high",
+            provider: "datura",
+            state: "verified",
+          },
+          {
+            id: "sn-7-website",
+            netuid: 7,
+            kind: "website",
+            confidence: "low",
+            provider: "datura",
+            state: "schema-valid",
+          },
+          {
+            id: "sn-12-openapi",
+            netuid: 12,
+            kind: "openapi",
+            confidence: "medium",
+            provider: "datura",
+            state: "stale",
+          },
+        ],
+      },
+    });
+    const byMedium = (
+      await callTool("list_candidates", { confidence: "medium" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(byMedium.total, 1);
+    assert.equal(byMedium.candidates[0].id, "sn-12-openapi");
+    assert.ok(byMedium.candidates.every((row) => row.confidence === "medium"));
+
+    const bad = await callTool(
+      "list_candidates",
+      { confidence: "extreme" },
+      { deps },
+    );
+    assert.equal(bad.body.result.isError, true);
+    assert.match(bad.body.result.content[0].text, /invalid_params/);
+  });
+
   test("list_candidates combines filters (AND) and reports total vs returned", async () => {
     const deps = candidatesDeps();
     const res = await callTool(

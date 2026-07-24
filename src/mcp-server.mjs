@@ -92,6 +92,12 @@ import {
   loadGapsList,
 } from "./gaps-mcp.ts";
 import {
+  LIST_CANDIDATES_INSTRUCTIONS,
+  LIST_CANDIDATES_MCP_TOOL,
+  LIST_CANDIDATES_OUTPUT_SCHEMA,
+  loadCandidatesList,
+} from "./candidates-mcp.ts";
+import {
   LIST_ENRICHMENT_QUEUE_INSTRUCTIONS,
   LIST_ENRICHMENT_QUEUE_MCP_TOOL,
   LIST_ENRICHMENT_QUEUE_OUTPUT_SCHEMA,
@@ -993,8 +999,8 @@ export const MCP_INSTRUCTIONS =
   "get_agent_catalog the capability catalog, " +
   LIST_PROVIDERS_INSTRUCTIONS +
   LIST_SURFACES_INSTRUCTIONS +
-  "list_candidates the " +
-  "unpromoted candidate surfaces still pending review, list_endpoints the " +
+  LIST_CANDIDATES_INSTRUCTIONS +
+  "list_endpoints the " +
   "network-wide monitored endpoint-resource catalog, " +
   LIST_EVIDENCE_INSTRUCTIONS +
   "list_rpc_endpoints the monitored " +
@@ -9499,79 +9505,9 @@ export const MCP_TOOLS = [
     },
   },
   {
-    name: "list_candidates",
-    title: "List unpromoted candidate surfaces",
-    description:
-      "Fetch unpromoted candidate surfaces across all subnets: surfaces that " +
-      "have been discovered or proposed but not yet curated/promoted, each " +
-      "with its subnet (netuid), kind, provider, and review state. Use it to " +
-      "see what enrichment is still pending, versus the promoted catalog in " +
-      "list_surfaces. Optionally filter by netuid/kind/provider/state and page " +
-      "with limit/cursor — the full catalog can be large. Mirrors " +
-      "GET /api/v1/candidates.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        kind: {
-          type: "string",
-          enum: QUERY_ENUMS.surfaceKind,
-          description: "Surface kind, e.g. 'openapi' or 'subnet-api'.",
-        },
-        provider: {
-          type: "string",
-          description: "Provider slug, e.g. 'datura'.",
-        },
-        state: {
-          type: "string",
-          enum: QUERY_ENUMS.candidateState,
-          description: "Review state, e.g. 'schema-valid' or 'verified'.",
-        },
-        limit: {
-          type: "integer",
-          description: "Max candidates to return. Omit for the full list.",
-          minimum: 1,
-        },
-        cursor: {
-          type: "integer",
-          description:
-            "Pagination cursor from a prior response's next_cursor. Default 0.",
-          minimum: 0,
-        },
-      },
-      additionalProperties: false,
-    },
+    ...LIST_CANDIDATES_MCP_TOOL,
     async handler(args, ctx) {
-      const netuid = optionalNonNegativeInt(args, "netuid");
-      const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
-      const provider = optionalString(args, "provider");
-      const state = optionalEnum(args, "state", QUERY_ENUMS.candidateState);
-      const limit = optionalPositiveInt(args, "limit");
-      const cursor = optionalNonNegativeInt(args, "cursor") ?? 0;
-      const data = await loadArtifactData(ctx, "/metagraph/candidates.json");
-      const all = Array.isArray(data.candidates) ? data.candidates : [];
-      const filtered = all.filter(
-        (c) =>
-          (netuid === null || c.netuid === netuid) &&
-          (kind === null || c.kind === kind) &&
-          (provider === null || c.provider === provider) &&
-          (state === null || c.state === state),
-      );
-      const window = cursorWindow(filtered, {
-        collection: "candidates",
-        dataKey: "candidates",
-        limit,
-        cursor,
-      });
-      return {
-        ...data,
-        candidates: window.page,
-        total: window.total,
-        returned: window.returned,
-        cursor: window.cursor,
-        limit: window.limit,
-        next_cursor: window.next_cursor,
-      };
+      return loadCandidatesList(ctx, args);
     },
   },
   {
@@ -15303,21 +15239,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   },
   list_providers: LIST_PROVIDERS_OUTPUT_SCHEMA,
   list_surfaces: LIST_SURFACES_OUTPUT_SCHEMA,
-  list_candidates: {
-    type: "object",
-    additionalProperties: true,
-    required: [],
-    properties: {
-      candidates: { type: "array", items: { type: "object" } },
-      total: { type: "integer" },
-      returned: { type: "integer" },
-      cursor: { type: "integer" },
-      limit: { type: "integer" },
-      next_cursor: { type: ["integer", "null"] },
-      generated_at: NULLABLE_STRING,
-      schema_version: { type: ["string", "integer", "null"] },
-    },
-  },
+  list_candidates: LIST_CANDIDATES_OUTPUT_SCHEMA,
   list_endpoints: {
     type: "object",
     additionalProperties: true,
