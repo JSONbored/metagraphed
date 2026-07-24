@@ -8,6 +8,10 @@ import {
 } from "graphql";
 import * as Sentry from "@sentry/cloudflare";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
+// #7881: the same list-query helper the REST pipeline and the list_* MCP
+// loaders use, so subnet_health's filter/sort/page allowlists cannot drift
+// from GET /api/v1/subnets/{netuid}/health.
+import { applyQueryFilters } from "../workers/list-query.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 // #6986: GraphQL parity for source-snapshots, reusing list_source_snapshots'
 // own loader unchanged (same artifact read, filter, sort, and page logic REST
@@ -6422,7 +6426,19 @@ const rootValue = {
     };
   },
 
-  async subnet_health({ netuid }: QuerySubnet_HealthArgs, context: GqlContext) {
+  async subnet_health(args: QuerySubnet_HealthArgs, context: GqlContext) {
+    const {
+      netuid,
+      kind,
+      provider,
+      status,
+      classification,
+      sort,
+      order,
+      fields,
+      limit,
+      cursor,
+    } = args;
     // Same non-negative netuid gate the other per-subnet resolvers use --
     // GraphQL Int coercion rejects non-integers at parse time; a negative
     // netuid is a BAD_USER_INPUT error, not a silent card.
@@ -6449,17 +6465,63 @@ const rootValue = {
       loadSubnetReliability(),
     ]);
     const overlaid = overlaySubnetHealth(null, live, netuid);
-    if (overlaid) {
-      return { ...overlaid, reliability };
+    const card = overlaid
+      ? { ...overlaid, reliability }
+      : {
+          schema_version: 1,
+          netuid,
+          summary: { status: "unknown", surface_count: 0 },
+          operational_observed_at: null,
+          health_source: "unavailable",
+          reliability,
+          surfaces: [],
+        };
+    // #7881: apply the same list query GET /api/v1/subnets/{netuid}/health runs
+    // over the card's surfaces (listQuery("health-surfaces", { exclude:
+    // ["netuid"] })) -- kind/provider/status/classification filters plus
+    // sort/order, fields projection, and limit/cursor paging. applyQueryFilters
+    // is the same helper the REST pipeline and the list_* MCP loaders use, so
+    // the allowlists cannot drift; an unsupported value is a GraphQL error
+    // rather than a silently substituted default. With no filter args the card
+    // passes through with its surfaces intact.
+    const queryUrl = new URL("https://graphql.internal/subnets/health");
+    for (const [name, value] of [
+      ["kind", kind],
+      ["provider", provider],
+      ["status", status],
+      ["classification", classification],
+      ["sort", sort],
+      ["order", order],
+      ["fields", fields],
+      ["limit", limit],
+      ["cursor", cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
     }
+    const transformed = applyQueryFilters(card, queryUrl, "health-surfaces", [
+      "kind",
+      "provider",
+      "status",
+      "classification",
+    ]);
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const filtered = transformed.data as Row;
+    const page = ((transformed.meta as Row)?.pagination ?? {}) as Row;
+    const surfaces = Array.isArray(filtered.surfaces) ? filtered.surfaces : [];
     return {
-      schema_version: 1,
-      netuid,
-      summary: { status: "unknown", surface_count: 0 },
-      operational_observed_at: null,
-      health_source: "unavailable",
-      reliability,
-      surfaces: [],
+      ...card,
+      surfaces,
+      total: page.total ?? surfaces.length,
+      returned: page.returned ?? surfaces.length,
+      limit: page.limit ?? surfaces.length,
+      cursor: page.cursor ?? 0,
+      next_cursor: page.next_cursor ?? null,
+      sort: page.sort ?? null,
+      order: page.order ?? null,
     };
   },
 
