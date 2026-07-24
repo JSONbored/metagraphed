@@ -421,7 +421,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                 </div>
               </div>
 
-              <div className="mx-3 mb-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2">
+              <div className="mx-3 mb-2 rounded-lg border border-border/60 mg-glass-soft px-3 py-2">
                 <p className="text-[11px] text-ink-muted leading-relaxed">
                   <span className="font-medium text-ink">Paste anything:</span> wallet address
                   (ss58), block number, transaction hash (0x…) or block hash to jump directly.

@@ -654,7 +654,7 @@ function BackToTop({ threshold = 600 }) {
       tabIndex: visible ? 0 : -1,
       className: classNames(
         "fixed z-[var(--mg-z-overlay)] bottom-5 right-5 md:bottom-7 md:right-7",
-        "inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 backdrop-blur",
+        "inline-flex items-center gap-1.5 rounded-full border border-border mg-glass",
         "px-3 py-2 mg-type-label uppercase text-ink-strong",
         "shadow-[var(--mg-shadow-pop)] hover:border-accent/60 hover:text-accent",
         "transition-[opacity,transform,border-color,color] duration-200",
@@ -2925,7 +2925,7 @@ function MethodologyCallout({
     "aside",
     {
       "aria-label": "Data freshness and methodology",
-      className: "mb-6 rounded-lg border border-border bg-card/60",
+      className: "mb-6 rounded-lg border border-border mg-glass-soft",
       children: [
         /* @__PURE__ */ jsxs(
           "button",
@@ -5445,7 +5445,7 @@ function QueryBarRoot({
       className: classNames(
         "mg-query-shell",
         "flex w-full items-center gap-1 min-w-0",
-        "h-10 rounded-lg border border-border bg-card/60",
+        "h-10 rounded-lg border border-border mg-glass-soft",
         "px-1 transition-colors",
         "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
         "focus-within:ring-2 focus-within:ring-ring/60",

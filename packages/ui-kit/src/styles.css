@@ -371,6 +371,41 @@
   --mg-z-skip-link: 100; /* a11y skip-link -- must beat everything */
 }
 
+/* ============================================================
+ * Surface-translucency tiers (#7842) — the recurring
+ * `bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80` idiom
+ * (copy-pasted across every sticky table header and the compare-drawer
+ * shells) collapsed into one class, plus a second, blur-free tier for the
+ * softer `bg-card/60` inset panels. Both compose var(--card), so they
+ * theme automatically -- no separate dark-mode override needed.
+ * ============================================================ */
+.mg-glass {
+  background: color-mix(in oklab, var(--card) 95%, transparent);
+}
+@supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
+  .mg-glass {
+    background: color-mix(in oklab, var(--card) 80%, transparent);
+  }
+}
+/* Kept as its own unconditional, unnested rule rather than folded into the
+   @supports block above -- the CSS build (Lightning CSS, via tsup, and again
+   via apps/ui's own Tailwind pipeline) nests an additional color-mix()
+   feature-query fallback inside that block, which doesn't mix cleanly with
+   backdrop-filter there. A plain unsupported `backdrop-filter` declaration is
+   simply ignored by browsers that lack it, so this alone still achieves the
+   same progressive-enhancement result. No -webkit- fallback: Safari has
+   shipped unprefixed backdrop-filter since 18 (2024), and Lightning CSS's
+   minifier collapses two textually-identical blur(8px) declarations down to
+   just the prefixed one when both are present -- dropping the standard
+   property entirely, which is the opposite of what every other browser
+   needs. */
+.mg-glass {
+  backdrop-filter: blur(8px);
+}
+.mg-glass-soft {
+  background: color-mix(in oklab, var(--card) 60%, transparent);
+}
+
 /* ============ DARK — Ink + dialed mint ============ */
 .dark {
   --paper: oklch(0.14 0.003 250);

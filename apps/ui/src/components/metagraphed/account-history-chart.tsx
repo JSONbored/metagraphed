@@ -168,6 +168,10 @@ export function AccountHistoryChart({ ss58 }: { ss58: string }) {
       {availableNetuids.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="mg-type-micro text-ink-muted">scope</span>
+          {/* #7842: documented exception -- 80% doesn't cleanly snap to either
+              glass tier (mg-glass would add unwanted blur; mg-glass-soft's 60%
+              visibly lightens this segmented-toggle track). Kept as a bare
+              fraction rather than a wrong tier. */}
           <div className="inline-flex flex-wrap rounded-full border border-border/80 bg-card/80 p-1 shadow-[var(--mg-shadow-pill)]">
             <button
               type="button"

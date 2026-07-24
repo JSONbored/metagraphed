@@ -180,7 +180,7 @@ function EvidenceSection({
   if (links.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-3">
+    <div className="rounded-lg border border-border mg-glass-soft p-3">
       <div className="mb-2 flex items-center gap-2 mg-type-micro text-ink-muted">
         evidence &amp; sources
         <InfoTooltip label="Where the snapshot diff was derived from. Open or copy these to verify the change against the source." />

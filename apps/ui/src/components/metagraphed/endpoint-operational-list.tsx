@@ -171,7 +171,7 @@ export function EndpointOperationalList({
               </div>
             </header>
 
-            <div className="border-y border-border bg-card/40">
+            <div className="border-y border-border mg-glass-soft">
               {group.rows.map((endpoint, idx) => {
                 const open = expandedId === endpoint.id;
                 const providerSlug = endpoint.provider_slug;

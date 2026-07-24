@@ -82,6 +82,14 @@ const DESIGN_RULES = [
     message:
       "Raw z-index step. Use one of the --mg-z-* layer tokens (see styles.css).",
   },
+  {
+    // #7842: ad-hoc bg-card/NN opacity fractions collapsed into two named
+    // surface-translucency tiers (styles.css): .mg-glass (the sticky-header/
+    // drawer-shell blur idiom) and .mg-glass-soft (flat 60%, no blur).
+    selector: "Literal[value=/\\bbg-card\\/[0-9]+\\b/]",
+    message:
+      "Raw bg-card opacity. Use .mg-glass or .mg-glass-soft (see styles.css).",
+  },
 ];
 
 // SSR footguns -- see apps/ui/docs/ssr-safety.md. ui-kit's own components

@@ -61,7 +61,7 @@ export function DelegateCTA({ netuid, variant = "inline", className }: Props) {
     return (
       <Link
         to="/delegate"
-        className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-card/50 text-sm font-medium text-ink hover:border-ink/30 hover:text-ink-strong transition-colors ${className ?? "px-3.5 py-1.5 text-[12px]"}`}
+        className={`inline-flex items-center gap-1.5 rounded-full border border-border mg-glass-soft text-sm font-medium text-ink hover:border-ink/30 hover:text-ink-strong transition-colors ${className ?? "px-3.5 py-1.5 text-[12px]"}`}
       >
         <Coins aria-hidden className="size-3.5" />
         Delegate & Earn
