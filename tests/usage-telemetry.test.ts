@@ -1110,11 +1110,14 @@ describe("recordAiGenerationEvent", () => {
       {
         ...BASE,
         traceId: "11111111-1111-1111-1111-111111111111",
+        traceName: "ask",
         inputTokens: 200,
         outputTokens: 50,
         inputCostUsd: 0.000054,
         outputCostUsd: 0.0000425,
         modelParameters: { max_tokens: 512 },
+        input: [{ role: "user", content: "which subnet does X?" }],
+        outputChoices: [{ role: "assistant", content: "Subnet 5 does X." }],
       },
       { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
     );
@@ -1129,6 +1132,7 @@ describe("recordAiGenerationEvent", () => {
       properties.$ai_trace_id,
       "11111111-1111-1111-1111-111111111111",
     );
+    assert.equal(properties.$ai_trace_name, "ask");
     assert.equal(properties.$ai_model, BASE.model);
     assert.equal(properties.$ai_provider, "cloudflare_workers_ai");
     assert.equal(properties.$ai_latency, 1.5);
@@ -1137,20 +1141,39 @@ describe("recordAiGenerationEvent", () => {
     assert.equal(properties.$ai_output_tokens, 50);
     assert.equal(properties.$ai_is_error, false);
     assert.deepEqual(properties.$ai_model_parameters, { max_tokens: 512 });
+    assert.deepEqual(properties.$ai_input, [
+      { role: "user", content: "which subnet does X?" },
+    ]);
+    assert.deepEqual(properties.$ai_output_choices, [
+      { role: "assistant", content: "Subnet 5 does X." },
+    ]);
     assert.equal(properties.$ai_input_cost_usd, 0.000054);
     assert.equal(properties.$ai_output_cost_usd, 0.0000425);
     assert.equal(properties.$ai_total_cost_usd, 0.0000965);
     assert.equal("$ai_error" in properties, false);
   });
 
-  test("never captures prompt/completion content -- no field carries free text beyond the model id", async () => {
+  test("omits trace name/input/output when not supplied -- these are optional, not required", async () => {
     const calls: Row[] = [];
     await recordAiGenerationEvent(CONFIGURED, BASE, {
       fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
     });
-    const keys = Object.keys(calls[0].body.properties);
-    assert.equal(keys.includes("$ai_input"), false);
-    assert.equal(keys.includes("$ai_output_choices"), false);
+    const { properties } = calls[0].body;
+    assert.equal("$ai_trace_name" in properties, false);
+    assert.equal("$ai_input" in properties, false);
+    assert.equal("$ai_output_choices" in properties, false);
+  });
+
+  test("omits input/output when supplied as empty arrays", async () => {
+    const calls: Row[] = [];
+    await recordAiGenerationEvent(
+      CONFIGURED,
+      { ...BASE, input: [], outputChoices: [] },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const { properties } = calls[0].body;
+    assert.equal("$ai_input" in properties, false);
+    assert.equal("$ai_output_choices" in properties, false);
   });
 
   test("mints a fresh trace id when none is supplied", async () => {

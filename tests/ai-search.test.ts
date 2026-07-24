@@ -866,6 +866,19 @@ describe("askQuestion", () => {
     assert.ok(out.citations[0].score >= 0 && out.citations[0].score <= 1);
     assert.equal(out.context_count, 3);
   });
+  test("falls back to an empty answer when the model response has no text", async () => {
+    const noResponseAi = {
+      run(model: string) {
+        if (model === EMBED_MODEL) {
+          return Promise.resolve({ data: [new Array(1024).fill(0.02)] });
+        }
+        return Promise.resolve({});
+      },
+    };
+    const env = { AI: noResponseAi, VECTORIZE: stubVectorize() };
+    const out = await askQuestion(mockEnv(env), "Which subnet does images?");
+    assert.equal(out.answer, "");
+  });
   test("rejects a blank question", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
     await assert.rejects(() => askQuestion(mockEnv(env), ""), /required/);
@@ -941,9 +954,18 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
       properties.$ai_input_cost_usd + properties.$ai_output_cost_usd,
     );
     assert.deepEqual(properties.$ai_model_parameters, { max_tokens: 512 });
-    // Content-free: never the question, the retrieved context, or the answer.
-    assert.equal("$ai_input" in properties, false);
-    assert.equal("$ai_output_choices" in properties, false);
+    // #8082: askQuestion() only ever answers questions about public
+    // registry data, so content capture is deliberately on -- the full
+    // prompt (system + user message, including retrieved context) and the
+    // generated answer both reach PostHog.
+    assert.equal(properties.$ai_trace_name, "ask");
+    assert.ok(Array.isArray(properties.$ai_input));
+    assert.equal(properties.$ai_input[0].role, "system");
+    assert.equal(properties.$ai_input[1].role, "user");
+    assert.match(properties.$ai_input[1].content, /Which subnet does images\?/);
+    assert.deepEqual(properties.$ai_output_choices, [
+      { role: "assistant", content: "Subnet 1 does images [1]." },
+    ]);
   });
 
   test("omits cost fields when the model response carries no usage object", async () => {
@@ -999,6 +1021,10 @@ describe("askQuestion AI observability ($ai_generation, #7763)", () => {
     assert.equal(properties.$ai_is_error, true);
     assert.equal(properties.$ai_http_status, 500);
     assert.equal(properties.$ai_error, "Error: Workers AI unavailable");
+    // The prompt is known regardless of whether the call succeeded -- still
+    // sent on the error path (there's just no answer yet to include).
+    assert.ok(Array.isArray(properties.$ai_input));
+    assert.equal("$ai_output_choices" in properties, false);
   });
 
   test("never calls fetch when PostHog is unconfigured", async () => {

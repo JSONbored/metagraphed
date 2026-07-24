@@ -544,11 +544,17 @@ export async function recordExceptionEvent(
 // posthog-js-lite SDK source (posthog-ai/src/utils.ts), the same
 // verify-against-source approach #7758's $exception shape used.
 //
-// Content-free by design (#7763's explicit redaction posture): only
-// cost/token/latency/model metadata is ever sent, never the prompt or
-// completion text -- the same minimal-capture philosophy `usage_event` (top of
-// this file) already applies, extended to the one field class an LLM call
-// uniquely adds (tokens/cost).
+// #7763 started this content-free (only cost/token/latency/model metadata,
+// never prompt/completion text) as the default posture for an unscoped LLM
+// surface. #8082 is the deliberate reversal that clause called for: the one
+// caller of this function (askQuestion() in ai-search.ts) only ever answers
+// questions about public on-chain/registry data -- no private/authenticated
+// user content is ever in scope -- so the content-free default didn't earn
+// its keep here, and withholding it left PostHog's Input/Output Message
+// columns blank and Sentiment analysis unable to run (it reads the input/
+// output text). `input`/`outputChoices` below are genuinely optional on the
+// TYPE (a future caller with a real privacy-sensitive surface can simply
+// omit them and get the original #7763 behavior back).
 
 /** Inputs for one AI generation call. `error` mirrors ExceptionEvent's own
  * `error` (raw caught value, this module extracts type/message itself) --
@@ -560,6 +566,8 @@ export interface AiGenerationEvent {
    * outside a multi-step chain, so a fresh UUID is minted when omitted --
    * mirrors posthog-ai's own `uuidv4()` fallback. */
   traceId?: string;
+  /** Display label for the trace on PostHog's Traces page (e.g. "ask"). */
+  traceName?: string;
   latencyMs: number;
   isError: boolean;
   inputTokens?: number;
@@ -570,6 +578,12 @@ export interface AiGenerationEvent {
   outputCostUsd?: number;
   /** Generation config (e.g. `{ max_tokens }`), never prompt/completion text. */
   modelParameters?: Record<string, string | number | boolean>;
+  /** The prompt sent to the model, PostHog's `{role, content}[]` shape. See
+   * the module comment above for why this caller includes it. */
+  input?: Array<{ role: string; content: string }>;
+  /** The model's response, in PostHog's completion-choice shape. Same
+   * inclusion reasoning as `input` above. */
+  outputChoices?: Array<{ role: string; content: string }>;
   error?: unknown;
 }
 
@@ -611,8 +625,19 @@ export async function recordAiGenerationEvent(
       $ai_is_error: event.isError,
     };
 
+    const traceName = sanitizeLabel(event.traceName);
+    if (traceName !== undefined) properties.$ai_trace_name = traceName;
+
     if (event.modelParameters) {
       properties.$ai_model_parameters = event.modelParameters;
+    }
+
+    if (Array.isArray(event.input) && event.input.length > 0) {
+      properties.$ai_input = event.input;
+    }
+
+    if (Array.isArray(event.outputChoices) && event.outputChoices.length > 0) {
+      properties.$ai_output_choices = event.outputChoices;
     }
 
     if (
