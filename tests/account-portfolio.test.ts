@@ -4,7 +4,7 @@ import {
   buildAccountPortfolio,
   loadAccountPortfolio,
 } from "../src/account-portfolio.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -248,7 +248,7 @@ describe("GET /api/v1/accounts/{ss58}/portfolio", () => {
   test("cold store → 200 with an empty portfolio", async () => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/portfolio`),
-      neuronsEnv([]),
+      neuronsEnv([]) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);

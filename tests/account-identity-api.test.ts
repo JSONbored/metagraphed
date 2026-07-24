@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { buildAccountIdentity } from "../src/account-identity.ts";
 import { buildAccountIdentityHistory } from "../src/account-identity-history.ts";
 import type { Row } from "./row-type.ts";
@@ -76,7 +76,7 @@ test("GET /accounts/{ss58}/identity returns the account's identity (#4328)", asy
   const env = postgresIdentityEnv({ identity: identityRow() });
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -90,7 +90,7 @@ test("GET /accounts/{ss58}/identity returns the account's identity (#4328)", asy
 test("GET /accounts/{ss58}/identity rejects an unsupported query param", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity?bogus=1`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -99,7 +99,7 @@ test("GET /accounts/{ss58}/identity rejects an unsupported query param", async (
 test("GET /accounts/{ss58}/identity is schema-stable when D1 is cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -112,7 +112,7 @@ test("GET /accounts/{ss58}/identity-history returns the identity timeline (#4328
   const env = postgresIdentityEnv({ identityHistory: [historyRow()] });
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity-history`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -126,7 +126,7 @@ test("GET /accounts/{ss58}/identity-history returns the identity timeline (#4328
 test("GET /accounts/{ss58}/identity-history rejects an unsupported query param", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity-history?bogus=1`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -135,7 +135,7 @@ test("GET /accounts/{ss58}/identity-history rejects an unsupported query param",
 test("GET /accounts/{ss58}/identity-history is schema-stable when D1 is cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/identity-history`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -148,7 +148,7 @@ test("GET /accounts/{ss58}/identity-history is schema-stable when D1 is cold", a
 test("GET /testnet/accounts/{ss58}/identity has no variant (mainnet-only D1 tier)", async () => {
   const res = await handleRequest(
     req(`/api/v1/testnet/accounts/${SS58}/identity`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 404);

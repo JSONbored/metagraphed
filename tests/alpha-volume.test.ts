@@ -15,7 +15,7 @@ function volumeRow(kind: string, overrides: Row = {}) {
     ...overrides,
   };
 }
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -508,7 +508,7 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
   test("is schema-stable when D1 is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
-      volumeEnv([]),
+      volumeEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -540,7 +540,7 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
     };
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/volume"),
-      env,
+      env as unknown as Env,
       ctx,
     );
     const body = await res.json();
@@ -552,7 +552,7 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/volume?window=30d",
       ),
-      volumeEnv([]),
+      volumeEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -561,7 +561,7 @@ describe("GET /api/v1/subnets/{netuid}/volume via the Worker", () => {
   test("testnet has no variant (mainnet-only account_events tier)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/testnet/subnets/7/volume"),
-      volumeEnv([]),
+      volumeEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 404);

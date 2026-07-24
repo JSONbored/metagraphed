@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // #5745: ?format=csv on GET /api/v1/validators/{hotkey}/nominators, mirroring
@@ -16,7 +16,7 @@ function req(path: string, init?: RequestInit) {
 test("GET /validators/{hotkey}/nominators?format=csv emits a header-only CSV when there are no nominators (cold)", async () => {
   const res = await handleRequest(
     req(`/api/v1/validators/${HOTKEY}/nominators?format=csv`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -57,7 +57,7 @@ test("GET /validators/{hotkey}/nominators?format=csv exports the ranked nominato
   };
   const res = await handleRequest(
     req(`/api/v1/validators/${HOTKEY}/nominators?format=csv&window=30d`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -74,7 +74,7 @@ test("GET /validators/{hotkey}/nominators?format=csv exports the ranked nominato
 test("GET /validators/{hotkey}/nominators rejects an invalid ?format with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/validators/${HOTKEY}/nominators?format=xml`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);

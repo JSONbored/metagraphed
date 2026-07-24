@@ -5,7 +5,7 @@ import {
   buildSubnetHyperparams,
 } from "../src/subnet-hyperparams.ts";
 import type { Row } from "./row-type.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 function rawRow(overrides: Row = {}) {
@@ -206,7 +206,7 @@ describe("GET /api/v1/subnets/{netuid}/hyperparameters via the Worker", () => {
   test("is schema-stable when Postgres is unconfigured (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/hyperparameters"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -221,7 +221,7 @@ describe("GET /api/v1/subnets/{netuid}/hyperparameters via the Worker", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/hyperparameters?foo=bar",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);

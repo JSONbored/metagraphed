@@ -6,7 +6,7 @@ import {
   CHAIN_TURNOVER_LIMIT_MAX,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
 } from "../src/chain-turnover.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -393,7 +393,7 @@ describe("GET /api/v1/chain/turnover", () => {
       neuronDailyEnv({
         bounds: [{ start_date: null, end_date: null }],
         rows: [],
-      }),
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -406,7 +406,7 @@ describe("GET /api/v1/chain/turnover", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleRequest(
       request("?bogus=1"),
-      neuronDailyEnv({ bounds: [], rows: [] }),
+      neuronDailyEnv({ bounds: [], rows: [] }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -415,7 +415,7 @@ describe("GET /api/v1/chain/turnover", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleRequest(
       request("?window=1y"),
-      neuronDailyEnv({ bounds: [], rows: [] }),
+      neuronDailyEnv({ bounds: [], rows: [] }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -424,7 +424,7 @@ describe("GET /api/v1/chain/turnover", () => {
   test("rejects an out-of-range limit with 400", async () => {
     const res = await handleRequest(
       request("?limit=0"),
-      neuronDailyEnv({ bounds: [], rows: [] }),
+      neuronDailyEnv({ bounds: [], rows: [] }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -440,7 +440,7 @@ describe("GET /api/v1/chain/turnover", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/turnover", {
         headers: { accept: "text/csv" },
       }),
-      neuronDailyEnv(warm),
+      neuronDailyEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -450,7 +450,7 @@ describe("GET /api/v1/chain/turnover", () => {
   test("emits a header-only CSV on a cold store", async () => {
     const res = await handleRequest(
       request("?format=csv"),
-      neuronDailyEnv(cold),
+      neuronDailyEnv(cold) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -463,7 +463,7 @@ describe("GET /api/v1/chain/turnover", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/turnover?format=csv", {
         method: "HEAD",
       }),
-      neuronDailyEnv(warm),
+      neuronDailyEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -474,7 +474,7 @@ describe("GET /api/v1/chain/turnover", () => {
   test("rejects an unsupported format value with 400", async () => {
     const res = await handleRequest(
       request("?format=xml"),
-      neuronDailyEnv(cold),
+      neuronDailyEnv(cold) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);

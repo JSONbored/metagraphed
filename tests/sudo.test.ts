@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 function req(path: string) {
@@ -35,28 +35,32 @@ function dbWith(feed: Row[], captured: Row = {}) {
 test("GET /api/v1/sudo rejects signer and call_module as query params (both are fixed, not user-controlled)", async () => {
   const resSigner = await handleRequest(
     req("/api/v1/sudo?signer=5Anyone"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(resSigner.status, 400);
 
   const resCallModule = await handleRequest(
     req("/api/v1/sudo?call_module=SubtensorModule"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(resCallModule.status, 400);
 });
 
 test("GET /api/v1/sudo rejects an unsupported query param with 400", async () => {
-  const res = await handleRequest(req("/api/v1/sudo?foo=bar"), dbWith([]), {});
+  const res = await handleRequest(
+    req("/api/v1/sudo?foo=bar"),
+    dbWith([]) as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 400);
 });
 
 test("GET /api/v1/sudo rejects a non-numeric value filter with 400", async () => {
   const res = await handleRequest(
     req("/api/v1/sudo?block=abc"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -65,14 +69,18 @@ test("GET /api/v1/sudo rejects a non-numeric value filter with 400", async () =>
 test("GET /api/v1/sudo rejects an unsupported success value with 400", async () => {
   const res = await handleRequest(
     req("/api/v1/sudo?success=maybe"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
 });
 
 test("GET /api/v1/sudo is schema-stable when D1 is cold (never 404)", async () => {
-  const res = await handleRequest(req("/api/v1/sudo"), dbWith([]), {});
+  const res = await handleRequest(
+    req("/api/v1/sudo"),
+    dbWith([]) as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.deepEqual(body.data.extrinsics, []);
@@ -108,7 +116,11 @@ test("GET /api/v1/sudo?format=csv exports the filtered rows via the Postgres tie
         }),
     },
   };
-  const res = await handleRequest(req("/api/v1/sudo?format=csv"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/sudo?format=csv"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   assert.match(res.headers.get("content-type"), /text\/csv/);
   const lines = (await res.text()).trim().split("\r\n");

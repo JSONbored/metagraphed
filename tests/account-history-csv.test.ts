@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // #5741: ?format=csv on GET /api/v1/accounts/{ss58}/history, mirroring the
@@ -15,7 +15,7 @@ function req(path: string, init?: RequestInit) {
 test("GET /accounts/{ss58}/history?format=csv emits a header-only CSV when cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history?format=csv`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -51,7 +51,7 @@ test("GET /accounts/{ss58}/history?format=csv exports the per-day rows via the P
   };
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history?format=csv`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -66,7 +66,7 @@ test("GET /accounts/{ss58}/history?format=csv exports the per-day rows via the P
 test("GET /accounts/{ss58}/history rejects an invalid ?format with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history?format=xml`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);

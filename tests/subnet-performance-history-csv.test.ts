@@ -50,7 +50,7 @@ describe("handleSubnetPerformanceHistory CSV export", () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(
         `/api/v1/subnets/${NETUID}/performance/history?window=30d&format=csv`,
       ),
@@ -114,7 +114,7 @@ describe("handleSubnetPerformanceHistory CSV export", () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       env as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(
         `/api/v1/subnets/${NETUID}/performance/history?window=30d&format=csv`,
       ),
@@ -131,7 +131,7 @@ describe("handleSubnetPerformanceHistory CSV export", () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(
         `/api/v1/subnets/${NETUID}/performance/history?window=30d&format=pdf`,
       ),
@@ -144,7 +144,7 @@ describe("handleSubnetPerformanceHistory CSV export", () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/performance/history?format=`),
     );
     const body = await errorJson(res);

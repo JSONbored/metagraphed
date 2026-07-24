@@ -5,7 +5,7 @@ import {
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   buildChainIdentityHistory,
 } from "../src/chain-identity-history.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -171,7 +171,11 @@ describe("GET /api/v1/chain/identity-history", () => {
     new Request(`https://api.metagraph.sh/api/v1/chain/identity-history${q}`);
 
   test("cold store (no Postgres tier flag) → 200 with a schema-stable empty feed", async () => {
-    const res = await handleRequest(req(), createLocalArtifactEnv(), {});
+    const res = await handleRequest(
+      req(),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
@@ -183,7 +187,7 @@ describe("GET /api/v1/chain/identity-history", () => {
   test("rejects an unexpected query parameter with 400", async () => {
     const res = await handleRequest(
       req("?window=7d"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -191,7 +195,11 @@ describe("GET /api/v1/chain/identity-history", () => {
 
   test("rejects an out-of-range / non-integer limit with 400", async () => {
     for (const q of ["?limit=0", "?limit=201", "?limit=abc", "?limit=-3"]) {
-      const res = await handleRequest(req(q), createLocalArtifactEnv(), {});
+      const res = await handleRequest(
+        req(q),
+        createLocalArtifactEnv() as unknown as Env,
+        {},
+      );
       assert.equal(res.status, 400, q);
     }
   });
@@ -199,7 +207,7 @@ describe("GET /api/v1/chain/identity-history", () => {
   test("accepts a valid in-range limit (200)", async () => {
     const res = await handleRequest(
       req("?limit=10"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -223,7 +231,7 @@ describe("GET /api/v1/chain/identity-history", () => {
           }),
       },
     };
-    const res = await handleRequest(req(), env, {});
+    const res = await handleRequest(req(), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.count, 1);
@@ -240,7 +248,7 @@ describe("GET /api/v1/chain/identity-history", () => {
         },
       },
     };
-    const res = await handleRequest(req(), env, {});
+    const res = await handleRequest(req(), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.count, 0);
@@ -301,7 +309,7 @@ describe("chain/identity-history edge cache", () => {
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/identity-history"),
-      controlEnv("2026-06-18T00:00:00.000Z"),
+      controlEnv("2026-06-18T00:00:00.000Z") as unknown as Env,
       { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
@@ -314,7 +322,7 @@ describe("chain/identity-history edge cache", () => {
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/identity-history"),
-      controlEnv(null),
+      controlEnv(null) as unknown as Env,
       { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);

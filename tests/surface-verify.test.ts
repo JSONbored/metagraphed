@@ -7,7 +7,7 @@ import {
   verifySurfaceWithCache,
   SURFACE_ID_PATTERN,
 } from "../src/surface-verify.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row, AnyFn } from "./row-type.ts";
@@ -272,7 +272,7 @@ describe("surface verify-now endpoint (#358)", () => {
       async () => {
         const res = await handleRequest(
           req("zzz-not-real"),
-          createLocalArtifactEnv(),
+          createLocalArtifactEnv() as unknown as Env,
           {},
         );
         assert.equal(res.status, 404);
@@ -290,7 +290,11 @@ describe("surface verify-now endpoint (#358)", () => {
         },
       },
     };
-    const res = await handleRequest(req(SURFACE_ID), badEnv, {});
+    const res = await handleRequest(
+      req(SURFACE_ID),
+      badEnv as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 503);
     assert.equal((await res.json()).error.code, "surfaces_unavailable");
   });
@@ -298,7 +302,11 @@ describe("surface verify-now endpoint (#358)", () => {
   test("429 when the rate limiter rejects", async () => {
     const limitedEnv = createLocalArtifactEnv();
     limitedEnv.RPC_RATE_LIMITER = { limit: async () => ({ success: false }) };
-    const res = await handleRequest(req(SURFACE_ID), limitedEnv, {});
+    const res = await handleRequest(
+      req(SURFACE_ID),
+      limitedEnv as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 429);
     assert.equal((await res.json()).error.code, "verify_rate_limited");
   });
@@ -317,7 +325,7 @@ describe("surface verify-now endpoint (#358)", () => {
       const ctx = { waitUntil: (p: Promise<unknown>) => p };
       const res = await handleRequest(
         req(SURFACE_ID),
-        createLocalArtifactEnv(),
+        createLocalArtifactEnv() as unknown as Env,
         ctx,
       );
       assert.equal(res.status, 200);
@@ -329,7 +337,7 @@ describe("surface verify-now endpoint (#358)", () => {
       // second call → served from the cached entry
       const res2 = await handleRequest(
         req(SURFACE_ID),
-        createLocalArtifactEnv(),
+        createLocalArtifactEnv() as unknown as Env,
         ctx,
       );
       assert.equal((await res2.json()).data.from_cache, true);
@@ -340,7 +348,7 @@ describe("surface verify-now endpoint (#358)", () => {
     await withGlobals({ fetchImpl: okFetch }, async () => {
       const res = await handleRequest(
         req(SURFACE_KEY),
-        createLocalArtifactEnv(),
+        createLocalArtifactEnv() as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -396,7 +404,11 @@ describe("surface verify-now endpoint (#358)", () => {
     });
 
     await withGlobals({ fetchImpl: okFetch }, async () => {
-      const res = await handleRequest(req(deprecatedId), env, {});
+      const res = await handleRequest(
+        req(deprecatedId),
+        env as unknown as Env,
+        {},
+      );
       assert.equal(res.status, 200);
       const body = await res.json();
       assert.equal(body.data.surface_id, SURFACE_ID);
@@ -425,7 +437,7 @@ describe("surface verify-now endpoint (#358)", () => {
       async () => {
         const res = await handleRequest(
           req(SURFACE_ID),
-          createLocalArtifactEnv(),
+          createLocalArtifactEnv() as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);

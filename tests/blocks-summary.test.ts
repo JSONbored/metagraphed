@@ -4,7 +4,7 @@ import {
   buildBlocksSummary,
   loadBlocksSummary,
 } from "../src/blocks-summary.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -242,13 +242,21 @@ describe("GET /api/v1/blocks/summary", () => {
     new Request(`https://api.metagraph.sh/api/v1/blocks/summary${q}`);
 
   test("rejects an unexpected query parameter with 400", async () => {
-    const res = await handleRequest(req("?window=7d"), blocksEnv([]), {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      blocksEnv([]) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("is not parsed as a block {ref} detail route", async () => {
     // "summary" must hit the summary handler, not handleBlock("summary").
-    const res = await handleRequest(req(), blocksEnv(ROWS), {});
+    const res = await handleRequest(
+      req(),
+      blocksEnv(ROWS) as unknown as Env,
+      {},
+    );
     const body = await res.json();
     assert.equal("block_count" in body.data, true);
     assert.equal("ref" in body.data, false);

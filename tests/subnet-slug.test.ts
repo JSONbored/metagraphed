@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 
 const env = createLocalArtifactEnv();
 const get = (path: string) =>
-  handleRequest(new Request(`https://metagraph.sh${path}`), env, {});
+  handleRequest(
+    new Request(`https://metagraph.sh${path}`),
+    env as unknown as Env,
+    {},
+  );
 
 describe("subnet slug aliases", () => {
   test("resolves /api/v1/subnets/allways to netuid 7", async () => {

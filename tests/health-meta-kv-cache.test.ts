@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { HEALTH_META_KV_TTL_MS, readHealthMetaKv } from "../workers/api.mjs";
+import { HEALTH_META_KV_TTL_MS, readHealthMetaKv } from "../workers/api.ts";
 
 // readHealthMetaKv wraps readHealthKv(env, KV_HEALTH_META) with a 60-second
 // in-isolate memo — same pattern as readRpcPoolArtifact (#1309) and
@@ -20,7 +20,7 @@ function mkKvEnv(metaValue = { last_run_at: "2026-06-21T00:00:00.000Z" }) {
         return metaValue;
       },
     },
-  };
+  } as unknown as Env & { readonly gets: number };
 }
 
 test("readHealthMetaKv memoizes within the TTL — one KV read for repeated calls", async () => {
@@ -54,7 +54,7 @@ test("readHealthMetaKv never cross-reads a different env (isolation safety)", as
 });
 
 test("readHealthMetaKv returns null when KV binding is absent", async () => {
-  const result = await readHealthMetaKv({}, 3_000_000);
+  const result = await readHealthMetaKv({} as unknown as Env, 3_000_000);
   assert.equal(result, null);
 });
 
@@ -67,7 +67,7 @@ test("readHealthMetaKv does not cache a null result (no sticky cold miss)", asyn
         return null;
       },
     },
-  };
+  } as unknown as Env;
   const t0 = 4_000_000;
   await readHealthMetaKv(env, t0);
   await readHealthMetaKv(env, t0 + 1000);

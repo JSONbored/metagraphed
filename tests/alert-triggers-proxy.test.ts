@@ -7,7 +7,7 @@
 // downstream CRUD logic itself is covered by tests/alert-triggers-route.test.mjs.
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 
 function req(
   path: string,
@@ -27,7 +27,7 @@ function req(
 test("returns 503 when DATA_API is not bound", async () => {
   const res = await handleRequest(
     req("/api/v1/alerts/triggers", { method: "POST", body: {} }),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 503);
@@ -54,7 +54,7 @@ test("forwards POST to DATA_API and envelope-wraps a successful response", async
           );
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(receivedPath, "/api/v1/alerts/triggers");
@@ -81,7 +81,7 @@ test("forwards GET /{id} to DATA_API, including the owner-token header", async (
           });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(receivedToken, "abc");
@@ -106,7 +106,7 @@ test("forwards PATCH to DATA_API", async () => {
           });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(receivedMethod, "PATCH");
@@ -129,7 +129,7 @@ test("forwards DELETE to DATA_API", async () => {
           });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(receivedMethod, "DELETE");
@@ -152,7 +152,7 @@ test("relays a non-2xx upstream status with the upstream's error message", async
           );
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 401);
@@ -168,7 +168,7 @@ test("relays a non-2xx upstream status with a generic message when the body has 
           return new Response(JSON.stringify({}), { status: 503 });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 503);
@@ -187,7 +187,7 @@ test("returns 502 when the upstream response body is unreadable", async () => {
           return new Response("not json", { status: 200 });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 502);
@@ -223,7 +223,7 @@ test("maps a 429 upstream to alert_trigger_rate_limited and forwards the rate-li
           );
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 429);
@@ -249,7 +249,7 @@ test("maps each upstream status to a distinct, condition-specific error code", a
             });
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(res.status, status);
@@ -280,7 +280,7 @@ test("does not attach rate-limit headers when the upstream error carries none", 
           });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 404);

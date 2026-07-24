@@ -4,7 +4,7 @@ import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_MAX,
 } from "../src/chain-weights.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -254,7 +254,11 @@ describe("GET /api/v1/chain/weights", () => {
       d1Called = true;
       throw new Error("D1 must not be queried -- account_events is retired");
     };
-    const res = await handleRequest(req("?window=7d"), env, {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
@@ -269,7 +273,7 @@ describe("GET /api/v1/chain/weights", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/weights", {
         method: "HEAD",
       }),
-      weightsEnv(warm),
+      weightsEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -277,7 +281,11 @@ describe("GET /api/v1/chain/weights", () => {
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {
-    const res = await handleRequest(req(), weightsEnv(cold), {});
+    const res = await handleRequest(
+      req(),
+      weightsEnv(cold) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -325,7 +333,11 @@ describe("GET /api/v1/chain/weights", () => {
         "D1 must not be queried when Postgres serves the request",
       );
     };
-    const res = await handleRequest(req("?window=7d"), env, {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 99);
@@ -345,24 +357,40 @@ describe("GET /api/v1/chain/weights", () => {
         },
       },
     };
-    const res = await handleRequest(req("?window=7d"), env, {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
   });
 
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleRequest(req("?window=90d"), weightsEnv(cold), {});
+    const res = await handleRequest(
+      req("?window=90d"),
+      weightsEnv(cold) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("rejects an unknown query param with 400", async () => {
-    const res = await handleRequest(req("?bogus=1"), weightsEnv(cold), {});
+    const res = await handleRequest(
+      req("?bogus=1"),
+      weightsEnv(cold) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("rejects an out-of-range limit with 400", async () => {
-    const res = await handleRequest(req("?limit=0"), weightsEnv(cold), {});
+    const res = await handleRequest(
+      req("?limit=0"),
+      weightsEnv(cold) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
@@ -374,7 +402,7 @@ describe("GET /api/v1/chain/weights", () => {
   test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      weightsEnv(warm),
+      weightsEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -393,7 +421,7 @@ describe("GET /api/v1/chain/weights", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/weights", {
         headers: { accept: "text/csv" },
       }),
-      weightsEnv(warm),
+      weightsEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -401,7 +429,11 @@ describe("GET /api/v1/chain/weights", () => {
   });
 
   test("emits a header-only CSV on a cold store", async () => {
-    const res = await handleRequest(req("?format=csv"), weightsEnv(cold), {});
+    const res = await handleRequest(
+      req("?format=csv"),
+      weightsEnv(cold) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /text\/csv/);
     assert.equal((await res.text()).trim(), WEIGHTS_CSV_HEADER);
@@ -412,7 +444,7 @@ describe("GET /api/v1/chain/weights", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/weights?format=csv", {
         method: "HEAD",
       }),
-      weightsEnv(warm),
+      weightsEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -421,7 +453,11 @@ describe("GET /api/v1/chain/weights", () => {
   });
 
   test("rejects an unsupported format value with 400", async () => {
-    const res = await handleRequest(req("?format=xml"), weightsEnv(cold), {});
+    const res = await handleRequest(
+      req("?format=xml"),
+      weightsEnv(cold) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 });
@@ -476,7 +512,7 @@ describe("chain/weights edge cache", () => {
     const call = () =>
       handleRequest(
         new Request("https://api.metagraph.sh/api/v1/chain/weights"),
-        env,
+        env as unknown as Env,
         { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();

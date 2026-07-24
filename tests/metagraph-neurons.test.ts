@@ -14,7 +14,7 @@ import {
   loadGlobalValidators as loadGlobalValidatorsRaw,
   loadValidatorDetail as loadValidatorDetailRaw,
 } from "../src/metagraph-neurons.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -1945,7 +1945,7 @@ function neuronsD1(rows: Row[]) {
 const getJson = async (path: string, env: Row) => {
   const res = await handleRequest(
     new Request(`https://api.metagraph.sh${path}`),
-    env,
+    env as unknown as Env,
     {},
   );
   return { res, body: await res.json() };
@@ -1954,7 +1954,7 @@ const getJson = async (path: string, env: Row) => {
 const getText = async (path: string, env: Row, init = {}) => {
   const res = await handleRequest(
     new Request(`https://api.metagraph.sh${path}`, init),
-    env,
+    env as unknown as Env,
     {},
   );
   return { res, text: await res.text() };

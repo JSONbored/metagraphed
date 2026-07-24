@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import {
   MCP_SERVER_VERSION,
   MCP_TOOLS,
@@ -82,14 +82,14 @@ async function mcpRaw(
     headers: { "content-type": "application/json", ...headers },
     body: method === "POST" ? JSON.stringify(payload) : undefined,
   });
-  return handleRequest(request, envOverride, {});
+  return handleRequest(request, envOverride as unknown as Env, {});
 }
 
 async function getJson(path: string): Promise<Row> {
   const request = new Request(`https://api.metagraph.sh${path}`, {
     method: "GET",
   });
-  const response = await handleRequest(request, env, {});
+  const response = await handleRequest(request, env as unknown as Env, {});
   const text = await response.text();
   return { status: response.status, body: text ? JSON.parse(text) : null };
 }

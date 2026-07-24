@@ -1,7 +1,7 @@
 // Handler + economics-resolver coverage for GET /api/v1/subnets/{netuid}/
-// stake-quote (#5235), driven directly against the entities handler (api.mjs
+// stake-quote (#5235), driven directly against the entities handler (api.ts
 // pulls in a graphql-ws dep this env lacks). The pure slippage math is unit
-// tested in stake-quote.test.mjs; the api.mjs route dispatch is exercised in
+// tested in stake-quote.test.mjs; the api.ts route dispatch is exercised in
 // api-coverage.test.mjs.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
@@ -67,7 +67,7 @@ async function call(env: Row, path: string) {
   );
 }
 function extractNetuid(path: string) {
-  return path.match(/\/subnets\/(\d+)\//)![1];
+  return Number(path.match(/\/subnets\/(\d+)\//)![1]);
 }
 
 describe("handleSubnetStakeQuote (#5235)", () => {

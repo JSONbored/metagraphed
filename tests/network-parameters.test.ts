@@ -6,7 +6,7 @@ import {
   NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
   loadNetworkParameters,
 } from "../src/network-parameters.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { mockEnv } from "./row-type.ts";
 import type { Row, AnyFn } from "./row-type.ts";
 
@@ -341,7 +341,7 @@ describe("GET /api/v1/network/parameters via the Worker", () => {
     await withFetchStub(goldenFetchStub(), async () => {
       const res = await handleRequest(
         req("/api/v1/network/parameters"),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -366,7 +366,7 @@ describe("GET /api/v1/network/parameters via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/network/parameters"),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -382,7 +382,7 @@ describe("GET /api/v1/network/parameters via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/testnet/network/parameters"),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 404);

@@ -46,7 +46,7 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/hyperparameters/history?format=csv`),
     );
     assert.equal(res.status, 200);
@@ -81,7 +81,7 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
       env as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(
         `/api/v1/subnets/${NETUID}/hyperparameters/history?limit=50&format=csv`,
       ),
@@ -100,7 +100,7 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/hyperparameters/history?format=pdf`),
     );
     const body = await errorJson(res);
@@ -111,7 +111,7 @@ describe("handleSubnetHyperparamsHistory CSV export", () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/hyperparameters/history?format=`),
     );
     const body = await errorJson(res);

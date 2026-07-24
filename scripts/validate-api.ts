@@ -7,7 +7,7 @@ import {
   CONTRACT_VERSION,
   compileRoutePattern,
 } from "../src/contracts.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import {
   createLocalArtifactEnv,
   latestArtifactDate,
@@ -1843,7 +1843,7 @@ assert.equal(
 for (const [route, assertion] of checks) {
   const response = await handleRequest(
     new Request(`https://metagraph.sh${route}`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(response.status, 200, `${route}: expected 200`);
@@ -2112,7 +2112,7 @@ for (const [route, assertion] of checks) {
     });
     const response = await handleRequest(
       new Request(`https://metagraph.sh${route}`),
-      postgresEnv,
+      postgresEnv as unknown as Env,
       {},
     );
     assert.equal(response.status, 200, `${flag} ${route}: expected 200`);
@@ -2137,7 +2137,7 @@ const paginated = await handleRequest(
   new Request(
     "https://metagraph.sh/api/v1/subnets?limit=2&sort=netuid&order=desc",
   ),
-  env,
+  env as unknown as Env,
   {},
 );
 const paginatedBody = (await paginated.json()) as Row;
@@ -2160,7 +2160,7 @@ for (const route of [
 ]) {
   const response = await handleRequest(
     new Request(`https://metagraph.sh${route}`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(response.status, 400, `${route}: expected invalid query`);
@@ -2173,7 +2173,7 @@ for (const route of [
 
 const etagSource = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets/7"),
-  env,
+  env as unknown as Env,
   {},
 );
 const cached = await handleRequest(
@@ -2182,14 +2182,14 @@ const cached = await handleRequest(
       "if-none-match": etagSource.headers.get("etag")!,
     },
   }),
-  env,
+  env as unknown as Env,
   {},
 );
 assert.equal(cached.status, 304, "matching ETag should return 304");
 
 const missing = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets/9999"),
-  env,
+  env as unknown as Env,
   {},
 );
 assert.equal(missing.status, 404, "missing subnet should return 404");
@@ -2201,7 +2201,7 @@ assert.equal(
 
 const proxy = await handleRequest(
   new Request("https://metagraph.sh/rpc/v1/finney", { method: "POST" }),
-  env,
+  env as unknown as Env,
   {},
 );
 assert.equal(proxy.status, 501, "RPC proxy should be disabled by default");
@@ -2219,7 +2219,7 @@ const blockedRpc = await handleRequest(
   {
     ...env,
     METAGRAPH_ENABLE_RPC_PROXY: "true",
-  },
+  } as unknown as Env,
   {},
 );
 assert.equal(
@@ -2236,7 +2236,7 @@ const verifyMissing = await handleRequest(
   new Request(
     "https://metagraph.sh/api/v1/surfaces/zzz-not-a-real-surface/verify",
   ),
-  env,
+  env as unknown as Env,
   {},
 );
 assert.equal(
@@ -2279,7 +2279,7 @@ const r2Fallback = await handleRequest(
         };
       },
     },
-  },
+  } as unknown as Env,
   {},
 );
 assert.equal(

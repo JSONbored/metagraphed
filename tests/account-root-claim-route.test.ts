@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi, afterEach } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -16,7 +16,7 @@ afterEach(() => {
 test("GET /accounts/{ss58}/root-claim returns 400 for an invalid ss58", async () => {
   const res = await handleRequest(
     req("/api/v1/accounts/notanss58address/root-claim"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -32,7 +32,7 @@ test("GET /accounts/{ss58}/root-claim returns null fields on RPC failure", async
   );
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/root-claim`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -56,7 +56,7 @@ test("GET /accounts/{ss58}/root-claim applies per-client RPC rate limiting", asy
     new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/root-claim`, {
       headers: { "cf-connecting-ip": "1.2.3.4" },
     }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 429);
@@ -82,7 +82,7 @@ test("GET /accounts/{ss58}/root-claim proceeds when the RPC rate limiter allows"
           return { success: true };
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -108,7 +108,7 @@ test("GET /accounts/{ss58}/root-claim serves from KV cache", async () => {
           return cached;
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);

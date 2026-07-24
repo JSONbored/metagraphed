@@ -71,7 +71,7 @@ describe("handleSubnetIdentityHistory CSV export", () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/identity-history?format=csv`),
     );
     assert.equal(res.status, 200);
@@ -106,7 +106,7 @@ describe("handleSubnetIdentityHistory CSV export", () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
       env as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/identity-history?limit=50&format=csv`),
     );
     assert.equal(res.status, 200);
@@ -129,7 +129,7 @@ describe("handleSubnetIdentityHistory CSV export", () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
       env as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/identity-history`),
     );
     assert.equal(res.status, 200);
@@ -142,7 +142,7 @@ describe("handleSubnetIdentityHistory CSV export", () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/identity-history?format=pdf`),
     );
     const body = await errorJson(res);
@@ -153,7 +153,7 @@ describe("handleSubnetIdentityHistory CSV export", () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/identity-history?format=`),
     );
     const body = await errorJson(res);

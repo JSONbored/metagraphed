@@ -9,7 +9,7 @@ import {
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.ts";
 import { buildConcentrationHistory } from "../src/concentration.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -552,7 +552,7 @@ describe("history endpoints (via the Worker dispatch)", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/neurons/3/history?window=400d",
       ),
-      historyEnv([]),
+      historyEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);

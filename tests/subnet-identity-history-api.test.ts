@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 function req(path: string) {
@@ -30,7 +30,7 @@ test("GET /subnets/{netuid}/identity-history returns the identity timeline (#164
   };
   const res = await handleRequest(
     req("/api/v1/subnets/86/identity-history"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -44,7 +44,7 @@ test("GET /subnets/{netuid}/identity-history returns the identity timeline (#164
 test("GET /subnets/{netuid}/identity-history rejects an unsupported query param", async () => {
   const res = await handleRequest(
     req("/api/v1/subnets/86/identity-history?bogus=1"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -53,7 +53,7 @@ test("GET /subnets/{netuid}/identity-history rejects an unsupported query param"
 test("GET /subnets/{netuid}/identity-history is schema-stable when cold (no Postgres tier flag)", async () => {
   const res = await handleRequest(
     req("/api/v1/subnets/86/identity-history"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -82,7 +82,11 @@ test("GET /subnets/{netuid} overlays previously_known_as on the subnet detail", 
       { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
     ]),
   });
-  const res = await handleRequest(req("/api/v1/subnets/7"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/subnets/7"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.deepEqual(body.data.subnet?.previously_known_as, ["Old Allways"]);
@@ -119,7 +123,11 @@ test("GET /subnets/{netuid} overlays previously_known_as on flat subnet detail",
       },
     },
   });
-  const res = await handleRequest(req("/api/v1/subnets/7"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/subnets/7"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.deepEqual(body.data.previously_known_as, ["Old Allways"]);
@@ -132,7 +140,11 @@ test("GET /agent-catalog overlays previously_known_as on index entries", async (
       { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
     ]),
   });
-  const res = await handleRequest(req("/api/v1/agent-catalog"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/agent-catalog"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   const subnet = (body.data.subnets as Row[]).find(
@@ -148,7 +160,11 @@ test("GET /agent-catalog/{netuid} overlays previously_known_as on the detail ent
       { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
     ]),
   });
-  const res = await handleRequest(req("/api/v1/agent-catalog/7"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/agent-catalog/7"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.deepEqual(body.data.previously_known_as, ["Old Allways"]);
@@ -201,7 +217,11 @@ test("GET /agent-catalog/{netuid}: flag=postgres serves the DATA_API response, D
         }),
     },
   });
-  const res = await handleRequest(req("/api/v1/agent-catalog/7"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/agent-catalog/7"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.deepEqual(body.data.previously_known_as, ["Old Allways"]);
@@ -217,7 +237,11 @@ test("GET /agent-catalog/{netuid}: flag=postgres degrades to no overlay when DAT
       },
     },
   });
-  const res = await handleRequest(req("/api/v1/agent-catalog/7"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/agent-catalog/7"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.previously_known_as, undefined);
@@ -235,7 +259,11 @@ test("GET /agent-catalog: flag=postgres serves the bulk DATA_API response, D1 ne
         }),
     },
   });
-  const res = await handleRequest(req("/api/v1/agent-catalog"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/agent-catalog"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   const subnet = (body.data.subnets as Row[]).find(

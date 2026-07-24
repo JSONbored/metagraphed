@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 function req(path: string) {
@@ -35,14 +35,14 @@ function dbWith(feed: Row[], captured: Row = {}) {
 test("GET /api/v1/governance/config-changes rejects signer and call_module as query params (both are fixed)", async () => {
   const resSigner = await handleRequest(
     req("/api/v1/governance/config-changes?signer=5Anyone"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(resSigner.status, 400);
 
   const resCallModule = await handleRequest(
     req("/api/v1/governance/config-changes?call_module=Sudo"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(resCallModule.status, 400);
@@ -51,7 +51,7 @@ test("GET /api/v1/governance/config-changes rejects signer and call_module as qu
 test("GET /api/v1/governance/config-changes rejects an unsupported query param with 400", async () => {
   const res = await handleRequest(
     req("/api/v1/governance/config-changes?foo=bar"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -60,7 +60,7 @@ test("GET /api/v1/governance/config-changes rejects an unsupported query param w
 test("GET /api/v1/governance/config-changes rejects a non-numeric value filter with 400", async () => {
   const res = await handleRequest(
     req("/api/v1/governance/config-changes?block=abc"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -69,7 +69,7 @@ test("GET /api/v1/governance/config-changes rejects a non-numeric value filter w
 test("GET /api/v1/governance/config-changes rejects an unsupported success value with 400", async () => {
   const res = await handleRequest(
     req("/api/v1/governance/config-changes?success=maybe"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -78,7 +78,7 @@ test("GET /api/v1/governance/config-changes rejects an unsupported success value
 test("GET /api/v1/governance/config-changes is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req("/api/v1/governance/config-changes"),
-    dbWith([]),
+    dbWith([]) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -118,7 +118,7 @@ test("GET /api/v1/governance/config-changes?format=csv exports the filtered rows
   };
   const res = await handleRequest(
     req("/api/v1/governance/config-changes?format=csv"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);

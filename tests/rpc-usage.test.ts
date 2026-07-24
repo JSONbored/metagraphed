@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { formatRpcUsage } from "../src/health-serving.ts";
 import type { Row } from "./row-type.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -126,7 +126,7 @@ describe("formatRpcUsage", () => {
 // --- /api/v1/rpc/usage route ------------------------------------------------
 
 async function getJson(url: string, env: Row) {
-  const res = await handleRequest(new Request(url), env, {});
+  const res = await handleRequest(new Request(url), env as unknown as Env, {});
   return { status: res.status, body: (await res.json()) as Row };
 }
 
@@ -232,7 +232,11 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
         )) as unknown as typeof fetch,
       async () => {
         // system_health is uncacheable → cache "bypass", recorded after failover.
-        const res = await handleRequest(reqFor("system_health"), env, ctx);
+        const res = await handleRequest(
+          reqFor("system_health"),
+          env as unknown as Env,
+          ctx,
+        );
         assert.equal(res.status, 200);
         await Promise.all(waits);
       },
@@ -262,7 +266,11 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
           status: 200,
         })) as unknown as typeof fetch,
       async () => {
-        const res = await handleRequest(reqFor("system_health"), env, ctx);
+        const res = await handleRequest(
+          reqFor("system_health"),
+          env as unknown as Env,
+          ctx,
+        );
         assert.equal(res.status, 200);
       },
     );
@@ -286,7 +294,11 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
           status: 200,
         })) as unknown as typeof fetch,
       async () => {
-        const res = await handleRequest(reqFor("system_health"), env, {});
+        const res = await handleRequest(
+          reqFor("system_health"),
+          env as unknown as Env,
+          {},
+        );
         assert.equal(res.status, 200);
       },
     );
@@ -316,9 +328,13 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
       RPC_USAGE_SYNC_SECRET: "test-secret",
     };
     const waits: Promise<unknown>[] = [];
-    const res = await handleRequest(reqFor("system_health"), env, {
-      waitUntil: (p: Promise<unknown>) => waits.push(p),
-    });
+    const res = await handleRequest(
+      reqFor("system_health"),
+      env as unknown as Env,
+      {
+        waitUntil: (p: Promise<unknown>) => waits.push(p),
+      },
+    );
     assert.equal(res.status, 503);
     await Promise.all(waits);
     assert.equal(captured.length, 1);

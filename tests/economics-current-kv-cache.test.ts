@@ -3,7 +3,7 @@ import { test } from "vitest";
 import {
   ECONOMICS_CURRENT_KV_TTL_MS,
   readEconomicsCurrentKv,
-} from "../workers/api.mjs";
+} from "../workers/api.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 
 // readEconomicsCurrentKv wraps readHealthKv(env, KV_ECONOMICS_CURRENT) with a
@@ -32,6 +32,9 @@ function mkKvEnv(
         return blob;
       },
     },
+  } as unknown as Env & {
+    readonly gets: number;
+    readonly lastKey: string | null;
   };
 }
 
@@ -75,7 +78,7 @@ test("readEconomicsCurrentKv never cross-reads a different env (isolation safety
 });
 
 test("readEconomicsCurrentKv returns null when KV binding is absent", async () => {
-  const result = await readEconomicsCurrentKv({}, 3_000_000);
+  const result = await readEconomicsCurrentKv({} as unknown as Env, 3_000_000);
   assert.equal(result, null);
 });
 
@@ -88,7 +91,7 @@ test("readEconomicsCurrentKv does not cache a null result (no sticky cold miss)"
         return null;
       },
     },
-  };
+  } as unknown as Env;
   const t0 = 4_000_000;
   await readEconomicsCurrentKv(env, t0);
   await readEconomicsCurrentKv(env, t0 + 1000);

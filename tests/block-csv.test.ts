@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // #5746: ?format=csv on the block-scoped extrinsics/events feeds, reusing the
@@ -18,7 +18,7 @@ function req(path: string, init?: RequestInit) {
 test("GET /blocks/{ref}/extrinsics?format=csv emits a header-only CSV for an empty block", async () => {
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/extrinsics?format=csv`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -51,7 +51,7 @@ test("GET /blocks/{ref}/extrinsics?format=csv exports the block's extrinsics via
   };
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/extrinsics?format=csv`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -68,7 +68,7 @@ test("GET /blocks/{ref}/extrinsics?format=csv exports the block's extrinsics via
 test("GET /blocks/{ref}/extrinsics rejects an invalid ?format with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/extrinsics?format=xml`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -78,7 +78,7 @@ test("GET /blocks/{ref}/extrinsics rejects an invalid ?format with 400", async (
 test("GET /blocks/{ref}/events?format=csv emits a header-only CSV for an empty block", async () => {
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/events?format=csv`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -116,7 +116,7 @@ test("GET /blocks/{ref}/events?format=csv exports the block's events via the Pos
   };
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/events?format=csv`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -130,7 +130,7 @@ test("GET /blocks/{ref}/events?format=csv exports the block's events via the Pos
 test("GET /blocks/{ref}/events rejects an invalid ?format with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/events?format=xml`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);

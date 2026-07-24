@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { API_ROUTES } from "../src/contracts.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import {
   ARTIFACT_STORAGE_TIERS,
   artifactStorageTierForPath,
@@ -89,7 +89,7 @@ export async function runCommittedSeedGate({
     try {
       response = await handleRequest(
         new Request(`https://metagraph.sh${route.path}`),
-        env,
+        env as unknown as Env,
         {},
       );
     } catch (error) {

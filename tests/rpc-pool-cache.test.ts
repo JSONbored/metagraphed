@@ -3,7 +3,7 @@ import { test } from "vitest";
 import {
   readRpcPoolArtifact,
   RPC_POOL_ARTIFACT_TTL_MS,
-} from "../workers/api.mjs";
+} from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 type EnvArg = Parameters<typeof readRpcPoolArtifact>[0];

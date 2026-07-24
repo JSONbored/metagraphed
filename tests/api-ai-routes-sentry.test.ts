@@ -18,7 +18,7 @@ vi.mock("@sentry/cloudflare", () => ({
   captureException,
 }));
 
-const { handleRequest } = await import("../workers/api.mjs");
+const { handleRequest } = await import("../workers/api.ts");
 const { createLocalArtifactEnv } = await import("../scripts/lib.ts");
 
 const originalFetch = globalThis.fetch;
@@ -53,7 +53,11 @@ test("a semantic-search backend failure reaches Sentry, tagged by route", async 
   const env = aiWorkerEnv({
     AI: stubAi(() => Promise.reject(new Error("model down"))),
   });
-  const res = await handleRequest(new Request(`${SEMANTIC_URL}?q=x`), env, {});
+  const res = await handleRequest(
+    new Request(`${SEMANTIC_URL}?q=x`),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 502);
   assert.equal((await res.json()).error.code, "ai_error");
   assert.equal(captureException.mock.calls.length, 1);
@@ -71,7 +75,7 @@ test("an ask backend failure reaches Sentry, tagged by route", async () => {
       method: "POST",
       body: JSON.stringify({ question: "x" }),
     }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 502);
@@ -94,7 +98,11 @@ test("a semantic-search backend failure also reaches PostHog as $exception, tagg
     [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token",
     AI: stubAi(() => Promise.reject(new Error("model down"))),
   });
-  const res = await handleRequest(new Request(`${SEMANTIC_URL}?q=x`), env, {});
+  const res = await handleRequest(
+    new Request(`${SEMANTIC_URL}?q=x`),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 502);
   assert.equal(posted.length, 1);
   assert.equal(posted[0].body.event, "$exception");
@@ -121,7 +129,7 @@ test("an ask backend failure also reaches PostHog as $exception, tagged by the s
       method: "POST",
       body: JSON.stringify({ question: "x" }),
     }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 502);
@@ -136,14 +144,18 @@ test("a caller-input rejection (aiInput) on either route never reaches PostHog e
     return { ok: true };
   }) as typeof fetch;
   const env = aiWorkerEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" });
-  await handleRequest(new Request(`${SEMANTIC_URL}?q=x&type=bogus`), env, {});
+  await handleRequest(
+    new Request(`${SEMANTIC_URL}?q=x&type=bogus`),
+    env as unknown as Env,
+    {},
+  );
   await handleRequest(
     new Request(ASK_URL, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ question: "which?", type: "bogus" }),
     }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(posted.length, 0);
@@ -153,7 +165,7 @@ test("a caller-input rejection (aiInput) on either route never reaches Sentry", 
   const env = aiWorkerEnv();
   const semanticRes = await handleRequest(
     new Request(`${SEMANTIC_URL}?q=x&type=bogus`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(semanticRes.status, 400);
@@ -163,7 +175,7 @@ test("a caller-input rejection (aiInput) on either route never reaches Sentry", 
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ question: "which?", type: "bogus" }),
     }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(askRes.status, 400);

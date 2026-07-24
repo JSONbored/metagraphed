@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { handleExtrinsic } from "../workers/request-handlers/entities.ts";
 import {
   EXTRINSIC_READ_COLUMNS,
@@ -645,11 +645,19 @@ function dbWith({
 
 test("GET /extrinsics clamps limit to <=100 + rejects unsupported params", async () => {
   const env = dbWith({ feed: [] });
-  const ok = await handleRequest(req("/api/v1/extrinsics?limit=999"), env, {});
+  const ok = await handleRequest(
+    req("/api/v1/extrinsics?limit=999"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(ok.status, 200);
   assert.equal((await ok.json()).data.limit, 100);
 
-  const bad = await handleRequest(req("/api/v1/extrinsics?bogus=1"), env, {});
+  const bad = await handleRequest(
+    req("/api/v1/extrinsics?bogus=1"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(bad.status, 400);
 });
 
@@ -664,7 +672,7 @@ test("GET /extrinsics rejects non-numeric value filters with 400 (#2086)", async
   ]) {
     const res = await handleRequest(
       req(`/api/v1/extrinsics?${query}`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400, query);
@@ -675,7 +683,11 @@ test("GET /extrinsics rejects non-numeric value filters with 400 (#2086)", async
 
 test("GET /extrinsics/{hash} is schema-stable when cold (extrinsic:null, never 404)", async () => {
   const hash = `0x${"d".repeat(64)}`;
-  const res = await handleRequest(req(`/api/v1/extrinsics/${hash}`), {}, {});
+  const res = await handleRequest(
+    req(`/api/v1/extrinsics/${hash}`),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.ref, hash);
@@ -683,7 +695,11 @@ test("GET /extrinsics/{hash} is schema-stable when cold (extrinsic:null, never 4
 });
 
 test("GET /extrinsics/{block}-{index} is schema-stable when cold (#1848)", async () => {
-  const res = await handleRequest(req("/api/v1/extrinsics/777-0"), {}, {});
+  const res = await handleRequest(
+    req("/api/v1/extrinsics/777-0"),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.ref, "777-0");
@@ -740,7 +756,11 @@ for (const badRef of [
 // A well-formed composite ref still resolves (the strict matcher must not
 // over-reject the canonical "<block>-<index>" form).
 test("GET /extrinsics is schema-stable when D1 is cold (never 404)", async () => {
-  const res = await handleRequest(req("/api/v1/extrinsics"), {}, {});
+  const res = await handleRequest(
+    req("/api/v1/extrinsics"),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.extrinsic_count, 0);

@@ -5,7 +5,7 @@
 // write logic itself is covered by tests/data-api.test.mjs.
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 
 function post(body: unknown, { method = "POST" }: { method?: string } = {}) {
   return new Request(
@@ -32,7 +32,7 @@ test("rejects non-POST before reaching the binding (405)", async () => {
           return new Response("{}", { status: 200 });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 405);
@@ -40,7 +40,11 @@ test("rejects non-POST before reaching the binding (405)", async () => {
 });
 
 test("returns 503 when DATA_API is not bound", async () => {
-  const res = await handleRequest(post([{ netuid: 8 }]), {}, {});
+  const res = await handleRequest(
+    post([{ netuid: 8 }]),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 503);
 });
 
@@ -70,7 +74,7 @@ test("forwards the request to DATA_API and relays its response body + status", a
           );
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(receivedToken, "shared-secret");
@@ -90,7 +94,7 @@ test("relays a non-2xx upstream status (e.g. 401) unchanged", async () => {
           });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 401);
@@ -106,7 +110,7 @@ test("returns 502 when the upstream response body is unreadable", async () => {
           return new Response("not json", { status: 200 });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 502);

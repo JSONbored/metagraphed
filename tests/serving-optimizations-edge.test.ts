@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
-import { handleRequest, handleScheduled } from "../workers/api.mjs";
+import { handleRequest, handleScheduled } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
@@ -34,7 +34,9 @@ function installMockCaches() {
   return { store, putKeys };
 }
 
-const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
+const ctx = {
+  waitUntil: (promise: Promise<unknown>) => promise,
+} as unknown as ExecutionContext;
 
 let originalCaches: unknown;
 afterEach(() => {
@@ -55,7 +57,7 @@ describe("static edge cache — range-filtered collection key", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets?min_tempo=1&max_tempo=99&netuids=7",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -82,7 +84,7 @@ describe("static edge cache — range-filtered collection key", () => {
 
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets"),
-      env,
+      env as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -122,8 +124,8 @@ describe("hourly maintenance cron — pruneHealthHistory isolation", () => {
     });
 
     const result = (await handleScheduled(
-      { cron: "0 * * * *" },
-      env,
+      { cron: "0 * * * *" } as unknown as ScheduledController,
+      env as unknown as Env,
       ctx,
     )) as Row;
 

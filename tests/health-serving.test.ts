@@ -23,7 +23,7 @@ import {
 } from "../src/health-serving.ts";
 import { computeReliability, scoreFromStats } from "../src/reliability.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 // A recent prober run time for live KV fixtures that must pass resolveLiveHealth's
@@ -1211,7 +1211,11 @@ describe("worker live health serving", () => {
         },
       }),
     });
-    const res = await handleRequest(req("/api/v1/health"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/health"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.source, "live-cron-prober");
@@ -1230,7 +1234,7 @@ describe("worker live health serving", () => {
     });
     const res = await handleRequest(
       req("/api/v1/subnets/0/health/trends"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1253,7 +1257,7 @@ describe("worker live health serving", () => {
     });
     const res = await handleRequest(
       req("/api/v1/health/trends?cacheBust=1"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1269,7 +1273,11 @@ describe("worker live health serving", () => {
         "health:meta": { last_run_at: "2026-06-11T00:00:00.000Z" },
       }),
     });
-    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/health/trends"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.artifact_path, "/metagraph/health/trends.json");
@@ -1326,7 +1334,11 @@ describe("worker live health serving", () => {
         },
       }),
     });
-    const res = await handleRequest(req("/api/v1/rpc/pools"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/rpc/pools"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.source, "live-cron-prober");
@@ -1356,7 +1368,11 @@ describe("worker live health serving", () => {
       // No health:rpc-pool entry → cold live snapshot → static passthrough.
       METAGRAPH_CONTROL: kvWith({}),
     });
-    const res = await handleRequest(req("/api/v1/rpc/pools"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/rpc/pools"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.pools[0].endpoints[0].pool_eligible, true);
@@ -2135,7 +2151,11 @@ describe("worker live health overlay on composed routes", () => {
       }),
       METAGRAPH_ARCHIVE: seedComposedArchive(),
     });
-    const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/overview"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.health.status, "failed");
@@ -2154,7 +2174,11 @@ describe("worker live health overlay on composed routes", () => {
       }),
       METAGRAPH_ARCHIVE: seedComposedArchive(),
     });
-    const res = await handleRequest(req("/api/v1/agent-catalog/7"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/agent-catalog/7"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.source, "live-cron-prober");
@@ -2171,7 +2195,11 @@ describe("worker live health overlay on composed routes", () => {
         },
       }),
     });
-    const res = await handleRequest(req("/api/v1/agent-catalog"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/agent-catalog"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     assert.equal((await res.json()).meta.source, "live-cron-prober");
   });
@@ -2194,7 +2222,7 @@ describe("worker live health overlay on composed routes", () => {
 
     const overview = await handleRequest(
       req("/api/v1/subnets/999999/overview"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(overview.status, 404);
@@ -2202,7 +2230,7 @@ describe("worker live health overlay on composed routes", () => {
 
     const catalog = await handleRequest(
       req("/api/v1/agent-catalog/999999"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(catalog.status, 404);
@@ -2213,7 +2241,11 @@ describe("worker live health overlay on composed routes", () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: seedComposedArchive(),
     });
-    const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/overview"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     assert.notEqual((await res.json()).meta.source, "live-cron-prober");
   });
@@ -2278,7 +2310,11 @@ describe("worker live health overlay on composed routes", () => {
       }),
       METAGRAPH_ARCHIVE: seedDetailArchive(detail),
     });
-    const res = await handleRequest(req("/api/v1/subnets/7"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const ep = (await res.clone().json()).data.endpoints[0];
     assert.equal(ep.status, "failed"); // live status, not the baked "ok"
@@ -2311,7 +2347,11 @@ describe("worker live health overlay on composed routes", () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: seedDetailArchive(detail),
     });
-    const res = await handleRequest(req("/api/v1/subnets/7"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const ep = (await res.json()).data.endpoints[0];
     assert.equal(ep.status, "unknown"); // never the baked "ok"
@@ -2358,7 +2398,11 @@ describe("worker live health overlay on composed routes", () => {
       }),
       METAGRAPH_ARCHIVE: seedDetailArchive(detail),
     });
-    const res = await handleRequest(req("/metagraph/subnets/7.json"), env, {});
+    const res = await handleRequest(
+      req("/metagraph/subnets/7.json"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     // Raw artifact path is no longer byte-identical: operational health is live.
@@ -2369,7 +2413,11 @@ describe("worker live health overlay on composed routes", () => {
 
   test("/api/v1/health serves `unknown` when the live store is cold (live-only)", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(req("/api/v1/health"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/health"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.source, "unavailable");
@@ -2379,7 +2427,11 @@ describe("worker live health overlay on composed routes", () => {
 
   test("/api/v1/subnets/7/health is `unknown` when cold — never 404, never baked", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(req("/api/v1/subnets/7/health"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/health"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.summary.status, "unknown");
@@ -2393,7 +2445,11 @@ describe("worker live health overlay on composed routes", () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: seedComposedArchive(),
     });
-    const res = await handleRequest(req("/api/v1/subnets/7/overview"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/overview"),
+      env as unknown as Env,
+      {},
+    );
     const body = await res.json();
     assert.equal(body.data.health, null);
   });
@@ -2625,7 +2681,7 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
     });
     const res = await handleRequest(
       req("/api/v1/subnets/7/uptime?window=1y"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -2640,7 +2696,11 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
 
   test("defaults to 90d and returns an empty series when D1 is cold", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(req("/api/v1/subnets/7/uptime"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/uptime"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.window, "90d");
@@ -2652,7 +2712,7 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
     for (const windowParam of ["5y", "constructor", "__proto__"]) {
       const res = await handleRequest(
         req(`/api/v1/subnets/7/uptime?window=${windowParam}`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 400);
@@ -2973,7 +3033,11 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
 describe("global incidents route", () => {
   test("serves a schema-stable empty ledger when D1 is cold", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(req("/api/v1/incidents"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/incidents"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(Array.isArray(body.data.surfaces), true);
@@ -2985,7 +3049,7 @@ describe("global incidents route", () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       req("/api/v1/incidents?window=5y"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);

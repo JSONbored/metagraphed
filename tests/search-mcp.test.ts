@@ -17,7 +17,7 @@ type LoadCtx = Parameters<typeof loadSearchList>[0];
 type LoadDeps = Parameters<typeof loadSearchList>[2];
 
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.mjs";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const SAMPLE_BLOB = {
@@ -405,7 +405,11 @@ describe("search-mcp", () => {
       for (const [key, value] of Object.entries(params)) {
         url.searchParams.set(key, String(value));
       }
-      const res = await handleRequest(new Request(url), restEnv, {});
+      const res = await handleRequest(
+        new Request(url),
+        restEnv as unknown as Env,
+        {},
+      );
       assert.equal(res.status, 200, `REST 200 for ${url.search}`);
       const body = await res.json();
       const page = body.meta.pagination;

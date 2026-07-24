@@ -8,7 +8,7 @@ import {
   __test,
   type FeedItem,
 } from "../src/feeds.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
@@ -1311,7 +1311,7 @@ describe("feeds — Worker dispatch integration", () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/registry.rss"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1344,7 +1344,7 @@ describe("feeds — Worker dispatch integration", () => {
     const ctx = { waitUntil: (promise: Promise<unknown>) => promise };
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(first.status, 200);
@@ -1357,7 +1357,7 @@ describe("feeds — Worker dispatch integration", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/incidents.json?cachebust=1",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(cached.status, 200);
@@ -1371,7 +1371,7 @@ describe("feeds — Worker dispatch integration", () => {
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
         method: "HEAD",
       }),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(head.status, 200);
@@ -1387,7 +1387,7 @@ describe("feeds — Worker dispatch integration", () => {
         method: "HEAD",
         headers: { "if-none-match": etag },
       }),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(conditionalHead.status, 304);
@@ -1419,7 +1419,7 @@ describe("feeds — Worker dispatch integration", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/incidents.json?since=2099-01-01",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(future.status, 200);
@@ -1428,7 +1428,7 @@ describe("feeds — Worker dispatch integration", () => {
 
     const unfiltered = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(unfiltered.status, 200);
@@ -1443,7 +1443,7 @@ describe("feeds — Worker dispatch integration", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/incidents.json?since=notadate",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(invalid.status, 400);
@@ -1476,7 +1476,7 @@ describe("feeds — Worker dispatch integration", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/incidents.json?until=2000-01-01",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(past.status, 200);
@@ -1485,7 +1485,7 @@ describe("feeds — Worker dispatch integration", () => {
 
     const unfiltered = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(unfiltered.status, 200);
@@ -1500,7 +1500,7 @@ describe("feeds — Worker dispatch integration", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/incidents.json?until=notadate",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(invalid.status, 400);
@@ -1521,7 +1521,7 @@ describe("feeds — Worker dispatch integration", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/registry.json?limit=1",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(capped.status, 200);
@@ -1531,7 +1531,7 @@ describe("feeds — Worker dispatch integration", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/registry.json?limit=0",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(invalid.status, 400);
@@ -1545,7 +1545,7 @@ describe("feeds — Worker dispatch integration", () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/nonexistent"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);

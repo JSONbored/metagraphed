@@ -51,7 +51,7 @@ describe("handleSubnetConcentrationHistory CSV export", () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(
         `/api/v1/subnets/${NETUID}/concentration/history?window=30d&format=csv`,
       ),
@@ -102,7 +102,7 @@ describe("handleSubnetConcentrationHistory CSV export", () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       env as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(
         `/api/v1/subnets/${NETUID}/concentration/history?window=30d&format=csv`,
       ),
@@ -119,7 +119,7 @@ describe("handleSubnetConcentrationHistory CSV export", () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(
         `/api/v1/subnets/${NETUID}/concentration/history?window=30d&format=pdf`,
       ),
@@ -132,7 +132,7 @@ describe("handleSubnetConcentrationHistory CSV export", () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/concentration/history?format=`),
     );
     const body = await errorJson(res);

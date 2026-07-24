@@ -6,7 +6,7 @@ import {
   formatRuntimeTransition,
   loadRuntimeVersionHistory,
 } from "../src/runtime-versions.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -198,7 +198,7 @@ describe("GET /api/v1/runtime via the Worker", () => {
   test("is schema-stable when D1 is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/runtime"),
-      runtimeEnv([]),
+      runtimeEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -210,7 +210,7 @@ describe("GET /api/v1/runtime via the Worker", () => {
   test("an unsupported query param is a 400", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/runtime?foo=bar"),
-      runtimeEnv([]),
+      runtimeEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -219,7 +219,7 @@ describe("GET /api/v1/runtime via the Worker", () => {
   test("testnet has no variant (mainnet-only blocks D1 tier)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/testnet/runtime"),
-      runtimeEnv([]),
+      runtimeEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 404);

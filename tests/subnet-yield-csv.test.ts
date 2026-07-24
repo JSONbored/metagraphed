@@ -51,7 +51,7 @@ describe("handleSubnetYield CSV export", () => {
     const res = await handleSubnetYield(
       req(`/api/v1/subnets/${NETUID}/yield`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield?format=csv`),
     );
     assert.equal(res.status, 200);
@@ -67,7 +67,7 @@ describe("handleSubnetYield CSV export", () => {
     const res = await handleSubnetYield(
       req(`/api/v1/subnets/${NETUID}/yield`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield?format=pdf`),
     );
     const body = await errorJson(res);
@@ -78,7 +78,7 @@ describe("handleSubnetYield CSV export", () => {
     const res = await handleSubnetYield(
       req(`/api/v1/subnets/${NETUID}/yield`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield?format=`),
     );
     const body = await errorJson(res);

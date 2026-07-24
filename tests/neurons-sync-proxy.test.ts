@@ -5,7 +5,7 @@
 // downstream write logic itself is covered by tests/data-api.test.mjs.
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 
 function post(body: unknown, { method = "POST" }: { method?: string } = {}) {
   return new Request("https://api.metagraph.sh/api/v1/internal/neurons-sync", {
@@ -29,7 +29,7 @@ test("rejects non-POST before reaching the binding (405)", async () => {
           return new Response("{}", { status: 200 });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 405);
@@ -37,7 +37,11 @@ test("rejects non-POST before reaching the binding (405)", async () => {
 });
 
 test("returns 503 when DATA_API is not bound", async () => {
-  const res = await handleRequest(post([{ netuid: 8 }]), {}, {});
+  const res = await handleRequest(
+    post([{ netuid: 8 }]),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 503);
 });
 
@@ -64,7 +68,7 @@ test("forwards the request to DATA_API and relays its response body + status", a
           );
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(receivedToken, "shared-secret");
@@ -84,7 +88,7 @@ test("relays a non-2xx upstream status (e.g. 401) unchanged", async () => {
           });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 401);
@@ -100,7 +104,7 @@ test("returns 502 when the upstream response body is unreadable", async () => {
           return new Response("not json", { status: 200 });
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 502);
@@ -132,7 +136,7 @@ test("rate limiting: 429 with the rate-limit header family when the limiter reje
       INTERNAL_SYNC_RATE_LIMITER: {
         limit: async () => ({ success: false }),
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 429);
@@ -156,7 +160,7 @@ test("rate limiting: proceeds normally when the limiter allows the request", asy
           return { success: true };
         },
       },
-    },
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -166,7 +170,7 @@ test("rate limiting: proceeds normally when the limiter allows the request", asy
 test("rate limiting: skips the limiter entirely when the binding is unbound (local dev/CI)", async () => {
   const res = await handleRequest(
     post([{ netuid: 8 }]),
-    { DATA_API: baseDataApi() },
+    { DATA_API: baseDataApi() } as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);

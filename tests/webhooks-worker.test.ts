@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 // Minimal in-memory KV mock matching the Workers KV surface the worker uses.
@@ -49,7 +49,7 @@ const postSub = (env: Row, body: unknown) =>
       },
       body: JSON.stringify(body),
     }),
-    env,
+    env as unknown as Env,
     {},
   );
 
@@ -99,7 +99,7 @@ describe("webhook subscription routes", () => {
         },
         body: "{not json",
       }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -113,7 +113,7 @@ describe("webhook subscription routes", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
       }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 401);
@@ -135,7 +135,7 @@ describe("webhook subscription routes", () => {
         },
         body: "{not even json",
       }),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     assert.equal(res.status, 401);
@@ -151,7 +151,7 @@ describe("webhook subscription routes", () => {
         headers: { "content-type": "application/json" },
         body: "}{ broken",
       }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 401);
@@ -171,7 +171,7 @@ describe("webhook subscription routes", () => {
         },
         body: "{not json",
       }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -189,7 +189,9 @@ describe("webhook subscription routes", () => {
         },
         body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
       }),
-      envWith(kv, { METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN: "" }),
+      envWith(kv, {
+        METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN: "",
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 503);
@@ -217,7 +219,7 @@ describe("webhook subscription routes", () => {
     ).json();
     const res = await handleRequest(
       req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -267,7 +269,7 @@ describe("webhook subscription routes", () => {
 
     const res = await handleRequest(
       req(`/api/v1/webhooks/subscriptions/${id}`),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     const { delivery } = (await res.json()).data;
@@ -306,7 +308,7 @@ describe("webhook subscription routes", () => {
 
     const res = await handleRequest(
       req(`/api/v1/webhooks/subscriptions/${id}`),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
 
@@ -323,7 +325,7 @@ describe("webhook subscription routes", () => {
     ).json();
     const res = await handleRequest(
       req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     assert.equal((await res.json()).data.delivery.status, "ok");
@@ -339,7 +341,7 @@ describe("webhook subscription routes", () => {
     };
     const res = await handleRequest(
       req(`/api/v1/webhooks/subscriptions/${created.data.id}`),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -360,7 +362,7 @@ describe("webhook subscription routes", () => {
         method: "DELETE",
         headers: { "x-metagraph-webhook-secret": "wrong" },
       }),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     assert.equal(denied.status, 403);
@@ -371,7 +373,7 @@ describe("webhook subscription routes", () => {
         method: "DELETE",
         headers: { "x-metagraph-webhook-secret": created.data.secret },
       }),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     assert.equal(ok.status, 200);
@@ -383,7 +385,7 @@ describe("webhook subscription routes", () => {
       req(
         "/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000",
       ),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);
@@ -393,7 +395,7 @@ describe("webhook subscription routes", () => {
   test("OPTIONS preflight advertises the webhook methods", async () => {
     const res = await handleRequest(
       req("/api/v1/webhooks/subscriptions", { method: "OPTIONS" }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -460,7 +462,9 @@ describe("webhook subscription rate limiting", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
       }),
-      envWith(makeKv(), { WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter }),
+      envWith(makeKv(), {
+        WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter,
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 401);
@@ -479,7 +483,9 @@ describe("webhook subscription rate limiting", () => {
         method: "DELETE",
         headers: { "x-metagraph-webhook-secret": created.data.secret },
       }),
-      envWith(kv, { WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter }),
+      envWith(kv, {
+        WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter,
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 429);
@@ -499,7 +505,9 @@ describe("webhook subscription rate limiting", () => {
         method: "DELETE",
         headers: { "x-metagraph-webhook-secret": created.data.secret },
       }),
-      envWith(kv, { WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter }),
+      envWith(kv, {
+        WEBHOOK_SUBSCRIPTION_RATE_LIMITER: limiter,
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -512,7 +520,7 @@ describe("SSE change feed", () => {
   test("GET /api/v1/events emits a snapshot event", async () => {
     const res = await handleRequest(
       req("/api/v1/events"),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -531,7 +539,11 @@ describe("SSE change feed", () => {
 
   test("Last-Event-ID matching the current snapshot short-circuits to a keepalive", async () => {
     const env = envWith(makeKv());
-    const first = await handleRequest(req("/api/v1/events"), env, {});
+    const first = await handleRequest(
+      req("/api/v1/events"),
+      env as unknown as Env,
+      {},
+    );
     const firstText = await first.text();
     assert.equal(first.headers.get("x-metagraph-events"), "snapshot");
     const idLine = firstText
@@ -541,7 +553,7 @@ describe("SSE change feed", () => {
 
     const reconnect = await handleRequest(
       req("/api/v1/events", { headers: { "last-event-id": eventId } }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(reconnect.status, 200);
@@ -557,7 +569,7 @@ describe("SSE change feed", () => {
   test("a stale Last-Event-ID still delivers the snapshot", async () => {
     const res = await handleRequest(
       req("/api/v1/events", { headers: { "last-event-id": "stale-id" } }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.headers.get("x-metagraph-events"), "snapshot");
@@ -569,7 +581,7 @@ describe("webhook route edge cases", () => {
   test("404 for an unknown webhook sub-route", async () => {
     const res = await handleRequest(
       req("/api/v1/webhooks/not-subscriptions"),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);
@@ -581,7 +593,7 @@ describe("webhook route edge cases", () => {
     // GET/DELETE on an id, so it hits the method_not_allowed tail.
     const res = await handleRequest(
       req("/api/v1/webhooks/subscriptions", { method: "PATCH" }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 405);
@@ -600,7 +612,7 @@ describe("webhook route edge cases", () => {
         },
         body: JSON.stringify({ url: "https://hooks.example.com/mg" }),
       }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 413);
@@ -622,7 +634,7 @@ describe("webhook route edge cases", () => {
         },
         body,
       }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 413);
@@ -644,7 +656,7 @@ describe("webhook route edge cases", () => {
   test("400 invalid_subscription_id on GET with a malformed id", async () => {
     const res = await handleRequest(
       req("/api/v1/webhooks/subscriptions/not-a-uuid"),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -654,7 +666,7 @@ describe("webhook route edge cases", () => {
   test("400 invalid_subscription_id on DELETE with a malformed id", async () => {
     const res = await handleRequest(
       req("/api/v1/webhooks/subscriptions/not-a-uuid", { method: "DELETE" }),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -670,7 +682,7 @@ describe("webhook route edge cases", () => {
           headers: { "x-metagraph-webhook-secret": "whatever" },
         },
       ),
-      envWith(makeKv()),
+      envWith(makeKv()) as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);
@@ -690,7 +702,7 @@ describe("webhook route edge cases", () => {
         method: "DELETE",
         headers: { "x-metagraph-webhook-secret": created.data.secret },
       }),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     assert.equal(res.status, 503);
@@ -706,7 +718,7 @@ describe("webhook route edge cases", () => {
       req(
         "/api/v1/webhooks/subscriptions/00000000-0000-4000-8000-000000000000",
       ),
-      envWith(kv),
+      envWith(kv) as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);

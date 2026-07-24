@@ -27,7 +27,7 @@ import { CHAIN_SIGNERS_SORTS } from "../src/chain-query-loaders.ts";
 import { CHAIN_DEREGISTRATIONS_WINDOWS } from "../src/chain-deregistrations.ts";
 import { CHAIN_REGISTRATIONS_WINDOWS } from "../src/chain-registrations.ts";
 import { CHAIN_AXON_REMOVALS_WINDOWS } from "../src/chain-axon-removals.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { resolveClientIp, DAY_MS } from "../workers/config.ts";
 import {
   KV_ECONOMICS_CURRENT,

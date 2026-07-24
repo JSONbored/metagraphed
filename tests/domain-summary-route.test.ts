@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.ts";
 
@@ -9,7 +9,7 @@ describe("GET /api/v1/domains", () => {
   const get = async (path: string) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     return { status: res.status, body: await res.json() };
@@ -61,7 +61,7 @@ describe("GET /api/v1/domains", () => {
     });
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/domains"),
-      coldEnv,
+      coldEnv as unknown as Env,
       {},
     );
     const body = await res.json();
@@ -93,7 +93,7 @@ describe("GET /api/v1/domains", () => {
     });
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/domains"),
-      noTimestampEnv,
+      noTimestampEnv as unknown as Env,
       {},
     );
     const body = await res.json();
@@ -120,7 +120,7 @@ describe("GET /api/v1/domains", () => {
     });
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/domains"),
-      liveEnv,
+      liveEnv as unknown as Env,
       {},
     );
     const body = await res.json();
@@ -141,7 +141,7 @@ describe("GET /api/v1/domains/{tag}/summary", () => {
   const get = async (path: string) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     return { status: res.status, body: await res.json() };

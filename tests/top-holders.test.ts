@@ -7,7 +7,7 @@ import {
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
 } from "../src/top-holders.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -247,7 +247,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
   test("is schema-stable when the Postgres tier is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts/top-holders"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -260,7 +260,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/accounts/top-holders?sort=bogus",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -274,7 +274,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/accounts/top-holders?limit=1000",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -285,7 +285,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/accounts/top-holders?bogus=1",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -294,7 +294,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
   test("is dispatched before the generic /api/v1/accounts/{ss58} route (never mistaken for an address)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts/top-holders"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     const body = await res.json();
@@ -334,7 +334,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/accounts/top-holders?format=csv",
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -352,7 +352,7 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/testnet/accounts/top-holders",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 404);

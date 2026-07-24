@@ -6,7 +6,7 @@ import {
   buildChainFees,
   buildChainSigners,
 } from "../src/chain-analytics.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -234,7 +234,7 @@ test("ignores junk rows (null, non-object, missing/non-string day)", () => {
 test("GET /api/v1/chain/activity merges + groups the chain tiers by UTC day", async () => {
   const res = await handleRequest(
     activityReq("?window=7d"),
-    chainActivityPostgresEnv(),
+    chainActivityPostgresEnv() as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -253,7 +253,7 @@ test("GET /api/v1/chain/activity merges + groups the chain tiers by UTC day", as
 test("GET /api/v1/chain/activity rejects an unsupported window with 400", async () => {
   const res = await handleRequest(
     activityReq("?window=99d"),
-    createLocalArtifactEnv(),
+    createLocalArtifactEnv() as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -261,7 +261,11 @@ test("GET /api/v1/chain/activity rejects an unsupported window with 400", async 
 });
 
 test("GET /api/v1/chain/activity is schema-stable empty when D1 is cold", async () => {
-  const res = await handleRequest(activityReq(), createLocalArtifactEnv(), {});
+  const res = await handleRequest(
+    activityReq(),
+    createLocalArtifactEnv() as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.day_count, 0);
@@ -379,7 +383,7 @@ test("GET /api/v1/chain/calls groups by call_module with honest share via the Po
     new Request(
       "https://api.metagraph.sh/api/v1/chain/calls?window=30d&limit=2",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -389,7 +393,7 @@ test("GET /api/v1/chain/calls groups by call_module with honest share via the Po
 
   const bad = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/calls?bogus=1"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(bad.status, 400);
@@ -432,7 +436,7 @@ test("GET /api/v1/chain/calls forwards call_module scoping to the Postgres tier 
     new Request(
       "https://api.metagraph.sh/api/v1/chain/calls?call_module=SubtensorModule&group_by=module_function&limit=1",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -460,7 +464,7 @@ test("GET /api/v1/chain/calls rejects inert group_by and non-canonical limits", 
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400, path);
@@ -573,7 +577,7 @@ test("GET /api/v1/chain/signers never queries D1 even when mocked with real rows
     new Request(
       "https://api.metagraph.sh/api/v1/chain/signers?window=7d&limit=10",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -588,7 +592,7 @@ test("GET /api/v1/chain/signers echoes the requested sort with an empty leaderbo
     new Request(
       "https://api.metagraph.sh/api/v1/chain/signers?sort=total_fee_tao",
     ),
-    createLocalArtifactEnv(),
+    createLocalArtifactEnv() as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -602,7 +606,7 @@ test("GET /api/v1/chain/signers still shape-validates call_module even though it
     new Request(
       "https://api.metagraph.sh/api/v1/chain/signers?call_module=Balances",
     ),
-    createLocalArtifactEnv(),
+    createLocalArtifactEnv() as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -613,7 +617,7 @@ test("GET /api/v1/chain/signers still shape-validates call_module even though it
 test("GET /api/v1/chain/signers rejects unsupported sort values", async () => {
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/signers?sort=fees"),
-    createLocalArtifactEnv(),
+    createLocalArtifactEnv() as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -639,7 +643,7 @@ test("GET /api/v1/chain/transfers never queries D1 even when mocked with real ro
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfers?window=7d&limit=5",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -719,7 +723,7 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
     const url = "https://api.metagraph.sh/api/v1/chain/transfers?window=7d";
     const first = await handleRequest(
       new Request(url, { method: "HEAD" }),
-      env,
+      env as unknown as Env,
       {
         waitUntil(promise: Promise<unknown>) {
           return promise;
@@ -733,7 +737,7 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
 
     const second = await handleRequest(
       new Request(url, { method: "HEAD" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(second.status, 200);
@@ -741,7 +745,11 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
     assert.equal(captured.length, 0, "D1 is never queried");
     assert.equal(cache.matchCalls, 2);
 
-    const get = await handleRequest(new Request(url), env, {});
+    const get = await handleRequest(
+      new Request(url),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(get.status, 200);
     const body = await get.json();
     assert.equal(body.data.total_volume_tao, 0);
@@ -758,7 +766,7 @@ test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
 test("GET /api/v1/chain/transfers rejects an unsupported window", async () => {
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=1y"),
-    createLocalArtifactEnv(),
+    createLocalArtifactEnv() as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -773,7 +781,7 @@ test("GET /api/v1/chain/transfers rejects non-canonical limits", async () => {
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400, path);
@@ -854,7 +862,7 @@ test("GET /api/v1/chain/transfers CSV export with ?format=csv is header-only eve
       senders: [TRANSFERS_SENDER_ROW],
       receivers: [TRANSFERS_RECEIVER_ROW],
       totals: TRANSFERS_TOTALS,
-    }),
+    }) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -877,7 +885,7 @@ test("GET /api/v1/chain/transfers honors Accept: text/csv the same as ?format=cs
       senders: [TRANSFERS_SENDER_ROW],
       receivers: [TRANSFERS_RECEIVER_ROW],
       totals: TRANSFERS_TOTALS,
-    }),
+    }) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -887,7 +895,7 @@ test("GET /api/v1/chain/transfers honors Accept: text/csv the same as ?format=cs
 test("GET /api/v1/chain/transfers emits a header-only CSV on a cold store", async () => {
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/transfers?format=csv"),
-    transfersEnv({}),
+    transfersEnv({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -898,7 +906,7 @@ test("GET /api/v1/chain/transfers emits a header-only CSV on a cold store", asyn
 test("GET /api/v1/chain/transfers rejects an unsupported format value with 400", async () => {
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/transfers?format=xml"),
-    transfersEnv({}),
+    transfersEnv({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -940,7 +948,7 @@ test("GET /api/v1/chain/transfers: flag=postgres serves the DATA_API response, D
   };
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=7d"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -976,7 +984,7 @@ test("GET /api/v1/chain/transfers: CSV export maps Postgres-tier senders/receive
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfers?window=7d&format=csv",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1007,7 +1015,7 @@ test("GET /api/v1/chain/transfers: flag=postgres falls back to D1 when DATA_API 
   };
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=7d"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1033,7 +1041,7 @@ test("GET /api/v1/chain/transfer-pairs never queries D1 even when mocked with re
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d&limit=5&sort=count",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1109,7 +1117,10 @@ test("GET /api/v1/chain/transfer-pairs CSV export with ?format=csv is header-onl
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d&format=csv",
     ),
-    transferPairsEnv({ pairs: [PAIR_ROW], totals: PAIR_TOTALS }),
+    transferPairsEnv({
+      pairs: [PAIR_ROW],
+      totals: PAIR_TOTALS,
+    }) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1128,7 +1139,10 @@ test("GET /api/v1/chain/transfer-pairs honors Accept: text/csv the same as ?form
     new Request("https://api.metagraph.sh/api/v1/chain/transfer-pairs", {
       headers: { accept: "text/csv" },
     }),
-    transferPairsEnv({ pairs: [PAIR_ROW], totals: PAIR_TOTALS }),
+    transferPairsEnv({
+      pairs: [PAIR_ROW],
+      totals: PAIR_TOTALS,
+    }) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1140,7 +1154,7 @@ test("GET /api/v1/chain/transfer-pairs emits a header-only CSV on a cold store",
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?format=csv",
     ),
-    transferPairsEnv({}),
+    transferPairsEnv({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1154,7 +1168,10 @@ test("HEAD /api/v1/chain/transfer-pairs?format=csv returns the CSV headers with 
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?format=csv",
       { method: "HEAD" },
     ),
-    transferPairsEnv({ pairs: [PAIR_ROW], totals: PAIR_TOTALS }),
+    transferPairsEnv({
+      pairs: [PAIR_ROW],
+      totals: PAIR_TOTALS,
+    }) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1167,7 +1184,7 @@ test("GET /api/v1/chain/transfer-pairs rejects an unsupported format value with 
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?format=xml",
     ),
-    transferPairsEnv({}),
+    transferPairsEnv({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -1204,7 +1221,7 @@ test("HEAD /api/v1/chain/transfer-pairs returns headers without a body", async (
     new Request("https://api.metagraph.sh/api/v1/chain/transfer-pairs", {
       method: "HEAD",
     }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1220,7 +1237,7 @@ test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", a
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400, path);
@@ -1267,7 +1284,7 @@ test("GET /api/v1/chain/transfer-pairs: flag=postgres serves the DATA_API respon
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1297,7 +1314,7 @@ test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to D1 when DATA
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1333,7 +1350,7 @@ test("GET /api/v1/chain/fees forwards call_module on the Postgres-tier request",
     new Request(
       "https://api.metagraph.sh/api/v1/chain/fees?call_module=SubtensorModule",
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1352,7 +1369,7 @@ test("chain signers/fees reject an over-long call_module with 400", async () => 
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1370,7 +1387,7 @@ test("GET /api/v1/chain/signers rejects non-canonical limits", async () => {
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400, path);
@@ -1501,7 +1518,7 @@ test("GET /api/v1/chain/fees returns daily series + top payers from the Postgres
   };
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -1521,7 +1538,7 @@ test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 400, path);
@@ -1537,7 +1554,7 @@ test("the new chain routes are schema-stable empty when D1 is cold", async () =>
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200, `${path} cold → 200`);

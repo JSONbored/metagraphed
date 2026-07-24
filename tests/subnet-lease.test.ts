@@ -8,7 +8,7 @@ import {
   loadSubnetLease,
 } from "../src/subnet-lease.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { mockEnv } from "./row-type.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
@@ -633,7 +633,11 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
         json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
       }),
       async () => {
-        const res = await handleRequest(req("/api/v1/subnets/7/lease"), {}, {});
+        const res = await handleRequest(
+          req("/api/v1/subnets/7/lease"),
+          {} as unknown as Env,
+          {},
+        );
         assert.equal(res.status, 200);
         const body = await res.json();
         assert.equal(body.ok, true);
@@ -650,7 +654,11 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
     await withFetchStub(
       async () => ({ ok: false }),
       async () => {
-        const res = await handleRequest(req("/api/v1/subnets/7/lease"), {}, {});
+        const res = await handleRequest(
+          req("/api/v1/subnets/7/lease"),
+          {} as unknown as Env,
+          {},
+        );
         assert.equal(res.status, 200);
         const body = await res.json();
         assert.equal(body.data.leased, null);
@@ -677,7 +685,7 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/subnets/65536/lease"),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 400);
@@ -700,7 +708,7 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/subnets/65535/lease"),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -717,7 +725,7 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/testnet/subnets/7/lease"),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 404);
@@ -746,7 +754,7 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
           new Request("https://api.metagraph.sh/api/v1/subnets/7/lease", {
             headers: { "cf-connecting-ip": "203.0.113.9" },
           }),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 429);
@@ -769,7 +777,7 @@ describe("GET /api/v1/subnets/{netuid}/lease via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/subnets/7/lease"),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
-import worker, { handleRequest } from "../workers/api.mjs";
+import worker, { handleRequest } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { jsonBody, type Row } from "./row-type.ts";
 
@@ -34,7 +34,7 @@ describe("Worker runtime", () => {
   test("default export delegates to handleRequest", async () => {
     const response = await worker.fetch(
       new Request("https://metagraph.sh/api/v1/build"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -63,7 +63,7 @@ describe("Worker runtime", () => {
             return new Response(JSON.stringify({ ok: true }), { status: 200 });
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(response.status, 429);
@@ -91,7 +91,7 @@ describe("Worker runtime", () => {
             );
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -135,7 +135,11 @@ describe("Worker runtime", () => {
       const waited: Promise<unknown>[] = [];
       const ctx = { waitUntil: (p: Promise<unknown>) => waited.push(p) };
       const url = "https://metagraph.sh/api/v1/chain-events/stats?blocks=500";
-      const first = await handleRequest(new Request(url), testEnv, ctx);
+      const first = await handleRequest(
+        new Request(url),
+        testEnv as unknown as Env,
+        ctx,
+      );
       assert.equal(first.status, 200);
       assert.equal(dataCalls, 1);
       // The cache.put is scheduled via ctx.waitUntil, not awaited inline --
@@ -143,7 +147,11 @@ describe("Worker runtime", () => {
       await Promise.all(waited);
       assert.equal(store.size, 1);
 
-      const second = await handleRequest(new Request(url), testEnv, ctx);
+      const second = await handleRequest(
+        new Request(url),
+        testEnv as unknown as Env,
+        ctx,
+      );
       assert.equal(second.status, 200);
       assert.equal(dataCalls, 1, "second request must not re-fetch DATA_API");
       const body = await second.json();
@@ -182,7 +190,11 @@ describe("Worker runtime", () => {
       const waited: Promise<unknown>[] = [];
       const ctx = { waitUntil: (p: Promise<unknown>) => waited.push(p) };
       const url = "https://metagraph.sh/api/v1/chain-events/stats?blocks=1";
-      const response = await handleRequest(new Request(url), testEnv, ctx);
+      const response = await handleRequest(
+        new Request(url),
+        testEnv as unknown as Env,
+        ctx,
+      );
       assert.equal(response.status, 502);
       await Promise.all(waited);
       assert.equal(store.size, 0, "an error response must never be cached");
@@ -214,7 +226,7 @@ describe("Worker runtime", () => {
             );
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(requestedPath, "/api/v1/subnets/7/ownership-history");
@@ -250,7 +262,7 @@ describe("Worker runtime", () => {
             );
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(requestedPath, "/api/v1/subnets/1/conviction");
@@ -295,7 +307,7 @@ describe("Worker runtime", () => {
             );
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -330,7 +342,7 @@ describe("Worker runtime", () => {
             });
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -354,7 +366,7 @@ describe("Worker runtime", () => {
             });
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -379,7 +391,7 @@ describe("Worker runtime", () => {
             );
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -416,7 +428,7 @@ describe("Worker runtime", () => {
             );
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(forwardedMethod, "GET");
@@ -441,7 +453,7 @@ describe("Worker runtime", () => {
             );
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(response.status, 502);
@@ -451,7 +463,7 @@ describe("Worker runtime", () => {
   test("returns a 503 error envelope when the DATA_API binding is absent", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/chain-events"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 503);
@@ -461,7 +473,7 @@ describe("Worker runtime", () => {
   test("serves API envelopes with cache and CORS headers", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets/7"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -490,7 +502,7 @@ describe("Worker runtime", () => {
     };
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets/7"),
-      controlEnv,
+      controlEnv as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -515,7 +527,7 @@ describe("Worker runtime", () => {
     };
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/build"),
-      controlEnv,
+      controlEnv as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -553,7 +565,7 @@ describe("Worker runtime", () => {
     };
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/economics"),
-      liveEnv,
+      liveEnv as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -568,7 +580,7 @@ describe("Worker runtime", () => {
     // the committed R2 economics.json serves, exactly as before this tier existed.
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/economics"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -597,7 +609,7 @@ describe("Worker runtime", () => {
     };
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/economics"),
-      staleEnv,
+      staleEnv as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -619,7 +631,7 @@ describe("Worker runtime", () => {
     };
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/.well-known/mcp/server-card.json"),
-      controlEnv,
+      controlEnv as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -638,7 +650,7 @@ describe("Worker runtime", () => {
     // Cold (no KV pointer): published_at stays null, card still serves.
     const cold = await handleRequest(
       new Request("https://api.metagraph.sh/.well-known/mcp/server-card.json"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(cold.status, 200);
@@ -648,7 +660,7 @@ describe("Worker runtime", () => {
   test("serves a health readiness probe", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/health"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -661,14 +673,14 @@ describe("Worker runtime", () => {
 
     const head = await handleRequest(
       new Request("https://metagraph.sh/health", { method: "HEAD" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(head.status, 200);
 
     const post = await handleRequest(
       new Request("https://metagraph.sh/health", { method: "POST" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(post.status, 405);
@@ -691,7 +703,7 @@ describe("Worker runtime", () => {
     };
     const response = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets/7.json"),
-      slowEnv,
+      slowEnv as unknown as Env,
       {},
     );
     assert.equal(response.status, 504);
@@ -701,7 +713,7 @@ describe("Worker runtime", () => {
   test("renders a self-hosted SVG health badge for a subnet", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/metagraph/health/badges/7.svg"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -720,7 +732,7 @@ describe("Worker runtime", () => {
       new Request("https://metagraph.sh/metagraph/health/badges/7.svg", {
         headers: { "if-none-match": etag },
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(cached.status, 304);
@@ -729,7 +741,7 @@ describe("Worker runtime", () => {
   test("renders a graceful badge for a subnet without a badge artifact", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/metagraph/health/badges/99999.svg"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -745,7 +757,7 @@ describe("Worker runtime", () => {
   test("serves raw R2-tier artifacts from archive storage", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets/7.json"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -755,7 +767,7 @@ describe("Worker runtime", () => {
 
     const candidates = await handleRequest(
       new Request("https://metagraph.sh/metagraph/candidates.json"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(candidates.status, 200);
@@ -765,7 +777,7 @@ describe("Worker runtime", () => {
 
     const reviewQueue = await handleRequest(
       new Request("https://metagraph.sh/metagraph/review-queue.json"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(reviewQueue.status, 200);
@@ -777,7 +789,7 @@ describe("Worker runtime", () => {
       new Request("https://metagraph.sh/metagraph/subnets/7.json"),
       {
         ASSETS: env.ASSETS,
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(missingArchive.status, 404);
@@ -811,7 +823,7 @@ describe("Worker runtime", () => {
           },
         },
         METAGRAPH_ALLOW_R2_STATIC_FALLBACK: "true",
-      },
+      } as unknown as Env,
       {},
     );
 
@@ -850,7 +862,7 @@ describe("Worker runtime", () => {
             };
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(warm.status, 200);
@@ -876,7 +888,7 @@ describe("Worker runtime", () => {
             return null;
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(cold.status, 404);
@@ -905,7 +917,7 @@ describe("Worker runtime", () => {
             };
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
 
@@ -946,7 +958,7 @@ describe("Worker runtime", () => {
             };
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
 
@@ -979,7 +991,7 @@ describe("Worker runtime", () => {
             };
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
 
@@ -996,7 +1008,7 @@ describe("Worker runtime", () => {
   test("supports HEAD, ETag revalidation, and CORS preflight", async () => {
     const head = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets", { method: "HEAD" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(head.status, 200);
@@ -1005,14 +1017,14 @@ describe("Worker runtime", () => {
 
     const source = await handleRequest(
       new Request("https://metagraph.sh/api/v1/contracts"),
-      env,
+      env as unknown as Env,
       {},
     );
     const cached = await handleRequest(
       new Request("https://metagraph.sh/api/v1/contracts", {
         headers: { "if-none-match": source.headers.get("etag") },
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(cached.status, 304);
@@ -1022,14 +1034,14 @@ describe("Worker runtime", () => {
     // envelope path); `*` matches any current representation.
     const raw = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets/7.json"),
-      env,
+      env as unknown as Env,
       {},
     );
     const rawConditional = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets/7.json", {
         headers: { "if-none-match": "*" },
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.ok(raw.headers.get("etag"));
@@ -1039,7 +1051,7 @@ describe("Worker runtime", () => {
       new Request("https://metagraph.sh/api/v1/contracts", {
         method: "OPTIONS",
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(options.status, 204);
@@ -1050,7 +1062,7 @@ describe("Worker runtime", () => {
 
     const rpcOptions = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", { method: "OPTIONS" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(rpcOptions.status, 204);
@@ -1077,7 +1089,7 @@ describe("Worker runtime", () => {
     for (const [path, parameter] of invalidCases) {
       const response = await handleRequest(
         new Request(`https://metagraph.sh${path}`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(response.status, 400);
@@ -1090,7 +1102,7 @@ describe("Worker runtime", () => {
       new Request(
         "https://metagraph.sh/api/v1/subnets?q=allways&sort=netuid&order=desc&limit=1&cursor=0",
       ),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -1105,7 +1117,7 @@ describe("Worker runtime", () => {
       new Request(
         "https://metagraph.sh/api/v1/subnets?domain=inference&fields=netuid,name,slug&limit=2&sort=netuid",
       ),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -1126,7 +1138,7 @@ describe("Worker runtime", () => {
   test("returns deterministic API errors", async () => {
     const post = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets", { method: "POST" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(post.status, 405);
@@ -1138,7 +1150,7 @@ describe("Worker runtime", () => {
 
     const missingRoute = await handleRequest(
       new Request("https://metagraph.sh/api/v1/nope"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(missingRoute.status, 404);
@@ -1146,7 +1158,7 @@ describe("Worker runtime", () => {
 
     const missingArtifact = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets/999999"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(missingArtifact.status, 404);
@@ -1157,7 +1169,7 @@ describe("Worker runtime", () => {
 
     const noAssets = await handleRequest(
       new Request("https://metagraph.sh/anything"),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(noAssets.status, 404);
@@ -1174,7 +1186,7 @@ describe("Worker runtime", () => {
             });
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(staticFallback.status, 200);
@@ -1210,7 +1222,7 @@ describe("Worker runtime", () => {
             };
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -1236,7 +1248,7 @@ describe("Worker runtime", () => {
             return null;
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(r2Miss.status, 404);
@@ -1275,7 +1287,7 @@ describe("Worker runtime", () => {
             };
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
 
@@ -1300,7 +1312,7 @@ describe("Worker runtime", () => {
             return null;
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
 
@@ -1311,7 +1323,7 @@ describe("Worker runtime", () => {
   test("keeps RPC proxy disabled and blocks unsafe methods", async () => {
     const wrongMethod = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", { method: "GET" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(wrongMethod.status, 405);
@@ -1319,7 +1331,7 @@ describe("Worker runtime", () => {
 
     const disabled = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", { method: "POST" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(disabled.status, 501);
@@ -1330,7 +1342,7 @@ describe("Worker runtime", () => {
         method: "POST",
         body: "{not json",
       }),
-      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" } as unknown as Env,
       {},
     );
     assert.equal(invalid.status, 400);
@@ -1340,7 +1352,7 @@ describe("Worker runtime", () => {
         method: "POST",
         body: JSON.stringify([{ method: "chain_getHeader" }]),
       }),
-      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" } as unknown as Env,
       {},
     );
     assert.equal(invalidRequest.status, 400);
@@ -1359,7 +1371,7 @@ describe("Worker runtime", () => {
           params: [],
         }),
       }),
-      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" } as unknown as Env,
       {},
     );
     assert.equal(blocked.status, 403);
@@ -1371,7 +1383,7 @@ describe("Worker runtime", () => {
         headers: { "content-length": "70000" },
         body: "{}",
       }),
-      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" } as unknown as Env,
       {},
     );
     assert.equal(tooLargeByHeader.status, 413);
@@ -1384,7 +1396,7 @@ describe("Worker runtime", () => {
           payload: "x".repeat(70000),
         }),
       }),
-      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+      { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" } as unknown as Env,
       {},
     );
     assert.equal(tooLargeByBody.status, 413);
@@ -1401,7 +1413,7 @@ describe("Worker runtime", () => {
           params: [],
         }),
       }),
-      { METAGRAPH_ENABLE_RPC_PROXY: "true" },
+      { METAGRAPH_ENABLE_RPC_PROXY: "true" } as unknown as Env,
       {},
     );
     assert.equal(noPoolArtifact.status, 404);
@@ -1434,7 +1446,7 @@ describe("Worker runtime", () => {
             ],
           },
         }),
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(noEligibleEndpoint.status, 503);
@@ -1483,7 +1495,7 @@ describe("Worker runtime", () => {
                 ],
               },
             }),
-          },
+          } as unknown as Env,
           {},
         );
         assert.equal(unsafeEndpoint.status, 502);
@@ -1555,7 +1567,7 @@ describe("Worker runtime", () => {
               provider: "fixture",
               url: unsafeUrl,
             },
-          ]),
+          ]) as unknown as Env,
           {},
         );
         assert.equal(response.status, 502);
@@ -1577,7 +1589,7 @@ describe("Worker runtime", () => {
             provider: "fixture",
             url: "https://bittensor-finney.api.onfinality.io/public",
           },
-        ]),
+        ]) as unknown as Env,
         {},
       );
 
@@ -1672,7 +1684,7 @@ describe("Worker runtime", () => {
             params: [],
           }),
         }),
-        proxyEnv,
+        proxyEnv as unknown as Env,
         {},
       );
       assert.equal(response.status, 200);
@@ -1696,7 +1708,7 @@ describe("Worker runtime", () => {
             params: [],
           }),
         }),
-        proxyEnv,
+        proxyEnv as unknown as Env,
         {},
       );
       assert.equal(wssResponse.status, 400);
@@ -1925,7 +1937,11 @@ describe("Worker runtime", () => {
     ];
 
     for (const [url, predicate] of checks) {
-      const response = await handleRequest(new Request(url), env, {});
+      const response = await handleRequest(
+        new Request(url),
+        env as unknown as Env,
+        {},
+      );
       assert.equal(response.status, 200, url);
       assert.equal(predicate(await response.json()), true, url);
     }
@@ -1954,7 +1970,11 @@ describe("Worker runtime", () => {
     ];
 
     for (const url of routes) {
-      const response = await handleRequest(new Request(url), env, {});
+      const response = await handleRequest(
+        new Request(url),
+        env as unknown as Env,
+        {},
+      );
       assert.equal(response.status, 400, url);
       assert.equal(
         response.headers.get("x-metagraph-error-code"),
@@ -2027,13 +2047,13 @@ describe("Worker runtime", () => {
     try {
       const first = await handleRequest(
         new Request("https://metagraph.sh/api/v1/endpoints?junk=a"),
-        overlayEnv,
+        overlayEnv as unknown as Env,
         ctx,
       );
       await Promise.resolve();
       const second = await handleRequest(
         new Request("https://metagraph.sh/api/v1/endpoints?junk=b"),
-        overlayEnv,
+        overlayEnv as unknown as Env,
         ctx,
       );
       assert.equal(first.status, 400);
@@ -2071,7 +2091,7 @@ describe("Worker runtime", () => {
       // Pure static-artifact route: cached on first GET, served on repeat.
       const first = await handleRequest(
         new Request("https://metagraph.sh/api/v1/schemas"),
-        env,
+        env as unknown as Env,
         ctx,
       );
       await Promise.resolve();
@@ -2083,7 +2103,7 @@ describe("Worker runtime", () => {
 
       const second = await handleRequest(
         new Request("https://metagraph.sh/api/v1/schemas"),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(matchHits, 1, "repeat GET is served from the edge cache");
@@ -2094,7 +2114,7 @@ describe("Worker runtime", () => {
         new Request("https://metagraph.sh/api/v1/schemas", {
           headers: { "if-none-match": etag },
         }),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(conditional.status, 304);
@@ -2104,7 +2124,7 @@ describe("Worker runtime", () => {
       const putsBeforeHealth = puts;
       const health = await handleRequest(
         new Request("https://metagraph.sh/api/v1/health"),
-        env,
+        env as unknown as Env,
         ctx,
       );
       await Promise.resolve();
@@ -2130,7 +2150,7 @@ describe("Worker runtime", () => {
       };
       const rpcEndpoints = await handleRequest(
         new Request("https://metagraph.sh/api/v1/rpc/endpoints"),
-        coldOverlayEnv,
+        coldOverlayEnv as unknown as Env,
         ctx,
       );
       await Promise.resolve();
@@ -2150,7 +2170,7 @@ describe("Worker runtime", () => {
       const putsBeforeHead = puts;
       await handleRequest(
         new Request("https://metagraph.sh/api/v1/schemas", { method: "HEAD" }),
-        env,
+        env as unknown as Env,
         ctx,
       );
       await Promise.resolve();
@@ -2165,7 +2185,7 @@ describe("Agent discovery surfaces", () => {
   test("homepage serves HTML with RFC 8288 Link headers (no env needed)", async () => {
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/"),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -2181,7 +2201,7 @@ describe("Agent discovery surfaces", () => {
   test("homepage HEAD returns the Link header with an empty body", async () => {
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/", { method: "HEAD" }),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -2192,7 +2212,7 @@ describe("Agent discovery surfaces", () => {
   test("/.well-known/api-catalog is a valid RFC 9727 linkset", async () => {
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/.well-known/api-catalog"),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -2231,7 +2251,7 @@ describe("Agent discovery surfaces", () => {
     // resolve to metagraph.sh (the wrong host).
     const response = await handleRequest(
       new Request("https://metagraph.sh/.well-known/api-catalog"),
-      {},
+      {} as unknown as Env,
       {},
     );
     const body = await response.json();
@@ -2254,7 +2274,7 @@ describe("Agent discovery surfaces", () => {
       new Request(
         "https://api.metagraph.sh/.well-known/agent-tools/openai.json",
       ),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -2276,7 +2296,7 @@ describe("Agent discovery surfaces", () => {
       new Request(
         "https://api.metagraph.sh/.well-known/agent-tools/anthropic.json",
       ),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -2294,7 +2314,7 @@ describe("Agent discovery surfaces", () => {
       new Request(
         "https://api.metagraph.sh/.well-known/agent-tools/index.json",
       ),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(indexResponse.status, 200);
@@ -2311,7 +2331,7 @@ describe("Agent discovery surfaces", () => {
     const catalog = await (
       await handleRequest(
         new Request("https://api.metagraph.sh/.well-known/api-catalog"),
-        {},
+        {} as unknown as Env,
         {},
       )
     ).json();
@@ -2328,7 +2348,7 @@ describe("Agent discovery surfaces", () => {
   test("agent-tools specs are served on the apex host too", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/.well-known/agent-tools/openai.json"),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(response.status, 200);
@@ -2351,7 +2371,7 @@ describe("Agent discovery surfaces", () => {
         new Request(
           "https://api.metagraph.sh/api/v1/icon?host=definitely-not-allowlisted.example",
         ),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(response.status, 404);
@@ -2374,7 +2394,7 @@ describe("GitHub OAuth route dispatch", () => {
   test("GET /authorize reaches handleAuthorizeRequest", async () => {
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/authorize"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 503);
@@ -2384,7 +2404,7 @@ describe("GitHub OAuth route dispatch", () => {
   test("POST /authorize is not routed (GET-only)", async () => {
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/authorize", { method: "POST" }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.notEqual(response.status, 503);
@@ -2393,7 +2413,7 @@ describe("GitHub OAuth route dispatch", () => {
   test("GET /oauth/callback/github reaches handleGithubOAuthCallback", async () => {
     const response = await handleRequest(
       new Request("https://api.metagraph.sh/oauth/callback/github"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(response.status, 503);

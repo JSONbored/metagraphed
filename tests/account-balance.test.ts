@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -54,7 +54,7 @@ test("GET /accounts/{ss58}/balance returns balance_tao for a valid address", asy
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -76,7 +76,7 @@ test("GET /accounts/{ss58}/balance returns balance_tao for a valid address", asy
 test("GET /accounts/{ss58}/balance returns 400 for an invalid ss58", async () => {
   const res = await handleRequest(
     req("/api/v1/accounts/notanss58address/balance"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -90,7 +90,7 @@ test("GET /accounts/{ss58}/balance returns 400 for a too-short address", async (
   const short = "5" + "a".repeat(45);
   const res = await handleRequest(
     req(`/api/v1/accounts/${short}/balance`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -116,7 +116,7 @@ test("GET /accounts/{ss58}/balance rejects overlong base58 before rate limiting 
       const overlong = "5" + "a".repeat(4096);
       const res = await handleRequest(
         req(`/api/v1/accounts/${overlong}/balance`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 400);
@@ -135,7 +135,12 @@ test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC fail
     async () => {
       throw new Error("network error");
     },
-    () => handleRequest(req(`/api/v1/accounts/${SS58}/balance`), {}, {}),
+    () =>
+      handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        {} as unknown as Env,
+        {},
+      ),
   );
   assert.equal(res.status, 200);
   const body = await res.json();
@@ -157,7 +162,7 @@ test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC time
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -185,7 +190,7 @@ test("GET /accounts/{ss58}/balance serves from KV cache when available", async (
   };
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/balance`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -210,7 +215,7 @@ test("GET /accounts/{ss58}/balance falls through on KV read failure", async () =
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -235,7 +240,7 @@ test("GET /accounts/{ss58}/balance decodes hex-encoded rao balances", async () =
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -270,7 +275,7 @@ test("GET /accounts/{ss58}/balance keeps u128 rao precision above 2^53 (#2070)",
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -287,7 +292,7 @@ test("GET /accounts/{ss58}/balance returns null when RPC responds non-ok", async
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -306,7 +311,7 @@ test("GET /accounts/{ss58}/balance returns null when RPC data.free is absent", a
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -340,7 +345,7 @@ test("GET /accounts/{ss58}/balance writes to KV on successful RPC fetch", async 
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -371,7 +376,7 @@ test("GET /accounts/{ss58}/balance tolerates KV write failure", async () => {
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        env,
+        env as unknown as Env,
         {},
       );
       // KV write failure is non-fatal — still returns the balance.
@@ -393,7 +398,7 @@ test("GET /accounts/{ss58}/balance rejects non-base58 captures before RPC", asyn
       const bad = "5" + "0".repeat(47);
       const res = await handleRequest(
         req(`/api/v1/accounts/${bad}/balance`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 400);
@@ -428,7 +433,7 @@ test("GET /accounts/{ss58}/balance applies per-client RPC rate limiting", async 
             headers: { "cf-connecting-ip": "203.0.113.9" },
           },
         ),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 429);
@@ -458,7 +463,7 @@ test("GET /accounts/{ss58}/balance briefly negative-caches RPC failures", async 
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${SS58}/balance`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -484,7 +489,7 @@ test("GET /accounts/{ss58}/balance rejects a base58 address with a non-finney ne
     async () => {
       const res = await handleRequest(
         req(`/api/v1/accounts/${wrongPrefix}/balance`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 400);

@@ -7,7 +7,7 @@ import {
   distinctHotkeys,
   stakeByHotkeyNetuid,
 } from "../src/account-nominator-positions.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -16,7 +16,7 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
   test("cold store (no METAGRAPH_NEURONS_SOURCE flag, D1 never touched) -> 200 with an empty card", async () => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/positions`),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -51,7 +51,7 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
               ],
             }),
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -65,7 +65,7 @@ describe("GET /api/v1/accounts/{ss58}/positions (#5233)", () => {
       new Request(
         `https://api.metagraph.sh/api/v1/testnet/accounts/${SS58}/positions`,
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);

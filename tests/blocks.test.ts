@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import {
   handleBlock,
   handleBlockEvents,
@@ -378,11 +378,19 @@ function dbWith({
 
 test("GET /blocks clamps limit to <=100 + rejects unsupported params", async () => {
   const env = dbWith({ feed: [] });
-  const ok = await handleRequest(req("/api/v1/blocks?limit=999"), env, {});
+  const ok = await handleRequest(
+    req("/api/v1/blocks?limit=999"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(ok.status, 200);
   assert.equal((await ok.json()).data.limit, 100);
 
-  const bad = await handleRequest(req("/api/v1/blocks?bogus=1"), env, {});
+  const bad = await handleRequest(
+    req("/api/v1/blocks?bogus=1"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(bad.status, 400);
 });
 
@@ -398,7 +406,11 @@ test("GET /blocks rejects non-integer numeric filters with 400 (#2310)", async (
     "min_events=-1",
     "spec_version=foo",
   ]) {
-    const res = await handleRequest(req(`/api/v1/blocks?${query}`), env, {});
+    const res = await handleRequest(
+      req(`/api/v1/blocks?${query}`),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400, query);
     const body = await res.json();
     assert.equal(body.ok, false, query);
@@ -410,13 +422,21 @@ test("GET /blocks emits next_cursor:null when the page is not full (#1851)", asy
   const env = dbWith({
     feed: [{ block_number: 9, block_hash: "0x9", observed_at: 1 }],
   });
-  const res = await handleRequest(req("/api/v1/blocks?limit=50"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/blocks?limit=50"),
+    env as unknown as Env,
+    {},
+  );
   const body = await res.json();
   assert.equal(body.data.next_cursor, null);
 });
 
 test("GET /blocks/{ref} is schema-stable when cold (block:null, never 404)", async () => {
-  const res = await handleRequest(req("/api/v1/blocks/777"), {}, {});
+  const res = await handleRequest(
+    req("/api/v1/blocks/777"),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.ref, "777");
@@ -427,7 +447,11 @@ test("GET /blocks/{ref} is schema-stable when cold (block:null, never 404)", asy
 });
 
 test("GET /blocks is schema-stable when D1 is cold (never 404)", async () => {
-  const res = await handleRequest(req("/api/v1/blocks"), {}, {});
+  const res = await handleRequest(
+    req("/api/v1/blocks"),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.block_count, 0);
@@ -506,7 +530,7 @@ for (const badRef of BAD_BLOCK_REFS) {
 test("GET /blocks/{number}/extrinsics is schema-stable when the number is unknown (#1845)", async () => {
   const res = await handleRequest(
     req("/api/v1/blocks/777/extrinsics"),
-    dbWith({ feed: [] }),
+    dbWith({ feed: [] }) as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -521,7 +545,7 @@ test("GET /blocks/{hash}/extrinsics is schema-stable when the hash is unknown (#
   const hash = `0x${"d".repeat(64)}`;
   const res = await handleRequest(
     req(`/api/v1/blocks/${hash}/extrinsics`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -535,7 +559,7 @@ test("GET /blocks/{hash}/extrinsics is schema-stable when the hash is unknown (#
 test("GET /blocks/{ref}/extrinsics rejects an unsupported query param (#1845)", async () => {
   const res = await handleRequest(
     req("/api/v1/blocks/1234/extrinsics?bogus=1"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);

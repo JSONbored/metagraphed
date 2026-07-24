@@ -52,7 +52,7 @@ describe("handleSubnetYieldHistory CSV export", () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=csv`),
     );
     assert.equal(res.status, 200);
@@ -105,7 +105,7 @@ describe("handleSubnetYieldHistory CSV export", () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
       env as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=csv`),
     );
     assert.equal(res.status, 200);
@@ -120,7 +120,7 @@ describe("handleSubnetYieldHistory CSV export", () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield/history?window=30d&format=pdf`),
     );
     const body = await errorJson(res);
@@ -131,7 +131,7 @@ describe("handleSubnetYieldHistory CSV export", () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
       {} as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield/history?format=`),
     );
     const body = await errorJson(res);

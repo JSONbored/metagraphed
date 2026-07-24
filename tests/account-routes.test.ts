@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -73,7 +73,7 @@ function dbWith({
 test("GET /accounts/{ss58}/events rejects an unsupported query param", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/events?bogus=1`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -85,7 +85,7 @@ const EVENTS_CSV_HEADER =
 test("GET /accounts/{ss58}/events?format=csv emits a header-only CSV when cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/events?format=csv`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -94,7 +94,11 @@ test("GET /accounts/{ss58}/events?format=csv emits a header-only CSV when cold",
 });
 
 test("GET /accounts/{ss58} is schema-stable when D1 is cold (never 404)", async () => {
-  const res = await handleRequest(req(`/api/v1/accounts/${SS58}`), {}, {});
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}`),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.event_count, 0);
@@ -108,7 +112,7 @@ test("GET /accounts/{ss58} is schema-stable when D1 is cold (never 404)", async 
 test("GET /accounts/{ss58}/extrinsics rejects an unsupported query param", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/extrinsics?bogus=1`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -117,7 +121,7 @@ test("GET /accounts/{ss58}/extrinsics rejects an unsupported query param", async
 test("GET /accounts/{ss58}/extrinsics is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/extrinsics`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -132,7 +136,7 @@ test("GET /accounts/{ss58}/extrinsics JSON varies on Accept when CSV is negotiat
     req(`/api/v1/accounts/${SS58}/extrinsics`, {
       headers: { accept: "application/json" },
     }),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -143,7 +147,7 @@ test("GET /accounts/{ss58}/extrinsics JSON varies on Accept when CSV is negotiat
 test("GET /accounts/{ss58}/extrinsics?format=csv emits a header-only CSV when D1 is cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/extrinsics?format=csv`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -158,7 +162,7 @@ test("GET /accounts/{ss58}/extrinsics?format=csv emits a header-only CSV when D1
 test("GET /accounts/{ss58}/transfers rejects an unsupported query param (#1850)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/transfers?bogus=1`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -167,7 +171,7 @@ test("GET /accounts/{ss58}/transfers rejects an unsupported query param (#1850)"
 test("GET /accounts/{ss58}/transfers rejects an unsupported direction enum value", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/transfers?direction=invalid`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -179,7 +183,7 @@ test("GET /accounts/{ss58}/transfers rejects an unsupported direction enum value
 test("GET /accounts/{ss58}/transfers is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/transfers`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -194,7 +198,7 @@ test("GET /accounts/{ss58}/transfers JSON varies on Accept when CSV is negotiate
     req(`/api/v1/accounts/${SS58}/transfers`, {
       headers: { accept: "application/json" },
     }),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -205,7 +209,7 @@ test("GET /accounts/{ss58}/transfers JSON varies on Accept when CSV is negotiate
 test("GET /accounts/{ss58}/transfers?format=csv emits a header-only CSV when D1 is cold", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/transfers?format=csv`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -220,7 +224,7 @@ test("GET /accounts/{ss58}/transfers?format=csv emits a header-only CSV when D1 
 test("GET /accounts/{ss58}/stake-flow is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/stake-flow`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -233,7 +237,7 @@ test("GET /accounts/{ss58}/stake-flow is schema-stable when D1 is cold (never 40
 test("GET /accounts/{ss58}/weight-setters is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/weight-setters`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -246,7 +250,7 @@ test("GET /accounts/{ss58}/weight-setters is schema-stable when D1 is cold (neve
 test("GET /accounts/{ss58}/weight-setters rejects an unknown query param with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/weight-setters?bogus=1`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -255,7 +259,7 @@ test("GET /accounts/{ss58}/weight-setters rejects an unknown query param with 40
 test("GET /accounts/{ss58}/weight-setters rejects an unsupported window with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/weight-setters?window=90d`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -266,7 +270,7 @@ test("GET /accounts/{ss58}/weight-setters rejects an unsupported window with 400
 test("GET /accounts/{ss58}/registrations is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/registrations`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -279,7 +283,7 @@ test("GET /accounts/{ss58}/registrations is schema-stable when D1 is cold (never
 test("GET /accounts/{ss58}/registrations rejects an unknown query param with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/registrations?bogus=1`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -288,7 +292,7 @@ test("GET /accounts/{ss58}/registrations rejects an unknown query param with 400
 test("GET /accounts/{ss58}/registrations rejects an unsupported window with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/registrations?window=1y`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -299,7 +303,7 @@ test("GET /accounts/{ss58}/registrations rejects an unsupported window with 400"
 test("GET /accounts/{ss58}/serving is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/serving`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -312,7 +316,7 @@ test("GET /accounts/{ss58}/serving is schema-stable when D1 is cold (never 404)"
 test("GET /accounts/{ss58}/serving rejects an unknown query param with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/serving?bogus=1`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -321,7 +325,7 @@ test("GET /accounts/{ss58}/serving rejects an unknown query param with 400", asy
 test("GET /accounts/{ss58}/serving rejects an unsupported window with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/serving?window=1y`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -332,7 +336,7 @@ test("GET /accounts/{ss58}/serving rejects an unsupported window with 400", asyn
 test("GET /accounts/{ss58}/deregistrations is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/deregistrations`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -345,7 +349,7 @@ test("GET /accounts/{ss58}/deregistrations is schema-stable when D1 is cold (nev
 test("GET /accounts/{ss58}/deregistrations rejects an unknown query param with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/deregistrations?bogus=1`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -354,7 +358,7 @@ test("GET /accounts/{ss58}/deregistrations rejects an unknown query param with 4
 test("GET /accounts/{ss58}/deregistrations rejects an unsupported window with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/deregistrations?window=1y`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -365,7 +369,7 @@ test("GET /accounts/{ss58}/deregistrations rejects an unsupported window with 40
 test("GET /accounts/{ss58}/prometheus is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/prometheus`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -378,7 +382,7 @@ test("GET /accounts/{ss58}/prometheus is schema-stable when D1 is cold (never 40
 test("GET /accounts/{ss58}/prometheus rejects an unknown query param with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/prometheus?bogus=1`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -387,7 +391,7 @@ test("GET /accounts/{ss58}/prometheus rejects an unknown query param with 400", 
 test("GET /accounts/{ss58}/prometheus rejects an unsupported window with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/prometheus?window=1y`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -398,7 +402,7 @@ test("GET /accounts/{ss58}/prometheus rejects an unsupported window with 400", a
 test("GET /accounts/{ss58}/axon-removals is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/axon-removals`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -411,7 +415,7 @@ test("GET /accounts/{ss58}/axon-removals is schema-stable when D1 is cold (never
 test("GET /accounts/{ss58}/axon-removals rejects an unknown query param with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/axon-removals?bogus=1`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -420,7 +424,7 @@ test("GET /accounts/{ss58}/axon-removals rejects an unknown query param with 400
 test("GET /accounts/{ss58}/axon-removals rejects an unsupported window with 400", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/axon-removals?window=1y`),
-    dbWith({}),
+    dbWith({}) as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);

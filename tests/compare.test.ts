@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import addFormatsPlugin from "ajv-formats";
-import { composeCompareData, handleRequest } from "../workers/api.mjs";
+import { composeCompareData, handleRequest } from "../workers/api.ts";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
@@ -330,7 +330,7 @@ describe("GET /api/v1/compare", () => {
   const get = async (path: string) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     return { status: res.status, body: await res.json() };
@@ -466,7 +466,7 @@ describe("GET /api/v1/compare", () => {
         "https://api.metagraph.sh/api/v1/compare?netuids=7&dimensions=health",
         {},
       ),
-      healthEnv,
+      healthEnv as unknown as Env,
       {},
     );
     const body = await res.json();
@@ -497,7 +497,7 @@ describe("GET /api/v1/compare", () => {
         "https://api.metagraph.sh/api/v1/compare?netuids=7,7,1&dimensions=health,structure",
         {},
       ),
-      healthEnv,
+      healthEnv as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -514,7 +514,7 @@ describe("GET /api/v1/compare/validators", () => {
   const get = async (path: string) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     return { status: res.status, body: await res.json() };

@@ -5,7 +5,7 @@ import {
   yieldDistribution,
   loadChainYield,
 } from "../src/chain-yield.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -331,7 +331,11 @@ describe("GET /api/v1/chain/yield", () => {
     new Request(`https://api.metagraph.sh/api/v1/chain/yield${q}`);
 
   test("rejects an unexpected query parameter with 400", async () => {
-    const res = await handleRequest(req("?window=7d"), neuronsEnv([]), {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      neuronsEnv([]) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 });
@@ -392,7 +396,7 @@ describe("chain/yield edge cache", () => {
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/yield"),
-      controlEnv("2026-06-18T00:00:00.000Z"),
+      controlEnv("2026-06-18T00:00:00.000Z") as unknown as Env,
       { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);
@@ -407,7 +411,7 @@ describe("chain/yield edge cache", () => {
     cache.install();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/yield"),
-      controlEnv(null),
+      controlEnv(null) as unknown as Env,
       { waitUntil: (promise: Promise<unknown>) => promise },
     );
     assert.equal(res.status, 200);

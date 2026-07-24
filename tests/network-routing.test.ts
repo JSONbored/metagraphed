@@ -1,7 +1,7 @@
 import path from "node:path";
 import assert from "node:assert/strict";
 import { beforeAll, describe, test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv, repoRoot } from "../scripts/lib.ts";
 import { buildNetworkRegistry } from "../scripts/build-network-registry.ts";
 import type { Row } from "./row-type.ts";
@@ -22,7 +22,7 @@ beforeAll(async () => {
 async function get(env: Row, pathname: string, init?: RequestInit) {
   const res = await handleRequest(
     new Request(`${ORIGIN}${pathname}`, init),
-    env,
+    env as unknown as Env,
     {},
   );
   let body: Row | null;

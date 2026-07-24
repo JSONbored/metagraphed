@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 const env = createLocalArtifactEnv();
 const get = (path: string) =>
-  handleRequest(new Request(`https://metagraph.sh${path}`), env, {});
+  handleRequest(
+    new Request(`https://metagraph.sh${path}`),
+    env as unknown as Env,
+    {},
+  );
 
 describe("batch subnet lookups (?netuids=)", () => {
   test("returns only the requested netuids", async () => {
@@ -110,7 +114,7 @@ describe("RPC proxy rate-limit headers", () => {
             params: [],
           }),
         }),
-        rpcEnv,
+        rpcEnv as unknown as Env,
         {},
       );
       assert.notEqual(res.status, 501);
@@ -140,7 +144,7 @@ describe("RPC proxy rate-limit headers", () => {
           params: [],
         }),
       }),
-      limitedEnv,
+      limitedEnv as unknown as Env,
       {},
     );
     assert.equal(res.status, 429);

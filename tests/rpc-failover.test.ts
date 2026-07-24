@@ -7,7 +7,7 @@ import {
   proxyWithFailover,
   recordRpcFailure,
   recordRpcSuccess,
-} from "../workers/api.mjs";
+} from "../workers/api.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
 const SAFE_A = "https://bittensor-finney.api.onfinality.io/public";

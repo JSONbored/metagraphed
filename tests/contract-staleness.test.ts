@@ -6,7 +6,7 @@
 // live contract version, so every current artifact lags it.
 
 import { describe, expect, it } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { contractStaleness } from "../workers/responses.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
@@ -27,7 +27,11 @@ describe("serve-time contract staleness (#1001)", () => {
       ...createLocalArtifactEnv(),
       METAGRAPH_CONTRACT_VERSION: "2099-01-01.1",
     };
-    const res = await handleRequest(new Request(ARTIFACT_ROUTE), env, {});
+    const res = await handleRequest(
+      new Request(ARTIFACT_ROUTE),
+      env as unknown as Env,
+      {},
+    );
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -54,7 +58,11 @@ describe("serve-time contract staleness (#1001)", () => {
 
   it("omits stale_contract when the artifact matches the live contract", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(new Request(ARTIFACT_ROUTE), env, {});
+    const res = await handleRequest(
+      new Request(ARTIFACT_ROUTE),
+      env as unknown as Env,
+      {},
+    );
     const body = await res.json();
 
     expect(res.status).toBe(200);

@@ -15,7 +15,7 @@ import {
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../src/health-prober.ts";
-import { handleScheduled } from "../workers/api.mjs";
+import { handleScheduled } from "../workers/api.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
 
 // runHealthProber's second positional parameter (`_ctx: ExecutionContext`) is
@@ -755,7 +755,7 @@ describe("handleScheduled dispatch", () => {
   test("hourly cron prunes; other crons probe", async () => {
     const db = makeDb();
     const pruneResult = (await handleScheduled(
-      { cron: "0 * * * *" },
+      { cron: "0 * * * *" } as unknown as ScheduledController,
       {
         METAGRAPH_HEALTH_DB: db,
         // rollupDailyUptime must succeed (Postgres sync ok) for the prune to
@@ -763,14 +763,14 @@ describe("handleScheduled dispatch", () => {
         // rollup sync fails" above.
         DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
         HEALTH_CHECKS_SYNC_SECRET: "test-secret",
-      },
+      } as unknown as Env,
     )) as Row;
     assert.equal(pruneResult.pruned, true);
 
     // The 2-minute cron path runs the prober; with an empty env it no-ops.
     const probeResult = (await handleScheduled(
-      { cron: "*/2 * * * *" },
-      {},
+      { cron: "*/2 * * * *" } as unknown as ScheduledController,
+      {} as unknown as Env,
     )) as Row;
     assert.equal(probeResult.ok, false);
     assert.equal(probeResult.reason, "no-operational-surfaces");
@@ -2129,9 +2129,9 @@ describe("rollupDailyUptime (durable daily history)", () => {
       },
     };
     const result = (await handleScheduled(
-      { cron: "0 * * * *" },
-      { METAGRAPH_HEALTH_DB: orderDb },
-      {},
+      { cron: "0 * * * *" } as unknown as ScheduledController,
+      { METAGRAPH_HEALTH_DB: orderDb } as unknown as Env,
+      {} as unknown as ExecutionContext,
     )) as Row;
     assert.equal(result.rollup_skipped_prune, true);
     assert.equal(result.uptime_rolled, false);

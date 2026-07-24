@@ -9,7 +9,7 @@ import {
 } from "../src/subnet-weight-setters.ts";
 import { WEIGHTS_EVENT_KIND } from "../src/subnet-weights.ts";
 import type { Row } from "./row-type.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const NETUID = 7;
@@ -259,7 +259,7 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
       new Request(
         `https://api.metagraph.sh/api/v1/subnets/${NETUID}/weights/setters`,
       ),
-      eventsEnv([], null),
+      eventsEnv([], null) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -272,7 +272,7 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
       new Request(
         `https://api.metagraph.sh/api/v1/subnets/${NETUID}/weights/setters?bogus=1`,
       ),
-      eventsEnv([], null),
+      eventsEnv([], null) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -283,7 +283,7 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
       new Request(
         `https://api.metagraph.sh/api/v1/subnets/${NETUID}/weights/setters?window=1y`,
       ),
-      eventsEnv([], null),
+      eventsEnv([], null) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -296,7 +296,7 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
       new Request(
         `https://api.metagraph.sh/api/v1/subnets/${NETUID}/weights/setters`,
       ),
-      eventsEnv([], null),
+      eventsEnv([], null) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);

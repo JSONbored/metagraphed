@@ -6,7 +6,7 @@ import {
   RANDOMNESS_RPC_TIMEOUT_MS,
   loadRandomnessStatus,
 } from "../src/randomness.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { mockEnv } from "./row-type.ts";
 import type { Row, AnyFn } from "./row-type.ts";
 
@@ -316,7 +316,7 @@ describe("GET /api/v1/network/randomness via the Worker", () => {
     await withFetchStub(goldenFetchStub(), async () => {
       const res = await handleRequest(
         req("/api/v1/network/randomness"),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -338,7 +338,7 @@ describe("GET /api/v1/network/randomness via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/network/randomness"),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -354,7 +354,7 @@ describe("GET /api/v1/network/randomness via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/testnet/network/randomness"),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 404);

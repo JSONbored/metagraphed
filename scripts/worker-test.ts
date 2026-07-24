@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "./lib.ts";
 
 // Live handler responses are read for assertion purposes only, never trusted
@@ -8,7 +8,7 @@ import { createLocalArtifactEnv } from "./lib.ts";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
-const env = createLocalArtifactEnv();
+const env = createLocalArtifactEnv() as unknown as Env;
 
 const head = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets", { method: "HEAD" }),
@@ -113,7 +113,7 @@ const r2Fallback = await handleRequest(
         };
       },
     },
-  },
+  } as unknown as Env,
   {},
 );
 assert.equal(
@@ -231,7 +231,7 @@ for (const unsafeUrl of [
             };
           },
         },
-      },
+      } as unknown as Env,
       {},
     );
     assert.equal(
@@ -316,7 +316,7 @@ try {
         };
       },
     },
-  };
+  } as unknown as Env;
   const proxied = await handleRequest(
     new Request("https://metagraph.sh/rpc/v1/finney", {
       method: "POST",

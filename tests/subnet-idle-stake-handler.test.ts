@@ -14,7 +14,7 @@ import {
   handleChainIdleStake,
   handleSubnetIdleStake,
 } from "../workers/request-handlers/entities.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
@@ -71,7 +71,7 @@ describe("handleSubnetIdleStake", () => {
       await handleSubnetIdleStake(
         req(`/api/v1/subnets/${NETUID}/idle-stake?window=7d`),
         emptyEnv(),
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/idle-stake?window=7d`),
       ),
     );
@@ -82,7 +82,7 @@ describe("handleSubnetIdleStake", () => {
       await handleSubnetIdleStake(
         req(`/api/v1/subnets/${NETUID}/idle-stake`),
         emptyEnv(),
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/idle-stake`),
       ),
     );
@@ -126,7 +126,7 @@ describe("workers/api.mjs dispatch", () => {
   test("GET /api/v1/subnets/{netuid}/idle-stake reaches handleSubnetIdleStake via SUBNET_IDLE_STAKE_PATH_PATTERN", async () => {
     const res = await handleRequest(
       req(`/api/v1/subnets/${NETUID}/idle-stake`),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     const body = await json(res);
@@ -136,7 +136,7 @@ describe("workers/api.mjs dispatch", () => {
   test("GET /api/v1/chain/idle-stake reaches handleChainIdleStake", async () => {
     const res = await handleRequest(
       req("/api/v1/chain/idle-stake"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     const body = await json(res);

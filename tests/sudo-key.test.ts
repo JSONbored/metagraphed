@@ -6,7 +6,7 @@ import {
   SUDO_KEY_RPC_TIMEOUT_MS,
   loadSudoKey,
 } from "../src/sudo-key.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 function req(path: string) {
@@ -245,7 +245,11 @@ describe("GET /api/v1/sudo/key via the Worker", () => {
         }),
       })) as unknown as typeof fetch,
       async () => {
-        const res = await handleRequest(req("/api/v1/sudo/key"), {}, {});
+        const res = await handleRequest(
+          req("/api/v1/sudo/key"),
+          {} as unknown as Env,
+          {},
+        );
         assert.equal(res.status, 200);
         const body = await res.json();
         assert.equal(body.ok, true);
@@ -263,7 +267,11 @@ describe("GET /api/v1/sudo/key via the Worker", () => {
     await withFetchStub(
       (async () => ({ ok: false })) as unknown as typeof fetch,
       async () => {
-        const res = await handleRequest(req("/api/v1/sudo/key"), {}, {});
+        const res = await handleRequest(
+          req("/api/v1/sudo/key"),
+          {} as unknown as Env,
+          {},
+        );
         assert.equal(res.status, 200);
         const body = await res.json();
         assert.equal(body.data.hotkey, null);

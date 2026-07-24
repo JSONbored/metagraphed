@@ -6,7 +6,7 @@ import {
   DEFAULT_CHAIN_WEIGHT_SETTERS_WINDOW,
   CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
 } from "../src/chain-weight-setters.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // Two per-setter leaderboard rows + the network-wide totals, matching the
@@ -265,7 +265,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
           { hotkey: "5Grw...alice", uid: 3, weight_sets: 30, share: 0.75 },
           { hotkey: null, uid: 8, weight_sets: 10, share: 0.25 },
         ],
-      }),
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -280,7 +280,11 @@ describe("GET /api/v1/chain/weights/setters", () => {
   });
 
   test("defaults to the 7d window when omitted", async () => {
-    const res = await handleRequest(req(), createLocalArtifactEnv(), {});
+    const res = await handleRequest(
+      req(),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.window, "7d");
@@ -291,7 +295,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/weights/setters", {
         method: "HEAD",
       }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -301,7 +305,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("rejects an unknown query parameter with 400", async () => {
     const res = await handleRequest(
       req("?bogus=1"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -310,7 +314,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleRequest(
       req("?window=1y"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -319,14 +323,18 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("rejects an out-of-range limit with 400", async () => {
     const res = await handleRequest(
       req("?limit=0"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
   });
 
   test("cold store (no Postgres tier flag) → 200 with an empty leaderboard", async () => {
-    const res = await handleRequest(req(), createLocalArtifactEnv(), {});
+    const res = await handleRequest(
+      req(),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.setter_count, 0);
@@ -342,7 +350,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
         observed_at: "2026-01-01T00:00:00.000Z",
         setter_count: 99,
         setters: [{ hotkey: "5Pg", weight_sets: 1 }],
-      }),
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -360,7 +368,11 @@ describe("GET /api/v1/chain/weights/setters", () => {
         },
       },
     };
-    const res = await handleRequest(req("?window=7d"), env, {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.setter_count, 0);
@@ -383,7 +395,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
           { hotkey: "5Grw...alice", uid: 3, weight_sets: 30, share: 0.75 },
           { hotkey: null, uid: 8, weight_sets: 10, share: 0.25 },
         ],
-      }),
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -400,7 +412,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("emits a header-only CSV on a cold store", async () => {
     const res = await handleRequest(
       req("?format=csv"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -411,7 +423,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("rejects an unsupported format value with 400", async () => {
     const res = await handleRequest(
       req("?format=xml"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);

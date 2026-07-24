@@ -4,7 +4,7 @@ import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_MAX,
 } from "../src/chain-deregistrations.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -257,7 +257,11 @@ describe("GET /api/v1/chain/deregistrations", () => {
       d1Called = true;
       throw new Error("D1 must not be queried -- account_events is retired");
     };
-    const res = await handleRequest(req("?window=7d"), env, {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
@@ -275,7 +279,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/deregistrations", {
         method: "HEAD",
       }),
-      deregistrationsEnv(warm),
+      deregistrationsEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -283,7 +287,11 @@ describe("GET /api/v1/chain/deregistrations", () => {
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {
-    const res = await handleRequest(req(), deregistrationsEnv(cold), {});
+    const res = await handleRequest(
+      req(),
+      deregistrationsEnv(cold) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -320,7 +328,11 @@ describe("GET /api/v1/chain/deregistrations", () => {
         "D1 must not be queried when Postgres serves the request",
       );
     };
-    const res = await handleRequest(req("?window=7d"), env, {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 99);
@@ -340,7 +352,11 @@ describe("GET /api/v1/chain/deregistrations", () => {
         },
       },
     };
-    const res = await handleRequest(req("?window=7d"), env, {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -349,7 +365,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleRequest(
       req("?window=90d"),
-      deregistrationsEnv(cold),
+      deregistrationsEnv(cold) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -358,7 +374,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
   test("rejects an unknown query param with 400", async () => {
     const res = await handleRequest(
       req("?bogus=1"),
-      deregistrationsEnv(cold),
+      deregistrationsEnv(cold) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -367,7 +383,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
   test("rejects an out-of-range limit with 400", async () => {
     const res = await handleRequest(
       req("?limit=0"),
-      deregistrationsEnv(cold),
+      deregistrationsEnv(cold) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -381,7 +397,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
   test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      deregistrationsEnv(warm),
+      deregistrationsEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -400,7 +416,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/deregistrations", {
         headers: { accept: "text/csv" },
       }),
-      deregistrationsEnv(warm),
+      deregistrationsEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -410,7 +426,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
   test("emits a header-only CSV on a cold store", async () => {
     const res = await handleRequest(
       req("?format=csv"),
-      deregistrationsEnv(cold),
+      deregistrationsEnv(cold) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -424,7 +440,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
         "https://api.metagraph.sh/api/v1/chain/deregistrations?format=csv",
         { method: "HEAD" },
       ),
-      deregistrationsEnv(warm),
+      deregistrationsEnv(warm) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -435,7 +451,7 @@ describe("GET /api/v1/chain/deregistrations", () => {
   test("rejects an unsupported format value with 400", async () => {
     const res = await handleRequest(
       req("?format=xml"),
-      deregistrationsEnv(cold),
+      deregistrationsEnv(cold) as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -492,7 +508,7 @@ describe("chain/deregistrations edge cache", () => {
     const call = () =>
       handleRequest(
         new Request("https://api.metagraph.sh/api/v1/chain/deregistrations"),
-        env,
+        env as unknown as Env,
         { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();

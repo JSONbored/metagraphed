@@ -17,7 +17,7 @@ import {
   askQuestion,
   SEMANTIC_MAX_QUERY_LENGTH,
 } from "../src/ai-search.ts";
-import { handleRequest, handleScheduled } from "../workers/api.mjs";
+import { handleRequest, handleScheduled } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { overlayCatalogIndex } from "../src/health-serving.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -894,14 +894,18 @@ describe("askQuestion", () => {
 describe("AI routes through the Worker dispatch", () => {
   test("semantic + ask return 503 when AI is disabled", async () => {
     const env = createLocalArtifactEnv();
-    const s = await handleRequest(new Request(`${SEMANTIC_URL}?q=x`), env, {});
+    const s = await handleRequest(
+      new Request(`${SEMANTIC_URL}?q=x`),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(s.status, 503);
     const a = await handleRequest(
       new Request(ASK_URL, {
         method: "POST",
         body: JSON.stringify({ question: "x" }),
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(a.status, 503);
@@ -910,7 +914,7 @@ describe("AI routes through the Worker dispatch", () => {
   test("enabled semantic returns a 200 envelope", async () => {
     const res = await handleRequest(
       new Request(`${SEMANTIC_URL}?q=images&limit=5`),
-      aiWorkerEnv(),
+      aiWorkerEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -923,7 +927,7 @@ describe("AI routes through the Worker dispatch", () => {
   test("enabled semantic threads a repeatable ?type= scope", async () => {
     const res = await handleRequest(
       new Request(`${SEMANTIC_URL}?q=images&type=subnet&type=provider`),
-      aiWorkerEnv(),
+      aiWorkerEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -934,7 +938,7 @@ describe("AI routes through the Worker dispatch", () => {
   test("semantic with an unknown ?type= is a 400", async () => {
     const res = await handleRequest(
       new Request(`${SEMANTIC_URL}?q=x&type=bogus`),
-      aiWorkerEnv(),
+      aiWorkerEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -948,7 +952,7 @@ describe("AI routes through the Worker dispatch", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question: "which?", type: "bogus" }),
       }),
-      aiWorkerEnv(),
+      aiWorkerEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -962,7 +966,7 @@ describe("AI routes through the Worker dispatch", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question: "Which subnet does images?" }),
       }),
-      aiWorkerEnv(),
+      aiWorkerEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -973,7 +977,7 @@ describe("AI routes through the Worker dispatch", () => {
   test("semantic without q is a 400", async () => {
     const res = await handleRequest(
       new Request(SEMANTIC_URL),
-      aiWorkerEnv(),
+      aiWorkerEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -983,7 +987,7 @@ describe("AI routes through the Worker dispatch", () => {
   test("ask with invalid JSON is a 400", async () => {
     const res = await handleRequest(
       new Request(ASK_URL, { method: "POST", body: "{bad" }),
-      aiWorkerEnv(),
+      aiWorkerEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1000,7 +1004,7 @@ describe("AI routes through the Worker dispatch", () => {
         headers: { "content-length": "4097" },
         body: JSON.stringify({ question: "x" }),
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 413);
@@ -1027,7 +1031,7 @@ describe("AI routes through the Worker dispatch", () => {
         body: stream,
         duplex: "half",
       } as RequestInit),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 413);
@@ -1035,7 +1039,11 @@ describe("AI routes through the Worker dispatch", () => {
   });
 
   test("GET /api/v1/ask is a 405", async () => {
-    const res = await handleRequest(new Request(ASK_URL), aiWorkerEnv(), {});
+    const res = await handleRequest(
+      new Request(ASK_URL),
+      aiWorkerEnv() as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 405);
   });
 
@@ -1045,7 +1053,7 @@ describe("AI routes through the Worker dispatch", () => {
     });
     const res = await handleRequest(
       new Request(`${SEMANTIC_URL}?q=x`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 429);
@@ -1067,7 +1075,7 @@ describe("AI routes through the Worker dispatch", () => {
         method: "POST",
         body: JSON.stringify({ question: "x" }),
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 429);
@@ -1082,7 +1090,7 @@ describe("AI routes through the Worker dispatch", () => {
     });
     const res = await handleRequest(
       new Request(`${SEMANTIC_URL}?q=x`),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 502);
@@ -1098,7 +1106,7 @@ describe("AI routes through the Worker dispatch", () => {
         method: "POST",
         body: JSON.stringify({ question: "x" }),
       }),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 502);
@@ -1406,9 +1414,9 @@ describe("embedding-sync cron", () => {
   test("the daily cron triggers an embedding sync", async () => {
     const env = aiWorkerEnv({ METAGRAPH_CONTROL: memKv() });
     const result = (await handleScheduled(
-      { cron: EMBEDDING_SYNC_CRON },
-      env,
-      {},
+      { cron: EMBEDDING_SYNC_CRON } as unknown as ScheduledController,
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     )) as Row;
     assert.equal(result.ok, true);
     assert.ok(result.total >= 0);

@@ -12,7 +12,7 @@ import {
   syncSubnetSnapshotToPostgres,
   writeSubnetSnapshot,
 } from "../src/health-prober.ts";
-import { handleRequest, handleScheduled } from "../workers/api.mjs";
+import { handleRequest, handleScheduled } from "../workers/api.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -1370,7 +1370,7 @@ function rowsForSql(sql: string) {
 }
 
 async function getJson(url: string, env: Row) {
-  const res = await handleRequest(new Request(url), env, {});
+  const res = await handleRequest(new Request(url), env as unknown as Env, {});
   return { status: res.status, body: await res.json() };
 }
 
@@ -1650,7 +1650,11 @@ describe("hourly cron writes a daily snapshot", () => {
       HEALTH_CHECKS_SYNC_SECRET: "test-secret",
       SUBNET_SNAPSHOT_SYNC_SECRET: "test-secret",
     };
-    const result = await handleScheduled({ cron: "0 * * * *" }, env, {});
+    const result = await handleScheduled(
+      { cron: "0 * * * *" } as unknown as ScheduledController,
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
+    );
     assert.equal((result as Row).pruned, true);
     assert.ok(snapshotRowCount! > 0, "snapshot sync should ship rows");
   });

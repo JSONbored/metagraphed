@@ -4,7 +4,7 @@
 // subnet-stake-quote-handler.test.mjs; the pure math in stake-quote.test.mjs.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const req = (path: string) => new Request(`https://api.metagraph.sh${path}`);
@@ -52,7 +52,7 @@ describe("GET /api/v1/subnets/{netuid}/stake-quote route", () => {
   test("dispatches to a 200 quote", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/64/stake-quote?amount=1000&direction=stake"),
-      env(),
+      env() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -65,7 +65,7 @@ describe("GET /api/v1/subnets/{netuid}/stake-quote route", () => {
   test("rejects an unknown query param with 400", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/64/stake-quote?amount=1&foo=bar"),
-      env(),
+      env() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -76,7 +76,7 @@ describe("GET /api/v1/subnets/{netuid}/stake-quote route", () => {
     // stake-quote check to the router's not-found handling.
     const res = await handleRequest(
       req("/api/v1/subnets/64/not-a-real-subroute"),
-      env(),
+      env() as unknown as Env,
       {},
     );
     assert.notEqual(res.status, 200);

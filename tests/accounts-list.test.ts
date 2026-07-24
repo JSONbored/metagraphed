@@ -8,7 +8,7 @@ import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
 } from "../src/accounts-list.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -439,7 +439,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
   test("is schema-stable when D1 is cold (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts"),
-      accountsListEnv([]),
+      accountsListEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -450,7 +450,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
   test("rejects an unsupported ?sort with 400", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts?sort=bogus"),
-      accountsListEnv([]),
+      accountsListEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -462,7 +462,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
   test("rejects a ?limit above the max with 400", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts?limit=1000"),
-      accountsListEnv([]),
+      accountsListEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -471,7 +471,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
   test("rejects an unrecognized query param with 400", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts?bogus=1"),
-      accountsListEnv([]),
+      accountsListEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -512,7 +512,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
     };
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/accounts?format=csv"),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -525,7 +525,7 @@ describe("GET /api/v1/accounts via the Worker", () => {
   test("testnet has no variant (mainnet-only neurons-derived leaderboard)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/testnet/accounts"),
-      accountsListEnv([]),
+      accountsListEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 404);

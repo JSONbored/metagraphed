@@ -8,7 +8,7 @@ import {
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
 } from "../src/subnet-ohlc.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -498,7 +498,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("is schema-stable when the Postgres tier is unavailable (never 404)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -511,7 +511,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("root subnet (netuid 0) is schema-stable and root_excluded", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/0/ohlc"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -523,7 +523,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("an unsupported query param is a 400", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc?window=30d"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -532,7 +532,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("an invalid ?interval= value is a 400", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc?interval=5m"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -541,7 +541,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("a valid ?interval=1d is accepted", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc?interval=1d"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -552,7 +552,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("an out-of-range ?days= value is a 400", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc?days=9999"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -561,7 +561,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("a non-numeric ?days= value is a 400", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc?days=soon"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -570,7 +570,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("a valid ?days= within range is accepted", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc?days=30"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -579,7 +579,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   test("testnet has no variant (mainnet-only account_events tier)", async () => {
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/testnet/subnets/7/ohlc"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 404);
@@ -617,7 +617,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
     };
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc"),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);

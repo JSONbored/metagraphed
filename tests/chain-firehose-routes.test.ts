@@ -7,7 +7,7 @@
 // DATA_API-proxied internal routes.
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { AnyFn } from "./row-type.ts";
 
 function stubHub(fetchImpl: AnyFn) {
@@ -24,7 +24,7 @@ function stubHub(fetchImpl: AnyFn) {
 test("chain/stream: 503s when CHAIN_FIREHOSE_HUB is not bound", async () => {
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/stream"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 503);
@@ -45,7 +45,7 @@ test("chain/stream: forwards to the hub's /subscribe path, preserving the query 
   };
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/stream?topics=blocks"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -70,7 +70,7 @@ test("chain/stream: preserves the Upgrade header so a WebSocket handshake reache
     new Request("https://api.metagraph.sh/api/v1/chain/stream", {
       headers: { upgrade: "websocket" },
     }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -100,14 +100,18 @@ function ingestRequest(
 test("ingest: rejects non-POST before checking auth (405)", async () => {
   const res = await handleRequest(
     ingestRequest(null, { method: "GET" }),
-    { CHAIN_FIREHOSE_SYNC_SECRET: "shh" },
+    { CHAIN_FIREHOSE_SYNC_SECRET: "shh" } as unknown as Env,
     {},
   );
   assert.equal(res.status, 405);
 });
 
 test("ingest: 503s when CHAIN_FIREHOSE_SYNC_SECRET is unprovisioned", async () => {
-  const res = await handleRequest(ingestRequest("{}"), {}, {});
+  const res = await handleRequest(
+    ingestRequest("{}"),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 503);
   assert.equal(
     (await res.json()).error.code,
@@ -118,7 +122,7 @@ test("ingest: 503s when CHAIN_FIREHOSE_SYNC_SECRET is unprovisioned", async () =
 test("ingest: 401s when the token header is missing", async () => {
   const res = await handleRequest(
     ingestRequest("{}"),
-    { CHAIN_FIREHOSE_SYNC_SECRET: "shh" },
+    { CHAIN_FIREHOSE_SYNC_SECRET: "shh" } as unknown as Env,
     {},
   );
   assert.equal(res.status, 401);
@@ -127,7 +131,7 @@ test("ingest: 401s when the token header is missing", async () => {
 test("ingest: 401s when the token header is wrong", async () => {
   const res = await handleRequest(
     ingestRequest("{}", { token: "nope" }),
-    { CHAIN_FIREHOSE_SYNC_SECRET: "shh" },
+    { CHAIN_FIREHOSE_SYNC_SECRET: "shh" } as unknown as Env,
     {},
   );
   assert.equal(res.status, 401);
@@ -140,7 +144,7 @@ test("ingest: 401s when the token header is wrong", async () => {
 test("ingest: 503s (after auth passes) when CHAIN_FIREHOSE_HUB is not bound", async () => {
   const res = await handleRequest(
     ingestRequest("{}", { token: "shh" }),
-    { CHAIN_FIREHOSE_SYNC_SECRET: "shh" },
+    { CHAIN_FIREHOSE_SYNC_SECRET: "shh" } as unknown as Env,
     {},
   );
   assert.equal(res.status, 503);
@@ -166,7 +170,7 @@ test("ingest: on valid auth, forwards the body to the hub's /ingest path on the 
     ingestRequest(JSON.stringify({ table: "blocks", block_number: 1 }), {
       token: "shh",
     }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 202);
@@ -195,7 +199,7 @@ test("ingest: a within-limit request passes the rate limiter and reaches the hub
   };
   const res = await handleRequest(
     ingestRequest("{}", { token: "shh" }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 202);
@@ -216,7 +220,7 @@ test("ingest: an over-limit request 429s with the rate-limit header family and n
   };
   const res = await handleRequest(
     ingestRequest("{}", { token: "shh" }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 429);
@@ -243,7 +247,7 @@ test("ingest: an unbound rate limiter is a no-op (local dev/CI) (#5550)", async 
   };
   const res = await handleRequest(
     ingestRequest("{}", { token: "shh" }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 202);
@@ -263,7 +267,7 @@ test("ingest: a wrong token 401s before the limiter is consulted (#5550)", async
   };
   const res = await handleRequest(
     ingestRequest("{}", { token: "nope" }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 401);
@@ -282,7 +286,7 @@ test("ingest: a DO stub call throwing (e.g. a mid-request deploy reset) 503s cle
   };
   const res = await handleRequest(
     ingestRequest("{}", { token: "shh" }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 503);
@@ -305,7 +309,7 @@ test("ingest: relays a non-2xx upstream status (e.g. 400 from an invalid payload
   };
   const res = await handleRequest(
     ingestRequest("{}", { token: "shh" }),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -61,7 +61,7 @@ test("GET /blocks/{ref}/events honors ?limit and rejects bad params", async () =
   const env = dbWith({ events: [ROW], blockNumber: 1_000_000 });
   const ok = await handleRequest(
     req("/api/v1/blocks/1000000/events?limit=10"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(ok.status, 200);
@@ -69,7 +69,7 @@ test("GET /blocks/{ref}/events honors ?limit and rejects bad params", async () =
 
   const bad = await handleRequest(
     req("/api/v1/blocks/1000000/events?bogus=1"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(bad.status, 400);
@@ -81,7 +81,7 @@ test("GET /blocks/{ref}/events is schema-stable for an unknown ref (never 404)",
   const env = dbWith({ blockNumber: null });
   const res = await handleRequest(
     req(`/api/v1/blocks/${hash}/events`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -96,7 +96,11 @@ test("GET /blocks/{number}/events resolves an unknown numeric ref to block_numbe
   // so it reports block_number:null instead of echoing the requested number back
   // (mirrors handleBlockExtrinsics; #1953 fixed the extrinsics sibling).
   const env = dbWith({ blockNumber: null });
-  const res = await handleRequest(req("/api/v1/blocks/777/events"), env, {});
+  const res = await handleRequest(
+    req("/api/v1/blocks/777/events"),
+    env as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.ref, "777");
@@ -109,7 +113,7 @@ test("GET /blocks/{number}/events ignores orphaned account_events when block is 
   const env = dbWith({ events: [ROW], blockNumber: null });
   const res = await handleRequest(
     req("/api/v1/blocks/1000000/events"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);

@@ -5,7 +5,7 @@ import {
   orderSafeRpcEndpoints,
   selectSafeRpcEndpoint,
   weightedPickEndpoint,
-} from "../workers/api.mjs";
+} from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 // Origins in TRUSTED_RPC_UPSTREAM_ORIGINS.

@@ -699,7 +699,7 @@ describe("handleSubnetMetagraph", () => {
     const res = await handleSubnetMetagraph(
       req(`/api/v1/subnets/${NETUID}/metagraph`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/metagraph?bogus=1`),
     );
     const body = await errorJson(res);
@@ -728,7 +728,7 @@ describe("handleSubnetYield", () => {
     const res = await handleSubnetYield(
       req(`/api/v1/subnets/${NETUID}/yield`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield?bogus=1`),
     );
     const body = await errorJson(res);
@@ -778,8 +778,8 @@ describe("handleNeuron", () => {
       await handleNeuron(
         req(`/api/v1/subnets/${NETUID}/neurons/999`),
         env as unknown as Env,
-        String(NETUID),
-        String(999),
+        NETUID,
+        999,
       ),
     );
     assert.equal(body.data.neuron, null);
@@ -791,7 +791,7 @@ describe("handleSubnetValidators", () => {
     const res = await handleSubnetValidators(
       req(`/api/v1/subnets/${NETUID}/validators`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/validators?limit=10`),
     );
     await errorJson(res);
@@ -869,7 +869,7 @@ describe("handleSubnetValidators", () => {
     const res = await handleSubnetValidators(
       req(`/api/v1/subnets/${NETUID}/validators`),
       env as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/validators`),
     );
     const body = await json(res);
@@ -1064,8 +1064,8 @@ describe("handleNeuronHistory", () => {
     const res = await handleNeuronHistory(
       req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
-      String(UID),
+      NETUID,
+      UID,
       url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?bogus=1`),
     );
     await errorJson(res);
@@ -1075,8 +1075,8 @@ describe("handleNeuronHistory", () => {
     const res = await handleNeuronHistory(
       req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
-      String(UID),
+      NETUID,
+      UID,
       url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=400d`),
     );
     const body = await errorJson(res);
@@ -1105,7 +1105,7 @@ describe("handleSubnetHistory", () => {
     const res = await handleSubnetHistory(
       req(`/api/v1/subnets/${NETUID}/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/history?offset=0`),
     );
     await errorJson(res);
@@ -1177,7 +1177,7 @@ describe("handleSubnetHistory", () => {
     const res = await handleSubnetHistory(
       req(`/api/v1/subnets/${NETUID}/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/history?window=bogus`),
     );
     const body = await errorJson(res);
@@ -1190,7 +1190,7 @@ describe("handleSubnetIdentityHistory", () => {
     const res = await handleSubnetIdentityHistory(
       req(`/api/v1/subnets/${NETUID}/identity-history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/identity-history?bogus=1`),
     );
     await errorJson(res);
@@ -1229,7 +1229,7 @@ describe("handleSubnetIdentityHistory", () => {
       await handleSubnetIdentityHistory(
         req(`/api/v1/subnets/${NETUID}/identity-history`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/identity-history?limit=20`),
       ),
     );
@@ -1244,7 +1244,7 @@ describe("handleSubnetHyperparams", () => {
     const res = await handleSubnetHyperparams(
       req(`/api/v1/subnets/${NETUID}/hyperparameters`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/hyperparameters?bogus=1`),
     );
     await errorJson(res);
@@ -1273,7 +1273,7 @@ describe("handleSubnetHyperparamsHistory", () => {
     const res = await handleSubnetHyperparamsHistory(
       req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/hyperparameters/history?bogus=1`),
     );
     await errorJson(res);
@@ -1300,7 +1300,7 @@ describe("handleSubnetPerformance", () => {
     const res = await handleSubnetPerformance(
       req(`/api/v1/subnets/${NETUID}/performance`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/performance?window=7d`),
     );
     await errorJson(res);
@@ -1326,7 +1326,7 @@ describe("handleSubnetConcentration", () => {
     const res = await handleSubnetConcentration(
       req(`/api/v1/subnets/${NETUID}/concentration`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/concentration?window=7d`),
     );
     await errorJson(res);
@@ -1352,7 +1352,7 @@ describe("handleSubnetConcentration", () => {
     const res = await handleSubnetConcentration(
       req(`/api/v1/subnets/${NETUID}/concentration`),
       dbThrows("no such column: validator_permit") as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/concentration`),
     );
     assert.equal(res.status, 200);
@@ -1372,7 +1372,7 @@ describe("handleSubnetConcentrationHistory", () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/concentration/history?bogus=1`),
     );
     await errorJson(res);
@@ -1382,7 +1382,7 @@ describe("handleSubnetConcentrationHistory", () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/concentration/history?window=1y`),
     );
     const body = await errorJson(res);
@@ -1407,7 +1407,7 @@ describe("handleSubnetConcentrationHistory", () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
       dbThrows("d1 timeout") as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/concentration/history?window=7d`),
     );
     assert.equal(res.status, 200);
@@ -1425,7 +1425,7 @@ describe("handleSubnetPerformanceHistory", () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/performance/history?bogus=1`),
     );
     await errorJson(res);
@@ -1435,7 +1435,7 @@ describe("handleSubnetPerformanceHistory", () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/performance/history?window=1y`),
     );
     const body = await errorJson(res);
@@ -1460,7 +1460,7 @@ describe("handleSubnetPerformanceHistory", () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
       dbThrows("d1 timeout") as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/performance/history?window=7d`),
     );
     assert.equal(res.status, 200);
@@ -1478,7 +1478,7 @@ describe("handleSubnetYieldHistory", () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield/history?bogus=1`),
     );
     await errorJson(res);
@@ -1488,7 +1488,7 @@ describe("handleSubnetYieldHistory", () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield/history?window=1y`),
     );
     const body = await errorJson(res);
@@ -1513,7 +1513,7 @@ describe("handleSubnetYieldHistory", () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
       dbThrows("d1 timeout") as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/yield/history?window=7d`),
     );
     assert.equal(res.status, 200);
@@ -1531,7 +1531,7 @@ describe("handleSubnetTurnover", () => {
     const res = await handleSubnetTurnover(
       req(`/api/v1/subnets/${NETUID}/turnover`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/turnover?bogus=1`),
     );
     await errorJson(res);
@@ -1554,7 +1554,7 @@ describe("handleSubnetTurnover", () => {
     const res = await handleSubnetTurnover(
       req(`/api/v1/subnets/${NETUID}/turnover`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/turnover?changes=false`),
     );
     await errorJson(res);
@@ -1727,7 +1727,7 @@ describe("handleSubnetWeights", () => {
     const res = await handleSubnetWeights(
       req(`/api/v1/subnets/${NETUID}/weights`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/weights?bogus=1`),
     );
     await errorJson(res);
@@ -1737,7 +1737,7 @@ describe("handleSubnetWeights", () => {
     const res = await handleSubnetWeights(
       req(`/api/v1/subnets/${NETUID}/weights`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/weights?window=1y`),
     );
     const body = await errorJson(res);
@@ -1801,7 +1801,7 @@ describe("handleSubnetServing", () => {
     const res = await handleSubnetServing(
       req(`/api/v1/subnets/${NETUID}/serving`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/serving?bogus=1`),
     );
     await errorJson(res);
@@ -1811,7 +1811,7 @@ describe("handleSubnetServing", () => {
     const res = await handleSubnetServing(
       req(`/api/v1/subnets/${NETUID}/serving`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/serving?window=1y`),
     );
     const body = await errorJson(res);
@@ -1875,7 +1875,7 @@ describe("handleSubnetPrometheus", () => {
     const res = await handleSubnetPrometheus(
       req(`/api/v1/subnets/${NETUID}/prometheus`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/prometheus?bogus=1`),
     );
     await errorJson(res);
@@ -1885,7 +1885,7 @@ describe("handleSubnetPrometheus", () => {
     const res = await handleSubnetPrometheus(
       req(`/api/v1/subnets/${NETUID}/prometheus`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/prometheus?window=1y`),
     );
     const body = await errorJson(res);
@@ -1951,7 +1951,7 @@ describe("handleSubnetStakeMoves", () => {
     const res = await handleSubnetStakeMoves(
       req(`/api/v1/subnets/${NETUID}/stake-moves`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/stake-moves?bogus=1`),
     );
     await errorJson(res);
@@ -1961,7 +1961,7 @@ describe("handleSubnetStakeMoves", () => {
     const res = await handleSubnetStakeMoves(
       req(`/api/v1/subnets/${NETUID}/stake-moves`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/stake-moves?window=1y`),
     );
     const body = await errorJson(res);
@@ -2029,7 +2029,7 @@ describe("handleSubnetStakeTransfers", () => {
     const res = await handleSubnetStakeTransfers(
       req(`/api/v1/subnets/${NETUID}/stake-transfers`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/stake-transfers?bogus=1`),
     );
     await errorJson(res);
@@ -2039,7 +2039,7 @@ describe("handleSubnetStakeTransfers", () => {
     const res = await handleSubnetStakeTransfers(
       req(`/api/v1/subnets/${NETUID}/stake-transfers`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/stake-transfers?window=1y`),
     );
     const body = await errorJson(res);
@@ -2107,7 +2107,7 @@ describe("handleSubnetRegistrations", () => {
     const res = await handleSubnetRegistrations(
       req(`/api/v1/subnets/${NETUID}/registrations`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/registrations?bogus=1`),
     );
     await errorJson(res);
@@ -2117,7 +2117,7 @@ describe("handleSubnetRegistrations", () => {
     const res = await handleSubnetRegistrations(
       req(`/api/v1/subnets/${NETUID}/registrations`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/registrations?window=1y`),
     );
     const body = await errorJson(res);
@@ -2185,7 +2185,7 @@ describe("handleSubnetAxonRemovals", () => {
     const res = await handleSubnetAxonRemovals(
       req(`/api/v1/subnets/${NETUID}/axon-removals`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/axon-removals?bogus=1`),
     );
     await errorJson(res);
@@ -2195,7 +2195,7 @@ describe("handleSubnetAxonRemovals", () => {
     const res = await handleSubnetAxonRemovals(
       req(`/api/v1/subnets/${NETUID}/axon-removals`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/axon-removals?window=1y`),
     );
     const body = await errorJson(res);
@@ -2263,7 +2263,7 @@ describe("handleSubnetDeregistrations", () => {
     const res = await handleSubnetDeregistrations(
       req(`/api/v1/subnets/${NETUID}/deregistrations`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/deregistrations?bogus=1`),
     );
     await errorJson(res);
@@ -2273,7 +2273,7 @@ describe("handleSubnetDeregistrations", () => {
     const res = await handleSubnetDeregistrations(
       req(`/api/v1/subnets/${NETUID}/deregistrations`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/deregistrations?window=1y`),
     );
     const body = await errorJson(res);
@@ -2341,7 +2341,7 @@ describe("handleSubnetStakeFlow", () => {
     const res = await handleSubnetStakeFlow(
       req(`/api/v1/subnets/${NETUID}/stake-flow`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/stake-flow?bogus=1`),
     );
     await errorJson(res);
@@ -2351,7 +2351,7 @@ describe("handleSubnetStakeFlow", () => {
     const res = await handleSubnetStakeFlow(
       req(`/api/v1/subnets/${NETUID}/stake-flow`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/stake-flow?window=1y`),
     );
     await errorJson(res);
@@ -2361,7 +2361,7 @@ describe("handleSubnetStakeFlow", () => {
     const res = await handleSubnetStakeFlow(
       req(`/api/v1/subnets/${NETUID}/stake-flow`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/stake-flow?direction=invalid`),
     );
     const body = await errorJson(res);
@@ -3289,7 +3289,7 @@ describe("handleSubnetEvents", () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/events?bogus=1`),
     );
     await errorJson(res);
@@ -3312,7 +3312,7 @@ describe("handleSubnetEvents", () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/events?kind=Nonexistent`),
     );
     const body = await errorJson(res);
@@ -3327,7 +3327,7 @@ describe("handleSubnetEvents", () => {
       await handleSubnetEvents(
         req(`/api/v1/subnets/${NETUID}/events`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/events?block_start=500&block_end=100`),
       ),
     );
@@ -3341,7 +3341,7 @@ describe("handleSubnetEvents", () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/events?block_start=abc`),
     );
     const body = await errorJson(res);
@@ -3352,7 +3352,7 @@ describe("handleSubnetEvents", () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/events?block_end=oops`),
     );
     const body = await errorJson(res);
@@ -3365,7 +3365,7 @@ describe("handleSubnetEventSummary", () => {
     const res = await handleSubnetEventSummary(
       req(`/api/v1/subnets/${NETUID}/event-summary`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/event-summary?bogus=1`),
     );
     await errorJson(res);
@@ -3375,7 +3375,7 @@ describe("handleSubnetEventSummary", () => {
     const res = await handleSubnetEventSummary(
       req(`/api/v1/subnets/${NETUID}/event-summary`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/event-summary?window=365d`),
     );
     const body = await errorJson(res);
@@ -3386,7 +3386,7 @@ describe("handleSubnetEventSummary", () => {
     const res = await handleSubnetEventSummary(
       req(`/api/v1/subnets/${NETUID}/event-summary`),
       emptyEnv() as unknown as Env,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/subnets/${NETUID}/event-summary?limit=0`),
     );
     const body = await errorJson(res);
@@ -4325,7 +4325,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetMetagraph(
         req(path),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(path),
       ),
     );
@@ -4349,8 +4349,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleNeuron(
         req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
         env as unknown as Env,
-        String(NETUID),
-        String(UID),
+        NETUID,
+        UID,
       ),
     );
     assert.equal(body.data.neuron.hotkey, "postgres-hotkey");
@@ -4382,7 +4382,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetHyperparams(
         req(path),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(path),
       ),
     );
@@ -4403,7 +4403,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetHyperparams(
         req(path),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(path),
       ),
     );
@@ -4432,7 +4432,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetHyperparamsHistory(
         req(path),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(path),
       ),
     );
@@ -4453,7 +4453,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetHyperparamsHistory(
         req(path),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(path),
       ),
     );
@@ -4598,7 +4598,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetIdentityHistory(
         req(path),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(path),
       ),
     );
@@ -4619,7 +4619,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetIdentityHistory(
         req(path),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(path),
       ),
     );
@@ -4645,7 +4645,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetValidators(
         req(path),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(path),
       ),
     );
@@ -4764,7 +4764,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetWeightSetters(
         req(`/api/v1/subnets/${NETUID}/weights/setters`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/weights/setters`),
       ),
     );
@@ -4808,7 +4808,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetStakeFlow(
         req(`/api/v1/subnets/${NETUID}/stake-flow`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/stake-flow`),
       ),
     );
@@ -4848,7 +4848,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetStakeMoves(
         req(`/api/v1/subnets/${NETUID}/stake-moves`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/stake-moves`),
       ),
     );
@@ -4866,7 +4866,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetStakeTransfers(
         req(`/api/v1/subnets/${NETUID}/stake-transfers`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/stake-transfers`),
       ),
     );
@@ -4906,7 +4906,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetRegistrations(
         req(`/api/v1/subnets/${NETUID}/registrations`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/registrations`),
       ),
     );
@@ -4946,7 +4946,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetServing(
         req(`/api/v1/subnets/${NETUID}/serving`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/serving`),
       ),
     );
@@ -4986,7 +4986,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetAxonRemovals(
         req(`/api/v1/subnets/${NETUID}/axon-removals`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/axon-removals`),
       ),
     );
@@ -5026,7 +5026,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetPrometheus(
         req(`/api/v1/subnets/${NETUID}/prometheus`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/prometheus`),
       ),
     );
@@ -5066,7 +5066,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetDeregistrations(
         req(`/api/v1/subnets/${NETUID}/deregistrations`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/deregistrations`),
       ),
     );
@@ -5429,7 +5429,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetWeights(
         req(`/api/v1/subnets/${NETUID}/weights`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/weights`),
       ),
     );
@@ -5451,7 +5451,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetAlphaVolume(
         req(`/api/v1/subnets/${NETUID}/volume`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/volume`),
       ),
     );
@@ -5470,7 +5470,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetEvents(
         req(`/api/v1/subnets/${NETUID}/events`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/events`),
       ),
     );
@@ -5492,7 +5492,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetEventSummary(
         req(`/api/v1/subnets/${NETUID}/event-summary`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/event-summary`),
       ),
     );
@@ -5553,7 +5553,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetConcentration(
         req(`/api/v1/subnets/${NETUID}/concentration`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/concentration`),
       ),
     );
@@ -5572,7 +5572,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetPerformance(
         req(`/api/v1/subnets/${NETUID}/performance`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/performance`),
       ),
     );
@@ -5591,7 +5591,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetYield(
         req(`/api/v1/subnets/${NETUID}/yield`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/yield`),
       ),
     );
@@ -5793,8 +5793,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleNeuronHistory(
         req(`/api/v1/subnets/${NETUID}/neurons/1/history`),
         env as unknown as Env,
-        String(NETUID),
-        String(1),
+        NETUID,
+        1,
         url(`/api/v1/subnets/${NETUID}/neurons/1/history`),
       ),
     );
@@ -5813,7 +5813,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetHistory(
         req(`/api/v1/subnets/${NETUID}/history`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/history`),
       ),
     );
@@ -5832,7 +5832,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetConcentrationHistory(
         req(`/api/v1/subnets/${NETUID}/concentration/history`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/concentration/history`),
       ),
     );
@@ -5851,7 +5851,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetPerformanceHistory(
         req(`/api/v1/subnets/${NETUID}/performance/history`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/performance/history`),
       ),
     );
@@ -5870,7 +5870,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetYieldHistory(
         req(`/api/v1/subnets/${NETUID}/yield/history`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/yield/history`),
       ),
     );
@@ -5907,7 +5907,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetTurnover(
         req(`/api/v1/subnets/${NETUID}/turnover`),
         env as unknown as Env,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/subnets/${NETUID}/turnover`),
       ),
     );
@@ -5948,7 +5948,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         req(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
         env as unknown as Env,
         SS58,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
       ),
     );
@@ -5977,7 +5977,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       ),
       env as unknown as Env,
       SS58,
-      String(NETUID),
+      NETUID,
       url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
     );
     assert.equal(res.status, 200);
@@ -6004,7 +6004,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         req(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
         env as unknown as Env,
         SS58,
-        String(NETUID),
+        NETUID,
         url(`/api/v1/accounts/${SS58}/subnets/${NETUID}/history`),
       ),
     );
@@ -6099,15 +6099,15 @@ describe("entities handler exports (#1900)", () => {
         handleSubnetMetagraph(
           req(`/api/v1/subnets/${NETUID}/metagraph`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/metagraph`),
         ),
       () =>
         handleNeuron(
           req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
-          String(UID),
+          NETUID,
+          UID,
         ),
       () =>
         handleAccount(
@@ -6149,7 +6149,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
         handleSubnetValidators(
           req(`/api/v1/subnets/${NETUID}/validators`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/validators`),
         ),
       assertData: (d: Row) => assert.equal(d.validator_count, 0),
@@ -6160,8 +6160,8 @@ describe("schema-stable cold-store matrix (#1900)", () => {
         handleNeuronHistory(
           req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
-          String(UID),
+          NETUID,
+          UID,
           url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
         ),
       assertData: (d: Row) => assert.equal(d.point_count, 0),
@@ -6172,7 +6172,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
         handleSubnetHistory(
           req(`/api/v1/subnets/${NETUID}/history`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/history`),
         ),
       assertData: (d: Row) => assert.equal(d.point_count, 0),
@@ -6237,7 +6237,7 @@ describe("schema-stable cold-store matrix (#1900)", () => {
         handleSubnetEvents(
           req(`/api/v1/subnets/${NETUID}/events`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/events`),
         ),
       assertData: (d: Row) => assert.equal(d.event_count, 0),
@@ -6295,7 +6295,7 @@ describe("query-param guard matrix (#1900)", () => {
         handleSubnetMetagraph(
           req(`/api/v1/subnets/${NETUID}/metagraph`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/metagraph?foo=bar`),
         ),
     },
@@ -6305,7 +6305,7 @@ describe("query-param guard matrix (#1900)", () => {
         handleSubnetValidators(
           req(`/api/v1/subnets/${NETUID}/validators`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/validators?foo=bar`),
         ),
     },
@@ -6315,8 +6315,8 @@ describe("query-param guard matrix (#1900)", () => {
         handleNeuronHistory(
           req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
-          String(UID),
+          NETUID,
+          UID,
           url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?foo=bar`),
         ),
     },
@@ -6326,7 +6326,7 @@ describe("query-param guard matrix (#1900)", () => {
         handleSubnetHistory(
           req(`/api/v1/subnets/${NETUID}/history`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/history?foo=bar`),
         ),
     },
@@ -6336,7 +6336,7 @@ describe("query-param guard matrix (#1900)", () => {
         handleSubnetIdentityHistory(
           req(`/api/v1/subnets/${NETUID}/identity-history`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/identity-history?foo=bar`),
         ),
     },
@@ -6386,7 +6386,7 @@ describe("query-param guard matrix (#1900)", () => {
         handleSubnetEvents(
           req(`/api/v1/subnets/${NETUID}/events`),
           emptyEnv() as unknown as Env,
-          String(NETUID),
+          NETUID,
           url(`/api/v1/subnets/${NETUID}/events?foo=bar`),
         ),
     },
@@ -6445,8 +6445,8 @@ describe("envelope + meta contracts (#1900)", () => {
       await handleNeuron(
         req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
         env as unknown as Env,
-        String(NETUID),
-        String(UID),
+        NETUID,
+        UID,
       ),
     );
     assert.equal(body.meta.source, "metagraph-snapshot");
@@ -6456,8 +6456,8 @@ describe("envelope + meta contracts (#1900)", () => {
         await handleNeuron(
           req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
           env as unknown as Env,
-          String(NETUID),
-          String(UID),
+          NETUID,
+          UID,
         ),
       ),
     );

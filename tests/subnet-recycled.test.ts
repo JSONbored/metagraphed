@@ -6,7 +6,7 @@ import {
   RECYCLED_RPC_TIMEOUT_MS,
   loadSubnetRecycled,
 } from "../src/subnet-recycled.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 function req(path: string) {
@@ -403,7 +403,7 @@ describe("GET /api/v1/subnets/{netuid}/recycled via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/subnets/${GOLDEN_NETUID}/recycled`),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -425,7 +425,7 @@ describe("GET /api/v1/subnets/{netuid}/recycled via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/subnets/${GOLDEN_NETUID}/recycled`),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -455,7 +455,7 @@ describe("GET /api/v1/subnets/{netuid}/recycled via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/subnets/65536/recycled"),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 400);
@@ -483,7 +483,7 @@ describe("GET /api/v1/subnets/{netuid}/recycled via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/subnets/65535/recycled"),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -500,7 +500,7 @@ describe("GET /api/v1/subnets/{netuid}/recycled via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/testnet/subnets/${GOLDEN_NETUID}/recycled`),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 404);
@@ -530,7 +530,7 @@ describe("GET /api/v1/subnets/{netuid}/recycled via the Worker", () => {
             `https://api.metagraph.sh/api/v1/subnets/${GOLDEN_NETUID}/recycled`,
             { headers: { "cf-connecting-ip": "203.0.113.9" } },
           ),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 429);
@@ -556,7 +556,7 @@ describe("GET /api/v1/subnets/{netuid}/recycled via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/subnets/${GOLDEN_NETUID}/recycled`),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);

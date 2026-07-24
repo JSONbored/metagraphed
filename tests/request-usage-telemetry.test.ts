@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
-import worker, {
-  usageRouteLabel,
-  withUsageTelemetry,
-} from "../workers/api.mjs";
+import worker, { usageRouteLabel, withUsageTelemetry } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 type WTCtx = Parameters<typeof withUsageTelemetry>[2];
@@ -98,7 +95,7 @@ describe("withUsageTelemetry", () => {
     const spy = recorder();
     const response = await withUsageTelemetry(
       req(),
-      {},
+      {} as unknown as Env,
       fakeCtx(),
       async () => new Response("ok"),
       spy,
@@ -115,7 +112,7 @@ describe("withUsageTelemetry", () => {
 
     const response = await withUsageTelemetry(
       req("/api/v1/subnets/74"),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       ctx,
       async () => handled,
       spy,
@@ -140,7 +137,7 @@ describe("withUsageTelemetry", () => {
 
     await withUsageTelemetry(
       request,
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("{}"),
       spy,
@@ -156,7 +153,7 @@ describe("withUsageTelemetry", () => {
     const spy = recorder();
     const response = await withUsageTelemetry(
       req("/mcp", { method: "POST" }),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("ok"),
       spy,
@@ -170,7 +167,7 @@ describe("withUsageTelemetry", () => {
     const rejected = recorder();
     await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("nope", { status: 404 }),
       rejected,
@@ -180,7 +177,7 @@ describe("withUsageTelemetry", () => {
     const broken = recorder();
     await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("boom", { status: 500 }),
       broken,
@@ -196,7 +193,7 @@ describe("withUsageTelemetry", () => {
     const spy = recorder();
     await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () =>
         new Response("nope", {
@@ -213,7 +210,7 @@ describe("withUsageTelemetry", () => {
     const spy = recorder();
     await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () =>
         new Response("boom", {
@@ -230,7 +227,7 @@ describe("withUsageTelemetry", () => {
     const success = recorder();
     await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("ok", { status: 200 }),
       success,
@@ -242,7 +239,7 @@ describe("withUsageTelemetry", () => {
     const uncoded = recorder();
     await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("nope", { status: 404 }),
       uncoded,
@@ -260,7 +257,7 @@ describe("withUsageTelemetry", () => {
     const executionError = recorder();
     await withUsageTelemetry(
       req("/api/v1/graphql"),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () =>
         new Response("{}", {
@@ -278,7 +275,7 @@ describe("withUsageTelemetry", () => {
     const fieldError = recorder();
     await withUsageTelemetry(
       req("/api/v1/graphql"),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () =>
         new Response("{}", {
@@ -292,7 +289,7 @@ describe("withUsageTelemetry", () => {
     const transportError = recorder();
     await withUsageTelemetry(
       req("/api/v1/graphql"),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () =>
         new Response("nope", {
@@ -308,7 +305,7 @@ describe("withUsageTelemetry", () => {
     const spy = recorder();
     const response = await withUsageTelemetry(
       req("/api/v1/graphql", { headers: { upgrade: "websocket" } }),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("subscribed"),
       spy,
@@ -323,7 +320,7 @@ describe("withUsageTelemetry", () => {
     await assert.rejects(
       withUsageTelemetry(
         req(),
-        CONFIGURED_ENV,
+        CONFIGURED_ENV as unknown as Env,
         fakeCtx(),
         async () => {
           throw new Error("handler exploded");
@@ -345,7 +342,7 @@ describe("withUsageTelemetry", () => {
     });
     const response = await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("ok"),
       spy,
@@ -363,7 +360,7 @@ describe("withUsageTelemetry", () => {
     });
     const response = await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       fakeCtx(),
       async () => new Response("ok"),
       spy,
@@ -381,7 +378,7 @@ describe("withUsageTelemetry", () => {
     };
     const response = await withUsageTelemetry(
       req(),
-      CONFIGURED_ENV,
+      CONFIGURED_ENV as unknown as Env,
       ctx,
       async () => new Response("ok"),
       spy,
@@ -396,7 +393,7 @@ describe("withUsageTelemetry", () => {
       const spy = recorder();
       const response = await withUsageTelemetry(
         req(),
-        CONFIGURED_ENV,
+        CONFIGURED_ENV as unknown as Env,
         ctx,
         async () => new Response("ok"),
         spy,
@@ -410,7 +407,7 @@ describe("withUsageTelemetry", () => {
 
 describe("worker entry instrumentation", () => {
   test("serves a real request unchanged on an unconfigured deployment", async () => {
-    const env = createLocalArtifactEnv();
+    const env = createLocalArtifactEnv() as unknown as Env;
     const before = await worker.fetch(req("/api/v1/health"), env, fakeCtx());
     const status = before.status;
     const body = await before.text();

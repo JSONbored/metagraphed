@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import {
   cleanDescription,
   createLocalArtifactEnv,
@@ -35,7 +35,7 @@ async function keywordSearch(query: string, limit = 5) {
     new Request(
       `https://api.metagraph.sh/api/v1/search?q=${encodeURIComponent(query)}&limit=${limit}`,
     ),
-    env,
+    env as unknown as Env,
     {},
   );
   const body = await res.json();

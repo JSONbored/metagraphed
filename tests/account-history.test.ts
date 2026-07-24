@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { buildAccountHistory } from "../src/account-events.ts";
 import type { Row } from "./row-type.ts";
 
@@ -73,7 +73,7 @@ test("GET /accounts/{ss58}/history returns the per-day series (#1854)", async ()
   const env = postgresEnv({ days: [DAY] });
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -95,7 +95,7 @@ test("GET /accounts/{ss58}/history returns the per-day series (#1854)", async ()
 test("GET /accounts/{ss58}/history rejects malformed ?from / ?to", async () => {
   const bad = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history?from=June`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(bad.status, 400);
@@ -108,7 +108,7 @@ test("GET /accounts/{ss58}/history rejects malformed ?from / ?to", async () => {
 test("GET /accounts/{ss58}/history rejects an unsupported query param", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history?bogus=1`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -117,7 +117,7 @@ test("GET /accounts/{ss58}/history rejects an unsupported query param", async ()
 test("GET /accounts/{ss58}/history is schema-stable when cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history`),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -132,7 +132,7 @@ test("GET /accounts/{ss58}/history exposes x-metagraph-artifact-source on both t
   // header too — it must not be dropped just because the range is empty.
   const normal = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history`),
-    postgresEnv({ days: [DAY] }),
+    postgresEnv({ days: [DAY] }) as unknown as Env,
     {},
   );
   assert.equal(
@@ -143,7 +143,7 @@ test("GET /accounts/{ss58}/history exposes x-metagraph-artifact-source on both t
   const { env, captured } = dbCapture([DAY]);
   const inverted = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history?from=2026-06-30&to=2026-06-01`),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(inverted.status, 200);

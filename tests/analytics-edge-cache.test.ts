@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { envelopeResponse } from "../workers/responses.ts";
 import {
   markD1FallbackResponse,
@@ -227,7 +227,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -262,7 +262,11 @@ describe("analytics edge cache", () => {
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d";
 
     // Warm the cache with a GET — a cold cache must call DATA_API and store one entry.
-    const getRes = await handleRequest(new Request(target), env, ctx);
+    const getRes = await handleRequest(
+      new Request(target),
+      env as unknown as Env,
+      ctx,
+    );
     assert.equal(getRes.status, 200);
     assert.equal(cache.putKeys.length, 1);
     const callsAfterGet = calls.length;
@@ -272,7 +276,7 @@ describe("analytics edge cache", () => {
     // DATA_API call, no re-put, a bodyless 200.
     const headRes = await handleRequest(
       new Request(target, { method: "HEAD" }),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(headRes.status, 200);
@@ -298,7 +302,11 @@ describe("analytics edge cache", () => {
     const target =
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d";
 
-    const warm = await handleRequest(new Request(target), env, ctx);
+    const warm = await handleRequest(
+      new Request(target),
+      env as unknown as Env,
+      ctx,
+    );
     assert.equal(warm.status, 200);
     const etag = warm.headers.get("etag");
     assert.ok(etag, "cached response advertises an etag");
@@ -306,7 +314,7 @@ describe("analytics edge cache", () => {
 
     const conditional = await handleRequest(
       new Request(target, { headers: { "if-none-match": etag } }),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(conditional.status, 304);
@@ -320,7 +328,7 @@ describe("analytics edge cache", () => {
     // A non-matching validator still gets the full cached 200 body.
     const mismatch = await handleRequest(
       new Request(target, { headers: { "if-none-match": '"stale"' } }),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(mismatch.status, 200);
@@ -338,7 +346,7 @@ describe("analytics edge cache", () => {
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d",
       "https://api.metagraph.sh/api/v1/subnets/9/health/percentiles?window=7d",
     ]) {
-      await handleRequest(new Request(url), env, ctx);
+      await handleRequest(new Request(url), env as unknown as Env, ctx);
       await Promise.resolve();
     }
     // Three distinct (netuid, window) combinations → three distinct entries.
@@ -359,13 +367,21 @@ describe("analytics edge cache", () => {
       "https://api.metagraph.sh/api/v1/subnets/7/concentration/history?window=90d&&",
     ];
 
-    const first = await handleRequest(new Request(variants[0]), env, ctx);
+    const first = await handleRequest(
+      new Request(variants[0]),
+      env as unknown as Env,
+      ctx,
+    );
     await Promise.resolve();
     assert.equal(first.status, 200);
     const queriesAfterMiss = queries.length;
 
     for (const variant of variants.slice(1)) {
-      const hit = await handleRequest(new Request(variant), env, ctx);
+      const hit = await handleRequest(
+        new Request(variant),
+        env as unknown as Env,
+        ctx,
+      );
       assert.equal(hit.status, 200);
     }
 
@@ -392,13 +408,21 @@ describe("analytics edge cache", () => {
       "https://api.metagraph.sh/api/v1/subnets/7/performance/history?window=90d&&",
     ];
 
-    const first = await handleRequest(new Request(variants[0]), env, ctx);
+    const first = await handleRequest(
+      new Request(variants[0]),
+      env as unknown as Env,
+      ctx,
+    );
     await Promise.resolve();
     assert.equal(first.status, 200);
     const queriesAfterMiss = queries.length;
 
     for (const variant of variants.slice(1)) {
-      const hit = await handleRequest(new Request(variant), env, ctx);
+      const hit = await handleRequest(
+        new Request(variant),
+        env as unknown as Env,
+        ctx,
+      );
       assert.equal(hit.status, 200);
     }
 
@@ -425,13 +449,21 @@ describe("analytics edge cache", () => {
       "https://api.metagraph.sh/api/v1/subnets/7/yield/history?window=90d&&",
     ];
 
-    const first = await handleRequest(new Request(variants[0]), env, ctx);
+    const first = await handleRequest(
+      new Request(variants[0]),
+      env as unknown as Env,
+      ctx,
+    );
     await Promise.resolve();
     assert.equal(first.status, 200);
     const queriesAfterMiss = queries.length;
 
     for (const variant of variants.slice(1)) {
-      const hit = await handleRequest(new Request(variant), env, ctx);
+      const hit = await handleRequest(
+        new Request(variant),
+        env as unknown as Env,
+        ctx,
+      );
       assert.equal(hit.status, 200);
     }
 
@@ -456,7 +488,7 @@ describe("analytics edge cache", () => {
     // No ?window — should resolve to the 30d default and cache at ?window=30d.
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/turnover"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -468,7 +500,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/turnover?window=30d",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -521,7 +553,7 @@ describe("analytics edge cache", () => {
     // No ?window — should resolve to the 30d default and cache at ?window=30d.
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/stake-flow"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -534,7 +566,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -564,7 +596,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/weights"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -589,7 +621,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/serving"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -614,7 +646,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/prometheus"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -643,7 +675,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/stake-moves"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -672,7 +704,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/stake-transfers"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -701,7 +733,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/registrations"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -730,7 +762,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/axon-removals"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -759,7 +791,7 @@ describe("analytics edge cache", () => {
     // 7d default and caches under the canonical ?window=7d key.
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/deregistrations"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -788,7 +820,7 @@ describe("analytics edge cache", () => {
     // No ?window — resolves to the 7d default and caches at ?window=7d.
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/activity"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -798,7 +830,7 @@ describe("analytics edge cache", () => {
     // Explicit ?window=7d is the canonical form — must be a cache HIT (no new D1).
     const hit = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/activity?window=7d"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -824,7 +856,7 @@ describe("analytics edge cache", () => {
       "https://api.metagraph.sh/api/v1/chain/activity?window=7d",
       "https://api.metagraph.sh/api/v1/chain/activity?window=30d",
     ]) {
-      await handleRequest(new Request(url), env, ctx);
+      await handleRequest(new Request(url), env as unknown as Env, ctx);
       await Promise.resolve();
     }
     // Distinct windows remain distinct entries (canonical key preserves window).
@@ -847,7 +879,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/turnover?window=30d",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -857,7 +889,7 @@ describe("analytics edge cache", () => {
     // Omitted window resolves to the same 30d key — must be a HIT (no D1).
     const hit = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/turnover"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -882,7 +914,11 @@ describe("analytics edge cache", () => {
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents?window=7d";
 
     // First request is a MISS: it calls the Postgres tier and populates the cache.
-    const first = await handleRequest(new Request(url), env, ctx);
+    const first = await handleRequest(
+      new Request(url),
+      env as unknown as Env,
+      ctx,
+    );
     await Promise.resolve();
     const firstBody = await first.text();
     assert.equal(first.status, 200);
@@ -890,7 +926,11 @@ describe("analytics edge cache", () => {
 
     // Second request is a HIT: served from cache, DATA_API untouched.
     const callCountAfterMiss = calls.length;
-    const second = await handleRequest(new Request(url), env, ctx);
+    const second = await handleRequest(
+      new Request(url),
+      env as unknown as Env,
+      ctx,
+    );
     assert.equal(second.status, 200);
     assert.equal(
       await second.text(),
@@ -912,7 +952,11 @@ describe("analytics edge cache", () => {
     const env = analyticsEnv(queries);
     const url = "https://api.metagraph.sh/api/v1/health/trends";
 
-    const first = await handleRequest(new Request(url), env, ctx);
+    const first = await handleRequest(
+      new Request(url),
+      env as unknown as Env,
+      ctx,
+    );
     await Promise.resolve();
     const etag = first.headers.get("etag");
     assert.equal(first.status, 200);
@@ -920,7 +964,7 @@ describe("analytics edge cache", () => {
 
     const conditional = await handleRequest(
       new Request(url, { headers: { "if-none-match": etag } }),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(conditional.status, 304);
@@ -953,7 +997,7 @@ describe("analytics edge cache", () => {
     };
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/health/trends"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       putCtx,
     );
     assert.equal(res.status, 200);
@@ -979,7 +1023,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=bogus",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1003,7 +1047,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/incidents?window=7d",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1076,13 +1120,7 @@ describe("analytics edge cache", () => {
       ctx,
       mockEnv(env),
       "subnet-stake-flow",
-      () =>
-        handleSubnetStakeFlow(
-          request,
-          env as unknown as Env,
-          String(7),
-          routeUrl,
-        ),
+      () => handleSubnetStakeFlow(request, env as unknown as Env, 7, routeUrl),
     );
     await Promise.resolve();
 
@@ -1204,9 +1242,9 @@ describe("analytics edge cache", () => {
       method: "HEAD",
     });
 
-    const first = await handleRequest(request, env, ctx);
+    const first = await handleRequest(request, env as unknown as Env, ctx);
     await Promise.resolve();
-    const second = await handleRequest(request, env, ctx);
+    const second = await handleRequest(request, env as unknown as Env, ctx);
 
     assert.equal(first.status, 200);
     assert.equal(second.status, 200);
@@ -1227,7 +1265,7 @@ describe("analytics edge cache", () => {
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1273,7 +1311,11 @@ describe("analytics edge cache", () => {
       });
       const url = `https://api.metagraph.sh${r.path}${r.search}`;
 
-      const res = await handleRequest(new Request(url), env, ctx);
+      const res = await handleRequest(
+        new Request(url),
+        env as unknown as Env,
+        ctx,
+      );
       await Promise.resolve();
       assert.equal(res.status, 200, `${r.path}: fallback is still 200`);
       assert.deepEqual(
@@ -1301,7 +1343,7 @@ describe("analytics edge cache", () => {
 
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/registry/leaderboards"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1325,7 +1367,7 @@ describe("analytics edge cache", () => {
     globalWithCaches.caches = undefined;
     const uncached = await handleRequest(
       new Request(url),
-      analyticsEnv([]),
+      analyticsEnv([]) as unknown as Env,
       ctx,
     );
     const uncachedBody = await uncached.text();
@@ -1335,7 +1377,7 @@ describe("analytics edge cache", () => {
     cache.install();
     const cachedMiss = await handleRequest(
       new Request(url),
-      analyticsEnv([]),
+      analyticsEnv([]) as unknown as Env,
       ctx,
     );
     const cachedBody = await cachedMiss.text();
@@ -1353,7 +1395,7 @@ describe("analytics edge cache", () => {
     // First request with explicit default window — caches under ?window=30d.
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=30d`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1362,7 +1404,7 @@ describe("analytics edge cache", () => {
     // Trailing-amp variant must be a cache HIT (same canonical key).
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=30d&`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(
@@ -1374,7 +1416,7 @@ describe("analytics edge cache", () => {
     // Omitting window entirely defaults to 30d — also a cache HIT.
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(
@@ -1393,7 +1435,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=30d`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1401,7 +1443,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(
@@ -1424,7 +1466,7 @@ describe("analytics edge cache", () => {
 
     const miss = await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1433,7 +1475,7 @@ describe("analytics edge cache", () => {
 
     const hit = await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -1457,7 +1499,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1465,7 +1507,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(
@@ -1488,7 +1530,7 @@ describe("analytics edge cache", () => {
 
     const miss = await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1497,7 +1539,7 @@ describe("analytics edge cache", () => {
 
     const hit = await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -1521,7 +1563,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}?window=7d`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1529,7 +1571,7 @@ describe("analytics edge cache", () => {
 
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(
@@ -1582,7 +1624,11 @@ describe("analytics edge cache", () => {
       const url = `https://api.metagraph.sh${r.path}${r.search}`;
 
       // MISS: calls the Postgres tier and caches under the route's key.
-      const miss = await handleRequest(new Request(url), env, ctx);
+      const miss = await handleRequest(
+        new Request(url),
+        env as unknown as Env,
+        ctx,
+      );
       await Promise.resolve();
       assert.equal(miss.status, 200, `${r.keyParts}: MISS is 200`);
       assert.ok(
@@ -1592,7 +1638,11 @@ describe("analytics edge cache", () => {
       const callsAfterMiss = calls.length;
 
       // HIT: served from cache, no additional Postgres-tier call.
-      const hit = await handleRequest(new Request(url), env, ctx);
+      const hit = await handleRequest(
+        new Request(url),
+        env as unknown as Env,
+        ctx,
+      );
       assert.equal(hit.status, 200, `${r.keyParts}: HIT is 200`);
       assert.equal(
         calls.length,
@@ -1614,7 +1664,7 @@ describe("analytics edge cache", () => {
         "https://api.metagraph.sh/api/v1/subnets/movers?sort=emission",
         { headers: { accept: "text/csv" } },
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1699,7 +1749,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     for (const { path } of FORMERLY_NEURONS_TIER_SUBNET_ROUTES) {
       await handleRequest(
         new Request(`https://api.metagraph.sh${path}`),
-        env,
+        env as unknown as Env,
         ctx,
       );
     }
@@ -1722,7 +1772,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     for (const { path } of FORMERLY_NEURONS_TIER_SUBNET_ROUTES) {
       await handleRequest(
         new Request(`https://api.metagraph.sh${path}`),
-        env,
+        env as unknown as Env,
         ctx,
       );
     }
@@ -1749,7 +1799,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
 
       await handleRequest(
         new Request(url),
-        analyticsEnv([], { lastRunAt: LAST_RUN_AT }),
+        analyticsEnv([], { lastRunAt: LAST_RUN_AT }) as unknown as Env,
         ctx,
       );
       await Promise.resolve();
@@ -1762,7 +1812,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
       const NEW_LAST_RUN_AT = "2026-06-19T00:00:00.000Z";
       await handleRequest(
         new Request(url),
-        analyticsEnv([], { lastRunAt: NEW_LAST_RUN_AT }),
+        analyticsEnv([], { lastRunAt: NEW_LAST_RUN_AT }) as unknown as Env,
         ctx,
       );
       await Promise.resolve();
@@ -1791,7 +1841,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
 
     const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/validators?limit=1"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1802,7 +1852,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
       new Request(
         "https://api.metagraph.sh/api/v1/validators?limit=01&sort=subnet_count",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     assert.equal(hit.status, 200);
@@ -1833,7 +1883,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
 
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/validators?bogus=1"),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();
@@ -1857,7 +1907,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
       ),
-      mockEnv(env),
+      mockEnv(env) as unknown as Env,
       ctx,
     );
     await Promise.resolve();

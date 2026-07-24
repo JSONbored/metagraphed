@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { CHAIN_EVENTS_DB_TTL_MS, readChainEventsDb } from "../workers/api.mjs";
+import { CHAIN_EVENTS_DB_TTL_MS, readChainEventsDb } from "../workers/api.ts";
 
 // readChainEventsDb reads the chain-events heartbeat from the Postgres
 // chain_events tier via the DATA_API service binding (#5357) — the D1
@@ -32,7 +32,7 @@ function mkDataApiEnv(
         );
       },
     },
-  };
+  } as unknown as Env & { readonly queries: number };
 }
 
 test("readChainEventsDb memoizes within the TTL — one DATA_API fetch for repeated calls", async () => {
@@ -68,7 +68,7 @@ test("readChainEventsDb never cross-reads a different env (isolation safety)", a
 });
 
 test("readChainEventsDb returns null when the DATA_API binding is absent", async () => {
-  const result = await readChainEventsDb({}, 7_000_000);
+  const result = await readChainEventsDb({} as unknown as Env, 7_000_000);
   assert.equal(result, null);
 });
 
@@ -83,7 +83,7 @@ test("readChainEventsDb does not cache a null result (no sticky cold miss)", asy
         });
       },
     },
-  };
+  } as unknown as Env;
   const t0 = 8_000_000;
   await readChainEventsDb(env, t0);
   await readChainEventsDb(env, t0 + 1000);
@@ -99,7 +99,7 @@ test("readChainEventsDb returns null (not cached) when DATA_API responds non-2xx
         return new Response("upstream error", { status: 500 });
       },
     },
-  };
+  } as unknown as Env;
   const t0 = 9_000_000;
   const a = await readChainEventsDb(env, t0);
   const b = await readChainEventsDb(env, t0 + 1000);
@@ -117,7 +117,7 @@ test("readChainEventsDb returns null (not cached) when DATA_API.fetch throws", a
         throw new Error("network error");
       },
     },
-  };
+  } as unknown as Env;
   const t0 = 10_000_000;
   const a = await readChainEventsDb(env, t0);
   const b = await readChainEventsDb(env, t0 + 1000);
@@ -135,7 +135,7 @@ test("readChainEventsDb returns null when the response body's events isn't an ar
         });
       },
     },
-  };
+  } as unknown as Env;
   const result = await readChainEventsDb(env, 11_500_000);
   assert.equal(result, null);
 });
@@ -155,7 +155,7 @@ test("readChainEventsDb returns null when DATA_API responds with invalid JSON", 
         return new Response("not json", { status: 200 });
       },
     },
-  };
+  } as unknown as Env;
   const t0 = 11_000_000;
   const result = await readChainEventsDb(env, t0);
   assert.equal(result, null);

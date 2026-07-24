@@ -6,7 +6,7 @@ import {
   BURN_RPC_TIMEOUT_MS,
   loadSubnetBurn,
 } from "../src/subnet-burn.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 function req(path: string) {
@@ -397,7 +397,7 @@ describe("GET /api/v1/subnets/{netuid}/burn via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/subnets/${GOLDEN_NETUID}/burn`),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -419,7 +419,7 @@ describe("GET /api/v1/subnets/{netuid}/burn via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/subnets/${GOLDEN_NETUID}/burn`),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -449,7 +449,7 @@ describe("GET /api/v1/subnets/{netuid}/burn via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/subnets/65536/burn"),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 400);
@@ -477,7 +477,7 @@ describe("GET /api/v1/subnets/{netuid}/burn via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req("/api/v1/subnets/65535/burn"),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -494,7 +494,7 @@ describe("GET /api/v1/subnets/{netuid}/burn via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/testnet/subnets/${GOLDEN_NETUID}/burn`),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 404);
@@ -524,7 +524,7 @@ describe("GET /api/v1/subnets/{netuid}/burn via the Worker", () => {
             `https://api.metagraph.sh/api/v1/subnets/${GOLDEN_NETUID}/burn`,
             { headers: { "cf-connecting-ip": "203.0.113.9" } },
           ),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 429);
@@ -550,7 +550,7 @@ describe("GET /api/v1/subnets/{netuid}/burn via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/subnets/${GOLDEN_NETUID}/burn`),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);

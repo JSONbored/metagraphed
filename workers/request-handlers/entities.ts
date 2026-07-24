@@ -642,7 +642,7 @@ async function metagraphMeta(
 export async function handleSubnetMetagraph(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateEntityQuery(url, [
@@ -693,7 +693,7 @@ export async function handleSubnetMetagraph(
 export async function handleSubnetYield(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateEntityQuery(url, ["format"]);
@@ -731,8 +731,8 @@ export async function handleSubnetYield(
 export async function handleNeuron(
   request: Request,
   env: Env,
-  netuid: string,
-  uid: string,
+  netuid: number,
+  uid: number,
 ) {
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
@@ -772,7 +772,7 @@ export async function handleNeuron(
 export async function handleSubnetHyperparams(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, []);
@@ -812,7 +812,7 @@ export async function handleSubnetHyperparams(
 export async function handleSubnetHyperparamsHistory(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateEntityQuery(url, [
@@ -864,7 +864,7 @@ export async function handleSubnetHyperparamsHistory(
 export async function handleSubnetValidators(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateEntityQuery(url, ["format"]);
@@ -1367,8 +1367,8 @@ export async function handleValidatorHistory(
 export async function handleNeuronHistory(
   request: Request,
   env: Env,
-  netuid: string,
-  uid: string,
+  netuid: number,
+  uid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -1408,7 +1408,7 @@ export async function handleNeuronHistory(
 export async function handleSubnetHistory(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -1446,7 +1446,7 @@ export async function handleSubnetHistory(
 export async function handleSubnetIdentityHistory(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateEntityQuery(url, [
@@ -1501,7 +1501,7 @@ export async function handleSubnetIdentityHistory(
 export async function handleSubnetConcentration(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, []);
@@ -1537,7 +1537,7 @@ export async function handleSubnetConcentration(
 export async function handleSubnetPerformance(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, []);
@@ -1640,7 +1640,7 @@ export async function handleChainPerformance(
 export async function handleSubnetIdleStake(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, []);
@@ -2098,7 +2098,7 @@ export function canonicalSubnetYieldCachePath(
 export async function handleSubnetConcentrationHistory(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window", "format"]);
@@ -2161,7 +2161,7 @@ export async function handleSubnetConcentrationHistory(
 export async function handleSubnetPerformanceHistory(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window", "format"]);
@@ -2224,7 +2224,7 @@ export async function handleSubnetPerformanceHistory(
 export async function handleSubnetYieldHistory(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window", "format"]);
@@ -2285,7 +2285,7 @@ export async function handleSubnetYieldHistory(
 export async function handleSubnetTurnover(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window", "changes"]);
@@ -2347,7 +2347,7 @@ export function canonicalSubnetWeightsCachePath(url: URL) {
 export async function handleSubnetWeights(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2403,7 +2403,7 @@ export function canonicalSubnetWeightSettersCachePath(url: URL) {
 export async function handleSubnetWeightSetters(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2462,7 +2462,7 @@ export function canonicalSubnetServingCachePath(url: URL) {
 export async function handleSubnetServing(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2519,7 +2519,7 @@ export function canonicalSubnetPrometheusCachePath(url: URL) {
 export async function handleSubnetPrometheus(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2576,7 +2576,7 @@ export function canonicalSubnetStakeMovesCachePath(url: URL) {
 export async function handleSubnetStakeMoves(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2636,7 +2636,7 @@ export function canonicalSubnetStakeTransfersCachePath(url: URL) {
 export async function handleSubnetStakeTransfers(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2695,7 +2695,7 @@ export function canonicalSubnetRegistrationsCachePath(url: URL) {
 export async function handleSubnetRegistrations(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2754,7 +2754,7 @@ export function canonicalSubnetAxonRemovalsCachePath(url: URL) {
 export async function handleSubnetAxonRemovals(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2813,7 +2813,7 @@ export function canonicalSubnetDeregistrationsCachePath(url: URL) {
 export async function handleSubnetDeregistrations(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -2862,7 +2862,7 @@ export async function handleSubnetDeregistrations(
 export async function handleSubnetStakeFlow(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window", "direction"]);
@@ -2921,7 +2921,7 @@ export async function handleSubnetStakeFlow(
 // pair share, and entities.mjs deliberately imports leaf modules directly
 // rather than taking injected deps from api.mjs (see this file's header).
 // Null when neither tier has a row for this subnet.
-async function resolveSubnetMarketCapTao(env: Env, netuid: string) {
+async function resolveSubnetMarketCapTao(env: Env, netuid: number) {
   const live = await resolveLiveEconomics({
     readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
     env,
@@ -2951,7 +2951,7 @@ async function resolveSubnetMarketCapTao(env: Env, netuid: string) {
 // stake-quote math needs — resolved from the same live-KV-then-committed-R2
 // economics tiers as resolveSubnetMarketCapTao, plus the blob's freshness stamp
 // for the response meta. Returns { row: null } when neither tier has a row.
-async function resolveSubnetEconomicsRow(env: Env, netuid: string) {
+async function resolveSubnetEconomicsRow(env: Env, netuid: number) {
   const live = await resolveLiveEconomics({
     readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
     env,
@@ -2986,7 +2986,7 @@ async function resolveSubnetEconomicsRow(env: Env, netuid: string) {
 export async function handleSubnetStakeQuote(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateEntityQuery(url, ["amount", "direction"]);
@@ -3029,7 +3029,7 @@ export async function handleSubnetStakeQuote(
 export async function handleSubnetAlphaVolume(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, []);
@@ -3077,7 +3077,7 @@ export async function handleSubnetAlphaVolume(
 export async function handleSubnetOhlc(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["interval", "days"]);
@@ -4106,7 +4106,7 @@ export async function handleAccountPositionHistory(
   request: Request,
   env: Env,
   ss58: string,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window"]);
@@ -4240,7 +4240,7 @@ export async function handleAccountIdentityHistory(
 export async function handleSubnetEvents(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateEntityQuery(url, [
@@ -4324,7 +4324,7 @@ export async function handleSubnetEvents(
 export async function handleSubnetEventSummary(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
   url: URL,
 ) {
   const validationError = validateQueryParams(url, ["window", "limit"]);
@@ -4568,7 +4568,7 @@ export async function handleAccountParents(
 export async function handleSubnetRecycled(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
 ) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(
@@ -4614,7 +4614,7 @@ export async function handleSubnetRecycled(
 export async function handleSubnetBurn(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
 ) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(
@@ -4663,7 +4663,7 @@ export async function handleSubnetBurn(
 export async function handleSubnetLease(
   request: Request,
   env: Env,
-  netuid: string,
+  netuid: number,
 ) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(

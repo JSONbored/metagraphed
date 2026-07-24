@@ -9,7 +9,7 @@ import {
   loadAccountParents,
 } from "../src/child-hotkey-delegation.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 import { mockEnv } from "./row-type.ts";
 
@@ -612,7 +612,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     try {
       const res = await handleRequest(
         req(`/api/v1/accounts/${KNOWN_SS58}/children`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -638,7 +638,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     try {
       const res = await handleRequest(
         req(`/api/v1/accounts/${KNOWN_SS58}/parents`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -674,7 +674,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     try {
       const res = await handleRequest(
         req(`/api/v1/accounts/${badChecksumSs58}/children`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 400);
@@ -691,7 +691,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
   test("a non-SS58-shaped path segment 404s at the router (never reaches the handler)", async () => {
     const res = await handleRequest(
       req("/api/v1/accounts/not-an-address/children"),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);
@@ -702,7 +702,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     try {
       const res = await handleRequest(
         req(`/api/v1/testnet/accounts/${KNOWN_SS58}/children`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 404);
@@ -732,7 +732,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
           `https://api.metagraph.sh/api/v1/accounts/${KNOWN_SS58}/children`,
           { headers: { "cf-connecting-ip": "203.0.113.9" } },
         ),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 429);
@@ -761,7 +761,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     try {
       const res = await handleRequest(
         req(`/api/v1/accounts/${KNOWN_SS58}/parents`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 429);
@@ -782,7 +782,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     try {
       const res = await handleRequest(
         req(`/api/v1/accounts/${badChecksumSs58}/parents`),
-        {},
+        {} as unknown as Env,
         {},
       );
       assert.equal(res.status, 400);
@@ -806,7 +806,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     try {
       const res = await handleRequest(
         req(`/api/v1/accounts/${KNOWN_SS58}/children`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -831,7 +831,7 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     try {
       const res = await handleRequest(
         req(`/api/v1/accounts/${KNOWN_SS58}/parents`),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);

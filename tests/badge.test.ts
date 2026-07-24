@@ -9,7 +9,7 @@ import {
   parseBadgeOptions,
   formatUptimePercent,
 } from "../src/badge.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -648,7 +648,7 @@ describe("badge — Worker dispatch integration", () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/badge.svg"),
-      env,
+      env as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);

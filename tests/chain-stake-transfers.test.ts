@@ -4,7 +4,7 @@ import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
 } from "../src/chain-stake-transfers.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -264,7 +264,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
   test("dispatches to the network stake-transfer scorecard", async () => {
     const res = await handleRequest(
       req("?window=7d"),
-      postgresEnv(warmBody),
+      postgresEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -283,7 +283,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/stake-transfers", {
         method: "HEAD",
       }),
-      postgresEnv(warmBody),
+      postgresEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -291,7 +291,11 @@ describe("GET /api/v1/chain/stake-transfers", () => {
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {
-    const res = await handleRequest(req(), createLocalArtifactEnv(), {});
+    const res = await handleRequest(
+      req(),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -310,7 +314,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
         network: {},
         intensity_distribution: null,
         subnets: [{ netuid: 42 }],
-      }),
+      }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -328,7 +332,11 @@ describe("GET /api/v1/chain/stake-transfers", () => {
         },
       },
     };
-    const res = await handleRequest(req("?window=7d"), env, {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -337,7 +345,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
   test("rejects an unsupported window with 400", async () => {
     const res = await handleRequest(
       req("?window=90d"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -346,7 +354,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
   test("rejects an unknown query param with 400", async () => {
     const res = await handleRequest(
       req("?bogus=1"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -355,7 +363,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
   test("rejects an out-of-range limit with 400", async () => {
     const res = await handleRequest(
       req("?limit=0"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -367,7 +375,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
   test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      postgresEnv(warmBody),
+      postgresEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -388,7 +396,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/stake-transfers", {
         headers: { accept: "text/csv" },
       }),
-      postgresEnv(warmBody),
+      postgresEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -398,7 +406,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
   test("emits a header-only CSV on a cold store", async () => {
     const res = await handleRequest(
       req("?format=csv"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -412,7 +420,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
         "https://api.metagraph.sh/api/v1/chain/stake-transfers?format=csv",
         { method: "HEAD" },
       ),
-      postgresEnv(warmBody),
+      postgresEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -423,7 +431,7 @@ describe("GET /api/v1/chain/stake-transfers", () => {
   test("rejects an unsupported format value with 400", async () => {
     const res = await handleRequest(
       req("?format=xml"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -504,7 +512,7 @@ describe("chain/stake-transfers edge cache", () => {
     const call = () =>
       handleRequest(
         new Request("https://api.metagraph.sh/api/v1/chain/stake-transfers"),
-        env,
+        env as unknown as Env,
         { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();

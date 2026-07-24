@@ -34,7 +34,7 @@ import {
   API_ROUTES,
   PRIMARY_DOMAIN,
 } from "../src/contracts.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 // The committed digests the forged-build tests snapshot + restore (so a forged
@@ -2572,7 +2572,7 @@ test("Worker API serves public artifact envelopes", async () => {
 
   const response = await handleRequest(
     new Request("https://metagraph.sh/api/v1/subnets/7"),
-    env,
+    env as unknown as Env,
     {},
   );
   assert.equal(response.status, 200);

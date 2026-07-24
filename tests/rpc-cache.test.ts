@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleRequest, rpcCachePolicy } from "../workers/api.mjs";
+import { handleRequest, rpcCachePolicy } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 describe("rpcCachePolicy", () => {
@@ -151,7 +151,7 @@ describe("RPC response cache flow", () => {
       };
       const r1 = await handleRequest(
         reqFor("chain_getBlockHash", [1]),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(r1.status, 200);
@@ -161,7 +161,7 @@ describe("RPC response cache flow", () => {
 
       const r2 = await handleRequest(
         reqFor("chain_getBlockHash", [1]),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(r2.status, 200);
@@ -192,7 +192,7 @@ describe("RPC response cache flow", () => {
       };
       const r1 = await handleRequest(
         reqFor("chain_getBlockHash", [999999999]),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(r1.headers.get("x-metagraph-rpc-cache"), "miss");
@@ -202,7 +202,7 @@ describe("RPC response cache flow", () => {
 
       const r2 = await handleRequest(
         reqFor("chain_getBlockHash", [999999999]),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(r2.headers.get("x-metagraph-rpc-cache"), "miss");
@@ -237,7 +237,7 @@ describe("RPC response cache flow", () => {
       };
       const primed = await handleRequest(
         reqFor("chain_getBlockHash", [1], "attacker-prime-id"),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(primed.headers.get("x-metagraph-rpc-cache"), "miss");
@@ -246,7 +246,7 @@ describe("RPC response cache flow", () => {
 
       const victim = await handleRequest(
         reqFor("chain_getBlockHash", [1], "victim-expected-id"),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(victim.headers.get("x-metagraph-rpc-cache"), "hit");
@@ -278,7 +278,7 @@ describe("RPC response cache flow", () => {
       };
       const testnet = await handleRequest(
         reqFor("system_chain", [], "test-prime", "test"),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(testnet.headers.get("x-metagraph-rpc-cache"), "miss");
@@ -287,7 +287,7 @@ describe("RPC response cache flow", () => {
 
       const finney = await handleRequest(
         reqFor("system_chain", [], "finney-caller", "finney"),
-        env,
+        env as unknown as Env,
         ctx,
       );
       assert.equal(finney.headers.get("x-metagraph-rpc-cache"), "miss");
@@ -318,8 +318,12 @@ describe("RPC response cache flow", () => {
       );
     };
     await withGlobals({ cache, fetchImpl }, async () => {
-      await handleRequest(reqFor("system_health", []), env, { waitUntil() {} });
-      await handleRequest(reqFor("system_health", []), env, { waitUntil() {} });
+      await handleRequest(reqFor("system_health", []), env as unknown as Env, {
+        waitUntil() {},
+      });
+      await handleRequest(reqFor("system_health", []), env as unknown as Env, {
+        waitUntil() {},
+      });
       assert.equal(fetchCount, 2, "head-moving reads always hit upstream");
       assert.equal(cache.store.size, 0);
     });
@@ -334,9 +338,13 @@ describe("RPC response cache flow", () => {
       );
     await withGlobals({ cache, fetchImpl }, async () => {
       const waits: Promise<unknown>[] = [];
-      await handleRequest(reqFor("chain_getBlockHash", [1]), env, {
-        waitUntil: (p: Promise<unknown>) => waits.push(p),
-      });
+      await handleRequest(
+        reqFor("chain_getBlockHash", [1]),
+        env as unknown as Env,
+        {
+          waitUntil: (p: Promise<unknown>) => waits.push(p),
+        },
+      );
       await Promise.all(waits);
       assert.equal(cache.store.size, 0);
     });

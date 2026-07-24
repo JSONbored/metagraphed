@@ -4,7 +4,7 @@ import {
   formatAccountPosition,
   buildAccountPositionHistory,
 } from "../src/account-position-history.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
@@ -257,7 +257,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history?window=7d`,
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -273,7 +273,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history?window=400d`,
       ),
-      positionHistoryEnv(),
+      positionHistoryEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -292,7 +292,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history?window=all`,
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -305,7 +305,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history`,
       ),
-      positionHistoryEnv(),
+      positionHistoryEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -319,7 +319,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history?bogus=1`,
       ),
-      positionHistoryEnv(),
+      positionHistoryEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -335,7 +335,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history`,
       ),
-      env,
+      env as unknown as Env,
       ctx,
     );
     const body = await res.json();
@@ -351,7 +351,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         `https://api.metagraph.sh/api/v1/accounts/${SS58}/subnets/7/history`,
       ),
-      positionHistoryEnv(),
+      positionHistoryEnv() as unknown as Env,
       ctx,
     );
     const body = await res.json();
@@ -363,7 +363,7 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       new Request(
         "https://api.metagraph.sh/api/v1/accounts/not-a-valid-address/subnets/7/history",
       ),
-      positionHistoryEnv(),
+      positionHistoryEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 404);

@@ -6,10 +6,22 @@ import {
   artifactPathFromTemplate,
   compileRoutePattern,
 } from "../src/contracts.ts";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = Record<string, any>;
+// Loose ctx shape (matches request-handlers/analytics.ts's own EdgeCacheCtx) --
+// call sites here sometimes pass a real Workers-runtime ExecutionContext,
+// sometimes {} (e.g. handleScheduled's default), so a full ExecutionContext
+// isn't required to satisfy every caller.
+type Ctx = { waitUntil?: (promise: Promise<unknown>) => void };
+// The Cache API (`caches.default`) isn't in the generated Env/global types --
+// it's a Workers-runtime global, not an Env binding.
+const globalWithCaches = globalThis as unknown as { caches?: Row };
 import {
   isUsageTelemetryConfigured,
   recordExceptionEvent,
   recordUsageEvent,
+  type UsageEvent,
 } from "../src/usage-telemetry.ts";
 import {
   applyQueryFilters,
@@ -25,6 +37,7 @@ import {
   ifNoneMatchSatisfied,
   weakEtag,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
+  type CacheProfile,
 } from "./http.ts";
 import {
   latestPointer,
@@ -408,7 +421,7 @@ const RAW_ARTIFACT_ROUTES = PUBLIC_ARTIFACTS.filter((entry) =>
 const ROUTES = API_ROUTES.map((entry) => ({
   ...entry,
   pattern: compileRoutePattern(entry.path),
-  artifactPath(params) {
+  artifactPath(params: Row) {
     return artifactPathFromTemplate(entry.artifact_path, params);
   },
 }));
@@ -435,7 +448,10 @@ const LIVE_OVERLAY_ROUTE_IDS = new Set([
   "economics",
 ]);
 
-function isStaticEdgeCacheEligible(matched, network) {
+function isStaticEdgeCacheEligible(
+  matched: Row,
+  network: typeof DEFAULT_NETWORK,
+) {
   return !network.isDefault || !LIVE_OVERLAY_ROUTE_IDS.has(matched.id);
 }
 
@@ -455,7 +471,7 @@ const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
 // cache. Routes with no query collection (pure static artifacts) honour no
 // params at all, so their canonical search is the empty string. Shared by both
 // the static edge cache and the live-overlay collection cache.
-function canonicalCacheSearch(url, matched) {
+function canonicalCacheSearch(url: URL, matched: Row) {
   return canonicalListSearch(
     url,
     matched.queryCollection,
@@ -491,7 +507,7 @@ const GRAPHQL_USAGE_ROUTE = "graphql";
  * @param {URL} url
  * @returns {string | null}
  */
-export function usageRouteLabel(url) {
+export function usageRouteLabel(url: URL) {
   const { network, url: resolved } = resolveNetworkPrefix(url);
   const { pathname } = resolved;
 
@@ -526,7 +542,7 @@ export function usageRouteLabel(url) {
  * @param {string} pathname
  * @returns {string}
  */
-function maskUsageRouteParams(pathname) {
+function maskUsageRouteParams(pathname: string) {
   return pathname
     .split("/")
     .map((segment) => {
@@ -551,7 +567,13 @@ function maskUsageRouteParams(pathname) {
  * @param {{recordUsageEvent?: typeof recordUsageEvent}} [deps]
  * @returns {Promise<Response>}
  */
-export async function withUsageTelemetry(request, env, ctx, handle, deps = {}) {
+export async function withUsageTelemetry(
+  request: Request,
+  env: Env,
+  ctx: Ctx,
+  handle: () => Promise<Response>,
+  deps: { recordUsageEvent?: typeof recordUsageEvent } = {},
+) {
   const record = deps.recordUsageEvent ?? recordUsageEvent;
   if (!isUsageTelemetryConfigured(env)) {
     return handle();
@@ -615,7 +637,12 @@ export async function withUsageTelemetry(request, env, ctx, handle, deps = {}) {
  * @param {typeof recordUsageEvent} record
  * @param {object} event
  */
-function scheduleUsageEvent(env, ctx, record, event) {
+function scheduleUsageEvent(
+  env: Env,
+  ctx: Ctx,
+  record: typeof recordUsageEvent,
+  event: UsageEvent,
+) {
   try {
     const pending = Promise.resolve(record(env, event)).catch(() => false);
     if (typeof ctx?.waitUntil === "function") {
@@ -627,12 +654,16 @@ function scheduleUsageEvent(env, ctx, record, event) {
 }
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request: Request, env: Env, ctx: Ctx) {
     return withUsageTelemetry(request, env, ctx, () =>
       handleRequest(request, env, ctx),
     );
   },
-  async scheduled(controller, env, ctx) {
+  async scheduled(
+    controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext,
+  ) {
     return handleScheduled(controller, env, ctx);
   },
 };
@@ -679,7 +710,11 @@ export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 // `controller.cron`; the hourly trigger prunes the time-series, every other
 // trigger (the 15-minute one) runs a full operational-health probe sweep.
 
-export async function handleScheduled(controller, env = {}, ctx = {}) {
+export async function handleScheduled(
+  controller: ScheduledController,
+  env: Env = {} as unknown as Env,
+  ctx: ExecutionContext = {} as unknown as ExecutionContext,
+) {
   const cron = controller?.cron || "";
   // The former fast-load cron (#1346 Option A, EVENTS_LOAD_CRON, "*/3 * * * *")
   // drained R2-staged batches into D1. Its last consumer, loadStagedAccountIdentity
@@ -707,7 +742,12 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     // have silently skipped THIS cron's unrelated pruneHealthHistory
     // (surface_checks) prune forever — a regression to fix here, not carry.
     const uptimeRollup = await rollupDailyUptime(env);
-    const snapshotPromise = writeSubnetSnapshot(env, { readArtifact });
+    const snapshotPromise = writeSubnetSnapshot(env, {
+      readArtifact: readArtifact as unknown as (
+        env: Env,
+        path: string,
+      ) => Promise<Row>,
+    });
     if (!uptimeRollup.rolled) {
       const snapshot = await snapshotPromise;
       return {
@@ -795,7 +835,7 @@ const CHAIN_EVENTS_CSV_COLUMNS = [
 // version) since this tier has no publish-time snapshot to key off of.
 const CHAIN_EVENTS_PROXY_CACHE_TTL_SECONDS = 60;
 
-async function chainEventsProxyCacheKey(env, url) {
+async function chainEventsProxyCacheKey(env: Env, url: URL) {
   return new Request(
     `https://edge-cache.metagraph.sh/chain-events-proxy/${encodeURIComponent(
       contractVersion(env),
@@ -803,7 +843,12 @@ async function chainEventsProxyCacheKey(env, url) {
   );
 }
 
-async function handleChainEventsProxy(request, env, url, ctx) {
+async function handleChainEventsProxy(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: Ctx,
+) {
   if (!env.DATA_API) {
     return errorResponse(
       "data_tier_unavailable",
@@ -813,7 +858,7 @@ async function handleChainEventsProxy(request, env, url, ctx) {
   }
   const cache =
     request.method === "GET" || request.method === "HEAD"
-      ? globalThis.caches?.default
+      ? globalWithCaches.caches?.default
       : null;
   const cacheKey = cache ? await chainEventsProxyCacheKey(env, url) : null;
   let body;
@@ -908,7 +953,7 @@ async function handleChainEventsProxy(request, env, url, ctx) {
 // one-code-per-condition convention handleAccountBalance/handleSubnetRecycled
 // already use (#5475). The upstream (data-api handleAlertTriggersRoute) returns
 // a plain `{ error: "message" }` with no code of its own, so we key off status.
-function alertTriggerErrorCode(status) {
+function alertTriggerErrorCode(status: number) {
   switch (status) {
     case 400:
       return "alert_trigger_invalid";
@@ -937,7 +982,7 @@ const FORWARDED_RATE_LIMIT_HEADERS = [
   "x-ratelimit-policy",
 ];
 
-async function handleAlertTriggersProxy(request, env) {
+async function handleAlertTriggersProxy(request: Request, env: Env) {
   if (!env.DATA_API) {
     return errorResponse(
       "alert_triggers_unavailable",
@@ -946,7 +991,7 @@ async function handleAlertTriggersProxy(request, env) {
     );
   }
   const upstream = await env.DATA_API.fetch(request);
-  let body;
+  let body: Row;
   try {
     body = await upstream.json();
   } catch {
@@ -957,7 +1002,7 @@ async function handleAlertTriggersProxy(request, env) {
     );
   }
   if (!upstream.ok) {
-    const extraHeaders = {};
+    const extraHeaders: Record<string, string> = {};
     for (const name of FORWARDED_RATE_LIMIT_HEADERS) {
       const value = upstream.headers.get(name);
       if (value != null) extraHeaders[name] = value;
@@ -978,7 +1023,7 @@ async function handleAlertTriggersProxy(request, env) {
 // Distinct error code per upstream failure condition, same reasoning as
 // alertTriggerErrorCode above -- workers/data-api.mjs's handleWallet* return
 // a plain `{ error: "message" }` with no code of its own.
-function walletAuthErrorCode(status) {
+function walletAuthErrorCode(status: number) {
   switch (status) {
     case 400:
       return "wallet_auth_invalid";
@@ -1001,7 +1046,7 @@ function walletAuthErrorCode(status) {
 // verification, and session issuance live in workers/data-api.mjs (via
 // src/wallet-auth.ts); this is only the forwarding + envelope-translation
 // boundary, same shape as handleAlertTriggersProxy above.
-async function handleWalletAuthProxy(request, env) {
+async function handleWalletAuthProxy(request: Request, env: Env) {
   if (!env.DATA_API) {
     return errorResponse(
       "wallet_auth_unavailable",
@@ -1010,7 +1055,7 @@ async function handleWalletAuthProxy(request, env) {
     );
   }
   const upstream = await env.DATA_API.fetch(request);
-  let body;
+  let body: Row;
   try {
     body = await upstream.json();
   } catch {
@@ -1021,7 +1066,7 @@ async function handleWalletAuthProxy(request, env) {
     );
   }
   if (!upstream.ok) {
-    const extraHeaders = {};
+    const extraHeaders: Record<string, string> = {};
     for (const name of FORWARDED_RATE_LIMIT_HEADERS) {
       const value = upstream.headers.get(name);
       if (value != null) extraHeaders[name] = value;
@@ -1039,7 +1084,7 @@ async function handleWalletAuthProxy(request, env) {
   return dataResponse(env, body, upstream.status);
 }
 
-function accountKeysErrorCode(status) {
+function accountKeysErrorCode(status: number) {
   switch (status) {
     case 400:
       return "account_key_invalid";
@@ -1065,7 +1110,7 @@ function accountKeysErrorCode(status) {
 // #6835) to the DATA_API service binding -- session validation, the invite-
 // code gate, and all Postgres plumbing live in workers/data-api.mjs; this is
 // only the forwarding + envelope-translation boundary.
-async function handleAccountKeysProxy(request, env) {
+async function handleAccountKeysProxy(request: Request, env: Env) {
   if (!env.DATA_API) {
     return errorResponse(
       "account_keys_unavailable",
@@ -1074,7 +1119,7 @@ async function handleAccountKeysProxy(request, env) {
     );
   }
   const upstream = await env.DATA_API.fetch(request);
-  let body;
+  let body: Row;
   try {
     body = await upstream.json();
   } catch {
@@ -1085,7 +1130,7 @@ async function handleAccountKeysProxy(request, env) {
     );
   }
   if (!upstream.ok) {
-    const extraHeaders = {};
+    const extraHeaders: Record<string, string> = {};
     for (const name of FORWARDED_RATE_LIMIT_HEADERS) {
       const value = upstream.headers.get(name);
       if (value != null) extraHeaders[name] = value;
@@ -1111,7 +1156,7 @@ async function handleAccountKeysProxy(request, env) {
 // only place the secret needs to be provisioned. There is no bypass path
 // here to defend against: REGISTRY_SYNC_API has no public routes of its own,
 // so this route is the only way to reach it.
-async function handleRegistrySyncProxy(request, env) {
+async function handleRegistrySyncProxy(request: Request, env: Env) {
   if (request.method !== "POST") {
     return errorResponse("method_not_allowed", "Only POST is supported.", 405);
   }
@@ -1158,7 +1203,7 @@ async function handleRegistrySyncProxy(request, env) {
 // no-op when the binding is absent (local dev/CI).
 const INTERNAL_SYNC_RATE_LIMIT = { limit: 30, windowSeconds: 60 };
 
-async function internalSyncRateLimited(request, env) {
+async function internalSyncRateLimited(request: Request, env: Env) {
   if (!env.INTERNAL_SYNC_RATE_LIMITER?.limit) return null;
   const { success } = await env.INTERNAL_SYNC_RATE_LIMITER.limit({
     key: `internal-sync:${resolveClientIp(request)}`,
@@ -1207,7 +1252,7 @@ async function internalSyncRateLimited(request, env) {
 // spike still degrades gracefully instead of repeating this failure mode.
 const CHAIN_FIREHOSE_INGEST_RATE_LIMIT = { limit: 1200, windowSeconds: 60 };
 
-async function chainFirehoseIngestRateLimited(request, env) {
+async function chainFirehoseIngestRateLimited(request: Request, env: Env) {
   if (!env.CHAIN_FIREHOSE_INGEST_RATE_LIMITER?.limit) return null;
   const { success } = await env.CHAIN_FIREHOSE_INGEST_RATE_LIMITER.limit({
     key: `chain-firehose-ingest:${resolveClientIp(request)}`,
@@ -1237,9 +1282,13 @@ async function chainFirehoseIngestRateLimited(request, env) {
 // (including any shared-secret header) -- the auth check happens once,
 // downstream in data-api.mjs.
 async function proxyToDataApi(
-  request,
-  env,
-  { code, notBoundMessage, unreadableMessage },
+  request: Request,
+  env: Env,
+  {
+    code,
+    notBoundMessage,
+    unreadableMessage,
+  }: { code: string; notBoundMessage: string; unreadableMessage: string },
 ) {
   if (request.method !== "POST") {
     return errorResponse("method_not_allowed", "Only POST is supported.", 405);
@@ -1266,7 +1315,7 @@ async function proxyToDataApi(
 // chain-indexer Postgres's neurons/neuron_daily tables (#4771). Mirrors
 // handleRegistrySyncProxy's shape otherwise (forwards the request as-is,
 // including the x-neurons-sync-token header).
-async function handleNeuronsSyncProxy(request, env) {
+async function handleNeuronsSyncProxy(request: Request, env: Env) {
   return proxyToDataApi(request, env, {
     code: "neurons_sync_unavailable",
     notBoundMessage: "The neurons-sync tier is not bound to this deployment.",
@@ -1279,7 +1328,7 @@ async function handleNeuronsSyncProxy(request, env) {
 // into neuron_daily/account_position_daily (see handleNeuronDailyBackfill's
 // own header for why this is NOT the same route/semantics as neurons-sync).
 // Same DATA_API service binding as neurons-sync above.
-async function handleNeuronDailyBackfillProxy(request, env) {
+async function handleNeuronDailyBackfillProxy(request: Request, env: Env) {
   return proxyToDataApi(request, env, {
     code: "neuron_daily_backfill_unavailable",
     notBoundMessage:
@@ -1293,7 +1342,7 @@ async function handleNeuronDailyBackfillProxy(request, env) {
 // path into the chain-indexer Postgres's account_events_daily rollup
 // (#4832 gap-closure). Same DATA_API service binding as neurons-sync above;
 // see proxyToDataApi's comment for why this isn't a dedicated Worker.
-async function handleRollupAccountEventsDailyProxy(request, env) {
+async function handleRollupAccountEventsDailyProxy(request: Request, env: Env) {
   return proxyToDataApi(request, env, {
     code: "rollup_account_events_daily_unavailable",
     notBoundMessage:
@@ -1306,7 +1355,7 @@ async function handleRollupAccountEventsDailyProxy(request, env) {
 // Proxies POST /api/v1/internal/subnet-hyperparams-sync -- the write path
 // into subnet_hyperparams/subnet_hyperparams_history (#4832 gap-closure).
 // Same DATA_API service binding as neurons-sync/rollup above.
-async function handleSubnetHyperparamsSyncProxy(request, env) {
+async function handleSubnetHyperparamsSyncProxy(request: Request, env: Env) {
   return proxyToDataApi(request, env, {
     code: "subnet_hyperparams_sync_unavailable",
     notBoundMessage:
@@ -1319,7 +1368,7 @@ async function handleSubnetHyperparamsSyncProxy(request, env) {
 // Proxies POST /api/v1/internal/subnet-locks-sync -- the write path into
 // subnet_locks (#6638, conviction/ownership-contest tracker epic #4302).
 // Same DATA_API service binding as the other internal sync routes above.
-async function handleSubnetLocksSyncProxy(request, env) {
+async function handleSubnetLocksSyncProxy(request: Request, env: Env) {
   return proxyToDataApi(request, env, {
     code: "subnet_locks_sync_unavailable",
     notBoundMessage:
@@ -1332,7 +1381,7 @@ async function handleSubnetLocksSyncProxy(request, env) {
 // Proxies POST /api/v1/internal/account-identity-sync -- the write path into
 // account_identity/account_identity_history (#4832 gap-closure). Same
 // DATA_API service binding as the other internal sync routes above.
-async function handleAccountIdentitySyncProxy(request, env) {
+async function handleAccountIdentitySyncProxy(request: Request, env: Env) {
   return proxyToDataApi(request, env, {
     code: "account_identity_sync_unavailable",
     notBoundMessage:
@@ -1345,7 +1394,10 @@ async function handleAccountIdentitySyncProxy(request, env) {
 // Proxies POST /api/v1/internal/validator-nominator-counts-sync -- the write
 // path into validator_nominator_counts (#2549). Same DATA_API service
 // binding as the other internal sync routes above.
-async function handleValidatorNominatorCountsSyncProxy(request, env) {
+async function handleValidatorNominatorCountsSyncProxy(
+  request: Request,
+  env: Env,
+) {
   return proxyToDataApi(request, env, {
     code: "validator_nominator_counts_sync_unavailable",
     notBoundMessage:
@@ -1358,7 +1410,7 @@ async function handleValidatorNominatorCountsSyncProxy(request, env) {
 // Proxies POST /api/v1/internal/nominator-positions-sync -- the write path
 // into nominator_positions (#5233). Same DATA_API service binding as the
 // other internal sync routes above.
-async function handleNominatorPositionsSyncProxy(request, env) {
+async function handleNominatorPositionsSyncProxy(request: Request, env: Env) {
   return proxyToDataApi(request, env, {
     code: "nominator_positions_sync_unavailable",
     notBoundMessage:
@@ -1375,7 +1427,7 @@ async function handleNominatorPositionsSyncProxy(request, env) {
 // Worker ever forwarded to it) -- confirmed live 2026-07-19: every real
 // data-refresh-cron run since #6742 shipped 405'd on this exact route,
 // meaning account_balances has never received a row from any caller.
-async function handleAccountBalancesSyncProxy(request, env) {
+async function handleAccountBalancesSyncProxy(request: Request, env: Env) {
   return proxyToDataApi(request, env, {
     code: "account_balances_sync_unavailable",
     notBoundMessage:
@@ -1391,7 +1443,7 @@ async function handleAccountBalancesSyncProxy(request, env) {
 // data /api/v1/chain-events already serves, just pushed instead of polled.
 // ChainFirehoseHub itself decides SSE vs WS and applies the ?topics= filter
 // -- this is only the forwarding boundary into the DO.
-async function handleChainFirehoseStream(request, env, url) {
+async function handleChainFirehoseStream(request: Request, env: Env, url: URL) {
   if (!env.CHAIN_FIREHOSE_HUB) {
     return errorResponse(
       "chain_firehose_unavailable",
@@ -1414,7 +1466,7 @@ async function handleChainFirehoseStream(request, env, url) {
 // binding), so this is the one place a forged request could be rejected --
 // mirrors every other /api/v1/internal/*-sync route's shared-secret
 // convention (see handleNeuronsSync in workers/data-api.mjs).
-async function handleChainFirehoseIngest(request, env) {
+async function handleChainFirehoseIngest(request: Request, env: Env) {
   if (request.method !== "POST") {
     return errorResponse("method_not_allowed", "Only POST is supported.", 405);
   }
@@ -1478,7 +1530,11 @@ async function handleChainFirehoseIngest(request, env) {
   });
 }
 
-export async function handleRequest(request, env = {}, ctx = {}) {
+export async function handleRequest(
+  request: Request,
+  env: Env = {} as unknown as Env,
+  ctx: Ctx = {},
+) {
   let url = new URL(request.url);
 
   if (request.method === "OPTIONS") {
@@ -3186,7 +3242,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 // Dynamic routes backed by mainnet-only D1/AI/curated data — not partitioned per
 // network, so they 404 under a /{network}/ prefix rather than silently serving
 // mainnet data. Mirrors the special-cased branches in handleRequest.
-function isMainnetOnlyApiPath(pathname) {
+function isMainnetOnlyApiPath(pathname: string) {
   return (
     pathname === "/api/v1/events" ||
     pathname === "/api/v1/ask" ||
@@ -3312,11 +3368,11 @@ function isMainnetOnlyApiPath(pathname) {
 // features stay mainnet-only. testnet/local data is R2-only and may not exist yet
 // — readArtifact then returns a clean 404 carrying the requested network.
 async function handleNetworkScopedRequest(
-  request,
-  env,
-  url,
-  network,
-  ctx = {},
+  request: Request,
+  env: Env,
+  url: URL,
+  network: typeof DEFAULT_NETWORK,
+  ctx: Ctx = {},
 ) {
   const isApiPath =
     url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/");
@@ -3426,10 +3482,10 @@ async function handleNetworkScopedRequest(
 }
 
 async function handleRawArtifactRequest(
-  request,
-  env,
-  url,
-  network = DEFAULT_NETWORK,
+  request: Request,
+  env: Env,
+  url: URL,
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
 ) {
   if (!matchRawArtifact(url.pathname)) {
     return errorResponse(
@@ -3468,14 +3524,17 @@ async function handleRawArtifactRequest(
   // the same live status the /api/v1 routes do; surfaces with no live reading
   // read `unknown`. Mainnet-only (live store is mainnet) and gated to artifacts
   // that actually carry probed endpoints.
-  let data = artifact.data;
+  let data = artifact.data as Row;
   if (
     network.isDefault &&
     Array.isArray(data?.endpoints) &&
-    data.endpoints.some((endpoint) => endpoint?.surface_id)
+    data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
   ) {
     const liveSnapshot = await resolveLiveHealth({
-      readHealthKv,
+      readHealthKv: readHealthKv as unknown as (
+        env: Env,
+        key: string,
+      ) => Promise<Row | null>,
       env,
     });
     data = overlayArtifactEndpoints(data, liveSnapshot) ?? data;
@@ -3504,7 +3563,7 @@ async function handleRawArtifactRequest(
     headers.set("x-metagraph-published-at", pub);
   }
   headers.set("etag", await weakEtag(body));
-  if (ifNoneMatchSatisfied(request, headers.get("etag"))) {
+  if (ifNoneMatchSatisfied(request, headers.get("etag") ?? "")) {
     return new Response(null, { status: 304, headers });
   }
   return new Response(request.method === "HEAD" ? null : body, {
@@ -3611,7 +3670,7 @@ const NETWORK_PREFIX_PATTERN =
 // a non-default prefix remains after default alias normalization, it is returned
 // for the network-scoped artifact handler. Bare paths resolve to mainnet with
 // the URL unchanged (explicit:false) — the zero-regression default.
-function resolveNetworkPrefix(url) {
+function resolveNetworkPrefix(url: URL) {
   let rewritten = url;
   let explicit = false;
 
@@ -3621,7 +3680,9 @@ function resolveNetworkPrefix(url) {
       return { network: DEFAULT_NETWORK, url: rewritten, explicit };
     }
 
-    const network = NETWORKS[match[2]];
+    const network = (NETWORKS as Record<string, typeof DEFAULT_NETWORK>)[
+      match[2]
+    ];
     const nextUrl = new URL(rewritten);
     nextUrl.pathname = `/${match[1]}${match[3] && match[3] !== "/" ? match[3] : ""}`;
     explicit = true;
@@ -3637,7 +3698,10 @@ function resolveNetworkPrefix(url) {
 // Inserts the network key segment for non-default networks, so the artifact read
 // targets metagraph/{prefix}/...  (/metagraph/subnets.json + testnet ->
 // /metagraph/testnet/subnets.json). Mainnet (prefix "") is a no-op.
-function artifactPathForNetwork(artifactPath, network = DEFAULT_NETWORK) {
+function artifactPathForNetwork(
+  artifactPath: string,
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
+) {
   if (!network || !network.prefix) {
     return artifactPath;
   }
@@ -3650,7 +3714,7 @@ function artifactPathForNetwork(artifactPath, network = DEFAULT_NETWORK) {
 // Re-inserts the /{network}/ segment that resolveNetworkPrefix strips before
 // dispatch, so a self-referential link (e.g. the pagination Link header) stays
 // on the network the client asked for. Mainnet (prefix "") is a no-op.
-function networkPublicUrl(url, network) {
+function networkPublicUrl(url: URL, network: typeof DEFAULT_NETWORK) {
   if (!network.prefix) {
     return url;
   }
@@ -3681,17 +3745,24 @@ const subnetSlugIndexByNetwork = new Map(); // network.id -> { map, builtAt }
 // latestPointer (#367) and readRpcPoolArtifact (#1309). Null results are not
 // cached so a transient cold KV does not stay sticky.
 export const HEALTH_META_KV_TTL_MS = 60_000;
-let healthMetaKvMemo = { env: null, value: null, expiresAt: 0 };
+let healthMetaKvMemo: { env: Env | null; value: unknown; expiresAt: number } = {
+  env: null,
+  value: null,
+  expiresAt: 0,
+};
 
-export async function readHealthMetaKv(env, now = Date.now()) {
+export async function readHealthMetaKv(
+  env: Env,
+  now: number = Date.now(),
+): Promise<Row | null> {
   if (healthMetaKvMemo.env === env && now < healthMetaKvMemo.expiresAt) {
-    return healthMetaKvMemo.value;
+    return healthMetaKvMemo.value as Row | null;
   }
   const value = await readHealthKv(env, KV_HEALTH_META);
   if (value !== null) {
     healthMetaKvMemo = { env, value, expiresAt: now + HEALTH_META_KV_TTL_MS };
   }
-  return value;
+  return value as Row | null;
 }
 
 // Wire the api.mjs-local snapshot-meta reader into the extracted analytics module
@@ -3720,14 +3791,21 @@ configureRpcProxy({ readHealthMetaKv });
 // stale blob can serve. Null results are not cached so a transient cold KV does
 // not stay sticky; keyed on env so tests / multi-binding callers never cross-read.
 export const ECONOMICS_CURRENT_KV_TTL_MS = 60_000;
-let economicsCurrentKvMemo = { env: null, value: null, expiresAt: 0 };
+let economicsCurrentKvMemo: {
+  env: Env | null;
+  value: unknown;
+  expiresAt: number;
+} = { env: null, value: null, expiresAt: 0 };
 
-export async function readEconomicsCurrentKv(env, now = Date.now()) {
+export async function readEconomicsCurrentKv(
+  env: Env,
+  now: number = Date.now(),
+): Promise<Row | null> {
   if (
     economicsCurrentKvMemo.env === env &&
     now < economicsCurrentKvMemo.expiresAt
   ) {
-    return economicsCurrentKvMemo.value;
+    return economicsCurrentKvMemo.value as Row | null;
   }
   const value = await readHealthKv(env, KV_ECONOMICS_CURRENT);
   if (value !== null) {
@@ -3737,7 +3815,7 @@ export async function readEconomicsCurrentKv(env, now = Date.now()) {
       expiresAt: now + ECONOMICS_CURRENT_KV_TTL_MS,
     };
   }
-  return value;
+  return value as Row | null;
 }
 
 // Chain-events index heartbeat read. Memoized per-isolate at a short TTL so
@@ -3752,11 +3830,15 @@ export async function readEconomicsCurrentKv(env, now = Date.now()) {
 // service binding, the same way handleChainEventsProxy (above) and
 // dataApiFetchJson (src/data-api-mcp.ts) already read it (#5357).
 export const CHAIN_EVENTS_DB_TTL_MS = 30_000;
-let chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
+let chainEventsDbMemo: { env: Env | null; value: unknown; expiresAt: number } =
+  { env: null, value: null, expiresAt: 0 };
 
-export async function readChainEventsDb(env, now = Date.now()) {
+export async function readChainEventsDb(
+  env: Env,
+  now: number = Date.now(),
+): Promise<Row | null> {
   if (chainEventsDbMemo.env === env && now < chainEventsDbMemo.expiresAt) {
-    return chainEventsDbMemo.value;
+    return chainEventsDbMemo.value as Row | null;
   }
   if (!env?.DATA_API?.fetch) return null;
   let value = null;
@@ -3765,7 +3847,7 @@ export async function readChainEventsDb(env, now = Date.now()) {
       new Request("https://d/api/v1/chain-events?limit=1"),
     );
     if (response.ok) {
-      const body = await response.json();
+      const body = (await response.json()) as Row;
       const row = Array.isArray(body?.events) ? body.events[0] : null;
       if (row) {
         value = {
@@ -3786,11 +3868,14 @@ export async function readChainEventsDb(env, now = Date.now()) {
 configureAnalyticsRoutes({ readHealthMetaKv, readEconomicsCurrentKv });
 
 async function resolveSubnetSlugRoute(
-  env,
-  url,
-  now = Date.now(),
-  network = DEFAULT_NETWORK,
-) {
+  env: Env,
+  url: URL,
+  now: number = Date.now(),
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
+): Promise<
+  | { url: URL; notFound?: undefined; slug?: undefined }
+  | { url?: undefined; notFound: true; slug: string }
+> {
   const match = SUBNET_SLUG_ROUTE_PATTERN.exec(url.pathname);
   // Not a per-subnet route, or already a numeric netuid → pass through.
   if (!match || /^\d+$/.test(match[1])) {
@@ -3809,7 +3894,7 @@ async function resolveSubnetSlugRoute(
   return { url: rewritten };
 }
 
-function decodeSlugPathSegment(segment) {
+function decodeSlugPathSegment(segment: string) {
   try {
     return decodeURIComponent(segment);
   } catch (error) {
@@ -3821,10 +3906,10 @@ function decodeSlugPathSegment(segment) {
 }
 
 async function lookupSubnetNetuid(
-  env,
-  slug,
-  now = Date.now(),
-  network = DEFAULT_NETWORK,
+  env: Env,
+  slug: string,
+  now: number = Date.now(),
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
 ) {
   const cached = subnetSlugIndexByNetwork.get(network.id);
   if (!cached || now - cached.builtAt > SUBNET_SLUG_INDEX_TTL_MS) {
@@ -3832,10 +3917,11 @@ async function lookupSubnetNetuid(
       env,
       artifactPathForNetwork("/metagraph/subnets.json", network),
     );
-    if (artifact.ok && Array.isArray(artifact.data?.subnets)) {
+    const artifactData = artifact.ok ? (artifact.data as Row) : null;
+    if (artifact.ok && Array.isArray(artifactData?.subnets)) {
       const map = new Map();
       // Curated slug is canonical — map it first for every subnet.
-      for (const subnet of artifact.data.subnets) {
+      for (const subnet of artifactData!.subnets) {
         if (
           typeof subnet.slug === "string" &&
           Number.isInteger(subnet.netuid)
@@ -3849,7 +3935,7 @@ async function lookupSubnetNetuid(
       // curated slug always wins a collision, and duplicate native slugs are
       // suppressed so ambiguous aliases cannot resolve by artifact order.
       const nativeSlugCounts = new Map();
-      for (const subnet of artifact.data.subnets) {
+      for (const subnet of artifactData!.subnets) {
         if (
           typeof subnet.native_slug === "string" &&
           Number.isInteger(subnet.netuid)
@@ -3858,7 +3944,7 @@ async function lookupSubnetNetuid(
           nativeSlugCounts.set(key, (nativeSlugCounts.get(key) || 0) + 1);
         }
       }
-      for (const subnet of artifact.data.subnets) {
+      for (const subnet of artifactData!.subnets) {
         if (
           typeof subnet.native_slug === "string" &&
           Number.isInteger(subnet.netuid)
@@ -3892,7 +3978,11 @@ async function lookupSubnetNetuid(
 // miss/outage now returns an empty alias list rather than falling back to
 // D1's frozen copy, same degrade every other route reusing this flag already
 // tolerates.
-async function loadPreviouslyKnownAsTiered(env, netuid, currentName) {
+async function loadPreviouslyKnownAsTiered(
+  env: Env,
+  netuid: number,
+  currentName: string | null,
+) {
   const pgUrl = new URL(
     "https://data-api.internal/api/v1/internal/subnet-identity-aliases",
   );
@@ -3902,10 +3992,13 @@ async function loadPreviouslyKnownAsTiered(env, netuid, currentName) {
     new Request(pgUrl),
     "METAGRAPH_SUBNET_IDENTITY_SOURCE",
   );
-  return derivePreviouslyKnownAs(pgData?.rows ?? [], currentName);
+  return derivePreviouslyKnownAs(
+    (pgData?.rows as Row[] | undefined) ?? [],
+    currentName,
+  );
 }
 
-async function loadPreviouslyKnownAsForNetuidsTiered(env, entries) {
+async function loadPreviouslyKnownAsForNetuidsTiered(env: Env, entries: Row[]) {
   const netuids = entries
     .map((entry) => entry?.netuid)
     .filter((netuid) => Number.isInteger(netuid));
@@ -3918,15 +4011,18 @@ async function loadPreviouslyKnownAsForNetuidsTiered(env, entries) {
     new Request(pgUrl),
     "METAGRAPH_SUBNET_IDENTITY_SOURCE",
   );
-  return deriveNetuidGroupedAliases(pgData?.rows ?? [], entries);
+  return deriveNetuidGroupedAliases(
+    (pgData?.rows as Row[] | undefined) ?? [],
+    entries,
+  );
 }
 
 async function handleApiRequest(
-  request,
-  env,
-  url,
-  network = DEFAULT_NETWORK,
-  ctx = {},
+  request: Request,
+  env: Env,
+  url: URL,
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
+  ctx: Ctx = {},
 ) {
   const matched = matchRoute(url.pathname);
   if (!matched) {
@@ -3935,7 +4031,7 @@ async function handleApiRequest(
   const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
   const queryError = validateListQueryParams(
     url,
-    matched.queryCollection,
+    matched.queryCollection as string,
     matched.queryFilterNames,
     { csvResponse: matched.csvResponse === true },
   );
@@ -3957,7 +4053,7 @@ async function handleApiRequest(
     request.method === "GET" &&
     !wantsCsv &&
     isStaticEdgeCacheEligible(matched, network)
-      ? globalThis.caches?.default
+      ? globalWithCaches.caches?.default
       : null;
   const edgeCacheKey = edgeCache
     ? new Request(
@@ -3976,7 +4072,7 @@ async function handleApiRequest(
     !wantsCsv &&
     network.isDefault &&
     CACHEABLE_OVERLAY_ROUTE_IDS.has(matched.id)
-      ? globalThis.caches?.default
+      ? globalWithCaches.caches?.default
       : null;
   let overlayCacheKey = null;
   if (overlayCache) {
@@ -4019,8 +4115,8 @@ async function handleApiRequest(
   // Live operational-health overlay (Phase 3): current health is live-only.
   // Static current-health artifacts are not read for mainnet health routes, so
   // stale R2 objects left behind by earlier publishes cannot affect responses.
-  let artifact;
-  let live = null;
+  let artifact: Row;
+  let live: Row | null = null;
   if (!network.isDefault) {
     // Non-default networks serve only the static partitioned artifact; the live
     // KV/D1 health overlay is mainnet-only.
@@ -4032,8 +4128,14 @@ async function handleApiRequest(
     // to (live-only).
     live = {
       data: await loadGlobalOperationalHealth(
-        { env, readHealthKv },
-        { contractVersion: (e) => contractVersion(e) },
+        {
+          env,
+          readHealthKv: readHealthKv as unknown as (
+            env: Env,
+            key: string,
+          ) => Promise<Record<string, unknown> | null>,
+        },
+        { contractVersion: (e: Env) => contractVersion(e) },
       ),
     };
     artifact = { ok: false };
@@ -4136,7 +4238,7 @@ async function handleApiRequest(
     );
     baseData = {
       ...baseData,
-      subnets: baseData.subnets.map((entry) =>
+      subnets: baseData.subnets.map((entry: Row) =>
         overlayPreviouslyKnownAs(entry, aliasMap.get(entry.netuid) || []),
       ),
     };
@@ -4166,10 +4268,10 @@ async function handleApiRequest(
   const transformed = applyQueryFilters(
     baseData,
     url,
-    matched.queryCollection,
+    matched.queryCollection as string,
     matched.queryFilterNames,
     { csvResponse: matched.csvResponse === true },
-  );
+  ) as Row;
   if (transformed.error) {
     return errorResponse("invalid_query", transformed.error.message, 400, {
       artifact_path: artifactPath,
@@ -4180,7 +4282,7 @@ async function handleApiRequest(
   // responses. networkPublicUrl restores the prefix stripped before dispatch;
   // paginationLinkHeader returns null (no header) for non-list/single-page data.
   const formatOverride = url.searchParams.get("format")?.toLowerCase();
-  const linkSearchParams = {};
+  const linkSearchParams: Record<string, string> = {};
   if (formatOverride === "json") {
     linkSearchParams.format = "json";
   } else if (wantsCsv) {
@@ -4190,13 +4292,15 @@ async function handleApiRequest(
     networkPublicUrl(url, network),
     transformed.meta.pagination,
     {
-      queryCollection: matched.queryCollection,
+      queryCollection: matched.queryCollection ?? undefined,
       queryFilterNames: matched.queryFilterNames || [],
       searchParams: linkSearchParams,
     },
   );
   if (wantsCsv) {
-    let collectionKey = API_QUERY_COLLECTIONS[matched.queryCollection].data_key;
+    let collectionKey = (API_QUERY_COLLECTIONS as Record<string, Row>)[
+      matched.queryCollection as string
+    ].data_key;
     if (transformed.meta.pagination) {
       collectionKey = transformed.meta.pagination.collection;
     }
@@ -4215,7 +4319,7 @@ async function handleApiRequest(
     return csvResponse(
       rows,
       matched.id,
-      matched.cache,
+      matched.cache as CacheProfile,
       request,
       transformed.meta.projection?.fields,
       linkValue ? { link: linkValue } : {},
@@ -4251,7 +4355,7 @@ async function handleApiRequest(
     typeof responseData === "object" &&
     !Array.isArray(responseData)
   ) {
-    const patch = {};
+    const patch: Row = {};
     if (effectivePublishedAt && "generated_at" in responseData) {
       patch.generated_at = effectivePublishedAt;
     }
@@ -4268,7 +4372,7 @@ async function handleApiRequest(
       data: responseData,
       meta: {
         artifact_path: artifactPath,
-        cache: matched.cache,
+        cache: matched.cache as CacheProfile,
         contract_version: contractVersion(env),
         generated_at: effectivePublishedAt || baseData?.generated_at || null,
         published_at: effectivePublishedAt,
@@ -4280,7 +4384,7 @@ async function handleApiRequest(
         ...transformed.meta,
       },
     },
-    matched.cache,
+    matched.cache as CacheProfile,
     linkValue ? { link: linkValue } : {},
   );
   // Cache only route-declared pure static-artifact 200s. Live-overlay routes
@@ -4300,13 +4404,13 @@ async function handleApiRequest(
   return response;
 }
 
-function matchRawArtifact(pathname) {
+function matchRawArtifact(pathname: string) {
   return RAW_ARTIFACT_ROUTES.some((candidate) =>
     candidate.pattern.test(pathname),
   );
 }
 
-function matchRoute(pathname) {
+function matchRoute(pathname: string) {
   for (const candidate of ROUTES) {
     const match = candidate.pattern.exec(pathname);
     if (!match) {
@@ -4328,7 +4432,7 @@ function matchRoute(pathname) {
 
 // Lightweight readiness probe for uptime checks and load balancers. Reports
 // which bindings are wired; KV reads are in-isolate memoized.
-async function handleHealthRequest(request, env) {
+async function handleHealthRequest(request: Request, env: Env) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return errorResponse(
       "method_not_allowed",
@@ -4448,7 +4552,7 @@ async function handleHealthRequest(request, env) {
 // the METAGRAPH_CONTROL KV namespace under the `webhooks:sub:<id>` prefix; the
 // publish-time dispatcher (scripts/dispatch-webhooks.ts) reads them and fires
 // HMAC-signed POSTs. Routes degrade to 503 when KV is unbound (local dev).
-async function handleWebhookRequest(request, env, url) {
+async function handleWebhookRequest(request: Request, env: Env, url: URL) {
   if (!env.METAGRAPH_CONTROL?.get || !env.METAGRAPH_CONTROL?.put) {
     return errorResponse(
       "webhooks_unavailable",
@@ -4496,7 +4600,7 @@ async function handleWebhookRequest(request, env, url) {
 // absent (local dev/CI), matching every other rate-limiter in this codebase.
 const WEBHOOK_SUBSCRIPTION_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
-async function webhookSubscriptionRateLimited(request, env) {
+async function webhookSubscriptionRateLimited(request: Request, env: Env) {
   if (!env.WEBHOOK_SUBSCRIPTION_RATE_LIMITER?.limit) return null;
   const { success } = await env.WEBHOOK_SUBSCRIPTION_RATE_LIMITER.limit({
     key: `webhook-sub:${resolveClientIp(request)}`,
@@ -4516,7 +4620,7 @@ async function webhookSubscriptionRateLimited(request, env) {
   );
 }
 
-async function createWebhookSubscription(request, env) {
+async function createWebhookSubscription(request: Request, env: Env) {
   // Authenticate BEFORE touching the request body. An unauthenticated or
   // wrong-token caller must be rejected (503 when disabled, else 401) before we
   // read, JSON-parse, or validate any attacker-controlled payload — this avoids
@@ -4618,7 +4722,7 @@ async function createWebhookSubscription(request, env) {
   );
 }
 
-function validateWebhookSubscriptionToken(request, env) {
+function validateWebhookSubscriptionToken(request: Request, env: Env) {
   const configured = env.METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN;
   if (typeof configured !== "string" || configured.length === 0) {
     return {
@@ -4646,7 +4750,7 @@ function validateWebhookSubscriptionToken(request, env) {
   return { ok: true };
 }
 
-async function getWebhookSubscription(env, id) {
+async function getWebhookSubscription(env: Env, id: string) {
   if (!isValidSubscriptionId(id)) {
     return errorResponse(
       "invalid_subscription_id",
@@ -4673,7 +4777,7 @@ async function getWebhookSubscription(env, id) {
 
 // Delivery health for the public GET, summarized from the parked records.
 // Best-effort — a list/get hiccup or a store without `list` degrades to "ok".
-async function readDeliveryStatus(env, id) {
+async function readDeliveryStatus(env: Env, id: string) {
   try {
     if (typeof env.METAGRAPH_CONTROL.list !== "function") {
       return summarizeDeliveryRecords([]); // local dev: KV mock without list()
@@ -4689,13 +4793,17 @@ async function readDeliveryStatus(env, id) {
           env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
         ),
     );
-    return summarizeDeliveryRecords(records);
+    return summarizeDeliveryRecords(records as Row[]);
   } catch {
     return summarizeDeliveryRecords([]); // best-effort: never break the read
   }
 }
 
-async function deleteWebhookSubscription(request, env, id) {
+async function deleteWebhookSubscription(
+  request: Request,
+  env: Env,
+  id: string,
+) {
   if (!isValidSubscriptionId(id)) {
     return errorResponse(
       "invalid_subscription_id",
@@ -4741,11 +4849,14 @@ async function deleteWebhookSubscription(request, env, id) {
   return dataResponse(env, { id, deleted: true });
 }
 
-async function readWebhookSubscription(env, id) {
+async function readWebhookSubscription(
+  env: Env,
+  id: string,
+): Promise<Row | null> {
   try {
-    return await env.METAGRAPH_CONTROL.get(subscriptionStorageKey(id), {
+    return (await env.METAGRAPH_CONTROL.get(subscriptionStorageKey(id), {
       type: "json",
-    });
+    })) as Row | null;
   } catch {
     return null;
   }
@@ -4755,13 +4866,16 @@ async function readWebhookSubscription(env, id) {
 // long-lived connection, so we emit the current change snapshot as one SSE event
 // and advise a 5-minute reconnect via `retry:`. EventSource clients reconnect on
 // that interval and re-read; `id:` is the publish timestamp for dedupe.
-async function handleEventsRequest(request, env) {
+async function handleEventsRequest(request: Request, env: Env) {
   const [pointer, changelogArtifact] = await Promise.all([
     latestPointer(env),
     readArtifact(env, "/metagraph/changelog.json"),
   ]);
   const changelog = changelogArtifact.ok ? changelogArtifact.data : null;
-  const event = buildChangeEvent({ changelog, pointer });
+  const event = buildChangeEvent({
+    changelog: changelog as Row,
+    pointer: pointer as unknown as Row,
+  });
   const eventId = event.published_at || event.generated_at || "0";
   // Reconnect replays the last id; if the snapshot hasn't moved, answer with a
   // bare keepalive instead of re-sending it (a 304 analogue for SSE).
@@ -4803,7 +4917,7 @@ async function handleEventsRequest(request, env) {
 // response; there's no separate ExecutionContext threaded down to this
 // helper the way mcp-server.mjs's schedulers have. The cost is a little
 // latency on an already-failing request, not silent event loss.
-async function captureAiRouteError(error, route, env) {
+async function captureAiRouteError(error: unknown, route: string, env: Env) {
   Sentry.captureException(error, { tags: { route } });
   await recordExceptionEvent(env, { error, route, errorCode: "ai_error" });
 }
@@ -4837,11 +4951,11 @@ function aiRateLimitedResponse() {
   );
 }
 
-function aiClientKey(request, scope) {
+function aiClientKey(request: Request, scope: string) {
   return `${scope}:${resolveClientIp(request)}`;
 }
 
-async function readBoundedRequestText(request, maxBytes) {
+async function readBoundedRequestText(request: Request, maxBytes: number) {
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > maxBytes) {
     return { ok: false, text: "" };
@@ -4877,7 +4991,11 @@ async function readBoundedRequestText(request, maxBytes) {
   return { ok: true, text };
 }
 
-async function handleSemanticSearchRequest(request, env, url) {
+async function handleSemanticSearchRequest(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
   if (!aiEnabled(env)) {
     return aiUnavailableResponse();
   }
@@ -4903,11 +5021,12 @@ async function handleSemanticSearchRequest(request, env, url) {
     });
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {
-    if (error?.aiInput) {
-      return errorResponse("invalid_query", error.message, 400);
+    const err = error as Row;
+    if (err?.aiInput) {
+      return errorResponse("invalid_query", err.message, 400);
     }
     logEvent(env, "error", "semantic_search_failed", {
-      message: error?.message,
+      message: err?.message,
     });
     await captureAiRouteError(error, "semantic_search", env);
     return errorResponse(
@@ -4918,7 +5037,7 @@ async function handleSemanticSearchRequest(request, env, url) {
   }
 }
 
-async function handleAskRequest(request, env) {
+async function handleAskRequest(request: Request, env: Env) {
   if (request.method !== "POST") {
     return errorResponse(
       "method_not_allowed",
@@ -4960,21 +5079,32 @@ async function handleAskRequest(request, env) {
     // current operational status of each subnet's surfaces, not the build-time
     // "unknown" stub baked into the agent-catalog artifact.
     const liveHealth = await resolveLiveHealth({
-      readHealthKv,
+      readHealthKv: readHealthKv as unknown as (
+        env: Env,
+        key: string,
+      ) => Promise<Row | null>,
       env,
     });
     const data = await askQuestion(
       env,
       body?.question,
       { topK: body?.topK, type: body?.type },
-      { readArtifact, liveHealth, overlayCatalogIndex },
+      {
+        readArtifact,
+        liveHealth,
+        overlayCatalogIndex: overlayCatalogIndex as unknown as (
+          input: { subnets: unknown[] },
+          liveHealthArg: unknown,
+        ) => { subnets?: unknown[] } | null | undefined,
+      },
     );
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {
-    if (error?.aiInput) {
-      return errorResponse("invalid_request", error.message, 400);
+    const err = error as Row;
+    if (err?.aiInput) {
+      return errorResponse("invalid_request", err.message, 400);
     }
-    logEvent(env, "error", "ask_failed", { message: error?.message });
+    logEvent(env, "error", "ask_failed", { message: err?.message });
     await captureAiRouteError(error, "ask", env);
     return errorResponse(
       "ai_error",
@@ -4984,7 +5114,7 @@ async function handleAskRequest(request, env) {
   }
 }
 
-function unknownSubnetHealth(netuid) {
+function unknownSubnetHealth(netuid: number) {
   return {
     schema_version: 1,
     netuid,
@@ -5019,13 +5149,20 @@ const ENDPOINT_OVERLAY_EXCLUDED_IDS = new Set([
   "agent-catalog-subnet",
 ]);
 
-async function liveHealthOverlay(env, matched, staticData) {
-  let resolved;
+async function liveHealthOverlay(
+  env: Env,
+  matched: Row,
+  staticData: Row | null,
+) {
+  let resolved: Row | null | undefined;
   const getLive = async () => {
     if (resolved === undefined) {
       resolved =
         (await resolveLiveHealth({
-          readHealthKv,
+          readHealthKv: readHealthKv as unknown as (
+            env: Env,
+            key: string,
+          ) => Promise<Row | null>,
           env,
         })) || null;
     }
@@ -5043,7 +5180,7 @@ async function liveHealthOverlay(env, matched, staticData) {
       break;
     }
     case "rpc-endpoints": {
-      const pool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
+      const pool = (await readHealthKv(env, KV_HEALTH_RPC_POOL)) as Row | null;
       data = mergeRpcEndpoints(staticData, pool);
       break;
     }
@@ -5054,7 +5191,10 @@ async function liveHealthOverlay(env, matched, staticData) {
       // upstream baked into the static artifact is marked ineligible instead of being
       // routed to. Each pool in pools[] shares the per-endpoint shape the overlay
       // expects; without a live snapshot the pools pass through unchanged.
-      const livePool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
+      const livePool = (await readHealthKv(
+        env,
+        KV_HEALTH_RPC_POOL,
+      )) as Row | null;
       if (
         livePool &&
         Array.isArray(livePool.endpoints) &&
@@ -5128,7 +5268,7 @@ async function liveHealthOverlay(env, matched, staticData) {
   return data ? { data } : null;
 }
 
-function corsPreflight(request) {
+function corsPreflight(request: Request) {
   const url = new URL(request.url);
   const headers = apiHeaders("short");
   let methods = "GET, HEAD, OPTIONS";

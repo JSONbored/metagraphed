@@ -5,7 +5,7 @@ import {
   handleSavedQueryRequest,
   SAVED_QUERIES_PATH_PREFIX,
 } from "../workers/request-handlers/saved-queries.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { SAVED_QUERY_HANDLERS } from "../src/saved-queries.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
@@ -125,7 +125,7 @@ describe("handleSavedQueryRequest", () => {
     const body = await json(
       await handleRequest(
         req("/api/v1/queries/chain-registrations-window?window=30d"),
-        {},
+        {} as unknown as Env,
         {},
       ),
     );

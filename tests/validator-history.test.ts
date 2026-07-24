@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildValidatorHistory } from "../src/validator-history.ts";
 import type { Row } from "./row-type.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const HOTKEY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -196,7 +196,7 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
       new Request(
         `https://api.metagraph.sh/api/v1/validators/${HOTKEY}/history?window=400d`,
       ),
-      historyEnv([]),
+      historyEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -210,7 +210,7 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
       new Request(
         `https://api.metagraph.sh/api/v1/validators/${HOTKEY}/history?foo=bar`,
       ),
-      historyEnv([]),
+      historyEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);
@@ -221,7 +221,7 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
       new Request(
         `https://api.metagraph.sh/api/v1/validators/${HOTKEY}/history`,
       ),
-      historyEnv([]),
+      historyEnv([]) as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);

@@ -1,11 +1,11 @@
-// Deploy entry point for workers/api.mjs -- wraps it with Sentry error
+// Deploy entry point for workers/api.ts -- wraps it with Sentry error
 // tracking (metagraphed#6479/#6502, part of #6485). Kept SEPARATE from the
 // actual handler (not wrapped inline in that file) because
 // @sentry/cloudflare's withSentry() requires real Cloudflare Workers
 // runtime primitives (AsyncLocalStorage-based context propagation via
 // workerd) that don't exist in the plain-Node vitest environment this
 // repo's own ~90 existing tests for this Worker already run in -- confirmed
-// empirically against workers/registry-sync-api.mjs (the same pattern):
+// empirically against workers/registry-sync-api.ts (the same pattern):
 // wrapping a Worker's export inline crashed every one of its existing
 // tests with "Cannot read properties of undefined (reading 'bind')" inside
 // @sentry/cloudflare's flush-lock registry. Those ~90 tests continue
@@ -25,7 +25,7 @@
 // resvg-wasm), imported for the live OG-card render at GET /og.png. Fixed
 // by moving that render out of the request path entirely: it now runs at
 // publish time in Node (scripts/refresh-og-image.ts) and the result is
-// stored in R2 like every other artifact, so api.mjs never imports
+// stored in R2 like every other artifact, so api.ts never imports
 // workers-og at all -- see src/og-image.ts's own header. That freed
 // comfortable headroom for Sentry here without a second Worker.
 //
@@ -33,22 +33,22 @@
 // object it's given (confirmed by reading @sentry/cloudflare's own
 // withSentry.js source -- it calls instrumentExportedHandlerFetch and
 // instrumentExportedHandlerScheduled unconditionally, not just fetch), so
-// api.mjs's cron-triggered handleScheduled path is covered too, not just
+// api.ts's cron-triggered handleScheduled path is covered too, not just
 // the public HTTP surface. It MUTATES `handler` in place and returns the
 // same reference -- this only matters if something else also imports
-// api.mjs's raw export in the same module graph as this file, which
+// api.ts's raw export in the same module graph as this file, which
 // nothing does today (tests import the raw file only; only wrangler's
 // build ever loads this wrapper).
 import { withSentry } from "@sentry/cloudflare";
 import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
-import handler from "./api.mjs";
+import handler from "./api.ts";
 import {
   buildOAuthProviderOptions,
   isAnonymousMcpRequest,
 } from "../src/github-oauth.ts";
 // wrangler.jsonc's "main" now points at THIS file, so wrangler looks for
 // every Durable Object binding's class as a named export from here, not
-// from api.mjs -- confirmed by a real `wrangler deploy --dry-run` failure
+// from api.ts -- confirmed by a real `wrangler deploy --dry-run` failure
 // ("Your Worker depends on the following Durable Objects, which are not
 // exported in your entrypoint file") before this re-export was added.
 export {
@@ -56,7 +56,7 @@ export {
   McpSessionHub,
   AlerterHub,
   SubnetStatusHub,
-} from "./api.mjs";
+} from "./api.ts";
 
 // GitHub OAuth (metagraphed#7151): OAuthProvider owns top-level fetch
 // dispatch (its own /oauth/token + /oauth/register endpoints, plus routing
@@ -82,7 +82,7 @@ export {
 // OAuthProvider instances expose ONLY .fetch(), not .scheduled() -- this
 // Worker has four live cron triggers (wrangler.jsonc "triggers.crons": the
 // 15-min health probe, two hourly rollups, the daily embedding sync) that
-// dispatch to handler.scheduled (handleScheduled in api.mjs). Swapping the
+// dispatch to handler.scheduled (handleScheduled in api.ts). Swapping the
 // top-level export for a bare OAuthProvider instance would silently drop
 // every one of those -- Cloudflare would just never find a .scheduled to
 // call. This composed object keeps .scheduled pointed at the ORIGINAL,
@@ -94,7 +94,7 @@ const handlerWithOAuth = {
     isAnonymousMcpRequest(request)
       ? handler.fetch(request, env, ctx)
       : oauthProvider.fetch(request, env, ctx),
-  // Discards handleScheduled's (api.mjs, not yet converted) return value --
+  // Discards handleScheduled's (api.ts) return value --
   // it returns diagnostic objects for its own test suite's benefit; the real
   // Workers runtime ignores scheduled()'s return value, and ExportedHandler's
   // type expects `void | Promise<void>`.

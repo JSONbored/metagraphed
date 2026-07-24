@@ -5,7 +5,7 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 // Side-effect only: workers/api.mjs calls configureAnalyticsRoutes() at load
 // time, which composeLeaderboardsData (used by the subnet-leaderboard
 // template) requires before it can run.
-import "../workers/api.mjs";
+import "../workers/api.ts";
 import {
   SAVED_QUERY_TEMPLATES,
   SAVED_QUERY_HANDLERS,

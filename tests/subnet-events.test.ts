@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -9,7 +9,7 @@ function req(path: string) {
 test("GET /subnets/{netuid}/events rejects an unsupported query param", async () => {
   const res = await handleRequest(
     req("/api/v1/subnets/7/events?bogus=1"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);
@@ -21,7 +21,7 @@ const EVENTS_CSV_HEADER =
 test("GET /subnets/{netuid}/events?format=csv emits a header-only CSV when cold", async () => {
   const res = await handleRequest(
     req("/api/v1/subnets/7/events?format=csv"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
@@ -30,7 +30,11 @@ test("GET /subnets/{netuid}/events?format=csv emits a header-only CSV when cold"
 });
 
 test("GET /subnets/{netuid}/events is schema-stable when D1 is cold (never 404)", async () => {
-  const res = await handleRequest(req("/api/v1/subnets/7/events"), {}, {});
+  const res = await handleRequest(
+    req("/api/v1/subnets/7/events"),
+    {} as unknown as Env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.netuid, 7);
@@ -41,7 +45,7 @@ test("GET /subnets/{netuid}/events is schema-stable when D1 is cold (never 404)"
 test("GET /subnets/{netuid}/event-summary rejects bad window", async () => {
   const res = await handleRequest(
     req("/api/v1/subnets/7/event-summary?window=1y"),
-    {},
+    {} as unknown as Env,
     {},
   );
   assert.equal(res.status, 400);

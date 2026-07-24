@@ -3,7 +3,6 @@ import path from "node:path";
 import { repoRoot, stripJsonComments } from "./lib.ts";
 
 const configPath = path.join(repoRoot, "wrangler.jsonc");
-const workerPath = path.join(repoRoot, "workers/api.mjs");
 const assetsIgnorePath = path.join(repoRoot, "public/.assetsignore");
 const rawConfig = await fs.readFile(configPath, "utf8");
 const config = JSON.parse(stripJsonComments(rawConfig));
@@ -26,6 +25,7 @@ check(
     ["workers/api.sentry.mjs", "workers/api.sentry.ts"].includes(config.main),
   "wrangler main must point to workers/api.(mjs|ts) or its Sentry deploy-entry wrapper, workers/api.sentry.(mjs|ts)",
 );
+const workerPath = path.join(repoRoot, config.main);
 check(
   config.compatibility_date === "2026-06-06",
   "compatibility_date must be locked to 2026-06-06",

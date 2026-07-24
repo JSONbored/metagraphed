@@ -13,7 +13,7 @@ import {
   handleAccount,
   handleAccountEntities,
 } from "../workers/request-handlers/entities.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
@@ -161,7 +161,7 @@ describe("workers/api.mjs dispatch", () => {
   test("GET /api/v1/accounts/{ss58}/entities reaches handleAccountEntities via ACCOUNT_ENTITIES_PATH_PATTERN", async () => {
     const res = await handleRequest(
       req(`/api/v1/accounts/${SS58}/entities`),
-      {},
+      {} as unknown as Env,
       ctx,
     );
     const body = await json(res);
@@ -171,7 +171,7 @@ describe("workers/api.mjs dispatch", () => {
   test("testnet has no variant (mainnet-only live route)", async () => {
     const res = await handleRequest(
       req(`/api/v1/testnet/accounts/${SS58}/entities`),
-      {},
+      {} as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 404);

@@ -7,7 +7,7 @@ import {
   hyperparamsHash,
 } from "../src/subnet-hyperparams-history.ts";
 import type { Row } from "./row-type.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 function stagedRow(overrides = {}) {
@@ -215,7 +215,7 @@ describe("GET /api/v1/subnets/{netuid}/hyperparameters/history via the Worker", 
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/86/hyperparameters/history",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 200);
@@ -230,7 +230,7 @@ describe("GET /api/v1/subnets/{netuid}/hyperparameters/history via the Worker", 
       new Request(
         "https://api.metagraph.sh/api/v1/subnets/86/hyperparameters/history?foo=bar",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       ctx,
     );
     assert.equal(res.status, 400);

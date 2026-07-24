@@ -8,8 +8,8 @@ import {
   handleScheduled,
   proxyWithFailover,
   weightedPickEndpoint,
-} from "../workers/api.mjs";
-import workerDefault from "../workers/api.mjs";
+} from "../workers/api.ts";
+import workerDefault from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.ts";
 import * as workerConfig from "../workers/config.ts";
@@ -373,7 +373,7 @@ describe("handleRequest routing edges", () => {
   test("rejects POST to a GET-only route with 405 method_not_allowed", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets", { method: "POST" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 405);
@@ -384,7 +384,7 @@ describe("handleRequest routing edges", () => {
   test("OPTIONS preflight on an api route returns 204", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets", { method: "OPTIONS" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -397,7 +397,7 @@ describe("handleRequest routing edges", () => {
   test("OPTIONS preflight on an rpc route advertises POST", async () => {
     const res = await handleRequest(
       req("/rpc/v1/finney", { method: "OPTIONS" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -410,7 +410,7 @@ describe("handleRequest routing edges", () => {
   test("OPTIONS preflight on /mcp advertises GET/POST/DELETE and the session headers (#4983 MCP half)", async () => {
     const res = await handleRequest(
       req("/mcp", { method: "OPTIONS" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -426,7 +426,7 @@ describe("handleRequest routing edges", () => {
   test("OPTIONS preflight on /api/v1/ask advertises POST only (unaffected by the /mcp GET/DELETE change)", async () => {
     const res = await handleRequest(
       req("/api/v1/ask", { method: "OPTIONS" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 204);
@@ -446,13 +446,21 @@ describe("handleRequest routing edges", () => {
         },
       },
     };
-    const res = await handleRequest(req("/index.html"), env, {});
+    const res = await handleRequest(
+      req("/index.html"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     assert.equal(assetCalled, true);
   });
 
   test("returns 404 not_found when no ASSETS binding is configured", async () => {
-    const res = await handleRequest(req("/index.html"), {}, {});
+    const res = await handleRequest(
+      req("/index.html"),
+      {} as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 404);
     assert.equal((await res.json()).error.code, "not_found");
   });
@@ -463,7 +471,7 @@ describe("subnet slug resolution", () => {
   test("resolves a known slug to its netuid route", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/allways"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     // allways → netuid 7; should resolve to the subnet detail payload.
@@ -475,7 +483,7 @@ describe("subnet slug resolution", () => {
   test("404 subnet_not_found for an unknown slug", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/this-slug-does-not-exist"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);
@@ -487,7 +495,7 @@ describe("subnet slug resolution", () => {
     // URIError → decodeSlugPathSegment returns null → not_found.
     const res = await handleRequest(
       req("/api/v1/subnets/%E0%A4%A"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);
@@ -504,7 +512,11 @@ describe("subnet slug resolution", () => {
         },
       },
     };
-    const res = await handleRequest(req("/api/v1/subnets/somename"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/somename"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 404);
     assert.equal((await res.json()).error.code, "subnet_not_found");
   });
@@ -515,7 +527,7 @@ describe("/health readiness", () => {
   test("405 on a non-GET/HEAD method", async () => {
     const res = await handleRequest(
       req("/health", { method: "POST" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     // POST is not in [GET, HEAD], so the top-level gate returns 405 before
@@ -537,7 +549,7 @@ describe("/health readiness", () => {
         },
       }),
     });
-    const res = await handleRequest(req("/health"), env, {});
+    const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 503);
     assert.equal(res.headers.get("x-metagraph-health"), "degraded");
     // A transient degraded 503 must not be edge-cached (it would pin the outage
@@ -555,7 +567,7 @@ describe("/health readiness", () => {
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
     });
-    const res = await handleRequest(req("/health"), env, {});
+    const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
     assert.equal((await res.json()).status, "ok");
     // The healthy path stays edge-cacheable (short profile) for load relief.
@@ -582,7 +594,7 @@ describe("/health readiness", () => {
         },
       },
     });
-    const res = await handleRequest(req("/health"), env, {});
+    const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.chain_events.latest_indexed_block, 8461200);
@@ -617,7 +629,9 @@ describe("/health readiness", () => {
           },
         },
       });
-      const body = await (await handleRequest(req("/health"), env, {})).json();
+      const body = await (
+        await handleRequest(req("/health"), env as unknown as Env, {})
+      ).json();
       assert.equal(body.chain_events.latest_indexed_block, 8461200);
       assert.equal(body.chain_events.latest_event_at, null);
       assert.equal(body.chain_events.age_seconds, null);
@@ -637,7 +651,7 @@ describe("/health readiness", () => {
         },
       },
     });
-    const res = await handleRequest(req("/health"), env, {});
+    const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.chain_events.latest_indexed_block, null);
@@ -653,7 +667,7 @@ describe("/health readiness", () => {
         },
       },
     };
-    const res = await handleRequest(req("/health"), env, {});
+    const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal((await res.json()).chain_events, null);
   });
 
@@ -668,7 +682,7 @@ describe("/health readiness", () => {
         },
       },
     });
-    const res = await handleRequest(req("/health"), env, {});
+    const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.chain_events.latest_indexed_block, null);
@@ -679,7 +693,7 @@ describe("/health readiness", () => {
   test("HEAD /health returns no body", async () => {
     const res = await handleRequest(
       req("/health", { method: "HEAD" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -729,7 +743,11 @@ describe("raw artifact route", () => {
 
   test("serves a raw artifact with source + storage-tier headers", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(req("/metagraph/subnets.json"), env, {});
+    const res = await handleRequest(
+      req("/metagraph/subnets.json"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     assert.ok(res.headers.get("x-metagraph-artifact-source"));
     assert.ok(res.headers.get("x-metagraph-storage-tier"));
@@ -738,12 +756,16 @@ describe("raw artifact route", () => {
 
   test("304 on a matching if-none-match", async () => {
     const env = createLocalArtifactEnv();
-    const first = await handleRequest(req("/metagraph/subnets.json"), env, {});
+    const first = await handleRequest(
+      req("/metagraph/subnets.json"),
+      env as unknown as Env,
+      {},
+    );
     const etag = first.headers.get("etag");
     const res = await handleRequest(
       req("/metagraph/subnets.json", { headers: { "if-none-match": etag } }),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 304);
   });
@@ -752,8 +774,8 @@ describe("raw artifact route", () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       req("/metagraph/not-a-real-artifact.json"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 404);
     assert.equal((await res.json()).error.code, "not_found");
@@ -769,7 +791,11 @@ describe("raw artifact route", () => {
         },
       },
     };
-    const res = await handleRequest(req("/metagraph/subnets.json"), env, {});
+    const res = await handleRequest(
+      req("/metagraph/subnets.json"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 404);
     const body = await res.json();
     assert.equal(body.meta.artifact_path, "/metagraph/subnets.json");
@@ -778,7 +804,7 @@ describe("raw artifact route", () => {
   test("serves R2-only fixture details with rich surface ids", async () => {
     const res = await handleRequest(
       req("/metagraph/fixtures/7:subnet-api:new_v2.json"),
-      fixtureEnv(),
+      fixtureEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -828,7 +854,7 @@ describe("fixture detail API", () => {
   test("GET /api/v1/fixtures/{surface_id} returns an enveloped fixture", async () => {
     const res = await handleRequest(
       req("/api/v1/fixtures/7:subnet-api:new_v2"),
-      env(),
+      env() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -848,7 +874,7 @@ describe("fixture detail API", () => {
   test("fixture detail route rejects traversal-like surface ids", async () => {
     const res = await handleRequest(
       req("/api/v1/fixtures/..%2Fsecrets"),
-      env(),
+      env() as unknown as Env,
       {},
     );
     assert.equal(res.status, 404);
@@ -861,7 +887,7 @@ describe("badge SVG handler", () => {
   test("405 when posting to a badge", async () => {
     const res = await handleRequest(
       req("/metagraph/health/badges/7.svg", { method: "POST" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     // POST is not GET/HEAD → top-level gate 405.
@@ -872,8 +898,8 @@ describe("badge SVG handler", () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       req("/metagraph/health/badges/7.svg"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
@@ -885,16 +911,16 @@ describe("badge SVG handler", () => {
     const env = createLocalArtifactEnv();
     const first = await handleRequest(
       req("/metagraph/health/badges/7.svg"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     const etag = first.headers.get("etag");
     const res = await handleRequest(
       req("/metagraph/health/badges/7.svg", {
         headers: { "if-none-match": etag },
       }),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 304);
   });
@@ -906,16 +932,16 @@ describe("badge SVG handler", () => {
     const env = createLocalArtifactEnv();
     const first = await handleRequest(
       req("/metagraph/health/badges/7.svg"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     const strong = first.headers.get("etag").replace(/^W\//, "");
     const res = await handleRequest(
       req("/metagraph/health/badges/7.svg", {
         headers: { "if-none-match": strong },
       }),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 304);
   });
@@ -927,12 +953,12 @@ describe("badge SVG handler", () => {
       "/.well-known/mcp/server-card.json",
       "/.well-known/agent-tools/openai.json",
     ]) {
-      const first = await handleRequest(req(path), env, {});
+      const first = await handleRequest(req(path), env as unknown as Env, {});
       assert.equal(first.status, 200, `${path} first GET`);
       const strong = first.headers.get("etag").replace(/^W\//, "");
       const res = await handleRequest(
         req(path, { headers: { "if-none-match": strong } }),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(res.status, 304, `${path} strong-form revalidation`);
@@ -947,8 +973,8 @@ describe("badge SVG handler", () => {
     });
     const res = await handleRequest(
       req("/metagraph/health/badges/7.svg"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
     const svg = await res.text();
@@ -967,8 +993,8 @@ describe("badge SVG handler", () => {
     };
     const res = await handleRequest(
       req("/metagraph/health/badges/999.svg"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
     const svg = await res.text();
@@ -981,8 +1007,8 @@ describe("badge SVG handler", () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       req("/metagraph/health/badges/7.svg", { method: "HEAD" }),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
     assert.equal(await res.text(), "");
@@ -1001,7 +1027,11 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
         },
       }),
     });
-    const res = await handleRequest(req("/api/v1/rpc/endpoints"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/rpc/endpoints"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.source, "live-cron-prober");
@@ -1013,7 +1043,11 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
         "health:meta": { last_run_at: "2026-06-11T00:00:00.000Z" },
       }),
     });
-    const res = await handleRequest(req("/api/v1/freshness"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/freshness"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.source, "live-cron-prober");
@@ -1023,7 +1057,11 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({}),
     });
-    const res = await handleRequest(req("/api/v1/health"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/health"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.meta.source, "unavailable");
@@ -1049,7 +1087,7 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
       "/metagraph/health/summary.json",
       "/metagraph/health/subnets/7.json",
     ]) {
-      const res = await handleRequest(req(path), env, {});
+      const res = await handleRequest(req(path), env as unknown as Env, {});
       assert.equal(res.status, 410);
       assert.equal((await res.json()).error.code, "retired_artifact");
     }
@@ -1075,7 +1113,11 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
       },
       METAGRAPH_CONTROL: makeKv({}),
     });
-    const res = await handleRequest(req("/api/v1/subnets/7/health"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/health"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.summary.status, "unknown");
@@ -1091,7 +1133,11 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
         },
       },
     });
-    const res = await handleRequest(req("/api/v1/freshness"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/freshness"),
+      env as unknown as Env,
+      {},
+    );
     // Live overlay returns null on the KV throw → static artifact served.
     assert.equal(res.status, 200);
     const body = await res.json();
@@ -1104,7 +1150,7 @@ describe("invalid query handling", () => {
   test("400 invalid_query for an unsupported sort field", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?sort=not_a_field"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1116,7 +1162,7 @@ describe("invalid query handling", () => {
   test("400 invalid_query for a bad order value", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?order=sideways"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1126,7 +1172,7 @@ describe("invalid query handling", () => {
   test("400 invalid_query for an unknown list query parameter", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?statuss=active"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1139,7 +1185,7 @@ describe("invalid query handling", () => {
   test("400 invalid_query for an unsupported format value on CSV list routes", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?format=xml"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1152,7 +1198,7 @@ describe("invalid query handling", () => {
   test("400 invalid_query for an unsupported projected field", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?fields=netuid,not_a_field"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1164,7 +1210,7 @@ describe("invalid query handling", () => {
   test("paginates with cursor + limit and reports next_cursor", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?limit=2&cursor=0&sort=netuid"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1177,7 +1223,11 @@ describe("invalid query handling", () => {
   test("?domain= filters subnets by derived/curated domain tag (#345)", async () => {
     const env = createLocalArtifactEnv();
     const all = await (
-      await handleRequest(req("/api/v1/subnets?limit=200"), env, {})
+      await handleRequest(
+        req("/api/v1/subnets?limit=200"),
+        env as unknown as Env,
+        {},
+      )
     ).json();
     const expected = all.data.subnets.filter(
       (s: Row) =>
@@ -1188,8 +1238,8 @@ describe("invalid query handling", () => {
 
     const res = await handleRequest(
       req("/api/v1/subnets?domain=inference&limit=200"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
     const body = await res.json();
@@ -1207,7 +1257,7 @@ describe("invalid query handling", () => {
   test("400 invalid_query for an unknown ?domain= value (#345)", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?domain=not_a_domain"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -1219,7 +1269,7 @@ describe("invalid query handling", () => {
   test("sorts by a string field (name) descending", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?sort=name&order=desc&limit=3"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1236,7 +1286,7 @@ describe("subnets CSV export", () => {
   test("?format=csv returns text/csv with projected rows", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?format=csv&fields=netuid,name&sort=netuid&limit=2"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1266,7 +1316,7 @@ describe("subnets CSV export", () => {
       req("/api/v1/subnets?fields=netuid,status&status=active&limit=5", {
         headers: { accept: "application/json, text/csv" },
       }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1285,7 +1335,7 @@ describe("subnets CSV export", () => {
       req("/api/v1/subnets?format=json&fields=netuid,name&limit=1", {
         headers: { accept: "text/csv" },
       }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1309,7 +1359,7 @@ describe("subnets CSV export", () => {
       req(`${next.pathname}${next.search}`, {
         headers: { accept: "text/csv" },
       }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(nextRes.status, 200);
@@ -1322,7 +1372,7 @@ describe("subnets CSV export", () => {
       req("/api/v1/subnets/7", {
         headers: { accept: "text/csv" },
       }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1341,7 +1391,7 @@ describe("subnets CSV export", () => {
       req("/api/v1/gaps?limit=1", {
         headers: { accept: "text/csv" },
       }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1355,7 +1405,7 @@ describe("subnets CSV export", () => {
   test("empty projected CSV exports retain the requested header row", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?format=csv&fields=netuid,name&netuids=99999"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1385,7 +1435,11 @@ describe("subnets CSV export", () => {
       },
     });
 
-    const res = await handleRequest(req("/api/v1/subnets?format=csv"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets?format=csv"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 500);
     assert.match(res.headers.get("content-type"), /^application\/json/);
     const body = await res.json();
@@ -1402,7 +1456,7 @@ describe("providers CSV export", () => {
   test("?format=csv honours field projection", async () => {
     const res = await handleRequest(
       req("/api/v1/providers?format=csv&fields=id,name&limit=2"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1415,7 +1469,7 @@ describe("providers CSV export", () => {
   test("the non-scalar provider fields (netuids array, social object) serialize into CSV cells", async () => {
     const res = await handleRequest(
       req("/api/v1/providers?format=csv&fields=id,netuids,social&limit=5"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1456,7 +1510,7 @@ describe("review enrichment list CSV export", () => {
       req(
         "/api/v1/review/gaps?format=csv&fields=netuid,priority_score,curation_level&sort=priority_score&limit=5&curation_level=candidate-discovered",
       ),
-      withReviewGapPrioritiesArchive(),
+      withReviewGapPrioritiesArchive() as unknown as Env,
       {},
     );
     const { header, rows } = await parseCsv(res);
@@ -1477,7 +1531,7 @@ describe("review enrichment list CSV export", () => {
       req(
         "/api/v1/subnets/1/gaps?format=csv&fields=netuid,priority_score,curation_level&limit=5",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1498,7 +1552,7 @@ describe("review enrichment list CSV export", () => {
     // Strictly additive: the default path must be untouched by the CSV wiring.
     const res = await handleRequest(
       req("/api/v1/subnets/1/gaps"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1516,7 +1570,7 @@ describe("review enrichment list CSV export", () => {
       req(
         "/api/v1/review/profile-completeness?format=csv&fields=netuid,priority_score,identity_level&sort=priority_score&limit=5&identity_level=partial",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     const { header, rows } = await parseCsv(res);
@@ -1531,7 +1585,7 @@ describe("review enrichment list CSV export", () => {
       req(
         "/api/v1/review/adapter-candidates?format=csv&fields=netuid,priority_score,operational_kinds&sort=priority_score&limit=5&operational_kinds=openapi",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     const { header, rows } = await parseCsv(res);
@@ -1548,7 +1602,7 @@ describe("review enrichment list CSV export", () => {
       req(
         "/api/v1/review/enrichment-queue?format=csv&fields=netuid,priority_score,lane&sort=priority_score&limit=5&lane=direct-submission",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     const { header, rows } = await parseCsv(res);
@@ -1625,7 +1679,7 @@ describe("registry list CSV export", () => {
     test(`${path}?format=csv returns a named text/csv download`, async () => {
       const res = await handleRequest(
         req(`${path}?format=csv&limit=3`),
-        createLocalArtifactEnv(),
+        createLocalArtifactEnv() as unknown as Env,
         {},
       );
       assert.equal(res.status, 200);
@@ -1645,7 +1699,7 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/profiles?format=csv&fields=netuid,completeness_score,curation_level,profile_level&sort=completeness_score&order=desc&limit=5",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1675,7 +1729,7 @@ describe("registry list CSV export", () => {
   test("subnet-scoped surfaces export CSV for one netuid", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/0/surfaces?format=csv"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1705,7 +1759,7 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/surfaces?format=csv&fields=kind,provider,name&kind=openapi&limit=5",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     const allCsv = await parseCsv(all);
@@ -1719,7 +1773,7 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/subnets/6/surfaces?format=csv&fields=kind,provider,name&kind=openapi",
       ),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     const subnetCsv = await parseCsv(subnet);
@@ -1751,8 +1805,8 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/candidates?format=csv&fields=kind,provider,state,confidence&limit=5",
       ),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     const allCsv = await parseCsv(all);
     assert.equal(allCsv.header.join(","), "kind,provider,state,confidence");
@@ -1766,8 +1820,8 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/candidates?state=schema-valid&format=csv&fields=kind,provider,state,confidence&limit=5",
       ),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     const filteredCsv = await parseCsv(filtered);
     assert.ok(filteredCsv.rows.length > 0);
@@ -1779,8 +1833,8 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/candidates?state=verified&format=csv&fields=kind,provider,state,confidence&limit=5",
       ),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     const verifiedCsv = await parseCsv(verified);
     assert.ok(verifiedCsv.rows.length > 0);
@@ -1790,8 +1844,8 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/subnets/6/candidates?format=csv&fields=kind,provider,state,confidence&limit=5",
       ),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(
       subnet.headers.get("content-disposition"),
@@ -1811,7 +1865,7 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/endpoints?format=csv&fields=netuid,provider,status&status=ok&limit=3",
       ),
-      createEndpointCsvEnv(),
+      createEndpointCsvEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1848,7 +1902,7 @@ describe("registry list CSV export", () => {
       req(
         "/api/v1/subnets/7/endpoints?format=csv&fields=layer,kind,status,latency_ms&status=ok&limit=3",
       ),
-      createEndpointCsvEnv(),
+      createEndpointCsvEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1875,7 +1929,7 @@ describe("registry list CSV export", () => {
   test("Accept: text/csv negotiates CSV on a registry route", async () => {
     const res = await handleRequest(
       req("/api/v1/economics?limit=1", { headers: { accept: "text/csv" } }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1887,7 +1941,7 @@ describe("registry list CSV export", () => {
       req("/api/v1/economics?format=json&limit=1", {
         headers: { accept: "text/csv" },
       }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -1984,7 +2038,7 @@ describe("coverage-depth CSV export", () => {
       req(
         "/api/v1/coverage-depth?format=csv&fields=netuid,tier,agent_status,priority_score,score,name&sort=netuid&limit=2",
       ),
-      withCoverageDepthArchive(),
+      withCoverageDepthArchive() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -2022,7 +2076,7 @@ describe("coverage-depth CSV export", () => {
       req(
         "/api/v1/coverage-depth?tier=agent-ready&format=csv&fields=netuid,tier,name",
       ),
-      withCoverageDepthArchive(),
+      withCoverageDepthArchive() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -2062,7 +2116,7 @@ describe("pagination Link header", () => {
   const page = async (querySuffix: string, init?: RequestInit) => {
     const res = await handleRequest(
       req(`/api/v1/subnets?sort=netuid&${querySuffix}`, init),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     return { res, links: parseLink(res.headers.get("link")) };
@@ -2145,15 +2199,15 @@ describe("pagination Link header", () => {
     const env = createLocalArtifactEnv();
     const first = await handleRequest(
       req("/api/v1/subnets?sort=netuid&limit=50&cursor=0"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     const res = await handleRequest(
       req("/api/v1/subnets?sort=netuid&limit=50&cursor=0", {
         headers: { "if-none-match": first.headers.get("etag") },
       }),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 304);
     assert.match(res.headers.get("link"), /rel="next"/);
@@ -2165,7 +2219,7 @@ describe("/api/v1/search-index slim route", () => {
   test("serves the slim index without per-document token blobs", async () => {
     const res = await handleRequest(
       req("/api/v1/search-index?limit=5"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -2182,7 +2236,7 @@ describe("/api/v1/search-index slim route", () => {
   test("supports field projection and keyword search", async () => {
     const res = await handleRequest(
       req("/api/v1/search-index?fields=id,title,type&limit=3"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -2203,12 +2257,16 @@ describe("/api/v1/search-index slim route", () => {
 describe("api envelope 304", () => {
   test("304 when if-none-match matches the api etag", async () => {
     const env = createLocalArtifactEnv();
-    const first = await handleRequest(req("/api/v1/subnets"), env, {});
+    const first = await handleRequest(
+      req("/api/v1/subnets"),
+      env as unknown as Env,
+      {},
+    );
     const etag = first.headers.get("etag");
     const res = await handleRequest(
       req("/api/v1/subnets", { headers: { "if-none-match": etag } }),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 304);
   });
@@ -2217,8 +2275,8 @@ describe("api envelope 304", () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       req("/api/v1/subnets", { method: "HEAD" }),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
     assert.equal(await res.text(), "");
@@ -2230,7 +2288,7 @@ describe("RPC proxy edges", () => {
   test("405 for a non-POST RPC request", async () => {
     const res = await handleRequest(
       req("/rpc/v1/finney", { method: "GET" }),
-      rpcEnv(),
+      rpcEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 405);
@@ -2240,7 +2298,7 @@ describe("RPC proxy edges", () => {
   test("501 when the RPC proxy is disabled", async () => {
     const res = await handleRequest(
       rpcReq("system_health"),
-      rpcEnv({ METAGRAPH_ENABLE_RPC_PROXY: "false" }),
+      rpcEnv({ METAGRAPH_ENABLE_RPC_PROXY: "false" }) as unknown as Env,
       {},
     );
     assert.equal(res.status, 501);
@@ -2254,7 +2312,7 @@ describe("RPC proxy edges", () => {
         headers: { "content-length": String(70000) },
         body: JSON.stringify({ jsonrpc: "2.0", method: "system_health" }),
       }),
-      rpcEnv(),
+      rpcEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 413);
@@ -2268,7 +2326,7 @@ describe("RPC proxy edges", () => {
         headers: { "content-length": "-1" },
         body: JSON.stringify({ jsonrpc: "2.0", method: "system_health" }),
       }),
-      rpcEnv(),
+      rpcEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -2283,7 +2341,7 @@ describe("RPC proxy edges", () => {
         method: "POST",
         body: JSON.stringify({ jsonrpc: "2.0", method: "system_health", big }),
       }),
-      rpcEnv(),
+      rpcEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 413);
@@ -2293,7 +2351,7 @@ describe("RPC proxy edges", () => {
   test("400 rpc_invalid_json for a non-JSON body", async () => {
     const res = await handleRequest(
       req("/rpc/v1/finney", { method: "POST", body: "{not json" }),
-      rpcEnv(),
+      rpcEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -2306,7 +2364,7 @@ describe("RPC proxy edges", () => {
         method: "POST",
         body: JSON.stringify([{ method: "system_health" }]),
       }),
-      rpcEnv(),
+      rpcEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -2316,7 +2374,7 @@ describe("RPC proxy edges", () => {
   test("403 rpc_method_blocked for a denied method", async () => {
     const res = await handleRequest(
       rpcReq("author_submitExtrinsic"),
-      rpcEnv(),
+      rpcEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 403);
@@ -2333,7 +2391,7 @@ describe("RPC proxy edges", () => {
           method: "system_health",
         }),
       }),
-      rpcEnv(),
+      rpcEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
@@ -2363,7 +2421,11 @@ describe("RPC proxy edges", () => {
         },
       },
     };
-    const res = await handleRequest(rpcReq("system_health"), env, {});
+    const res = await handleRequest(
+      rpcReq("system_health"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 503);
     assert.equal((await res.json()).error.code, "rpc_endpoint_unavailable");
   });
@@ -2406,7 +2468,11 @@ describe("RPC proxy edges", () => {
         },
       },
     };
-    const res = await handleRequest(rpcReq("system_health"), env, {});
+    const res = await handleRequest(
+      rpcReq("system_health"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 502);
     assert.equal((await res.json()).error.code, "rpc_endpoint_unsafe");
   });
@@ -2420,7 +2486,11 @@ describe("RPC proxy edges", () => {
         },
       },
     };
-    const res = await handleRequest(rpcReq("system_health"), env, {});
+    const res = await handleRequest(
+      rpcReq("system_health"),
+      env as unknown as Env,
+      {},
+    );
     // pools.json is r2-tier; with no R2 binding the read fails.
     assert.notEqual(res.status, 200);
     const body = await res.json();
@@ -2444,7 +2514,11 @@ describe("RPC proxy edges", () => {
           ),
       },
       async () => {
-        const res = await handleRequest(rpcReq("system_health"), env, {});
+        const res = await handleRequest(
+          rpcReq("system_health"),
+          env as unknown as Env,
+          {},
+        );
         assert.equal(res.status, 200);
       },
     );
@@ -2470,7 +2544,7 @@ describe("RPC proxy edges", () => {
         // an upstream 400 is fatal and short-circuits at the status!==200 branch.
         const res = await handleRequest(
           rpcReq("chain_getBlockHash", [5]),
-          rpcEnv(),
+          rpcEnv() as unknown as Env,
           {},
         );
         assert.equal(res.status, 400);
@@ -2517,7 +2591,7 @@ describe("RPC proxy edges", () => {
         const ctx = { waitUntil: (p: Promise<unknown>) => waits.push(p) };
         const res = await handleRequest(
           rpcReq("chain_getBlockHash", [9]),
-          rpcEnv(),
+          rpcEnv() as unknown as Env,
           ctx,
         );
         await Promise.all(waits);
@@ -2623,7 +2697,11 @@ describe("R2 timeout and static fallback", () => {
         },
       },
     };
-    const res = await handleRequest(req("/api/v1/rpc/endpoints"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/rpc/endpoints"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     assert.equal(assetHit, true);
     assert.equal(res.headers.get("x-metagraph-cache-profile") !== null, true);
@@ -2643,7 +2721,11 @@ describe("R2 timeout and static fallback", () => {
         },
       },
     };
-    const res = await handleRequest(req("/api/v1/rpc/endpoints"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/rpc/endpoints"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 504);
     assert.equal((await res.json()).error.code, "r2_timeout");
   });
@@ -2669,8 +2751,8 @@ describe("health trends D1 error handling", () => {
     });
     const res = await handleRequest(
       req("/api/v1/subnets/0/health/trends"),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
     const body = await res.json();
@@ -2706,7 +2788,11 @@ describe("health trends D1 error handling", () => {
         },
       },
     });
-    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/health/trends"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.windows["7d"].subnet_count, 0);
@@ -2729,7 +2815,11 @@ describe("health trends D1 error handling", () => {
         },
       },
     });
-    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/health/trends"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.windows["7d"].subnet_count, 0);
@@ -2746,7 +2836,11 @@ describe("readAsset missing binding", () => {
       METAGRAPH_R2_LATEST_PREFIX: "latest/",
       METAGRAPH_ARCHIVE: createLocalArtifactEnv().METAGRAPH_ARCHIVE,
     };
-    const res = await handleRequest(req("/api/v1/subnets"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-cache-profile") !== null, true);
   });
@@ -2790,16 +2884,20 @@ describe("weightedPickEndpoint", () => {
 describe("handleScheduled", () => {
   test("the hourly prune cron prunes the time-series", async () => {
     // No D1 binding → pruneHealthHistory is a no-op but the branch is taken.
-    const result = await handleScheduled({ cron: "0 * * * *" }, {}, {});
+    const result = await handleScheduled(
+      { cron: "0 * * * *" } as unknown as ScheduledController,
+      {} as unknown as Env,
+      {} as unknown as ExecutionContext,
+    );
     assert.ok(result === undefined || typeof result === "object");
   });
 
   test("any other cron runs the health prober", async () => {
     // No bindings → runHealthProber should not throw with an empty env.
     const result = await handleScheduled(
-      { cron: "*/2 * * * *" },
-      {},
-      { waitUntil() {} },
+      { cron: "*/2 * * * *" } as unknown as ScheduledController,
+      {} as unknown as Env,
+      { waitUntil() {} } as unknown as ExecutionContext,
     );
     assert.ok(result === undefined || typeof result === "object");
   });
@@ -2807,11 +2905,15 @@ describe("handleScheduled", () => {
   test("the default export wires fetch + scheduled", async () => {
     const res = await workerDefault.fetch(
       req("/api/v1/subnets"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
-    await workerDefault.scheduled({ cron: "0 * * * *" }, {}, {});
+    await workerDefault.scheduled(
+      { cron: "0 * * * *" } as unknown as ScheduledController,
+      {} as unknown as Env,
+      {} as unknown as ExecutionContext,
+    );
   });
 });
 
@@ -2820,9 +2922,11 @@ describe("handleScheduled", () => {
 describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
   test("skips (does not throw) when ROLLUP_SYNC_SECRET is not configured", async () => {
     const result = await handleScheduled(
-      { cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON },
-      {},
-      {},
+      {
+        cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON,
+      } as unknown as ScheduledController,
+      {} as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.deepEqual(result, {
       ok: false,
@@ -2850,9 +2954,11 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
       },
     };
     const result = await handleScheduled(
-      { cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON },
-      env,
-      {},
+      {
+        cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON,
+      } as unknown as ScheduledController,
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(receivedToken, "shared-secret");
     assert.equal(receivedPath, "/api/v1/internal/rollup-account-events-daily");
@@ -2876,9 +2982,11 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
       },
     };
     const result = await handleScheduled(
-      { cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON },
-      env,
-      {},
+      {
+        cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON,
+      } as unknown as ScheduledController,
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal((result as Row).ok, false);
     assert.equal((result as Row).status, 502);
@@ -2895,9 +3003,11 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
       },
     };
     const result = await handleScheduled(
-      { cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON },
-      env,
-      {},
+      {
+        cron: workerConfig.ACCOUNT_EVENTS_ROLLUP_CRON,
+      } as unknown as ScheduledController,
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal((result as Row).ok, false);
     assert.equal((result as Row).status, 502);
@@ -2961,7 +3071,7 @@ describe("internal sync routes reach DATA_API through handleRequest", () => {
       };
       const res = await handleRequest(
         req(path, { method: "POST", headers: { "x-test-token": "x" } }),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(received, true, `${path} never reached DATA_API`);
@@ -2991,7 +3101,11 @@ describe("logEvent", () => {
         },
       },
     };
-    const res = await handleRequest(req("/api/v1/rpc/endpoints"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/rpc/endpoints"),
+      env as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 504);
   });
 });
@@ -3018,13 +3132,17 @@ describe("overlay edge-cache", () => {
     };
     await withGlobals({ cache }, async () => {
       // (a) no if-none-match → the cached overlay response is returned as-is.
-      const hit = await handleRequest(req("/api/v1/endpoints"), env, {});
+      const hit = await handleRequest(
+        req("/api/v1/endpoints"),
+        env as unknown as Env,
+        {},
+      );
       assert.equal(hit.status, 200);
       assert.equal(hit.headers.get("etag"), etag);
       // (b) matching if-none-match → 304 Not Modified.
       const notModified = await handleRequest(
         req("/api/v1/endpoints", { headers: { "if-none-match": etag } }),
-        env,
+        env as unknown as Env,
         {},
       );
       assert.equal(notModified.status, 304);
@@ -3043,8 +3161,8 @@ describe("semantic-search HEAD probe", () => {
     };
     const res = await handleRequest(
       req("/api/v1/search/semantic?q=x", { method: "HEAD" }),
-      env,
-      {},
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("cache-control"), "no-store");
@@ -3064,7 +3182,7 @@ describe("Access-Control-Expose-Headers", () => {
   test("list endpoint exposes the canonical custom-header list", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -3075,7 +3193,7 @@ describe("Access-Control-Expose-Headers", () => {
     // AI is disabled locally, so this is the 503 path through the shared builder.
     const res = await handleRequest(
       req("/api/v1/ask", { method: "POST", body: "{}" }),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
@@ -3084,7 +3202,7 @@ describe("Access-Control-Expose-Headers", () => {
   test("the SSE event surface exposes the list", async () => {
     const res = await handleRequest(
       req("/api/v1/events"),
-      createLocalArtifactEnv(),
+      createLocalArtifactEnv() as unknown as Env,
       {},
     );
     assert.match(res.headers.get("content-type"), /text\/event-stream/);
@@ -3106,7 +3224,7 @@ describe("Access-Control-Expose-Headers", () => {
 // substituting the path placeholders with the same sample ids the live smoke uses.
 describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
   const apiSource = readFileSync(
-    fileURLToPath(new URL("../workers/api.mjs", import.meta.url)),
+    fileURLToPath(new URL("../workers/api.ts", import.meta.url)),
     "utf8",
   );
 

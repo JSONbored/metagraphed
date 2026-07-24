@@ -4,7 +4,7 @@ import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_MAX,
 } from "../src/chain-alpha-volume.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -325,7 +325,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       d1Called = true;
       throw new Error("D1 must not be queried -- account_events is retired");
     };
-    const res = await handleRequest(req(), env, {});
+    const res = await handleRequest(req(), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.schema_version, 1);
@@ -341,7 +341,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/alpha-volume", {
         method: "HEAD",
       }),
-      alphaVolumeEnv(ROWS),
+      alphaVolumeEnv(ROWS) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -349,7 +349,11 @@ describe("GET /api/v1/chain/alpha-volume", () => {
   });
 
   test("serves a schema-stable empty card on a cold store", async () => {
-    const res = await handleRequest(req(), alphaVolumeEnv([]), {});
+    const res = await handleRequest(
+      req(),
+      alphaVolumeEnv([]) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
@@ -384,7 +388,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
         "D1 must not be queried when Postgres serves the request",
       );
     };
-    const res = await handleRequest(req(), env, {});
+    const res = await handleRequest(req(), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 99);
@@ -404,24 +408,36 @@ describe("GET /api/v1/chain/alpha-volume", () => {
         },
       },
     };
-    const res = await handleRequest(req(), env, {});
+    const res = await handleRequest(req(), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.subnet_count, 0);
   });
 
   test("rejects a ?window= param with 400 (fixed 24h window, no windowing on this route)", async () => {
-    const res = await handleRequest(req("?window=7d"), alphaVolumeEnv([]), {});
+    const res = await handleRequest(
+      req("?window=7d"),
+      alphaVolumeEnv([]) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("rejects an unknown query param with 400", async () => {
-    const res = await handleRequest(req("?bogus=1"), alphaVolumeEnv([]), {});
+    const res = await handleRequest(
+      req("?bogus=1"),
+      alphaVolumeEnv([]) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
   test("rejects an out-of-range limit with 400", async () => {
-    const res = await handleRequest(req("?limit=0"), alphaVolumeEnv([]), {});
+    const res = await handleRequest(
+      req("?limit=0"),
+      alphaVolumeEnv([]) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 
@@ -430,7 +446,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
   test("CSV export with ?format=csv is header-only even with a warm D1 mock", async () => {
     const res = await handleRequest(
       req("?format=csv"),
-      alphaVolumeEnv(ROWS),
+      alphaVolumeEnv(ROWS) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -452,7 +468,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/alpha-volume", {
         headers: { accept: "text/csv" },
       }),
-      alphaVolumeEnv(ROWS),
+      alphaVolumeEnv(ROWS) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -460,7 +476,11 @@ describe("GET /api/v1/chain/alpha-volume", () => {
   });
 
   test("emits a header-only CSV on a cold store", async () => {
-    const res = await handleRequest(req("?format=csv"), alphaVolumeEnv([]), {});
+    const res = await handleRequest(
+      req("?format=csv"),
+      alphaVolumeEnv([]) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /text\/csv/);
     assert.equal(
@@ -475,7 +495,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
         "https://api.metagraph.sh/api/v1/chain/alpha-volume?format=csv",
         { method: "HEAD" },
       ),
-      alphaVolumeEnv(ROWS),
+      alphaVolumeEnv(ROWS) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -484,7 +504,11 @@ describe("GET /api/v1/chain/alpha-volume", () => {
   });
 
   test("rejects an unsupported format value with 400", async () => {
-    const res = await handleRequest(req("?format=xml"), alphaVolumeEnv([]), {});
+    const res = await handleRequest(
+      req("?format=xml"),
+      alphaVolumeEnv([]) as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 400);
   });
 });
@@ -542,7 +566,7 @@ describe("chain/alpha-volume edge cache", () => {
     const call = () =>
       handleRequest(
         new Request("https://api.metagraph.sh/api/v1/chain/alpha-volume"),
-        env,
+        env as unknown as Env,
         { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
       );
     const res = await call();

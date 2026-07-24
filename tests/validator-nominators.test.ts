@@ -7,7 +7,7 @@ import {
   DEFAULT_NOMINATOR_SORT,
   NOMINATOR_LIMIT_MAX,
 } from "../src/validator-nominators.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
@@ -379,7 +379,7 @@ describe("GET /api/v1/validators/{hotkey}/nominators via the Worker", () => {
   const getJson = async (path: string, env: Row) => {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),
-      env,
+      env as unknown as Env,
       {},
     );
     return { res, body: await res.json() };

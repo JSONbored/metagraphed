@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 
 // Network-aware proxy routing: /rpc/v1/{network} selects its pool from
 // rpc/pools.json (finney → finney-rpc, test → test-rpc). The testnet endpoints
@@ -76,7 +76,9 @@ describe("RPC proxy — network-aware pool selection", () => {
   test("/rpc/v1/test routes to the test-rpc pool's testnet upstream", async () => {
     const seen: string[] = [];
     await withFetch(seen, async () => {
-      const res = await handleRequest(reqFor("test"), env, { waitUntil() {} });
+      const res = await handleRequest(reqFor("test"), env as unknown as Env, {
+        waitUntil() {},
+      });
       assert.equal(res.status, 200);
       assert.equal(
         res.headers.get("x-metagraph-rpc-endpoint-id"),
@@ -90,7 +92,7 @@ describe("RPC proxy — network-aware pool selection", () => {
   test("/rpc/v1/finney still routes to the finney pool", async () => {
     const seen: string[] = [];
     await withFetch(seen, async () => {
-      const res = await handleRequest(reqFor("finney"), env, {
+      const res = await handleRequest(reqFor("finney"), env as unknown as Env, {
         waitUntil() {},
       });
       assert.equal(res.status, 200);
@@ -102,9 +104,13 @@ describe("RPC proxy — network-aware pool selection", () => {
   test("an unknown network 404s instead of falling back to mainnet", async () => {
     const seen: string[] = [];
     await withFetch(seen, async () => {
-      const res = await handleRequest(reqFor("mainnet"), env, {
-        waitUntil() {},
-      });
+      const res = await handleRequest(
+        reqFor("mainnet"),
+        env as unknown as Env,
+        {
+          waitUntil() {},
+        },
+      );
       assert.equal(res.status, 404);
       const body = await res.json();
       assert.equal(body.error.code, "rpc_network_unsupported");

@@ -7,7 +7,7 @@ import {
   H160_PATTERN,
   loadAddressMapping,
 } from "../src/address-mapping.ts";
-import { handleRequest } from "../workers/api.mjs";
+import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
 
 function req(path: string) {
@@ -329,7 +329,7 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
           new Request(`https://api.metagraph.sh/api/v1/evm/address/${H160}`, {
             headers: { "cf-connecting-ip": "203.0.113.9" },
           }),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 429);
@@ -352,7 +352,7 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/evm/address/${H160}`),
-          env,
+          env as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -371,7 +371,7 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/evm/address/${H160}`),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -393,7 +393,7 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
       async () => {
         const res = await handleRequest(
           req(`/api/v1/evm/address/${H160}`),
-          {},
+          {} as unknown as Env,
           {},
         );
         assert.equal(res.status, 200);
@@ -410,7 +410,7 @@ describe("GET /api/v1/evm/address/{h160} via the Worker", () => {
     // through to a generic "no route matched" 404.
     const res = await handleRequest(
       req("/api/v1/evm/address/not-an-address"),
-      {},
+      {} as unknown as Env,
       {},
     );
     assert.equal(res.status, 400);
