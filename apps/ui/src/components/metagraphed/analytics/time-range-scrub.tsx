@@ -27,7 +27,7 @@ export function TimeRangeScrub({
   return (
     <div
       className={classNames(
-        "inline-flex items-center rounded border border-border bg-card/60 p-0.5",
+        "inline-flex items-center rounded border border-border mg-glass-soft p-0.5",
         className,
       )}
       role="radiogroup"

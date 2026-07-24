@@ -66,7 +66,7 @@ export function ShortcutsPopover() {
               aria-label="Keyboard shortcuts"
               className={classNames(
                 "hidden md:inline-flex fixed z-[var(--mg-z-overlay)] bottom-5 left-5 md:bottom-7 md:left-7",
-                "items-center justify-center rounded-full border border-border bg-card/95 backdrop-blur",
+                "items-center justify-center rounded-full border border-border mg-glass",
                 "size-10 text-ink-muted shadow-[var(--mg-shadow-pop)]",
                 "hover:border-accent/60 hover:text-accent transition-colors",
               )}

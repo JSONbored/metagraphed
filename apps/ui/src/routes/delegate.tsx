@@ -102,7 +102,7 @@ function DelegatePage() {
       </section>
 
       {/* Disclosure */}
-      <section className="mt-10 rounded-xl border border-border bg-card/60 p-4">
+      <section className="mt-10 rounded-xl border border-border mg-glass-soft p-4">
         <div className="mg-label mb-2">Disclosure</div>
         <p className="text-[13px] text-ink-muted leading-relaxed">{PARTNER_ORG.disclosure}</p>
       </section>
@@ -112,7 +112,7 @@ function DelegatePage() {
 
 function TrustCell({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="rounded-lg border border-border bg-card/60 px-4 py-3">
+    <div className="rounded-lg border border-border mg-glass-soft px-4 py-3">
       <div className="flex items-center gap-2 text-ink-strong">
         <span className="text-accent" aria-hidden>
           {icon}

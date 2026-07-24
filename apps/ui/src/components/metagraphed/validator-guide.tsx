@@ -65,7 +65,7 @@ export function ValidatorGuide() {
   const [open, setOpen] = useState(false);
 
   return (
-    <aside aria-label={HEADING} className="mb-6 rounded-lg border border-border bg-card/60">
+    <aside aria-label={HEADING} className="mb-6 rounded-lg border border-border mg-glass-soft">
       {/* Desktop / tablet: collapsible callout with the full grid. */}
       <div className="hidden sm:block">
         <button

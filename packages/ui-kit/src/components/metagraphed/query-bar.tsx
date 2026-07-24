@@ -65,7 +65,7 @@ function QueryBarRoot({
       className={classNames(
         "mg-query-shell",
         "flex w-full items-center gap-1 min-w-0",
-        "h-10 rounded-lg border border-border bg-card/60",
+        "h-10 rounded-lg border border-border mg-glass-soft",
         "px-1 transition-colors",
         "focus-within:border-[color-mix(in_oklab,var(--accent)_45%,var(--border))]",
         "focus-within:ring-2 focus-within:ring-ring/60",

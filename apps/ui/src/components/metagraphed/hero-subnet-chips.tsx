@@ -78,6 +78,10 @@ export function HeroSubnetChips({ limit = 14 }: { limit?: number }) {
             role="listitem"
             className={classNames(
               "mg-metric-tile mg-focus-ring snap-start shrink-0",
+              // #7842: documented exception -- 80% doesn't cleanly snap to either
+              // glass tier (mg-glass would add unwanted blur + drop to 80/95%
+              // depending on browser support; mg-glass-soft's 60% visibly lightens
+              // this chip). Kept as a bare fraction rather than a wrong tier.
               "inline-flex items-center gap-2 rounded-full border border-border bg-card/80",
               "px-2.5 py-1.5 hover:border-accent/40 transition-colors",
             )}

@@ -127,6 +127,19 @@ const Z_INDEX_RULES = [
   },
 ];
 
+// #7842: ad-hoc bg-card/NN opacity fractions collapsed into two named
+// surface-translucency tiers (styles.css): .mg-glass (the sticky-header/
+// drawer-shell blur idiom) and .mg-glass-soft (flat 60%, no blur). A small,
+// documented set of sites couldn't cleanly snap to either tier and were left
+// as bare fractions with an inline comment -- those will still warn here,
+// same residual-worklist convention the other token rules already use.
+const GLASS_SURFACE_RULES = [
+  {
+    selector: "Literal[value=/\\bbg-card\\/[0-9]+\\b/]",
+    message: "Raw bg-card opacity. Use .mg-glass or .mg-glass-soft (see styles.css).",
+  },
+];
+
 export default tseslint.config(
   // .source is fumadocs-mdx's generated content collection output (see
   // source.config.ts) -- codegen, not authored code, same treatment as dist.
@@ -196,6 +209,7 @@ export default tseslint.config(
         ...SSR_SAFETY_RULES,
         ...ELEVATION_RULES,
         ...Z_INDEX_RULES,
+        ...GLASS_SURFACE_RULES,
       ],
     },
   },
