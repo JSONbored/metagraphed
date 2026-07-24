@@ -30,13 +30,16 @@ export const SubnetIndexEntrySchema = z
     contact_present: z.boolean().optional(),
     coverage_level: CoverageLevelSchema,
     curation_level: CurationLevelSchema,
-    dashboard_url: z.string().nullable().optional(),
+    // format:"uri" in the hand-edited OpenAPI contract -- z.url() matches it
+    // exactly (verified against every registry/subnets/*.json value before
+    // adding this constraint, #7860's diff audit).
+    dashboard_url: z.url().nullable().optional(),
     derived_categories: z.array(z.string()).optional(),
     derived_description: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     discord: z.string().max(200).nullable().optional(),
-    discord_url: z.string().nullable().optional(),
-    docs_url: z.string().nullable().optional(),
+    discord_url: z.url().nullable().optional(),
+    docs_url: z.url().nullable().optional(),
     first_party: z.boolean().optional(),
     gap_count: z.int().min(0).optional(),
     // Byte-count language breakdown from the GitHub /languages API (#6639) —
@@ -46,10 +49,12 @@ export const SubnetIndexEntrySchema = z
       .record(z.string(), z.int().min(0))
       .nullable()
       .optional(),
-    github_last_push_at: z.string().nullable().optional(),
+    // format:"date-time" in the hand-edited contract -- z.iso.datetime()
+    // matches it (same verification as dashboard_url above).
+    github_last_push_at: z.iso.datetime().nullable().optional(),
     integration_readiness: z.int().min(0).max(100).optional(),
     lifecycle: z.enum(["active", "deprecated", "parked", "pending"]).optional(),
-    logo_url: z.string().nullable().optional(),
+    logo_url: z.url().nullable().optional(),
     mechanism_count: z.int().min(0).optional(),
     name: z.string(),
     native_name: z.string().nullable().optional(),
@@ -73,14 +78,14 @@ export const SubnetIndexEntrySchema = z
       .strict()
       .nullable()
       .optional(),
-    source_repo: z.string().nullable().optional(),
+    source_repo: z.url().nullable().optional(),
     status: SubnetStatusSchema,
     subnet_type: SubnetTypeSchema,
     surface_count: z.int().min(0),
     symbol: z.string().nullable().optional(),
     tempo: z.int().min(0).optional(),
-    updated_at: z.string().nullable().optional(),
-    website_url: z.string().nullable().optional(),
+    updated_at: z.iso.datetime().nullable().optional(),
+    website_url: z.url().nullable().optional(),
   })
   .strict();
 export type SubnetIndexEntry = z.infer<typeof SubnetIndexEntrySchema>;

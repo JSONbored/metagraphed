@@ -4047,84 +4047,78 @@
         "additionalProperties": false,
         "properties": {
           "auth": {
-            "additionalProperties": false,
-            "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness.",
-            "properties": {
-              "body_envelope": {
+            "anyOf": [
+              {
                 "additionalProperties": false,
-                "description": "For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {\"payload\": {...}, \"sig\": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default).",
                 "properties": {
-                  "credential_key": {
-                    "description": "Top-level body key the credential bundle (every name/value pair from `names`) is nested under, e.g. \"sig\".",
-                    "minLength": 1,
+                  "body_envelope": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "credential_key": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "payload_key": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "credential_key",
+                      "payload_key"
+                    ],
+                    "type": "object"
+                  },
+                  "location": {
+                    "enum": [
+                      "header",
+                      "query",
+                      "cookie",
+                      "body"
+                    ],
                     "type": "string"
                   },
-                  "payload_key": {
-                    "description": "Top-level body key the caller-supplied semantic payload (the `body` argument, or {} when absent) is wrapped under, e.g. \"payload\".",
-                    "minLength": 1,
+                  "name": {
+                    "type": "string"
+                  },
+                  "names": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "scheme": {
+                    "enum": [
+                      "none",
+                      "bearer",
+                      "api-key",
+                      "basic",
+                      "oauth2",
+                      "signature",
+                      "custom"
+                    ],
+                    "type": "string"
+                  },
+                  "scopes_note": {
+                    "type": "string"
+                  },
+                  "token_url": {
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                    "type": "string"
+                  },
+                  "value_format": {
                     "type": "string"
                   }
                 },
                 "required": [
-                  "payload_key",
-                  "credential_key"
+                  "scheme"
                 ],
                 "type": "object"
               },
-              "location": {
-                "description": "Where the credential is sent. \"body\" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie).",
-                "enum": [
-                  "header",
-                  "query",
-                  "cookie",
-                  "body"
-                ]
-              },
-              "name": {
-                "description": "Header or query-parameter name, e.g. \"Authorization\" or \"X-API-Key\". Mutually exclusive with `names` -- single-value schemes (bearer/api-key/basic) use this; scheme:signature uses `names` instead.",
-                "type": "string"
-              },
-              "names": {
-                "description": "For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. [\"X-Hotkey\", \"X-Timestamp\", \"X-Signature\"]. Mutually exclusive with `name`.",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array"
-              },
-              "scheme": {
-                "description": "Credential scheme. \"signature\" is a multi-value bundle (e.g. a Bittensor hotkey-signed request: signature + timestamp + address headers) the caller computes and supplies as a whole -- see `names`, not `name`.",
-                "enum": [
-                  "none",
-                  "bearer",
-                  "api-key",
-                  "basic",
-                  "oauth2",
-                  "signature",
-                  "custom"
-                ]
-              },
-              "scopes_note": {
-                "description": "Note on required scopes or how to obtain a credential.",
-                "type": "string"
-              },
-              "token_url": {
-                "description": "OAuth2/OIDC token or authorize endpoint, when the spec declares one.",
-                "format": "uri",
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
-                "type": "string"
-              },
-              "value_format": {
-                "description": "Placeholder showing the value shape, e.g. \"Bearer <token>\". Never a real secret.",
-                "type": "string"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "scheme"
-            ],
-            "type": [
-              "object",
-              "null"
             ]
           },
           "auth_required": {
@@ -4135,10 +4129,10 @@
               "low",
               "medium",
               "high"
-            ]
+            ],
+            "type": "string"
           },
           "confirmed_by": {
-            "description": "Distinct discovery sources (clustered domains) that independently surfaced this candidate, from its source_urls (#1007). 2+ entries is corroboration — multiple sources agreeing on the same (netuid, kind, url) — which adds a bonus to the verification score so a corroborated candidate ranks above an otherwise-identical single-source one.",
             "items": {
               "type": "string"
             },
@@ -4148,12 +4142,29 @@
             "type": "string"
           },
           "kind": {
-            "$ref": "#/components/schemas/SurfaceKind"
+            "enum": [
+              "archive",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "subnet-api",
+              "openapi",
+              "sse",
+              "sdk",
+              "example",
+              "website",
+              "source-repo",
+              "dashboard",
+              "repo-registry",
+              "docs",
+              "data-artifact"
+            ],
+            "type": "string"
           },
           "name": {
             "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -4165,33 +4176,30 @@
           },
           "rate_limit": {
             "additionalProperties": false,
-            "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness.",
             "properties": {
               "burst": {
-                "description": "Optional short-term burst allowance above the steady rate.",
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "cost_notes": {
-                "description": "Notes on weighted/credit costs or tier differences.",
                 "type": "string"
               },
               "requests": {
-                "description": "Permitted requests per window.",
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "scope": {
-                "description": "What the limit is counted against.",
                 "enum": [
                   "per-key",
                   "per-ip",
                   "global",
                   "unknown"
-                ]
+                ],
+                "type": "string"
               },
               "window": {
-                "description": "Window the request budget applies to, e.g. \"60s\", \"1m\", \"1h\", \"1d\".",
                 "minLength": 1,
                 "type": "string"
               }
@@ -4209,10 +4217,17 @@
             "type": "string"
           },
           "schema_version": {
-            "const": 1
+            "const": 1,
+            "type": "number"
           },
           "source_tier": {
-            "$ref": "#/components/schemas/SourceTier"
+            "enum": [
+              "native-chain",
+              "provider-claimed",
+              "third-party-index",
+              "community-docs"
+            ],
+            "type": "string"
           },
           "source_type": {
             "type": "string"
@@ -4229,19 +4244,34 @@
             "type": "array"
           },
           "state": {
-            "$ref": "#/components/schemas/CandidateState"
+            "enum": [
+              "schema-invalid",
+              "schema-valid",
+              "maintainer-review",
+              "verified",
+              "stale",
+              "rejected"
+            ],
+            "type": "string"
           },
           "subnet_name": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "superseded_by": {
-            "description": "When set, the id of a curated registry surface that shares this candidate's (netuid, kind, normalized-url) identity. The candidate is a duplicate of an already-verified surface and is excluded from the review/enrichment queue. Null when the candidate is not yet covered by any surface.",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "url": {
@@ -4249,9 +4279,275 @@
             "type": "string"
           },
           "verification": {
-            "oneOf": [
+            "anyOf": [
               {
-                "$ref": "#/components/schemas/VerificationResult"
+                "additionalProperties": false,
+                "properties": {
+                  "archived": {
+                    "type": "boolean"
+                  },
+                  "candidate_id": {
+                    "type": "string"
+                  },
+                  "classification": {
+                    "enum": [
+                      "live",
+                      "redirected",
+                      "auth-required",
+                      "dead",
+                      "unsafe",
+                      "unsupported",
+                      "rate-limited",
+                      "transient",
+                      "timeout",
+                      "content-mismatch",
+                      "wrong-chain",
+                      "unknown"
+                    ],
+                    "type": "string"
+                  },
+                  "confidence_score": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "content_type": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "default_branch": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "error": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "github_api_status": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "github_api_url": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "homepage": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "html_url": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "archive",
+                      "subtensor-rpc",
+                      "subtensor-wss",
+                      "subnet-api",
+                      "openapi",
+                      "sse",
+                      "sdk",
+                      "example",
+                      "website",
+                      "source-repo",
+                      "dashboard",
+                      "repo-registry",
+                      "docs",
+                      "data-artifact"
+                    ],
+                    "type": "string"
+                  },
+                  "last_push_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "latency_ms": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "method_tested": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "netuid": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "private_redirect_blocked": {
+                    "type": "boolean"
+                  },
+                  "provider": {
+                    "type": "string"
+                  },
+                  "quality_signals": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "archived": {
+                        "type": "boolean"
+                      },
+                      "content_type_matches_kind": {
+                        "type": "boolean"
+                      },
+                      "has_default_branch": {
+                        "type": "boolean"
+                      },
+                      "has_recent_push_metadata": {
+                        "type": "boolean"
+                      },
+                      "public_safe": {
+                        "type": "boolean"
+                      },
+                      "rate_limited": {
+                        "type": "boolean"
+                      },
+                      "redirected": {
+                        "type": "boolean"
+                      },
+                      "source_tier": {
+                        "enum": [
+                          "native-chain",
+                          "provider-claimed",
+                          "third-party-index",
+                          "community-docs"
+                        ],
+                        "type": "string"
+                      },
+                      "transient_failure": {
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "redirect_target": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source_tier": {
+                    "enum": [
+                      "native-chain",
+                      "provider-claimed",
+                      "third-party-index",
+                      "community-docs"
+                    ],
+                    "type": "string"
+                  },
+                  "source_type": {
+                    "type": "string"
+                  },
+                  "source_url": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "source_urls": {
+                    "items": {
+                      "format": "uri",
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "status": {
+                    "enum": [
+                      "ok",
+                      "degraded",
+                      "failed",
+                      "unknown"
+                    ],
+                    "type": "string"
+                  },
+                  "status_code": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "topics": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "verified_at": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "candidate_id",
+                  "classification",
+                  "status",
+                  "url",
+                  "verified_at"
+                ],
+                "type": "object"
               },
               {
                 "type": "null"
@@ -4260,17 +4556,17 @@
           }
         },
         "required": [
-          "schema_version",
-          "id",
-          "netuid",
-          "state",
-          "name",
-          "kind",
-          "url",
-          "source_url",
-          "provider",
           "auth_required",
-          "public_safe"
+          "id",
+          "kind",
+          "name",
+          "netuid",
+          "provider",
+          "public_safe",
+          "schema_version",
+          "source_url",
+          "state",
+          "url"
         ],
         "type": "object"
       },
@@ -8698,25 +8994,49 @@
             "type": "array"
           },
           "level": {
-            "$ref": "#/components/schemas/CurationLevel"
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "community-seeded",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
           },
           "review_state": {
-            "$ref": "#/components/schemas/ReviewState"
+            "enum": [
+              "unreviewed",
+              "machine-generated",
+              "maintainer-reviewed",
+              "needs-review",
+              "stale"
+            ],
+            "type": "string"
           },
           "reviewed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "source_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "verified_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -8804,97 +9124,393 @@
         "type": "object"
       },
       "EconomicsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          {
-            "properties": {
-              "captured_at": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "network": {
+            "anyOf": [
+              {
+                "type": "string"
               },
-              "network": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
               },
-              "subnets": {
+              {
                 "items": {
-                  "$ref": "#/components/schemas/SubnetEconomics"
+                  "type": "string"
                 },
                 "type": "array"
-              },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "registration_open_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "subnet_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "total_alpha_value_tao": {
-                    "description": "Sum of every non-root subnet's alpha_market_cap_tao (alpha_price_tao times the total_stake_tao circulating-alpha proxy), lossless fixed 9-decimal rao-precision string (#6641). Excludes netuid 0 so root stake isn't double-counted as alpha value.",
-                    "pattern": "^\\d+\\.\\d{9}$",
-                    "type": "string"
-                  },
-                  "total_miners": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "total_network_value_tao": {
-                    "description": "total_root_value_tao plus total_alpha_value_tao, summed in exact rao-integer space (#6641) -- Backprop's \"Total Network Value\" (TNV): the network's single top-line economic figure.",
-                    "pattern": "^\\d+\\.\\d{9}$",
-                    "type": "string"
-                  },
-                  "total_root_value_tao": {
-                    "description": "Root (netuid 0) TAO-denominated stake, lossless fixed 9-decimal rao-precision string (#6641). Root has no AMM/alpha token, so this is total_stake_tao read directly, not price-multiplied.",
-                    "pattern": "^\\d+\\.\\d{9}$",
-                    "type": "string"
-                  },
-                  "total_stake_tao": {
-                    "description": "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet -- a JSON number (double) is only exact up to 2^53-1, ~9,007,199 TAO at rao precision; this network-wide total already exceeds that ceiling (#2924). Parse as an arbitrary-precision decimal, not Number(), if exact-rao fidelity matters; Number() is safe for display rounding.",
-                    "pattern": "^\\d+\\.\\d{9}$",
-                    "type": "string"
-                  },
-                  "total_validators": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "with_economics_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "alpha_fdv_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
-                "required": [
-                  "subnet_count",
-                  "with_economics_count",
-                  "total_stake_tao",
-                  "total_validators",
-                  "total_miners",
-                  "registration_open_count",
-                  "total_root_value_tao",
-                  "total_alpha_value_tao",
-                  "total_network_value_tao"
-                ],
-                "type": "object"
+                "alpha_in_pool": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_market_cap_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_out_pool": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_price_change_1d": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_price_change_1h": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_price_change_1m": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_price_change_7d": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_price_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "block": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_share": {
+                  "anyOf": [
+                    {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "max_stake_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "max_uids": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "max_validators": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "miner_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "miner_readiness": {
+                  "anyOf": [
+                    {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "open_slots": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "owner_coldkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "owner_hotkey": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "registration_allowed": {
+                  "type": "boolean"
+                },
+                "registration_cost_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "subnet_volume_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tao_in_pool_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "total_stake_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validator_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "alpha_fdv_tao",
+                "alpha_in_pool",
+                "alpha_market_cap_tao",
+                "alpha_out_pool",
+                "alpha_price_tao",
+                "emission_share",
+                "max_stake_tao",
+                "max_uids",
+                "max_validators",
+                "miner_count",
+                "name",
+                "netuid",
+                "owner_coldkey",
+                "owner_hotkey",
+                "registration_allowed",
+                "registration_cost_tao",
+                "slug",
+                "subnet_volume_tao",
+                "tao_in_pool_tao",
+                "total_stake_tao",
+                "validator_count"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "registration_open_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnet_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_alpha_value_tao": {
+                "pattern": "^\\d+\\.\\d{9}$",
+                "type": "string"
+              },
+              "total_miners": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_network_value_tao": {
+                "pattern": "^\\d+\\.\\d{9}$",
+                "type": "string"
+              },
+              "total_root_value_tao": {
+                "pattern": "^\\d+\\.\\d{9}$",
+                "type": "string"
+              },
+              "total_stake_tao": {
+                "pattern": "^\\d+\\.\\d{9}$",
+                "type": "string"
+              },
+              "total_validators": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "with_economics_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "network",
-              "captured_at",
-              "summary",
-              "subnets"
+              "registration_open_count",
+              "subnet_count",
+              "total_alpha_value_tao",
+              "total_miners",
+              "total_network_value_tao",
+              "total_root_value_tao",
+              "total_stake_tao",
+              "total_validators",
+              "with_economics_count"
             ],
             "type": "object"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "captured_at",
+          "network",
+          "subnets",
+          "summary"
+        ],
+        "type": "object"
       },
       "EconomicsTrendsArtifact": {
         "additionalProperties": true,
@@ -9287,27 +9903,56 @@
         "additionalProperties": false,
         "properties": {
           "archive_support": {
-            "type": [
-              "boolean",
-              "null"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "auth_required": {
             "type": "boolean"
           },
           "authority": {
-            "$ref": "#/components/schemas/Authority"
+            "enum": [
+              "official",
+              "provider-claimed",
+              "community",
+              "registry-observed"
+            ],
+            "type": "string"
           },
           "chain": {
-            "const": "bittensor"
+            "const": "bittensor",
+            "type": "string"
           },
           "classification": {
-            "$ref": "#/components/schemas/Classification"
+            "enum": [
+              "live",
+              "redirected",
+              "auth-required",
+              "dead",
+              "unsafe",
+              "unsupported",
+              "rate-limited",
+              "transient",
+              "timeout",
+              "content-mismatch",
+              "wrong-chain",
+              "unknown"
+            ],
+            "type": "string"
           },
           "error": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "health_source": {
@@ -9317,7 +9962,8 @@
               "not-monitored",
               "live-cron-prober",
               "unavailable"
-            ]
+            ],
+            "type": "string"
           },
           "health_stale": {
             "type": "boolean"
@@ -9326,42 +9972,85 @@
             "type": "string"
           },
           "kind": {
-            "$ref": "#/components/schemas/SurfaceKind"
+            "enum": [
+              "archive",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "subnet-api",
+              "openapi",
+              "sse",
+              "sdk",
+              "example",
+              "website",
+              "source-repo",
+              "dashboard",
+              "repo-registry",
+              "docs",
+              "data-artifact"
+            ],
+            "type": "string"
           },
           "last_checked": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "last_ok": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "latency_ms": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "latest_block": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "layer": {
-            "$ref": "#/components/schemas/EndpointLayer"
+            "enum": [
+              "bittensor-base",
+              "subnet-app",
+              "data-provider",
+              "docs-provider"
+            ],
+            "type": "string"
           },
           "method_support": {
-            "oneOf": [
+            "anyOf": [
               {
                 "additionalProperties": {
                   "type": "boolean"
+                },
+                "propertyNames": {
+                  "type": "string"
                 },
                 "type": "object"
               },
@@ -9377,31 +10066,93 @@
             ]
           },
           "method_tested": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "monitoring_policy": {
-            "$ref": "#/components/schemas/EndpointMonitoringPolicy"
+            "additionalProperties": false,
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "expect": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "method": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source": {
+                "type": "string"
+              },
+              "timeout_ms": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "expect",
+              "method",
+              "source"
+            ],
+            "type": "object"
           },
           "monitoring_status": {
             "enum": [
               "monitored",
               "not_monitored"
-            ]
+            ],
+            "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "network": {
-            "$ref": "#/components/schemas/BittensorNetwork"
+            "enum": [
+              "finney",
+              "test",
+              "local"
+            ],
+            "type": "string"
           },
           "observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "operator": {
@@ -9423,28 +10174,61 @@
             "type": "boolean"
           },
           "publication_state": {
-            "$ref": "#/components/schemas/EndpointPublicationState"
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
+            "type": "string"
           },
           "rate_limit_notes": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "rpc_method_count": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "score": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "score_reasons": {
             "items": {
-              "$ref": "#/components/schemas/EndpointScoreReason"
+              "additionalProperties": false,
+              "properties": {
+                "points": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "points",
+                "reason"
+              ],
+              "type": "object"
             },
             "type": "array"
           },
@@ -9456,7 +10240,13 @@
             "type": "array"
           },
           "status": {
-            "$ref": "#/components/schemas/HealthStatus"
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
           },
           "subnet_name": {
             "type": "string"
@@ -9468,7 +10258,6 @@
             "type": "string"
           },
           "surface_key": {
-            "description": "Stable surface identity (#1005): hash of netuid|kind|url. Endpoint ids derive from this value so display slug renames do not break endpoint links.",
             "type": "string"
           },
           "url": {
@@ -9477,27 +10266,27 @@
           }
         },
         "required": [
-          "id",
-          "surface_id",
-          "surface_key",
-          "netuid",
-          "layer",
-          "kind",
-          "url",
-          "provider",
-          "operator",
           "auth_required",
-          "public_safe",
-          "monitoring_policy",
-          "monitoring_status",
-          "publication_state",
-          "pool_eligible",
-          "observed_at",
           "health_source",
           "health_stale",
+          "id",
+          "kind",
           "last_ok",
+          "layer",
+          "monitoring_policy",
+          "monitoring_status",
+          "netuid",
+          "observed_at",
+          "operator",
+          "pool_eligible",
+          "provider",
+          "public_safe",
+          "publication_state",
+          "score",
           "status",
-          "score"
+          "surface_id",
+          "surface_key",
+          "url"
         ],
         "type": "object"
       },
@@ -10382,21 +11171,53 @@
           },
           "missing_kinds": {
             "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
+              "enum": [
+                "archive",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "subnet-api",
+                "openapi",
+                "sse",
+                "sdk",
+                "example",
+                "website",
+                "source-repo",
+                "dashboard",
+                "repo-registry",
+                "docs",
+                "data-artifact"
+              ],
+              "type": "string"
             },
             "type": "array"
           },
           "supported_kinds": {
             "items": {
-              "$ref": "#/components/schemas/SurfaceKind"
+              "enum": [
+                "archive",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "subnet-api",
+                "openapi",
+                "sse",
+                "sdk",
+                "example",
+                "website",
+                "source-repo",
+                "dashboard",
+                "repo-registry",
+                "docs",
+                "data-artifact"
+              ],
+              "type": "string"
             },
             "type": "array"
           }
         },
         "required": [
+          "gap_notes",
           "missing_kinds",
-          "supported_kinds",
-          "gap_notes"
+          "supported_kinds"
         ],
         "type": "object"
       },
@@ -11336,33 +12157,49 @@
         "additionalProperties": false,
         "properties": {
           "avg_latency_ms": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "degraded_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "failed_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "last_checked": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "last_ok": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "latency_sample_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -11370,10 +12207,12 @@
             "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "ok_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -11381,54 +12220,74 @@
             "type": "string"
           },
           "status": {
-            "$ref": "#/components/schemas/HealthStatus"
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
           },
           "surface_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "unknown_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           }
         },
         "required": [
+          "degraded_count",
+          "failed_count",
+          "ok_count",
           "status",
           "surface_count",
-          "ok_count",
-          "failed_count",
-          "degraded_count",
           "unknown_count"
         ],
         "type": "object"
       },
       "HealthSummaryArtifact": {
-        "additionalProperties": true,
-        "description": "Live-computed global operational health (served from KV/D1; `unknown` when the live store is cold). No longer a static artifact.",
+        "additionalProperties": {},
         "properties": {
           "contract_version": {
             "type": "string"
           },
           "generated_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "global": {
-            "additionalProperties": true,
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            },
             "type": "object"
           },
           "health_source": {
             "type": "string"
           },
           "operational_observed_at": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "scope": {
@@ -11445,8 +12304,8 @@
           }
         },
         "required": [
-          "schema_version",
           "global",
+          "schema_version",
           "subnets"
         ],
         "type": "object"
@@ -12483,22 +13342,25 @@
       },
       "PartnershipMetadata": {
         "additionalProperties": false,
-        "description": "Display/placement metadata — e.g. a featured-pilot homepage slot. Distinct from `curation` and `authority`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md).",
         "properties": {
           "since": {
             "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
             "type": "string"
           },
           "tier": {
-            "$ref": "#/components/schemas/PartnershipTier"
+            "enum": [
+              "pilot"
+            ],
+            "type": "string"
           },
           "validator_hotkey": {
             "type": "string"
           }
         },
         "required": [
-          "tier",
-          "since"
+          "since",
+          "tier"
         ],
         "type": "object"
       },
@@ -17500,255 +18362,691 @@
         "type": "object"
       },
       "SubnetDetailArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "candidate_surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateSurface"
+            },
+            "type": "array"
           },
-          {
-            "additionalProperties": true,
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateSurface"
+            },
+            "type": "array"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "economics": {
+            "additionalProperties": false,
             "properties": {
-              "candidate_surfaces": {
+              "alpha_fdv_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_in_pool": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_market_cap_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_out_pool": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_price_change_1d": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_price_change_1h": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_price_change_1m": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_price_change_7d": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "alpha_price_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "block": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emission_share": {
+                "anyOf": [
+                  {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "max_stake_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "max_uids": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max_validators": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "miner_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "miner_readiness": {
+                "anyOf": [
+                  {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "netuid": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "open_slots": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "owner_coldkey": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "owner_hotkey": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "registration_allowed": {
+                "type": "boolean"
+              },
+              "registration_cost_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "slug": {
+                "type": "string"
+              },
+              "subnet_volume_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tao_in_pool_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "total_stake_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "validator_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "alpha_fdv_tao",
+              "alpha_in_pool",
+              "alpha_market_cap_tao",
+              "alpha_out_pool",
+              "alpha_price_tao",
+              "emission_share",
+              "max_stake_tao",
+              "max_uids",
+              "max_validators",
+              "miner_count",
+              "name",
+              "netuid",
+              "owner_coldkey",
+              "owner_hotkey",
+              "registration_allowed",
+              "registration_cost_tao",
+              "slug",
+              "subnet_volume_tao",
+              "tao_in_pool_tao",
+              "total_stake_tao",
+              "validator_count"
+            ],
+            "type": "object"
+          },
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointResource"
+            },
+            "type": "array"
+          },
+          "gaps": {
+            "$ref": "#/components/schemas/Gaps"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/CandidateSurface"
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "subnet": {
+            "additionalProperties": false,
+            "properties": {
+              "block": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "candidate_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "categories": {
+                "items": {
+                  "type": "string"
                 },
                 "type": "array"
               },
-              "candidates": {
+              "contact": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "coverage_level": {
+                "enum": [
+                  "native-only",
+                  "manifested",
+                  "probed"
+                ],
+                "type": "string"
+              },
+              "curation": {
+                "$ref": "#/components/schemas/CurationMetadata"
+              },
+              "curation_level": {
+                "enum": [
+                  "native",
+                  "candidate-discovered",
+                  "community-seeded",
+                  "machine-verified",
+                  "maintainer-reviewed",
+                  "adapter-backed"
+                ],
+                "type": "string"
+              },
+              "dashboard_url": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "derived_categories": {
                 "items": {
-                  "$ref": "#/components/schemas/CandidateSurface"
+                  "type": "string"
                 },
                 "type": "array"
               },
-              "economics": {
-                "$ref": "#/components/schemas/SubnetEconomics"
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
-              "endpoints": {
-                "items": {
-                  "$ref": "#/components/schemas/EndpointResource"
-                },
-                "type": "array"
+              "docs_url": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gap_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
               "gaps": {
                 "$ref": "#/components/schemas/Gaps"
               },
-              "subnet": {
-                "$ref": "#/components/schemas/SubnetDetail"
+              "github_languages": {
+                "anyOf": [
+                  {
+                    "additionalProperties": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
-              "surfaces": {
+              "github_last_push_at": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lifecycle": {
+                "enum": [
+                  "active",
+                  "deprecated",
+                  "parked",
+                  "pending"
+                ],
+                "type": "string"
+              },
+              "links": {
                 "items": {
-                  "$ref": "#/components/schemas/Surface"
+                  "additionalProperties": {},
+                  "properties": {},
+                  "type": "object"
                 },
                 "type": "array"
               },
-              "verified_surfaces": {
+              "logo_url": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "mechanism_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "native_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "native_name_quality": {
+                "enum": [
+                  "chain",
+                  "placeholder",
+                  "empty"
+                ],
+                "type": "string"
+              },
+              "native_slug": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "netuid": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "notes": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "participant_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "partnership": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PartnershipMetadata"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "previously_known_as": {
                 "items": {
-                  "$ref": "#/components/schemas/Surface"
+                  "type": "string"
                 },
                 "type": "array"
+              },
+              "probed_surface_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "provenance": {
+                "additionalProperties": {},
+                "properties": {},
+                "type": "object"
+              },
+              "registered_at_block": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "social": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "reddit": {
+                        "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                        "type": "string"
+                      },
+                      "telegram": {
+                        "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                        "type": "string"
+                      },
+                      "x": {
+                        "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                        "type": "string"
+                      },
+                      "youtube": {
+                        "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source_repo": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "enum": [
+                  "active",
+                  "inactive",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "subnet_type": {
+                "enum": [
+                  "root",
+                  "application"
+                ],
+                "type": "string"
+              },
+              "surface_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "symbol": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tempo": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "website_url": {
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
-              "subnet",
-              "surfaces",
-              "candidate_surfaces",
-              "gaps"
+              "coverage_level",
+              "curation",
+              "curation_level",
+              "gaps",
+              "links",
+              "name",
+              "netuid",
+              "provenance",
+              "slug",
+              "status",
+              "subnet_type",
+              "surface_count"
             ],
             "type": "object"
-          }
-        ]
-      },
-      "SubnetEconomics": {
-        "additionalProperties": false,
-        "description": "Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses.",
-        "properties": {
-          "alpha_fdv_tao": {
-            "description": "Fully-diluted valuation proxy: alpha_price_tao multiplied by the fixed per-subnet alpha max supply (21,000,000). Null when alpha price is missing or non-finite.",
-            "type": [
-              "number",
-              "null"
-            ]
           },
-          "alpha_in_pool": {
-            "type": [
-              "number",
-              "null"
-            ]
+          "surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/Surface"
+            },
+            "type": "array"
           },
-          "alpha_market_cap_tao": {
-            "description": "Derived market-cap proxy: alpha_price_tao multiplied by total_stake_tao, where total_stake_tao is the circulating-alpha proxy. Null when either input is missing.",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "alpha_out_pool": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "alpha_price_change_1d": {
-            "description": "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots. Null when history is insufficient (#7227).",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "alpha_price_change_1h": {
-            "description": "Signed %-change in alpha_price_tao over ~1 hour. Always null while listings derive from daily subnet_snapshots (intraday OHLC is a separate source); kept for a stable schema shape (#7227).",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "alpha_price_change_1m": {
-            "description": "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (same window as trajectory's 30d delta). Null when history is insufficient (#7227).",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "alpha_price_change_7d": {
-            "description": "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots. Null when history is insufficient (#7227).",
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "alpha_price_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "block": {
-            "description": "Block height at which this subnet was registered on-chain — the same field the subnets collection exposes for sorting and range filters.",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "emission_share": {
-            "description": "Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price.",
-            "maximum": 1,
-            "minimum": 0,
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "max_stake_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "max_uids": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "max_validators": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "miner_count": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "miner_readiness": {
-            "description": "0-100 heuristic for how easy it is for a new miner to join and earn here (registration open, free slots, low cost, active subnet). Display/ranking signal only (#1306).",
-            "maximum": 100,
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "name": {
-            "type": "string"
-          },
-          "netuid": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "open_slots": {
-            "description": "Free UID slots (max_uids − validator_count − miner_count); null when max_uids is unknown. A miner-discovery signal (#1306).",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "owner_coldkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "owner_hotkey": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "registration_allowed": {
-            "type": "boolean"
-          },
-          "registration_cost_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "slug": {
-            "type": "string"
-          },
-          "subnet_volume_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "tao_in_pool_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "total_stake_tao": {
-            "type": [
-              "number",
-              "null"
-            ]
-          },
-          "validator_count": {
-            "minimum": 0,
-            "type": "integer"
+          "verified_surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/Surface"
+            },
+            "type": "array"
           }
         },
         "required": [
-          "netuid",
-          "slug",
-          "name",
-          "max_uids",
-          "validator_count",
-          "max_validators",
-          "miner_count",
-          "registration_allowed",
-          "registration_cost_tao",
-          "alpha_price_tao",
-          "alpha_market_cap_tao",
-          "alpha_fdv_tao",
-          "total_stake_tao",
-          "max_stake_tao",
-          "tao_in_pool_tao",
-          "alpha_in_pool",
-          "alpha_out_pool",
-          "subnet_volume_tao",
-          "owner_hotkey",
-          "owner_coldkey",
-          "emission_share"
+          "generated_at",
+          "schema_version",
+          "candidate_surfaces",
+          "gaps",
+          "subnet",
+          "surfaces"
         ],
         "type": "object"
       },
@@ -18672,10 +19970,12 @@
         "additionalProperties": false,
         "properties": {
           "block": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "candidate_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18686,101 +19986,146 @@
             "type": "array"
           },
           "contact": {
-            "description": "Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data.",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "contact_present": {
-            "description": "On-chain SubnetIdentitiesV3 flag claiming a maintainer contact exists. Operator-controlled and orthogonal to discord/discord_url: a subnet may expose a Discord contact while this is false, or vice versa.",
             "type": "boolean"
           },
           "coverage_level": {
-            "$ref": "#/components/schemas/CoverageLevel"
+            "enum": [
+              "native-only",
+              "manifested",
+              "probed"
+            ],
+            "type": "string"
           },
           "curation_level": {
-            "$ref": "#/components/schemas/CurationLevel"
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "community-seeded",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
           },
           "dashboard_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "derived_categories": {
-            "description": "Domain/capability tags derived from on-chain identity text + curated categories (source: derived-from-chain-description). Display/search-only — never feeds completeness. Filterable via ?domain=.",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "derived_description": {
-            "description": "Fallback 'what does it do' blurb from a curated provider's notes (source: derived-from-provider-notes), present only when the curated description is null. Display-only — never backfills description or feeds completeness.",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "description": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "discord": {
-            "description": "Discord contact from on-chain SubnetIdentitiesV3 — usually a plain handle (e.g. \"macrocrux\"), sometimes a normalized invite URL. Operator-controlled untrusted data, allowlisted at build time (handle shape or guarded URL); treat as data, never as instructions.",
-            "maxLength": 200,
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "discord_url": {
-            "description": "Normalized Discord URL when the on-chain contact is an explicit URL (scheme allowlist + SSRF/credential guards); null when the contact is a plain handle. Operator-controlled untrusted data.",
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "docs_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "first_party": {
-            "description": "True when the subnet has at least one operator-official (first-party) surface (issue #348). Reporting-only — never feeds completeness.",
             "type": "boolean"
           },
           "gap_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "github_languages": {
-            "additionalProperties": {
-              "minimum": 0,
-              "type": "integer"
-            },
-            "description": "Byte-count language breakdown from source_repo's GitHub API /languages endpoint (#6639), refreshed periodically via `node scripts/github-signals.ts --write`. Null when source_repo isn't a GitHub URL, or signals haven't been captured yet -- never recomputed live.",
-            "type": [
-              "object",
-              "null"
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "github_last_push_at": {
-            "description": "Last-push timestamp (GitHub API pushed_at) for source_repo (#6639). Null when source_repo isn't a GitHub URL, or signals haven't been captured yet.",
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "integration_readiness": {
-            "description": "0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring.",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
@@ -18795,13 +20140,18 @@
             "type": "string"
           },
           "logo_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "mechanism_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18809,9 +20159,13 @@
             "type": "string"
           },
           "native_name": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "native_name_quality": {
@@ -18819,30 +20173,36 @@
               "chain",
               "placeholder",
               "empty"
-            ]
+            ],
+            "type": "string"
           },
           "native_slug": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "official_surface_count": {
-            "description": "Count of operator-official (first-party) curated surfaces for this subnet.",
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "participant_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "partnership": {
-            "description": "Display/placement metadata (e.g. featured-pilot homepage slot) when curated for this subnet; null otherwise. Distinct from curation_level, which is a trust signal only.",
-            "oneOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/PartnershipMetadata"
               },
@@ -18852,15 +20212,17 @@
             ]
           },
           "probed_surface_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "registered_at_block": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "registry_observed_count": {
-            "description": "Count of low-trust registry-observed (harvested) surfaces for this subnet.",
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -18868,86 +20230,112 @@
             "type": "string"
           },
           "social": {
-            "additionalProperties": false,
-            "description": "Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification.",
-            "properties": {
-              "reddit": {
-                "format": "uri",
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
-                "type": "string"
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "reddit": {
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                    "type": "string"
+                  },
+                  "telegram": {
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                    "type": "string"
+                  },
+                  "x": {
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                    "type": "string"
+                  },
+                  "youtube": {
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
               },
-              "telegram": {
-                "format": "uri",
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
-                "type": "string"
-              },
-              "x": {
-                "format": "uri",
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
-                "type": "string"
-              },
-              "youtube": {
-                "format": "uri",
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
-                "type": "string"
+              {
+                "type": "null"
               }
-            },
-            "type": [
-              "object",
-              "null"
             ]
           },
           "source_repo": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "status": {
-            "$ref": "#/components/schemas/SubnetStatus"
+            "enum": [
+              "active",
+              "inactive",
+              "unknown"
+            ],
+            "type": "string"
           },
           "subnet_type": {
-            "$ref": "#/components/schemas/SubnetType"
+            "enum": [
+              "root",
+              "application"
+            ],
+            "type": "string"
           },
           "surface_count": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "symbol": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "tempo": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "updated_at": {
-            "description": "When the authoritative native chain snapshot backing this row was captured (the snapshot's captured_at). A display-only freshness floor for the list's 'last updated' column; the live per-surface probe time is overlaid on the detail/health routes, not here. Never feeds completeness/readiness/gaps (the #343 flywheel-preservation gate).",
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "website_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
         "required": [
-          "netuid",
+          "coverage_level",
+          "curation_level",
           "name",
+          "netuid",
           "slug",
           "status",
           "subnet_type",
-          "coverage_level",
-          "curation_level",
           "surface_count"
         ],
         "type": "object"
@@ -20795,56 +22183,78 @@
         "type": "object"
       },
       "SubnetsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "network": {
-                "$ref": "#/components/schemas/BittensorNetwork"
+          "generated_at": {
+            "type": "string"
+          },
+          "network": {
+            "enum": [
+              "finney",
+              "test",
+              "local"
+            ],
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
               },
-              "source": {
-                "additionalProperties": true,
-                "description": "Provenance of the native chain snapshot this index was built from.",
-                "properties": {
-                  "identity_storage": {
-                    "type": "string"
-                  },
-                  "kind": {
-                    "type": "string"
-                  },
-                  "method": {
-                    "type": "string"
-                  },
-                  "package": {
-                    "type": "string"
-                  },
-                  "rpc_family": {
-                    "type": "string"
-                  },
-                  "version": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "subnets": {
+              {
                 "items": {
-                  "$ref": "#/components/schemas/SubnetIndexEntry"
+                  "type": "string"
                 },
                 "type": "array"
               }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "additionalProperties": {},
+            "properties": {
+              "identity_storage": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string"
+              },
+              "package": {
+                "type": "string"
+              },
+              "rpc_family": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
             },
-            "required": [
-              "network",
-              "source",
-              "subnets"
-            ],
             "type": "object"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetIndexEntry"
+            },
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "network",
+          "source",
+          "subnets"
+        ],
+        "type": "object"
       },
       "SubnetServingArtifact": {
         "additionalProperties": false,
@@ -21013,12 +22423,15 @@
       },
       "SubnetStakeQuoteArtifact": {
         "additionalProperties": false,
-        "description": "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for an ?amount=/?direction=stake|unstake swap against the subnet's live economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math -- no chain write, no custody -- mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000x the relevant reserve is rejected). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote with null pool reserves.",
         "properties": {
           "alpha_in_pool": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "amount": {
@@ -21051,6 +22464,7 @@
             "type": "boolean"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -21059,6 +22473,8 @@
             "type": "number"
           },
           "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer"
           },
           "spot_price_tao": {
@@ -21066,25 +22482,29 @@
             "type": "number"
           },
           "tao_in_pool_tao": {
-            "type": [
-              "number",
-              "null"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
         "required": [
-          "schema_version",
-          "netuid",
-          "direction",
+          "alpha_in_pool",
           "amount",
+          "direction",
+          "effective_price_tao",
           "expected_out",
           "expected_out_unit",
-          "spot_price_tao",
-          "effective_price_tao",
+          "is_root",
+          "netuid",
           "price_impact_pct",
-          "tao_in_pool_tao",
-          "alpha_in_pool",
-          "is_root"
+          "schema_version",
+          "spot_price_tao",
+          "tao_in_pool_tao"
         ],
         "type": "object"
       },
@@ -21987,124 +23407,160 @@
         "additionalProperties": false,
         "properties": {
           "auth": {
-            "additionalProperties": false,
-            "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness.",
-            "properties": {
-              "body_envelope": {
+            "anyOf": [
+              {
                 "additionalProperties": false,
-                "description": "For scheme:signature, location:body only: set when the target API wraps the credential in its own nested object alongside the semantic request payload (e.g. {\"payload\": {...}, \"sig\": {...}}) instead of flat-merging the credential's fields into the top-level body. `names` still lists the credential bundle's own field names (nested under `credential_key`), unaffected by this wrapper shape. Omit entirely for a flat top-level merge (the default).",
                 "properties": {
-                  "credential_key": {
-                    "description": "Top-level body key the credential bundle (every name/value pair from `names`) is nested under, e.g. \"sig\".",
-                    "minLength": 1,
+                  "body_envelope": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "credential_key": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "payload_key": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "credential_key",
+                      "payload_key"
+                    ],
+                    "type": "object"
+                  },
+                  "location": {
+                    "enum": [
+                      "header",
+                      "query",
+                      "cookie",
+                      "body"
+                    ],
                     "type": "string"
                   },
-                  "payload_key": {
-                    "description": "Top-level body key the caller-supplied semantic payload (the `body` argument, or {} when absent) is wrapped under, e.g. \"payload\".",
-                    "minLength": 1,
+                  "name": {
+                    "type": "string"
+                  },
+                  "names": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "scheme": {
+                    "enum": [
+                      "none",
+                      "bearer",
+                      "api-key",
+                      "basic",
+                      "oauth2",
+                      "signature",
+                      "custom"
+                    ],
+                    "type": "string"
+                  },
+                  "scopes_note": {
+                    "type": "string"
+                  },
+                  "token_url": {
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                    "type": "string"
+                  },
+                  "value_format": {
                     "type": "string"
                   }
                 },
                 "required": [
-                  "payload_key",
-                  "credential_key"
+                  "scheme"
                 ],
                 "type": "object"
               },
-              "location": {
-                "description": "Where the credential is sent. \"body\" only applies to scheme:signature (the values are merged into the outgoing JSON request body, not sent as headers/query/cookie).",
-                "enum": [
-                  "header",
-                  "query",
-                  "cookie",
-                  "body"
-                ]
-              },
-              "name": {
-                "description": "Header or query-parameter name, e.g. \"Authorization\" or \"X-API-Key\". Mutually exclusive with `names` -- single-value schemes (bearer/api-key/basic) use this; scheme:signature uses `names` instead.",
-                "type": "string"
-              },
-              "names": {
-                "description": "For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. [\"X-Hotkey\", \"X-Timestamp\", \"X-Signature\"]. Mutually exclusive with `name`.",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1,
-                "type": "array"
-              },
-              "scheme": {
-                "description": "Credential scheme. \"signature\" is a multi-value bundle (e.g. a Bittensor hotkey-signed request: signature + timestamp + address headers) the caller computes and supplies as a whole -- see `names`, not `name`.",
-                "enum": [
-                  "none",
-                  "bearer",
-                  "api-key",
-                  "basic",
-                  "oauth2",
-                  "signature",
-                  "custom"
-                ]
-              },
-              "scopes_note": {
-                "description": "Note on required scopes or how to obtain a credential.",
-                "type": "string"
-              },
-              "token_url": {
-                "description": "OAuth2/OIDC token or authorize endpoint, when the spec declares one.",
-                "format": "uri",
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
-                "type": "string"
-              },
-              "value_format": {
-                "description": "Placeholder showing the value shape, e.g. \"Bearer <token>\". Never a real secret.",
-                "type": "string"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "scheme"
-            ],
-            "type": [
-              "object",
-              "null"
             ]
           },
           "auth_required": {
             "type": "boolean"
           },
           "authority": {
-            "$ref": "#/components/schemas/Authority"
+            "enum": [
+              "official",
+              "provider-claimed",
+              "community",
+              "registry-observed"
+            ],
+            "type": "string"
           },
           "classification": {
-            "$ref": "#/components/schemas/Classification"
+            "enum": [
+              "live",
+              "redirected",
+              "auth-required",
+              "dead",
+              "unsafe",
+              "unsupported",
+              "rate-limited",
+              "transient",
+              "timeout",
+              "content-mismatch",
+              "wrong-chain",
+              "unknown"
+            ],
+            "type": "string"
           },
           "curation_level": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CurationLevel"
-              }
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "community-seeded",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
             ],
-            "description": "Resolved trust tier for this surface (#1757), derived once at the source from the provider `authority` and verification freshness so consumers no longer conflate the Authority and CurationLevel enums. A stale verification demotes the tier; an official, freshly-verified surface inherits the subnet's maintainer-reviewed / adapter-backed ceiling."
+            "type": "string"
           },
           "id": {
             "type": "string"
           },
           "key": {
-            "description": "Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it.",
             "type": "string"
           },
           "kind": {
-            "$ref": "#/components/schemas/SurfaceKind"
+            "enum": [
+              "archive",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "subnet-api",
+              "openapi",
+              "sse",
+              "sdk",
+              "example",
+              "website",
+              "source-repo",
+              "dashboard",
+              "repo-registry",
+              "docs",
+              "data-artifact"
+            ],
+            "type": "string"
           },
           "last_verified_at": {
-            "description": "Per-field provenance (#1006): the as-of timestamp this surface was last verified — a per-surface verification when present, otherwise the subnet curation's verified_at. null when unverified. Agents reason about how fresh the value is and cache-bust on it.",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "name": {
             "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -22112,7 +23568,41 @@
             "type": "string"
           },
           "probe": {
-            "$ref": "#/components/schemas/ProbeConfig"
+            "additionalProperties": false,
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "expect": {
+                "enum": [
+                  "json",
+                  "html",
+                  "sse",
+                  "any"
+                ],
+                "type": "string"
+              },
+              "method": {
+                "enum": [
+                  "GET",
+                  "HEAD",
+                  "JSON-RPC",
+                  "WSS-RPC"
+                ],
+                "type": "string"
+              },
+              "timeout_ms": {
+                "maximum": 30000,
+                "minimum": 1000,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "enabled",
+              "expect",
+              "method"
+            ],
+            "type": "object"
           },
           "provider": {
             "type": "string"
@@ -22145,7 +23635,13 @@
                 "type": "boolean"
               },
               "source_tier": {
-                "$ref": "#/components/schemas/SourceTier"
+                "enum": [
+                  "native-chain",
+                  "provider-claimed",
+                  "third-party-index",
+                  "community-docs"
+                ],
+                "type": "string"
               },
               "transient_failure": {
                 "type": "boolean"
@@ -22155,33 +23651,30 @@
           },
           "rate_limit": {
             "additionalProperties": false,
-            "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness.",
             "properties": {
               "burst": {
-                "description": "Optional short-term burst allowance above the steady rate.",
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "cost_notes": {
-                "description": "Notes on weighted/credit costs or tier differences.",
                 "type": "string"
               },
               "requests": {
-                "description": "Permitted requests per window.",
+                "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
               },
               "scope": {
-                "description": "What the limit is counted against.",
                 "enum": [
                   "per-key",
                   "per-ip",
                   "global",
                   "unknown"
-                ]
+                ],
+                "type": "string"
               },
               "window": {
-                "description": "Window the request budget applies to, e.g. \"60s\", \"1m\", \"1h\", \"1d\".",
                 "minLength": 1,
                 "type": "string"
               }
@@ -22197,14 +23690,14 @@
           },
           "review": {
             "additionalProperties": false,
-            "description": "Per-surface HUMAN review/governance state (single-file contribution model): a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". This is the human-governance axis ONLY — machine verification + freshness (is the surface live or stale) is the separate probe-derived overlay (health, last_verified_at, incidents), and subnet-level curation has its own curation.review_state.",
             "properties": {
               "confidence": {
                 "enum": [
                   "low",
                   "medium",
                   "high"
-                ]
+                ],
+                "type": "string"
               },
               "review_notes": {
                 "type": "string"
@@ -22214,7 +23707,8 @@
                   "community-submitted",
                   "maintainer-reviewed",
                   "rejected"
-                ]
+                ],
+                "type": "string"
               },
               "submitted_at": {
                 "type": "string"
@@ -22233,14 +23727,11 @@
               "machine-readable",
               "ui-only",
               "not-captured"
-            ]
+            ],
+            "type": "string"
           },
           "schema_url": {
-            "examples": [
-              "https://example.com/openapi.json"
-            ],
-            "format": "uri",
-            "pattern": "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://",
+            "pattern": "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):\\/\\/",
             "type": "string"
           },
           "source_urls": {
@@ -22251,11 +23742,16 @@
             "type": "array"
           },
           "stale": {
-            "description": "Freshness TTL (#1006): true when last_verified_at is older than the per-kind window (callable surfaces ~30d, identity surfaces ~90-120d), measured against the dataset's native-snapshot captured_at. false when fresh or unverified.",
             "type": "boolean"
           },
           "status": {
-            "$ref": "#/components/schemas/HealthStatus"
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
           },
           "subnet_name": {
             "type": "string"
@@ -22264,11 +23760,7 @@
             "type": "string"
           },
           "url": {
-            "examples": [
-              "https://example.com"
-            ],
-            "format": "uri",
-            "pattern": "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://",
+            "pattern": "^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):\\/\\/",
             "type": "string"
           },
           "verification": {
@@ -22278,7 +23770,21 @@
                 "type": "boolean"
               },
               "classification": {
-                "$ref": "#/components/schemas/Classification"
+                "enum": [
+                  "live",
+                  "redirected",
+                  "auth-required",
+                  "dead",
+                  "unsafe",
+                  "unsupported",
+                  "rate-limited",
+                  "transient",
+                  "timeout",
+                  "content-mismatch",
+                  "wrong-chain",
+                  "unknown"
+                ],
+                "type": "string"
               },
               "confidence_score": {
                 "maximum": 100,
@@ -22286,21 +23792,33 @@
                 "type": "integer"
               },
               "content_type": {
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "default_branch": {
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "error": {
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "github_api_url": {
@@ -22308,38 +23826,61 @@
                 "type": "string"
               },
               "homepage": {
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "last_push_at": {
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "latency_ms": {
-                "minimum": 0,
-                "type": [
-                  "integer",
-                  "null"
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "method_tested": {
                 "type": "string"
               },
               "redirect_target": {
-                "format": "uri",
-                "type": [
-                  "string",
-                  "null"
+                "anyOf": [
+                  {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "status_code": {
-                "type": [
-                  "integer",
-                  "null"
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "topics": {
@@ -22356,14 +23897,14 @@
           }
         },
         "required": [
-          "id",
-          "netuid",
-          "kind",
-          "url",
-          "provider",
           "auth_required",
           "authority",
-          "public_safe"
+          "id",
+          "kind",
+          "netuid",
+          "provider",
+          "public_safe",
+          "url"
         ],
         "type": "object"
       },
@@ -39498,7 +41039,9 @@
                   "data": {
                     "contract_version": "2026-06-29.1",
                     "generated_at": "2026-06-01T00:00:00.000Z",
-                    "global": {},
+                    "global": {
+                      "example": null
+                    },
                     "health_source": "probe-derived",
                     "operational_observed_at": "2026-06-01T00:00:00.000Z",
                     "schema_version": 1,

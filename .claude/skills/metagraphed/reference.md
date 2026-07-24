@@ -318,6 +318,23 @@ fails the PR on its own). No local paths, env dumps, or private notes.
 
 - **Schema-first:** edit `schemas/`/`schemas/components/` → `npm run build` → commit `openapi.json` +
   types/clients. `validate:contract-drift` + `validate:schema-enums` + `validate:committed-seed` guard it.
+- **Zod-owned components (types-epic B, #7860) live in `schemas-src/openapi-registry.ts`, NOT
+  `schemas/components/`.** For the routes/sub-shapes it covers (currently: the 5 pilot routes from
+  types-epic A plus their necessary sub-components — `SubnetsArtifact`, `SubnetIndexEntry`,
+  `SubnetDetailArtifact`, `Surface`, `CandidateSurface`, `EndpointResource`, `Gaps`,
+  `CurationMetadata`, `PartnershipMetadata`, `EconomicsArtifact`, `HealthSummaryArtifact`,
+  `HealthSubnetSummary`, `SubnetStakeQuoteArtifact`), the hand-edited `schemas/components/*.schema.json`
+  key is DELETED — the component is instead emitted from its Zod schema via
+  `scripts/generate-openapi-zod-components.ts` (`z.toJSONSchema()` against the registry) and merged
+  into `components.schemas` inside `scripts/openapi-components.ts::loadOpenApiComponentSchemas()`, so
+  `npm run build`/`validate:contract-drift` pick it up automatically — no new CI gate, no `build.ts`
+  reordering. To add a new component to this set: export its Zod schema from the relevant
+  `schemas-src/routes/*.ts` file, `register()` it in `openapi-registry.ts` under the SAME name the
+  hand-edited component used (load-bearing — other components/the client SDK still `$ref` it by name),
+  delete the matching `schemas/components/*.schema.json` key, then run `npm run diff:openapi-zod` (an
+  equivalence-diff audit against the hand-edited predecessor, normalizing known cosmetic differences —
+  see its own file header) until it reports PASS, fixing any real (non-cosmetic) diff it surfaces in
+  the Zod schema itself, not by loosening the audit's normalizer.
 - **Client SDK version: do NOT bump in your PR.** `packages/client/package.json` is versioned by the
   post-merge `sync-client-version` workflow, which auto-opens a `chore/sync-client-version` PR whenever
   a contract file lands on main. `validate:client-sdk-sync` emits a notice (not a failure) either way:

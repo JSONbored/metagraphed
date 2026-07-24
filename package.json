@@ -85,6 +85,8 @@
     "validate:graphql-types-drift": "node scripts/validate-graphql-types-drift.ts",
     "build:db-types": "node scripts/generate-db-types.ts",
     "validate:db-types-drift": "node scripts/validate-db-types-drift.ts",
+    "build:openapi-zod": "node scripts/generate-openapi-zod-components.ts",
+    "diff:openapi-zod": "node scripts/diff-openapi-zod-components.ts",
     "surface:add": "node scripts/surface-add.ts",
     "subnet:new": "node scripts/subnet-new.ts",
     "enrich:issues": "node scripts/enrichment-issues.ts --write",

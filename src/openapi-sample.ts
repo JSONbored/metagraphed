@@ -26,7 +26,15 @@ const SAMPLE_COUNTERPARTY_SS58 =
 
 function valueForPattern(pattern: string, name = ""): string {
   const n = String(name || "").toLowerCase();
-  switch (pattern) {
+  // A JS RegExp's own `.source` ALWAYS backslash-escapes a literal `/`
+  // (regardless of whether the regex was written as a /.../  literal or via
+  // `new RegExp("...")` -- verified empirically), so a schemas-src/*.ts
+  // `.regex(/.../ )` schema emits a JSON Schema `pattern` string with `\/`
+  // where a hand-typed JSON component (no such escaping requirement) has a
+  // bare `/`. Same regex, different string -- normalize before the
+  // string-equality switch below so both representations match identically.
+  const normalizedPattern = pattern.replace(/\\\//g, "/");
+  switch (normalizedPattern) {
     case "^[a-f0-9]{64}$":
       return HEX64;
     case "^[1-9A-HJ-NP-Za-km-z]{47,48}$":
@@ -1016,10 +1024,16 @@ export function sampleFromSchema(
   }
 
   if (type === "string") {
-    if (schema.pattern) return valueForPattern(schema.pattern as string, name);
+    // format checked BEFORE pattern: Zod's z.iso.date()/.datetime() emit
+    // BOTH an OpenAPI `format` keyword AND a strict verification `pattern`
+    // regex for the exact same constraint (format is the authoritative,
+    // well-known one; the pattern is redundant belt-and-suspenders). A
+    // pattern-first check would route these through valueForPattern's
+    // generic-regex fallback instead of the correct, format-aware sample.
     if (schema.format === "uri") return "https://api.metagraph.sh/example";
     if (schema.format === "date-time") return ISO;
     if (schema.format === "date") return DATE_ONLY;
+    if (schema.pattern) return valueForPattern(schema.pattern as string, name);
     return seededString(name);
   }
   if (type === "integer" || type === "number")
