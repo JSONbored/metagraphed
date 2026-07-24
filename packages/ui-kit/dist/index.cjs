@@ -3592,6 +3592,115 @@ function Sparkline({
     }
   );
 }
+var TONE_CLASSES = {
+  default: "text-ink-muted",
+  muted: "text-ink-subtle-text",
+  accent: "text-accent-text",
+  warn: "text-health-warn-text",
+  down: "text-health-down"
+};
+function SectionLabel({
+  children,
+  size = "micro",
+  tone = "default",
+  icon,
+  hint,
+  as,
+  className,
+  title
+}) {
+  const Cmp = as ?? "span";
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    Cmp,
+    {
+      title,
+      className: classNames(
+        size === "micro" ? "mg-type-micro" : "mg-type-label",
+        "inline-flex items-center gap-1.5",
+        TONE_CLASSES[tone],
+        className
+      ),
+      children: [
+        icon ? /* @__PURE__ */ jsxRuntime.jsx(
+          "span",
+          {
+            "aria-hidden": true,
+            className: "inline-flex size-3 items-center justify-center",
+            children: icon
+          }
+        ) : null,
+        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate", children }),
+        hint != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-subtle-text normal-case tracking-normal", children: hint }) : null
+      ]
+    }
+  );
+}
+var TONE_STYLES = {
+  default: { border: "border-border", bg: "bg-card" },
+  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
+  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
+  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
+  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
+  muted: { border: "border-border", bg: "bg-surface-2" }
+};
+function Panel({
+  title,
+  action,
+  caption,
+  dense,
+  flush,
+  interactive,
+  tone = "default",
+  tintBorderOnly,
+  glow,
+  as,
+  className,
+  bodyClassName,
+  children,
+  ...rest
+}) {
+  const Cmp = as ?? "section";
+  const hasHeader = title != null || action != null || caption != null;
+  const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
+  const toneStyle = TONE_STYLES[tone];
+  return /* @__PURE__ */ jsxRuntime.jsxs(
+    Cmp,
+    {
+      ...rest,
+      className: classNames(
+        "rounded border",
+        toneStyle.border,
+        tintBorderOnly ? "bg-card" : toneStyle.bg,
+        interactive ? "mg-hover-lift" : null,
+        glow ? tone === "accent" ? "mg-card-glow-accent" : "mg-card-glow" : null,
+        className
+      ),
+      children: [
+        hasHeader ? /* @__PURE__ */ jsxRuntime.jsxs(
+          "header",
+          {
+            className: classNames(
+              "flex items-start justify-between gap-3 border-b border-border/70",
+              dense ? "mg-panel-pad-dense" : "mg-panel-pad"
+            ),
+            style: {
+              paddingTop: "var(--mg-space-sm)",
+              paddingBottom: "var(--mg-space-sm)"
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
+                title != null ? /* @__PURE__ */ jsxRuntime.jsx(SectionLabel, { children: title }) : null,
+                caption != null ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1 mg-type-caption-lg text-ink-muted", children: caption }) : null
+              ] }),
+              action != null ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
+            ]
+          }
+        ) : null,
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: classNames(padClass, bodyClassName), children })
+      ]
+    }
+  );
+}
 function StatTile({
   icon: Icon,
   eyebrow,
@@ -3604,17 +3713,14 @@ function StatTile({
   tooltip
 }) {
   return /* @__PURE__ */ jsxRuntime.jsxs(
-    "div",
+    Panel,
     {
-      className: classNames(
-        "rounded-lg border bg-card p-4 flex items-center gap-4",
-        tone === "accent" && "border-accent/40",
-        tone === "ok" && "border-health-ok/40",
-        tone === "warn" && "border-health-warn/40",
-        tone === "down" && "border-health-down/40",
-        tone === "default" && "border-border",
-        className
-      ),
+      as: "div",
+      dense: true,
+      tintBorderOnly: true,
+      tone,
+      className,
+      bodyClassName: "flex items-center gap-4",
       children: [
         Icon ? /* @__PURE__ */ jsxRuntime.jsx(
           Icon,
@@ -4002,7 +4108,7 @@ function TreemapMini({
     }
   );
 }
-var TONE_CLASSES = {
+var TONE_CLASSES2 = {
   default: "border-border bg-paper text-ink",
   ok: "border-health-ok/40 bg-health-ok/10 text-health-ok",
   warn: "border-health-warn/40 bg-health-warn/10 text-health-warn-text",
@@ -4031,7 +4137,7 @@ function Chip({
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5",
         "mg-type-data-sm leading-none whitespace-nowrap transition-colors",
         onClick ? "mg-focus-ring hover:border-ink/30 cursor-pointer" : null,
-        TONE_CLASSES[tone],
+        TONE_CLASSES2[tone],
         className
       ),
       children: [
@@ -4363,115 +4469,6 @@ function useColumnVisibility(pageKey, columns) {
     setVisible(defaultVisible(columns));
   }, [columns]);
   return { visible, isVisible, toggle, reset, setVisible };
-}
-var TONE_CLASSES2 = {
-  default: "text-ink-muted",
-  muted: "text-ink-subtle-text",
-  accent: "text-accent-text",
-  warn: "text-health-warn-text",
-  down: "text-health-down"
-};
-function SectionLabel({
-  children,
-  size = "micro",
-  tone = "default",
-  icon,
-  hint,
-  as,
-  className,
-  title
-}) {
-  const Cmp = as ?? "span";
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    Cmp,
-    {
-      title,
-      className: classNames(
-        size === "micro" ? "mg-type-micro" : "mg-type-label",
-        "inline-flex items-center gap-1.5",
-        TONE_CLASSES2[tone],
-        className
-      ),
-      children: [
-        icon ? /* @__PURE__ */ jsxRuntime.jsx(
-          "span",
-          {
-            "aria-hidden": true,
-            className: "inline-flex size-3 items-center justify-center",
-            children: icon
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("span", { className: "truncate", children }),
-        hint != null ? /* @__PURE__ */ jsxRuntime.jsx("span", { className: "text-ink-subtle-text normal-case tracking-normal", children: hint }) : null
-      ]
-    }
-  );
-}
-var TONE_STYLES = {
-  default: { border: "border-border", bg: "bg-card" },
-  accent: { border: "border-accent/40", bg: "bg-primary-soft" },
-  warn: { border: "border-health-warn/40", bg: "bg-health-warn/5" },
-  down: { border: "border-health-down/40", bg: "bg-health-down/5" },
-  ok: { border: "border-health-ok/40", bg: "bg-health-ok/5" },
-  muted: { border: "border-border", bg: "bg-surface-2" }
-};
-function Panel({
-  title,
-  action,
-  caption,
-  dense,
-  flush,
-  interactive,
-  tone = "default",
-  tintBorderOnly,
-  glow,
-  as,
-  className,
-  bodyClassName,
-  children,
-  ...rest
-}) {
-  const Cmp = as ?? "section";
-  const hasHeader = title != null || action != null || caption != null;
-  const padClass = flush ? "mg-panel-pad-flush" : dense ? "mg-panel-pad-dense" : "mg-panel-pad";
-  const toneStyle = TONE_STYLES[tone];
-  return /* @__PURE__ */ jsxRuntime.jsxs(
-    Cmp,
-    {
-      ...rest,
-      className: classNames(
-        "rounded border",
-        toneStyle.border,
-        tintBorderOnly ? "bg-card" : toneStyle.bg,
-        interactive ? "mg-hover-lift" : null,
-        glow ? tone === "accent" ? "mg-card-glow-accent" : "mg-card-glow" : null,
-        className
-      ),
-      children: [
-        hasHeader ? /* @__PURE__ */ jsxRuntime.jsxs(
-          "header",
-          {
-            className: classNames(
-              "flex items-start justify-between gap-3 border-b border-border/70",
-              dense ? "mg-panel-pad-dense" : "mg-panel-pad"
-            ),
-            style: {
-              paddingTop: "var(--mg-space-sm)",
-              paddingBottom: "var(--mg-space-sm)"
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "min-w-0", children: [
-                title != null ? /* @__PURE__ */ jsxRuntime.jsx(SectionLabel, { children: title }) : null,
-                caption != null ? /* @__PURE__ */ jsxRuntime.jsx("p", { className: "mt-1 mg-type-caption-lg text-ink-muted", children: caption }) : null
-              ] }),
-              action != null ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "shrink-0 flex items-center gap-2", children: action }) : null
-            ]
-          }
-        ) : null,
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: classNames(padClass, bodyClassName), children })
-      ]
-    }
-  );
 }
 var VARIANT_ICON = {
   empty: lucideReact.Inbox,

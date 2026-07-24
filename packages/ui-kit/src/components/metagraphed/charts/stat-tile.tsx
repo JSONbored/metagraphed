@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { classNames } from "@/lib/format";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
+import { Panel } from "@/components/metagraphed/panel";
 
 interface Props {
   icon?: LucideIcon;
@@ -42,16 +43,13 @@ export function StatTile({
   tooltip,
 }: Props) {
   return (
-    <div
-      className={classNames(
-        "rounded-lg border bg-card p-4 flex items-center gap-4",
-        tone === "accent" && "border-accent/40",
-        tone === "ok" && "border-health-ok/40",
-        tone === "warn" && "border-health-warn/40",
-        tone === "down" && "border-health-down/40",
-        tone === "default" && "border-border",
-        className,
-      )}
+    <Panel
+      as="div"
+      dense
+      tintBorderOnly
+      tone={tone}
+      className={className}
+      bodyClassName="flex items-center gap-4"
     >
       {Icon ? (
         <Icon
@@ -102,6 +100,6 @@ export function StatTile({
         </div>
       </div>
       {chart ? <div className="shrink-0 opacity-80">{chart}</div> : null}
-    </div>
+    </Panel>
   );
 }

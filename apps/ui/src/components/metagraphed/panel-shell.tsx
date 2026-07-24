@@ -1,7 +1,7 @@
 import { Component, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { SectionAnchor, TimeAgo, type SectionTone } from "@jsonbored/ui-kit";
+import { Panel, SectionAnchor, TimeAgo, type SectionTone } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { classNames, isStaleFreshness, isUsableTimestamp } from "@/lib/metagraphed/format";
 import { reportError } from "@/lib/error-reporting";
@@ -129,16 +129,12 @@ export function PanelShell({
         context={typeof title === "string" ? title : id}
       >
         {effectiveLoading ? (
-          <div
-            className="rounded-xl border border-border bg-card p-4"
-            aria-busy="true"
-            aria-live="polite"
-          >
+          <Panel as="div" dense aria-busy="true" aria-live="polite">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="mt-3 h-8 w-full" />
             <Skeleton className="mt-2 h-8 w-3/4" />
             <div style={{ height: Math.max(0, skeletonHeight - 76) }} aria-hidden />
-          </div>
+          </Panel>
         ) : isEmpty ? (
           <EmptyState
             title={emptyTitle ?? "Nothing to show"}

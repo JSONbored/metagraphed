@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/metagraphed/states";
 import { TopActiveAccounts } from "@/components/metagraphed/top-active-accounts";
 import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-active-accounts-ranking";
 import { ActionBar, ShareButton } from "@jsonbored/ui-kit";
-import { AsyncPanel, PageMasthead } from "@/components/metagraphed/primitives";
+import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { isValidSs58 } from "@/lib/metagraphed/accounts";
 import { chainSignersQuery } from "@/lib/metagraphed/queries";
 
@@ -91,8 +91,9 @@ function AccountsPage() {
             : "Paste a hotkey or coldkey ss58 address to view its activity."}
         </p>
       </form>
-      <section
-        className="mx-auto mt-10 w-full max-w-2xl rounded-lg border border-border bg-card p-4"
+      <Panel
+        dense
+        className="mx-auto mt-10 w-full max-w-2xl"
         data-testid="top-active-accounts-section"
       >
         <h2 className="mb-1 mg-type-label uppercase text-ink-muted">Most active accounts</h2>
@@ -107,7 +108,7 @@ function AccountsPage() {
         >
           <TopActiveAccounts />
         </AsyncPanel>
-      </section>
+      </Panel>
       <ApiSourceFooter paths={["/api/v1/accounts/{ss58}", "/api/v1/chain/signers"]} />
     </AppShell>
   );
